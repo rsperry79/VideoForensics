@@ -10,6 +10,7 @@ using System.Text.Encodings.Web;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.WebApp.Api;
 
 namespace VideoForensics.WebApp.Auth
 {
@@ -110,6 +111,27 @@ namespace VideoForensics.WebApp.Auth
                 if (op == null || !op.IsApproved || !op.Active || op.SecurityStamp != principal.SecurityStampAtIssuance)
                 {
                     return AuthenticateResult.Fail("Invalid or expired credential.");
+                }
+
+                if (principal.PasskeySetupOnly)
+                {
+                    // Limited passkey-setup session: accepted only on the passkey setup endpoints, for 15 minutes, and
+                    // only until a passkey is created after issuance (see PasskeySetupSessionPolicy).
+                    if (!PasskeySetupSessionPolicy.IsPathAllowed(Context.Request.Path))
+                    {
+                        return AuthenticateResult.Fail("Passkey setup required.");
+                    }
+
+                    if (PasskeySetupSessionPolicy.IsLifetimeEnded(principal.IssuedAtUtc, DateTime.UtcNow))
+                    {
+                        return AuthenticateResult.Fail("Passkey setup session has expired.");
+                    }
+
+                    IReadOnlyList<OperatorCredential> credentials = await _operatorCredentialRepository.ListForOperatorAsync(op.Id, Context.RequestAborted);
+                    if (PasskeySetupSessionPolicy.IsSupersededByPasskeyCreation(credentials, principal.IssuedAtUtc))
+                    {
+                        return AuthenticateResult.Fail("Passkey setup session has ended.");
+                    }
                 }
 
                 Claim[] claims;

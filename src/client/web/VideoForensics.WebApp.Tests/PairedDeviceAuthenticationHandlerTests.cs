@@ -1284,5 +1284,182 @@ namespace VideoForensics.WebApp.Tests
             Assert.False(result.Succeeded);
             Assert.Equal("Password change required.", result.Failure?.Message);
         }
+
+        /// <summary>Sets up a limited passkey-setup session (password login with 2FA required and no approved passkey yet).</summary>
+        private static (PairedDeviceAuthenticationHandler handler, HttpContext context) CreateLimitedSessionRequest(
+            string token, string path, List<OperatorCredential> credentials, DateTime? issuedAtUtc = null)
+        {
+            var operatorId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
+            var tokenService = new Mock<ISessionTokenService>();
+            var operatorRepository = new Mock<IOperatorRepository>();
+            var credentialRepository = new Mock<IOperatorCredentialRepository>();
+            var tierResolver = new Mock<INetworkTierResolver>();
+
+            // ExpiresAtUtc is deliberately far away: the handler's own 15-minute limit must end the session, not the token's expiry.
+            DateTime issuedAt = issuedAtUtc ?? DateTime.UtcNow;
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp, issuedAt, DateTime.UtcNow.AddHours(12))
+            {
+                PasskeySetupOnly = true
+            };
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Test Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"test-operator-{operatorId:N}",
+                FirstName = "Test",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
+            };
+            _ = operatorRepository.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            _ = credentialRepository.Setup(c => c.ListForOperatorAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(credentials);
+
+            var repo = new Mock<IPairedDeviceRepository>();
+            PairedDeviceAuthenticationHandler handler = CreateHandler(tokenService, repo, tierResolver, operatorRepository, credentialRepository);
+            HttpContext context = CreateHttpContextWithAuthorizationHeader(token);
+            context.Request.Path = path;
+            return (handler, context);
+        }
+
+        [Fact]
+        public async Task LimitedSession_RegisterOptions_Allowed()
+        {
+            // Arrange - limited session, no passkey yet, calling passkey registration options
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-register-options", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential>());
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_OtherEndpoint_Rejected()
+        {
+            // Arrange - limited session calling an unrelated endpoint
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-other-endpoint", "/api/v1/llm/settings", new List<OperatorCredential>());
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_RegisterCompleteAndOwnPasskeyList_Allowed()
+        {
+            // Arrange - the two other endpoints the passkey setup page needs
+            (PairedDeviceAuthenticationHandler completeHandler, HttpContext completeContext) = CreateLimitedSessionRequest(
+                "limited-register-complete", "/api/v1/auth/operator-credentials/register/complete", new List<OperatorCredential>());
+            (PairedDeviceAuthenticationHandler mineHandler, HttpContext mineContext) = CreateLimitedSessionRequest(
+                "limited-mine", "/api/devices-management/operator-credentials/mine", new List<OperatorCredential>());
+
+            // Act
+            AuthenticateResult complete = await AuthenticateAsync(completeHandler, PairedDeviceAuthenticationDefaults.SchemeName, completeContext);
+            AuthenticateResult mine = await AuthenticateAsync(mineHandler, PairedDeviceAuthenticationDefaults.SchemeName, mineContext);
+
+            // Assert
+            Assert.True(complete.Succeeded);
+            Assert.True(mine.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_OperatorHasApprovedPasskeyButCreatedBeforeSession_Allowed()
+        {
+            // Arrange - the operator already had an approved passkey before this limited session was issued; creating a passkey is the reason it exists
+            DateTime issuedAt = DateTime.UtcNow.AddMinutes(-5);
+            var existing = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = Guid.NewGuid(),
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true,
+                CreatedAtUtc = issuedAt.AddMinutes(-10)
+            };
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-existing-passkey", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { existing }, issuedAt);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_PasskeyCreatedAfterIssue_Rejected()
+        {
+            // Arrange - a passkey was registered after this limited session was issued, so the session has ended
+            DateTime issuedAt = DateTime.UtcNow.AddMinutes(-5);
+            var created = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = Guid.NewGuid(),
+                Label = "Phone",
+                WebAuthnCredentialId = "cred-id-2",
+                WebAuthnPublicKey = new byte[] { 4, 5, 6 },
+                IsApproved = true,
+                CreatedAtUtc = issuedAt.AddMinutes(1)
+            };
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-created-after", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { created }, issuedAt);
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_ExpiredAfter15Minutes_Rejected()
+        {
+            // Arrange - issued 16 minutes ago; the token's own expiry is still in the future, so only the 15-minute limit can end it
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-too-old", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential>(), DateTime.UtcNow.AddMinutes(-16));
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.False(result.Succeeded);
+        }
+
+        [Fact]
+        public async Task LimitedSession_MissingIssuedAt_SkipsPasskeyCreatedCheck()
+        {
+            // Arrange - a limited token with no issued-at value (default) cannot be compared, so the passkey-created check is skipped as before
+            var created = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = Guid.NewGuid(),
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-no-issued-at", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { created }, default(DateTime));
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+        }
     }
 }
