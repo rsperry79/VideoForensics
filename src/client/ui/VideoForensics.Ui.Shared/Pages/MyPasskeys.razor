@@ -21,6 +21,14 @@
     </div>
 }
 
+@if (_setupPendingApproval)
+{
+    @* Limited setup session after a pending add: no further API calls (the server ends the session), so only sign-out remains. *@
+    <div class="alert alert-info mb-4" data-testid="passkey-setup-pending">@L["PasskeySetupPendingApproval"]</div>
+    <SfButton Content="@L["SignOutButton"]" OnClick="SignOutAfterPendingAsync" CssClass="passkey-setup-pending-signout e-primary" />
+}
+else
+{
 <h6 class="mt-4 mb-2">@L["AddPasskeyHeading"]</h6>
 <div class="d-flex flex-row gap-2 mb-4">
     <SfTextBox @bind-Value="_labelInput" Placeholder="@L["LabelPlaceholder"].Value" Style="max-width: 300px;" CssClass="form-control" />
@@ -118,6 +126,7 @@ else
 {
     <div class="alert alert-danger mt-4">@_revokeError</div>
 }
+}
 
 @code {
     /// <summary>True when sign-in sent the operator here because they have no passkey yet (?setup=true).</summary>
@@ -135,6 +144,8 @@ else
     private string _passwordInput = string.Empty;
     private Guid? _pendingRevokeCredentialId;
     private bool _isAdding;
+    // Set when a setup-session passkey was added but is still awaiting admin approval.
+    private bool _setupPendingApproval;
 
     protected override async Task OnInitializedAsync()
     {
@@ -204,10 +215,18 @@ else
 
             if (SessionState.PasskeySetupOnly)
             {
-                // The server ended the limited setup session once this passkey existed: drop the client's
-                // copy and make the operator sign in again. Loading the list would now be unauthorized anyway.
-                await SessionState.ClearAsync();
-                NavigationManager.NavigateTo("/signin");
+                if (isApproved)
+                {
+                    // The server ended the limited setup session once this passkey existed: drop the client's
+                    // copy and make the operator sign in again. Loading the list would now be unauthorized anyway.
+                    await SessionState.ClearAsync();
+                    NavigationManager.NavigateTo("/signin");
+                    return;
+                }
+
+                // Pending approval: keep the session, show the message, and make no further API calls.
+                _labelInput = string.Empty;
+                _setupPendingApproval = true;
                 return;
             }
 
@@ -223,6 +242,12 @@ else
         {
             _isAdding = false;
         }
+    }
+
+    private async Task SignOutAfterPendingAsync()
+    {
+        await SessionState.ClearAsync();
+        NavigationManager.NavigateTo("/signin");
     }
 
     private void BeginRevoke(Guid credentialId)
