@@ -7,3 +7,7 @@
 .signin-card .register-link {
     text-transform: uppercase;
 }
+
+.signin-card ::deep .e-float-text {
+    color: #495057;
+}
