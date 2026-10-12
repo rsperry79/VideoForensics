@@ -29,22 +29,22 @@ jobs:
 
       - name: Pack VideoForensics.Core.Providers.Common
         run: |
-          dotnet pack src/core/Providers/Common/VideoForensics.Core.Providers.Common.csproj \
+          dotnet pack src/core/Providers/Common/src/VideoForensics.Core.Providers.Common.csproj \
             -c Release -o ./nupkgs
 
       - name: Pack VideoForensics.Core.Api.Contracts
         run: |
-          dotnet pack src/core/Api/VideoForensics.Core.Api.Contracts.csproj \
+          dotnet pack src/core/Api/src/VideoForensics.Core.Api.Contracts.csproj \
             -c Release -o ./nupkgs
 
       - name: Pack VideoForensics.Data.Common
         run: |
-          dotnet pack src/data/Common/VideoForensics.Data.Common.csproj \
+          dotnet pack src/data/Common/src/VideoForensics.Data.Common.csproj \
             -c Release -o ./nupkgs
 
       - name: Pack VideoForensics.Core.Logging
         run: |
-          dotnet pack src/core/Logging/VideoForensics.Core.Logging.csproj \
+          dotnet pack src/core/Logging/src/VideoForensics.Core.Logging.csproj \
             -c Release -o ./nupkgs
 
       - name: Push NuGet packages to GitHub Packages

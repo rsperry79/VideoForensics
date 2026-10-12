@@ -12,33 +12,33 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{C5A3B5EA-BE9F-76E5-E9B8-8A22B289B295}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp", "src\client\VideoForensics.Mcp\VideoForensics.Mcp.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp", "src\client\VideoForensics.Mcp\src\VideoForensics.Mcp.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{F643C2BC-D7C9-4928-9C8B-6F9DDE2DE8F2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting", "src\client\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj", "{17165AF6-720E-4500-BF4B-785A95922B65}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting", "src\client\host\VideoForensics.Hosting\src\VideoForensics.Hosting.csproj", "{17165AF6-720E-4500-BF4B-785A95922B65}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting.Tests", "src\client\host\VideoForensics.Hosting.Tests\VideoForensics.Hosting.Tests.csproj", "{16F4D3DA-EF17-4CA6-971C-60021E5DBE0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting.Tests", "src\client\host\VideoForensics.Hosting\tests\VideoForensics.Hosting.Tests.csproj", "{16F4D3DA-EF17-4CA6-971C-60021E5DBE0D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ui", "Ui", "{908F72F5-9B79-41D6-90D8-69CF91284406}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared", "src\client\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj", "{5C8906AE-CF81-4083-8034-F148B7F53CBF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared", "src\client\ui\VideoForensics.Ui.Shared\src\VideoForensics.Ui.Shared.csproj", "{5C8906AE-CF81-4083-8034-F148B7F53CBF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared.Tests", "src\client\ui\VideoForensics.Ui.Shared.Tests\VideoForensics.Ui.Shared.Tests.csproj", "{36FC9DFA-6877-4BBE-BF6D-1A1C09243787}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared.Tests", "src\client\ui\VideoForensics.Ui.Shared\tests\VideoForensics.Ui.Shared.Tests.csproj", "{36FC9DFA-6877-4BBE-BF6D-1A1C09243787}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{219CA8FB-E4D2-4182-A6D9-EBBBAAF3A66F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp", "src\client\web\VideoForensics.WebApp\VideoForensics.WebApp.csproj", "{0A7FD988-BD57-48A0-B492-E73292BB3C1E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp", "src\client\web\VideoForensics.WebApp\src\VideoForensics.WebApp.csproj", "{0A7FD988-BD57-48A0-B492-E73292BB3C1E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp.Tests", "src\client\web\VideoForensics.WebApp.Tests\VideoForensics.WebApp.Tests.csproj", "{4DA99BC9-B488-4F94-AAD9-C307C78FD1BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp.Tests", "src\client\web\VideoForensics.WebApp\tests\VideoForensics.WebApp.Tests.csproj", "{4DA99BC9-B488-4F94-AAD9-C307C78FD1BB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Maui", "Maui", "{8270ADBD-87D3-4727-80D6-B1E1DF44509F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.MauiApp", "src\client\maui\VideoForensics.MauiApp\VideoForensics.MauiApp.csproj", "{5D97B1EC-62BD-432E-B62E-B933A299B066}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.MauiApp", "src\client\maui\VideoForensics.MauiApp\src\VideoForensics.MauiApp.csproj", "{5D97B1EC-62BD-432E-B62E-B933A299B066}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{E1526BA8-5B95-D769-94C8-2B12AEB81D77}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Common", "src\client\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj", "{F7D36524-A01E-49D5-AB75-489EA84FF1C5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Common", "src\client\common\VideoForensics.Client.Common\src\VideoForensics.Client.Common.csproj", "{F7D36524-A01E-49D5-AB75-489EA84FF1C5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data", "Data", "{58A5B24B-8FB4-5A6E-5EF4-1E3E19F29B1B}"
 EndProject
@@ -46,7 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{E86821
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.common", "Data.common", "{99A59A5B-6A36-5980-AAE4-246C85DB1A7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Common", "src\data\Common\VideoForensics.Data.Common.csproj", "{757837AC-FAAF-4BEF-875C-86F95CC0F83C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Common", "src\data\Common\src\VideoForensics.Data.Common.csproj", "{757837AC-FAAF-4BEF-875C-86F95CC0F83C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{8D626EA8-CB54-BC41-363A-217881BEBA6E}"
 EndProject
@@ -68,23 +68,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{1A096A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{BB17E7BE-5D9C-4D40-849E-803AAA2B5AFB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Common", "src\core\Providers\Common\VideoForensics.Core.Providers.Common.csproj", "{5D4778A1-1A1D-4478-A5BD-A27B09F480F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Common", "src\core\Providers\Common\src\VideoForensics.Core.Providers.Common.csproj", "{5D4778A1-1A1D-4478-A5BD-A27B09F480F6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{727349DD-E193-7FAF-CA9F-3A3A7EA1001A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core", "src\client\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj", "{2B3DE419-C9E7-4ECD-A070-BFD82B7DD953}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core", "src\client\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj", "{2B3DE419-C9E7-4ECD-A070-BFD82B7DD953}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core.tests", "src\client\VideoForensics.Client.Core.tests\VideoForensics.Client.Core.tests.csproj", "{99B937E4-CAA0-49EC-901A-927E74E0AF2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core.tests", "src\client\core\VideoForensics.Client.Core\tests\VideoForensics.Client.Core.tests.csproj", "{99B937E4-CAA0-49EC-901A-927E74E0AF2B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{C488CF00-1FBD-8E28-690D-BAA9FBB7B71F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.core", "Data.core", "{FB9FFC90-5FF6-2AAF-6654-62876346881F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Core", "src\data\Core\VideoForensics.Data.Core.csproj", "{43F18C99-8462-4F2A-AFD8-16888D8A27BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Core", "src\data\Core\src\VideoForensics.Data.Core.csproj", "{43F18C99-8462-4F2A-AFD8-16888D8A27BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Logging", "src\core\Logging\VideoForensics.Core.Logging.csproj", "{A97BDE91-3F8E-4653-8D09-40403912AD11}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Logging", "src\core\Logging\src\VideoForensics.Core.Logging.csproj", "{A97BDE91-3F8E-4653-8D09-40403912AD11}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Telemetry", "src\core\Telemetry\VideoForensics.Core.Telemetry.csproj", "{97A9A5EE-2853-4689-983D-2BF7409ACCBD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Telemetry", "src\core\Telemetry\src\VideoForensics.Core.Telemetry.csproj", "{97A9A5EE-2853-4689-983D-2BF7409ACCBD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{4158EF5F-2C93-D6F3-98CF-1EDBE6F18EA0}"
 EndProject
@@ -92,169 +92,169 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ring", "Ring", "{B82010B8-C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provider", "Provider", "{380921B0-87AE-4BB7-6552-8B8D7DFF429E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring", "src\providers\ring\provider\VideoForensics.Providers.Ring.csproj", "{E467659B-3EE2-4601-A3BF-5CEB670B8C16}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring", "src\providers\ring\provider\src\VideoForensics.Providers.Ring.csproj", "{E467659B-3EE2-4601-A3BF-5CEB670B8C16}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Core", "src\core\Providers\Core\VideoForensics.Core.Providers.Core.csproj", "{EB855735-098F-4BEE-964A-9C28EB639B42}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Core", "src\core\Providers\Core\src\VideoForensics.Core.Providers.Core.csproj", "{EB855735-098F-4BEE-964A-9C28EB639B42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Forensics", "src\core\Forensics\VideoForensics.Core.Forensics.csproj", "{8D3F7D60-540F-4EB2-9E97-B1D28D382422}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Forensics", "src\core\Forensics\src\VideoForensics.Core.Forensics.csproj", "{8D3F7D60-540F-4EB2-9E97-B1D28D382422}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{573AE6F1-846B-66A3-01F5-5D40A59AFC9E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Common", "src\providers\ring\common\VideoForensics.Providers.Ring.Common.csproj", "{352B9379-E467-4E6F-AA1E-EFFB7BFEB5AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Common", "src\providers\ring\common\src\VideoForensics.Providers.Ring.Common.csproj", "{352B9379-E467-4E6F-AA1E-EFFB7BFEB5AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers", "src\core\Helpers\VideoForensics.Core.Helpers.csproj", "{3D703D5F-3EFB-4DE3-976E-B19FEDE058E0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers", "src\core\Helpers\src\VideoForensics.Core.Helpers.csproj", "{3D703D5F-3EFB-4DE3-976E-B19FEDE058E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Forensics", "src\core\Helpers\Forensics\VideoForensics.Core.Helpers.Forensics.csproj", "{A6BDFE9B-5464-4408-8074-392B7F437CF4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Forensics", "src\core\Helpers\Forensics\src\VideoForensics.Core.Helpers.Forensics.csproj", "{A6BDFE9B-5464-4408-8074-392B7F437CF4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{23BD21D7-1882-93CC-9276-A35BA268FD82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Core", "src\providers\ring\core\VideoForensics.Providers.Ring.Core.csproj", "{0F453D43-707C-47B2-B7AB-6B381B6F486E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Core", "src\providers\ring\core\src\VideoForensics.Providers.Ring.Core.csproj", "{0F453D43-707C-47B2-B7AB-6B381B6F486E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Auth", "Auth", "{720C4EF8-543F-EC05-EEAE-9AB4F0A9A769}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Auth", "src\providers\ring\auth\VideoForensics.Providers.Ring.Auth.csproj", "{68D81300-5F55-4C69-8F90-61EFB97B5413}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Auth", "src\providers\ring\auth\src\VideoForensics.Providers.Ring.Auth.csproj", "{68D81300-5F55-4C69-8F90-61EFB97B5413}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Video", "Video", "{32A80C26-B88E-34A3-6D0A-4375F70A84B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video", "src\providers\ring\video\VideoForensics.Providers.Ring.Video.csproj", "{4B726D5D-2860-46FC-B5DF-D9CE2505CCC5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video", "src\providers\ring\video\src\VideoForensics.Providers.Ring.Video.csproj", "{4B726D5D-2860-46FC-B5DF-D9CE2505CCC5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{D03F5175-3D0D-0740-B543-D808D1D50EDF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.database", "Data.database", "{3B7BFF55-F36C-B561-CDFC-3BA4F929E9C3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database", "src\data\Database\VideoForensics.Data.Database.csproj", "{6943483A-71E3-4A51-87B1-B417DA689A13}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database", "src\data\Database\src\VideoForensics.Data.Database.csproj", "{6943483A-71E3-4A51-87B1-B417DA689A13}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sqlite", "Sqlite", "{767D794E-5257-144F-4A6F-FBDF4B7167EA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.database.sqlite", "Data.database.sqlite", "{45E03B33-FA8F-52BB-F059-413F0D425131}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Sqlite", "src\data\Database\Sqlite\VideoForensics.Data.Database.Sqlite.csproj", "{0B306FE0-0347-49F9-BD0E-574240A20D4A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Sqlite", "src\data\Database\Sqlite\src\VideoForensics.Data.Database.Sqlite.csproj", "{0B306FE0-0347-49F9-BD0E-574240A20D4A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Api.Contracts", "src\core\Api\VideoForensics.Core.Api.Contracts.csproj", "{F7E8D9C0-A1B2-43C4-8D5E-6F7A8B9C0D1E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Api.Contracts", "src\core\Api\src\VideoForensics.Core.Api.Contracts.csproj", "{F7E8D9C0-A1B2-43C4-8D5E-6F7A8B9C0D1E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Logging.Tests", "src\core\Logging.Tests\VideoForensics.Core.Logging.Tests.csproj", "{314CA077-BD1F-4AAF-8B15-024ADC2D2046}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Logging.Tests", "src\core\Logging\tests\VideoForensics.Core.Logging.Tests.csproj", "{314CA077-BD1F-4AAF-8B15-024ADC2D2046}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Telemetry.Tests", "src\core\Telemetry.Tests\VideoForensics.Core.Telemetry.Tests.csproj", "{0C8F4DA1-0100-4BED-AAEF-DCE9C8005744}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Telemetry.Tests", "src\core\Telemetry\tests\VideoForensics.Core.Telemetry.Tests.csproj", "{0C8F4DA1-0100-4BED-AAEF-DCE9C8005744}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Forensics.Tests", "src\core\Forensics.Tests\VideoForensics.Core.Forensics.Tests.csproj", "{95C28433-51D4-4DE7-A1DE-2120F5DC78BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Forensics.Tests", "src\core\Forensics\tests\VideoForensics.Core.Forensics.Tests.csproj", "{95C28433-51D4-4DE7-A1DE-2120F5DC78BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Tests", "src\core\Helpers.Tests\VideoForensics.Core.Helpers.Tests.csproj", "{BFE8606A-8B87-478F-9B2F-D8CA800D01B8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Tests", "src\core\Helpers\tests\VideoForensics.Core.Helpers.Tests.csproj", "{BFE8606A-8B87-478F-9B2F-D8CA800D01B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Forensics.Tests", "src\core\Helpers\Forensics.Tests\VideoForensics.Core.Helpers.Forensics.Tests.csproj", "{C7E2B3B9-33B9-4BB9-A283-A55EEFA9FAF8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Helpers.Forensics.Tests", "src\core\Helpers\Forensics\tests\VideoForensics.Core.Helpers.Forensics.Tests.csproj", "{C7E2B3B9-33B9-4BB9-A283-A55EEFA9FAF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Common.Tests", "src\core\Providers\Common.Tests\VideoForensics.Core.Providers.Common.Tests.csproj", "{B4D7275A-A08E-4A84-B4AA-13A251E41D9C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Common.Tests", "src\core\Providers\Common\tests\VideoForensics.Core.Providers.Common.Tests.csproj", "{B4D7275A-A08E-4A84-B4AA-13A251E41D9C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Core.Tests", "src\core\Providers\Core.Tests\VideoForensics.Core.Providers.Core.Tests.csproj", "{F219DCC6-B147-47DD-B168-77E3E5703616}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Core.Providers.Core.Tests", "src\core\Providers\Core\tests\VideoForensics.Core.Providers.Core.Tests.csproj", "{F219DCC6-B147-47DD-B168-77E3E5703616}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.common.tests", "Data.common.tests", "{EF26C6C4-D046-D6F6-20AC-03CA06241BFD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Common.Tests", "src\data\Common.Tests\VideoForensics.Data.Common.Tests.csproj", "{39CD66C0-24FF-432B-AAEF-D12BC38F71FC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Common.Tests", "src\data\Common\tests\VideoForensics.Data.Common.Tests.csproj", "{39CD66C0-24FF-432B-AAEF-D12BC38F71FC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.core.tests", "Data.core.tests", "{7379AAFB-DCD3-944F-AF1F-4FD152CCD8F7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Core.Tests", "src\data\Core.Tests\VideoForensics.Data.Core.Tests.csproj", "{52E250CA-46A6-423C-AFCA-7B996306DD52}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Core.Tests", "src\data\Core\tests\VideoForensics.Data.Core.Tests.csproj", "{52E250CA-46A6-423C-AFCA-7B996306DD52}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.database.tests", "Data.database.tests", "{3A109890-6E7F-094A-EEE2-E5A5EACD2B0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Tests", "src\data\Database.Tests\VideoForensics.Data.Database.Tests.csproj", "{457578E3-0594-45EF-8A2A-06F1B473EFE0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Tests", "src\data\Database\tests\VideoForensics.Data.Database.Tests.csproj", "{457578E3-0594-45EF-8A2A-06F1B473EFE0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Data.database.sqlite.tests", "Data.database.sqlite.tests", "{5CCAF088-6ECE-3339-1E9A-F11417CEBB27}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Sqlite.Tests", "src\data\Database\Sqlite.Tests\VideoForensics.Data.Database.Sqlite.Tests.csproj", "{0DAEBAEE-39F1-4376-8850-4E9D974FEFBB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Data.Database.Sqlite.Tests", "src\data\Database\Sqlite\tests\VideoForensics.Data.Database.Sqlite.Tests.csproj", "{0DAEBAEE-39F1-4376-8850-4E9D974FEFBB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{87D93634-5C28-54EC-F756-2E151A352268}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Auth.Tests", "src\providers\ring\auth.Tests\VideoForensics.Providers.Ring.Auth.Tests.csproj", "{444FCAE5-6FFD-439E-A527-5B770A71E4C9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Auth.Tests", "src\providers\ring\auth\tests\VideoForensics.Providers.Ring.Auth.Tests.csproj", "{444FCAE5-6FFD-439E-A527-5B770A71E4C9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{1D93D608-77E0-12AD-9CF5-F6BC0289D062}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Common.Tests", "src\providers\ring\common.Tests\VideoForensics.Providers.Ring.Common.Tests.csproj", "{CDAB336A-2CA7-4F7F-B5C4-0B8D4B79B3B8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Common.Tests", "src\providers\ring\common\tests\VideoForensics.Providers.Ring.Common.Tests.csproj", "{CDAB336A-2CA7-4F7F-B5C4-0B8D4B79B3B8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{E6262593-B5E9-FD20-EBE4-E890A958DE3C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Core.Tests", "src\providers\ring\core.Tests\VideoForensics.Providers.Ring.Core.Tests.csproj", "{1A9C1D6B-AE47-460D-9F8A-318349C27EA5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Core.Tests", "src\providers\ring\core\tests\VideoForensics.Providers.Ring.Core.Tests.csproj", "{1A9C1D6B-AE47-460D-9F8A-318349C27EA5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FD4A8AC6-52CF-FD10-472B-C740DC79017A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Tests", "src\providers\ring\provider.Tests\VideoForensics.Providers.Ring.Tests.csproj", "{C01D9B50-943A-4B2E-BF29-8B57985BDC7F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Tests", "src\providers\ring\provider\tests\VideoForensics.Providers.Ring.Tests.csproj", "{C01D9B50-943A-4B2E-BF29-8B57985BDC7F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{BBDFA850-47D4-31A3-C890-FC1BCD23E618}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Utils", "src\providers\ring\utils\VideoForensics.Providers.Ring.Utils.csproj", "{CA4D0390-8281-4046-8E79-5C11AC39F4D1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Utils", "src\providers\ring\utils\src\VideoForensics.Providers.Ring.Utils.csproj", "{CA4D0390-8281-4046-8E79-5C11AC39F4D1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Snapshots", "Snapshots", "{C890676D-852B-10F5-0E0D-08F328BB53F2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots", "src\providers\ring\snapshots\VideoForensics.Providers.Ring.Snapshots.csproj", "{41365545-0B07-49A8-A899-9DF9B331781A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots", "src\providers\ring\snapshots\src\VideoForensics.Providers.Ring.Snapshots.csproj", "{41365545-0B07-49A8-A899-9DF9B331781A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Metadata", "Metadata", "{DD211C6D-8A4A-A3C1-E1D1-0140E3846ED3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Metadata", "src\providers\ring\snapshots\metadata\VideoForensics.Providers.Ring.Snapshots.Metadata.csproj", "{1D79CAF0-BE82-4D22-91A3-00D764547DAC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Metadata", "src\providers\ring\snapshots\metadata\src\VideoForensics.Providers.Ring.Snapshots.Metadata.csproj", "{1D79CAF0-BE82-4D22-91A3-00D764547DAC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{4D7ACD85-B5DC-C672-447E-9DBA6C0108D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Metadata.Tests", "src\providers\ring\snapshots\metadata.Tests\VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.csproj", "{C8B4DF73-8D6F-4D29-A577-FD020333AD9F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Metadata.Tests", "src\providers\ring\snapshots\metadata\tests\VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.csproj", "{C8B4DF73-8D6F-4D29-A577-FD020333AD9F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2125B8E8-B495-17D9-FEBA-38AB8B83C741}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Tests", "src\providers\ring\snapshots.Tests\VideoForensics.Providers.Ring.Snapshots.Tests.csproj", "{22D6CD63-3FEE-4A68-97C6-768585F08913}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Snapshots.Tests", "src\providers\ring\snapshots\tests\VideoForensics.Providers.Ring.Snapshots.Tests.csproj", "{22D6CD63-3FEE-4A68-97C6-768585F08913}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C164FE08-F2B4-1CF6-43D8-A5F3B61A3FAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Utils.Tests", "src\providers\ring\utils.Tests\VideoForensics.Providers.Ring.Utils.Tests.csproj", "{E0D5A3B1-242C-4749-82F0-7B101A301C3F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Utils.Tests", "src\providers\ring\utils\tests\VideoForensics.Providers.Ring.Utils.Tests.csproj", "{E0D5A3B1-242C-4749-82F0-7B101A301C3F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Metadata", "Metadata", "{86C5660A-B2C5-1790-65EC-CAA1EEB002C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Metadata", "src\providers\ring\video\metadata\VideoForensics.Providers.Ring.Video.Metadata.csproj", "{BBB2FF28-16A2-4F6C-8E97-01F843BB219A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Metadata", "src\providers\ring\video\metadata\src\VideoForensics.Providers.Ring.Video.Metadata.csproj", "{BBB2FF28-16A2-4F6C-8E97-01F843BB219A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{F4CE5E49-F998-4D7D-9583-E8EA63D89618}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Metadata.Tests", "src\providers\ring\video\metadata.Tests\VideoForensics.Providers.Ring.Video.Metadata.Tests.csproj", "{DC98BCD0-818B-4F49-A8EC-C17E34B1A17B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Metadata.Tests", "src\providers\ring\video\metadata\tests\VideoForensics.Providers.Ring.Video.Metadata.Tests.csproj", "{DC98BCD0-818B-4F49-A8EC-C17E34B1A17B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{F5B00E3A-2E1A-24AC-D415-587B9E0784C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Tests", "src\providers\ring\video.Tests\VideoForensics.Providers.Ring.Video.Tests.csproj", "{15667521-7334-49A1-A95A-895E5BA74B92}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Video.Tests", "src\providers\ring\video\tests\VideoForensics.Providers.Ring.Video.Tests.csproj", "{15667521-7334-49A1-A95A-895E5BA74B92}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Wyze", "Wyze", "{C41F1AE2-E708-C16A-6080-1E97161CE718}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Auth", "Auth", "{83BF66B5-253F-A0DD-91ED-EA041218785A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Auth", "src\providers\wyze\auth\VideoForensics.Providers.Wyze.Auth.csproj", "{2234EDC3-7441-4C6E-BAC7-8935083622B1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Auth", "src\providers\wyze\auth\src\VideoForensics.Providers.Wyze.Auth.csproj", "{2234EDC3-7441-4C6E-BAC7-8935083622B1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{A5B90DE2-CB32-A96C-52C1-D5E4CFD8FE95}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Common", "src\providers\wyze\common\VideoForensics.Providers.Wyze.Common.csproj", "{DF6FD59E-8117-4239-8BC1-9F314D9B041F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Common", "src\providers\wyze\common\src\VideoForensics.Providers.Wyze.Common.csproj", "{DF6FD59E-8117-4239-8BC1-9F314D9B041F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{32E2BE78-596E-89BC-89EE-2D02F9D59C4C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Core", "src\providers\wyze\core\VideoForensics.Providers.Wyze.Core.csproj", "{32A8D41C-A850-438F-98BF-49AFD1080FE5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Core", "src\providers\wyze\core\src\VideoForensics.Providers.Wyze.Core.csproj", "{32A8D41C-A850-438F-98BF-49AFD1080FE5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provider", "Provider", "{8F373057-480B-AA80-3CB3-C56767B9160C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze", "src\providers\wyze\provider\VideoForensics.Providers.Wyze.csproj", "{59A1BAF2-821B-44B5-A697-91BE4C53C069}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze", "src\providers\wyze\provider\src\VideoForensics.Providers.Wyze.csproj", "{59A1BAF2-821B-44B5-A697-91BE4C53C069}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{BD14D6ED-1ECF-9FB0-A22B-260A970407AD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Tests", "src\providers\wyze\provider.Tests\VideoForensics.Providers.Wyze.Tests.csproj", "{B9DEA641-2100-4B91-9B50-BA4B7DFB1F82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Tests", "src\providers\wyze\provider\tests\VideoForensics.Providers.Wyze.Tests.csproj", "{B9DEA641-2100-4B91-9B50-BA4B7DFB1F82}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{650D7069-6E64-D7CC-07D6-3D31E627E87B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Utils", "src\providers\wyze\utils\VideoForensics.Providers.Wyze.Utils.csproj", "{D61F5F7F-017B-4EAA-B411-6391A2FBBF4A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Wyze.Utils", "src\providers\wyze\utils\src\VideoForensics.Providers.Wyze.Utils.csproj", "{D61F5F7F-017B-4EAA-B411-6391A2FBBF4A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Uniview", "Uniview", "{D5E3A1F2-B8C9-4D7E-8F6A-C1D2E3F4A5B6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provider", "Provider", "{C6D4B2E3-A9D8-4C6E-9E5D-D2E3F4A5B6C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Uniview", "src\providers\uniview\provider\VideoForensics.Providers.Uniview.csproj", "{7E8F9A1B-2C3D-4E5F-A6B7-C8D9E0F1A2B3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Uniview", "src\providers\uniview\provider\src\VideoForensics.Providers.Uniview.csproj", "{7E8F9A1B-2C3D-4E5F-A6B7-C8D9E0F1A2B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Uniview.Tests", "src\providers\uniview\provider.Tests\VideoForensics.Providers.Uniview.Tests.csproj", "{9A1B2C3D-4E5F-4A6B-8C9D-0E1F2A3B4C5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Uniview.Tests", "src\providers\uniview\provider\tests\VideoForensics.Providers.Uniview.Tests.csproj", "{9A1B2C3D-4E5F-4A6B-8C9D-0E1F2A3B4C5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbSetup", "src\utils\DbSetup\VideoForensics.Utils.DbSetup.csproj", "{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbSetup", "src\utils\DbSetup\src\VideoForensics.Utils.DbSetup.csproj", "{07B0D0B2-BBB2-4329-AC36-B10F8BE28A2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair", "src\utils\DbRepair\VideoForensics.Utils.DbRepair.csproj", "{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair", "src\utils\DbRepair\src\VideoForensics.Utils.DbRepair.csproj", "{5A2BEE4D-DD7F-43AE-9765-602A765E39F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics", "src\utils\Diagnostics\VideoForensics.Utils.Diagnostics.csproj", "{3DDD08CD-5644-48B7-8DF0-8C2DF7737A22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics", "src\utils\Diagnostics\src\VideoForensics.Utils.Diagnostics.csproj", "{3DDD08CD-5644-48B7-8DF0-8C2DF7737A22}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics.Tests", "src\utils\Diagnostics.Tests\VideoForensics.Utils.Diagnostics.Tests.csproj", "{40929701-9B23-46B3-A4D7-E37A96489ADE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.Diagnostics.Tests", "src\utils\Diagnostics\tests\VideoForensics.Utils.Diagnostics.Tests.csproj", "{40929701-9B23-46B3-A4D7-E37A96489ADE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{DCB6FCB8-FF92-AC57-0842-1F72A354D6B1}"
 EndProject
@@ -266,15 +266,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Diagnostics", "Diagnostics"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SelfTest", "SelfTest", "{2700B386-33C7-4582-8561-5DB478049361}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair.Tests", "src\utils\DbRepair.Tests\VideoForensics.Utils.DbRepair.Tests.csproj", "{8FAC4DE9-A6BB-4D24-B278-F6A8616DB660}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.DbRepair.Tests", "src\utils\DbRepair\tests\VideoForensics.Utils.DbRepair.Tests.csproj", "{8FAC4DE9-A6BB-4D24-B278-F6A8616DB660}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.SelfTest", "src\utils\SelfTest\VideoForensics.Utils.SelfTest.csproj", "{9CC122D2-8FE0-446A-9A8F-C9E75964DB3C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Utils.SelfTest", "src\utils\SelfTest\src\VideoForensics.Utils.SelfTest.csproj", "{9CC122D2-8FE0-446A-9A8F-C9E75964DB3C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Forensics", "Forensics", "{D163D050-B3AA-0628-AB6A-4BDCC55515D0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Forensics", "src\providers\ring\forensics\VideoForensics.Providers.Ring.Forensics.csproj", "{563861B1-7177-48AC-84A8-DD30335AF4CD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Forensics", "src\providers\ring\forensics\src\VideoForensics.Providers.Ring.Forensics.csproj", "{563861B1-7177-48AC-84A8-DD30335AF4CD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Forensics.Tests", "src\providers\ring\forensics.Tests\VideoForensics.Providers.Ring.Forensics.Tests.csproj", "{5B574160-E6EA-4EB9-BA52-E7AE131328EC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Providers.Ring.Forensics.Tests", "src\providers\ring\forensics\tests\VideoForensics.Providers.Ring.Forensics.Tests.csproj", "{5B574160-E6EA-4EB9-BA52-E7AE131328EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

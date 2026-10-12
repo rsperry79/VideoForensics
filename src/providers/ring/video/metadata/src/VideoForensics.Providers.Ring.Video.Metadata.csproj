@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <!-- Strong names are not validated on .NET (Core); this assembly is signed for legacy reasons but
+             references unsigned assemblies (SIPSorcery, VideoForensics.* libraries), which is harmless. -->
+        <NoWarn>$(NoWarn);CS8002</NoWarn>
+        <AssemblyOriginatorKeyFile>../../../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Providers.Ring.Video.Metadata</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers, Daniel Espinosa</Authors>
+        <Description>Video metadata extraction, tagging, and validation for Ring.Api</Description>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+    </ItemGroup>
+
+    <ItemGroup>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/VideoForensics.Providers.Ring.Video.csproj" />
+        <ProjectReference Include="../../../common/src/VideoForensics.Providers.Ring.Common.csproj" />
+        <ProjectReference Include="../../../../../core/Providers/Core/src/VideoForensics.Core.Providers.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
+    </ItemGroup>
+
+</Project>
