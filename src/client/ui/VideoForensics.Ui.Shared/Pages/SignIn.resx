@@ -69,12 +69,15 @@
     <value>Register</value>
   </data>
   <data name="TwoFactorRequiredDescription" xml:space="preserve">
-    <value>Your account requires a second step. Use your passkey to finish signing in, or create a new passkey.</value>
+    <value>A passkey is required to finish signing in.</value>
   </data>
   <data name="UsePasskeyButton" xml:space="preserve">
     <value>Use passkey</value>
   </data>
   <data name="CreatePasskeyButton" xml:space="preserve">
     <value>Create a new passkey</value>
+  </data>
+  <data name="BackButton" xml:space="preserve">
+    <value>Back</value>
   </data>
 </root>
