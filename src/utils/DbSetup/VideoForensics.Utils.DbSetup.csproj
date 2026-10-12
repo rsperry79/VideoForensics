@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../data/database/data.database/VideoForensics.Data.Database.csproj" />
-    <ProjectReference Include="../../data/database/sqlite/data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
+    <ProjectReference Include="../../data/Database/VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../../data/Database/Sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
     <ProjectReference Include="../../client/host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
     <ProjectReference Include="../../core/Helpers/VideoForensics.Core.Helpers.csproj" />
   </ItemGroup>

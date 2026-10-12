@@ -16,7 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="tests/**" />
     <Compile Remove="metadata/**/*.cs" />
   </ItemGroup>
 
@@ -24,6 +23,9 @@
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="metadata.Tests/**/*.cs" />
+  </ItemGroup>
 </Project>
 
 

@@ -14,11 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../data/database/data.database/VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../../data/Database/VideoForensics.Data.Database.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="tests\**" />
   </ItemGroup>
 
 </Project>

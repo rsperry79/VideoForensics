@@ -26,13 +26,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Remove="tests/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="../common/VideoForensics.Providers.Ring.Common.csproj" />
         <ProjectReference Include="../../../core/Helpers/Forensics/VideoForensics.Core.Helpers.Forensics.csproj" />
-        <ProjectReference Include="../../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../data/Common/VideoForensics.Data.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>

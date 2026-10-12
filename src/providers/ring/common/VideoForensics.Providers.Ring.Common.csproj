@@ -24,7 +24,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Remove="tests/**" />
     </ItemGroup>
 
     <ItemGroup>

@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="../../data/Common/VideoForensics.Data.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +28,5 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="tests/**/*.cs" />
   </ItemGroup>
 </Project>

@@ -30,7 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="../VideoForensics.WebApp/VideoForensics.WebApp.csproj" />
     <ProjectReference Include="../../host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
-    <ProjectReference Include="../../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="../../../data/Common/VideoForensics.Data.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

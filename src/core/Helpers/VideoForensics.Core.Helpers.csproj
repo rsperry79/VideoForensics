@@ -20,7 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="tests/**/*.cs" />
     <Compile Remove="Forensics/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Forensics.Tests/**/*.cs" />
   </ItemGroup>
 </Project>

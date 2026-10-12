@@ -87,10 +87,10 @@
         <ProjectReference Include="../../../providers/ring/provider/VideoForensics.Providers.Ring.csproj" />
         <ProjectReference Include="../../../providers/uniview/provider/VideoForensics.Providers.Uniview.csproj" />
         <ProjectReference Include="../../../providers/wyze/provider/VideoForensics.Providers.Wyze.csproj" />
-        <ProjectReference Include="../../../data/common/data.common/VideoForensics.Data.Common.csproj" />
-        <ProjectReference Include="../../../data/core/data.core/VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="../../../data/database/data.database/VideoForensics.Data.Database.csproj" />
-        <ProjectReference Include="../../../data/database/sqlite/data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
+        <ProjectReference Include="../../../data/Common/VideoForensics.Data.Common.csproj" />
+        <ProjectReference Include="../../../data/Core/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../data/Database/VideoForensics.Data.Database.csproj" />
+        <ProjectReference Include="../../../data/Database/Sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
     </ItemGroup>
 
 </Project>
