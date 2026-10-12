@@ -47,7 +47,6 @@ else
         "/device-signin",
         "/signin",
         "/register",
-        "/welcome",
         "/setup",
         "/awaiting-setup",
         "/change-password"
@@ -163,12 +162,12 @@ else
     /// - No operators exist but this visitor is NOT local: /awaiting-setup - don't let a remote
     ///   device win the race to claim the SuperAdmin account (see SetupEndpoints.CreateAdminAsync's
     ///   matching server-side enforcement, and the installer's own warning about this exact race).
-    /// - Operators already exist: /welcome, the normal sign-in entry point.
+    /// - Operators already exist: /signin, the normal sign-in entry point.
     /// </summary>
     public static string ResolveBootstrapRedirectTarget(bool isEmpty, bool isLocal)
     {
         return isEmpty && isLocal ? "/setup"
              : isEmpty ? "/awaiting-setup"
-             : "/welcome";
+             : "/signin";
     }
 }

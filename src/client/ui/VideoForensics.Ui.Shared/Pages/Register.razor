@@ -31,7 +31,7 @@
                 </div>
                 <div class="d-flex gap-2 justify-content-center">
                     <SfButton Content="@L["SignInButton"]" OnClick="@(() => NavigationManager.NavigateTo("/signin"))" CssClass="e-primary" />
-                    <SfButton Content="@L["BackButton"]" OnClick="@(() => NavigationManager.NavigateTo("/welcome"))" CssClass="e-flat" />
+                    <SfButton Content="@L["BackButton"]" OnClick="@(() => NavigationManager.NavigateTo("/signin"))" CssClass="e-flat" />
                 </div>
             }
             else
@@ -89,7 +89,7 @@
 
                     <div class="d-flex gap-2 justify-content-center">
                         <SfButton Content="@L["RegisterButton"]" OnClick="RegisterAsync" CssClass="e-primary" Disabled="@(_isSubmitting || (!string.IsNullOrEmpty(_form.Password) && _form.Password != _form.ConfirmPassword))" />
-                        <SfButton Content="@L["CancelButton"]" OnClick="@(() => NavigationManager.NavigateTo("/welcome"))" CssClass="e-flat" />
+                        <SfButton Content="@L["CancelButton"]" OnClick="@(() => NavigationManager.NavigateTo("/signin"))" CssClass="e-flat" />
                     </div>
                 </div>
             }
