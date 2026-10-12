@@ -1,0 +1,9 @@
+.signin-card {
+    max-width: 420px;
+    padding: 0 16px;
+}
+
+.signin-card button,
+.signin-card .register-link {
+    text-transform: uppercase;
+}

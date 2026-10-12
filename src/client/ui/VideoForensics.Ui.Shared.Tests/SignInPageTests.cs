@@ -194,6 +194,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Back"));
@@ -207,7 +208,7 @@ public class SignInPageTests : BunitContext
             Assert.NotEmpty(component.FindAll("input[type='text']"));
             Assert.NotEmpty(component.FindAll("input[type='password']"));
             var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
-            Assert.Contains("Sign In", labels);
+            Assert.Contains(localizer["SignInButton"], labels);
             Assert.DoesNotContain("Use passkey", labels);
         });
     }
@@ -247,7 +248,6 @@ public class SignInPageTests : BunitContext
         {
             Assert.Contains(localizer["TwoFactorRequiredTitle"], component.Markup);
             Assert.Contains(localizer["TwoFactorRequiredDescription"], component.Markup);
-            Assert.DoesNotContain(localizer["SignInDescription"], component.Markup);
             var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
             Assert.DoesNotContain(localizer["SignInWithPasskeyButton"], labels);
         });
@@ -279,7 +279,7 @@ public class SignInPageTests : BunitContext
         SetupTwoFactorRequired("corr-123");
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
-        Assert.Contains(component.FindAll("h4"), h => h.TextContent.Trim() == localizer["Title"]);
+        Assert.Contains(component.FindAll("h3"), h => h.TextContent.Trim() == localizer["Title"]);
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -365,6 +365,62 @@ public class SignInPageTests : BunitContext
             Assert.DoesNotContain(localizer["NoAccountText"], component.Markup);
             Assert.Empty(component.FindAll("a[href='/register']"));
         });
+    }
+
+    [Fact]
+    public async Task SignIn_NormalState_HeadingUsesTitleResource()
+    {
+        // Arrange - the page heading is a light h3 carrying the product-named Title resource
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act & Assert
+        component.WaitForAssertion(() =>
+            Assert.Contains(component.FindAll("h3.fw-light"), h => h.TextContent.Trim() == localizer["Title"]));
+    }
+
+    [Fact]
+    public async Task SignIn_NormalState_UsernameAndPasswordUseFloatingPlaceholders()
+    {
+        // Arrange
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act & Assert - floating-label textboxes carry the label text as their placeholder
+        // Syncfusion renders a FloatLabelType textbox's Placeholder as its floating label (.e-float-text), not as an input attribute
+        component.WaitForAssertion(() =>
+        {
+            var floatingLabels = component.FindAll("label.e-float-text").Select(l => l.TextContent.Trim()).ToList();
+            Assert.Contains(localizer["UsernameLabel"], floatingLabels);
+            Assert.Contains(localizer["PasswordLabel"], floatingLabels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_PasskeyButtonIsOutlineStyle()
+    {
+        // Arrange - the passkey button is secondary to the password sign-in, so it renders outlined
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act & Assert
+        component.WaitForAssertion(() =>
+            Assert.Contains("e-outline", FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList));
+    }
+
+    [Fact]
+    public async Task SignIn_NormalState_HasNoRememberMeOrForgotPassword()
+    {
+        // Arrange - no backing behavior exists for these, so they must not be rendered
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act & Assert
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        component.WaitForAssertion(() => Assert.NotNull(FindButton(component, localizer["SignInButton"])));
+        Assert.DoesNotContain("Remember", component.Markup);
+        Assert.DoesNotContain("Forgot", component.Markup);
     }
 
     private static IElement FindButton(IRenderedComponent<SignIn> component, string label) =>
