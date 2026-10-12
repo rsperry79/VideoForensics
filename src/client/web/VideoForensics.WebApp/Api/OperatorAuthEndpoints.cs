@@ -283,7 +283,15 @@ namespace VideoForensics.WebApp.Api
             await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
                 tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
 
-            return Results.Ok(new { sessionToken = token, operatorId = op.Id, role = op.Role.ToString() });
+            // A passkey was just verified for this operator, so hasPasskey is true by construction.
+            return Results.Ok(new
+            {
+                sessionToken = token,
+                operatorId = op.Id,
+                role = op.Role.ToString(),
+                mustChangePassword = op.MustChangePassword,
+                hasPasskey = true
+            });
         }
 
         private static async Task<IResult> CredentialRegisterOptionsAsync(

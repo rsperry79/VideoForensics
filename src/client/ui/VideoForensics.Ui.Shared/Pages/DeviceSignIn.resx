@@ -83,4 +83,7 @@
   <data name="RegisterLink" xml:space="preserve">
     <value>Register</value>
   </data>
+  <data name="TwoFactorRequiredUsePasskey" xml:space="preserve">
+    <value>Your account requires a second step. Use the passkey sign-in button instead.</value>
+  </data>
 </root>

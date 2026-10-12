@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Fido2NetLib;
+using Fido2NetLib.Objects;
+
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
@@ -1495,6 +1498,89 @@ namespace VideoForensics.WebApp.Tests
             BannedIpRange ban = Assert.Single(bannedRanges);
             Assert.Equal("192.168.1.50/32", ban.CidrRange);
             Assert.DoesNotContain(bannedRanges, r => r.CidrRange.StartsWith("198.51.100.", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task UsernameAssertionComplete_TwoFactorSuccess_ReturnsMustChangePasswordAndHasPasskey()
+        {
+            // The passkey second factor must tell the client whether a forced password change is pending;
+            // otherwise the client fails closed and sends every operator to /change-password.
+            Operator op = CreateOperator(username: "alice", role: OperatorRole.ReadOnly);
+            op.MustChangePassword = false;
+
+            var storedCredential = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = op.Id,
+                Label = "Laptop",
+                WebAuthnCredentialId = Convert.ToBase64String(new byte[] { 1, 2, 3 }),
+                WebAuthnPublicKey = new byte[] { 9, 9, 9 },
+                CreatedAtUtc = DateTime.UtcNow,
+                FirstLoginNotifiedAtUtc = DateTime.UtcNow
+            };
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetAsync(op.Id, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.GetByWebAuthnCredentialIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(storedCredential);
+
+            var ceremonyCache = new Mock<IWebAuthnCeremonyCache>();
+            ceremonyCache.Setup(c => c.TryTake("nonce-1")).Returns(AssertionOptionsJson);
+
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            twoFactorCache.Setup(c => c.TryTake("corr-1")).Returns((Guid?)op.Id);
+
+            var fido2 = new Mock<IFido2>();
+            fido2.Setup(f => f.MakeAssertionAsync(It.IsAny<MakeAssertionParams>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VerifyAssertionResult { SignCount = 5 });
+
+            var request = new UsernameAssertionCompleteRequest(
+                "nonce-1",
+                System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(AssertionResponseJson),
+                "corr-1");
+
+            IResult result = await InvokeUsernameAssertionCompleteAsync(
+                request, operators.Object, credentials.Object, MockSessionTokenService().Object, ceremonyCache.Object,
+                twoFactorCache.Object, new Mock<ISecurityAuditLogger>().Object, MockNetworkTierResolver(NetworkTier.Network).Object,
+                CreateHttpContext(), fido2.Object);
+
+            Assert.False(GetOkPayloadBool(result, "mustChangePassword"));
+            Assert.True(GetOkPayloadBool(result, "hasPasskey"));
+        }
+
+        private const string AssertionOptionsJson =
+            "{\"challenge\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"timeout\":60000,\"rpId\":\"localhost\",\"allowCredentials\":[],\"userVerification\":\"preferred\"}";
+
+        private const string AssertionResponseJson =
+            "{\"id\":\"AQID\",\"rawId\":\"AQID\",\"type\":\"public-key\",\"response\":{\"authenticatorData\":\"AAAA\",\"signature\":\"AAAA\",\"clientDataJSON\":\"AAAA\",\"userHandle\":null}}";
+
+        private static Task<IResult> InvokeUsernameAssertionCompleteAsync(
+            UsernameAssertionCompleteRequest request,
+            IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
+            ISessionTokenService sessionTokens,
+            IWebAuthnCeremonyCache ceremonyCache,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            IFido2 fido2)
+        {
+            var method = typeof(OperatorAuthEndpoints).GetMethod(
+                "UsernameAssertionCompleteAsync",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+                null,
+                [typeof(UsernameAssertionCompleteRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                 typeof(IWebAuthnCeremonyCache), typeof(ITwoFactorPendingAuthCache), typeof(ISecurityAuditLogger), typeof(INetworkTierResolver),
+                 typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(CancellationToken)],
+                null);
+            Assert.NotNull(method);
+
+            return (Task<IResult>)method!.Invoke(null,
+                [request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
+                 null, context, fido2, CancellationToken.None])!;
         }
     }
 

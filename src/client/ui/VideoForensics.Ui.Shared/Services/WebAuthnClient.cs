@@ -151,21 +151,103 @@ namespace VideoForensics.Ui.Shared.Services
         /// <summary>
         /// Password sign-in. <c>HasPasskey</c> is true when the operator already has a non-revoked passkey;
         /// when false, the caller should send them to passkey setup after sign-in.
+        /// When <c>RequiresTwoFactor</c> is true the server issued no session: the caller must complete the
+        /// second factor with <see cref="CompleteTwoFactorWithPasskeyAsync"/> (using <c>TwoFactorCorrelationId</c>)
+        /// or create a passkey with <see cref="CreatePasskeyLoginAsync"/>. Every other field is then default.
         /// </summary>
-        public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey)> SignInWithPasswordAsync(string username, string password)
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> SignInWithPasswordAsync(string username, string password)
+            => PostPasswordLoginAsync("api/v1/auth/login/password", username, password);
+
+        /// <summary>
+        /// Password sign-in that issues a LIMITED passkey-setup session (only passkey registration is accepted).
+        /// Used when the operator has to create a passkey before a second factor can be completed.
+        /// </summary>
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> CreatePasskeyLoginAsync(string username, string password)
+            => PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
+
+        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId)> PostPasswordLoginAsync(string path, string username, string password)
         {
             using HttpClient client = CreateClient(null);
 
             HttpResponseMessage response = await client.PostAsJsonAsync(
-                "api/v1/auth/login/password",
+                path,
                 new { Username = username, Password = password });
 
             if (!response.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(response), null, default, "", false, false);
+                return (false, await ExtractErrorAsync(response), null, default, "", false, false, false, null);
             }
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            if (IsTwoFactorRequired(result))
+            {
+                return (true, null, null, default, "", false, false, true, ReadTwoFactorCorrelationId(result));
+            }
+
+            EnsureSignInFieldsPresent(result);
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("mustChangePassword").GetBoolean(),
+                result.GetProperty("hasPasskey").GetBoolean(),
+                false,
+                null);
+        }
+
+        private static bool IsTwoFactorRequired(JsonElement body) =>
+            body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty("requiresTwoFactor", out JsonElement flag)
+            && flag.ValueKind == JsonValueKind.True;
+
+        private static string ReadTwoFactorCorrelationId(JsonElement body)
+        {
+            if (!body.TryGetProperty("twoFactorCorrelationId", out JsonElement correlation) || correlation.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidOperationException("Sign-in response is missing 'twoFactorCorrelationId'.");
+            }
+
+            return correlation.GetString()!;
+        }
+
+        /// <summary>
+        /// Second factor after a password sign-in that returned <c>requiresTwoFactor</c>: runs a passkey assertion
+        /// and posts it with the correlation id. The response must carry <c>mustChangePassword</c> and
+        /// <c>hasPasskey</c>; a missing field fails loudly (see <see cref="EnsureSignInFieldsPresent"/>) rather than
+        /// defaulting, so a forced password change is never silently skipped or misreported.
+        /// </summary>
+        public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey)> CompleteTwoFactorWithPasskeyAsync(string username, string twoFactorCorrelationId)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-options",
+                new { Username = username });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "", false, false);
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-complete",
+                new { nonce, assertionResponse = assertion, twoFactorCorrelationId });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "", false, false);
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
             EnsureSignInFieldsPresent(result);
             return (
                 true,

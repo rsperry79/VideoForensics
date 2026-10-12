@@ -44,6 +44,17 @@ else
             </div>
         }
 
+        @if (_requiresTwoFactor)
+        {
+            <div class="d-flex flex-column gap-2">
+                <p>@L["TwoFactorRequiredDescription"]</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
+                    <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
+                </div>
+            </div>
+        }
+
         @if (_error is not null)
         {
             <div class="alert alert-danger">@_error</div>
@@ -64,6 +75,8 @@ else
     private string _password = string.Empty;
     private bool _isSigningInWithPassword;
     private bool _isSigningInWithPasskey;
+    private bool _requiresTwoFactor;
+    private string? _twoFactorCorrelationId;
     private bool _webAuthnAvailable;
     private bool _isLoading = true;
     private string? _error;
@@ -86,9 +99,10 @@ else
     {
         _isSigningInWithPassword = true;
         _error = null;
+        HideTwoFactorChoice();
         try
         {
-            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey) =
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
 
             if (!success)
@@ -97,25 +111,80 @@ else
                 return;
             }
 
-            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            if (requiresTwoFactor)
+            {
+                // The server issued no session yet: offer the second-factor choice instead of signing in.
+                _requiresTwoFactor = true;
+                _twoFactorCorrelationId = twoFactorCorrelationId;
+                return;
+            }
 
-            if (mustChangePassword)
-            {
-                NavigationManager.NavigateTo("/change-password");
-            }
-            else if (!hasPasskey)
-            {
-                // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
-                // to show the setup prompt.
-                NavigationManager.NavigateTo("/settings/passkeys?setup=true");
-            }
-            else
-            {
-                NavigationManager.NavigateTo(GetReturnUrl());
-            }
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
         {
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPassword = false;
+        }
+    }
+
+    private async Task CompleteTwoFactorWithPasskeyAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey) =
+                await WebAuthn.CompleteTwoFactorWithPasskeyAsync(_username.Trim(), _twoFactorCorrelationId!);
+
+            if (!success)
+            {
+                HideTwoFactorChoice();
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
+        }
+        catch (Exception ex)
+        {
+            HideTwoFactorChoice();
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPassword = false;
+        }
+    }
+
+    private async Task CreatePasskeyLoginAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _, _, _) =
+                await WebAuthn.CreatePasskeyLoginAsync(_username.Trim(), _password);
+
+            if (!success)
+            {
+                HideTwoFactorChoice();
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            // Limited passkey-setup session: the only place it can go is passkey registration.
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey: false);
+        }
+        catch (Exception ex)
+        {
+            HideTwoFactorChoice();
             _error = L["SignInFailed", ex.Message];
         }
         finally
@@ -150,6 +219,31 @@ else
         {
             _isSigningInWithPasskey = false;
         }
+    }
+
+    /// <summary>A forced password change always comes first; then an operator with no passkey is sent to create one.</summary>
+    private void NavigateAfterPasswordSignIn(bool mustChangePassword, bool hasPasskey)
+    {
+        if (mustChangePassword)
+        {
+            NavigationManager.NavigateTo("/change-password");
+        }
+        else if (!hasPasskey)
+        {
+            // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
+            // to show the setup prompt.
+            NavigationManager.NavigateTo("/settings/passkeys?setup=true");
+        }
+        else
+        {
+            NavigationManager.NavigateTo(GetReturnUrl());
+        }
+    }
+
+    private void HideTwoFactorChoice()
+    {
+        _requiresTwoFactor = false;
+        _twoFactorCorrelationId = null;
     }
 
     private string GetReturnUrl()
