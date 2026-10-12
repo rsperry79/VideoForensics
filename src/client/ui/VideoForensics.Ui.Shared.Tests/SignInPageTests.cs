@@ -145,6 +145,88 @@ public class SignInPageTests : BunitContext
         Assert.True(session.PasskeySetupOnly);
     }
 
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_HidesPasswordFieldsAndShowsPasskeyButtons()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            Assert.Empty(component.FindAll("input[type='text']"));
+            Assert.Empty(component.FindAll("input[type='password']"));
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain("Sign In", labels);
+            Assert.Contains("Use passkey", labels);
+            Assert.Contains("Create a new passkey", labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_ShowsNoErrorText()
+    {
+        // Arrange - a failed attempt first, so a stale error exists when the two-factor response arrives
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+            .ReturnsAsync((false, "Wrong password", null, default(Guid), "", false, false, false, null));
+        var component = await RenderAndWaitForFormAsync();
+        await SubmitPasswordLoginAsync(component);
+        component.WaitForAssertion(() => Assert.NotEmpty(component.FindAll(".alert-danger")));
+
+        SetupTwoFactorRequired("corr-123");
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() => Assert.Contains("Use passkey", component.FindAll("button").Select(b => b.TextContent.Trim())));
+        Assert.Empty(component.FindAll(".alert-danger"));
+        Assert.DoesNotContain("Wrong password", component.Markup);
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_BackRestoresPasswordFields()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+        await SubmitPasswordLoginAsync(component);
+        component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Back"));
+
+        // Act
+        await ClickButtonAsync(component, "Back");
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            Assert.NotEmpty(component.FindAll("input[type='text']"));
+            Assert.NotEmpty(component.FindAll("input[type='password']"));
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.Contains("Sign In", labels);
+            Assert.DoesNotContain("Use passkey", labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_NoTempDiagnosticsRendered()
+    {
+        // Arrange - a successful password sign-in previously rendered the diagnostic block
+        SetupPasswordLogin(mustChangePassword: false, hasPasskey: true);
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        Assert.DoesNotContain("password result:", component.Markup);
+        Assert.Empty(component.FindAll("pre"));
+        Assert.Empty(component.FindAll("[class*='diag']"));
+    }
+
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))

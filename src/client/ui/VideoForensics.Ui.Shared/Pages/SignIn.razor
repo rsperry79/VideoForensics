@@ -29,36 +29,33 @@ else
         <!-- Password/Username Login -->
         @if (_authMethods.PasswordEnabled)
         {
-            <div class="d-flex flex-column gap-2">
-                <div>
-                    <label>@L["UsernameLabel"]</label>
-                    <SfTextBox @bind-Value="_username" Placeholder="@L["UsernamePlaceholder"]" />
+            @if (_requiresTwoFactor)
+            {
+                <div class="d-flex flex-column gap-2">
+                    <p>@L["TwoFactorRequiredDescription"]</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
+                        <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
+                        <SfButton Content="@L["BackButton"]" OnClick="BackFromTwoFactorChoice" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
+                    </div>
                 </div>
-                <div>
-                    <label>@L["PasswordLabel"]</label>
-                    <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordPlaceholder"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" />
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <label>@L["UsernameLabel"]</label>
+                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernamePlaceholder"]" />
+                    </div>
+                    <div>
+                        <label>@L["PasswordLabel"]</label>
+                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordPlaceholder"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" />
+                    </div>
+                    <div>
+                        <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
+                    </div>
                 </div>
-                <div>
-                    <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
-                </div>
-            </div>
-        }
-
-        @* TEMP-SIGNIN-DIAG *@
-        @if (!string.IsNullOrEmpty(_diag))
-        {
-            <pre class="small border p-2">@_diag</pre> <!-- TEMP-SIGNIN-DIAG -->
-        }
-
-        @if (_requiresTwoFactor)
-        {
-            <div class="d-flex flex-column gap-2">
-                <p>@L["TwoFactorRequiredDescription"]</p>
-                <div class="d-flex flex-wrap gap-2">
-                    <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
-                    <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
-                </div>
-            </div>
+            }
         }
 
         @if (_error is not null)
@@ -86,7 +83,6 @@ else
     private bool _webAuthnAvailable;
     private bool _isLoading = true;
     private string? _error;
-    private string _diag = string.Empty; // TEMP-SIGNIN-DIAG
     private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
         PasswordEnabled: true, PasskeyEnabled: true);
 
@@ -106,39 +102,34 @@ else
     {
         _isSigningInWithPassword = true;
         _error = null;
-        _diag = string.Empty; // TEMP-SIGNIN-DIAG
-        AddDiag("password sign-in started"); // TEMP-SIGNIN-DIAG
         HideTwoFactorChoice();
         try
         {
             var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
-            AddDiag($"password result: success={success}; requiresTwoFactor={requiresTwoFactor}; sessionTokenPresent={sessionToken is not null}"); // TEMP-SIGNIN-DIAG
 
             if (!success)
             {
                 _error = errorMessage ?? L["SignInFailed"];
-                AddDiag($"branch: !success -> error shown; errorMessage={errorMessage ?? "(null)"}"); // TEMP-SIGNIN-DIAG
                 return;
             }
 
             if (requiresTwoFactor)
             {
                 // The server issued no session yet: offer the second-factor choice instead of signing in.
+                // A second-factor step is not a failure, so no error text is shown for it.
+                _error = null;
                 _requiresTwoFactor = true;
                 _twoFactorCorrelationId = twoFactorCorrelationId;
-                AddDiag("branch: requiresTwoFactor -> 2FA choice shown; no session set"); // TEMP-SIGNIN-DIAG
                 return;
             }
 
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
-            AddDiag($"session set; hasPasskey={hasPasskey}; mustChangePassword={mustChangePassword}; passkeySetupOnly=false"); // TEMP-SIGNIN-DIAG
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
         {
             _error = L["SignInFailed", ex.Message];
-            AddDiag($"error: {ex.GetType().Name}: {ex.Message}"); // TEMP-SIGNIN-DIAG
         }
         finally
         {
@@ -194,7 +185,6 @@ else
 
             // Limited passkey-setup session: the only place it can go is passkey registration.
             await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: true);
-            AddDiag($"passkey-setup session set; mustChangePassword={mustChangePassword}; passkeySetupOnly=true"); // TEMP-SIGNIN-DIAG
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey: false);
         }
         catch (Exception ex)
@@ -241,34 +231,31 @@ else
     {
         if (mustChangePassword)
         {
-            AddDiag("navigating to /change-password"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo("/change-password");
         }
         else if (!hasPasskey)
         {
             // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
             // to show the setup prompt.
-            AddDiag("navigating to /settings/passkeys?setup=true"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo("/settings/passkeys?setup=true");
         }
         else
         {
-            AddDiag($"navigating to {GetReturnUrl()}"); // TEMP-SIGNIN-DIAG
             NavigationManager.NavigateTo(GetReturnUrl());
         }
     }
-
-    // TEMP-SIGNIN-DIAG: appends a line to the on-page diagnostic and forces a render.
-    private void AddDiag(string line) // TEMP-SIGNIN-DIAG
-    { // TEMP-SIGNIN-DIAG
-        _diag = _diag.Length == 0 ? line : _diag + "\n" + line; // TEMP-SIGNIN-DIAG
-        StateHasChanged(); // TEMP-SIGNIN-DIAG
-    } // TEMP-SIGNIN-DIAG
 
     private void HideTwoFactorChoice()
     {
         _requiresTwoFactor = false;
         _twoFactorCorrelationId = null;
+    }
+
+    /// <summary>Leaves the passkey-required state and restores the username, password and Sign in controls.</summary>
+    private void BackFromTwoFactorChoice()
+    {
+        HideTwoFactorChoice();
+        _error = null;
     }
 
     private string GetReturnUrl()
