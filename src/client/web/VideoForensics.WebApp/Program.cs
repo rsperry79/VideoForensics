@@ -36,8 +36,6 @@ using VideoForensics.WebApp.Services;
 // §5.2's "Local-only by default").
 NetworkTier configuredNetworkTier = new NetworkTierConfigReader(new StorageLocationProvider()).ReadConfiguredTier();
 
-VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
-
 // Configure Serilog for structured audit logging BEFORE creating the host.
 // Dual-write: file sinks (primary/truth) + IActionLogRepository (secondary/searchable).
 var storageProvider = new StorageLocationProvider();
@@ -65,6 +63,11 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Must run before AddSyncfusionBlazor() below. Reads the key from builder.Configuration so user secrets
+// (dev) and Azure App Settings / Key Vault references (prod) are honored; the early parameterless call
+// could not see IConfiguration because it ran before the host was built.
+VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent(builder.Configuration);
 
 // Windows Service hosting - enables running under Windows Service Control Manager while keeping
 // dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when
