@@ -7,7 +7,11 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SignIn> L
 
-<h4 class="mb-4">@L["Title"]</h4>
+@* Page heading: hidden in the two-factor state, which has its own section title *@
+@if (!_requiresTwoFactor)
+{
+    <h4 class="mb-4">@L["Title"]</h4>
+}
 
 @if (_isLoading)
 {
@@ -46,7 +50,7 @@ else
                                 <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Disabled="@_isSigningInWithPassword" />
                             }
                         }
-                        <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
+                        <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-primary"Disabled="@_isSigningInWithPassword" />
                         <SfButton Content="@L["BackButton"]" OnClick="BackFromTwoFactorChoice" CssClass="e-outline" Disabled="@_isSigningInWithPassword" />
                     </div>
                 </div>

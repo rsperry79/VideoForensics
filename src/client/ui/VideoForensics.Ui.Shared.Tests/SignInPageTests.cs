@@ -273,6 +273,45 @@ public class SignInPageTests : BunitContext
     }
 
     [Fact]
+    public async Task SignIn_TwoFactorRequired_HidesSignInHeading()
+    {
+        // Arrange - the "Sign In" page heading is shown in the normal state only
+        SetupTwoFactorRequired("corr-123");
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+        Assert.Contains(component.FindAll("h4"), h => h.TextContent.Trim() == localizer["Title"]);
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            Assert.Contains("Use passkey", component.FindAll("button").Select(b => b.TextContent.Trim()));
+            Assert.DoesNotContain(component.FindAll("h1,h2,h3,h4,h5,h6"), h => h.TextContent.Trim() == localizer["Title"]);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_CreatePasskeyNotOutlineGrey()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert - an e-outline button renders grey text and reads as disabled; this one must be an active primary button
+        component.WaitForAssertion(() =>
+        {
+            var classes = FindButton(component, "Create a new passkey").ClassList;
+            Assert.Contains("e-primary", classes);
+            Assert.DoesNotContain("e-outline", classes);
+        });
+    }
+
+    [Fact]
     public async Task SignIn_TwoFactorRequired_UsePasskeyHiddenWhenMethodMissing()
     {
         // Arrange - the server accepts no second factor this client knows, so there is nothing to offer as "Use passkey"
