@@ -410,6 +410,7 @@ namespace VideoForensics.WebApp.Api
                 AssertionCompleteRequest request,
                 IWebAuthnCeremonyCache ceremonyCache,
                 IPairedDeviceRepository pairedDevices,
+                IOperatorCredentialRepository operatorCredentials,
                 IStepUpAuthService stepUpAuth,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -431,18 +432,21 @@ namespace VideoForensics.WebApp.Api
 
                 var options = AssertionOptions.FromJson(cachedOptionsJson);
                 PairedDevice? device = await pairedDevices.GetAsync(currentDeviceId, ct);
-                if (device == null || !device.IsActive || device.WebAuthnPublicKey == null)
+                if (device == null)
+                {
+                    // No paired device: this is an operator-passkey session. Its PairedDeviceId claim holds the
+                    // OperatorCredential.Id (see PairedDeviceAuthenticationHandler), so verify against that passkey.
+                    return await CompleteOperatorPasskeyStepUpAsync(request, options, currentDeviceId,
+                        operatorCredentials, stepUpAuth, auditLog, tierResolver, context, fido2, ct);
+                }
+
+                if (!StepUpCredentialPolicy.IsUsablePairedDevice(device))
                 {
                     return Results.Unauthorized();
                 }
 
-                AuthenticatorAssertionRawResponse assertionResponse;
-                try
-                {
-                    assertionResponse = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(
-                        JsonSerializer.Serialize(request.AssertionResponse))!;
-                }
-                catch (JsonException)
+                AuthenticatorAssertionRawResponse? assertionResponse = ParseAssertionResponse(request);
+                if (assertionResponse == null)
                 {
                     return Results.BadRequest(new { error = "Malformed assertion response." });
                 }
@@ -484,6 +488,89 @@ namespace VideoForensics.WebApp.Api
                 return Results.Ok(new { stepUpToken });
             }).RequireAuthorization(VideoForensicsPolicies.ReadOnly)
               .RequireRateLimiting("auth");
+        }
+
+        /// <summary>
+        /// Parses the browser's assertion JSON into the raw response Fido2NetLib verifies. Returns null when malformed.
+        /// </summary>
+        private static AuthenticatorAssertionRawResponse? ParseAssertionResponse(AssertionCompleteRequest request)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(
+                    JsonSerializer.Serialize(request.AssertionResponse));
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Completes step-up for an operator-passkey session (no paired device). The assertion must come from an
+        /// approved, non-revoked passkey owned by the session's own operator, verified the same way operator sign-in
+        /// verifies it. The step-up token is issued for <paramref name="currentDeviceId"/> (the session's
+        /// PairedDeviceId claim) because that is the subject StepUpEndpointFilter validates against.
+        /// </summary>
+        private static async Task<IResult> CompleteOperatorPasskeyStepUpAsync(
+            AssertionCompleteRequest request,
+            AssertionOptions options,
+            Guid currentDeviceId,
+            IOperatorCredentialRepository operatorCredentials,
+            IStepUpAuthService stepUpAuth,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            IFido2 fido2,
+            CancellationToken ct)
+        {
+            string? sessionOperatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            if (!Guid.TryParse(sessionOperatorIdClaim, out Guid sessionOperatorId))
+            {
+                return Results.Unauthorized();
+            }
+
+            AuthenticatorAssertionRawResponse? assertionResponse = ParseAssertionResponse(request);
+            if (assertionResponse == null)
+            {
+                return Results.BadRequest(new { error = "Malformed assertion response." });
+            }
+
+            string credentialIdB64 = Convert.ToBase64String(assertionResponse.RawId);
+            OperatorCredential? credential = await operatorCredentials.GetByWebAuthnCredentialIdAsync(credentialIdB64, ct);
+            if (credential == null || !StepUpCredentialPolicy.IsAcceptableOperatorPasskey(credential, sessionOperatorId))
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.StepUpFailed, sessionOperatorId, null,
+                    tierResolver.ResolveClientIp(context), "Passkey not approved or not owned by this operator", isUrgent: true, ct);
+                return Results.Unauthorized();
+            }
+
+            VerifyAssertionResult result;
+            try
+            {
+                result = await fido2.MakeAssertionAsync(new MakeAssertionParams
+                {
+                    AssertionResponse = assertionResponse,
+                    OriginalOptions = options,
+                    StoredPublicKey = credential.WebAuthnPublicKey,
+                    StoredSignatureCounter = credential.WebAuthnSignCount,
+                    IsUserHandleOwnerOfCredentialIdCallback = PasskeyUserHandleVerifier.ForOperator(credential.OperatorId)
+                }, ct);
+
+                await operatorCredentials.RecordSuccessfulAuthAsync(credential.Id, result.SignCount, ct);
+            }
+            catch (Fido2VerificationException ex)
+            {
+                await auditLog.LogAsync(SecurityAuditEventTypes.StepUpFailed, credential.OperatorId, null,
+                    tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
+                return Results.Unauthorized();
+            }
+
+            string stepUpToken = stepUpAuth.IssueToken(currentDeviceId);
+            await auditLog.LogAsync(SecurityAuditEventTypes.StepUpVerified, credential.OperatorId, null,
+                tierResolver.ResolveClientIp(context), null, isUrgent: false, ct);
+
+            return Results.Ok(new { stepUpToken });
         }
 
         /// <summary>
