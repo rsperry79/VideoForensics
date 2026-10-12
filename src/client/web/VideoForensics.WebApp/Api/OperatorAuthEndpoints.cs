@@ -86,6 +86,13 @@ namespace VideoForensics.WebApp.Api
                 .Produces<dynamic>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status401Unauthorized);
 
+            // Password sign-in that always issues a LIMITED passkey-setup session (15 min), used to add a passkey.
+            _ = app.MapPost("/api/v1/auth/login/password/create-passkey", LoginPasswordCreatePasskeyAsync)
+                .RequireRateLimiting("auth")
+                .WithSummary("Verify password and issue a limited session to register a passkey")
+                .Produces<dynamic>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status401Unauthorized);
+
             // Password management - AUTHENTICATED
             _ = app.MapPost("/api/v1/auth/change-password", ChangePasswordAsync)
                 .RequireAuthorization()
@@ -522,23 +529,27 @@ namespace VideoForensics.WebApp.Api
             return Results.Ok(new { operatorId = created.Id, isApproved = created.IsApproved });
         }
 
-        private static async Task<IResult> LoginPasswordAsync(
+        /// <summary>Outcome of the password checks shared by every password sign-in endpoint. Failure is set exactly when Operator is null.</summary>
+        private sealed record PasswordCheck(IResult? Failure, Operator? Operator, string SourceIp);
+
+        /// <summary>
+        /// Runs every check a password sign-in must pass before any session is issued: password sign-in enabled, banned and
+        /// threat-intel IPs, primary SuperAdmin local-only, lockout, blocked countries, password verification (failure counting
+        /// and lockout audit), then approval and active status. /login/password and /login/password/create-passkey both call this,
+        /// so the two endpoints cannot drift apart. Nothing here may be skipped by either caller.
+        /// </summary>
+        private static async Task<PasswordCheck> VerifyPasswordAsync(
             LoginPasswordRequest request,
             IOperatorRepository operators,
-            IOperatorCredentialRepository credentials,
-            ISessionTokenService sessionTokens,
+            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             ISessionTierHeaderProtector headerProtector,
             ILockoutPolicySettingsRepository lockoutPolicy,
-            ITwoFactorRoleRequirementRepository twoFactorRequirements,
-            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
-            INotificationDispatcher? notificationDispatcher,
             IBannedIpMatchService bannedIpService,
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,
@@ -558,7 +569,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Password sign-in is disabled", isUrgent: true, ct);
-                return Results.Json(new { error = "Password sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden);
+                return new PasswordCheck(Results.Json(new { error = "Password sign-in is disabled." }, statusCode: StatusCodes.Status403Forbidden), null, sourceIpString);
             }
 
             // Check: if IP is in banned ranges, reject immediately.
@@ -567,7 +578,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                return Results.Unauthorized();
+                return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
 
             // Check: if IP is blocked by threat intelligence, reject immediately.
@@ -575,7 +586,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                return Results.Unauthorized();
+                return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
 
             // Look up operator by username (may be null)
@@ -600,7 +611,7 @@ namespace VideoForensics.WebApp.Api
                     // Don't perform password verification (timing is less critical since we're rejecting anyway).
                     await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                         sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                    return Results.Unauthorized();
+                    return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
                 }
             }
 
@@ -610,7 +621,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                return Results.Unauthorized();
+                return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
 
             // Check: if BlockedCountryCodes is configured, check if this IP's country is blocked.
@@ -626,7 +637,7 @@ namespace VideoForensics.WebApp.Api
                         // Fail closed: treat as blocked
                         await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                             sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                        return Results.Unauthorized();
+                        return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
                     }
                     // Otherwise, fail open: continue to password verification
                 }
@@ -639,7 +650,7 @@ namespace VideoForensics.WebApp.Api
                         // Country is blocked
                         await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                             sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                        return Results.Unauthorized();
+                        return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
                     }
                 }
             }
@@ -676,7 +687,7 @@ namespace VideoForensics.WebApp.Api
 
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op?.Id, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                return Results.Unauthorized();
+                return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
 
             // If we get here, the password is correct. But if op is null, we shouldn't proceed.
@@ -685,7 +696,7 @@ namespace VideoForensics.WebApp.Api
                 // This shouldn't happen (we verified against dummy hash and it passed, which is extremely unlikely).
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     sourceIpString, "Invalid username or password", isUrgent: true, ct);
-                return Results.Unauthorized();
+                return new PasswordCheck(Results.Unauthorized(), null, sourceIpString);
             }
 
             // Password verification succeeded - reset failed login attempts for this operator.
@@ -699,15 +710,51 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
                     sourceIpString, "Account pending admin approval", isUrgent: true, ct);
-                return Results.Json(new { error = "Your account is pending admin approval. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized);
+                return new PasswordCheck(Results.Json(new { error = "Your account is pending admin approval. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized), null, sourceIpString);
             }
 
             if (!op.Active)
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, op.Id, null,
                     sourceIpString, "Account deactivated", isUrgent: true, ct);
-                return Results.Json(new { error = "Your account has been deactivated. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized);
+                return new PasswordCheck(Results.Json(new { error = "Your account has been deactivated. Contact an administrator." }, statusCode: StatusCodes.Status401Unauthorized), null, sourceIpString);
             }
+
+            return new PasswordCheck(null, op, sourceIpString);
+        }
+
+        private static async Task<IResult> LoginPasswordAsync(
+            LoginPasswordRequest request,
+            IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
+            ISessionTokenService sessionTokens,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
+            ILockoutPolicySettingsRepository lockoutPolicy,
+            ITwoFactorRoleRequirementRepository twoFactorRequirements,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
+            INotificationDispatcher? notificationDispatcher,
+            IBannedIpMatchService bannedIpService,
+            IThreatIntelBlocklistService threatIntelService,
+            IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
+            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            IFailedLoginIpTracker failedLoginIpTracker,
+            HttpContext context,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            // Shared password checks (VerifyPasswordAsync). Nothing below runs unless they all pass.
+            PasswordCheck check = await VerifyPasswordAsync(request, operators, authMethodsService, auditLog, tierResolver, headerProtector,
+                lockoutPolicy, bannedIpService, threatIntelService, geoIpService, auditService, failedLoginIpTracker, context, logger, ct);
+            if (check.Operator == null)
+            {
+                return check.Failure!;
+            }
+
+            Operator op = check.Operator;
+            string sourceIpString = check.SourceIp;
 
             // Check two-factor authentication requirement
             bool requiresTwoFactor = await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, twoFactorRequirements, ct);
@@ -720,37 +767,15 @@ namespace VideoForensics.WebApp.Api
 
                 if (!hasApprovedCredential)
                 {
-                    // Bootstrap/grace path: operator with 2FA required but no passkey yet
-                    // Issue session token but set flag so UI forces passkey registration
-                    string token = sessionTokens.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp);
+                    // Operator with 2FA required but no approved passkey yet: they cannot complete a second factor,
+                    // so issue a LIMITED session that only the passkey setup endpoints accept
+                    // (see PasskeySetupSessionPolicy). A full session here would let an unenrolled operator bypass 2FA.
+                    string token = sessionTokens.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp);
 
                     await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
                         sourceIpString, null, isUrgent: false, ct);
 
-                    // First-login-after-approval notification
-                    if (op.ApprovalFirstLoginNotifiedAtUtc == null)
-                    {
-                        try
-                        {
-                            if (notificationDispatcher != null)
-                            {
-                                await notificationDispatcher.DispatchAsync(new NotificationEvent(
-                                    EventType: "OperatorApprovalFirstLogin",
-                                    TimestampUtc: DateTime.UtcNow,
-                                    OperatorId: op.Id,
-                                    PairedDeviceId: null,
-                                    SourceIp: sourceIpString,
-                                    Details: $"Approved operator '{op.DisplayName}' successfully logged in for the first time",
-                                    Audience: NotificationAudience.AdminsOnly,
-                                    Severity: NoticeSeverity.Info), ct);
-                                await operators.SetApprovalFirstLoginNotifiedAsync(op.Id, ct);
-                            }
-                        }
-                        catch
-                        {
-                            // Non-critical - log but don't fail auth if notification dispatch fails
-                        }
-                    }
+                    await NotifyFirstLoginAfterApprovalAsync(op, operators, notificationDispatcher, sourceIpString, ct);
 
                     return Results.Ok(new
                     {
@@ -787,30 +812,7 @@ namespace VideoForensics.WebApp.Api
             await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
                 sourceIpString, null, isUrgent: false, ct);
 
-            // First-login-after-approval notification
-            if (op.ApprovalFirstLoginNotifiedAtUtc == null)
-            {
-                try
-                {
-                    if (notificationDispatcher != null)
-                    {
-                        await notificationDispatcher.DispatchAsync(new NotificationEvent(
-                            EventType: "OperatorApprovalFirstLogin",
-                            TimestampUtc: DateTime.UtcNow,
-                            OperatorId: op.Id,
-                            PairedDeviceId: null,
-                            SourceIp: sourceIpString,
-                            Details: $"Approved operator '{op.DisplayName}' successfully logged in for the first time",
-                            Audience: NotificationAudience.AdminsOnly,
-                            Severity: NoticeSeverity.Info), ct);
-                        await operators.SetApprovalFirstLoginNotifiedAsync(op.Id, ct);
-                    }
-                }
-                catch
-                {
-                    // Non-critical - log but don't fail auth if notification dispatch fails
-                }
-            }
+            await NotifyFirstLoginAfterApprovalAsync(op, operators, notificationDispatcher, sourceIpString, ct);
 
             return Results.Ok(new
             {
@@ -820,6 +822,96 @@ namespace VideoForensics.WebApp.Api
                 mustChangePassword = op.MustChangePassword,
                 hasPasskey
             });
+        }
+
+        /// <summary>
+        /// POST /api/v1/auth/login/password/create-passkey. Same body and same checks as /login/password (via VerifyPasswordAsync),
+        /// but always issues a LIMITED passkey-setup session (15 minutes, passkey setup endpoints only), even when the operator
+        /// already has passkeys. The 2FA settings and credential state are deliberately not consulted here: this path never
+        /// completes a second factor. The parameter list matches /login/password so both bind the same services.
+        /// </summary>
+        private static async Task<IResult> LoginPasswordCreatePasskeyAsync(
+            LoginPasswordRequest request,
+            IOperatorRepository operators,
+            IOperatorCredentialRepository credentials,
+            ISessionTokenService sessionTokens,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            ISessionTierHeaderProtector headerProtector,
+            ILockoutPolicySettingsRepository lockoutPolicy,
+            ITwoFactorRoleRequirementRepository twoFactorRequirements,
+            ITwoFactorPendingAuthCache twoFactorPendingAuthCache,
+            INotificationDispatcher? notificationDispatcher,
+            IBannedIpMatchService bannedIpService,
+            IThreatIntelBlocklistService threatIntelService,
+            IGeoIpLookupService geoIpService,
+            ISecurityAuditService auditService,
+            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            IFailedLoginIpTracker failedLoginIpTracker,
+            HttpContext context,
+            ILogger<Program> logger,
+            CancellationToken ct)
+        {
+            PasswordCheck check = await VerifyPasswordAsync(request, operators, authMethodsService, auditLog, tierResolver, headerProtector,
+                lockoutPolicy, bannedIpService, threatIntelService, geoIpService, auditService, failedLoginIpTracker, context, logger, ct);
+            if (check.Operator == null)
+            {
+                return check.Failure!;
+            }
+
+            Operator op = check.Operator;
+            IReadOnlyList<OperatorCredential> operatorCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
+            string token = sessionTokens.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp);
+
+            await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null,
+                check.SourceIp, "Passkey setup session issued", isUrgent: false, ct);
+
+            await NotifyFirstLoginAfterApprovalAsync(op, operators, notificationDispatcher, check.SourceIp, ct);
+
+            return Results.Ok(new
+            {
+                sessionToken = token,
+                operatorId = op.Id,
+                role = op.Role.ToString(),
+                mustChangePassword = op.MustChangePassword,
+                requiresPasskeyRegistration = true,
+                hasPasskey = operatorCredentials.Any(c => !c.RevokedAtUtc.HasValue)
+            });
+        }
+
+        /// <summary>Sends the one-time "approved operator logged in for the first time" admin notice. A failure here never fails the sign-in.</summary>
+        private static async Task NotifyFirstLoginAfterApprovalAsync(
+            Operator op,
+            IOperatorRepository operators,
+            INotificationDispatcher? notificationDispatcher,
+            string sourceIpString,
+            CancellationToken ct)
+        {
+            if (op.ApprovalFirstLoginNotifiedAtUtc != null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (notificationDispatcher != null)
+                {
+                    await notificationDispatcher.DispatchAsync(new NotificationEvent(
+                        EventType: "OperatorApprovalFirstLogin",
+                        TimestampUtc: DateTime.UtcNow,
+                        OperatorId: op.Id,
+                        PairedDeviceId: null,
+                        SourceIp: sourceIpString,
+                        Details: $"Approved operator '{op.DisplayName}' successfully logged in for the first time",
+                        Audience: NotificationAudience.AdminsOnly,
+                        Severity: NoticeSeverity.Info), ct);
+                    await operators.SetApprovalFirstLoginNotifiedAsync(op.Id, ct);
+                }
+            }
+            catch
+            {
+                // Non-critical - log but don't fail auth if notification dispatch fails
+            }
         }
 
         private static async Task<IResult> ChangePasswordAsync(

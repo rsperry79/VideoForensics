@@ -18,7 +18,14 @@ namespace VideoForensics.Hosting
     }
 
     /// <summary>Claims carried by an issued session token.</summary>
-    public record SessionPrincipal(Guid OperatorId, Guid? CredentialId, CredentialKind Kind, OperatorRole Role, Guid SecurityStampAtIssuance, DateTime IssuedAtUtc, DateTime ExpiresAtUtc);
+    public record SessionPrincipal(Guid OperatorId, Guid? CredentialId, CredentialKind Kind, OperatorRole Role, Guid SecurityStampAtIssuance, DateTime IssuedAtUtc, DateTime ExpiresAtUtc)
+    {
+        /// <summary>
+        /// True for a limited session that may only reach passkey setup endpoints (issued by the create-passkey
+        /// password login). Defaults to false so tokens issued before this field existed still validate as full sessions.
+        /// </summary>
+        public bool PasskeySetupOnly { get; init; }
+    }
 
     /// <summary>
     /// Issues and validates opaque bearer session tokens for paired devices, using ASP.NET Core
@@ -38,12 +45,18 @@ namespace VideoForensics.Hosting
     public interface ISessionTokenService
     {
         string Issue(Guid operatorId, Guid? credentialId, CredentialKind kind, OperatorRole role, Guid securityStamp);
+
+        /// <summary>Issues a limited session that PairedDeviceAuthenticationHandler accepts only for passkey setup endpoints.</summary>
+        string IssuePasskeySetupOnly(Guid operatorId, OperatorRole role, Guid securityStamp);
         SessionPrincipal? Validate(string token);
     }
 
     public class SessionTokenService : ISessionTokenService
     {
         private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
+
+        /// <summary>Lifetime of a limited passkey-setup session. PairedDeviceAuthenticationHandler also enforces it from IssuedAtUtc.</summary>
+        public static readonly TimeSpan PasskeySetupSessionLifetime = TimeSpan.FromMinutes(15);
         private readonly IDataProtector _protector;
 
         public SessionTokenService(IDataProtectionProvider provider)
@@ -57,6 +70,17 @@ namespace VideoForensics.Hosting
             var principal = new SessionPrincipal(operatorId, credentialId, kind, role, securityStamp, now, now + SessionLifetime);
             string json = JsonSerializer.Serialize(principal);
             return _protector.Protect(json);
+        }
+
+        public string IssuePasskeySetupOnly(Guid operatorId, OperatorRole role, Guid securityStamp)
+        {
+            DateTime now = DateTime.UtcNow;
+            // Short on purpose: the limited session only has to get the operator through passkey registration.
+            var principal = new SessionPrincipal(operatorId, null, CredentialKind.Password, role, securityStamp, now, now + PasskeySetupSessionLifetime)
+            {
+                PasskeySetupOnly = true
+            };
+            return _protector.Protect(JsonSerializer.Serialize(principal));
         }
 
         public SessionPrincipal? Validate(string token)

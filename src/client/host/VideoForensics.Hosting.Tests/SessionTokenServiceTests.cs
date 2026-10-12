@@ -397,5 +397,57 @@ namespace VideoForensics.Hosting.Tests
             // Assert
             Assert.Null(result);
         }
+
+        // ============ IssuePasskeySetupOnly() Tests ============
+
+        [Fact]
+        public void IssuePasskeySetupOnly_Validate_ReturnsLimitedPasswordPrincipal()
+        {
+            // Arrange
+            var service = new SessionTokenService(new EphemeralDataProtectionProvider());
+            var operatorId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
+
+            // Act
+            var token = service.IssuePasskeySetupOnly(operatorId, OperatorRole.Admin, securityStamp);
+            var validated = service.Validate(token);
+
+            // Assert
+            Assert.NotNull(validated);
+            Assert.True(validated.PasskeySetupOnly);
+            Assert.Equal(CredentialKind.Password, validated.Kind);
+            Assert.Equal(operatorId, validated.OperatorId);
+            Assert.Equal(securityStamp, validated.SecurityStampAtIssuance);
+            Assert.True(validated.IssuedAtUtc <= DateTime.UtcNow && validated.IssuedAtUtc > DateTime.UtcNow.AddMinutes(-1));
+        }
+
+        [Fact]
+        public void IssuePasskeySetupOnly_Validate_LifetimeIsFifteenMinutes()
+        {
+            // Arrange
+            var service = new SessionTokenService(new EphemeralDataProtectionProvider());
+
+            // Act
+            var validated = service.Validate(service.IssuePasskeySetupOnly(Guid.NewGuid(), OperatorRole.Admin, Guid.NewGuid()));
+
+            // Assert - the limited session must not outlive 15 minutes, unlike a normal 12-hour session
+            Assert.NotNull(validated);
+            Assert.True(validated.ExpiresAtUtc <= DateTime.UtcNow.AddMinutes(15));
+            Assert.True(validated.ExpiresAtUtc > DateTime.UtcNow.AddMinutes(14));
+        }
+
+        [Fact]
+        public void Issue_NormalSession_ValidatesWithPasskeySetupOnlyFalse()
+        {
+            // Arrange - a normal token carries no limit, so every token issued before the field existed behaves the same
+            var service = new SessionTokenService(new EphemeralDataProtectionProvider());
+
+            // Act
+            var validated = service.Validate(service.Issue(Guid.NewGuid(), null, CredentialKind.Password, OperatorRole.Admin, Guid.NewGuid()));
+
+            // Assert
+            Assert.NotNull(validated);
+            Assert.False(validated.PasskeySetupOnly);
+        }
     }
 }

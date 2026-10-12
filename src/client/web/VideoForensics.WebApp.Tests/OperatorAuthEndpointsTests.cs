@@ -631,8 +631,9 @@ namespace VideoForensics.WebApp.Tests
 
             // Assert
             Assert.NotNull(result);
-            // Should issue session token for bootstrap path
-            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Once);
+            // No passkey yet: issue a LIMITED passkey-setup session, never a full session
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp), Times.Once);
+            sessionTokens.Verify(s => s.Issue(op.Id, null, CredentialKind.Password, op.Role, op.SecurityStamp), Times.Never);
         }
 
         [Fact]
@@ -763,6 +764,191 @@ namespace VideoForensics.WebApp.Tests
             var property = payload!.GetType().GetProperty(propertyName);
             Assert.True(property is not null, $"Login response has no '{propertyName}' property.");
             return Assert.IsType<bool>(property!.GetValue(payload));
+        }
+
+        /// <summary>Reads a named property from the anonymous payload of an <c>Ok</c> result, or null when absent.</summary>
+        private static object? GetOkPayloadProperty(IResult result, string propertyName)
+        {
+            object? payload = result.GetType().GetProperty("Value")?.GetValue(result);
+            Assert.NotNull(payload);
+            return payload!.GetType().GetProperty(propertyName)?.GetValue(payload);
+        }
+
+        /// <summary>Runs a password login for an operator whose 2FA requirement is forced on, with the given OperatorCredential list.</summary>
+        private static async Task<IResult> RunPasswordLoginWithTwoFactorAsync(
+            Operator op,
+            List<OperatorCredential> credentialList,
+            Mock<ISessionTokenService> sessionTokens,
+            Mock<ITwoFactorPendingAuthCache> twoFactorCache)
+        {
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+
+            var operators = new Mock<IOperatorRepository>();
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(op.Id, It.IsAny<CancellationToken>())).ReturnsAsync(credentialList);
+
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+
+            return await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                CreateLoginRequest(op.Username, TestPassword), operators.Object, credentials.Object, sessionTokens.Object, new Mock<ISecurityAuditLogger>().Object,
+                new NetworkTierResolver(), NoOpHeaderProtector(), MockLockoutPolicyRepository().Object, twoFactorRequirements.Object, twoFactorCache.Object,
+                new Mock<INotificationDispatcher>().Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                new Mock<ISecurityAuditService>().Object, CreateHttpContext(NetworkTier.Network),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task LoginPassword_TwoFactorRequiredNoPasskey_ReturnsLimitedSession()
+        {
+            // Arrange - 2FA is required for this operator but they have no passkey, so the second factor can never be completed
+            var op = CreateOperator(role: OperatorRole.Admin);
+            op.TwoFactorRequirementOverride = TwoFactorRequirementOverride.Required;
+            var sessionTokens = new Mock<ISessionTokenService>();
+            sessionTokens.Setup(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp)).Returns("limited-token");
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+
+            // Act
+            IResult result = await RunPasswordLoginWithTwoFactorAsync(op, new List<OperatorCredential>(), sessionTokens, twoFactorCache);
+
+            // Assert
+            Assert.Equal("limited-token", GetOkPayloadProperty(result, "sessionToken"));
+            Assert.True(GetOkPayloadBool(result, "requiresPasskeyRegistration"));
+            Assert.False(GetOkPayloadBool(result, "hasPasskey"));
+            Assert.Null(GetOkPayloadProperty(result, "requiresTwoFactor"));
+            twoFactorCache.Verify(c => c.Store(It.IsAny<Guid>()), Times.Never);
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginPassword_OperatorWithPasskey_StillRequiresTwoFactor()
+        {
+            // Arrange - 2FA is required and the operator has an approved passkey to complete it
+            var op = CreateOperator(role: OperatorRole.Admin);
+            op.TwoFactorRequirementOverride = TwoFactorRequirementOverride.Required;
+            var passkey = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = op.Id,
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true
+            };
+            var sessionTokens = new Mock<ISessionTokenService>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            twoFactorCache.Setup(c => c.Store(op.Id)).Returns("correlation-id");
+
+            // Act
+            IResult result = await RunPasswordLoginWithTwoFactorAsync(op, new List<OperatorCredential> { passkey }, sessionTokens, twoFactorCache);
+
+            // Assert
+            Assert.True(GetOkPayloadBool(result, "requiresTwoFactor"));
+            Assert.Null(GetOkPayloadProperty(result, "sessionToken"));
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(It.IsAny<Guid>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        /// <summary>Runs the create-passkey password endpoint. It never asks for a second factor, so no 2FA settings are needed.</summary>
+        private static async Task<IResult> RunCreatePasskeyLoginAsync(
+            Operator op,
+            Mock<IOperatorRepository> operators,
+            List<OperatorCredential> credentialList,
+            string password,
+            Mock<ISessionTokenService> sessionTokens)
+        {
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            credentials.Setup(c => c.ListForOperatorAsync(op.Id, It.IsAny<CancellationToken>())).ReturnsAsync(credentialList);
+
+            var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
+
+            return await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+                CreateLoginRequest(op.Username, password), operators.Object, credentials.Object, sessionTokens.Object, new Mock<ISecurityAuditLogger>().Object,
+                new NetworkTierResolver(), NoOpHeaderProtector(), MockLockoutPolicyRepository().Object, twoFactorRequirements.Object, new Mock<ITwoFactorPendingAuthCache>().Object,
+                new Mock<INotificationDispatcher>().Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
+                new Mock<ISecurityAuditService>().Object, CreateHttpContext(NetworkTier.Network),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, CancellationToken.None,
+                endpointMethodName: "LoginPasswordCreatePasskeyAsync");
+        }
+
+        [Fact]
+        public async Task LoginPasswordCreatePasskey_OperatorWithPasskey_ReturnsLimitedSession()
+        {
+            // Arrange - the operator already has an approved passkey but must still be able to register another one
+            var op = CreateOperator(role: OperatorRole.Admin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+            var passkey = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = op.Id,
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true,
+                CreatedAtUtc = DateTime.UtcNow.AddDays(-1)
+            };
+            var sessionTokens = new Mock<ISessionTokenService>();
+            sessionTokens.Setup(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp)).Returns("limited-token");
+
+            // Act
+            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorRepository>(), new List<OperatorCredential> { passkey }, TestPassword, sessionTokens);
+
+            // Assert
+            Assert.Equal("limited-token", GetOkPayloadProperty(result, "sessionToken"));
+            Assert.Equal(op.Id, GetOkPayloadProperty(result, "operatorId"));
+            Assert.True(GetOkPayloadBool(result, "requiresPasskeyRegistration"));
+            Assert.True(GetOkPayloadBool(result, "hasPasskey"));
+            Assert.Null(GetOkPayloadProperty(result, "requiresTwoFactor"));
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(op.Id, op.Role, op.SecurityStamp), Times.Once);
+            sessionTokens.Verify(s => s.Issue(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CredentialKind>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginPasswordCreatePasskey_WrongPassword_Returns401AndCountsFailure()
+        {
+            // Arrange
+            var op = CreateOperator(role: OperatorRole.Admin);
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+            var operators = new Mock<IOperatorRepository>();
+            var sessionTokens = new Mock<ISessionTokenService>();
+
+            // Act
+            IResult result = await RunCreatePasskeyLoginAsync(op, operators, new List<OperatorCredential>(), "wrong-password", sessionTokens);
+
+            // Assert
+            Assert.Equal(StatusCodes.Status401Unauthorized, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+            operators.Verify(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+            operators.Verify(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()), Times.Never);
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(It.IsAny<Guid>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginPasswordCreatePasskey_LockedOut_Rejected()
+        {
+            // Arrange - correct password, but the account is locked out, so the shared checks must reject before anything is issued
+            var op = CreateOperator(role: OperatorRole.Admin, lockedOutUntilUtc: DateTime.UtcNow.AddMinutes(15));
+            op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
+            var sessionTokens = new Mock<ISessionTokenService>();
+
+            // Act
+            IResult result = await RunCreatePasskeyLoginAsync(op, new Mock<IOperatorRepository>(), new List<OperatorCredential>(), TestPassword, sessionTokens);
+
+            // Assert
+            Assert.Equal(StatusCodes.Status401Unauthorized, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+            sessionTokens.Verify(s => s.IssuePasskeySetupOnly(It.IsAny<Guid>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
         }
 
         [Fact]
@@ -1333,10 +1519,11 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             ILogger<Program> logger,
             CancellationToken ct,
-            IFailedLoginIpTracker? failedLoginIpTracker = null)
+            IFailedLoginIpTracker? failedLoginIpTracker = null,
+            string endpointMethodName = "LoginPasswordAsync")
         {
             var method = typeof(OperatorAuthEndpoints)
-                .GetMethod("LoginPasswordAsync",
+                .GetMethod(endpointMethodName,
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
                     [typeof(LoginPasswordRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
@@ -1348,7 +1535,7 @@ namespace VideoForensics.WebApp.Tests
 
             if (method == null)
             {
-                throw new InvalidOperationException("Could not find LoginPasswordAsync method");
+                throw new InvalidOperationException($"Could not find {endpointMethodName} method");
             }
 
             var authMethodSettings = new Mock<IAuthMethodSettingsService>();
