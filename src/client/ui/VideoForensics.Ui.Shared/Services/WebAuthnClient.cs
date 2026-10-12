@@ -383,7 +383,7 @@ namespace VideoForensics.Ui.Shared.Services
             return (true, null);
         }
 
-        public async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorCredentialAsync(string sessionToken, string label)
+        public virtual async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorCredentialAsync(string sessionToken, string label)
         {
             using HttpClient client = CreateClient(sessionToken);
 

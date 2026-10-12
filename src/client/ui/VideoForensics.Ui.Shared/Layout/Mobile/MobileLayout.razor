@@ -26,26 +26,34 @@
 
     <div class="mobile-app-header">
         <div class="mobile-app-bar">
-            <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="@L["ToggleNavigation"]" />
-
-            @if (SessionState.IsSignedIn)
+            @if (_passkeySetupOnly)
             {
-                <MobileFiltersSheet />
+                @* Limited create-passkey session: the only control is sign-out. *@
+                <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="passkey-setup-signout e-flat" />
             }
+            else
+            {
+                <SfButton Content="☰" CssClass="hamburger-button e-flat" OnClick="@ToggleNavDrawerAsync" title="@L["ToggleNavigation"]" />
 
-            <div class="mobile-page-title">
-                @L[ActiveGroup.Text]
-            </div>
-
-            <div style="position: relative; margin-left: auto;">
-                <SfButton Content="🔔" CssClass="notices-button e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
-                @if (_undismissedCount > 0)
+                @if (SessionState.IsSignedIn)
                 {
-                    <span class="notices-badge">@_undismissedCount</span>
+                    <MobileFiltersSheet />
                 }
-            </div>
-            <SfButton Content="⚙" CssClass="settings-button e-flat" OnClick="@ToggleSettingsSheetAsync" title="@L["ToggleSettings"]" />
-            <UserMenuButton />
+
+                <div class="mobile-page-title">
+                    @L[ActiveGroup.Text]
+                </div>
+
+                <div style="position: relative; margin-left: auto;">
+                    <SfButton Content="🔔" CssClass="notices-button e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
+                    @if (_undismissedCount > 0)
+                    {
+                        <span class="notices-badge">@_undismissedCount</span>
+                    }
+                </div>
+                <SfButton Content="⚙" CssClass="settings-button e-flat" OnClick="@ToggleSettingsSheetAsync" title="@L["ToggleSettings"]" />
+                <UserMenuButton />
+            }
         </div>
     </div>
 

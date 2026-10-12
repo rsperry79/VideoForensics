@@ -119,7 +119,7 @@ else
                 return;
             }
 
-            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
@@ -148,7 +148,7 @@ else
                 return;
             }
 
-            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
         }
         catch (Exception ex)
@@ -179,7 +179,7 @@ else
             }
 
             // Limited passkey-setup session: the only place it can go is passkey registration.
-            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword);
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: true);
             NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey: false);
         }
         catch (Exception ex)
@@ -208,7 +208,7 @@ else
                 return;
             }
 
-            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false);
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false, passkeySetupOnly: false);
             NavigationManager.NavigateTo(GetReturnUrl());
         }
         catch (Exception ex)

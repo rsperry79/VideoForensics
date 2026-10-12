@@ -31,25 +31,33 @@
 
     <div class="app-header">
         <div class="app-bar">
-            <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="@L["ToggleNavigation"]" />
+            @if (_passkeySetupOnly)
+            {
+                @* Limited create-passkey session: the only control is sign-out. *@
+                <SfButton Content="@L["SignOut"]" OnClick="@SignOutAsync" CssClass="passkey-setup-signout e-flat" />
+            }
+            else
+            {
+                <SfButton Content="☰" CssClass="left-nav-toggle e-flat" OnClick="@ToggleLeftNavAsync" title="@L["ToggleNavigation"]" />
 
-            <div class="top-tabs">
-                @foreach (var group in VisibleGroups)
-                {
-                    <SfButton Content="@L[group.Text]" OnClick="@(() => Nav.NavigateTo(group.Path))"
-                              CssClass="@("top-tab-button " + (group.Key == ActiveGroup.Key ? "e-primary" : "e-flat"))" />
-                }
-            </div>
+                <div class="top-tabs">
+                    @foreach (var group in VisibleGroups)
+                    {
+                        <SfButton Content="@L[group.Text]" OnClick="@(() => Nav.NavigateTo(group.Path))"
+                                  CssClass="@("top-tab-button " + (group.Key == ActiveGroup.Key ? "e-primary" : "e-flat"))" />
+                    }
+                </div>
 
-            <div style="position: relative;">
-                <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
-                @if (_undismissedCount > 0)
-                {
-                    <span class="notices-badge">@_undismissedCount</span>
-                }
-            </div>
-            <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="@L["ToggleSettingsPanel"]" />
-            <UserMenuButton />
+                <div style="position: relative;">
+                    <SfButton Content="🔔" CssClass="notices-toggle e-flat" OnClick="@ToggleNoticesAsync" title="@L["Notices"]" />
+                    @if (_undismissedCount > 0)
+                    {
+                        <span class="notices-badge">@_undismissedCount</span>
+                    }
+                </div>
+                <SfButton Content="⚙" CssClass="right-panel-toggle e-flat" OnClick="@ToggleRightPanelAsync" title="@L["ToggleSettingsPanel"]" />
+                <UserMenuButton />
+            }
         </div>
     </div>
 
@@ -131,7 +139,7 @@
                         <div class="page-body">
                             @Body
                         </div>
-                        @if (!LayoutPrefs.RightPanelCollapsed)
+                        @if (!_passkeySetupOnly && !LayoutPrefs.RightPanelCollapsed)
                         {
                             <div id="@_rightPanelHandleId" class="right-panel-handle" title="@L["DragToResize"]"></div>
                             <div id="@_rightPanelId" class="right-panel-fixed" style="@RightPanelStyle">

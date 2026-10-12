@@ -17,7 +17,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToManage"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInLink"]</a> @L["SignInToManage"]
     </div>
 }
 
@@ -199,6 +199,15 @@ else
             if (!success)
             {
                 _addError = errorMessage ?? L["RegistrationFailed"];
+                return;
+            }
+
+            if (SessionState.PasskeySetupOnly)
+            {
+                // The server ended the limited setup session once this passkey existed: drop the client's
+                // copy and make the operator sign in again. Loading the list would now be unauthorized anyway.
+                await SessionState.ClearAsync();
+                NavigationManager.NavigateTo("/signin");
                 return;
             }
 

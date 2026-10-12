@@ -27,6 +27,13 @@ namespace VideoForensics.Ui.Shared.Services
         public virtual string? Role { get; private set; }
         public virtual bool MustChangePassword { get; private set; }
 
+        /// <summary>
+        /// True while the session is the limited create-passkey session (issued by the server's
+        /// create-passkey sign-in). Layouts hide navigation and AuthGate keeps the user on the
+        /// passkey page until a passkey is registered; the server enforces the same limit on API calls.
+        /// </summary>
+        public virtual bool PasskeySetupOnly { get; private set; }
+
         public virtual bool IsSignedIn => SessionToken is not null;
 
         /// <summary>Fired when the server rejects the session token as invalid or expired.</summary>
@@ -55,6 +62,7 @@ namespace VideoForensics.Ui.Shared.Services
                     OperatorId = stored.OperatorId;
                     Role = stored.Role;
                     MustChangePassword = stored.MustChangePassword;
+                    PasskeySetupOnly = stored.PasskeySetupOnly;
                 }
             }
             catch (JSException)
@@ -64,15 +72,16 @@ namespace VideoForensics.Ui.Shared.Services
             }
         }
 
-        public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false)
+        public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
         {
             SessionToken = sessionToken;
             OperatorId = operatorId;
             Role = role;
             MustChangePassword = mustChangePassword;
+            PasskeySetupOnly = passkeySetupOnly;
             try
             {
-                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role, mustChangePassword));
+                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role, mustChangePassword, passkeySetupOnly));
                 await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
             }
             catch (JSException)
@@ -90,6 +99,7 @@ namespace VideoForensics.Ui.Shared.Services
             OperatorId = null;
             Role = null;
             MustChangePassword = false;
+            PasskeySetupOnly = false;
             try
             {
                 await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
@@ -107,6 +117,7 @@ namespace VideoForensics.Ui.Shared.Services
             AuthenticationExpired?.Invoke();
         }
 
-        private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword);
+        // PasskeySetupOnly defaults to false so a session cookie written before this flag existed still loads.
+        private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
     }
 }
