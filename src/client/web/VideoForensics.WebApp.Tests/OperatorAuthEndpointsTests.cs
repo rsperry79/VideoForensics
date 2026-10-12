@@ -863,6 +863,32 @@ namespace VideoForensics.WebApp.Tests
             sessionTokens.Verify(s => s.IssuePasskeySetupOnly(It.IsAny<Guid>(), It.IsAny<OperatorRole>(), It.IsAny<Guid>()), Times.Never);
         }
 
+        [Fact]
+        public async Task LoginPassword_TwoFactorRequired_ReturnsPasskeyMethod()
+        {
+            // Arrange - the client renders second-factor buttons from twoFactorMethods, so the server must name what it accepts
+            var op = CreateOperator(role: OperatorRole.Admin);
+            op.TwoFactorRequirementOverride = TwoFactorRequirementOverride.Required;
+            var passkey = new OperatorCredential
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = op.Id,
+                Label = "Laptop",
+                WebAuthnCredentialId = "cred-id",
+                WebAuthnPublicKey = new byte[] { 1, 2, 3 },
+                IsApproved = true
+            };
+            var sessionTokens = new Mock<ISessionTokenService>();
+            var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
+            twoFactorCache.Setup(c => c.Store(op.Id)).Returns("correlation-id");
+
+            // Act
+            IResult result = await RunPasswordLoginWithTwoFactorAsync(op, new List<OperatorCredential> { passkey }, sessionTokens, twoFactorCache);
+
+            // Assert
+            Assert.Equal(new[] { "passkey" }, Assert.IsAssignableFrom<IEnumerable<string>>(GetOkPayloadProperty(result, "twoFactorMethods")));
+        }
+
         /// <summary>Runs the create-passkey password endpoint. It never asks for a second factor, so no 2FA settings are needed.</summary>
         private static async Task<IResult> RunCreatePasskeyLoginAsync(
             Operator op,

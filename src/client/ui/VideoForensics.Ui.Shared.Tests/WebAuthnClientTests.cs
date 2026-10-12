@@ -83,7 +83,7 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        (bool success, string? errorMessage, string? sessionToken, _, _, _, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool success, string? errorMessage, string? sessionToken, _, _, _, _, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
 
         Assert.True(success, errorMessage);
         Assert.Equal("issued-token", sessionToken);
@@ -145,6 +145,53 @@ public class WebAuthnClientTests
         Assert.True(result.RequiresTwoFactor);
         Assert.Equal("corr-123", result.TwoFactorCorrelationId);
         Assert.Null(result.SessionToken);
+    }
+
+    [Fact]
+    public async Task SignInWithPasswordAsync_TwoFactorRequired_ReturnsMethods()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    requiresTwoFactor = true,
+                    twoFactorCorrelationId = "corr-123",
+                    twoFactorMethods = new[] { "passkey", "future-method" }
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        var result = await client.SignInWithPasswordAsync("alice", "password123");
+
+        // Returned exactly as the server sent them, so the page can decide which ones it knows
+        Assert.Equal(new[] { "passkey", "future-method" }, result.TwoFactorMethods);
+    }
+
+    [Fact]
+    public async Task SignInWithPasswordAsync_TwoFactorMethodsMissing_DefaultsToPasskey()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    requiresTwoFactor = true,
+                    twoFactorCorrelationId = "corr-123"
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        var result = await client.SignInWithPasswordAsync("alice", "password123");
+
+        // Older servers send no twoFactorMethods; they only ever offered passkey
+        Assert.Equal(new[] { "passkey" }, result.TwoFactorMethods);
     }
 
     [Fact]
