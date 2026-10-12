@@ -119,4 +119,10 @@
   <data name="RevokeFailed" xml:space="preserve">
     <value>Revoke failed: {0}</value>
   </data>
+  <data name="PasskeySetupPendingApproval" xml:space="preserve">
+    <value>Your passkey was added and is waiting for admin approval. Sign out when you are done.</value>
+  </data>
+  <data name="SignOutButton" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
 </root>

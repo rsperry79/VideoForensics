@@ -24,7 +24,7 @@
     </header>
     <main class="simple-layout-body">
         <div class="simple-layout-content">
-            @if (IsHomeRoute())
+            @if (!_passkeySetupOnly && IsHomeRoute())
             {
                 <SimpleHome />
             }
@@ -33,17 +33,38 @@
                 @Body
             }
         </div>
-        <div class="simple-layout-chat">
-            <ChatPanel />
-        </div>
+        @if (!_passkeySetupOnly)
+        {
+            <div class="simple-layout-chat">
+                <ChatPanel />
+            </div>
+        }
     </main>
 </div>
 
 @code {
+    // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): the chat panel and the home are hidden, the routed passkey page is not.
+    private bool _passkeySetupOnly;
+
     protected override void OnInitialized()
     {
+        _passkeySetupOnly = SessionState.PasskeySetupOnly;
         UiModeService.OnChange += StateHasChanged;
         Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Session state is only readable once the circuit is connected (see MainLayout).
+            await SessionState.EnsureLoadedAsync();
+            if (_passkeySetupOnly != SessionState.PasskeySetupOnly)
+            {
+                _passkeySetupOnly = SessionState.PasskeySetupOnly;
+                StateHasChanged();
+            }
+        }
     }
 
     // Only the home routes get the plain-language home; every other route (sign-in, password change, chat, cases...) renders as routed.
@@ -53,7 +74,11 @@
         return path.Length == 0 || string.Equals(path, "/evidence", StringComparison.OrdinalIgnoreCase);
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _passkeySetupOnly = SessionState.PasskeySetupOnly;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private async Task SwitchToStandardAsync()
     {
