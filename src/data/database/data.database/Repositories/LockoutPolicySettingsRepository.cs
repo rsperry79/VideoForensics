@@ -22,7 +22,8 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<LockoutPolicySettings> GetAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            LockoutPolicySettings? settings = await db.LockoutPolicySettings.FirstOrDefaultAsync(ct);
+            // Singleton table: OrderBy silences EF 10103 (First without OrderBy) and gives a deterministic row.
+            LockoutPolicySettings? settings = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
 
             if (settings == null)
             {
@@ -50,7 +51,7 @@ namespace VideoForensics.Data.Database.Repositories
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
 
-            LockoutPolicySettings? existing = await db.LockoutPolicySettings.FirstOrDefaultAsync(ct);
+            LockoutPolicySettings? existing = await db.LockoutPolicySettings.OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
 
             if (existing == null)
             {
