@@ -35,6 +35,8 @@ using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
 using VideoForensics.Providers.Wyze.Services;
+using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Core.Forensics.Implementations;
 
 namespace VideoForensics.Hosting
 {
@@ -539,7 +541,7 @@ namespace VideoForensics.Hosting
             // No-op publisher by default; batch 3b registers the SignalR-backed publisher ahead of this (TryAdd keeps it overridable).
             services.TryAddSingleton<ILiveViewTelemetryPublisher, NullLiveViewTelemetryPublisher>();
             _ = services.AddSingleton<ElevatedPollingWindowTracker>();
-            _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.ILiveViewInterferenceScorer, LiveViewInterferenceScorer>();
+            _ = services.AddSingleton<VideoForensics.Core.Forensics.Interfaces.ILiveViewInterferenceScorer, LiveViewInterferenceScorer>();
             _ = services.AddHostedService<LiveViewIdleTimeoutService>();
             _ = services.AddHostedService<CameraBitrateCalibrationService>();
 

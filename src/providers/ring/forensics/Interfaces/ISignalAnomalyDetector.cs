@@ -5,7 +5,7 @@ using VideoForensics.Core.Helpers.Forensics;
 using VideoForensics.Core.Helpers.Forensics.Models;
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Interfaces
+namespace VideoForensics.Providers.Ring.Forensics.Interfaces
 {
     /// <summary>
     /// Analyzes signal strength (RSSI) data to detect anomalies indicative of

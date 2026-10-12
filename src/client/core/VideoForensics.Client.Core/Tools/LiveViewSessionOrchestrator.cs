@@ -10,6 +10,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Core.Helpers.Forensics;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Interfaces;
+using VideoForensics.Core.Forensics.Interfaces;
 
 namespace VideoForensics.Client.Core.Tools
 {

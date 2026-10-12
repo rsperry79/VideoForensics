@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace VideoForensics.Core.Forensics.Tests.Fixtures
+namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 {
     /// <summary>
     /// Generates realistic sample evidence and events for testing.

@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Providers.Ring.Interfaces
+namespace VideoForensics.Core.Forensics.Interfaces
 {
     /// <summary>
     /// Scores live-view telemetry samples for potential RF interference or video degradation by comparing

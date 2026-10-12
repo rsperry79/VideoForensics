@@ -15,6 +15,8 @@ using VideoForensics.Providers.Ring.Interfaces;
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Core.Forensics.Implementations;
 
 namespace VideoForensics.Client.Core.Tests
 {

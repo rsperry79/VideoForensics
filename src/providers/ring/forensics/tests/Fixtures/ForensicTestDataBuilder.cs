@@ -1,6 +1,6 @@
 using Bogus;
 
-namespace VideoForensics.Core.Forensics.Tests.Fixtures
+namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 {
     /// <summary>
     /// Fluent builder for constructing test forensic data.

@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-using VideoForensics.Providers.Ring.Implementations;
-using VideoForensics.Providers.Ring.Interfaces;
+using VideoForensics.Providers.Ring.Forensics.Implementations;
+using VideoForensics.Providers.Ring.Forensics.Interfaces;
 
-namespace VideoForensics.Providers.Ring.DependencyInjection
+namespace VideoForensics.Providers.Ring.Forensics.DependencyInjection
 {
     /// <summary>Extension methods for registering VideoForensics signal-anomaly/jamming detection services.</summary>
     public static class ServiceCollectionExtensions

@@ -13,6 +13,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Interfaces;
 
 using Xunit;
+using VideoForensics.Core.Forensics.Interfaces;
 
 namespace VideoForensics.Client.Core.Tests
 {

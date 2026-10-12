@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Ring.Interfaces;
+using VideoForensics.Core.Forensics.Interfaces;
 
-namespace VideoForensics.Providers.Ring.Implementations
+namespace VideoForensics.Core.Forensics.Implementations
 {
     /// <summary>
     /// Compares live-view RTP/RTCP telemetry samples against camera baselines to score interference likelihood.

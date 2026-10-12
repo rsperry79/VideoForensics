@@ -1,4 +1,4 @@
-﻿{
+{
     "solution":  {
                      "path":  "VideoForensics.sln",
                      "projects":  [
@@ -40,6 +40,8 @@
                                       "src/providers/ring/common/VideoForensics.Providers.Ring.Common.csproj",
                                       "src/providers/ring/core/VideoForensics.Providers.Ring.Core.csproj",
                                       "src/providers/ring/core/tests/VideoForensics.Providers.Ring.Core.Tests.csproj",
+                                      "src/providers/ring/forensics/VideoForensics.Providers.Ring.Forensics.csproj",
+                                      "src/providers/ring/forensics/tests/VideoForensics.Providers.Ring.Forensics.Tests.csproj",
                                       "src/providers/ring/provider/tests/VideoForensics.Providers.Ring.Tests.csproj",
                                       "src/providers/ring/provider/VideoForensics.Providers.Ring.csproj",
                                       "src/providers/ring/snapshots/metadata/tests/VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.csproj",

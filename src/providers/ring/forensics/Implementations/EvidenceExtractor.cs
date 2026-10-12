@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using VideoForensics.Core.Helpers.Forensics;
 using VideoForensics.Core.Helpers.Forensics.Models;
 using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Interfaces;
+using VideoForensics.Providers.Ring.Forensics.Interfaces;
 
-namespace VideoForensics.Providers.Ring.Implementations
+namespace VideoForensics.Providers.Ring.Forensics.Implementations
 {
     /// <summary>
     /// Stub implementation of evidence extraction.
