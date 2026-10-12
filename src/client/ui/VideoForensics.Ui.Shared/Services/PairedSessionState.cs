@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace VideoForensics.Ui.Shared.Services
@@ -15,11 +17,26 @@ namespace VideoForensics.Ui.Shared.Services
     public class PairedSessionState
     {
         private readonly IJSRuntime _js;
+        private readonly IServiceProvider? _services;
         private bool _loaded;
 
+        /// <summary>
+        /// Without services the server check in <see cref="EnsureLoadedAsync"/> is skipped and only the stored
+        /// flag is used. The DI-registered constructor below is the one hosts use.
+        /// </summary>
         public PairedSessionState(IJSRuntime js)
         {
             _js = js;
+        }
+
+        /// <summary>
+        /// Resolves <see cref="ISelfApiHttpClientFactory"/> lazily, not in the constructor: the WebApp's factory
+        /// depends on this class (for the session token), so injecting it here would be a circular dependency.
+        /// </summary>
+        public PairedSessionState(IJSRuntime js, IServiceProvider services)
+            : this(js)
+        {
+            _services = services;
         }
 
         public virtual string? SessionToken { get; private set; }
@@ -70,6 +87,51 @@ namespace VideoForensics.Ui.Shared.Services
                 // Pre-render pass or a JS interop call before the circuit is fully connected - the
                 // caller will simply see IsSignedIn = false until the next real load attempt.
             }
+
+            await RefreshPasskeySetupOnlyFromServerAsync();
+        }
+
+        /// <summary>
+        /// Asks the server which kind of session the token is, so the layout follows the token rather than
+        /// browser storage. On any failure the stored flag stays in place and the session is not cleared.
+        /// </summary>
+        private async Task RefreshPasskeySetupOnlyFromServerAsync()
+        {
+            ISelfApiHttpClientFactory? clientFactory = _services?.GetService<ISelfApiHttpClientFactory>();
+            if (clientFactory is null || SessionToken is null)
+            {
+                return;
+            }
+
+            bool serverPasskeySetupOnly;
+            try
+            {
+                using HttpClient client = clientFactory.CreateClient(SessionToken);
+                using HttpResponseMessage response = await client.GetAsync("api/v1/auth/session-kind");
+                if (!response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+
+                SessionKindResponse? kind = await response.Content.ReadFromJsonAsync<SessionKindResponse>();
+                if (kind is null)
+                {
+                    return;
+                }
+
+                serverPasskeySetupOnly = kind.PasskeySetupOnly;
+            }
+            catch (Exception)
+            {
+                // Best-effort: a network, JSON or host-wiring failure keeps the stored flag as the fallback.
+                return;
+            }
+
+            // Persist the server's answer so a reload without the server still shows the right layout.
+            if (serverPasskeySetupOnly != PasskeySetupOnly && OperatorId is Guid operatorId && Role is string role)
+            {
+                await SetAsync(SessionToken, operatorId, role, MustChangePassword, serverPasskeySetupOnly);
+            }
         }
 
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
@@ -119,5 +181,8 @@ namespace VideoForensics.Ui.Shared.Services
 
         // PasskeySetupOnly defaults to false so a session cookie written before this flag existed still loads.
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
+
+        // Response of GET /api/v1/auth/session-kind.
+        private sealed record SessionKindResponse(bool PasskeySetupOnly);
     }
 }

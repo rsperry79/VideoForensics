@@ -203,6 +203,12 @@ namespace VideoForensics.WebApp.Auth
                     return AuthenticateResult.Fail("Invalid credential kind.");
                 }
 
+                if (principal.PasskeySetupOnly)
+                {
+                    // Carried on the principal so the browser can ask the server which kind of session it holds.
+                    claims = claims.Append(new Claim(VideoForensicsClaimTypes.PasskeySetupOnly, "true")).ToArray();
+                }
+
                 var identity = new ClaimsIdentity(claims, PairedDeviceAuthenticationDefaults.SchemeName);
                 var claimsPrincipal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(claimsPrincipal, PairedDeviceAuthenticationDefaults.SchemeName);
@@ -274,5 +280,8 @@ namespace VideoForensics.WebApp.Auth
         public const string PairedDeviceId = "vf:paired_device_id";
         public const string Role = "vf:role";
         public const string NetworkTier = "vf:network_tier";
+
+        /// <summary>Present ("true") only on a limited passkey-setup session; set from the validated token, read by GET /api/v1/auth/session-kind.</summary>
+        public const string PasskeySetupOnly = "vf:passkey_setup_only";
     }
 }
