@@ -5,6 +5,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IJSRuntime JS
 @inject IStringLocalizer<MyPasskeys> L
 
 <h4 class="mb-4">@L["Title"]</h4>
@@ -159,8 +160,36 @@ else
         if (firstRender)
         {
             await SessionState.EnsureLoadedAsync();
+            await PrefillDeviceLabelAsync();
             await LoadAsync();
             StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Fills the name field with a browser/OS label (e.g. "Chrome on Windows") when it is still empty.
+    /// Any failure leaves the field empty so the operator can type a name.
+    /// </summary>
+    private async Task PrefillDeviceLabelAsync()
+    {
+        if (!string.IsNullOrEmpty(_labelInput))
+        {
+            return;
+        }
+
+        try
+        {
+            var label = await JS.InvokeAsync<string?>("vfDeviceLabel.get");
+            // Re-check after the await: the operator may have typed while the browser was answering.
+            if (!string.IsNullOrWhiteSpace(label) && string.IsNullOrEmpty(_labelInput))
+            {
+                _labelInput = label;
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            // Script missing or JS unavailable: leave the field empty.
         }
     }
 
