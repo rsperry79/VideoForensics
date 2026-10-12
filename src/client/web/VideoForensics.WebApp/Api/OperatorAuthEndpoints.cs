@@ -4,6 +4,7 @@ using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Identity;
 
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
@@ -104,6 +105,24 @@ namespace VideoForensics.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("auth")
                 .WithSummary("Issue a step-up token by re-verifying password");
+
+            app.MapSessionKindEndpoint();
+        }
+
+        /// <summary>
+        /// GET /api/v1/auth/session-kind - AUTHENTICATED. Reports whether the caller's session is the limited
+        /// passkey-setup session. The answer comes from the claim the auth handler set from the validated token.
+        /// </summary>
+        internal static void MapSessionKindEndpoint(this WebApplication app)
+        {
+            _ = app.MapGet("/api/v1/auth/session-kind", GetSessionKindAsync)
+                .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+                .WithSummary("Report whether the current session is limited to passkey setup");
+        }
+
+        private static IResult GetSessionKindAsync(ClaimsPrincipal user)
+        {
+            return Results.Ok(new { passkeySetupOnly = user.HasClaim(VideoForensicsClaimTypes.PasskeySetupOnly, "true") });
         }
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(

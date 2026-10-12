@@ -1375,6 +1375,20 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task LimitedSession_SessionKindPath_Allowed()
+        {
+            // Arrange - the browser asks the server which kind of session it holds
+            (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
+                "limited-session-kind", "/api/v1/auth/session-kind", new List<OperatorCredential>());
+
+            // Act
+            AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
+
+            // Assert
+            Assert.True(result.Succeeded);
+        }
+
+        [Fact]
         public async Task LimitedSession_OperatorHasApprovedPasskeyButCreatedBeforeSession_Allowed()
         {
             // Arrange - the operator already had an approved passkey before this limited session was issued; creating a passkey is the reason it exists

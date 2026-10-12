@@ -1,6 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -1581,6 +1587,125 @@ namespace VideoForensics.WebApp.Tests
             return (Task<IResult>)method!.Invoke(null,
                 [request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
                  null, context, fido2, CancellationToken.None])!;
+        }
+
+        /// <summary>
+        /// Calls GET /api/v1/auth/session-kind through a TestServer wired like Program.cs: the real
+        /// PairedDevice handler (so the flag comes from the validated token), the real policies, and the real
+        /// route registration. Only the repositories and token service are mocked. Only this route is mapped,
+        /// because mapping the whole operator-auth group needs every one of its unrelated services.
+        /// </summary>
+        private static async Task<(HttpStatusCode Status, string Body)> RequestSessionKindAsync(bool limited, bool sendToken)
+        {
+            const string token = "session-kind-token";
+            var operatorId = Guid.NewGuid();
+            var securityStamp = Guid.NewGuid();
+
+            var principal = new SessionPrincipal(
+                operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp, DateTime.UtcNow, DateTime.UtcNow.AddHours(12))
+            {
+                PasskeySetupOnly = limited
+            };
+            var tokenService = new Mock<ISessionTokenService>();
+            _ = tokenService.Setup(t => t.Validate(token)).Returns(principal);
+
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Session Kind Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"session-kind-{operatorId:N}",
+                FirstName = "Session",
+                LastName = "Kind",
+                Email = $"{operatorId:N}@test.invalid",
+                SecurityStamp = securityStamp
+            };
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+
+            var credentials = new Mock<IOperatorCredentialRepository>();
+            _ = credentials.Setup(c => c.ListForOperatorAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<OperatorCredential>());
+
+            var builder = WebApplication.CreateBuilder();
+            _ = builder.WebHost.UseTestServer();
+            _ = builder.Services.AddSingleton(tokenService.Object);
+            _ = builder.Services.AddSingleton(operators.Object);
+            _ = builder.Services.AddSingleton(credentials.Object);
+            _ = builder.Services.AddSingleton(new Mock<IPairedDeviceRepository>().Object);
+            _ = builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
+            _ = builder.Services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
+            _ = builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, PairedDeviceAuthenticationHandler>(PairedDeviceAuthenticationDefaults.SchemeName, _ => { });
+
+            WebApplication app = builder.Build();
+            _ = app.UseAuthentication();
+            _ = app.UseAuthorization();
+            app.MapSessionKindEndpoint();
+            await app.StartAsync();
+
+            try
+            {
+                using HttpClient client = app.GetTestClient();
+                using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/session-kind");
+                if (sendToken)
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                }
+
+                using HttpResponseMessage response = await client.SendAsync(request);
+                return (response.StatusCode, await response.Content.ReadAsStringAsync());
+            }
+            finally
+            {
+                await app.StopAsync();
+                await app.DisposeAsync();
+            }
+        }
+
+        private static bool ReadPasskeySetupOnly(string body)
+        {
+            using JsonDocument document = JsonDocument.Parse(body);
+            return document.RootElement.GetProperty("passkeySetupOnly").GetBoolean();
+        }
+
+        [Fact]
+        public async Task SessionKind_LimitedSession_ReturnsTrue()
+        {
+            // Arrange - a limited passkey-setup token
+            // Act
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: true, sendToken: true);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, status);
+            Assert.True(ReadPasskeySetupOnly(body));
+        }
+
+        [Fact]
+        public async Task SessionKind_FullSession_ReturnsFalse()
+        {
+            // Arrange - an ordinary full session token
+            // Act
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, status);
+            Assert.False(ReadPasskeySetupOnly(body));
+        }
+
+        [Fact]
+        public async Task SessionKind_Unauthenticated_Returns401()
+        {
+            // Arrange - no bearer token
+            // Act
+            (HttpStatusCode status, _) = await RequestSessionKindAsync(limited: false, sendToken: false);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Unauthorized, status);
         }
     }
 

@@ -15,7 +15,8 @@ namespace VideoForensics.WebApp.Api
         {
             "/api/v1/auth/operator-credentials/register/options",
             "/api/v1/auth/operator-credentials/register/complete",
-            "/api/devices-management/operator-credentials/mine"
+            "/api/devices-management/operator-credentials/mine",
+            "/api/v1/auth/session-kind"
         };
 
         public static bool IsPathAllowed(string path)
