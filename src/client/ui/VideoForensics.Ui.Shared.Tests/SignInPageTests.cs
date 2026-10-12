@@ -86,10 +86,54 @@ public class SignInPageTests : BunitContext
         component.WaitForAssertion(() => Assert.Equal("/change-password", new Uri(nav.Uri).PathAndQuery));
     }
 
+    [Fact]
+    public async Task SignIn_TwoFactorRequired_ShowsPasskeyAndCreateChoices()
+    {
+        // Arrange - the operator has a passkey, so the server asks for a second factor instead of issuing a session
+        SetupTwoFactorRequired("corr-123");
+        var component = await RenderAndWaitForFormAsync();
+
+        // Act
+        await SubmitPasswordLoginAsync(component);
+
+        // Assert
+        component.WaitForAssertion(() =>
+        {
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.Contains("Use passkey", labels);
+            Assert.Contains("Create a new passkey", labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_CreatePasskeyChoice_NavigatesToPasskeySetup()
+    {
+        // Arrange
+        SetupTwoFactorRequired("corr-123");
+        WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
+            .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null));
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var component = await RenderAndWaitForFormAsync();
+        await SubmitPasswordLoginAsync(component);
+        component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Create a new passkey"));
+
+        // Act
+        await ClickButtonAsync(component, "Create a new passkey");
+
+        // Assert
+        component.WaitForAssertion(() => Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery));
+    }
+
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
         WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
-            .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey));
+            .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey, false, null));
+    }
+
+    private void SetupTwoFactorRequired(string correlationId)
+    {
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, correlationId));
     }
 
     private async Task<IRenderedComponent<SignIn>> RenderAndWaitForFormAsync()
@@ -98,6 +142,12 @@ public class SignInPageTests : BunitContext
         // SignIn shows a progress bar until its first-render OnAfterRenderAsync completes, then the form.
         await component.WaitForStateAsync(() => component.FindAll("input").Count >= 2);
         return component;
+    }
+
+    private static async Task ClickButtonAsync(IRenderedComponent<SignIn> component, string label)
+    {
+        IElement button = component.FindAll("button").First(b => b.TextContent.Trim() == label);
+        await button.ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
     }
 
     private static async Task SubmitPasswordLoginAsync(IRenderedComponent<SignIn> component)

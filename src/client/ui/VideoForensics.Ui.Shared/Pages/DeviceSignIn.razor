@@ -95,12 +95,20 @@ else
         _error = null;
         try
         {
-            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _) =
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _, requiresTwoFactor, _) =
                 await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
 
             if (!success)
             {
                 _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            if (requiresTwoFactor)
+            {
+                // No session is issued until the second factor completes; this page has no second-factor UI,
+                // so point the user at the passkey button instead of signing in with a missing token.
+                _error = L["TwoFactorRequiredUsePasskey"];
                 return;
             }
 

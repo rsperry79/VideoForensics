@@ -83,7 +83,7 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        (bool success, string? errorMessage, string? sessionToken, _, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool success, string? errorMessage, string? sessionToken, _, _, _, _, _, _) = await client.SignInWithPasswordAsync("alice", "password123");
 
         Assert.True(success, errorMessage);
         Assert.Equal("issued-token", sessionToken);
@@ -119,6 +119,180 @@ public class WebAuthnClientTests
             () => client.SignInWithPasswordAsync("alice", "password123"));
 
         Assert.Contains("hasPasskey", ex.Message);
+        Assert.DoesNotContain(token, ex.Message);
+    }
+
+    [Fact]
+    public async Task SignInWithPasswordAsync_RequiresTwoFactor_ReturnsTwoFactorResult_WithoutToken()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    requiresTwoFactor = true,
+                    twoFactorCorrelationId = "corr-123"
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        var result = await client.SignInWithPasswordAsync("alice", "password123");
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(result.RequiresTwoFactor);
+        Assert.Equal("corr-123", result.TwoFactorCorrelationId);
+        Assert.Null(result.SessionToken);
+    }
+
+    [Fact]
+    public async Task CreatePasskeyLoginAsync_Success_ReturnsSessionTuple()
+    {
+        var operatorId = Guid.NewGuid();
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    sessionToken = "passkey-setup-token",
+                    operatorId,
+                    role = "ReadOnly",
+                    mustChangePassword = true,
+                    hasPasskey = false,
+                    requiresPasskeyRegistration = true
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        var result = await client.CreatePasskeyLoginAsync("alice", "password123");
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal("passkey-setup-token", result.SessionToken);
+        Assert.Equal(operatorId, result.OperatorId);
+        Assert.Equal("ReadOnly", result.Role);
+        Assert.True(result.MustChangePassword);
+        Assert.False(result.HasPasskey);
+        Assert.Single(handler.Requests);
+        Assert.EndsWith("api/v1/auth/login/password/create-passkey", handler.Requests[0].RequestUri!.AbsolutePath);
+        Assert.Null(factory.LastRequestedBearerToken);
+    }
+
+    [Fact]
+    public async Task CreatePasskeyLoginAsync_MissingField_ThrowsNamingField()
+    {
+        const string token = "secret-token-value-456";
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new
+                {
+                    sessionToken = token,
+                    operatorId = Guid.NewGuid(),
+                    role = "ReadOnly",
+                    mustChangePassword = false
+                })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.CreatePasskeyLoginAsync("alice", "password123"));
+
+        Assert.Contains("hasPasskey", ex.Message);
+        Assert.DoesNotContain(token, ex.Message);
+    }
+
+    [Fact]
+    public async Task CompleteTwoFactorWithPasskeyAsync_OptionsRequestFails_ReturnsErrorWithoutRunningPasskeyPrompt()
+    {
+        var handler = new RecordingHandler
+        {
+            RespondWith = _ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new { error = "Invalid username or password" })
+            }
+        };
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
+
+        var result = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
+
+        Assert.False(result.Success);
+        Assert.Equal("Invalid username or password", result.ErrorMessage);
+        Assert.Single(handler.Requests);
+        Assert.EndsWith("api/v1/auth/webauthn/username-assertion-options", handler.Requests[0].RequestUri!.AbsolutePath);
+    }
+
+    /// <summary>JS runtime stub: returns a fixed assertion JSON for the WebAuthn ceremony call, nothing else is expected.</summary>
+    private sealed class FakeAuthenticateJsRuntime : IJSRuntime
+    {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+    }
+
+    private static RecordingHandler TwoFactorCompleteHandler(object body) => new()
+    {
+        RespondWith = request => request.RequestUri!.AbsolutePath.EndsWith("username-assertion-options", StringComparison.Ordinal)
+            ? new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = System.Net.Http.Json.JsonContent.Create(new { nonce = "nonce-1", options = new { challenge = "AAAA" } })
+            }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = System.Net.Http.Json.JsonContent.Create(body) }
+    };
+
+    [Fact]
+    public async Task CompleteTwoFactorWithPasskeyAsync_Success_ReadsMustChangePasswordFromResponse()
+    {
+        var operatorId = Guid.NewGuid();
+        var handler = TwoFactorCompleteHandler(new
+        {
+            sessionToken = "two-factor-session-token",
+            operatorId,
+            role = "SuperAdmin",
+            mustChangePassword = false,
+            hasPasskey = true
+        });
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new FakeAuthenticateJsRuntime(), factory);
+
+        var result = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal("two-factor-session-token", result.SessionToken);
+        Assert.Equal(operatorId, result.OperatorId);
+        Assert.False(result.MustChangePassword);
+        Assert.True(result.HasPasskey);
+        Assert.EndsWith("api/v1/auth/webauthn/username-assertion-complete", handler.Requests[1].RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task CompleteTwoFactorWithPasskeyAsync_MissingField_ThrowsNamingField()
+    {
+        const string token = "secret-token-value-789";
+        var handler = TwoFactorCompleteHandler(new
+        {
+            sessionToken = token,
+            operatorId = Guid.NewGuid(),
+            role = "SuperAdmin",
+            hasPasskey = true
+        });
+        var factory = new FakeSelfApiHttpClientFactory(handler);
+        var client = new WebAuthnClient(new FakeAuthenticateJsRuntime(), factory);
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123"));
+
+        Assert.Contains("mustChangePassword", ex.Message);
         Assert.DoesNotContain(token, ex.Message);
     }
 
