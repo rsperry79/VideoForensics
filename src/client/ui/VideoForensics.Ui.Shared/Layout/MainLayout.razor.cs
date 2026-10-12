@@ -299,26 +299,26 @@ namespace VideoForensics.Ui.Shared.Layout
             await Task.CompletedTask;
         }
 
-        private string GetSeverityBadgeClass(VideoForensics.Providers.Common.Contracts.NoticeSeverity severity)
+        private string GetSeverityBadgeClass(VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity severity)
         {
             return severity switch
             {
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Info => "severity-badge-info",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Warning => "severity-badge-warning",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Alert => "severity-badge-alert",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical => "severity-badge-critical",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Info => "severity-badge-info",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Warning => "severity-badge-warning",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Alert => "severity-badge-alert",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical => "severity-badge-critical",
                 _ => "severity-badge-info"
             };
         }
 
-        private string GetSeverityLabel(VideoForensics.Providers.Common.Contracts.NoticeSeverity severity)
+        private string GetSeverityLabel(VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity severity)
         {
             return severity switch
             {
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Info => "Info",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Warning => "Warning",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Alert => "Alert",
-                VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical => "Critical",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Info => "Info",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Warning => "Warning",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Alert => "Alert",
+                VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical => "Critical",
                 _ => "Info"
             };
         }

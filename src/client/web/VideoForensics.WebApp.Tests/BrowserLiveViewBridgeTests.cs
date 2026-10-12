@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using SIPSorcery.Net;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Services;
 
 using Xunit;

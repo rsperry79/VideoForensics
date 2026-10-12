@@ -4,7 +4,7 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
@@ -27,8 +27,8 @@ using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Hosting.Services;
-using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
@@ -171,7 +171,7 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
                 provider.GetRequiredService<IUserRepository>(),
-                provider.GetRequiredService<VideoForensics.Providers.Common.Contracts.INotificationDispatcher>()
+                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
             );
         }
 
@@ -560,9 +560,9 @@ namespace VideoForensics.Hosting
             // Evidence "grab still with hash" (plan §8a): server-side ffmpeg frame extraction plus
             // the orchestrator that persists the derived still, its chain-of-custody entry, and an
             // optional case pin.
-            _ = services.AddScoped<VideoForensics.Providers.Core.IMediaFrameExtractor>(serviceProvider =>
-                new VideoForensics.Providers.Core.FfmpegMediaFrameExtractor(
-                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Providers.Core.FfmpegMediaFrameExtractor>>()));
+            _ = services.AddScoped<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(serviceProvider =>
+                new VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor(
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor>>()));
 
             _ = services.AddScoped<IMediaStillCaptureService>(serviceProvider =>
                 new MediaStillCaptureOrchestrator(
@@ -570,7 +570,7 @@ namespace VideoForensics.Hosting
                     serviceProvider.GetRequiredService<IMediaItemRepository>(),
                     serviceProvider.GetRequiredService<IMediaStillRepository>(),
                     serviceProvider.GetRequiredService<IMediaStorageProvider>(),
-                    serviceProvider.GetRequiredService<VideoForensics.Providers.Core.IMediaFrameExtractor>(),
+                    serviceProvider.GetRequiredService<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(),
                     serviceProvider.GetRequiredService<IActionLogRepository>(),
                     serviceProvider.GetRequiredService<ICaseRepository>()));
 
@@ -642,7 +642,7 @@ namespace VideoForensics.Hosting
                             // Must be resolved keyed by "Ring", not the unkeyed IProviderAuthService - this loop
                             // registers Ring/Uniview/Wyze side by side, and the unkeyed overload only ever
                             // returns whichever provider's factory happened to run last in the loop above.
-                            var authService = provider.GetRequiredKeyedService<VideoForensics.Providers.Common.Contracts.IProviderAuthService>(providerName);
+                            var authService = provider.GetRequiredKeyedService<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>(providerName);
                             return new RingHealthSource(logger, sessionProvider, accountRepository, authService);
                         });
                 }

@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {

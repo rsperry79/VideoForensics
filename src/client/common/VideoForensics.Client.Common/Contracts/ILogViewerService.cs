@@ -2,7 +2,7 @@ namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// A single server log entry as shown to a UI client. Independent of the wire DTO
-    /// (<c>VideoForensics.Api.Contracts.LogEntryDto</c>) because <c>Api.Contracts</c> references this project,
+    /// (<c>VideoForensics.Core.Api.Contracts.LogEntryDto</c>) because <c>Api.Contracts</c> references this project,
     /// so the reverse reference would be a cycle; <see cref="ILogViewerService"/> implementations map at the HTTP boundary.
     /// </summary>
     public record LogEntry(

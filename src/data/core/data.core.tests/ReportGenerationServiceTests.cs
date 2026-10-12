@@ -6,7 +6,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
 

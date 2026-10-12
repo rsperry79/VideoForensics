@@ -10,7 +10,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Api

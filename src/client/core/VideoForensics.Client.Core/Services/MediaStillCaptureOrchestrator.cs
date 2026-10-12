@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Core;
+using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Client.Core.Services
 {

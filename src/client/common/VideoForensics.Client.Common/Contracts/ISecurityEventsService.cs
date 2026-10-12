@@ -2,8 +2,8 @@ namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// A single security event (login attempt, breach, lockout, etc.) as shown to a UI client -
-    /// deliberately independent of <c>VideoForensics.Api.Contracts.SecurityEventDto</c> (the wire DTO):
-    /// this project sits below <c>VideoForensics.Api.Contracts</c> in the dependency graph (the same
+    /// deliberately independent of <c>VideoForensics.Core.Api.Contracts.SecurityEventDto</c> (the wire DTO):
+    /// this project sits below <c>VideoForensics.Core.Api.Contracts</c> in the dependency graph (the same
     /// reason <see cref="IMediaContentUrlProvider"/> returns a plain dictionary rather than an
     /// Api.Contracts type), so <see cref="ISecurityEventsService"/>'s Remote/Local implementations
     /// translate to/from the wire DTO at the HTTP boundary.

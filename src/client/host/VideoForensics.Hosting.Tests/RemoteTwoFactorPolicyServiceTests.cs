@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Moq;
 using Moq.Protected;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 using Xunit;

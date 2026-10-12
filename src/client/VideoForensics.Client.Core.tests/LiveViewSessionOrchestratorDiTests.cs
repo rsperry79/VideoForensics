@@ -8,8 +8,8 @@ using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Forensics;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Helpers.Forensics;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Interfaces;
 
 using Xunit;

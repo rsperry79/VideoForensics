@@ -7,7 +7,7 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Ui.Shared.Services;
 

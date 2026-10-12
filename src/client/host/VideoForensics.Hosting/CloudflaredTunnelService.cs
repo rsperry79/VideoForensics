@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.RegularExpressions;
 
-using VideoForensics.Providers.Core;
+using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Hosting
 {

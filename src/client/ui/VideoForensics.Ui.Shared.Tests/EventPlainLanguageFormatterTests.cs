@@ -1,5 +1,5 @@
 using Xunit;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Formatting;
 
 namespace VideoForensics.Ui.Shared.Tests;

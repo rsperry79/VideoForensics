@@ -7,7 +7,7 @@
 @using VideoForensics.Ui.Shared.Components.Inspector
 @using VideoForensics.Ui.Shared.Components.Dump
 @using VideoForensics.Ui.Shared.Services.Scope
-@using VideoForensics.Providers.Common.Contracts
+@using VideoForensics.Core.Providers.Common.Contracts
 @using Syncfusion.Blazor.Calendars
 @implements IDisposable
 @inject IProviderAuthService AuthService
@@ -279,7 +279,7 @@
     private bool _configLoading;
     private bool _configLoadedOnce;
     private string? _configError;
-    private VideoForensics.Providers.Common.Contracts.DeviceConfig? _config;
+    private VideoForensics.Core.Providers.Common.Contracts.DeviceConfig? _config;
     private DateTime _configRetrievedAt;
 
     private async Task RunDeviceConfigAsync()

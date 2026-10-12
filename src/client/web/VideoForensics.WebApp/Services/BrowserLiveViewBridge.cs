@@ -7,7 +7,7 @@ using SIPSorcery.Net;
 
 using SIPSorceryMedia.Abstractions;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.WebApp.Services
 {

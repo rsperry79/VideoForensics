@@ -19,12 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\data\common\data.common\VideoForensics.Data.Common.csproj" />
-    <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
-    <ProjectReference Include="..\..\data\database\sqlite\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
-    <ProjectReference Include="..\..\client\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
-    <ProjectReference Include="..\..\core\helpers\core.helpers\VideoForensics.Providers.Common.Helpers.csproj" />
-    <ProjectReference Include="..\Diagnostics\VideoForensics.Utils.Diagnostics.csproj" />
+    <ProjectReference Include="../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+    <ProjectReference Include="../../data/database/data.database/VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../../data/database/sqlite/data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
+    <ProjectReference Include="../../client/host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="../../core/Helpers/VideoForensics.Core.Helpers.csproj" />
+    <ProjectReference Include="../Diagnostics/VideoForensics.Utils.Diagnostics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

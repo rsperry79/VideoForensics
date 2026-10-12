@@ -3,10 +3,10 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text.Json;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

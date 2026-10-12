@@ -1,6 +1,6 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
-    using VideoForensics.Providers.Common.Contracts;
+    using VideoForensics.Core.Providers.Common.Contracts;
     using System.Collections.Concurrent;
     using LocationEntity = VideoForensics.Data.Common.Entities.Location;
     using DeviceEntity = VideoForensics.Data.Common.Entities.Device;

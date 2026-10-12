@@ -1,4 +1,4 @@
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 

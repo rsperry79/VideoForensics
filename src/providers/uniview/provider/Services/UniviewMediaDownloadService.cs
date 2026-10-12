@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Uniview.Services;
 

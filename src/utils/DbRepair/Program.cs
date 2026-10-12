@@ -9,7 +9,7 @@ using VideoForensics.Utils.Diagnostics.Contracts;
 using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.DbRepair.Contracts;
 using VideoForensics.Hosting;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 // VideoForensics.Utils.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
 // and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost

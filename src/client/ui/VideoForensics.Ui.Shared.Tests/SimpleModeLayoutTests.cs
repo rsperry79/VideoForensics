@@ -15,13 +15,13 @@ using VideoForensics.Ui.Shared.Layout.Mobile;
 using VideoForensics.Ui.Shared.Layout.Simple;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using Microsoft.Extensions.Localization;
 using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Services.Cases;
 using VideoForensics.Ui.Shared.Services.Scope;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 /// <summary>
 /// Tests for SimpleLayout component rendering and mode switching behavior.

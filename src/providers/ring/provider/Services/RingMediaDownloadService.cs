@@ -7,7 +7,7 @@ using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 

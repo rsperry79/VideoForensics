@@ -1,4 +1,4 @@
-using VideoForensics.Providers.Common.Helpers.Json.Converters;
+using VideoForensics.Core.Helpers.Json.Converters;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {

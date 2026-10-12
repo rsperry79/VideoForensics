@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Logging.Services;

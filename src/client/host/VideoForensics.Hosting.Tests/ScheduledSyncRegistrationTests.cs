@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

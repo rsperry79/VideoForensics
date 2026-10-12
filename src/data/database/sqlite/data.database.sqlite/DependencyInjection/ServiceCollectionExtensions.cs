@@ -7,7 +7,7 @@ using System.Security.Principal;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {

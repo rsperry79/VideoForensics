@@ -2,7 +2,7 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Services;
 

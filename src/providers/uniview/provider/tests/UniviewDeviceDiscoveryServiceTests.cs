@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Uniview.Services;
 
 using Xunit;

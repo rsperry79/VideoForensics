@@ -1,6 +1,6 @@
 using System.Reactive.Linq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Ui.Shared.Contracts;

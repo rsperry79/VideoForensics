@@ -22,11 +22,11 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\client\common\VideoForensics.Client.Common\VideoForensics.Client.Common.csproj" />
-    <ProjectReference Include="..\..\..\..\client\core\VideoForensics.Client.Core\VideoForensics.Client.Core.csproj" />
-    <ProjectReference Include="..\VideoForensics.Providers.Ring.csproj" />
-    <ProjectReference Include="..\..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
-    <ProjectReference Include="..\..\utils\VideoForensics.Providers.Ring.Utils.csproj" />
+    <ProjectReference Include="../../../../client/common/VideoForensics.Client.Common/VideoForensics.Client.Common.csproj" />
+    <ProjectReference Include="../../../../client/core/VideoForensics.Client.Core/VideoForensics.Client.Core.csproj" />
+    <ProjectReference Include="../VideoForensics.Providers.Ring.csproj" />
+    <ProjectReference Include="../../../../data/core/data.core/VideoForensics.Data.Core.csproj" />
+    <ProjectReference Include="../../utils/VideoForensics.Providers.Ring.Utils.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />

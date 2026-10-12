@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
 {

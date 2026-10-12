@@ -2,7 +2,7 @@ using System.Reactive.Subjects;
 
 using Moq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 

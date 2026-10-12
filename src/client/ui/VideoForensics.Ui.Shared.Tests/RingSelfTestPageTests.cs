@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Moq;
 using Xunit;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Components.Inspector;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;

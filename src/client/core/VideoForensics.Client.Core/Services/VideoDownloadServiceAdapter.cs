@@ -8,17 +8,17 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
 {
     public class VideoDownloadServiceAdapter : IVideoDownloadService
     {
         private readonly ILogger<VideoDownloadServiceAdapter> _logger;
-        private readonly Providers.Common.Contracts.IVideoProvider _videoProvider;
-        private readonly Providers.Common.Contracts.IProviderAuthService _authService;
-        private readonly Providers.Common.Contracts.IMediaDownloadService _downloadService;
-        private readonly Providers.Common.Contracts.IDeviceDiscoveryService _deviceService;
+        private readonly VideoForensics.Core.Providers.Common.Contracts.IVideoProvider _videoProvider;
+        private readonly VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService _authService;
+        private readonly VideoForensics.Core.Providers.Common.Contracts.IMediaDownloadService _downloadService;
+        private readonly VideoForensics.Core.Providers.Common.Contracts.IDeviceDiscoveryService _deviceService;
         private readonly IVideoForensicsDataClient _dataClient;
         private readonly IForensicsConfiguration _forensicsConfig;
         private string? _lastError;
@@ -73,10 +73,10 @@ namespace VideoForensics.Client.Core.Services
 
         public VideoDownloadServiceAdapter(
             ILogger<VideoDownloadServiceAdapter> logger,
-            Providers.Common.Contracts.IVideoProvider videoProvider,
-            Providers.Common.Contracts.IProviderAuthService authService,
-            Providers.Common.Contracts.IMediaDownloadService downloadService,
-            Providers.Common.Contracts.IDeviceDiscoveryService deviceService,
+            VideoForensics.Core.Providers.Common.Contracts.IVideoProvider videoProvider,
+            VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService authService,
+            VideoForensics.Core.Providers.Common.Contracts.IMediaDownloadService downloadService,
+            VideoForensics.Core.Providers.Common.Contracts.IDeviceDiscoveryService deviceService,
             IVideoForensicsDataClient dataClient,
             IForensicsConfiguration forensicsConfig)
         {
@@ -189,9 +189,9 @@ namespace VideoForensics.Client.Core.Services
         /// Discovers devices across all locations, deduped by device id (a device shared across
         /// multiple locations otherwise comes back once per location).
         /// </summary>
-        private async Task<List<Providers.Common.Contracts.Device>> DiscoverUniqueDevicesAsync()
+        private async Task<List<VideoForensics.Core.Providers.Common.Contracts.Device>> DiscoverUniqueDevicesAsync()
         {
-            IReadOnlyList<Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync();
+            IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync();
             if (locations == null || locations.Count == 0)
             {
                 return [];
@@ -200,19 +200,19 @@ namespace VideoForensics.Client.Core.Services
             _logger.LogInformation("Found {LocationCount} location(s)", locations.Count);
 
             var seenDeviceIds = new HashSet<string>();
-            var uniqueDevices = new List<Providers.Common.Contracts.Device>();
-            foreach (Providers.Common.Contracts.Location location in locations)
+            var uniqueDevices = new List<VideoForensics.Core.Providers.Common.Contracts.Device>();
+            foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
             {
                 _knownLocationNames[location.Id] = location.Name;
                 _logger.LogInformation("Checking location: {LocationId}", location.Id);
-                IReadOnlyList<Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
+                IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                 if (devices == null || devices.Count == 0)
                 {
                     _logger.LogWarning("No devices found in location {LocationId}", location.Id);
                     continue;
                 }
 
-                foreach (Providers.Common.Contracts.Device device in devices)
+                foreach (VideoForensics.Core.Providers.Common.Contracts.Device device in devices)
                 {
                     if (seenDeviceIds.Add(device.Id))
                     {
@@ -231,7 +231,7 @@ namespace VideoForensics.Client.Core.Services
         /// and caches the result under runKey so a later call with the same key is a no-op.
         /// </summary>
         private async Task PreScanCoreAsync(
-            List<Providers.Common.Contracts.Device> uniqueDevices,
+            List<VideoForensics.Core.Providers.Common.Contracts.Device> uniqueDevices,
             DateTime startDate,
             DateTime endDate,
             bool force,
@@ -254,8 +254,8 @@ namespace VideoForensics.Client.Core.Services
             // that needs the most history means its single fetch covers every other device's
             // narrower range too - one real history fetch for the whole batch instead of up to one
             // per distinct watermark.
-            var devicesNeedingCount = new List<(Providers.Common.Contracts.Device Device, DateTime EffectiveStart)>();
-            foreach (Providers.Common.Contracts.Device device in uniqueDevices)
+            var devicesNeedingCount = new List<(VideoForensics.Core.Providers.Common.Contracts.Device Device, DateTime EffectiveStart)>();
+            foreach (VideoForensics.Core.Providers.Common.Contracts.Device device in uniqueDevices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -282,7 +282,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             bool hasMadeRealHistoryCall = false;
-            foreach ((Providers.Common.Contracts.Device? device, DateTime deviceEffectiveStart) in devicesNeedingCount.OrderBy(d => d.EffectiveStart))
+            foreach ((VideoForensics.Core.Providers.Common.Contracts.Device? device, DateTime deviceEffectiveStart) in devicesNeedingCount.OrderBy(d => d.EffectiveStart))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -328,7 +328,7 @@ namespace VideoForensics.Client.Core.Services
                 _completedRunKey = runKey;
             }
 
-            List<Providers.Common.Contracts.Device> uniqueDevices = await DiscoverUniqueDevicesAsync();
+            List<VideoForensics.Core.Providers.Common.Contracts.Device> uniqueDevices = await DiscoverUniqueDevicesAsync();
             await PreScanCoreAsync(uniqueDevices, startDate, endDate, force, runKey, cancellationToken);
         }
 
@@ -388,7 +388,7 @@ namespace VideoForensics.Client.Core.Services
                 }
 
                 // Get available devices
-                List<Providers.Common.Contracts.Device> uniqueDevices = await DiscoverUniqueDevicesAsync();
+                List<VideoForensics.Core.Providers.Common.Contracts.Device> uniqueDevices = await DiscoverUniqueDevicesAsync();
 
                 // Download videos from all devices
                 int totalDevices = uniqueDevices.Count;
@@ -416,7 +416,7 @@ namespace VideoForensics.Client.Core.Services
                 // Process one device completely before moving to the next
                 for (int i = 0; i < uniqueDevices.Count; i++)
                 {
-                    Providers.Common.Contracts.Device device = uniqueDevices[i];
+                    VideoForensics.Core.Providers.Common.Contracts.Device device = uniqueDevices[i];
                     _currentDeviceIndex = i + 1;
                     _currentDeviceName = device.Name;
 
@@ -624,7 +624,7 @@ namespace VideoForensics.Client.Core.Services
                 }
 
                 // Get available devices
-                IReadOnlyList<Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync();
+                IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location> locations = await _deviceService.GetLocationsAsync();
                 if (locations == null || locations.Count == 0)
                 {
                     _lastError = "No locations found for the account.";
@@ -636,18 +636,18 @@ namespace VideoForensics.Client.Core.Services
 
                 // Dedupe devices shared across multiple locations (see DownloadVideosAsync).
                 var seenDeviceIds = new HashSet<string>();
-                var uniqueDevices = new List<Providers.Common.Contracts.Device>();
-                foreach (Providers.Common.Contracts.Location location in locations)
+                var uniqueDevices = new List<VideoForensics.Core.Providers.Common.Contracts.Device>();
+                foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
                 {
                     _logger.LogInformation("Checking location: {LocationId}", location.Id);
-                    IReadOnlyList<Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
+                    IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                     if (devices == null || devices.Count == 0)
                     {
                         _logger.LogWarning("No devices found in location {LocationId}", location.Id);
                         continue;
                     }
 
-                    foreach (Providers.Common.Contracts.Device device in devices)
+                    foreach (VideoForensics.Core.Providers.Common.Contracts.Device device in devices)
                     {
                         if (seenDeviceIds.Add(device.Id))
                         {
@@ -668,7 +668,7 @@ namespace VideoForensics.Client.Core.Services
                 // Sequential device processing to avoid rate limiting
                 for (int i = 0; i < uniqueDevices.Count; i++)
                 {
-                    Providers.Common.Contracts.Device device = uniqueDevices[i];
+                    VideoForensics.Core.Providers.Common.Contracts.Device device = uniqueDevices[i];
                     _currentDeviceIndex = i + 1;
                     _currentDeviceName = device.Name;
 
@@ -754,7 +754,7 @@ namespace VideoForensics.Client.Core.Services
             return "Ready";
         }
 
-        public Providers.Common.Contracts.DownloadStatus GetProgress()
+        public VideoForensics.Core.Providers.Common.Contracts.DownloadStatus GetProgress()
         {
             DownloadStatus status = _downloadService.GetStatus();
 
@@ -779,7 +779,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             // Return enriched status with aggregated data and speed
-            return new Providers.Common.Contracts.DownloadStatus(
+            return new VideoForensics.Core.Providers.Common.Contracts.DownloadStatus(
                 IsDownloading: status.IsDownloading,
                 FilesCompleted: status.FilesCompleted,
                 FilesTotal: status.FilesTotal,

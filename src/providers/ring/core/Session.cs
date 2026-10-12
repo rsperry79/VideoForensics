@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring

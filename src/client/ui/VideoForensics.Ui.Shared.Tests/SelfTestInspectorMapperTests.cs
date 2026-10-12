@@ -1,7 +1,7 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Services.SelfTest;
 
 public class SelfTestInspectorMapper_ToInspector_Tests

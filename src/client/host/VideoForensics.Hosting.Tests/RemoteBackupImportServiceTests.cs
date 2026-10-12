@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 

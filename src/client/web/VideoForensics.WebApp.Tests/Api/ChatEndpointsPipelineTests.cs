@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;

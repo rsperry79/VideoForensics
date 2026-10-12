@@ -6,7 +6,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Hubs;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {

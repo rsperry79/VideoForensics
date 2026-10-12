@@ -1,4 +1,4 @@
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.WebApp.Auth;

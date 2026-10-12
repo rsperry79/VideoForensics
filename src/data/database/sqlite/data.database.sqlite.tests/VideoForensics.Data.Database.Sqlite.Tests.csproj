@@ -24,7 +24,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\data.database.sqlite\VideoForensics.Data.Database.Sqlite.csproj" />
+    <ProjectReference Include="../data.database.sqlite/VideoForensics.Data.Database.Sqlite.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />

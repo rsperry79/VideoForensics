@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using Moq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
 

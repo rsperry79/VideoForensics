@@ -1,4 +1,4 @@
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Services.Inspector;
 
 namespace VideoForensics.Ui.Shared.Services.QueryApi;

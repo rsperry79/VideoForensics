@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Data.Core.Services
 {

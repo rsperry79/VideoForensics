@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;

@@ -4,7 +4,7 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
 

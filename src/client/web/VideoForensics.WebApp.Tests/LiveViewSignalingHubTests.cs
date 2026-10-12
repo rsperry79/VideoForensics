@@ -12,7 +12,7 @@ using SIPSorcery.Net;
 using SIPSorceryMedia.Abstractions;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Services;
 

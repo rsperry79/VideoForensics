@@ -2,13 +2,13 @@ namespace VideoForensics.Client.Common.Contracts
 {
     /// <summary>
     /// Lightweight operator summary for a UI client (e.g. a cross-account picker) - deliberately
-    /// independent of <c>VideoForensics.Api.Contracts.OperatorSummaryDto</c> (the wire DTO); see
+    /// independent of <c>VideoForensics.Core.Api.Contracts.OperatorSummaryDto</c> (the wire DTO); see
     /// <see cref="ISecurityEventsService"/>'s <c>SecurityEventSummary</c> doc comment for why.
     /// </summary>
     public record OperatorSummary(Guid Id, string DisplayName, bool Active);
 
     /// <summary>
-    /// Client-side type for an operator's UI mode and lock status (decoupled from <see cref="VideoForensics.Api.Contracts.OperatorUiModeDto"/>
+    /// Client-side type for an operator's UI mode and lock status (decoupled from <see cref="VideoForensics.Core.Api.Contracts.OperatorUiModeDto"/>
     /// for the same reasons <see cref="OperatorSummary"/> is separate from the wire DTO).
     /// </summary>
     public record OperatorUiMode(string Mode, bool Locked);

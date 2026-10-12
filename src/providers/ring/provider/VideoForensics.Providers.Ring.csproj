@@ -23,13 +23,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\core\providers\providers-core\VideoForensics.Providers.Core.csproj" />
-        <ProjectReference Include="..\..\..\core\providers\providers-common\VideoForensics.Providers.Common.csproj" />
-        <ProjectReference Include="..\..\..\data\core\data.core\VideoForensics.Data.Core.csproj" />
-        <ProjectReference Include="..\..\..\core\forensics\VideoForensics.Providers.Ring.Forensics.csproj" />
-        <ProjectReference Include="..\core\VideoForensics.Providers.Ring.Core.csproj" />
-        <ProjectReference Include="..\common\VideoForensics.Providers.Ring.Common.csproj" />
-        <ProjectReference Include="..\auth\VideoForensics.Providers.Ring.Auth.csproj" />
+        <ProjectReference Include="../../../core/Providers/Core/VideoForensics.Core.Providers.Core.csproj" />
+        <ProjectReference Include="../../../core/Providers/Common/VideoForensics.Core.Providers.Common.csproj" />
+        <ProjectReference Include="../../../data/core/data.core/VideoForensics.Data.Core.csproj" />
+        <ProjectReference Include="../../../core/Forensics/VideoForensics.Core.Forensics.csproj" />
+        <ProjectReference Include="../core/VideoForensics.Providers.Ring.Core.csproj" />
+        <ProjectReference Include="../common/VideoForensics.Providers.Ring.Common.csproj" />
+        <ProjectReference Include="../auth/VideoForensics.Providers.Ring.Auth.csproj" />
     </ItemGroup>
 
     <ItemGroup>

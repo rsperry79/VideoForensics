@@ -3,7 +3,7 @@ namespace VideoForensics.Ui.Shared.Contracts
     /// <summary>
     /// One host-agnostic sample of download progress, the data <c>DownloadProgressPanel</c> renders.
     /// <para>
-    /// Fields are declared directly rather than reusing <c>Providers.Common.DownloadStatus</c>, because
+    /// Fields are declared directly rather than reusing <c>VideoForensics.Core.Providers.Common.DownloadStatus</c>, because
     /// the remote (MAUI) source has the wire <c>DownloadStatusDto</c> and Ui.Shared must not depend on
     /// Hosting to convert it. The field names and types mirror <c>DownloadStatus</c> so a local source
     /// maps across with no renaming.

@@ -98,9 +98,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ui\VideoForensics.Ui.Shared\VideoForensics.Ui.Shared.csproj" />
-    <ProjectReference Include="..\..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
-    <ProjectReference Include="..\..\..\core\core\core.logging\VideoForensics.Core.Logging.csproj" />
+    <ProjectReference Include="../../ui/VideoForensics.Ui.Shared/VideoForensics.Ui.Shared.csproj" />
+    <ProjectReference Include="../../host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="../../../core/Logging/VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 
   <!-- Keep only the Syncfusion theme CSS the app references (bootstrap5.css via index.html,

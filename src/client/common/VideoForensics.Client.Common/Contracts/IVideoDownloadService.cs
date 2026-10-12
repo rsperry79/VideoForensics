@@ -23,7 +23,7 @@ namespace VideoForensics.Client.Common.Contracts
         IReadOnlyDictionary<string, int> GetPreScanCounts();
         string GetDownloadStatus();
         /// <summary>Live per-file progress for the download currently in flight (files completed/total, bytes, current file).</summary>
-        Providers.Common.Contracts.DownloadStatus GetProgress();
+        VideoForensics.Core.Providers.Common.Contracts.DownloadStatus GetProgress();
         /// <summary>Drains and returns any per-file activity messages queued since the last call (e.g. "✓ file.mp4 (5.2 MB)", "✗ event 123: 404").</summary>
         IReadOnlyList<string> DrainActivityLog();
         /// <summary>How many matched items from the last download call weren't actually downloaded (e.g. a rate limit cut the run short), aggregated across all devices processed.</summary>

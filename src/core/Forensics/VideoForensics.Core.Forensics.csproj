@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
+        <SignAssembly>true</SignAssembly>
+        <!-- Strong names are not validated on .NET (Core); this assembly is signed for legacy reasons but
+             references unsigned assemblies (VideoForensics.Data.Common), which is harmless. -->
+        <NoWarn>$(NoWarn);CS8002</NoWarn>
+        <AssemblyOriginatorKeyFile>../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyName>VideoForensics.Core.Forensics</AssemblyName>
+        <Company>Koen Zomers</Company>
+        <Authors>Koen Zomers</Authors>
+        <Description>Forensic evidence extraction and analysis for Ring device data, including signal integrity monitoring for tamper detection.</Description>
+        <Copyright>Koen Zomers</Copyright>
+        <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="tests/**/*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../providers/ring/common/VideoForensics.Providers.Ring.Common.csproj" />
+        <ProjectReference Include="../Helpers/Forensics/VideoForensics.Core.Helpers.Forensics.csproj" />
+        <ProjectReference Include="../../data/common/data.common/VideoForensics.Data.Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    </ItemGroup>
+
+</Project>

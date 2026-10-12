@@ -2,7 +2,7 @@ using Microsoft.Win32;
 
 using System.Runtime.InteropServices;
 
-using VideoForensics.Providers.Common.Helpers.Platform;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.Core.Utilities
 {

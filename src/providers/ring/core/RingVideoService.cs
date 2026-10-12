@@ -10,13 +10,13 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Common.Helpers.Contracts;
-using VideoForensics.Providers.Common.Helpers.Media;
+using VideoForensics.Core.Helpers.Contracts;
+using VideoForensics.Core.Helpers.Media;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Models;
 
-using static VideoForensics.Providers.Common.Helpers.Contracts.JsonSerializationMode;
+using static VideoForensics.Core.Helpers.Contracts.JsonSerializationMode;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -78,7 +78,7 @@ namespace VideoForensics.Providers.Ring
             this.configLocationNames = configLocationNames;
             this.defaultFilter = defaultFilter;
             this.mediaValidator = mediaValidator ?? new MediaValidator();
-            this.jsonSerializer = jsonSerializer ?? new VideoForensics.Providers.Common.Helpers.Json.JsonSerializer();
+            this.jsonSerializer = jsonSerializer ?? new VideoForensics.Core.Helpers.Json.JsonSerializer();
 
             SavedSettingsFolder = dataDirectory;
             SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");

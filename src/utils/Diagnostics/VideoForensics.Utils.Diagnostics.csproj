@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\data\database\data.database\VideoForensics.Data.Database.csproj" />
+    <ProjectReference Include="../../data/database/data.database/VideoForensics.Data.Database.csproj" />
   </ItemGroup>
 
   <ItemGroup>

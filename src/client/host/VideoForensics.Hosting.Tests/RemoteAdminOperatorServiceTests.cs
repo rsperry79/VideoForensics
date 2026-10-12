@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 

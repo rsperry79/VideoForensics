@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\host\VideoForensics.Hosting\VideoForensics.Hosting.csproj" />
+        <ProjectReference Include="../host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
     </ItemGroup>
 
 </Project>

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -350,7 +350,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         SourceIp: null,
                                         Details: $"Failed to decrypt stored credential for account {providerAccountId.Value}: {ex.Message}",
                                         Audience: NotificationAudience.AdminsOnly,
-                                        Severity: VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                        Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical),
                                     cancellationToken);
                             }
                             catch (Exception notifEx)
@@ -425,7 +425,7 @@ namespace VideoForensics.Providers.Ring.Services
                                                     SourceIp: null,
                                                     Details: $"Failed to decrypt stored credential for account {account.Id}: {ex.Message}",
                                                     Audience: NotificationAudience.AdminsOnly,
-                                                    Severity: VideoForensics.Providers.Common.Contracts.NoticeSeverity.Critical),
+                                                    Severity: VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity.Critical),
                                                 cancellationToken);
                                         }
                                         catch (Exception notifEx)

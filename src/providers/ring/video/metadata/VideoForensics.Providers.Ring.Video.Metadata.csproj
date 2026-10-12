@@ -31,7 +31,7 @@
     <ItemGroup>
         <ProjectReference Include="../VideoForensics.Providers.Ring.Video.csproj" />
         <ProjectReference Include="../../common/VideoForensics.Providers.Ring.Common.csproj" />
-        <ProjectReference Include="../../../../core/providers/providers-core/VideoForensics.Providers.Core.csproj" />
+        <ProjectReference Include="../../../../core/Providers/Core/VideoForensics.Core.Providers.Core.csproj" />
     </ItemGroup>
 
     <ItemGroup>

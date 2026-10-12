@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="../../../core/helpers/core.helpers/VideoForensics.Providers.Common.Helpers.csproj" />
+      <ProjectReference Include="../../../core/Helpers/VideoForensics.Core.Helpers.csproj" />
     </ItemGroup>
 
 </Project>

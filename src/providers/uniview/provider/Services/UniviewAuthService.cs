@@ -2,8 +2,8 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Providers.Common.Contracts;
-using VideoForensics.Providers.Core;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Providers.Uniview.Services
 {

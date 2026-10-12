@@ -1,5 +1,5 @@
 using System.Text.Json;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Services.Inspector;
 
 namespace VideoForensics.Ui.Shared.Services.SelfTest;

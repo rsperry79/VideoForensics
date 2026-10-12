@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 
 using Moq;
 
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Hubs;
 

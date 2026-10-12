@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 
@@ -13,7 +13,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetEventsAsync_WithoutOperatorId_CallsCorrectEndpoint()
         {
             // Arrange
-            var events = new List<VideoForensics.Api.Contracts.SecurityEventDto>
+            var events = new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>
             {
                 new(
                     Id: Guid.NewGuid(),
@@ -54,7 +54,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var events = new List<VideoForensics.Api.Contracts.SecurityEventDto>
+            var events = new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>
             {
                 new(
                     Id: Guid.NewGuid(),
@@ -96,7 +96,7 @@ namespace VideoForensics.Hosting.Tests
                 request =>
                 {
                     var response = new HttpResponseMessage(HttpStatusCode.OK);
-                    response.Content = JsonContent.Create(new List<VideoForensics.Api.Contracts.SecurityEventDto>());
+                    response.Content = JsonContent.Create(new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>());
                     return response;
                 }
             );

@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using VideoForensics.Providers.Core;
+using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Providers.Uniview;
 

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.WebApp.Tests.Api;
 using Xunit;
 

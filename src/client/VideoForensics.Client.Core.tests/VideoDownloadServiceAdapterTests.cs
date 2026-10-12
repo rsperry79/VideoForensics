@@ -6,7 +6,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -205,7 +205,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[]));
 
             bool result = await _adapter.DownloadVideosAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
@@ -220,7 +220,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[]));
 
             await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
 
@@ -303,7 +303,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[]));
 
             bool result = await _adapter.DownloadSnapshotsAsync(_testTempPath, DateTime.Today, DateTime.Today);
 
@@ -323,7 +323,7 @@ namespace VideoForensics.Client.Core.Tests
 
             _ = _deviceServiceMock
                 .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Providers.Common.Contracts.Location>)[]));
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[]));
 
             // Act: Call DownloadVideosAsync with a path that would be used to test log output sanitization.
             // Use a valid temp path that still exercises the logging and error-setting paths.

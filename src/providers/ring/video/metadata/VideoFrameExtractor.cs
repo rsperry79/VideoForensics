@@ -5,7 +5,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 
-using VideoForensics.Providers.Core;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Providers.Ring.Models;
 
 namespace VideoForensics.Providers.Ring

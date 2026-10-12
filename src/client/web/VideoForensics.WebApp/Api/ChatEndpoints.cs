@@ -1,5 +1,5 @@
 using System.Text.Json;
-using VideoForensics.Api.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 
