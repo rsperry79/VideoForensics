@@ -391,7 +391,11 @@ namespace VideoForensics.WebApp.Api
                 return Results.Unauthorized();
             }
 
-            // Create new credential - UNAPPROVED (this is an additional credential being added to an already-approved operator)
+            // New passkeys are UNAPPROVED unless the policy auto-approves (first passkey for the primary SuperAdmin or after a password reset)
+            IReadOnlyList<OperatorCredential> existingCredentials = await credentials.ListForOperatorAsync(operatorId, ct);
+            bool hasApprovedCredential = existingCredentials.Any(c => c.IsApproved && c.RevokedAtUtc == null);
+            bool autoApprove = CredentialApprovalPolicy.ShouldAutoApprove(op, hasApprovedCredential);
+
             var newCredential = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -401,7 +405,7 @@ namespace VideoForensics.WebApp.Api
                 WebAuthnPublicKey = credential.PublicKey,
                 WebAuthnSignCount = credential.SignCount,
                 CreatedAtUtc = DateTime.UtcNow,
-                IsApproved = false,
+                IsApproved = autoApprove,
                 RevokedAtUtc = null,
                 FirstLoginNotifiedAtUtc = null
             };
@@ -410,7 +414,7 @@ namespace VideoForensics.WebApp.Api
             // Notify admins of pending credential
             try
             {
-                if (notificationDispatcher != null)
+                if (notificationDispatcher != null && !autoApprove)
                 {
                     await notificationDispatcher.DispatchAsync(new NotificationEvent(
                         EventType: "OperatorCredentialPendingApproval",
@@ -428,10 +432,13 @@ namespace VideoForensics.WebApp.Api
                 // Non-critical - log but don't fail if notification dispatch fails
             }
 
+            string auditDetail = autoApprove
+                ? $"Passkey auto-approved: {pending.Label}"
+                : $"Pending credential added: {pending.Label}";
             await auditLog.LogAsync(SecurityAuditEventTypes.CredentialRegistered, operatorId, null,
-                tierResolver.ResolveClientIp(context), $"Pending credential added: {pending.Label}", isUrgent: false, ct);
+                tierResolver.ResolveClientIp(context), auditDetail, isUrgent: false, ct);
 
-            return Results.Ok(new { credentialId = newCredential.Id, isApproved = false });
+            return Results.Ok(new { credentialId = newCredential.Id, isApproved = autoApprove });
         }
 
         private static async Task<IResult> RegisterAsync(
