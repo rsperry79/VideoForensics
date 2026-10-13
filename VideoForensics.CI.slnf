@@ -7,6 +7,7 @@
                                       "src/client/host/VideoForensics.Hosting/tests/VideoForensics.Hosting.Tests.csproj",
                                       "src/client/host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj",
                                       "src/client/ui/VideoForensics.Ui.Shared/src/VideoForensics.Ui.Shared.csproj",
+                                      "src/client/ui/VideoForensics.Ui.Shared/tests/VideoForensics.Ui.Shared.Tests.csproj",
                                       "src/client/core/VideoForensics.Client.Core/tests/VideoForensics.Client.Core.Tests.csproj",
                                       "src/client/mcp/VideoForensics.Mcp/src/VideoForensics.Mcp.csproj",
                                       "src/client/web/VideoForensics.WebApp/tests/VideoForensics.WebApp.Tests.csproj",
@@ -61,7 +62,13 @@
                                       "src/providers/wyze/core/src/VideoForensics.Providers.Wyze.Core.csproj",
                                       "src/providers/wyze/provider/tests/VideoForensics.Providers.Wyze.Tests.csproj",
                                       "src/providers/wyze/provider/src/VideoForensics.Providers.Wyze.csproj",
-                                      "src/providers/wyze/utils/src/VideoForensics.Providers.Wyze.Utils.csproj"
+                                      "src/providers/wyze/utils/src/VideoForensics.Providers.Wyze.Utils.csproj",
+                                      "src/utils/dbrepair/src/VideoForensics.Utils.DbRepair.csproj",
+                                      "src/utils/dbrepair/tests/VideoForensics.Utils.DbRepair.Tests.csproj",
+                                      "src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj",
+                                      "src/utils/diagnostics/src/VideoForensics.Utils.Diagnostics.csproj",
+                                      "src/utils/diagnostics/tests/VideoForensics.Utils.Diagnostics.Tests.csproj",
+                                      "src/utils/selftest/src/VideoForensics.Utils.SelfTest.csproj"
                                   ]
                  }
 }
