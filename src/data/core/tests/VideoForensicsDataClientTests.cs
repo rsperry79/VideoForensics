@@ -611,6 +611,76 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task VideoForensicsDataClient_EnsureLocation_NewLocation_LinksToProviderAccount()
+        {
+            // Arrange
+            var providerAccountId = Guid.NewGuid();
+            string providerLocationId = "location-link-new";
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockLocationRepoInContext = new Mock<ILocationRepository>();
+            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
+            _ = mockLocationRepoInContext
+                .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Location?)null);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Location>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Location>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            Location result = await _dataClient.EnsureLocationAsync(
+                providerAccountId, providerLocationId, "Name", "Addr", ct: CancellationToken.None);
+
+            // Assert
+            mockLocationRepoInContext.Verify(
+                x => x.LinkToProviderAccountAsync(result.Id, providerAccountId, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task VideoForensicsDataClient_EnsureLocation_ExistingLocation_StillLinksToProviderAccount()
+        {
+            // Arrange
+            var providerAccountId = Guid.NewGuid();
+            string providerLocationId = "location-link-existing";
+            var existingLocation = new Location
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = providerLocationId,
+                Name = "Existing"
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockLocationRepoInContext = new Mock<ILocationRepository>();
+            _ = mockContext.Setup(x => x.Locations).Returns(mockLocationRepoInContext.Object);
+            _ = mockLocationRepoInContext
+                .Setup(x => x.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingLocation);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Location>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Location>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            Location result = await _dataClient.EnsureLocationAsync(
+                providerAccountId, providerLocationId, "Existing", null, ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal(existingLocation.Id, result.Id);
+            mockLocationRepoInContext.Verify(
+                x => x.AddAsync(It.IsAny<Location>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+            mockLocationRepoInContext.Verify(
+                x => x.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_CreatesNewDeviceWhenNoneExists()
         {
             // Arrange

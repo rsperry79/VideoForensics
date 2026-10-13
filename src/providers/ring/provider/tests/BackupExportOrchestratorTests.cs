@@ -197,5 +197,40 @@ namespace VideoForensics.Providers.Ring.Tests
                 Directory.Delete(tempDir, true);
             }
         }
+
+        [Fact]
+        public async Task ExportBackupAsync_IncludesAccountLocationLinks()
+        {
+            var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "ring" };
+            var loc = new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "p", Name = "n" };
+            _ = _mockAccountRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([account]);
+            _ = _mockLocationRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([loc]);
+            _ = _mockLocationRepo.Setup(r => r.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([loc]);
+            _ = _mockDeviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockDownloadEventRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockMediaItemRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockConfig.Setup(c => c.DownloadLocation).Returns("/downloads");
+
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                BackupExportResult result = await CreateOrchestrator().ExportBackupAsync(tempDir, CancellationToken.None);
+
+                Assert.True(result.Success);
+                using var zip = new ICSharpCode.SharpZipLib.Zip.ZipFile(result.ArchivePath!);
+                ICSharpCode.SharpZipLib.Zip.ZipEntry? entry = zip.GetEntry("account_locations.json");
+                Assert.NotNull(entry);
+                using var reader = new StreamReader(zip.GetInputStream(entry));
+                List<ExportedAccountLocationLink>? links = System.Text.Json.JsonSerializer.Deserialize<List<ExportedAccountLocationLink>>(reader.ReadToEnd());
+                ExportedAccountLocationLink link = Assert.Single(links!);
+                Assert.Equal(account.Id, link.ProviderAccountId);
+                Assert.Equal(loc.Id, link.LocationId);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

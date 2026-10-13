@@ -209,11 +209,27 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.Id == locationId));
         }
 
-        /// <summary>Gets all locations (deprecated method, returns all locations for backward compatibility).</summary>
-        [Obsolete("ProviderLocationId is now globally unique. Use ListAsync instead.")]
-        public Task<IReadOnlyList<Location>> GetByProviderAccountIdAsync(Guid accountId, CancellationToken ct)
+        /// <summary>Lists the locations linked to a provider account.</summary>
+        public Task<IReadOnlyList<Location>> ListByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<Location>)_db.Locations.AsNoTracking().ToList());
+            return Task.FromResult((IReadOnlyList<Location>)_db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.ProviderAccountId == providerAccountId)
+                .Join(_db.Locations.AsNoTracking(), l => l.LocationId, loc => loc.Id, (l, loc) => loc)
+                .ToList());
+        }
+
+        /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
+        public Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct)
+        {
+            bool exists = _db.ProviderAccountLocations.Any(l => l.LocationId == locationId && l.ProviderAccountId == providerAccountId)
+                || _db.ProviderAccountLocations.Local.Any(l => l.LocationId == locationId && l.ProviderAccountId == providerAccountId);
+            if (!exists)
+            {
+                _ = _db.ProviderAccountLocations.Add(new ProviderAccountLocation { LocationId = locationId, ProviderAccountId = providerAccountId });
+            }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>Gets a location by provider location ID (globally unique).</summary>

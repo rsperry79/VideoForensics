@@ -82,10 +82,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(new[] { device });
@@ -157,10 +155,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(new[] { device });
@@ -228,10 +224,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(new[] { device });
@@ -299,10 +293,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(new[] { device });
@@ -372,10 +364,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(new[] { device });
@@ -431,10 +421,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-#pragma warning disable CS0618
-            _mockLocationRepository.Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
-#pragma warning restore CS0618
 
             _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(Array.Empty<DeviceEntity>());

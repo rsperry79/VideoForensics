@@ -115,7 +115,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(account1);
 
             mockLocationRepository
-                .Setup(r => r.GetByProviderAccountIdAsync(account1Id, cancellationToken))
+                .Setup(r => r.ListByProviderAccountIdAsync(account1Id, cancellationToken))
                 .ReturnsAsync(new[] { location1 });
 
             mockDeviceRepository
@@ -145,7 +145,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(account2);
 
             mockLocationRepository
-                .Setup(r => r.GetByProviderAccountIdAsync(account2Id, cancellationToken))
+                .Setup(r => r.ListByProviderAccountIdAsync(account2Id, cancellationToken))
                 .ReturnsAsync(new[] { location2 });
 
             mockDeviceRepository
@@ -271,7 +271,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(account1);
 
             mockLocationRepository
-                .Setup(r => r.GetByProviderAccountIdAsync(account1Id, cancellationToken))
+                .Setup(r => r.ListByProviderAccountIdAsync(account1Id, cancellationToken))
                 .ReturnsAsync(new[] { location1 });
 
             mockDeviceRepository
@@ -292,7 +292,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(account2);
 
             mockLocationRepository
-                .Setup(r => r.GetByProviderAccountIdAsync(account2Id, cancellationToken))
+                .Setup(r => r.ListByProviderAccountIdAsync(account2Id, cancellationToken))
                 .ReturnsAsync(new[] { location2 });
 
             mockDeviceRepository
@@ -401,7 +401,7 @@ namespace VideoForensics.Hosting.Tests.Services
                     .ReturnsAsync(account);
 
                 mockLocationRepository
-                    .Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+                    .Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                     .ReturnsAsync(new[] { location });
 
                 mockDeviceRepository
@@ -475,7 +475,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(account);
 
             mockLocationRepository
-                .Setup(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken))
+                .Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
 
             mockDeviceRepository
@@ -509,7 +509,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             // Assert: All expected methods were called
             mockProviderAccountRepository.Verify(r => r.GetAsync(accountId, cancellationToken), Times.Once);
-            mockLocationRepository.Verify(r => r.GetByProviderAccountIdAsync(accountId, cancellationToken), Times.Once);
+            mockLocationRepository.Verify(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken), Times.Once);
             mockDeviceRepository.Verify(r => r.GetByLocationIdAsync(locationId, cancellationToken), Times.Once);
             mockEventAndConfigService.Verify(s => s.GetEventsAsync(
                 accountId,

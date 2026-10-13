@@ -116,6 +116,15 @@ namespace VideoForensics.Client.Core.Services
                 IReadOnlyList<DownloadEvent> downloadEvents = await _downloadEventRepository.ListAsync(ct);
                 IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.ListAsync(ct);
 
+                var accountLocations = new List<ExportedAccountLocationLink>();
+                foreach (ProviderAccount account in accounts)
+                {
+                    foreach (VideoForensics.Data.Common.Entities.Location linked in await _locationRepository.ListByProviderAccountIdAsync(account.Id, ct))
+                    {
+                        accountLocations.Add(new ExportedAccountLocationLink { ProviderAccountId = account.Id, LocationId = linked.Id });
+                    }
+                }
+
                 string downloadLocationRoot = _forensicsConfiguration.DownloadLocation ?? string.Empty;
                 var exportedMediaItems = mediaItems
                     .Select(m => ExportedMediaItem.FromMediaItem(m, downloadLocationRoot))
@@ -124,6 +133,7 @@ namespace VideoForensics.Client.Core.Services
                 var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
                 string accountsJson = JsonSerializer.Serialize(accounts, jsonOptions);
                 string locationsJson = JsonSerializer.Serialize(locations, jsonOptions);
+                string accountLocationsJson = JsonSerializer.Serialize(accountLocations, jsonOptions);
                 string devicesJson = JsonSerializer.Serialize(devices, jsonOptions);
                 string eventsJson = JsonSerializer.Serialize(events, jsonOptions);
                 string downloadEventsJson = JsonSerializer.Serialize(downloadEvents, jsonOptions);
@@ -154,6 +164,7 @@ namespace VideoForensics.Client.Core.Services
                     await WriteJsonEntryAsync(zipStream, "manifest.json", manifestJson, ct);
                     await WriteJsonEntryAsync(zipStream, "accounts.json", accountsJson, ct);
                     await WriteJsonEntryAsync(zipStream, "locations.json", locationsJson, ct);
+                    await WriteJsonEntryAsync(zipStream, "account_locations.json", accountLocationsJson, ct);
                     await WriteJsonEntryAsync(zipStream, "devices.json", devicesJson, ct);
                     await WriteJsonEntryAsync(zipStream, "events.json", eventsJson, ct);
                     await WriteJsonEntryAsync(zipStream, "download_events.json", downloadEventsJson, ct);

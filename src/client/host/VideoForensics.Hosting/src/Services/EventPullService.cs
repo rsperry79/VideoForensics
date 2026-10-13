@@ -50,9 +50,7 @@ namespace VideoForensics.Hosting.Services
                     return;
                 }
 
-#pragma warning disable CS0618
-                var locations = await _locationRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
-#pragma warning restore CS0618
+                var locations = await _locationRepository.ListByProviderAccountIdAsync(accountId, cancellationToken);
                 if (locations == null || locations.Count == 0)
                 {
                     _logger.LogInformation("No locations found for account");

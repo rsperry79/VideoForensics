@@ -27,13 +27,34 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
         }
 
-        /// <summary>Gets all locations for a provider account (deprecated - returns all locations for backward compatibility).</summary>
-        [Obsolete("ProviderLocationId is now globally unique. Use ListAsync instead.")]
-        public async Task<IReadOnlyList<Location>> GetByProviderAccountIdAsync(Guid accountId, CancellationToken ct)
+        /// <summary>Lists the locations linked to a provider account.</summary>
+        public async Task<IReadOnlyList<Location>> ListByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct)
         {
-            // For backward compatibility, return all locations
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Locations.ToListAsync(ct);
+            return await db.ProviderAccountLocations
+                .Where(l => l.ProviderAccountId == providerAccountId)
+                .Join(db.Locations, l => l.LocationId, loc => loc.Id, (l, loc) => loc)
+                .ToListAsync(ct);
+        }
+
+        /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
+        public async Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            bool exists = await db.ProviderAccountLocations
+                .AnyAsync(l => l.LocationId == locationId && l.ProviderAccountId == providerAccountId, ct);
+            if (exists)
+            {
+                return;
+            }
+
+            _ = db.ProviderAccountLocations.Add(new ProviderAccountLocation
+            {
+                LocationId = locationId,
+                ProviderAccountId = providerAccountId
+            });
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogInformation("Location {LocationId} linked to provider account {ProviderAccountId}", locationId, providerAccountId);
         }
 
         /// <summary>Gets a location by provider location ID (globally unique).</summary>

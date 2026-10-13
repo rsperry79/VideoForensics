@@ -8,9 +8,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets a location by ID.</summary>
         Task<Location?> GetAsync(Guid locationId, CancellationToken ct);
 
-        /// <summary>Gets all locations for a provider account (deprecated - kept for backward compatibility during transition).</summary>
-        [Obsolete("ProviderLocationId is now globally unique. Use GetByProviderLocationIdAsync or ListAsync instead.")]
-        Task<IReadOnlyList<Location>> GetByProviderAccountIdAsync(Guid accountId, CancellationToken ct);
+        /// <summary>Lists the locations linked to a provider account.</summary>
+        Task<IReadOnlyList<Location>> ListByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct);
+
+        /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
+        Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct);
 
         /// <summary>Gets a location by provider location ID (now globally unique, accountId parameter ignored).</summary>
         Task<Location?> GetByProviderLocationIdAsync(string providerLocationId, CancellationToken ct);

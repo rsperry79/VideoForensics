@@ -53,6 +53,9 @@ namespace VideoForensics.Client.Core.Services
                 List<DownloadEvent> downloadEvents = await ReadJsonAsync<List<DownloadEvent>>(Path.Combine(tempDir, "download_events.json"), ct) ?? [];
                 List<ExportedMediaItem> mediaItems = await ReadJsonAsync<List<ExportedMediaItem>>(Path.Combine(tempDir, "media_items.json"), ct) ?? [];
 
+                // Optional section: older backups lack it, in which case the migration backfill supplies the links.
+                List<ExportedAccountLocationLink> accountLocations = await ReadJsonAsync<List<ExportedAccountLocationLink>>(Path.Combine(tempDir, "account_locations.json"), ct) ?? [];
+
                 BackupImportResult result = await _unitOfWork.ExecuteAsync(async ctx =>
                 {
                     var importResult = new BackupImportResult();
@@ -92,6 +95,22 @@ namespace VideoForensics.Client.Core.Services
                         await ctx.Locations.AddAsync(location, ct);
                         importResult.Locations.Inserted++;
                         _ = importedLocationIds.Add(location.Id);
+                    }
+
+                    foreach (ExportedAccountLocationLink link in accountLocations)
+                    {
+                        // Skip links whose endpoints are unknown so a dangling reference cannot fail the whole import.
+                        bool accountOk = importedAccountIds.Contains(link.ProviderAccountId) ||
+                            await ctx.ProviderAccounts.GetAsync(link.ProviderAccountId, ct) != null;
+                        bool linkLocationOk = importedLocationIds.Contains(link.LocationId) ||
+                            await ctx.Locations.GetAsync(link.LocationId, ct) != null;
+                        if (!accountOk || !linkLocationOk)
+                        {
+                            importResult.Details.Add($"Skipped account-location link {link.ProviderAccountId}/{link.LocationId}: account or location not found");
+                            continue;
+                        }
+
+                        await ctx.Locations.LinkToProviderAccountAsync(link.LocationId, link.ProviderAccountId, ct);
                     }
 
                     var importedDeviceIds = new HashSet<Guid>();

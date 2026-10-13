@@ -15,7 +15,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AccessAuditLogEntity", b =>
                 {
@@ -2246,6 +2246,21 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("ProviderAccounts");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderAccountLocation", b =>
+                {
+                    b.Property<Guid>("ProviderAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ProviderAccountId", "LocationId");
+
+                    b.HasIndex("LocationId");
+
+                    b.ToTable("ProviderAccountLocations");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderApiCallRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2793,6 +2808,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasForeignKey("OperatorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderAccountLocation", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VideoForensics.Data.Common.Entities.ProviderAccount", "ProviderAccount")
+                        .WithMany()
+                        .HasForeignKey("ProviderAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("ProviderAccount");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.AiAnalysisSnapshot", b =>

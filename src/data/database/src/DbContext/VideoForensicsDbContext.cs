@@ -28,6 +28,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the locations.</summary>
         public DbSet<Location> Locations { get; set; }
 
+        /// <summary>Gets or sets the provider account to location links.</summary>
+        public DbSet<ProviderAccountLocation> ProviderAccountLocations { get; set; }
+
         /// <summary>Gets or sets the devices.</summary>
         public DbSet<Device> Devices { get; set; }
 

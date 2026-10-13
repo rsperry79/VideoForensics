@@ -115,9 +115,7 @@ namespace VideoForensics.Hosting.Tests
 
                 var location = new Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-" + provider, Name = "Home" };
                 var device = new Device { Id = Guid.NewGuid(), LocationId = location.Id, ProviderDeviceId = "dev-" + account.Id, Name = "Cam", Type = "camera" };
-#pragma warning disable CS0618
-                _ = Locations.Setup(r => r.GetByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
-#pragma warning restore CS0618
+                _ = Locations.Setup(r => r.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
                 _ = Devices.Setup(r => r.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([device]);
 
                 if (registerKeyed)

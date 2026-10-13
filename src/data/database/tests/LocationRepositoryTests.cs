@@ -53,21 +53,63 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(location.Id, retrieved.Id);
         }
 
+        private async Task<ProviderAccount> AddAccountAsync()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await using VideoForensics.Data.Database.DbContext.VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            User user = TestDataBuilder.BuildUser();
+            account.UserId = user.Id;
+            _ = db.Users.Add(user);
+            _ = db.ProviderAccounts.Add(account);
+            _ = await db.SaveChangesAsync();
+            return account;
+        }
+
         [Fact]
-        public async Task LocationRepository_GetByProviderAccountId_ReturnsAllLocations()
+        public async Task LocationRepository_ListByProviderAccountId_ReturnsOnlyLinkedLocations()
         {
             Location loc1 = TestDataBuilder.BuildLocation();
             Location loc2 = TestDataBuilder.BuildLocation();
-            Location loc3 = TestDataBuilder.BuildLocation();
-
             await _repository.AddAsync(loc1, CancellationToken.None);
             await _repository.AddAsync(loc2, CancellationToken.None);
-            await _repository.AddAsync(loc3, CancellationToken.None);
+            ProviderAccount account = await AddAccountAsync();
 
-#pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
-            IReadOnlyList<Location> list = await _repository.GetByProviderAccountIdAsync(Guid.NewGuid(), CancellationToken.None);
-#pragma warning restore CS0618
-            Assert.Equal(3, list.Count);
+            await _repository.LinkToProviderAccountAsync(loc1.Id, account.Id, CancellationToken.None);
+            IReadOnlyList<Location> list = await _repository.ListByProviderAccountIdAsync(account.Id, CancellationToken.None);
+
+            Location only = Assert.Single(list);
+            Assert.Equal(loc1.Id, only.Id);
+        }
+
+        [Fact]
+        public async Task LocationRepository_LinkToProviderAccount_IsIdempotent()
+        {
+            Location loc = TestDataBuilder.BuildLocation();
+            await _repository.AddAsync(loc, CancellationToken.None);
+            ProviderAccount account = await AddAccountAsync();
+
+            await _repository.LinkToProviderAccountAsync(loc.Id, account.Id, CancellationToken.None);
+            await _repository.LinkToProviderAccountAsync(loc.Id, account.Id, CancellationToken.None);
+
+            IReadOnlyList<Location> list = await _repository.ListByProviderAccountIdAsync(account.Id, CancellationToken.None);
+            _ = Assert.Single(list);
+        }
+
+        [Fact]
+        public async Task LocationRepository_ListByProviderAccountId_ShareAcrossAccounts()
+        {
+            Location loc = TestDataBuilder.BuildLocation();
+            await _repository.AddAsync(loc, CancellationToken.None);
+            ProviderAccount account1 = await AddAccountAsync();
+            ProviderAccount account2 = await AddAccountAsync();
+
+            await _repository.LinkToProviderAccountAsync(loc.Id, account1.Id, CancellationToken.None);
+            await _repository.LinkToProviderAccountAsync(loc.Id, account2.Id, CancellationToken.None);
+
+            IReadOnlyList<Location> list1 = await _repository.ListByProviderAccountIdAsync(account1.Id, CancellationToken.None);
+            IReadOnlyList<Location> list2 = await _repository.ListByProviderAccountIdAsync(account2.Id, CancellationToken.None);
+            Assert.Equal(loc.Id, Assert.Single(list1).Id);
+            Assert.Equal(loc.Id, Assert.Single(list2).Id);
         }
 
         [Fact]

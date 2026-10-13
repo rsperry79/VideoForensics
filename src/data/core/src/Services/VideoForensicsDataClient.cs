@@ -386,11 +386,14 @@ namespace VideoForensics.Data.Core.Services
                         };
                         await context.Locations.AddAsync(location, ct);
                         _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
+                        await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
                         return location;
                     }
                     else
                     {
                         _logger.LogInformation("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
+                        // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
+                        await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
                         return existingLocation;
                     }
                 }, ct);

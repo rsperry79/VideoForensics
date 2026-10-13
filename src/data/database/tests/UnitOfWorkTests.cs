@@ -262,9 +262,7 @@ namespace VideoForensics.Data.Database.Tests
             Location? location1 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-#pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
-                IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-#pragma warning restore CS0618
+                IReadOnlyList<Location> locations = await context.Locations.ListAsync(CancellationToken.None);
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
@@ -291,9 +289,7 @@ namespace VideoForensics.Data.Database.Tests
             Location? location2 = null;
             _ = await _unitOfWork.ExecuteAsync(async context =>
             {
-#pragma warning disable CS0618 // Testing deprecated method's own behavior for backward-compat coverage
-                IReadOnlyList<Location> locations = await context.Locations.GetByProviderAccountIdAsync(accountId, CancellationToken.None);
-#pragma warning restore CS0618
+                IReadOnlyList<Location> locations = await context.Locations.ListAsync(CancellationToken.None);
                 Location? existing = locations.FirstOrDefault(l => l.ProviderLocationId == providerLocationId);
 
                 if (existing == null)
