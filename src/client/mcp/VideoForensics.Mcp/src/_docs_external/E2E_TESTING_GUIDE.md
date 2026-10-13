@@ -6,7 +6,7 @@ This guide provides comprehensive manual testing procedures for validating the V
 
 ### 1. Build the MCP Server
 ```bash
-dotnet publish -c Release src/client/VideoForensics.Mcp/VideoForensics.Mcp.csproj
+dotnet publish -c Release src/client/mcp/VideoForensics.Mcp/VideoForensics.Mcp.csproj
 ```
 Verify the build completes without errors.
 

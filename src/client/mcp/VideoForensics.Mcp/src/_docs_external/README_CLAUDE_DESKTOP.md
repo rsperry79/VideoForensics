@@ -16,7 +16,7 @@ Plus **Bonus: Jamming Analysis** - RF interference detection from RSSI patterns.
 ### 1. Build the MCP Server
 
 ```bash
-dotnet publish -c Release src/client/VideoForensics.Mcp/VideoForensics.Mcp.csproj
+dotnet publish -c Release src/client/mcp/VideoForensics.Mcp/VideoForensics.Mcp.csproj
 ```
 
 ### 2. Locate the Published Executable
@@ -24,7 +24,7 @@ dotnet publish -c Release src/client/VideoForensics.Mcp/VideoForensics.Mcp.cspro
 After building, the executable will be at:
 
 ```
-src/client/VideoForensics.Mcp/bin/Release/net10.0/publish/VideoForensics.Mcp.exe
+src/client/mcp/VideoForensics.Mcp/bin/Release/net10.0/publish/VideoForensics.Mcp.exe
 ```
 
 **Note:** You will need the full absolute path for the Claude Desktop configuration file.

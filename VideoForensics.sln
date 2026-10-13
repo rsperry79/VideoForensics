@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{C5A3B5EA-BE9F-76E5-E9B8-8A22B289B295}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp", "src\client\VideoForensics.Mcp\src\VideoForensics.Mcp.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp", "src\client\mcp\VideoForensics.Mcp\src\VideoForensics.Mcp.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{F643C2BC-D7C9-4928-9C8B-6F9DDE2DE8F2}"
 EndProject
@@ -73,7 +73,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{727349DD-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core", "src\client\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj", "{2B3DE419-C9E7-4ECD-A070-BFD82B7DD953}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core.tests", "src\client\core\VideoForensics.Client.Core\tests\VideoForensics.Client.Core.tests.csproj", "{99B937E4-CAA0-49EC-901A-927E74E0AF2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Core.Tests", "src\client\core\VideoForensics.Client.Core\tests\VideoForensics.Client.Core.Tests.csproj", "{99B937E4-CAA0-49EC-901A-927E74E0AF2B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{C488CF00-1FBD-8E28-690D-BAA9FBB7B71F}"
 EndProject
