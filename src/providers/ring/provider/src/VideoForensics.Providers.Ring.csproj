@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <AssemblyName>VideoForensics.Ring</AssemblyName>
+        <AssemblyName>VideoForensics.Providers.Ring</AssemblyName>
         <RootNamespace>VideoForensics.Providers.Ring</RootNamespace>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Ring.com provider implementation for VideoForensics using IVideoProvider abstraction</Description>

@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <AssemblyName>VideoForensics.Wyze</AssemblyName>
+        <AssemblyName>VideoForensics.Providers.Wyze</AssemblyName>
         <RootNamespace>VideoForensics.Providers.Wyze</RootNamespace>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Wyze provider implementation for VideoForensics using IVideoProvider abstraction</Description>

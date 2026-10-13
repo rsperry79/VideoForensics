@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <AssemblyName>VideoForensics.Uniview</AssemblyName>
+        <AssemblyName>VideoForensics.Providers.Uniview</AssemblyName>
         <RootNamespace>VideoForensics.Providers.Uniview</RootNamespace>
         <Authors>DV Victim Protection Team</Authors>
         <Description>Uniview NVR provider implementation for VideoForensics using IVideoProvider abstraction</Description>
