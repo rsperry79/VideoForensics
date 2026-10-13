@@ -91,6 +91,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new[] { device });
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+                accountId,
                 "device-123",
                 DateTime.MinValue,
                 It.IsAny<DateTime>(),
@@ -98,7 +99,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ReturnsAsync(events);
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync("device-123", cancellationToken))
+            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
                 .ReturnsAsync(config);
 
             // Act
@@ -106,6 +107,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
+                accountId,
                 "device-123",
                 DateTime.MinValue,
                 It.IsAny<DateTime>(),
@@ -113,7 +115,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             ), Times.Once);
 
-            _mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync("device-123", cancellationToken), Times.Once);
+            _mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken), Times.Once);
         }
 
         [Fact]
@@ -164,6 +166,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new[] { device });
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+                accountId,
                 "device-123",
                 lastAuthTime,
                 It.IsAny<DateTime>(),
@@ -171,7 +174,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ReturnsAsync(new List<DeviceEvent>());
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync("device-123", cancellationToken))
+            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
@@ -179,6 +182,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
+                accountId,
                 "device-123",
                 lastAuthTime,
                 It.IsAny<DateTime>(),
@@ -233,6 +237,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new[] { device });
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
@@ -240,7 +245,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ReturnsAsync(new List<DeviceEvent>());
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<string>(), cancellationToken))
+            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
@@ -303,6 +308,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new[] { device });
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
@@ -310,7 +316,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ReturnsAsync(new List<DeviceEvent>());
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<string>(), cancellationToken))
+            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
@@ -375,6 +381,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new[] { device });
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+                It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
@@ -437,7 +444,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             // Assert
             Assert.Null(ex);
-            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, cancellationToken), Times.Never);
+            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, cancellationToken), Times.Never);
         }
 
         [Fact]

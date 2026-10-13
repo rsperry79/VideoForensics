@@ -298,7 +298,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         }
 
         [Fact]
-        public async Task GetMigrations_AfterConsolidation_ContainsExactlyOneInitialCreate()
+        public async Task GetMigrations_AfterConsolidation_StartsWithSingleInitialCreate()
         {
             string dbPath = GetTempDbPath();
             string tempDir = Path.GetDirectoryName(dbPath)!;
@@ -310,8 +310,9 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
 
                 string[] migrations = context.Database.GetMigrations().ToArray();
 
-                _ = Assert.Single(migrations);
+                Assert.NotEmpty(migrations);
                 Assert.EndsWith("_InitialCreate", migrations[0]);
+                _ = Assert.Single(migrations, m => m.EndsWith("_InitialCreate", StringComparison.Ordinal));
             }
             finally
             {
@@ -347,7 +348,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
         }
 
         [Fact]
-        public async Task InitializeAsync_HistoryContainsOnlyCurrentMigration_DoesNotThrow()
+        public async Task InitializeAsync_HistoryContainsAllCurrentMigrations_DoesNotThrow()
         {
             string dbPath = GetTempDbPath();
             string tempDir = Path.GetDirectoryName(dbPath)!;
@@ -355,10 +356,10 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
             {
                 await using ServiceProvider provider = BuildProvider(dbPath);
                 IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-                string current;
+                string[] current;
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    current = context.Database.GetMigrations().Single();
+                    current = context.Database.GetMigrations().ToArray();
                 }
 
                 CreateHistoryOnlyDatabase(dbPath, current);
