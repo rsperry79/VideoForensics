@@ -79,7 +79,8 @@ namespace VideoForensics.Providers.Ring.Tests
             List<Device>? devices = null,
             List<Event>? events = null,
             List<DownloadEvent>? downloadEvents = null,
-            List<ExportedMediaItem>? mediaItems = null)
+            List<ExportedMediaItem>? mediaItems = null,
+            List<ExportedAccountLocationLink>? accountLocations = null)
         {
             var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
             using var zipStream = new ZipOutputStream(File.Create(zipPath));
@@ -100,6 +101,10 @@ namespace VideoForensics.Providers.Ring.Tests
             WriteEntry("events.json", JsonSerializer.Serialize(events ?? [], jsonOptions));
             WriteEntry("download_events.json", JsonSerializer.Serialize(downloadEvents ?? [], jsonOptions));
             WriteEntry("media_items.json", JsonSerializer.Serialize(mediaItems ?? [], jsonOptions));
+            if (accountLocations != null)
+            {
+                WriteEntry("account_locations.json", JsonSerializer.Serialize(accountLocations, jsonOptions));
+            }
 
             return zipPath;
         }
@@ -160,6 +165,66 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.Equal(1, result.MediaItems.Inserted);
                 Assert.Equal(1, result.MediaItems.IntegrityIssues);
                 _mockMediaItems.Verify(r => r.AddAsync(It.Is<MediaItem>(m => m.Id == exportedItem.Id && !m.IntegrityVerified), It.IsAny<CancellationToken>()), Times.Once);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_AccountLocationsSection_LinksImportedAndExistingLocations()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var accountId = Guid.NewGuid();
+                var newLoc = new Location { Id = Guid.NewGuid(), ProviderLocationId = "p", Name = "n" };
+                var existingLocId = Guid.NewGuid();
+                var unknownLocId = Guid.NewGuid();
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"),
+                    locations: [newLoc],
+                    accountLocations:
+                    [
+                        new() { ProviderAccountId = accountId, LocationId = newLoc.Id },
+                        new() { ProviderAccountId = accountId, LocationId = existingLocId },
+                        new() { ProviderAccountId = accountId, LocationId = unknownLocId }
+                    ]);
+
+                _ = _mockAccounts.Setup(r => r.GetAsync(accountId, It.IsAny<CancellationToken>())).ReturnsAsync(new ProviderAccount { Id = accountId, UserId = Guid.NewGuid(), ProviderName = "ring" });
+                _ = _mockLocations.Setup(r => r.GetAsync(existingLocId, It.IsAny<CancellationToken>())).ReturnsAsync(new Location { Id = existingLocId, ProviderLocationId = "p", Name = "n" });
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.True(result.Success);
+                _mockLocations.Verify(r => r.LinkToProviderAccountAsync(newLoc.Id, accountId, It.IsAny<CancellationToken>()), Times.Once);
+                _mockLocations.Verify(r => r.LinkToProviderAccountAsync(existingLocId, accountId, It.IsAny<CancellationToken>()), Times.Once);
+                _mockLocations.Verify(r => r.LinkToProviderAccountAsync(unknownLocId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public async Task ImportBackupAsync_WithoutAccountLocationsSection_SucceedsAndLinksNothing()
+        {
+            string tempDir = CreateTempDirectory();
+            try
+            {
+                var loc = new Location { Id = Guid.NewGuid(), ProviderLocationId = "p", Name = "n" };
+                string zipPath = CreateBackupZip(Path.Combine(tempDir, "backup.zip"), locations: [loc]);
+                WireUnitOfWork();
+
+                var orchestrator = new BackupImportOrchestrator(_mockLogger.Object, _mockUnitOfWork.Object);
+                BackupImportResult result = await orchestrator.ImportBackupAsync(zipPath, tempDir, CancellationToken.None);
+
+                Assert.True(result.Success);
+                Assert.Equal(1, result.Locations.Inserted);
+                _mockLocations.Verify(r => r.LinkToProviderAccountAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
             }
             finally
             {

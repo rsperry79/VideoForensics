@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-using CommonContracts = VideoForensics.Providers.Common.Contracts;
+using CommonContracts = VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Tests
 {

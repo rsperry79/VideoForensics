@@ -17,22 +17,22 @@
   <ItemGroup>
     <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="xunit.v3" Version="4.0.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
     <PackageReference Include="Moq" Version="4.21.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.12" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../VideoForensics.Providers.Ring.Core.csproj" />
-    <ProjectReference Include="../../auth/VideoForensics.Providers.Ring.Auth.csproj" />
-    <ProjectReference Include="../../video/VideoForensics.Providers.Ring.Video.csproj" />
-    <ProjectReference Include="../../provider/VideoForensics.Providers.Ring.csproj" />
-    <ProjectReference Include="../../../../client/host/VideoForensics.Hosting/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="../src/VideoForensics.Providers.Ring.Core.csproj" />
+    <ProjectReference Include="../../auth/src/VideoForensics.Providers.Ring.Auth.csproj" />
+    <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />
+    <ProjectReference Include="../../provider/src/VideoForensics.Providers.Ring.csproj" />
+    <ProjectReference Include="../../../../client/host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />

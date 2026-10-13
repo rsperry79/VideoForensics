@@ -40,7 +40,7 @@ This folder contains guidance for building and deploying VideoForensics directly
 From the VideoForensics repository root:
 
 ```bash
-dotnet build src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj \
+dotnet build src/client/maui/VideoForensics.MauiApp/src/VideoForensics.MauiApp.csproj \
   -f net10.0-ios \
   -p:BuildIOS=true \
   -c Debug \

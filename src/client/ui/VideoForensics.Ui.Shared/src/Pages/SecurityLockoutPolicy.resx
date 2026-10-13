@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Security - Lockout Policy</value>
+  </data>
+  <data name="SignInPrompt" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage security settings.</value>
+  </data>
+  <data name="AuthErrorDescription" xml:space="preserve">
+    <value>You do not have permission to view or modify security settings.</value>
+  </data>
+  <data name="AuthUnauthorized" xml:space="preserve">
+    <value>Not authorized to view or modify security settings.</value>
+  </data>
+  <data name="LockoutSettingsSection" xml:space="preserve">
+    <value>Lockout Settings</value>
+  </data>
+  <data name="MaxFailedAttempts" xml:space="preserve">
+    <value>Max Failed Login Attempts</value>
+  </data>
+  <data name="LockoutDurationMinutes" xml:space="preserve">
+    <value>Lockout Duration (minutes)</value>
+  </data>
+  <data name="BlockedCountryCodes" xml:space="preserve">
+    <value>Blocked Country Codes</value>
+  </data>
+  <data name="BlockedCountryCodesPlaceholder" xml:space="preserve">
+    <value>E.g., KP,IR,SY (comma-separated ISO 3166-1 alpha-2 codes)</value>
+  </data>
+  <data name="BlockedCountryCodesHelp" xml:space="preserve">
+    <value>Enter comma-separated ISO 3166-1 alpha-2 country codes to block login attempts from those countries. Leave blank to disable country-based blocking.</value>
+  </data>
+  <data name="FailClosedOnLookupError" xml:space="preserve">
+    <value>Fail Closed on Lookup Error</value>
+  </data>
+  <data name="FailClosedOnLookupErrorLabel" xml:space="preserve">
+    <value>Block login if GeoIP lookup fails</value>
+  </data>
+  <data name="FailClosedOnLookupErrorHelp" xml:space="preserve">
+    <value>When enabled, login is blocked if a GeoIP or threat-intelligence lookup fails. When disabled, login is allowed (fail open).</value>
+  </data>
+  <data name="AutoBanEnabled" xml:space="preserve">
+    <value>Auto-Ban Repeat Offenders</value>
+  </data>
+  <data name="AutoBanEnabledLabel" xml:space="preserve">
+    <value>Automatically ban IPs that trigger lockouts across multiple accounts</value>
+  </data>
+  <data name="AutoBanDistinctAccountThresholdLabel" xml:space="preserve">
+    <value>Distinct Accounts to Trigger Auto-Ban</value>
+  </data>
+  <data name="AutoBanWindowMinutesLabel" xml:space="preserve">
+    <value>Auto-Ban Window (minutes)</value>
+  </data>
+  <data name="AutoBanDurationMinutesLabel" xml:space="preserve">
+    <value>Auto-Ban Duration (minutes)</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="LockoutPolicySaved" xml:space="preserve">
+    <value>Lockout policy settings saved successfully.</value>
+  </data>
+  <data name="LockoutPolicyLoadFailed" xml:space="preserve">
+    <value>Failed to load lockout policy settings: {0}</value>
+  </data>
+  <data name="LockoutPolicySaveFailed" xml:space="preserve">
+    <value>Failed to save lockout policy settings: {0}</value>
+  </data>
+  <data name="TwoFactorPolicySection" xml:space="preserve">
+    <value>Two-Factor Authentication Policy</value>
+  </data>
+  <data name="RoleColumn" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="RequireTwoFactorColumn" xml:space="preserve">
+    <value>Require 2FA</value>
+  </data>
+  <data name="ActionColumn" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="NoTwoFactorRequirements" xml:space="preserve">
+    <value>No two-factor requirements found.</value>
+  </data>
+  <data name="TwoFactorRoleSaved" xml:space="preserve">
+    <value>Two-factor requirement for {0} saved successfully.</value>
+  </data>
+  <data name="TwoFactorPolicyLoadFailed" xml:space="preserve">
+    <value>Failed to load two-factor policy settings: {0}</value>
+  </data>
+  <data name="TwoFactorRoleSaveFailed" xml:space="preserve">
+    <value>Failed to save two-factor requirement for {0}: {1}</value>
+  </data>
+  <data name="BannedIpsSection" xml:space="preserve">
+    <value>Banned IPs</value>
+  </data>
+  <data name="BannedIpsRangeColumn" xml:space="preserve">
+    <value>IP range</value>
+  </data>
+  <data name="BannedIpsReasonColumn" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="BannedIpsCreatedColumn" xml:space="preserve">
+    <value>Created (UTC)</value>
+  </data>
+  <data name="BannedIpsExpiresColumn" xml:space="preserve">
+    <value>Expires (UTC)</value>
+  </data>
+  <data name="BannedIpsAutoBadge" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="BannedIpsAutoBadgeTooltip" xml:space="preserve">
+    <value>Created automatically by the failed-login tracker</value>
+  </data>
+  <data name="BannedIpsEmpty" xml:space="preserve">
+    <value>No active IP bans.</value>
+  </data>
+  <data name="BannedIpsNeverExpires" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="BannedIpsLoadFailed" xml:space="preserve">
+    <value>Failed to load banned IPs: {0}</value>
+  </data>
+  <data name="BannedIpsActionColumn" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="UnbanButton" xml:space="preserve">
+    <value>Unban</value>
+  </data>
+  <data name="UnbanConfirmMessage" xml:space="preserve">
+    <value>Remove the ban on {0}?</value>
+  </data>
+  <data name="UnbanConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="UnbanCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="UnbanSucceeded" xml:space="preserve">
+    <value>Ban removed.</value>
+  </data>
+  <data name="UnbanFailed" xml:space="preserve">
+    <value>Failed to remove the ban: {0}</value>
+  </data>
+</root>

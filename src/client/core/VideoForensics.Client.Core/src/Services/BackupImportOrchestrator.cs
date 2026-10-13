@@ -1,0 +1,271 @@
+using ICSharpCode.SharpZipLib.Zip;
+
+using Microsoft.Extensions.Logging;
+
+using System.Security.Cryptography;
+using System.Text.Json;
+
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+
+namespace VideoForensics.Client.Core.Services
+{
+    internal class BackupImportOrchestrator : IBackupImportService
+    {
+        private readonly ILogger<BackupImportOrchestrator> _logger;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public BackupImportOrchestrator(ILogger<BackupImportOrchestrator> logger, IUnitOfWork unitOfWork)
+        {
+            _logger = logger;
+            _unitOfWork = unitOfWork;
+        }
+
+        public async Task<BackupImportResult> ImportBackupAsync(string backupZipPath, string mediaRootPath, CancellationToken ct)
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "VideoForensicsImport_" + Guid.NewGuid());
+
+            try
+            {
+                _ = Directory.CreateDirectory(tempDir);
+
+                using (var zipFile = new ZipFile(backupZipPath))
+                {
+                    foreach (ZipEntry entry in zipFile)
+                    {
+                        if (!entry.IsFile)
+                        {
+                            continue;
+                        }
+
+                        string outPath = Path.Combine(tempDir, entry.Name);
+                        using System.IO.Stream zipStream = zipFile.GetInputStream(entry);
+                        using FileStream outStream = File.Create(outPath);
+                        await zipStream.CopyToAsync(outStream, ct);
+                    }
+                }
+
+                List<ProviderAccount> accounts = await ReadJsonAsync<List<ProviderAccount>>(Path.Combine(tempDir, "accounts.json"), ct) ?? [];
+                List<Location> locations = await ReadJsonAsync<List<Location>>(Path.Combine(tempDir, "locations.json"), ct) ?? [];
+                List<Device> devices = await ReadJsonAsync<List<Device>>(Path.Combine(tempDir, "devices.json"), ct) ?? [];
+                List<Event> events = await ReadJsonAsync<List<Event>>(Path.Combine(tempDir, "events.json"), ct) ?? [];
+                List<DownloadEvent> downloadEvents = await ReadJsonAsync<List<DownloadEvent>>(Path.Combine(tempDir, "download_events.json"), ct) ?? [];
+                List<ExportedMediaItem> mediaItems = await ReadJsonAsync<List<ExportedMediaItem>>(Path.Combine(tempDir, "media_items.json"), ct) ?? [];
+
+                // Optional section: older backups lack it, in which case the migration backfill supplies the links.
+                List<ExportedAccountLocationLink> accountLocations = await ReadJsonAsync<List<ExportedAccountLocationLink>>(Path.Combine(tempDir, "account_locations.json"), ct) ?? [];
+
+                BackupImportResult result = await _unitOfWork.ExecuteAsync(async ctx =>
+                {
+                    var importResult = new BackupImportResult();
+
+                    var importedAccountIds = new HashSet<Guid>();
+                    foreach (ProviderAccount account in accounts)
+                    {
+                        if (await ctx.ProviderAccounts.GetAsync(account.Id, ct) != null)
+                        {
+                            importResult.ProviderAccounts.SkippedExisting++;
+                            _ = importedAccountIds.Add(account.Id);
+                            continue;
+                        }
+
+                        if (await ctx.Users.GetAsync(account.UserId, ct) == null)
+                        {
+                            importResult.ProviderAccounts.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped orphaned ProviderAccount {account.Id}: user {account.UserId} not found");
+                            continue;
+                        }
+
+                        await ctx.ProviderAccounts.AddAsync(account, ct);
+                        importResult.ProviderAccounts.Inserted++;
+                        _ = importedAccountIds.Add(account.Id);
+                    }
+
+                    var importedLocationIds = new HashSet<Guid>();
+                    foreach (Location location in locations)
+                    {
+                        if (await ctx.Locations.GetAsync(location.Id, ct) != null)
+                        {
+                            importResult.Locations.SkippedExisting++;
+                            _ = importedLocationIds.Add(location.Id);
+                            continue;
+                        }
+
+                        await ctx.Locations.AddAsync(location, ct);
+                        importResult.Locations.Inserted++;
+                        _ = importedLocationIds.Add(location.Id);
+                    }
+
+                    foreach (ExportedAccountLocationLink link in accountLocations)
+                    {
+                        // Skip links whose endpoints are unknown so a dangling reference cannot fail the whole import.
+                        bool accountOk = importedAccountIds.Contains(link.ProviderAccountId) ||
+                            await ctx.ProviderAccounts.GetAsync(link.ProviderAccountId, ct) != null;
+                        bool linkLocationOk = importedLocationIds.Contains(link.LocationId) ||
+                            await ctx.Locations.GetAsync(link.LocationId, ct) != null;
+                        if (!accountOk || !linkLocationOk)
+                        {
+                            importResult.Details.Add($"Skipped account-location link {link.ProviderAccountId}/{link.LocationId}: account or location not found");
+                            continue;
+                        }
+
+                        await ctx.Locations.LinkToProviderAccountAsync(link.LocationId, link.ProviderAccountId, ct);
+                    }
+
+                    var importedDeviceIds = new HashSet<Guid>();
+                    foreach (Device device in devices)
+                    {
+                        if (await ctx.Devices.GetAsync(device.Id, ct) != null)
+                        {
+                            importResult.Devices.SkippedExisting++;
+                            _ = importedDeviceIds.Add(device.Id);
+                            continue;
+                        }
+
+                        bool locationOk = importedLocationIds.Contains(device.LocationId) ||
+                            await ctx.Locations.GetAsync(device.LocationId, ct) != null;
+                        if (!locationOk)
+                        {
+                            importResult.Devices.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped orphaned Device {device.Id}: location {device.LocationId} not found");
+                            continue;
+                        }
+
+                        await ctx.Devices.AddAsync(device, ct);
+                        importResult.Devices.Inserted++;
+                        _ = importedDeviceIds.Add(device.Id);
+                    }
+
+                    var importedEventIds = new HashSet<Guid>();
+                    foreach (Event evt in events)
+                    {
+                        if (await ctx.Events.GetAsync(evt.Id, ct) != null)
+                        {
+                            importResult.Events.SkippedExisting++;
+                            _ = importedEventIds.Add(evt.Id);
+                            continue;
+                        }
+
+                        bool deviceOk = importedDeviceIds.Contains(evt.DeviceId) ||
+                            await ctx.Devices.GetAsync(evt.DeviceId, ct) != null;
+                        if (!deviceOk)
+                        {
+                            importResult.Events.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped orphaned Event {evt.Id}: device {evt.DeviceId} not found");
+                            continue;
+                        }
+
+                        _ = await ctx.Events.UpsertAsync(evt, ct);
+                        importResult.Events.Inserted++;
+                        _ = importedEventIds.Add(evt.Id);
+                    }
+
+                    var importedDownloadEventIds = new HashSet<Guid>();
+                    foreach (DownloadEvent de in downloadEvents)
+                    {
+                        if (await ctx.DownloadEvents.GetAsync(de.Id, ct) != null)
+                        {
+                            importResult.DownloadEvents.SkippedExisting++;
+                            _ = importedDownloadEventIds.Add(de.Id);
+                            continue;
+                        }
+
+                        bool deviceOk = importedDeviceIds.Contains(de.DeviceId) ||
+                            await ctx.Devices.GetAsync(de.DeviceId, ct) != null;
+                        if (!deviceOk)
+                        {
+                            importResult.DownloadEvents.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped orphaned DownloadEvent {de.Id}: device {de.DeviceId} not found");
+                            continue;
+                        }
+
+                        await ctx.DownloadEvents.AddAsync(de, ct);
+                        importResult.DownloadEvents.Inserted++;
+                        _ = importedDownloadEventIds.Add(de.Id);
+                    }
+
+                    foreach (ExportedMediaItem exported in mediaItems)
+                    {
+                        var mediaItem = exported.ToMediaItem(mediaRootPath);
+
+                        if (await ctx.MediaItems.GetAsync(mediaItem.Id, ct) != null)
+                        {
+                            importResult.MediaItems.SkippedExisting++;
+                            continue;
+                        }
+
+                        bool deviceOk = importedDeviceIds.Contains(mediaItem.DeviceId) ||
+                            await ctx.Devices.GetAsync(mediaItem.DeviceId, ct) != null;
+                        bool downloadEventOk = mediaItem.DownloadEventId == null ||
+                            importedDownloadEventIds.Contains(mediaItem.DownloadEventId.Value) ||
+                            await ctx.DownloadEvents.GetAsync(mediaItem.DownloadEventId.Value, ct) != null;
+
+                        if (!deviceOk || !downloadEventOk)
+                        {
+                            importResult.MediaItems.SkippedOrphaned++;
+                            importResult.Details.Add($"Skipped orphaned MediaItem {mediaItem.Id}");
+                            continue;
+                        }
+
+                        if (File.Exists(mediaItem.FilePath))
+                        {
+                            byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(mediaItem.FilePath), ct);
+                            string actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+                            mediaItem.IntegrityVerified = actualHash == mediaItem.Sha256Hash;
+                            mediaItem.LastVerifiedAtUtc = DateTime.UtcNow;
+                            if (!mediaItem.IntegrityVerified)
+                            {
+                                importResult.MediaItems.IntegrityIssues++;
+                                importResult.Details.Add($"Hash mismatch for MediaItem {mediaItem.Id} at {mediaItem.FilePath}");
+                            }
+                        }
+                        else
+                        {
+                            mediaItem.IntegrityVerified = false;
+                            importResult.MediaItems.IntegrityIssues++;
+                            importResult.Details.Add($"Media file missing for MediaItem {mediaItem.Id}: {mediaItem.FilePath}");
+                        }
+
+                        await ctx.MediaItems.AddAsync(mediaItem, ct);
+                        importResult.MediaItems.Inserted++;
+                    }
+
+                    importResult.Success = true;
+                    return importResult;
+                }, ct);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Backup import failed");
+                return new BackupImportResult { Success = false, ErrorMessage = $"Import failed: {ex.Message}" };
+            }
+            finally
+            {
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                    {
+                        Directory.Delete(tempDir, recursive: true);
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static async Task<T?> ReadJsonAsync<T>(string path, CancellationToken ct)
+        {
+            if (!File.Exists(path))
+            {
+                return default;
+            }
+
+            string json = await File.ReadAllTextAsync(path, ct);
+            return JsonSerializer.Deserialize<T>(json);
+        }
+    }
+}

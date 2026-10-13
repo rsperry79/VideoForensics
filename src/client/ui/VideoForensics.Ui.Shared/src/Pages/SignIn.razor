@@ -1,0 +1,295 @@
+@page "/signin"
+@layout MinimalLayout
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@inject WebAuthnClient WebAuthn
+@inject PairedSessionState SessionState
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<SignIn> L
+
+<div class="signin-card mx-auto">
+    @* Page heading: hidden in the two-factor state, which has its own section title *@
+    @if (!_requiresTwoFactor)
+    {
+        <h3 class="fw-light mb-4">@L["Title"]</h3>
+    }
+
+    @if (_isLoading)
+    {
+        <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            <!-- Password/Username Login -->
+            @if (_authMethods.PasswordEnabled)
+            {
+                @if (_requiresTwoFactor)
+                {
+                    <div class="d-flex flex-column gap-2">
+                        <h5>@L["TwoFactorRequiredTitle"]</h5>
+                        <p>@L["TwoFactorRequiredDescription"]</p>
+                        <div class="d-flex flex-column gap-2">
+                            @* One button per second-factor method the server accepts; methods this client does not know are skipped. *@
+                            @foreach (string method in _twoFactorMethods)
+                            {
+                                @if (method == TwoFactorMethodPasskey)
+                                {
+                                    <SfButton Content="@L["UsePasskeyButton"]" OnClick="CompleteTwoFactorWithPasskeyAsync" CssClass="e-primary" Style="width:100%" Disabled="@_isSigningInWithPassword" />
+                                }
+                            }
+                            <SfButton Content="@L["CreatePasskeyButton"]" OnClick="CreatePasskeyLoginAsync" CssClass="e-primary" Style="width:100%" Disabled="@_isSigningInWithPassword" />
+                            <SfButton Content="@L["BackButton"]" OnClick="BackFromTwoFactorChoice" CssClass="e-outline" Style="width:100%" Disabled="@_isSigningInWithPassword" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- A future provider block (e.g. external sign-in buttons) goes here, above the form fields. -->
+                    <div class="d-flex flex-column gap-2">
+                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <div>
+                            <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Style="width:100%" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
+                        </div>
+                    </div>
+                }
+            }
+
+            <!-- Passkey Sign-in: hidden once a password sign-in requires a second factor -->
+            @if (_webAuthnAvailable && !_requiresTwoFactor)
+            {
+                <div>
+                    <SfButton OnClick="SignInWithPasskeyAsync" CssClass="e-outline" Style="width:100%" Disabled="@_isSigningInWithPasskey">
+                        <svg class="me-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <circle cx="9" cy="8" r="4" />
+                            <path d="M2 21v-1a6 6 0 0 1 6-6h2" />
+                            <circle cx="17" cy="16" r="3" />
+                            <path d="M14.5 18.5 21 25" />
+                            <path d="M18.5 20.5l2 -2" />
+                        </svg>
+                        <span>@(_isSigningInWithPasskey ? L["SignInWaiting"] : L["SignInWithPasskeyButton"])</span>
+                    </SfButton>
+                </div>
+            }
+
+            @if (_error is not null)
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <!-- Register link: hidden in the two-factor state, where the operator is already signed in at limited access -->
+            @if (!_requiresTwoFactor)
+            {
+                <div class="text-center">
+                    <p class="mb-0">@L["NoAccountText"] <a href="/register" class="register-link">@L["RegisterLink"]</a></p>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private bool _isSigningInWithPassword;
+    private bool _isSigningInWithPasskey;
+    private bool _requiresTwoFactor;
+    private string? _twoFactorCorrelationId;
+    private IReadOnlyList<string> _twoFactorMethods = Array.Empty<string>();
+    private const string TwoFactorMethodPasskey = "passkey";
+    private bool _webAuthnAvailable;
+    private bool _isLoading = true;
+    private string? _error;
+    private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
+        PasswordEnabled: true, PasskeyEnabled: true);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            _webAuthnAvailable = await WebAuthn.IsAvailableAsync();
+            _authMethods = await WebAuthn.GetAuthMethodsAsync();
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SignInWithPasswordAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
+        HideTwoFactorChoice();
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId, twoFactorMethods) =
+                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
+
+            if (!success)
+            {
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            if (requiresTwoFactor)
+            {
+                // The server issued no session yet: offer the second-factor choice instead of signing in.
+                // A second-factor step is not a failure, so no error text is shown for it. The busy flag is
+                // cleared here so no second-factor button inherits a Disabled state from the password call.
+                _error = null;
+                _isSigningInWithPassword = false;
+                _requiresTwoFactor = true;
+                _twoFactorCorrelationId = twoFactorCorrelationId;
+                _twoFactorMethods = twoFactorMethods;
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
+        }
+        catch (Exception ex)
+        {
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPassword = false;
+        }
+    }
+
+    private async Task CompleteTwoFactorWithPasskeyAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey) =
+                await WebAuthn.CompleteTwoFactorWithPasskeyAsync(_username.Trim(), _twoFactorCorrelationId!);
+
+            if (!success)
+            {
+                HideTwoFactorChoice();
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: false);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey);
+        }
+        catch (Exception ex)
+        {
+            HideTwoFactorChoice();
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPassword = false;
+        }
+    }
+
+    private async Task CreatePasskeyLoginAsync()
+    {
+        _isSigningInWithPassword = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, _, _, _, _) =
+                await WebAuthn.CreatePasskeyLoginAsync(_username.Trim(), _password);
+
+            if (!success)
+            {
+                HideTwoFactorChoice();
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            // Limited passkey-setup session: the only place it can go is passkey registration.
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword, passkeySetupOnly: true);
+            NavigateAfterPasswordSignIn(mustChangePassword, hasPasskey: false);
+        }
+        catch (Exception ex)
+        {
+            HideTwoFactorChoice();
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPassword = false;
+        }
+    }
+
+    private async Task SignInWithPasskeyAsync()
+    {
+        _isSigningInWithPasskey = true;
+        _error = null;
+        try
+        {
+            var (success, errorMessage, sessionToken, operatorId, role) =
+                await WebAuthn.SignInWithUsernameAsync(_username.Trim());
+
+            if (!success)
+            {
+                _error = errorMessage ?? L["SignInFailed"];
+                return;
+            }
+
+            await SessionState.SetAsync(sessionToken!, operatorId, role, mustChangePassword: false, passkeySetupOnly: false);
+            NavigationManager.NavigateTo(GetReturnUrl());
+        }
+        catch (Exception ex)
+        {
+            _error = L["SignInFailed", ex.Message];
+        }
+        finally
+        {
+            _isSigningInWithPasskey = false;
+        }
+    }
+
+    /// <summary>A forced password change always comes first; then an operator with no passkey is sent to create one.</summary>
+    private void NavigateAfterPasswordSignIn(bool mustChangePassword, bool hasPasskey)
+    {
+        if (mustChangePassword)
+        {
+            NavigationManager.NavigateTo("/change-password");
+        }
+        else if (!hasPasskey)
+        {
+            // No operator-bound passkey yet: send them to create one. ?setup=true tells MyPasskeys
+            // to show the setup prompt.
+            NavigationManager.NavigateTo("/settings/passkeys?setup=true");
+        }
+        else
+        {
+            NavigationManager.NavigateTo(GetReturnUrl());
+        }
+    }
+
+    private void HideTwoFactorChoice()
+    {
+        _requiresTwoFactor = false;
+        _twoFactorCorrelationId = null;
+        _twoFactorMethods = Array.Empty<string>();
+    }
+
+    /// <summary>Leaves the passkey-required state and restores the username, password and Sign in controls.</summary>
+    private void BackFromTwoFactorChoice()
+    {
+        HideTwoFactorChoice();
+        _error = null;
+    }
+
+    private string GetReturnUrl()
+    {
+        if (ReturnUrl is not null && Uri.TryCreate(ReturnUrl, UriKind.Relative, out _))
+        {
+            return ReturnUrl;
+        }
+
+        return "/";
+    }
+}

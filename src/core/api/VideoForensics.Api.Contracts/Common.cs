@@ -1,1 +1,0 @@
-namespace VideoForensics.Api.Contracts;

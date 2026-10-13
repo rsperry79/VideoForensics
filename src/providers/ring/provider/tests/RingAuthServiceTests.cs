@@ -4,7 +4,7 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -277,6 +277,96 @@ namespace VideoForensics.Providers.Ring.Tests
             credentialRepository.Verify(
                 cr => cr.GetAsync(It.IsAny<Guid>(), "RefreshToken", It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task IsAuthenticatedAsync_NoRingAccountLinked_LogsNoErrorAndReturnsFalse()
+        {
+            // Arrange
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            var credentialStore = new Mock<ICredentialStore>();
+            var credentialRepository = new Mock<ICredentialRepository>();
+            var userRepository = new Mock<IUserRepository>();
+            var providerAccountRepository = new Mock<IProviderAccountRepository>();
+            IReadOnlyList<ProviderAccount> noAccounts = new List<ProviderAccount>();
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(noAccounts);
+            var mockLogger = new Mock<ILogger>();
+            var service = new RingAuthService(
+                mockLogger.Object,
+                sessionProvider.Object,
+                credentialStore.Object,
+                credentialRepository.Object,
+                null,
+                providerAccountRepository.Object,
+                userRepository.Object);
+
+            // Act
+            bool result = await service.IsAuthenticatedAsync();
+
+            // Assert
+            Assert.False(result);
+            mockLogger.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => true),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
+            mockLogger.Verify(
+                l => l.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("No Ring account linked")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task IsAuthenticatedAsync_AccountLinkedWithoutCredentials_LogsErrorWithoutAccountId()
+        {
+            // Arrange
+            var accountId = Guid.NewGuid();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            var credentialStore = new Mock<ICredentialStore>();
+            var credentialRepository = new Mock<ICredentialRepository>();
+            _ = credentialRepository.Setup(cr => cr.GetAsync(accountId, "RefreshToken", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ValueTuple<string, string>?)null);
+            var userRepository = new Mock<IUserRepository>();
+            var providerAccountRepository = new Mock<IProviderAccountRepository>();
+            IReadOnlyList<ProviderAccount> accounts = new List<ProviderAccount>
+            {
+                new ProviderAccount { Id = accountId, ProviderName = "Ring" },
+            };
+            _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(accounts);
+            var mockLogger = new Mock<ILogger>();
+            var service = new RingAuthService(
+                mockLogger.Object,
+                sessionProvider.Object,
+                credentialStore.Object,
+                credentialRepository.Object,
+                null,
+                providerAccountRepository.Object,
+                userRepository.Object);
+
+            // Act
+            bool result = await service.IsAuthenticatedAsync();
+
+            // Assert
+            Assert.False(result);
+            mockLogger.Verify(
+                l => l.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Ring account") && !v.ToString()!.Contains(accountId.ToString())),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
 
         [Fact]

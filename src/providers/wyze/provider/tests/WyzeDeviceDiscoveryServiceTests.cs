@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Wyze.Services;
 
 using Xunit;
