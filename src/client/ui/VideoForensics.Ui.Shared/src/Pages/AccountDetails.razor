@@ -239,8 +239,12 @@ else
         _isSyncing = true;
         try
         {
-            var response = await HttpClient.PostAsJsonAsync(
-                $"api/v1/accounts/{Id}/sync-now",
+            // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
+            // Build the client the same way the other authenticated calls on this page do.
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            var response = await client.PostAsJsonAsync(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-now",
                 new { },
                 CancellationToken.None
             );
