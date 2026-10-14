@@ -242,6 +242,16 @@ else
                 return;
             }
 
+            // The server may have just ended the session (a setup session closes once a passkey exists);
+            // re-check so the client flag is not stale and a dead session is dropped.
+            bool sessionStillValid = await SessionState.ConfirmSessionAsync();
+            if (!sessionStillValid)
+            {
+                await SessionState.ClearAsync();
+                NavigationManager.NavigateTo("/signin");
+                return;
+            }
+
             if (SessionState.PasskeySetupOnly)
             {
                 if (isApproved)

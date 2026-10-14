@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -92,15 +93,37 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <summary>
+        /// Re-checks the session kind with the server (e.g. after a passkey registration that ends a setup session).
+        /// On failure the stored flag is kept.
+        /// </summary>
+        public Task RefreshPasskeySetupOnlyAsync()
+        {
+            return RefreshPasskeySetupOnlyFromServerAsync();
+        }
+
+        /// <summary>
+        /// Checks with the server that the session is still valid and refreshes the stored setup-only flag.
+        /// Returns false only when the server answers 401 Unauthorized, which means the session has ended
+        /// (e.g. a setup session closed after passkey registration). Any other outcome - success, another
+        /// status, an exception, or a missing client factory/token - returns true so transient failures
+        /// never sign the operator out.
+        /// </summary>
+        public Task<bool> ConfirmSessionAsync()
+        {
+            return RefreshPasskeySetupOnlyFromServerAsync();
+        }
+
+        /// <summary>
         /// Asks the server which kind of session the token is, so the layout follows the token rather than
         /// browser storage. On any failure the stored flag stays in place and the session is not cleared.
+        /// Returns false only when the server answers 401 (session ended); true otherwise.
         /// </summary>
-        private async Task RefreshPasskeySetupOnlyFromServerAsync()
+        private async Task<bool> RefreshPasskeySetupOnlyFromServerAsync()
         {
             ISelfApiHttpClientFactory? clientFactory = _services?.GetService<ISelfApiHttpClientFactory>();
             if (clientFactory is null || SessionToken is null)
             {
-                return;
+                return true;
             }
 
             bool serverPasskeySetupOnly;
@@ -108,15 +131,20 @@ namespace VideoForensics.Ui.Shared.Services
             {
                 using HttpClient client = clientFactory.CreateClient(SessionToken);
                 using HttpResponseMessage response = await client.GetAsync("api/v1/auth/session-kind");
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    return false;
+                }
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    return;
+                    return true;
                 }
 
                 SessionKindResponse? kind = await response.Content.ReadFromJsonAsync<SessionKindResponse>();
                 if (kind is null)
                 {
-                    return;
+                    return true;
                 }
 
                 serverPasskeySetupOnly = kind.PasskeySetupOnly;
@@ -124,7 +152,7 @@ namespace VideoForensics.Ui.Shared.Services
             catch (Exception)
             {
                 // Best-effort: a network, JSON or host-wiring failure keeps the stored flag as the fallback.
-                return;
+                return true;
             }
 
             // Persist the server's answer so a reload without the server still shows the right layout.
@@ -132,6 +160,8 @@ namespace VideoForensics.Ui.Shared.Services
             {
                 await SetAsync(SessionToken, operatorId, role, MustChangePassword, serverPasskeySetupOnly);
             }
+
+            return true;
         }
 
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
