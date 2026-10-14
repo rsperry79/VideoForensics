@@ -15,22 +15,27 @@ namespace VideoForensics.Mcp.ServerDiscovery
     /// </summary>
     internal class FileApiKeyStore : IApiKeyStore
     {
-        private static readonly string StorageDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "VideoForensics");
+        private readonly string _storageDirectory;
+        private readonly string _apiKeyFilePath;
 
-        private static readonly string ApiKeyFilePath = Path.Combine(StorageDirectory, "mcp-api-key.txt");
+        public FileApiKeyStore(string? storageDirectory = null)
+        {
+            _storageDirectory = storageDirectory ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "VideoForensics");
+            _apiKeyFilePath = Path.Combine(_storageDirectory, "mcp-api-key.txt");
+        }
 
         public string? GetApiKey()
         {
             try
             {
-                if (!File.Exists(ApiKeyFilePath))
+                if (!File.Exists(_apiKeyFilePath))
                 {
                     return null;
                 }
 
-                string content = File.ReadAllText(ApiKeyFilePath).Trim();
+                string content = File.ReadAllText(_apiKeyFilePath).Trim();
                 return string.IsNullOrEmpty(content) ? null : content;
             }
             catch
@@ -44,8 +49,8 @@ namespace VideoForensics.Mcp.ServerDiscovery
         {
             try
             {
-                _ = Directory.CreateDirectory(StorageDirectory);
-                File.WriteAllText(ApiKeyFilePath, apiKey);
+                _ = Directory.CreateDirectory(_storageDirectory);
+                File.WriteAllText(_apiKeyFilePath, apiKey);
             }
             catch
             {
@@ -58,9 +63,9 @@ namespace VideoForensics.Mcp.ServerDiscovery
         {
             try
             {
-                if (File.Exists(ApiKeyFilePath))
+                if (File.Exists(_apiKeyFilePath))
                 {
-                    File.Delete(ApiKeyFilePath);
+                    File.Delete(_apiKeyFilePath);
                 }
             }
             catch

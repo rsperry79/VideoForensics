@@ -10,22 +10,27 @@ namespace VideoForensics.Mcp.ServerDiscovery
     /// </summary>
     internal class FileServerLocationSettingsStore : IServerLocationSettingsStore
     {
-        private static readonly string StorageDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "VideoForensics");
+        private readonly string _storageDirectory;
+        private readonly string _cachedUrlFilePath;
 
-        private static readonly string CachedUrlFilePath = Path.Combine(StorageDirectory, "mcp-server-url.txt");
+        public FileServerLocationSettingsStore(string? storageDirectory = null)
+        {
+            _storageDirectory = storageDirectory ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics");
+            _cachedUrlFilePath = Path.Combine(_storageDirectory, "mcp-server-url.txt");
+        }
 
         public string? GetCachedInternetServerUrl()
         {
             try
             {
-                if (!File.Exists(CachedUrlFilePath))
+                if (!File.Exists(_cachedUrlFilePath))
                 {
                     return null;
                 }
 
-                string content = File.ReadAllText(CachedUrlFilePath).Trim();
+                string content = File.ReadAllText(_cachedUrlFilePath).Trim();
                 return string.IsNullOrEmpty(content) ? null : content;
             }
             catch
@@ -39,8 +44,8 @@ namespace VideoForensics.Mcp.ServerDiscovery
         {
             try
             {
-                _ = Directory.CreateDirectory(StorageDirectory);
-                File.WriteAllText(CachedUrlFilePath, url);
+                _ = Directory.CreateDirectory(_storageDirectory);
+                File.WriteAllText(_cachedUrlFilePath, url);
             }
             catch
             {

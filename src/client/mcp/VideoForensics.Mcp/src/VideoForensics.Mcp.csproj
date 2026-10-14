@@ -27,4 +27,8 @@
         <ProjectReference Include="../../../host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="VideoForensics.Mcp.Tests" />
+    </ItemGroup>
+
 </Project>
