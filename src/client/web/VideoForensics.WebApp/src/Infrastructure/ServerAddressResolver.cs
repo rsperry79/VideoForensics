@@ -45,6 +45,19 @@ namespace VideoForensics.WebApp.Infrastructure
         }
 
         /// <summary>
+        /// Resolves the WebAuthn/passkey allowed origins by mirroring the Kestrel listen endpoints
+        /// (scheme + port, host fixed to localhost), so the origin check cannot drift from what the server binds.
+        /// </summary>
+        /// <param name="configuration">The application configuration.</param>
+        /// <returns>A case-sensitive set of origins such as "https://localhost:7004".</returns>
+        public static IReadOnlySet<string> ResolveAllowedOrigins(IConfiguration configuration)
+        {
+            return new HashSet<string>(
+                ResolveListenEndpoints(configuration).Select(e => $"{e.Scheme}://localhost:{e.Port}"),
+                StringComparer.Ordinal);
+        }
+
+        /// <summary>
         /// Resolves the port of the first configured http endpoint, defaulting to 5162. The chat self-call
         /// uses this over http://localhost because an HTTP listener is always present, avoiding certificate trust issues.
         /// </summary>

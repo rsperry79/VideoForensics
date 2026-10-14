@@ -135,7 +135,7 @@ builder.Services.AddFido2(options =>
 {
     options.RPID = "localhost";
     options.RPName = "VideoForensics";
-    options.Origins = new HashSet<string> { "https://localhost:5162", "http://localhost:5162" };
+    options.Origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
 });
 
 builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName)
