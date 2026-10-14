@@ -95,4 +95,12 @@ public class AuthGateTests : BunitContext
         string target = AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: false);
         Assert.Equal("/signin", target);
     }
+
+    [Fact]
+    public void AuthGate_ResolveFailureRedirectTarget_ReturnsSignInAndNeverProtectedRoute()
+    {
+        var target = AuthGate.ResolveFailureRedirectTarget();
+        Assert.Equal("/signin", target);
+        Assert.Equal(AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: true), target);
+    }
 }

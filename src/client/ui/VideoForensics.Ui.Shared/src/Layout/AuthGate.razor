@@ -134,8 +134,17 @@ else
         {
             // Log error but don't let it crash the component
             System.Diagnostics.Debug.WriteLine($"Authorization check failed: {ex}");
+            // Fail closed: never render protected content after an error; send the visitor to sign-in.
             _loading = false;
-            _redirecting = false;
+            _redirecting = true;
+            try
+            {
+                NavigationManager.NavigateTo(ResolveFailureRedirectTarget(), replace: true);
+            }
+            catch (Exception navEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fail-closed redirect failed: {navEx}");
+            }
             StateHasChanged();
         }
     }
@@ -170,4 +179,10 @@ else
              : isEmpty ? "/awaiting-setup"
              : "/signin";
     }
+
+    /// <summary>
+    /// Redirect target when the authorization check itself throws: always sign-in (fail closed), never a
+    /// protected route. Does not consult setup status because that call may be what failed.
+    /// </summary>
+    public static string ResolveFailureRedirectTarget() => "/signin";
 }

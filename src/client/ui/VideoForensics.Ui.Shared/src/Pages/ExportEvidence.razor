@@ -1,6 +1,7 @@
 @page "/review/export"
+@using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
-@inject IProviderAuthService AuthService
+@inject PairedSessionState SessionState
 @inject IEvidenceExportService EvidenceExportService
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
@@ -89,7 +90,8 @@ else
         try
         {
             _mediaItemIds = ParseIds(Ids);
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
         }
         finally
         {
