@@ -10,6 +10,7 @@
 @inject IVideoDownloadService DownloadService
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IDeviceRepository DeviceRepository
+@inject AccountSelectionState AccountSelectionState
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Collect> L
 
@@ -162,12 +163,12 @@ else
     {
         try
         {
-            var accounts = await ProviderAccountRepository.ListActiveAsync(CancellationToken.None);
+            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
             _accounts = accounts.ToList();
             if (_accounts.Count > 0)
             {
-                _selectedAccountId = _accounts[0].Id;
-                await OnAccountChanged(_selectedAccountId);
+                Guid? remembered = await AccountSelectionState.GetSelectedAccountIdAsync(_accounts.Select(a => a.Id).ToList());
+                await OnAccountChanged(remembered ?? _accounts[0].Id);
             }
         }
         catch (Exception ex)
@@ -179,6 +180,7 @@ else
     private async Task OnAccountChanged(Guid selectedAccountId)
     {
         _selectedAccountId = selectedAccountId;
+        await AccountSelectionState.SetSelectedAccountIdAsync(selectedAccountId);
         _selectedAccount = _accounts.FirstOrDefault(a => a.Id == _selectedAccountId);
         _selectedDeviceIds.Clear();
 

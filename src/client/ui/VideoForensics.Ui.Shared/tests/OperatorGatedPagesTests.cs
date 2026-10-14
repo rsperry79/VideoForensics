@@ -49,7 +49,7 @@ public abstract class OperatorGatedPageTestBase : BunitContext
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         ProviderAccountRepositoryMock
-            .Setup(m => m.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProviderAccount>());
         DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
@@ -62,6 +62,7 @@ public abstract class OperatorGatedPageTestBase : BunitContext
         Services.AddScoped(_ => DeviceConfigRepositoryMock.Object);
         Services.AddScoped<RightPanelContentService>();
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
 
         SignInOperatorAsync().GetAwaiter().GetResult();
     }

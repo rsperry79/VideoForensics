@@ -166,6 +166,7 @@ namespace VideoForensics.MauiApp
             // (device-local), right-panel page-context slot, and per-operator theme/culture, all
             // circuit-scoped like PairedSessionState above.
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LayoutPreferencesState>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.AccountSelectionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
             builder.Services.TryAddSingleton(TimeProvider.System);
