@@ -19,6 +19,7 @@
              existing unlicensed-dev-mode behavior. Embedded here (not in Hosting) so every host that registers
              the license through SyncfusionLicenseRegistrar carries the same baked-in key. -->
         <SyncfusionLicenseKey Condition="'$(SyncfusionLicenseKey)' == ''"></SyncfusionLicenseKey>
+        <UserSecretsId>b3c12162-d1ef-4846-b057-87c73517d9c7</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,7 +28,9 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
         <PackageReference Include="NodaTime" Version="3.3.5" />

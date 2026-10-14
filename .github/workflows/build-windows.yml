@@ -33,7 +33,10 @@ jobs:
         run: dotnet restore VideoForensics.CI.slnf
 
       - name: Build solution
-        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
+        shell: bash
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY"
 
       # Hand the compiled output to test-windows as one tar, so every file keeps its exact repo-relative path.
       # upload-artifact would store paths relative to their common ancestor and could place files wrongly.

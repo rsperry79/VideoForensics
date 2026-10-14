@@ -64,10 +64,9 @@ Log.Logger = new LoggerConfiguration()
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Must run before AddSyncfusionBlazor() below. Reads the key from builder.Configuration so user secrets
-// (dev) and Azure App Settings / Key Vault references (prod) are honored; the early parameterless call
-// could not see IConfiguration because it ran before the host was built.
-VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent(builder.Configuration);
+// Must run before AddSyncfusionBlazor() below. Resolves the key from env vars and Client.Core user secrets
+// itself, so it does not depend on builder.Configuration having been built.
+VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 
 // Windows Service hosting - enables running under Windows Service Control Manager while keeping
 // dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when

@@ -1,7 +1,6 @@
 using System.Linq;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -62,16 +61,6 @@ namespace VideoForensics.Hosting
         public static void RegisterSyncfusionLicenseIfPresent()
         {
             new SyncfusionLicenseRegistrar().RegisterIfPresent();
-        }
-
-        /// <summary>
-        /// Registers the Syncfusion Blazor license key from <paramref name="configuration"/>. Delegates to
-        /// <see cref="SyncfusionLicenseRegistrar"/>, which honors user secrets and App Settings through configuration.
-        /// </summary>
-        /// <param name="configuration">Configuration to read SYNCFUSION_LICENSE_KEY from.</param>
-        public static void RegisterSyncfusionLicenseIfPresent(IConfiguration configuration)
-        {
-            new SyncfusionLicenseRegistrar().RegisterIfPresent(configuration);
         }
 
         /// <summary>

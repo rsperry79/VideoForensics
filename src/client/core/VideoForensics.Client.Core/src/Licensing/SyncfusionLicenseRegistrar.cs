@@ -8,34 +8,22 @@ namespace VideoForensics.Client.Core.Licensing
 {
     /// <summary>
     /// Default <see cref="ISyncfusionLicenseRegistrar"/>. Resolves the Syncfusion license key from the file, configuration,
-    /// environment, and baked-in sources, then registers the winner with the process-wide Syncfusion license provider.
+    /// and baked-in sources, then registers the winner with the process-wide Syncfusion license provider.
     /// </summary>
     public class SyncfusionLicenseRegistrar : ISyncfusionLicenseRegistrar
     {
+        private const string LicenseKeyName = "SYNCFUSION_LICENSE_KEY";
+
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
         /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
-        /// 2. SYNCFUSION_LICENSE_KEY environment variable (lets Visual Studio debug sessions pick up the key without a ProgramData file)
+        /// 2. SYNCFUSION_LICENSE_KEY from Client.Core user secrets (developer machines: dotnet user-secrets set)
         /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
         /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
         /// </summary>
         public void RegisterIfPresent()
         {
-            RegisterLicense(GetSyncfusionLicenseKeyFromEnvironment());
-        }
-
-        /// <summary>
-        /// Registers the Syncfusion Blazor license key using the same priority order as the parameterless
-        /// overload, but reads the env-var source from <paramref name="configuration"/> instead. Use this
-        /// once the host's configuration is built (e.g. WebApplicationBuilder.Configuration), so user
-        /// secrets (dev) and Azure App Settings / Key Vault references (prod) are honored. Configuration
-        /// already includes environment variables, so SYNCFUSION_LICENSE_KEY set in the environment still works.
-        /// </summary>
-        /// <param name="configuration">Configuration to read SYNCFUSION_LICENSE_KEY from.</param>
-        public void RegisterIfPresent(IConfiguration configuration)
-        {
-            ArgumentNullException.ThrowIfNull(configuration);
-            RegisterLicense(GetSyncfusionLicenseKeyFromConfiguration(configuration));
+            RegisterLicense(ResolveConfiguredKey(BuildLicenseConfiguration(typeof(SyncfusionLicenseRegistrar).Assembly)));
         }
 
         /// <summary>
@@ -55,14 +43,14 @@ namespace VideoForensics.Client.Core.Licensing
 
         /// <summary>
         /// Picks the Syncfusion license key from the candidate sources, in priority order: the external key file
-        /// (admin/IT override, always wins), then the configured key (SYNCFUSION_LICENSE_KEY from config/env), then the
+        /// (admin/IT override, always wins), then the configured key (user secrets), then the
         /// key baked into the assembly at CI build time. Blank or whitespace candidates count as absent so the next
         /// source is tried. Every returned key is trimmed. Returns null when no source has a key (unlicensed dev mode).
         /// Pure function so the priority rules can be unit tested without touching the process-wide license provider.
         /// </summary>
         /// <remarks>
         /// The file is first so an IT admin can override a baked-in key without rebuilding; the configured key sits
-        /// above the baked-in key so a deployment can supply its own key without a rebuild.
+        /// above the baked-in key so a deployment or developer can supply its own key without a rebuild.
         /// </remarks>
         internal static string? ResolveSyncfusionLicenseKey(string? fileKey, string? configuredKey, string? bakedInKey)
         {
@@ -70,22 +58,31 @@ namespace VideoForensics.Client.Core.Licensing
         }
 
         /// <summary>
-        /// Reads the SYNCFUSION_LICENSE_KEY environment variable, trimmed. Returns null when unset or blank
-        /// so the caller falls through to the baked-in key. Internal so tests can exercise it without
-        /// touching the process-wide Syncfusion license provider.
+        /// Builds the configuration that supplies SYNCFUSION_LICENSE_KEY: Client.Core user secrets, identified by the
+        /// assembly's UserSecretsId and optional so a missing file is not an error. No environment variables are read,
+        /// so developers never need a machine-wide variable.
         /// </summary>
-        internal static string? GetSyncfusionLicenseKeyFromEnvironment()
+        /// <remarks>
+        /// Client.Core is a library, so the host does not load its user secrets automatically; this method loads them
+        /// explicitly. Taking the assembly as a parameter keeps the secrets source injectable in tests.
+        /// </remarks>
+        /// <param name="userSecretsAssembly">Assembly whose UserSecretsId identifies the secrets file to load.</param>
+        internal static IConfiguration BuildLicenseConfiguration(Assembly userSecretsAssembly)
         {
-            return NormalizeLicenseKey(Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY"));
+            ArgumentNullException.ThrowIfNull(userSecretsAssembly);
+            return new ConfigurationBuilder()
+                .AddUserSecrets(userSecretsAssembly, optional: true)
+                .Build();
         }
 
         /// <summary>
-        /// Reads SYNCFUSION_LICENSE_KEY from configuration, trimmed. Returns null when missing or blank.
-        /// Internal so tests can exercise it with in-memory configuration.
+        /// Reads SYNCFUSION_LICENSE_KEY from configuration, trimmed. Returns null when missing or blank so the caller
+        /// falls through to the baked-in key. Internal so tests can exercise it with in-memory configuration.
         /// </summary>
-        internal static string? GetSyncfusionLicenseKeyFromConfiguration(IConfiguration configuration)
+        internal static string? ResolveConfiguredKey(IConfiguration configuration)
         {
-            return NormalizeLicenseKey(configuration["SYNCFUSION_LICENSE_KEY"]);
+            ArgumentNullException.ThrowIfNull(configuration);
+            return NormalizeLicenseKey(configuration[LicenseKeyName]);
         }
 
         /// <summary>

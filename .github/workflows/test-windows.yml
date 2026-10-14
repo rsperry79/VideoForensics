@@ -47,11 +47,9 @@ jobs:
       # This repo opts into Microsoft.Testing.Platform (see Directory.Build.props), so `dotnet test` uses MTP's CLI.
       # The VSTest-style `--logger trx` flag breaks discovery there, so use MTP's native xUnit trx reporter.
       # The live Anthropic test skips when ANTHROPIC_API_KEY is empty, so forks without the secret stay green.
-      # Syncfusion tests read the key from the env var (Client.Core resolver); empty means unlicensed mode.
       - name: Run tests
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: >
           dotnet test VideoForensics.CI.slnf --configuration Release --no-build
           --report-xunit-trx --results-directory TestResults

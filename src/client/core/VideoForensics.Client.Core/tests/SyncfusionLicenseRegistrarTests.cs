@@ -14,11 +14,11 @@ namespace VideoForensics.Client.Core.Tests
     public class SyncfusionLicenseRegistrarTests
     {
         /// <summary>
-        /// Verifies that RegisterIfPresent does not throw when the license key file is missing.
+        /// Verifies that RegisterIfPresent does not throw when no license file, user secret, or baked-in key is present.
         /// This is the common case in CI/dev machines without a Syncfusion license key installed.
         /// </summary>
         [Fact]
-        public void SyncfusionLicenseRegistrar_RegisterIfPresentKeyFileMissing_DoesNotThrow()
+        public void SyncfusionLicenseRegistrar_RegisterIfPresentNoSources_DoesNotThrow()
         {
             var registrar = new SyncfusionLicenseRegistrar();
 
@@ -28,86 +28,72 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         /// <summary>
-        /// Verifies that the configuration overload rejects a null configuration instead of silently skipping registration.
+        /// Verifies that a user-secrets value is returned when it is the only configured source. The in-memory
+        /// configuration stands in for the user-secrets layer so the test never reads a developer's real secrets file.
         /// </summary>
         [Fact]
-        public void SyncfusionLicenseRegistrar_RegisterIfPresentNullConfiguration_ThrowsArgumentNullException()
+        public void SyncfusionLicenseRegistrar_ConfiguredKeyFromSecretsLayerOnly_ReturnsSecretKey()
         {
-            var registrar = new SyncfusionLicenseRegistrar();
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["SYNCFUSION_LICENSE_KEY"] = "secret-key-123" })
+                .Build();
 
-            Assert.Throws<ArgumentNullException>(() => registrar.RegisterIfPresent(null!));
+            Assert.Equal("secret-key-123", SyncfusionLicenseRegistrar.ResolveConfiguredKey(configuration));
         }
 
         /// <summary>
-        /// Verifies the env var source returns the key with surrounding whitespace trimmed, so a key pasted with a trailing newline still registers.
+        /// Verifies that a configuration with no SYNCFUSION_LICENSE_KEY entry resolves to null, so the baked-in key is the fallback.
+        /// Uses an empty in-memory configuration; no real environment variable or secrets file is read.
         /// </summary>
         [Fact]
-        public void SyncfusionLicenseRegistrar_EnvironmentKeySetWithWhitespace_ReturnsTrimmedKey()
+        public void SyncfusionLicenseRegistrar_ConfigWithNoKey_ReturnsNull()
         {
-            const string variable = "SYNCFUSION_LICENSE_KEY";
-            string? previous = Environment.GetEnvironmentVariable(variable);
-            try
-            {
-                Environment.SetEnvironmentVariable(variable, "  test-key-123\r\n");
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .Build();
 
-                Assert.Equal("test-key-123", SyncfusionLicenseRegistrar.GetSyncfusionLicenseKeyFromEnvironment());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(variable, previous);
-            }
+            Assert.Null(SyncfusionLicenseRegistrar.ResolveConfiguredKey(configuration));
         }
 
         /// <summary>
-        /// Verifies that an unset or whitespace-only env var yields null so the baked-in fallback still runs.
+        /// Verifies that building the configuration for an assembly without a UserSecretsId succeeds, so an
+        /// optional user-secrets file being absent is not an error.
         /// </summary>
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData("   ")]
-        public void SyncfusionLicenseRegistrar_EnvironmentKeyBlankOrUnset_ReturnsNull(string? value)
+        [Fact]
+        public void SyncfusionLicenseRegistrar_BuildConfigurationAssemblyWithoutUserSecrets_DoesNotThrow()
         {
-            const string variable = "SYNCFUSION_LICENSE_KEY";
-            string? previous = Environment.GetEnvironmentVariable(variable);
-            try
-            {
-                Environment.SetEnvironmentVariable(variable, value);
+            var ex = Record.Exception(() => SyncfusionLicenseRegistrar.BuildLicenseConfiguration(typeof(SyncfusionLicenseRegistrarTests).Assembly));
 
-                Assert.Null(SyncfusionLicenseRegistrar.GetSyncfusionLicenseKeyFromEnvironment());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(variable, previous);
-            }
+            Assert.Null(ex);
         }
 
         /// <summary>
-        /// Verifies the configuration source returns the SYNCFUSION_LICENSE_KEY value trimmed, so user secrets or App Settings values with stray whitespace still register.
+        /// Verifies that the configuration source returns the SYNCFUSION_LICENSE_KEY value trimmed, so user secrets or App Settings values with stray whitespace still register.
         /// </summary>
         [Fact]
-        public void SyncfusionLicenseRegistrar_ConfigurationKeySetWithWhitespace_ReturnsTrimmedKey()
+        public void SyncfusionLicenseRegistrar_ConfiguredKeySetWithWhitespace_ReturnsTrimmedKey()
         {
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["SYNCFUSION_LICENSE_KEY"] = "  test-key-123\r\n" })
                 .Build();
 
-            Assert.Equal("test-key-123", SyncfusionLicenseRegistrar.GetSyncfusionLicenseKeyFromConfiguration(configuration));
+            Assert.Equal("test-key-123", SyncfusionLicenseRegistrar.ResolveConfiguredKey(configuration));
         }
 
         /// <summary>
-        /// Verifies that a missing or whitespace-only configuration value yields null so the baked-in fallback still runs.
+        /// Verifies that a missing or whitespace-only configured value yields null so the baked-in fallback still runs.
         /// </summary>
         [Theory]
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void SyncfusionLicenseRegistrar_ConfigurationKeyBlankOrMissing_ReturnsNull(string? value)
+        public void SyncfusionLicenseRegistrar_ConfiguredKeyBlankOrMissing_ReturnsNull(string? value)
         {
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["SYNCFUSION_LICENSE_KEY"] = value })
                 .Build();
 
-            Assert.Null(SyncfusionLicenseRegistrar.GetSyncfusionLicenseKeyFromConfiguration(configuration));
+            Assert.Null(SyncfusionLicenseRegistrar.ResolveConfiguredKey(configuration));
         }
 
         /// <summary>

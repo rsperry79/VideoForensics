@@ -172,10 +172,10 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 One resolver, in `VideoForensics.Client.Core` (`SyncfusionLicenseRegistrar`). Hosting, MAUI, WebApp, and Ui.Shared tests call it; do not add another license reader.
 
-Priority: `%ProgramData%\VideoForensics\syncfusion-license.key` (IT override) > `SYNCFUSION_LICENSE_KEY` env var or config > key baked into `VideoForensics.Client.Core.dll` at CI build time.
+Priority: `%ProgramData%\VideoForensics\syncfusion-license.key` (IT override) > user secrets > key baked into `VideoForensics.Client.Core.dll` at CI build time.
 
-- CI: `SYNCFUSION_LICENSE_KEY` repo secret is passed to the build (`-p:SyncfusionLicenseKey`) in `release-installers.yml` and to the test step in `test-windows.yml`.
-- Local/VS: set a user-level `SYNCFUSION_LICENSE_KEY` env var; restart VS so tests and the debugger see it. Without a key, dev builds run unlicensed.
+- CI: `SYNCFUSION_LICENSE_KEY` repo secret is passed to the build as `-p:SyncfusionLicenseKey` in `release-installers.yml` and `build-windows.yml`; test DLLs carry the key.
+- Developers: `dotnet user-secrets set SYNCFUSION_LICENSE_KEY <key>` in `src/client/core/VideoForensics.Client.Core/src`. No env var is read. Without a key, dev builds run unlicensed.
 
 ## Branching and pull requests
 
