@@ -103,4 +103,16 @@ public class AuthGateTests : BunitContext
         Assert.Equal("/signin", target);
         Assert.Equal(AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: true), target);
     }
+
+    [Fact]
+    public void AuthGate_ResolveStaleSessionRedirectTarget_ServerRejectedToken_ReturnsSignIn()
+    {
+        Assert.Equal("/signin", AuthGate.ResolveStaleSessionRedirectTarget(sessionConfirmed: false));
+    }
+
+    [Fact]
+    public void AuthGate_ResolveStaleSessionRedirectTarget_ServerAcceptedToken_ReturnsNull()
+    {
+        Assert.Null(AuthGate.ResolveStaleSessionRedirectTarget(sessionConfirmed: true));
+    }
 }

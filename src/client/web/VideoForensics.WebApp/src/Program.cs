@@ -154,6 +154,7 @@ builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies()
 // 403'd despite both individual checks being correct by inspection.
 builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
 
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
