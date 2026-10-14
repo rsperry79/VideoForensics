@@ -1,7 +1,7 @@
-using VideoForensics.Mcp.ServerDiscovery;
+using VideoForensics.Client.MCP.ServerDiscovery;
 using Xunit;
 
-namespace VideoForensics.Mcp.Tests.ServerDiscovery
+namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
 {
     public class FileApiKeyStoreTests : IDisposable
     {

@@ -16,7 +16,7 @@ Plus **Bonus: Jamming Analysis** - RF interference detection from RSSI patterns.
 ### 1. Build the MCP Server
 
 ```bash
-dotnet publish -c Release src/client/mcp/VideoForensics.Mcp/VideoForensics.Mcp.csproj
+dotnet publish -c Release src/client/mcp/VideoForensics.Client.MCP/VideoForensics.Client.MCP.csproj
 ```
 
 ### 2. Locate the Published Executable
@@ -24,7 +24,7 @@ dotnet publish -c Release src/client/mcp/VideoForensics.Mcp/VideoForensics.Mcp.c
 After building, the executable will be at:
 
 ```
-src/client/mcp/VideoForensics.Mcp/bin/Release/net10.0/publish/VideoForensics.Mcp.exe
+src/client/mcp/VideoForensics.Client.MCP/bin/Release/net10.0/publish/VideoForensics.Client.MCP.exe
 ```
 
 **Note:** You will need the full absolute path for the Claude Desktop configuration file.
@@ -53,7 +53,7 @@ Add the VideoForensics MCP server to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "videoforensics": {
-      "command": "C:\\full\\path\\to\\VideoForensics.Mcp.exe"
+      "command": "C:\\full\\path\\to\\VideoForensics.Client.MCP.exe"
     }
   }
 }
@@ -67,7 +67,7 @@ If your user is `rsperry79` and you cloned to `C:\Users\richa\source\repos\Video
 {
   "mcpServers": {
     "videoforensics": {
-      "command": "C:\\Users\\richa\\source\\repos\\VideoForensics\\src\\client\\VideoForensics.Mcp\\bin\\Release\\net10.0\\publish\\VideoForensics.Mcp.exe"
+      "command": "C:\\Users\\richa\\source\\repos\\VideoForensics\\src\\client\\VideoForensics.Client.MCP\\bin\\Release\\net10.0\\publish\\VideoForensics.Client.MCP.exe"
     }
   }
 }

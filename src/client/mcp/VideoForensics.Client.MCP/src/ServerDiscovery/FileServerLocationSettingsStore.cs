@@ -1,6 +1,6 @@
 using VideoForensics.Hosting.ServerDiscovery;
 
-namespace VideoForensics.Mcp.ServerDiscovery
+namespace VideoForensics.Client.MCP.ServerDiscovery
 {
     /// <summary>
     /// File-based implementation of <see cref="IServerLocationSettingsStore"/> for the MCP bridge process.

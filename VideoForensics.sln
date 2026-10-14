@@ -15,9 +15,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{C5A3B5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mcp", "Mcp", "{95AAC6A7-444A-4C90-B98C-66FCFE03DEF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp.Tests", "src\client\mcp\VideoForensics.Mcp\tests\VideoForensics.Mcp.Tests.csproj", "{79B27226-F1D4-4107-B43C-97A2F6C95C80}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.MCP.Tests", "src\client\mcp\VideoForensics.Client.MCP\tests\VideoForensics.Client.MCP.Tests.csproj", "{79B27226-F1D4-4107-B43C-97A2F6C95C80}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Mcp", "src\client\mcp\VideoForensics.Mcp\src\VideoForensics.Mcp.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.MCP", "src\client\mcp\VideoForensics.Client.MCP\src\VideoForensics.Client.MCP.csproj", "{C84A984B-3123-4DEA-804B-CCB404638A5A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{F643C2BC-D7C9-4928-9C8B-6F9DDE2DE8F2}"
 EndProject

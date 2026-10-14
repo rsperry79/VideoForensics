@@ -7,8 +7,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <AssemblyName>VideoForensics.Mcp</AssemblyName>
-        <RootNamespace>VideoForensics.Mcp</RootNamespace>
+        <AssemblyName>VideoForensics.Client.MCP</AssemblyName>
+        <RootNamespace>VideoForensics.Client.MCP</RootNamespace>
         <Authors>DV Victim Protection Team</Authors>
         <Description>MCP server for forensic evidence analysis - Claude Desktop integration</Description>
         <Copyright>2026</Copyright>
@@ -28,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="VideoForensics.Mcp.Tests" />
+        <InternalsVisibleTo Include="VideoForensics.Client.MCP.Tests" />
     </ItemGroup>
 
 </Project>

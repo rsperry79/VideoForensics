@@ -1,4 +1,4 @@
-namespace VideoForensics.Mcp.ServerDiscovery
+namespace VideoForensics.Client.MCP.ServerDiscovery
 {
     /// <summary>
     /// File-based implementation of <see cref="IApiKeyStore"/> for the MCP bridge process.

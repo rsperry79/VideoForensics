@@ -8,13 +8,13 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 
 using VideoForensics.Hosting.ServerDiscovery;
-using VideoForensics.Mcp.ServerDiscovery;
+using VideoForensics.Client.MCP.ServerDiscovery;
 
-namespace VideoForensics.Mcp
+namespace VideoForensics.Client.MCP
 {
     /// <summary>
     /// VideoForensics MCP bridge entry point. This process has no business logic or data access of
-    /// its own — per CLAUDE.md's client/server split rules (which name VideoForensics.Mcp explicitly
+    /// its own — per CLAUDE.md's client/server split rules (which name VideoForensics.Client.MCP explicitly
     /// as a "client host" that may not reference providers-common/providers-core/any concrete
     /// provider/data.*, or bootstrap AddVideoForensicsDataLayer()/AddVideoForensicsServerCore()), it
     /// is a pure stdio&lt;-&gt;HTTP proxy: every MCP request received over stdio from Claude Desktop is
