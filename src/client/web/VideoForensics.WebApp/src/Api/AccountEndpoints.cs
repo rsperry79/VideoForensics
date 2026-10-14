@@ -258,17 +258,8 @@ namespace VideoForensics.WebApp.Api
                     {
                         using IServiceScope scope = scopeFactory.CreateScope();
 
-                        // Provider sessions are in-memory: after a server restart the account must be restored from its saved
-                        // credentials before discovery or pulls can reach the provider.
-                        IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
-                        _ = await authService.RestoreFromSavedCredentialsAsync(id, CancellationToken.None);
-
-                        IEventPullService eventPullService = scope.ServiceProvider.GetRequiredService<IEventPullService>();
-                        await eventPullService.PullAccountEventsAsync(
-                            id,
-                            account.LastSuccessfulAuthUtc, // Pull since last auth
-                            CancellationToken.None
-                        );
+                        IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
+                        await syncRunner.RunAsync(id, CancellationToken.None);
                     }
                     catch
                     {

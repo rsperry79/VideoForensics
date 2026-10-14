@@ -515,6 +515,7 @@ namespace VideoForensics.Hosting
 
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
             return services;
         }
