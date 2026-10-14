@@ -168,9 +168,14 @@ For headless/scripted deployments that can't drive a browser wizard, the legacy 
 
 This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
 
-## Syncfusion License (CI-baked-in)
+## Syncfusion License
 
-Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. Developers running from Visual Studio can set a user-level `SYNCFUSION_LICENSE_KEY` environment variable instead; it is checked after the ProgramData file and before the baked-in key (restart VS after setting it, since VS only sees env vars present at launch). See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
+One resolver, in `VideoForensics.Client.Core` (`SyncfusionLicenseRegistrar`). Hosting, MAUI, WebApp, and Ui.Shared tests call it; do not add another license reader.
+
+Priority: `%ProgramData%\VideoForensics\syncfusion-license.key` (IT override) > `SYNCFUSION_LICENSE_KEY` env var or config > key baked into `VideoForensics.Client.Core.dll` at CI build time.
+
+- CI: `SYNCFUSION_LICENSE_KEY` repo secret is passed to the build (`-p:SyncfusionLicenseKey`) in `release-installers.yml` and to the test step in `test-windows.yml`.
+- Local/VS: set a user-level `SYNCFUSION_LICENSE_KEY` env var; restart VS so tests and the debugger see it. Without a key, dev builds run unlicensed.
 
 ## Branching and pull requests
 

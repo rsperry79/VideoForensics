@@ -32,6 +32,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      # Without this, a release would ship installers with an unlicensed Syncfusion build.
+      - name: Require Syncfusion license key
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: |
+          if [ -z "$SYNCFUSION_LICENSE_KEY" ]; then
+            echo "::error::SYNCFUSION_LICENSE_KEY secret is not set; installers would ship unlicensed."
+            exit 1
+          fi
       - name: Restore NuGet cache
         uses: actions/cache@v6
         with:

@@ -12,14 +12,27 @@
         <Description>Service implementations shared by the VideoForensics console client and MCP server</Description>
         <Copyright>2026</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
+
+        <!-- Syncfusion license key sourced from the SYNCFUSION_LICENSE_KEY GitHub Actions secret at CI build/publish time
+             (see release-installers.yml, publish-dev.yml, publish-testing.yml) via -p:SyncfusionLicenseKey=...
+             Never committed to git - empty by default for local/dev builds, which fall back to today's
+             existing unlicensed-dev-mode behavior. Embedded here (not in Hosting) so every host that registers
+             the license through SyncfusionLicenseRegistrar carries the same baked-in key. -->
+        <SyncfusionLicenseKey Condition="'$(SyncfusionLicenseKey)' == ''"></SyncfusionLicenseKey>
     </PropertyGroup>
 
     <ItemGroup>
+        <AssemblyMetadata Include="SyncfusionLicenseKey" Value="$(SyncfusionLicenseKey)" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
         <PackageReference Include="NodaTime" Version="3.3.5" />
         <PackageReference Include="SharpZipLib" Version="1.4.2" />
+        <PackageReference Include="Syncfusion.Licensing" Version="35.1.40" />
     </ItemGroup>
 
     <ItemGroup>
