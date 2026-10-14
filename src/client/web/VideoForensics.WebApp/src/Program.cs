@@ -78,15 +78,26 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
 
-int listenPort = ServerAddressResolver.ResolveConfiguredPort(builder.Configuration);
+var listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
+    foreach (var endpoint in listenEndpoints)
+    {
+    // https endpoints get TLS via the ASP.NET development certificate; http endpoints stay plain.
+    void ConfigureHttps(Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions listenOptions)
+    {
+        if (endpoint.Scheme == "https")
+        {
+            listenOptions.UseHttps();
+        }
+    }
+
     if (configuredNetworkTier == NetworkTier.Local)
     {
         // Loopback only - genuinely unreachable from the LAN or internet at the socket level, not
         // merely discouraged by application logic. A device on the same network cannot even open a
         // TCP connection, let alone attempt to pair.
-        options.ListenLocalhost(listenPort);
+        options.ListenLocalhost(endpoint.Port, ConfigureHttps);
     }
     else
     {
@@ -94,7 +105,8 @@ builder.WebHost.ConfigureKestrel(options =>
         // Cloudflare Tunnel already establishes that "Internet" exposure comes from cloudflared
         // forwarding to localhost, not from Kestrel itself binding to a public address, so there is
         // no separate wider bind for Internet beyond what Network already needs for LAN reachability.
-        options.ListenAnyIP(listenPort);
+        options.ListenAnyIP(endpoint.Port, ConfigureHttps);
+    }
     }
 });
 
