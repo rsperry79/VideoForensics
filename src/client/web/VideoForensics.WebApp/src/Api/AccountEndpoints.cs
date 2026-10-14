@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Services;
@@ -256,6 +257,12 @@ namespace VideoForensics.WebApp.Api
                     try
                     {
                         using IServiceScope scope = scopeFactory.CreateScope();
+
+                        // Provider sessions are in-memory: after a server restart the account must be restored from its saved
+                        // credentials before discovery or pulls can reach the provider.
+                        IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+                        _ = await authService.RestoreFromSavedCredentialsAsync(id, CancellationToken.None);
+
                         IEventPullService eventPullService = scope.ServiceProvider.GetRequiredService<IEventPullService>();
                         await eventPullService.PullAccountEventsAsync(
                             id,
