@@ -202,6 +202,8 @@ else
         _statusMessage = null;
         try
         {
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
             // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
             var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken ?? throw new InvalidOperationException("Not signed in."));
             using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
