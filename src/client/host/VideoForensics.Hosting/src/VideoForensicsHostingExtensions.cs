@@ -828,6 +828,8 @@ namespace VideoForensics.Hosting
                     Email = "admin@localhost.invalid",
                     Role = VideoForensics.Data.Common.Entities.OperatorRole.SuperAdmin,
                     IsApproved = true,
+                    // Seeded only when the operator table is empty, so this is the first SuperAdmin and the primary one.
+                    IsPrimarySuperAdmin = true,
                     Active = true,
                     MustChangePassword = true,
                     CreatedAtUtc = DateTime.UtcNow,

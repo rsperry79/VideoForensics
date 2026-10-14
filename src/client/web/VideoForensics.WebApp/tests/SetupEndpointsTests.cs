@@ -52,6 +52,23 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task SetupEndpoints_CreateAdmin_MarksOperatorAsPrimarySuperAdmin()
+        {
+            (var operators, var auditLog, var tierResolver, var headerProtector, var logger) = CreateMocks(operatorsEmpty: true);
+            Operator? captured = null;
+            _ = operators.Setup(o => o.AddAsync(It.IsAny<Operator>(), It.IsAny<CancellationToken>()))
+                .Callback((Operator op, CancellationToken _) => captured = op)
+                .ReturnsAsync((Operator op, CancellationToken _) => op);
+            var request = new CreateSetupAdminRequest("admin", "a-very-long-password-123");
+
+            _ = await SetupEndpoints.CreateAdminAsync(
+                request, operators.Object, auditLog.Object, tierResolver.Object, headerProtector.Object, new DefaultHttpContext(), logger, CancellationToken.None);
+
+            Assert.NotNull(captured);
+            Assert.True(captured!.IsPrimarySuperAdmin);
+        }
+
+        [Fact]
         public async Task CreateAdminAsync_OperatorAlreadyExists_ReturnsForbidWithErrorMessage()
         {
             (var operators, var auditLog, var tierResolver, var headerProtector, var logger) = CreateMocks(operatorsEmpty: false);
