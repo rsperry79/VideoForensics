@@ -35,6 +35,8 @@ namespace VideoForensics.Ui.Shared.Layout
                 // these pages call repositories in-process, so this row is the only gate there.
                 ["/accounts"] = AccessPolicy.SuperAdminLocal,
                 ["/devices/config"] = AccessPolicy.SuperAdminLocal,
+                // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
+                ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
                 ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
