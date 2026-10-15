@@ -3,41 +3,69 @@ using System.Text.RegularExpressions;
 
 namespace VideoForensics.Core.Providers.Core
 {
-    /// <summary>Whether a clip was captured with the IR illuminator (grayscale) or in visible light (day/HDR).</summary>
+    /// <summary>How a clip was lit: IR (grayscale, dark), colour night (floodlit colour, dark), or day/HDR (bright).</summary>
     public enum LightingMode
     {
-        /// <summary>Infrared night footage: effectively grayscale.</summary>
+        /// <summary>Infrared night footage: grayscale and dark.</summary>
         Ir,
+
+        /// <summary>Colour night vision: colour kept by a floodlight, but dark.</summary>
+        ColorNight,
 
         /// <summary>Visible-light footage, including HDR.</summary>
         Day
     }
 
-    /// <summary>Parses ffmpeg <c>signalstats</c> output into a mean colour saturation for a clip.</summary>
+    /// <summary>Mean colour saturation (SATAVG) and mean luma (YAVG, 0-255) of a clip.</summary>
+    public sealed record ClipColorStats(double MeanSaturation, double MeanLuma);
+
+    /// <summary>Parses ffmpeg <c>signalstats</c> output into a clip's mean saturation and luma.</summary>
     public static class SaturationAnalysis
     {
         private static readonly Regex SatAvg = new(@"lavfi\.signalstats\.SATAVG=(?<value>-?\d+(?:\.\d+)?)", RegexOptions.Compiled);
+        private static readonly Regex YAvg = new(@"lavfi\.signalstats\.YAVG=(?<value>-?\d+(?:\.\d+)?)", RegexOptions.Compiled);
 
-        /// <summary>Mean of the per-frame SATAVG values; null when none were reported.</summary>
-        public static double? ParseMeanSaturation(string signalstatsOutput)
+        /// <summary>Means of the per-frame SATAVG and YAVG values; null when either was not reported.</summary>
+        public static ClipColorStats? ParseStats(string signalstatsOutput)
         {
-            var values = SatAvg.Matches(signalstatsOutput)
+            List<double> saturation = Values(SatAvg, signalstatsOutput);
+            List<double> luma = Values(YAvg, signalstatsOutput);
+            if (saturation.Count == 0 || luma.Count == 0)
+            {
+                return null;
+            }
+
+            return new ClipColorStats(saturation.Average(), luma.Average());
+        }
+
+        private static List<double> Values(Regex pattern, string text) =>
+            pattern.Matches(text)
                 .Select(m => double.Parse(m.Groups["value"].Value, CultureInfo.InvariantCulture))
                 .ToList();
-
-            return values.Count == 0 ? null : values.Average();
-        }
     }
 
-    /// <summary>Labels a clip IR or Day from its mean colour saturation. IR footage is effectively grayscale.</summary>
+    /// <summary>
+    /// Labels a clip from its colour and brightness. Colour alone cannot separate IR from colour night: both can be dark,
+    /// and colour night keeps colour. Brightness separates them from day.
+    /// </summary>
     public static class LightingClassifier
     {
-        /// <summary>Saturation below which a clip is treated as grayscale IR footage.</summary>
-        public const double IrSaturationCeiling = 8.0;
+        /// <summary>Saturation below which a clip is grayscale.</summary>
+        public const double GrayscaleSaturationCeiling = 8.0;
 
-        /// <summary>Classifies a clip from its mean saturation (SATAVG).</summary>
-        public static LightingMode Classify(double meanSaturation) =>
-            meanSaturation < IrSaturationCeiling ? LightingMode.Ir : LightingMode.Day;
+        /// <summary>Mean luma (0-255) below which a clip is dark. Tune against real footage: it is an estimate.</summary>
+        public const double DarkLumaCeiling = 60.0;
+
+        /// <summary>Classifies a clip. Bright footage is day regardless of colour; dark footage is IR or colour night.</summary>
+        public static LightingMode Classify(ClipColorStats stats)
+        {
+            if (stats.MeanLuma >= DarkLumaCeiling)
+            {
+                return LightingMode.Day;
+            }
+
+            return stats.MeanSaturation < GrayscaleSaturationCeiling ? LightingMode.Ir : LightingMode.ColorNight;
+        }
     }
 
     /// <summary>Median bitrate of a device's clips in one lighting mode, and how many clips it was computed from.</summary>

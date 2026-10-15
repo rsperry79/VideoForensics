@@ -6,32 +6,39 @@ namespace VideoForensics.Core.Providers.Core.Tests
     public class LightingAndInterferenceTests
     {
         [Fact]
-        public void ParseMeanSaturation_PerFrameSignalstats_ReturnsAverage()
+        public void ParseStats_PerFrameSignalstats_ReturnsAveragedSaturationAndLuma()
         {
             const string output = """
                 frame:0    pts:0       pts_time:0
+                lavfi.signalstats.YAVG=40.000000
                 lavfi.signalstats.SATAVG=10.000000
                 frame:1    pts:1       pts_time:1
+                lavfi.signalstats.YAVG=60.000000
                 lavfi.signalstats.SATAVG=20.000000
                 """;
 
-            Assert.Equal(15.0, SaturationAnalysis.ParseMeanSaturation(output));
+            ClipColorStats? stats = SaturationAnalysis.ParseStats(output);
+
+            Assert.NotNull(stats);
+            Assert.Equal(15.0, stats.MeanSaturation);
+            Assert.Equal(50.0, stats.MeanLuma);
         }
 
         [Fact]
-        public void ParseMeanSaturation_NoSignalstatsLines_ReturnsNull()
+        public void ParseStats_NoSignalstatsLines_ReturnsNull()
         {
-            Assert.Null(SaturationAnalysis.ParseMeanSaturation("frame:0 pts:0"));
+            Assert.Null(SaturationAnalysis.ParseStats("frame:0 pts:0"));
         }
 
         [Theory]
-        [InlineData(0.4, LightingMode.Ir)]
-        [InlineData(7.9, LightingMode.Ir)]
-        [InlineData(8.0, LightingMode.Day)]
-        [InlineData(45.0, LightingMode.Day)]
-        public void Classify_MeanSaturation_LabelsIrGrayscaleAndColourDay(double saturation, LightingMode expected)
+        [InlineData(0.4, 20.0, LightingMode.Ir)]        // grayscale and dark: infrared
+        [InlineData(7.9, 30.0, LightingMode.Ir)]
+        [InlineData(45.0, 25.0, LightingMode.ColorNight)] // colour kept but dark: floodlit colour night
+        [InlineData(45.0, 150.0, LightingMode.Day)]     // colour and bright: day or HDR
+        [InlineData(0.4, 150.0, LightingMode.Day)]      // grayscale but bright is not IR
+        public void Classify_SaturationAndLuma_LabelsIrColorNightAndDay(double saturation, double luma, LightingMode expected)
         {
-            Assert.Equal(expected, LightingClassifier.Classify(saturation));
+            Assert.Equal(expected, LightingClassifier.Classify(new ClipColorStats(saturation, luma)));
         }
 
         [Fact]
