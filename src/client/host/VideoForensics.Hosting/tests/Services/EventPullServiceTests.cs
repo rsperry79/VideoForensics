@@ -11,6 +11,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IDeviceRepository> _mockDeviceRepository;
         private readonly Mock<ILocationRepository> _mockLocationRepository;
         private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository;
+        private readonly Mock<IDeviceDiscoveryService> _mockDiscovery;
         private readonly EventPullService _sut;
 
         public EventPullServiceTests()
@@ -19,12 +20,14 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockDeviceRepository = new Mock<IDeviceRepository>();
             _mockLocationRepository = new Mock<ILocationRepository>();
             _mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
+            _mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             _sut = new EventPullService(
                 _mockEventAndConfigService.Object,
                 _mockDeviceRepository.Object,
                 _mockLocationRepository.Object,
-                _mockProviderAccountRepository.Object
+                _mockProviderAccountRepository.Object,
+                _mockDiscovery.Object
             );
         }
 
@@ -82,11 +85,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
-                .ReturnsAsync(new[] { location });
-
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
-                .ReturnsAsync(new[] { device });
+            DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 accountId,
@@ -155,11 +154,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
-                .ReturnsAsync(new[] { location });
-
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
-                .ReturnsAsync(new[] { device });
+            DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 accountId,
@@ -224,11 +219,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
-                .ReturnsAsync(new[] { location });
-
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
-                .ReturnsAsync(new[] { device });
+            DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),
@@ -293,11 +284,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
-                .ReturnsAsync(new[] { location });
-
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
-                .ReturnsAsync(new[] { device });
+            DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),
@@ -322,7 +309,7 @@ namespace VideoForensics.Hosting.Tests.Services
                     d.LastPullAttemptAtUtc != null
                 ),
                 cancellationToken
-            ), Times.Once);
+            ), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -364,11 +351,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
-                .ReturnsAsync(new[] { location });
-
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
-                .ReturnsAsync(new[] { device });
+            DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
             _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),

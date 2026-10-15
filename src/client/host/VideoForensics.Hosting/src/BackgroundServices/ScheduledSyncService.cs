@@ -198,8 +198,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                         sp.GetRequiredService<IDeviceRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
-                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
-                        deviceDiscovery);
+                        deviceDiscovery,
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>());
 
                     await pull.PullAccountEventsAsync(accountId, from, ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);

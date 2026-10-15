@@ -6,7 +6,6 @@
 ## Open
 - [ ] HDR brightness: after the 8-bit conversion, check that true HDR clips are not misclassified as dark or day.
 - [ ] Confirm `silencedetect` and `astats` output on a real Ring clip (the Ring audio is AAC in MP4).
-- [ ] Remove the optional discovery parameter in `EventPullService` and rewrite the 11 tests that depend on the stored-inventory fallback (no-backwards-compatibility rule).
 - [ ] Step-up checks for account removal and two-factor override: needs an operator with a passkey to test end to end.
 - [ ] Wait for analysis before the next provider call across all providers (currently Ring only, via the shared data client).
 - [ ] Initial sync on a new account: run a real add-account flow end to end and confirm the first full sync pulls history and devices.

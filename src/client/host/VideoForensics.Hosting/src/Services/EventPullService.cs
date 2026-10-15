@@ -27,20 +27,20 @@ namespace VideoForensics.Hosting.Services
         private readonly ILocationRepository _locationRepository;
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
-        private readonly IDeviceDiscoveryService? _deviceDiscovery;
+        private readonly IDeviceDiscoveryService _deviceDiscovery;
 
         /// <summary>
-        /// Creates a new instance of the EventPullService. When <paramref name="deviceDiscovery"/> is supplied, each pull first
-        /// discovers the account's locations and devices from the provider and persists them; without it, only devices already
-        /// stored are pulled. Connecting an account stores no inventory, so the discovering form is what makes a first sync work.
+        /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
+        /// the provider and persists them, then pulls events for every discovered device. Connecting an account stores no
+        /// inventory, so discovery is what makes a first sync work.
         /// </summary>
         public EventPullService(
             IEventAndConfigService eventAndConfigService,
             IDeviceRepository deviceRepository,
             ILocationRepository locationRepository,
             IProviderAccountRepository providerAccountRepository,
-            ILogger<EventPullService>? logger = null,
-            IDeviceDiscoveryService? deviceDiscovery = null)
+            IDeviceDiscoveryService deviceDiscovery,
+            ILogger<EventPullService>? logger = null)
         {
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
@@ -61,9 +61,7 @@ namespace VideoForensics.Hosting.Services
                     return;
                 }
 
-                Inventory inventory = _deviceDiscovery is null
-                    ? await LoadStoredInventoryAsync(accountId, cancellationToken)
-                    : await DiscoverInventoryAsync(accountId, _deviceDiscovery, cancellationToken);
+                Inventory inventory = await DiscoverInventoryAsync(accountId, cancellationToken);
 
                 if (inventory.LocationCount == 0)
                 {
@@ -146,41 +144,19 @@ namespace VideoForensics.Hosting.Services
         /// <summary>The locations and devices a pull works from. <see cref="LocationCount"/> zero means nothing to pull.</summary>
         private sealed record Inventory(int LocationCount, List<DeviceEntity> Devices);
 
-        private async Task<Inventory> LoadStoredInventoryAsync(Guid accountId, CancellationToken cancellationToken)
-        {
-            var locations = await _locationRepository.ListByProviderAccountIdAsync(accountId, cancellationToken);
-            if (locations == null || locations.Count == 0)
-            {
-                return new Inventory(0, new List<DeviceEntity>());
-            }
-
-            var devices = new List<DeviceEntity>();
-            foreach (var location in locations)
-            {
-                if (location == null) continue;
-                var stored = await _deviceRepository.GetByLocationIdAsync(location.Id, cancellationToken);
-                if (stored != null)
-                {
-                    devices.AddRange(stored);
-                }
-            }
-
-            return new Inventory(locations.Count, devices);
-        }
-
         /// <summary>
         /// Asks the provider for the account's locations and devices and saves any that are new or changed. Errors propagate so the
         /// caller records them on the account rather than pulling from a partial inventory.
         /// </summary>
-        private async Task<Inventory> DiscoverInventoryAsync(Guid accountId, IDeviceDiscoveryService discovery, CancellationToken cancellationToken)
+        private async Task<Inventory> DiscoverInventoryAsync(Guid accountId, CancellationToken cancellationToken)
         {
-            IReadOnlyList<Location> remoteLocations = await discovery.GetLocationsAsync(accountId, cancellationToken);
+            IReadOnlyList<Location> remoteLocations = await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
             var devices = new List<DeviceEntity>();
 
             foreach (Location remoteLocation in remoteLocations)
             {
                 LocationEntity location = await UpsertLocationAsync(accountId, remoteLocation, cancellationToken);
-                IReadOnlyList<Device> remoteDevices = await discovery.GetDevicesAsync(accountId, remoteLocation.Id, cancellationToken);
+                IReadOnlyList<Device> remoteDevices = await _deviceDiscovery.GetDevicesAsync(accountId, remoteLocation.Id, cancellationToken);
                 foreach (Device remoteDevice in remoteDevices)
                 {
                     devices.Add(await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken));
