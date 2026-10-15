@@ -341,6 +341,31 @@ namespace VideoForensics.Data.Database.Repositories
             return await query.ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+
+            // Subqueries (not joins) so each case appears once no matter how many scope devices it has.
+            IQueryable<Guid> visibleLocationIds = db.ProviderAccountLocations
+                .Where(pal => pal.ProviderAccountId == providerAccountId)
+                .Select(pal => pal.LocationId);
+
+            IQueryable<Guid> visibleDeviceIds = db.Devices
+                .Where(d => visibleLocationIds.Contains(d.LocationId))
+                .Select(d => d.Id);
+
+            IQueryable<Guid> attachedCaseIds = db.CaseDevices
+                .Where(cd => visibleDeviceIds.Contains(cd.DeviceId))
+                .Select(cd => cd.CaseId);
+
+            return await db.Cases
+                .AsNoTracking()
+                .Where(c => attachedCaseIds.Contains(c.Id))
+                .OrderByDescending(c => c.CreatedAtUtc)
+                .ToListAsync(ct);
+        }
+
         public async Task UpdateDetailsAsync(
             Guid id,
             string title,

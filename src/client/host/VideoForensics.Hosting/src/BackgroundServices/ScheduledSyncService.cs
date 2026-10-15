@@ -113,6 +113,11 @@ namespace VideoForensics.Hosting.BackgroundServices
                     if (account == null)
                     {
                         _logger.LogWarning("Scheduled sync skipped: provider account for an enabled schedule no longer exists");
+                        if (ScheduleCalculator.IsEventDue(schedule, _time.GetUtcNow().UtcDateTime))
+                        {
+                            await RecordMissingAccountAttemptAsync(sp, scheduleRepository, schedule, ct);
+                        }
+
                         continue;
                     }
 
@@ -179,12 +184,16 @@ namespace VideoForensics.Hosting.BackgroundServices
                 return;
             }
 
+            DateTime startedUtc = _time.GetUtcNow().UtcDateTime;
+            string? outcome;
+
             try
             {
                 // Per-account credentials; the sync-now endpoint relies on an already-restored session, the scheduler cannot.
                 if (!await authService.RestoreFromSavedCredentialsAsync(accountId, ct))
                 {
                     _logger.LogWarning("Scheduled sync could not restore saved credentials for {ProviderName} account; will retry after the next interval", providerName);
+                    outcome = ProviderSyncRunRecorder.RestoreFailedMessage;
                 }
                 else
                 {
@@ -204,6 +213,10 @@ namespace VideoForensics.Hosting.BackgroundServices
                     await pull.PullAccountEventsAsync(accountId, from, ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
+
+                    // Same rule as the manual sync: the pull reports failures by recording them on the account.
+                    outcome = ProviderSyncRunRecorder.OutcomeAfterPull(
+                        await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -213,11 +226,30 @@ namespace VideoForensics.Hosting.BackgroundServices
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scheduled event sync failed for {ProviderName} account", providerName);
+                outcome = ex.Message;
             }
+
+            await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome);
 
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await scheduleRepository.RecordEventRunAsync(accountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
+        }
+
+        /// <summary>
+        /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the
+        /// schedule does not write a failure row on every tick.
+        /// </summary>
+        private async Task RecordMissingAccountAttemptAsync(IServiceProvider sp, ISyncScheduleRepository scheduleRepository, SyncSchedule schedule, CancellationToken ct)
+        {
+            DateTime now = _time.GetUtcNow().UtcDateTime;
+            await ProviderSyncRunRecorder.RecordAsync(
+                sp.GetRequiredService<IProviderSyncRunRepository>(),
+                _logger,
+                schedule.ProviderAccountId,
+                now,
+                ProviderSyncRunRecorder.AccountNotFoundMessage);
+            await scheduleRepository.RecordEventRunAsync(schedule.ProviderAccountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
         }
     }
 }

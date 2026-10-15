@@ -31,6 +31,12 @@ namespace VideoForensics.Data.Common.Contracts
         Task<IReadOnlyList<ForensicCase>> ListAsync(CaseStatus? status, CancellationToken ct);
 
         /// <summary>
+        /// Lists distinct cases attached to a provider account: a case is attached when any of its scope devices
+        /// belongs to a location the account can see. Includes cases regardless of status. Returns newest first.
+        /// </summary>
+        Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct);
+
+        /// <summary>
         /// Updates a case's title, description, and lead operator.
         /// Appends a chain-of-custody ActionLog entry ("UpdateCase") in the same operation.
         /// Updates the case's UpdatedAtUtc timestamp.
