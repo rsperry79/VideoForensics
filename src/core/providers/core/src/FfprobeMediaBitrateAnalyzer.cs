@@ -2,8 +2,15 @@ using System.Diagnostics;
 
 namespace VideoForensics.Core.Providers.Core
 {
+    /// <summary>Analyzes the bitrate of a downloaded media file.</summary>
+    public interface IMediaBitrateAnalyzer
+    {
+        /// <summary>Returns the analysis, or null when the file cannot be analyzed.</summary>
+        Task<MediaBitrateAnalysis?> AnalyzeAsync(string mediaFilePath, long fileSizeBytes, CancellationToken ct);
+    }
+
     /// <summary>Runs ffprobe on a downloaded file and returns its bitrate analysis.</summary>
-    public sealed class FfprobeMediaBitrateAnalyzer
+    public sealed class FfprobeMediaBitrateAnalyzer : IMediaBitrateAnalyzer
     {
         private readonly string _ffprobePath;
 
@@ -13,7 +20,7 @@ namespace VideoForensics.Core.Providers.Core
             _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe");
         }
 
-        /// <summary>Returns the analysis, or null if ffprobe fails or the output is not usable.</summary>
+        /// <inheritdoc />
         public async Task<MediaBitrateAnalysis?> AnalyzeAsync(string mediaFilePath, long fileSizeBytes, CancellationToken ct)
         {
             var psi = new ProcessStartInfo

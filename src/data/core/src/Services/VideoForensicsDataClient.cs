@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -23,6 +24,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
+        private readonly IMediaBitrateAnalyzer _bitrateAnalyzer;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -44,7 +46,8 @@ namespace VideoForensics.Data.Core.Services
             ICredentialRepository credentialRepository,
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
-            ILogger<VideoForensicsDataClient> logger)
+            ILogger<VideoForensicsDataClient> logger,
+            IMediaBitrateAnalyzer bitrateAnalyzer)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -62,6 +65,7 @@ namespace VideoForensics.Data.Core.Services
             IntegrityVerification = integrityVerification;
             ActionLog = actionLogRepository;
             _logger = logger;
+            _bitrateAnalyzer = bitrateAnalyzer;
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -117,6 +121,36 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
+        /// <summary>
+        /// Records the file's bitrate and duration on the media item. Best-effort: a failed or unusable probe leaves the
+        /// fields empty and never fails the recording.
+        /// </summary>
+        private async Task ApplyBitrateAnalysisAsync(MediaItem media, CancellationToken ct)
+        {
+            try
+            {
+                MediaBitrateAnalysis? analysis = await _bitrateAnalyzer.AnalyzeAsync(media.FilePath, media.FileSizeBytes, ct);
+                if (analysis is null)
+                {
+                    _logger.LogWarning("Bitrate analysis unavailable for downloaded media {FileName}", media.FileName);
+                    return;
+                }
+
+                media.VideoBitrateBps = analysis.VideoBitrateBps;
+                media.DurationSeconds = analysis.DurationSeconds;
+                media.BitrateEstimated = analysis.BitrateEstimated;
+                media.BitrateAnalyzedAtUtc = DateTime.UtcNow;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Bitrate analysis failed for downloaded media {FileName}", media.FileName);
+            }
+        }
+
         public async Task<DownloadEvent> RecordDownloadEventAsync(
             DownloadEvent evt,
             MediaItem? media,
@@ -125,6 +159,13 @@ namespace VideoForensics.Data.Core.Services
             List<DetectedPerson>? persons = null,
             List<DetectionTypeOccurrence>? occurrences = null)
         {
+            // Provider-agnostic: every provider's downloads are recorded here, so bitrate is analyzed here.
+            // Runs before the unit of work so ffprobe never holds a database transaction open.
+            if (media != null)
+            {
+                await ApplyBitrateAnalysisAsync(media, ct);
+            }
+
             try
             {
                 return await _unitOfWork.ExecuteAsync(async context =>

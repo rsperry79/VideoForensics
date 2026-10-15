@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -29,6 +30,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _mockIntegrityVerification;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
+        private readonly Mock<IMediaBitrateAnalyzer> _mockBitrateAnalyzer;
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -51,6 +53,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockIntegrityVerification = new Mock<IIntegrityVerificationService>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<VideoForensicsDataClient>>();
+            _mockBitrateAnalyzer = new Mock<IMediaBitrateAnalyzer>();
 
             _dataClient = new VideoForensicsDataClient(
                 _mockUserRepository.Object,
@@ -68,7 +71,35 @@ namespace VideoForensics.Data.Core.Tests
                 _mockCredentialRepository.Object,
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockBitrateAnalyzer.Object);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_WithMedia_RecordsBitrateAnalysisOnMediaItem()
+        {
+            // Analysis runs before the unit of work, so the fields are set whether or not the save succeeds.
+            var media = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                FileName = "clip.mp4",
+                FilePath = @"C:\media\clip.mp4",
+                MediaFormat = "mp4",
+                FileSizeBytes = 4_000_000,
+                Sha256Hash = "hash"
+            };
+            _mockBitrateAnalyzer
+                .Setup(a => a.AnalyzeAsync(media.FilePath, media.FileSizeBytes, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaBitrateAnalysis(1_000_000, 32.0, BitrateEstimated: true));
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e1", AppVersion = "test" };
+
+            _ = await Record.ExceptionAsync(() => _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None));
+
+            Assert.Equal(1_000_000, media.VideoBitrateBps);
+            Assert.Equal(32.0, media.DurationSeconds);
+            Assert.True(media.BitrateEstimated);
+            Assert.NotNull(media.BitrateAnalyzedAtUtc);
         }
 
         [Fact]

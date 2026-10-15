@@ -24,6 +24,7 @@
         <ProjectReference Include="../../common/src/VideoForensics.Data.Common.csproj" />
         <ProjectReference Include="../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
         <ProjectReference Include="../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
+    <ProjectReference Include="../../../core/providers/core/src/VideoForensics.Core.Providers.Core.csproj" />
         <ProjectReference Include="../../../core/helpers/src/VideoForensics.Core.Helpers.csproj" />
         <ProjectReference Include="../../../client/common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
     </ItemGroup>
