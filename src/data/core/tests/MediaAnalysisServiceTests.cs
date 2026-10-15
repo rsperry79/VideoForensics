@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Core.Tests
         private void SetUpClip(MediaItem clip, IReadOnlyList<MediaItem> earlier, MediaBitrateAnalysis bitrate, ClipColorStats color, AudioClipStats audio)
         {
             _items.Setup(r => r.GetAsync(clip.Id, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
-            _items.Setup(r => r.GetByDeviceIdAsync(clip.DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(earlier);
+            _items.Setup(r => r.GetRecentByDeviceAsync(clip.DeviceId, MediaAnalysisService.HistoryWindowClips, It.IsAny<CancellationToken>())).ReturnsAsync(earlier);
             _bitrate.Setup(a => a.AnalyzeAsync(clip.FilePath, clip.FileSizeBytes, It.IsAny<CancellationToken>())).ReturnsAsync(bitrate);
             _color.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<CancellationToken>())).ReturnsAsync(color);
             _audio.Setup(a => a.AnalyzeAsync(clip.FilePath, bitrate.DurationSeconds, It.IsAny<CancellationToken>())).ReturnsAsync(audio);

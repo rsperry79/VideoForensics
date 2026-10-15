@@ -15,6 +15,12 @@ namespace VideoForensics.Data.Core.Services
     /// <inheritdoc />
     public sealed class MediaAnalysisService : IMediaAnalysisService
     {
+        /// <summary>
+        /// Newest clips per device used as history. Baselines are seasonal, so older clips add cost without changing the
+        /// judgement; bounding the query keeps each download's analysis cheap as a device's archive grows.
+        /// </summary>
+        public const int HistoryWindowClips = 500;
+
         /// <summary>Clips needed before "this lighting mode is unusual for the device" can be judged.</summary>
         private const int UnusualLightingMinimumSamples = 10;
 
@@ -82,7 +88,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             // Judge against the device's own earlier clips. Flagged clips are excluded from every baseline.
-            IReadOnlyList<MediaItem> others = (await _items.GetByDeviceIdAsync(media.DeviceId, ct))
+            IReadOnlyList<MediaItem> others = (await _items.GetRecentByDeviceAsync(media.DeviceId, HistoryWindowClips, ct))
                 .Where(m => m.Id != media.Id)
                 .ToList();
             // Clean history is a clip that was analysed and raised no flags; unanalysed clips (null) are not history.
