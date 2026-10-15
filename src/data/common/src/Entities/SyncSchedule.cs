@@ -46,5 +46,25 @@ namespace VideoForensics.Data.Common.Entities
         /// This constant ensures we never hit provider API rate limiters with excessively tight polling.
         /// Tune this value in one place if future provider quotas require adjustment.</summary>
         public const int MinimumPollIntervalMinutes = 1;
+
+        /// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
+        public const int DefaultEventPollIntervalMinutes = 60;
+
+        /// <summary>
+        /// The schedule every newly linked account gets: enabled, default interval, and due on the next scheduler tick
+        /// (EventNextRunUtc left null).
+        /// </summary>
+        public static SyncSchedule CreateDefault(Guid providerAccountId)
+        {
+            return new SyncSchedule
+            {
+                Id = Guid.NewGuid(),
+                ProviderAccountId = providerAccountId,
+                EventPollIntervalMinutes = DefaultEventPollIntervalMinutes,
+                SnapshotRssiIntervalMinutes = DefaultEventPollIntervalMinutes,
+                IsEnabled = true,
+                UseAdvancedJammingSchedule = false
+            };
+        }
     }
 }
