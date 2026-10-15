@@ -167,4 +167,7 @@
   <data name="DisplayModeSaveFailed" xml:space="preserve">
     <value>Could not save the display mode: {0}</value>
   </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
 </root>

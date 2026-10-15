@@ -9,6 +9,7 @@
 @inject WebAuthnClient WebAuthn
 @inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SecurityOperators> L
+@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -17,7 +18,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToManage"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToManage"]
     </div>
 }
 
@@ -106,7 +107,7 @@ else
     @if (!SessionState.IsSignedIn)
     {
         <div class="alert alert-info mb-4">
-            <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToManage"]
+            <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToManage"]
         </div>
     }
     else if (_isLoadingCredentials)
@@ -166,7 +167,7 @@ else
 }
 
 @code {
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Settings", "/settings"), ("Operators", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
 
     // Operators
     private bool _isLoading = true;
@@ -188,6 +189,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (SharedL["Settings"], "/settings"), (SharedL["Operators"], null) };
         await LoadAsync();
         await LoadPendingCredentialsAsync();
     }
@@ -269,7 +271,7 @@ else
             _pendingCredentials = credentials?
                 .Select(c => new PendingCredentialDisplay(
                     c.Id,
-                    opMap.TryGetValue(c.OperatorId, out var displayName) ? displayName : $"Unknown (ID: {c.OperatorId})",
+                    opMap.TryGetValue(c.OperatorId, out var displayName) ? displayName : L["UnknownOperatorName", c.OperatorId].Value,
                     c.Label,
                     c.CreatedAtUtc))
                 .ToList() ?? new List<PendingCredentialDisplay>();

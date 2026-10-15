@@ -5,6 +5,7 @@
 @inject IEvidenceExportService EvidenceExportService
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
+@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -70,7 +71,7 @@ else
     [SupplyParameterFromQuery(Name = "ids")]
     public string? Ids { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Events", "/events"), ("Export Evidence", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _isExporting;
@@ -87,6 +88,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (SharedL["Events"], "/events"), (SharedL["Export Evidence"], null) };
         try
         {
             _mediaItemIds = ParseIds(Ids);
