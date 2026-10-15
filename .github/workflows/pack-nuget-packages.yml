@@ -39,7 +39,7 @@ jobs:
 
       - name: Pack VideoForensics.Data.Common
         run: |
-          dotnet pack src/data/Common/VideoForensics.Data.Common.csproj \
+          dotnet pack src/data/common/src/VideoForensics.Data.Common.csproj \
             -c Release -o ./nupkgs
 
       - name: Pack VideoForensics.Core.Logging
