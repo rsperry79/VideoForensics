@@ -1,0 +1,70 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
+@inject PairedSessionState SessionState
+@inject IAppLockPreferencesStore AppLockPreferences
+@inject IStringLocalizer<SharedResources> L
+
+@* Renders nothing until the server has reported the session kind, so an allowed page never flashes "not authorized". *@
+@if (_ready)
+{
+    @if (IsAllowed)
+    {
+        <RouteView RouteData="RouteData" DefaultLayout="DefaultLayout" />
+    }
+    else
+    {
+        <LayoutView Layout="DefaultLayout">
+            <p role="alert" class="alert alert-warning m-4">@L["PageNotAuthorized"]</p>
+        </LayoutView>
+    }
+}
+
+@code {
+    /// <summary>The matched route. The page's <c>@page</c> template is looked up in <see cref="PageAccessRules"/>.</summary>
+    [Parameter, EditorRequired]
+    public RouteData RouteData { get; set; } = default!;
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+
+    private bool _ready;
+
+    private bool IsAllowed => PageAccessRules.IsAllowed(RouteTemplate, BuildContext());
+
+    private string RouteTemplate => RouteData.PageType
+        .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+        .OfType<RouteAttribute>()
+        .FirstOrDefault()?.Template ?? string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_ready)
+        {
+            return;
+        }
+
+        // Tier and passkey state come from a server round trip; EnsureLoadedAsync does it once per circuit.
+        await SessionState.EnsureLoadedAsync();
+        _ready = true;
+        StateHasChanged();
+    }
+
+    private NavContext BuildContext()
+    {
+        OperatorRole? role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole parsed)
+            ? parsed
+            : null;
+
+        return new NavContext(
+            SessionState.IsSignedIn,
+            role,
+            AppLockPreferences.IsSupported,
+            IsLocalTier: SessionState.IsLocalTier,
+            IsPasskeySession: SessionState.IsPasskeySession);
+    }
+}

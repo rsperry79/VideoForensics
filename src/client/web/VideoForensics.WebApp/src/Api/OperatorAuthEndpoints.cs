@@ -122,7 +122,17 @@ namespace VideoForensics.WebApp.Api
 
         private static IResult GetSessionKindAsync(ClaimsPrincipal user)
         {
-            return Results.Ok(new { passkeySetupOnly = user.HasClaim(VideoForensicsClaimTypes.PasskeySetupOnly, "true") });
+            // The UI reads these to hide Local-only and passkey-only pages; the policies remain the enforcement.
+            string? tierClaim = user.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+            bool localTier = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+            bool passkeySession = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value == "OperatorPasskey";
+
+            return Results.Ok(new
+            {
+                passkeySetupOnly = user.HasClaim(VideoForensicsClaimTypes.PasskeySetupOnly, "true"),
+                localTier,
+                passkeySession,
+            });
         }
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(

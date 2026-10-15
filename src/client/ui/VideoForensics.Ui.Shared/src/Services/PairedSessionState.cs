@@ -54,6 +54,16 @@ namespace VideoForensics.Ui.Shared.Services
 
         public virtual bool IsSignedIn => SessionToken is not null;
 
+        /// <summary>
+        /// True when the server reports this request arrived on the Local network tier. Held in memory only and
+        /// refreshed from the server; never persisted, so a stale stored value cannot unlock Local-only pages.
+        /// Only used to hide navigation and gate pages - the server still enforces the same rule on every call.
+        /// </summary>
+        public virtual bool IsLocalTier { get; private set; }
+
+        /// <summary>True when the server reports the session was established with an operator passkey. In-memory only, as <see cref="IsLocalTier"/>.</summary>
+        public virtual bool IsPasskeySession { get; private set; }
+
         /// <summary>Fired when the server rejects the session token as invalid or expired.</summary>
         public event Action? AuthenticationExpired;
 
@@ -148,6 +158,7 @@ namespace VideoForensics.Ui.Shared.Services
                 }
 
                 serverPasskeySetupOnly = kind.PasskeySetupOnly;
+                SetServerSessionKind(kind.LocalTier, kind.PasskeySession);
             }
             catch (Exception)
             {
@@ -162,6 +173,16 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Records the tier and credential kind the server reported for this session. Public so hosts and tests can
+        /// seed it; the in-memory values are reset by <see cref="ClearAsync"/>.
+        /// </summary>
+        public void SetServerSessionKind(bool localTier, bool passkeySession)
+        {
+            IsLocalTier = localTier;
+            IsPasskeySession = passkeySession;
         }
 
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
@@ -192,6 +213,7 @@ namespace VideoForensics.Ui.Shared.Services
             Role = null;
             MustChangePassword = false;
             PasskeySetupOnly = false;
+            SetServerSessionKind(localTier: false, passkeySession: false);
             try
             {
                 await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
@@ -212,7 +234,7 @@ namespace VideoForensics.Ui.Shared.Services
         // PasskeySetupOnly defaults to false so a session cookie written before this flag existed still loads.
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
 
-        // Response of GET /api/v1/auth/session-kind.
-        private sealed record SessionKindResponse(bool PasskeySetupOnly);
+        // Response of GET /api/v1/auth/session-kind. Tier and passkey default to false so an older server that omits them fails closed.
+        private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false);
     }
 }
