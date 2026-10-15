@@ -88,7 +88,7 @@ jobs:
 
       - name: Publish WebApp (linux-x64, self-contained)
         run: |
-          dotnet publish src/client/web/VideoForensics.WebApp \
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj \
             -c Release -r linux-x64 --self-contained true \
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" \
             -o /tmp/publish-linux
@@ -155,21 +155,21 @@ jobs:
 
       - name: Publish WebApp (win-x64, self-contained)
         run: |
-          dotnet publish src/client/web/VideoForensics.WebApp `
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj `
             -c Release -r win-x64 --self-contained true `
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-win
 
       - name: Publish MauiApp (win-x64, self-contained)
         run: |
-          dotnet publish src/client/maui/VideoForensics.MauiApp `
+          dotnet publish src/client/maui/VideoForensics.MauiApp/src/VideoForensics.MauiApp.csproj `
             -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-desktop
 
       - name: Publish DbSetup (win-x64, self-contained)
         run: |
-          dotnet publish src/utils/setup/VideoForensics.Utils.DbSetup.csproj `
+          dotnet publish src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj `
             -c Release -r win-x64 --self-contained true `
             -o publish-dbsetup
 
