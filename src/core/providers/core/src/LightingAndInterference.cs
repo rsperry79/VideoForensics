@@ -69,7 +69,22 @@ namespace VideoForensics.Core.Providers.Core
     }
 
     /// <summary>Median bitrate of a device's clips in one lighting mode, and how many clips it was computed from.</summary>
-    public sealed record BitrateBaseline(long MedianBps, int SampleCount);
+    public sealed record BitrateBaseline(long MedianBps, int SampleCount)
+    {
+        /// <summary>Median of the sample bitrates; null when there are none.</summary>
+        public static BitrateBaseline? From(IReadOnlyList<long> bitrates)
+        {
+            if (bitrates.Count == 0)
+            {
+                return null;
+            }
+
+            List<long> sorted = bitrates.OrderBy(b => b).ToList();
+            int mid = sorted.Count / 2;
+            long median = sorted.Count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+            return new BitrateBaseline(median, sorted.Count);
+        }
+    }
 
     /// <summary>Whether a clip's bitrate is low enough, against its own lighting-mode baseline, to suspect interference.</summary>
     public sealed record InterferenceAssessment(bool InterferenceSuspected, long? BaselineBps);

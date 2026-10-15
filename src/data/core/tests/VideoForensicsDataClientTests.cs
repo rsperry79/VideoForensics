@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Core.Logging.Contracts;
-using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -30,7 +29,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _mockIntegrityVerification;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
-        private readonly Mock<IMediaBitrateAnalyzer> _mockBitrateAnalyzer;
+        private readonly Mock<IMediaAnalysisService> _mockMediaAnalysis;
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -53,7 +52,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockIntegrityVerification = new Mock<IIntegrityVerificationService>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<VideoForensicsDataClient>>();
-            _mockBitrateAnalyzer = new Mock<IMediaBitrateAnalyzer>();
+            _mockMediaAnalysis = new Mock<IMediaAnalysisService>();
 
             _dataClient = new VideoForensicsDataClient(
                 _mockUserRepository.Object,
@@ -72,34 +71,38 @@ namespace VideoForensics.Data.Core.Tests
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
                 _mockLogger.Object,
-                _mockBitrateAnalyzer.Object);
+                _mockMediaAnalysis.Object);
         }
 
         [Fact]
-        public async Task RecordDownloadEventAsync_WithMedia_RecordsBitrateAnalysisOnMediaItem()
+        public async Task RecordDownloadEventAsync_WithMedia_RunsAnalysisAfterSaveAndWaits()
         {
-            // Analysis runs before the unit of work, so the fields are set whether or not the save succeeds.
-            var media = new MediaItem
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = Guid.NewGuid(),
-                FileName = "clip.mp4",
-                FilePath = @"C:\media\clip.mp4",
-                MediaFormat = "mp4",
-                FileSizeBytes = 4_000_000,
-                Sha256Hash = "hash"
-            };
-            _mockBitrateAnalyzer
-                .Setup(a => a.AnalyzeAsync(media.FilePath, media.FileSizeBytes, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new MediaBitrateAnalysis(1_000_000, 32.0, BitrateEstimated: true));
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
             var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e1", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
 
-            _ = await Record.ExceptionAsync(() => _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None));
+            _ = await _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None);
 
-            Assert.Equal(1_000_000, media.VideoBitrateBps);
-            Assert.Equal(32.0, media.DurationSeconds);
-            Assert.True(media.BitrateEstimated);
-            Assert.NotNull(media.BitrateAnalyzedAtUtc);
+            _mockMediaAnalysis.Verify(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_AnalysisFails_RecordingStillSucceeds()
+        {
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e2", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
+            _mockMediaAnalysis.Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("ffmpeg missing"));
+
+            DownloadEvent result = await _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None);
+
+            Assert.Same(evt, result);
         }
 
         [Fact]
