@@ -8,6 +8,12 @@ namespace VideoForensics.Core.Providers.Core
     /// </summary>
     public sealed class FfmpegClipColorAnalyzer : IClipColorAnalyzer
     {
+        /// <summary>
+        /// Samples one frame a second, converts to 8-bit, then measures. signalstats reports luma in the stream's bit depth,
+        /// so without the conversion a 10-bit clip would read on a 0-1023 scale and be misclassified.
+        /// </summary>
+        public const string FilterChain = "fps=1,format=yuv420p,signalstats,metadata=mode=print:file=-";
+
         private readonly string _ffmpegPath;
 
         /// <summary>Creates the analyzer. The ffmpeg path is resolved like the other ffmpeg tools.</summary>
@@ -32,7 +38,7 @@ namespace VideoForensics.Core.Providers.Core
             psi.ArgumentList.Add("-i");
             psi.ArgumentList.Add(mediaFilePath);
             psi.ArgumentList.Add("-vf");
-            psi.ArgumentList.Add("fps=1,signalstats,metadata=mode=print:file=-");
+            psi.ArgumentList.Add(FilterChain);
             psi.ArgumentList.Add("-f");
             psi.ArgumentList.Add("null");
             psi.ArgumentList.Add("-");
