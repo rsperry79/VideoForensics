@@ -1713,6 +1713,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("BitrateAnalyzedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("BitrateEstimated")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
@@ -1721,6 +1727,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<DateTime>("DownloadedAtUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -1776,6 +1785,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("VideoBitrateBps")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("VideoCodec")
                         .HasMaxLength(64)

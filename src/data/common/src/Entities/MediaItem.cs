@@ -25,5 +25,17 @@ namespace VideoForensics.Data.Common.Entities
         public string? PurgeReason { get; set; }
         public string? MetadataJson { get; set; }
         public string? ApiSourceHash { get; set; }
+
+        /// <summary>Video bitrate in bits per second, from ffprobe at download time; null if never analyzed.</summary>
+        public long? VideoBitrateBps { get; set; }
+
+        /// <summary>Duration of the file in seconds, from ffprobe at download time; null if never analyzed.</summary>
+        public double? DurationSeconds { get; set; }
+
+        /// <summary>True when <see cref="VideoBitrateBps"/> was derived from file size and duration because the stream reported none.</summary>
+        public bool? BitrateEstimated { get; set; }
+
+        /// <summary>When the bitrate analysis ran; null if it has not been analyzed.</summary>
+        public DateTime? BitrateAnalyzedAtUtc { get; set; }
     }
 }

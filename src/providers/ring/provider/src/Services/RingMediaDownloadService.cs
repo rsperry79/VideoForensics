@@ -8,6 +8,7 @@ using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Core;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
@@ -16,6 +17,7 @@ namespace VideoForensics.Providers.Ring.Services
     public class RingMediaDownloadService : IMediaDownloadService
     {
         private readonly ILogger _logger;
+        private readonly FfprobeMediaBitrateAnalyzer _bitrateAnalyzer;
         private readonly ISessionProvider _sessionProvider;
         private readonly IVideoForensicsDataClient _dataClient;
         private readonly IMediaMetadataTagger _metadataTagger;
@@ -103,12 +105,43 @@ namespace VideoForensics.Providers.Ring.Services
         // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
         private int _peakActiveDownloadsForBatch;
 
-        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null)
+        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null, FfprobeMediaBitrateAnalyzer? bitrateAnalyzer = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
             _metadataTagger = metadataTagger ?? new FfmpegMediaMetadataTagger(logger);
+            _bitrateAnalyzer = bitrateAnalyzer ?? new FfprobeMediaBitrateAnalyzer();
+        }
+
+        /// <summary>
+        /// Records the file's bitrate and duration on the media item before it is saved. Best-effort: a failed or unusable
+        /// probe leaves the fields empty and never fails the download.
+        /// </summary>
+        private async Task ApplyBitrateAnalysisAsync(MediaItem mediaItem, CancellationToken cancellationToken)
+        {
+            try
+            {
+                MediaBitrateAnalysis? analysis = await _bitrateAnalyzer.AnalyzeAsync(mediaItem.FilePath, mediaItem.FileSizeBytes, cancellationToken);
+                if (analysis is null)
+                {
+                    _logger.LogWarning("Bitrate analysis unavailable for downloaded media {FileName}", mediaItem.FileName);
+                    return;
+                }
+
+                mediaItem.VideoBitrateBps = analysis.VideoBitrateBps;
+                mediaItem.DurationSeconds = analysis.DurationSeconds;
+                mediaItem.BitrateEstimated = analysis.BitrateEstimated;
+                mediaItem.BitrateAnalyzedAtUtc = DateTime.UtcNow;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Bitrate analysis failed for downloaded media {FileName}", mediaItem.FileName);
+            }
         }
 
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
@@ -440,6 +473,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         var mediaItemDetectionId = Guid.NewGuid();
                                         (MediaItemDetection? detection, List<DetectedPerson>? persons, List<DetectionTypeOccurrence>? occurrences) = RingCvMetadataExtractor.ExtractMetadata(@event, mediaItem.Id, mediaItemDetectionId);
 
+                                        await ApplyBitrateAnalysisAsync(mediaItem, rateLimitCts.Token);
                                         _ = await _dataClient.RecordDownloadEventAsync(
                                             downloadEvent,
                                             mediaItem,
@@ -830,6 +864,7 @@ namespace VideoForensics.Providers.Ring.Services
                         };
 
                         // Snapshots don't have CV properties, so no detection metadata to extract
+                        await ApplyBitrateAnalysisAsync(mediaItem, cancellationToken);
                         _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, mediaItem, cancellationToken);
                     }
                     catch (Exception ex)
