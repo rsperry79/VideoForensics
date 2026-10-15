@@ -75,5 +75,30 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<CancellationToken>()), Times.Once);
             _mockAccounts.Verify(r => r.UpdateAsync(It.IsAny<ProviderAccountEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+            [Fact]
+        public async Task RunInitialAsync_RestoreSucceeds_PullsFullHistoryFromBeginning()
+        {
+            var account = Account();
+            _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
+            _mockAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
+
+            // A null start asks the pull for everything the provider has, not just since the last auth.
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, null, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunInitialAsync_RestoreFails_RecordsErrorAndDoesNotPull()
+        {
+            var account = Account();
+            _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
+            _mockAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+            await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
+
+            _mockAccounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccountEntity>(a => a.LastErrorMessage != null), It.IsAny<CancellationToken>()), Times.Once);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }

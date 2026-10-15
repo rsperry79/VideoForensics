@@ -9,6 +9,12 @@ namespace VideoForensics.Hosting.Services
     {
         /// <summary>Restores the account's session and pulls its inventory and events. Failures are recorded on the account.</summary>
         Task RunAsync(Guid accountId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// First sync after an account is added: restores the session, discovers locations and devices, and pulls the
+        /// provider's full event history (no start date). Failures are recorded on the account.
+        /// </summary>
+        Task RunInitialAsync(Guid accountId, CancellationToken cancellationToken);
     }
 
     /// <inheritdoc />
@@ -33,7 +39,14 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public async Task RunAsync(Guid accountId, CancellationToken cancellationToken)
+        public Task RunAsync(Guid accountId, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, fullHistory: false, cancellationToken);
+
+        /// <inheritdoc />
+        public Task RunInitialAsync(Guid accountId, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, fullHistory: true, cancellationToken);
+
+        private async Task SyncAsync(Guid accountId, bool fullHistory, CancellationToken cancellationToken)
         {
             // Provider sessions are in-memory: after a server restart the account must be restored from its saved
             // credentials before discovery or pulls can reach the provider. A failed restore is recorded, not swallowed.
@@ -56,9 +69,11 @@ namespace VideoForensics.Hosting.Services
                 return;
             }
 
-            // The pull records its own failures on the account.
-            DateTime? lastAuth = (await _accounts.GetAsync(accountId, cancellationToken))?.LastSuccessfulAuthUtc;
-            await _eventPullService.PullAccountEventsAsync(accountId, lastAuth, cancellationToken);
+            // The pull records its own failures on the account. A null start pulls the provider's full history.
+            DateTime? from = fullHistory
+                ? null
+                : (await _accounts.GetAsync(accountId, cancellationToken))?.LastSuccessfulAuthUtc;
+            await _eventPullService.PullAccountEventsAsync(accountId, from, cancellationToken);
         }
 
         private async Task RecordErrorAsync(Guid accountId, string message, CancellationToken cancellationToken)

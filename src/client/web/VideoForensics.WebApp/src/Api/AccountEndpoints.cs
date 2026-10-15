@@ -165,21 +165,8 @@ namespace VideoForensics.WebApp.Api
                 };
                 await accounts.AddAsync(account, ct);
 
-                // Queue background pull after successful account creation
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Pull from null timestamp (first-time = pull all available data)
-                        using IServiceScope scope = scopeFactory.CreateScope();
-                        IEventPullService eventPullService = scope.ServiceProvider.GetRequiredService<IEventPullService>();
-                        await eventPullService.PullAccountEventsAsync(account.Id, null, CancellationToken.None);
-                    }
-                    catch
-                    {
-                        // Error captured in ProviderAccount.LastErrorMessage by EventPullService
-                    }
-                }, ct);
+                // Initial sync: restore the session, discover locations and devices, pull the full history.
+                _ = Task.Run(() => RunInitialSyncAsync(scopeFactory, account.Id), CancellationToken.None);
 
                 return Results.Created($"/api/v1/accounts/provider-accounts/{account.Id}", account.ToDto());
             })
@@ -235,6 +222,29 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Delete a provider account")
                 .WithDescription("Deletes a provider account link.");
 
+            _ = group.MapPost("/provider-accounts/{id:guid}/initial-sync", async (
+                Guid id,
+                IProviderAccountRepository accounts,
+                CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                if (!account.IsActive)
+                {
+                    return Results.Conflict("Account is no longer active");
+                }
+
+                _ = Task.Run(() => RunInitialSyncAsync(scopeFactory, id), CancellationToken.None);
+                return Results.Accepted();
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Start the first full sync of a newly added account")
+                .WithDescription("Restores the account's session, discovers its locations and devices, and pulls its full event history in the background.");
+
             _ = group.MapPost("/provider-accounts/{id:guid}/sync-now", async (
                 Guid id,
                 IProviderAccountRepository accounts,
@@ -280,6 +290,24 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Queue manual sync of events and device configuration")
                 .WithDescription("Initiates background pull of events and config for all devices in the account");
         }
+
+    /// <summary>
+    /// Background first sync for an account. Errors are recorded on the account by <see cref="IAccountSyncRunner"/>;
+    /// nothing is rethrown because no caller is waiting on this task.
+    /// </summary>
+    private static async Task RunInitialSyncAsync(IServiceScopeFactory scopeFactory, Guid accountId)
+    {
+        try
+        {
+            using IServiceScope scope = scopeFactory.CreateScope();
+            IAccountSyncRunner runner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
+            await runner.RunInitialAsync(accountId, CancellationToken.None);
+        }
+        catch
+        {
+            // The runner records its own failures on the account.
+        }
+    }
     }
 
     /// <summary>Request DTO for creating a new user.</summary>
