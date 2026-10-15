@@ -26,6 +26,7 @@ namespace VideoForensics.Core.Providers.Core
 
         private static readonly Regex NoiseFloor = new(@"lavfi\.astats\.Overall\.Noise_floor=(?<v>-?\d+(?:\.\d+)?)", RegexOptions.Compiled);
         private static readonly Regex SilenceDuration = new(@"silence_duration: (?<v>\d+(?:\.\d+)?)", RegexOptions.Compiled);
+        private static readonly Regex SilenceStart = new(@"silence_start: (?<v>-?\d+(?:\.\d+)?)", RegexOptions.Compiled);
 
         /// <summary>Returns the clip's audio stats, or null when there is no astats output at all.</summary>
         public static AudioClipStats? Parse(string astatsOutput, string silencedetectOutput, double? durationSeconds)
@@ -40,6 +41,17 @@ namespace VideoForensics.Core.Providers.Core
             var gaps = SilenceDuration.Matches(silencedetectOutput)
                 .Select(m => double.Parse(m.Groups["v"].Value, CultureInfo.InvariantCulture))
                 .ToList();
+
+            // A start with no matching end is silence that runs to the end of the clip (not every ffmpeg version logs the end).
+            var starts = SilenceStart.Matches(silencedetectOutput).Select(m => double.Parse(m.Groups["v"].Value, CultureInfo.InvariantCulture)).ToList();
+            if (durationSeconds is > 0 && starts.Count > gaps.Count)
+            {
+                double tailStart = starts[^1];
+                if (tailStart < durationSeconds.Value)
+                {
+                    gaps.Add(durationSeconds.Value - tailStart);
+                }
+            }
 
             double silentSeconds = gaps.Sum();
             double? fraction = durationSeconds is > 0 ? silentSeconds / durationSeconds.Value : null;

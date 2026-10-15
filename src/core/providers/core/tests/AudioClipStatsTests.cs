@@ -93,5 +93,19 @@ namespace VideoForensics.Core.Providers.Core.Tests
             Assert.NotNull(stats);
             Assert.Equal(0, stats.ClippedPeakCount);
         }
+
+        [Fact]
+        public void Parse_SilenceRunningToEndWithoutClosingLine_CountsTailToClipEnd()
+        {
+            // Some ffmpeg versions emit silence_start with no matching silence_end for a clip that ends in silence.
+            const string startOnly = "[silencedetect @ 0x1] silence_start: 7.0";
+
+            AudioClipStats? stats = AudioStatsParser.Parse(Astats, startOnly, durationSeconds: 10.0);
+
+            Assert.NotNull(stats);
+            Assert.Equal(1, stats.SilentGapCount);
+            Assert.NotNull(stats.SilenceFraction);
+            Assert.Equal(0.3, stats.SilenceFraction.Value, 3);
+        }
     }
 }
