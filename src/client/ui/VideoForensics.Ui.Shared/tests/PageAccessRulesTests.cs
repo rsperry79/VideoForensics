@@ -82,7 +82,7 @@ public class PageAccessRules_Tests
     public void TryGetPolicy_ListedPath_ReturnsPolicy()
     {
         Assert.True(PageAccessRules.TryGetPolicy("/settings/operators", out AccessPolicy policy));
-        Assert.Equal(AccessPolicy.SuperAdmin, policy);
+        Assert.Equal(AccessPolicy.SuperAdminLocal, policy);
     }
 
     [Fact]

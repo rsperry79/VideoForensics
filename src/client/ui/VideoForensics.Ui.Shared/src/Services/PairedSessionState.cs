@@ -19,7 +19,7 @@ namespace VideoForensics.Ui.Shared.Services
     {
         private readonly IJSRuntime _js;
         private readonly IServiceProvider? _services;
-        private bool _loaded;
+        private Task? _loadTask;
 
         /// <summary>
         /// Without services the server check in <see cref="EnsureLoadedAsync"/> is skipped and only the stored
@@ -64,17 +64,42 @@ namespace VideoForensics.Ui.Shared.Services
         /// <summary>True when the server reports the session was established with an operator passkey. In-memory only, as <see cref="IsLocalTier"/>.</summary>
         public virtual bool IsPasskeySession { get; private set; }
 
+        /// <summary>
+        /// True once the server has reported the tier and credential kind for the current session. False after sign-in
+        /// until the next check, so page guards keep Local-only pages closed rather than trusting a stale answer.
+        /// </summary>
+        public virtual bool ServerKindKnown { get; private set; }
+
         /// <summary>Fired when the server rejects the session token as invalid or expired.</summary>
         public event Action? AuthenticationExpired;
 
-        public virtual async Task EnsureLoadedAsync()
-        {
-            if (_loaded)
-            {
-                return;
-            }
+        /// <summary>Fired whenever the session's server-reported tier, credential kind or known-state changes.</summary>
+        public event Action? ServerKindChanged;
 
-            _loaded = true;
+        /// <summary>
+        /// Loads the stored session and asks the server for its kind, once per circuit. Concurrent callers share one
+        /// load, so none of them sees a half-loaded session.
+        /// </summary>
+        public virtual Task EnsureLoadedAsync()
+        {
+            _loadTask ??= LoadAsync();
+            return _loadTask;
+        }
+
+        /// <summary>
+        /// Asks the server for the session's tier and kind if that answer is not yet known. Safe to call on every
+        /// page load: it costs a round trip only after sign-in, sign-out or a failed earlier check.
+        /// </summary>
+        public async Task EnsureServerKindAsync()
+        {
+            if (!ServerKindKnown)
+            {
+                _ = await RefreshPasskeySetupOnlyFromServerAsync();
+            }
+        }
+
+        private async Task LoadAsync()
+        {
             try
             {
                 string? json = await _js.InvokeAsync<string?>("vfWebAuthn.loadSession");
@@ -99,7 +124,7 @@ namespace VideoForensics.Ui.Shared.Services
                 // caller will simply see IsSignedIn = false until the next real load attempt.
             }
 
-            await RefreshPasskeySetupOnlyFromServerAsync();
+            _ = await RefreshPasskeySetupOnlyFromServerAsync();
         }
 
         /// <summary>
@@ -130,9 +155,17 @@ namespace VideoForensics.Ui.Shared.Services
         /// </summary>
         private async Task<bool> RefreshPasskeySetupOnlyFromServerAsync()
         {
-            ISelfApiHttpClientFactory? clientFactory = _services?.GetService<ISelfApiHttpClientFactory>();
-            if (clientFactory is null || SessionToken is null)
+            if (SessionToken is null)
             {
+                return true;
+            }
+
+            ISelfApiHttpClientFactory? clientFactory = _services?.GetService<ISelfApiHttpClientFactory>();
+            if (clientFactory is null)
+            {
+                // No server to ask on this host (e.g. MAUI). Mark the answer known with the most restrictive tier so
+                // Local-only pages stay hidden rather than the guard waiting forever.
+                ApplyServerSessionKind(localTier: false, passkeySession: false, known: true);
                 return true;
             }
 
@@ -167,9 +200,10 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             // Persist the server's answer so a reload without the server still shows the right layout.
-            if (serverPasskeySetupOnly != PasskeySetupOnly && OperatorId is Guid operatorId && Role is string role)
+            if (serverPasskeySetupOnly != PasskeySetupOnly && OperatorId is not null && Role is not null)
             {
-                await SetAsync(SessionToken, operatorId, role, MustChangePassword, serverPasskeySetupOnly);
+                PasskeySetupOnly = serverPasskeySetupOnly;
+                await PersistAsync();
             }
 
             return true;
@@ -177,12 +211,11 @@ namespace VideoForensics.Ui.Shared.Services
 
         /// <summary>
         /// Records the tier and credential kind the server reported for this session. Public so hosts and tests can
-        /// seed it; the in-memory values are reset by <see cref="ClearAsync"/>.
+        /// seed it; marks the answer as known and notifies listeners.
         /// </summary>
         public void SetServerSessionKind(bool localTier, bool passkeySession)
         {
-            IsLocalTier = localTier;
-            IsPasskeySession = passkeySession;
+            ApplyServerSessionKind(localTier, passkeySession, known: true);
         }
 
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
@@ -192,18 +225,10 @@ namespace VideoForensics.Ui.Shared.Services
             Role = role;
             MustChangePassword = mustChangePassword;
             PasskeySetupOnly = passkeySetupOnly;
-            try
-            {
-                string json = JsonSerializer.Serialize(new StoredSession(sessionToken, operatorId, role, mustChangePassword, passkeySetupOnly));
-                await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
-            }
-            catch (JSException)
-            {
-                // Same gap as EnsureLoadedAsync: wwwroot/js/webauthn.js isn't loaded on every host
-                // (MAUI's BlazorWebView doesn't reference it - device pairing is server/WebApp-only
-                // for now). The in-memory session above still works for this circuit; it just won't
-                // survive a refresh without vfWebAuthn's localStorage persistence.
-            }
+
+            // A new session's tier is unknown until the server answers. Fail closed until then.
+            ApplyServerSessionKind(localTier: false, passkeySession: false, known: false);
+            await PersistAsync();
         }
 
         public async Task ClearAsync()
@@ -213,7 +238,7 @@ namespace VideoForensics.Ui.Shared.Services
             Role = null;
             MustChangePassword = false;
             PasskeySetupOnly = false;
-            SetServerSessionKind(localTier: false, passkeySession: false);
+            ApplyServerSessionKind(localTier: false, passkeySession: false, known: false);
             try
             {
                 await _js.InvokeVoidAsync("vfWebAuthn.clearSession");
@@ -229,6 +254,29 @@ namespace VideoForensics.Ui.Shared.Services
         {
             await ClearAsync();
             AuthenticationExpired?.Invoke();
+        }
+
+        private void ApplyServerSessionKind(bool localTier, bool passkeySession, bool known)
+        {
+            IsLocalTier = localTier;
+            IsPasskeySession = passkeySession;
+            ServerKindKnown = known;
+            ServerKindChanged?.Invoke();
+        }
+
+        private async Task PersistAsync()
+        {
+            try
+            {
+                string json = JsonSerializer.Serialize(new StoredSession(SessionToken!, OperatorId!.Value, Role!, MustChangePassword, PasskeySetupOnly));
+                await _js.InvokeVoidAsync("vfWebAuthn.saveSession", json);
+            }
+            catch (JSException)
+            {
+                // wwwroot/js/webauthn.js isn't loaded on every host (MAUI's BlazorWebView doesn't reference it -
+                // device pairing is server/WebApp-only for now). The in-memory session still works for this
+                // circuit; it just won't survive a refresh without vfWebAuthn's localStorage persistence.
+            }
         }
 
         // PasskeySetupOnly defaults to false so a session cookie written before this flag existed still loads.

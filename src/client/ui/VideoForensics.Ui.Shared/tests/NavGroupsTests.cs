@@ -171,8 +171,8 @@ public class NavGroups_Tests
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(operatorsItem.IsVisible(adminCtx));
 
-        // Should be visible to SuperAdmin
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        // Should be visible to SuperAdmin on the Local tier (the operator endpoints are SuperAdminLocal)
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(operatorsItem.IsVisible(superAdminCtx));
     }
 

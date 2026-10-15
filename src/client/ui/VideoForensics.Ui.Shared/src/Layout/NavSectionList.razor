@@ -48,18 +48,25 @@
     // Only one heading is open at a time. Null means every heading is collapsed.
     private string? _openTitle;
     private string? _lastLocation;
+    private string? _lastSectionKey;
 
     protected override void OnParametersSet()
     {
-        // Reveal the section holding the current page whenever the page changes. Re-renders for other reasons
-        // (role change, theme change) keep whatever the operator last opened.
+        // Reveal the section holding the current page when the page changes, or when the visible sections change
+        // underneath us (sections often arrive after the first render, once role and tier load). Other re-renders
+        // keep whatever the operator last opened, so a manual toggle is not undone.
         string location = CurrentPath + CurrentQuery;
-        if (location == _lastLocation)
+        string sectionKey = string.Join("|", Sections.Select(s => s.Title ?? string.Empty));
+        bool locationChanged = location != _lastLocation;
+        bool openIsStale = sectionKey != _lastSectionKey && !Sections.Any(s => s.Title == _openTitle);
+
+        _lastLocation = location;
+        _lastSectionKey = sectionKey;
+        if (!locationChanged && !openIsStale)
         {
             return;
         }
 
-        _lastLocation = location;
         NavItem? active = ActiveItem;
         _openTitle = Sections.FirstOrDefault(s => s.Items.Any(i => i == active))?.Title;
     }

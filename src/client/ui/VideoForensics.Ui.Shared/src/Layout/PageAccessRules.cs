@@ -33,10 +33,15 @@ namespace VideoForensics.Ui.Shared.Layout
                 ["/chat"] = AccessPolicy.ReadOnly,
                 ["/cases/new"] = AccessPolicy.Review,
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
-                ["/settings/operators"] = AccessPolicy.SuperAdmin,
-                ["/admin/pending-credentials"] = AccessPolicy.SuperAdmin,
-                ["/settings/infrastructure"] = AccessPolicy.Admin,
-                ["/tools/import-export"] = AccessPolicy.Admin,
+                ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/operators/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
+                // Approving credentials needs SuperAdminLocalOrPasskey (DeviceManagementEndpoints approve route); the
+                // list itself needs Admin, but the page exists only to act on approvals, so the stricter policy applies.
+                ["/admin/pending-credentials"] = AccessPolicy.SuperAdminLocalOrPasskey,
+                // In-process orchestrator calls (factory reset, key storage), not HTTP: no server policy backs this
+                // page, so the table is the only gate. Local tier is the conservative choice.
+                ["/settings/infrastructure"] = AccessPolicy.SuperAdminLocal,
+                ["/tools/import-export"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/notifications"] = AccessPolicy.Admin,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
@@ -55,12 +60,13 @@ namespace VideoForensics.Ui.Shared.Layout
             return Rules.TryGetValue(StripQuery(path), out policy);
         }
 
-        /// <summary>True when the operator in <paramref name="ctx"/> may open <paramref name="path"/>.</summary>
+        /// <summary>True when the operator in <paramref name="ctx"/> may open <paramref name="path"/>. Unlisted paths are allowed.</summary>
         public static bool IsAllowed(string path, NavContext ctx)
         {
             return !TryGetPolicy(path, out AccessPolicy policy) || Allows(policy, ctx);
         }
 
+        /// <summary>True when <paramref name="ctx"/> satisfies <paramref name="policy"/>. Mirrors the server's VideoForensicsPolicies.</summary>
         public static bool Allows(AccessPolicy policy, NavContext ctx)
         {
             return policy switch

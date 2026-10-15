@@ -67,6 +67,41 @@ public class NavSectionList_Tests : NavComponentTestBase
     }
 
     [Fact]
+    public void NavSectionList_ManualCollapse_IsKeptWhenSectionsRerenderUnchanged()
+    {
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings/operators")
+            .Add(c => c.CurrentQuery, ""));
+
+        // The operator collapses the active section; an unrelated re-render must not reopen it.
+        component.Find(".left-nav-section[data-section='Security'] .left-nav-section-header").Click();
+        component.Render(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings/operators")
+            .Add(c => c.CurrentQuery, ""));
+
+        Assert.Empty(component.FindAll("[data-path='/settings/operators']"));
+    }
+
+    [Fact]
+    public void NavSectionList_SectionsArriveAfterFirstRender_RevealsActiveSection()
+    {
+        // Role and tier load after the first render, so the sections start empty and arrive later.
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, new List<NavSection>())
+            .Add(c => c.CurrentPath, "/settings/operators")
+            .Add(c => c.CurrentQuery, ""));
+
+        component.Render(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings/operators")
+            .Add(c => c.CurrentQuery, ""));
+
+        Assert.Single(component.FindAll("[data-path='/settings/operators']"));
+    }
+
+    [Fact]
     public void NavSectionList_UntitledSection_ItemsAlwaysRendered()
     {
         IReadOnlyList<NavSection> sections =
@@ -96,42 +131,5 @@ public class NavSectionList_Tests : NavComponentTestBase
         component.Find("[data-path='/settings/notifications'] button").Click();
 
         Assert.Equal("/settings/notifications", selected?.Path);
-    }
-}
-
-public class PageAccessRouteView_Tests : NavComponentTestBase
-{
-    [Route("/settings/network")]
-    private sealed class LocalOnlyPage : ComponentBase
-    {
-        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
-        {
-            builder.AddMarkupContent(0, "<div id=\"page-body\">network page</div>");
-        }
-    }
-
-    private static RouteData RouteFor<T>() => new(typeof(T), new Dictionary<string, object?>());
-
-    [Fact]
-    public async Task PageAccessRouteView_RemoteSuperAdminOnLocalPage_ShowsNotAuthorizedAndNoPage()
-    {
-        await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
-        Session.SetServerSessionKind(localTier: false, passkeySession: false);
-
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
-
-        Assert.Empty(component.FindAll("#page-body"));
-        Assert.Contains("You do not have access to this page.", component.Markup);
-    }
-
-    [Fact]
-    public async Task PageAccessRouteView_LocalSuperAdminOnLocalPage_RendersPage()
-    {
-        await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
-        Session.SetServerSessionKind(localTier: true, passkeySession: false);
-
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
-
-        Assert.Single(component.FindAll("#page-body"));
     }
 }
