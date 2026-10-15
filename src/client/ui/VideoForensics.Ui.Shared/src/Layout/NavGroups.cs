@@ -9,6 +9,7 @@ namespace VideoForensics.Ui.Shared.Layout
     /// </summary>
     public sealed record NavItem(string Text, string Path, Func<NavContext, bool>? Visible = null, IReadOnlyList<NavItem>? Children = null, string? Section = null)
     {
+        /// <summary>True when the item should appear for <paramref name="ctx"/>: the page access rule and any extra predicate both pass.</summary>
         public bool IsVisible(NavContext ctx)
         {
             return PageAccessRules.IsAllowed(Path, ctx) && (Visible is null || Visible(ctx));
@@ -21,6 +22,7 @@ namespace VideoForensics.Ui.Shared.Layout
     /// </summary>
     public sealed record NavGroup(string Key, string Text, string Path, IReadOnlyList<NavItem> Items, Func<NavContext, bool>? Visible = null)
     {
+        /// <summary>True when the tab should appear for <paramref name="ctx"/>.</summary>
         public bool IsVisible(NavContext ctx)
         {
             return Visible is null ? Items.Any(i => i.IsVisible(ctx)) : Visible(ctx);
@@ -33,6 +35,7 @@ namespace VideoForensics.Ui.Shared.Layout
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
     public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false)
     {
+        /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>
         public bool HasRole(OperatorRole minimum)
         {
             return IsSignedIn && Role is not null && Role >= minimum;
@@ -108,14 +111,14 @@ namespace VideoForensics.Ui.Shared.Layout
         ];
 
         /// <summary>
-        /// Splits a group's visible items into consecutive runs by <see cref="NavItem.Section"/>. Hidden items are
+        /// Groups a tab's visible items by <see cref="NavItem.Section"/>, in order of first appearance. Items that share a
+        /// heading are merged even when other items sit between them, so each heading appears once. Hidden items are
         /// dropped, so a heading whose items are all hidden for this operator never appears.
         /// </summary>
         public static IReadOnlyList<NavSection> SectionsFor(NavGroup group, NavContext ctx)
         {
-            var sections = new List<NavSection>();
-            List<NavItem>? current = null;
-            string? currentTitle = null;
+            var order = new List<string?>();
+            var itemsByKey = new Dictionary<string, List<NavItem>>(StringComparer.Ordinal);
 
             foreach (NavItem item in group.Items)
             {
@@ -124,17 +127,19 @@ namespace VideoForensics.Ui.Shared.Layout
                     continue;
                 }
 
-                if (current is null || item.Section != currentTitle)
+                // Unheaded items share one run keyed by the empty string; headings are never empty.
+                string key = item.Section ?? string.Empty;
+                if (!itemsByKey.TryGetValue(key, out List<NavItem>? run))
                 {
-                    current = [];
-                    currentTitle = item.Section;
-                    sections.Add(new NavSection(currentTitle, current));
+                    run = [];
+                    itemsByKey[key] = run;
+                    order.Add(item.Section);
                 }
 
-                current.Add(item);
+                run.Add(item);
             }
 
-            return sections;
+            return order.Select(title => new NavSection(title, itemsByKey[title ?? string.Empty])).ToList();
         }
     }
 

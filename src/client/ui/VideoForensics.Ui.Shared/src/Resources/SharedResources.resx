@@ -638,4 +638,19 @@
   <data name="PageNotAuthorized" xml:space="preserve">
     <value>You do not have access to this page.</value>
   </data>
+  <data name="Security Events" xml:space="preserve">
+    <value>Security Events</value>
+  </data>
+  <data name="Pending Approvals" xml:space="preserve">
+    <value>Pending Approvals</value>
+  </data>
+  <data name="Login Methods" xml:space="preserve">
+    <value>Login Methods</value>
+  </data>
+  <data name="Server Logs" xml:space="preserve">
+    <value>Server Logs</value>
+  </data>
+  <data name="LLM API" xml:space="preserve">
+    <value>LLM API</value>
+  </data>
 </root>
