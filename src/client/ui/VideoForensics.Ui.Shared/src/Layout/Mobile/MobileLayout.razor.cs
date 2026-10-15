@@ -114,7 +114,8 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
 
         private NavContext BuildContext()
         {
-            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported);
+            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported,
+                IsLocalTier: SessionState.IsLocalTier, IsPasskeySession: SessionState.IsPasskeySession);
         }
 
         private async Task ToggleNavDrawerAsync()

@@ -620,4 +620,22 @@
   <data name="NotFoundMessage" xml:space="preserve">
     <value>Sorry, there's nothing at this address.</value>
   </data>
+  <data name="Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Diagnostics &amp; Updates" xml:space="preserve">
+    <value>Diagnostics &amp; Updates</value>
+  </data>
+  <data name="Devices &amp; Network" xml:space="preserve">
+    <value>Devices &amp; Network</value>
+  </data>
+  <data name="Storage &amp; Data" xml:space="preserve">
+    <value>Storage &amp; Data</value>
+  </data>
+  <data name="Integrations" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="PageNotAuthorized" xml:space="preserve">
+    <value>You do not have access to this page.</value>
+  </data>
 </root>
