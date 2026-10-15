@@ -12,3 +12,7 @@
 - [ ] Make the keyed discovery lookup in `ScheduledSyncService` fail fast instead of accepting null.
 - [ ] Step-up checks for account removal and two-factor override: needs an operator with a passkey to test end to end.
 - [ ] Wait for analysis before the next provider call across all providers (currently Ring only, via the shared data client).
+- [ ] Missing tests from the review: cancellation propagating through the data client, and the `UnusualLighting` path in `MediaAnalysisService`.
+- [ ] Initial sync on a new account: run a real add-account flow end to end and confirm the first full sync pulls history and devices.
+- [ ] Ring event retention: undefined. The integration has no retention setting, so decide what to record.
+- [ ] Light and night modes: check whether Ring reports the current day or night state; the integration only exposes night-mode and floodlight controls.
