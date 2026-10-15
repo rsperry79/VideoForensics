@@ -1,0 +1,614 @@
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
+
+namespace VideoForensics.Data.Core.Services
+{
+    /// <summary>Top-level facade for accessing the VideoForensics data layer.</summary>
+    internal class VideoForensicsDataClient : IVideoForensicsDataClient
+    {
+        private readonly IUserRepository _userRepository;
+        private readonly IProviderAccountRepository _providerAccountRepository;
+        private readonly ILocationRepository _locationRepository;
+        private readonly IDeviceRepository _deviceRepository;
+        private readonly IDownloadEventRepository _downloadEventRepository;
+        private readonly IEventRepository _eventRepository;
+        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly IDeviceHealthRepository _deviceHealthRepository;
+        private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IWatermarkService _watermarkService;
+        private readonly IActionLogger _actionLogger;
+        private readonly ILogger<VideoForensicsDataClient> _logger;
+
+        public ICredentialRepository Credentials { get; }
+        public IIntegrityVerificationService IntegrityVerification { get; }
+        public IActionLogRepository ActionLog { get; }
+
+        public VideoForensicsDataClient(
+            IUserRepository userRepository,
+            IProviderAccountRepository providerAccountRepository,
+            ILocationRepository locationRepository,
+            IDeviceRepository deviceRepository,
+            IDownloadEventRepository downloadEventRepository,
+            IEventRepository eventRepository,
+            IMediaItemRepository mediaItemRepository,
+            IDeviceHealthRepository deviceHealthRepository,
+            IProviderApiErrorLogRepository providerApiErrorLogRepository,
+            IUnitOfWork unitOfWork,
+            IWatermarkService watermarkService,
+            IActionLogger actionLogger,
+            ICredentialRepository credentialRepository,
+            IIntegrityVerificationService integrityVerification,
+            IActionLogRepository actionLogRepository,
+            ILogger<VideoForensicsDataClient> logger)
+        {
+            _userRepository = userRepository;
+            _providerAccountRepository = providerAccountRepository;
+            _locationRepository = locationRepository;
+            _deviceRepository = deviceRepository;
+            _downloadEventRepository = downloadEventRepository;
+            _eventRepository = eventRepository;
+            _mediaItemRepository = mediaItemRepository;
+            _deviceHealthRepository = deviceHealthRepository;
+            _providerApiErrorLogRepository = providerApiErrorLogRepository;
+            _unitOfWork = unitOfWork;
+            _watermarkService = watermarkService;
+            _actionLogger = actionLogger;
+            Credentials = credentialRepository;
+            IntegrityVerification = integrityVerification;
+            ActionLog = actionLogRepository;
+            _logger = logger;
+        }
+
+        public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
+        {
+            try
+            {
+                await _deviceRepository.AddAsync(device, ct);
+                _logger.LogInformation("Device registered: {DeviceName} ({DeviceId})", device.Name, device.Id);
+                _ = await _actionLogger.LogAsync("DeviceRegistered", nameof(Device), device.Id, ct: ct);
+                return device;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error registering device {DeviceName}", device.Name);
+                throw;
+            }
+        }
+
+        public async Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct)
+        {
+            try
+            {
+                return await _deviceHealthRepository.AddAsync(health, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
+                throw;
+            }
+        }
+
+        public async Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct)
+        {
+            try
+            {
+                await _providerApiErrorLogRepository.RecordAsync(entry, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording provider API error log for event {EventId}, device {DeviceId}",
+                    entry.EventId, entry.DeviceId);
+                throw;
+            }
+        }
+
+        public async Task<bool> IsMediaAlreadyDownloadedAsync(Guid deviceId, string providerEventId, CancellationToken ct)
+        {
+            return await _downloadEventRepository.ExistsForProviderEventIdAsync(deviceId, providerEventId, ct);
+        }
+
+        public async Task<DownloadEvent?> GetDownloadEventAsync(Guid deviceId, string providerEventId, CancellationToken ct)
+        {
+            return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
+        }
+
+        public async Task<DownloadEvent> RecordDownloadEventAsync(
+            DownloadEvent evt,
+            MediaItem? media,
+            CancellationToken ct,
+            MediaItemDetection? detection = null,
+            List<DetectedPerson>? persons = null,
+            List<DetectionTypeOccurrence>? occurrences = null)
+        {
+            try
+            {
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Upsert by (DeviceId, ProviderEventId) rather than blind-inserting - repeated
+                    // attempts at the same event (retries after a transient failure, or a permanent
+                    // failure recorded so it's not retried forever - see RingMediaDownloadService's
+                    // MaxRetries check) would otherwise pile up duplicate rows, and a caller reading
+                    // "the" DownloadEvent for an event id would get whichever row happened to sort
+                    // first rather than the latest attempt's outcome.
+                    DownloadEvent? existing = await context.DownloadEvents.GetByProviderEventIdAsync(evt.DeviceId, evt.ProviderEventId, ct);
+                    if (existing != null)
+                    {
+                        evt.Id = existing.Id;
+                        await context.DownloadEvents.UpdateAsync(evt, ct);
+                    }
+                    else
+                    {
+                        await context.DownloadEvents.AddAsync(evt, ct);
+                    }
+
+                    if (media != null)
+                    {
+                        await context.MediaItems.AddAsync(media, ct);
+                    }
+
+                    // Persist detection-related entities if provided
+                    if (detection != null)
+                    {
+                        await context.DetectionEntities.AddMediaItemDetectionAsync(detection, ct);
+                    }
+
+                    if (persons != null && persons.Count > 0)
+                    {
+                        await context.DetectionEntities.AddDetectedPersonsAsync(persons, ct);
+                    }
+
+                    if (occurrences != null && occurrences.Count > 0)
+                    {
+                        await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, ct);
+                    }
+
+                    _ = await context.ActionLog.AppendAsync(
+                        Environment.UserName,
+                        ActorType.Human,
+                        "MediaDownloaded",
+                        nameof(DownloadEvent),
+                        evt.Id,
+                        null,
+                        ct);
+
+                    _logger.LogInformation(
+                        "Download event recorded for device {DeviceId}, provider event {ProviderEventId}, success={Success}",
+                        evt.DeviceId,
+                        evt.ProviderEventId,
+                        evt.Success);
+
+                    return evt;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording download event for device {DeviceId}, provider event {ProviderEventId}",
+                    evt.DeviceId, evt.ProviderEventId);
+                throw;
+            }
+        }
+
+        public async Task<Event> UpsertEventAsync(
+            Event evt,
+            CancellationToken ct,
+            EventDetection? detection = null,
+            List<EventDetectionZone>? zones = null,
+            List<EventSecurityAlert>? alerts = null,
+            List<EventDetectedPerson>? persons = null,
+            List<EventDetectionTypeOccurrence>? occurrences = null)
+        {
+            try
+            {
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Upsert the Event record itself
+                    Event upserted = await context.Events.UpsertAsync(evt, ct);
+
+                    // Persist detection-related entities if provided
+                    if (detection != null)
+                    {
+                        detection.EventId = upserted.Id;
+                        await context.DetectionEntities.AddEventDetectionAsync(detection, ct);
+                        upserted.EventDetectionId = detection.Id;
+                    }
+
+                    if (zones != null && zones.Count > 0)
+                    {
+                        foreach (EventDetectionZone zone in zones)
+                        {
+                            zone.EventDetectionId = detection?.Id ?? Guid.Empty;
+                        }
+
+                        await context.DetectionEntities.AddEventDetectionZonesAsync(zones, ct);
+                    }
+
+                    if (alerts != null && alerts.Count > 0)
+                    {
+                        foreach (EventSecurityAlert alert in alerts)
+                        {
+                            alert.EventId = upserted.Id;
+                        }
+
+                        await context.DetectionEntities.AddEventSecurityAlertsAsync(alerts, ct);
+                    }
+
+                    if (persons != null && persons.Count > 0)
+                    {
+                        foreach (EventDetectedPerson person in persons)
+                        {
+                            person.EventId = upserted.Id;
+                        }
+
+                        await context.DetectionEntities.AddEventDetectedPersonsAsync(persons, ct);
+                    }
+
+                    if (occurrences != null && occurrences.Count > 0)
+                    {
+                        foreach (EventDetectionTypeOccurrence occurrence in occurrences)
+                        {
+                            occurrence.EventDetectionId = detection?.Id ?? Guid.Empty;
+                        }
+
+                        await context.DetectionEntities.AddEventDetectionTypeOccurrencesAsync(occurrences, ct);
+                    }
+
+                    return upserted;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error upserting event for device {DeviceId}, provider event {ProviderEventId}",
+                    evt.DeviceId, evt.ProviderEventId);
+                throw;
+            }
+        }
+
+        public Task<DateTime> GetWatermarkAsync(Guid deviceId, DateTime requestedStartDate, bool force, CancellationToken ct)
+        {
+            return _watermarkService.ResolveStartDateAsync(deviceId, requestedStartDate, force, ct);
+        }
+
+        public async Task<(User User, ProviderAccount Account)> EnsureUserAndAccountAsync(
+            string providerName,
+            string providerUserKey,
+            string displayName,
+            string? email,
+            CancellationToken ct)
+        {
+            try
+            {
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Try to find existing user
+                    IReadOnlyList<User> users = await context.Users.ListAsync(ct);
+                    User? existingUser = users.FirstOrDefault(u =>
+                        u.ProviderUserKey == providerUserKey &&
+                        u.DisplayName == displayName);
+
+                    User user;
+                    if (existingUser == null)
+                    {
+                        user = new User
+                        {
+                            Id = Guid.NewGuid(),
+                            ProviderUserKey = providerUserKey,
+                            DisplayName = displayName,
+                            Email = email,
+                            CreatedUtc = DateTime.UtcNow
+                        };
+                        await context.Users.AddAsync(user, ct);
+                        _logger.LogInformation("Created new user: {DisplayName} ({UserId})", displayName, user.Id);
+                    }
+                    else
+                    {
+                        user = existingUser;
+                        _logger.LogInformation("Found existing user: {DisplayName} ({UserId})", displayName, user.Id);
+                    }
+
+                    // Try to find existing provider account
+                    IReadOnlyList<ProviderAccount> accounts = await context.ProviderAccounts.ListAsync(ct);
+                    ProviderAccount? existingAccount = accounts.FirstOrDefault(a =>
+                        a.UserId == user.Id &&
+                        a.ProviderName == providerName);
+
+                    ProviderAccount account;
+                    if (existingAccount == null)
+                    {
+                        account = new ProviderAccount
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = user.Id,
+                            ProviderName = providerName,
+                            LinkedUtc = DateTime.UtcNow,
+                            IsActive = true
+                        };
+                        await context.ProviderAccounts.AddAsync(account, ct);
+                        _logger.LogInformation("Created new provider account: {Provider} for user {UserId}", providerName, user.Id);
+                    }
+                    else
+                    {
+                        account = existingAccount;
+                        _logger.LogInformation("Found existing provider account: {Provider} for user {UserId}", providerName, user.Id);
+                    }
+
+                    _ = await context.ActionLog.AppendAsync(
+                        Environment.UserName,
+                        ActorType.Human,
+                        existingUser == null ? "UserCreated" : "AccountLinked",
+                        nameof(ProviderAccount),
+                        account.Id,
+                        null,
+                        ct);
+
+                    return (user, account);
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user key {ProviderUserKey}",
+                    providerName, providerUserKey);
+                throw;
+            }
+        }
+
+        public async Task<Location> EnsureLocationAsync(
+            Guid providerAccountId,
+            string providerLocationId,
+            string name,
+            string? address,
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Since ProviderLocationId is now globally unique, query globally
+                    Location? existingLocation = await context.Locations.GetByProviderLocationIdAsync(providerLocationId, ct);
+
+                    if (existingLocation == null)
+                    {
+                        var location = new Location
+                        {
+                            Id = Guid.NewGuid(),
+                            ProviderLocationId = providerLocationId,
+                            Name = name,
+                            Address = address,
+                            ApiResponseHash = apiResponseHash,
+                            LastSyncedUtc = DateTime.UtcNow,
+                            SyncStatus = SyncStatus.Synced
+                        };
+                        await context.Locations.AddAsync(location, ct);
+                        _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
+                        await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
+                        return location;
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
+                        // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
+                        await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
+                        return existingLocation;
+                    }
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring location {LocationName} for provider account {ProviderAccountId}",
+                    name, providerAccountId);
+                throw;
+            }
+        }
+
+        public async Task<Device> EnsureDeviceAsync(
+            Guid locationId,
+            string providerDeviceId,
+            string name,
+            string type,
+            bool isOnline,
+            string? metadataJson = null,
+            string? apiResponseHash = null,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                return await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    // Try the common case first: device already under this same location.
+                    IReadOnlyList<Device> devices = await context.Devices.GetByLocationIdAsync(locationId, ct);
+                    Device? existingDevice = devices.FirstOrDefault(d =>
+                        d.ProviderDeviceId == providerDeviceId);
+
+                    // ProviderDeviceId is the device's true identity (Ring's own device id, globally
+                    // unique on the account) - a location-scoped lookup alone misses a device that
+                    // was previously recorded under a different (e.g. synthetic placeholder) location,
+                    // which would otherwise create a duplicate row instead of relocating the original.
+                    if (existingDevice == null)
+                    {
+                        IReadOnlyList<Device> allDevices = await context.Devices.ListAsync(ct);
+                        existingDevice = allDevices?.FirstOrDefault(d => d.ProviderDeviceId == providerDeviceId);
+                    }
+
+                    if (existingDevice == null)
+                    {
+                        var device = new Device
+                        {
+                            Id = Guid.NewGuid(),
+                            LocationId = locationId,
+                            ProviderDeviceId = providerDeviceId,
+                            Name = name,
+                            Type = type,
+                            IsOnline = isOnline,
+                            MetadataJson = metadataJson,
+                            ApiResponseHash = apiResponseHash,
+                            LastSyncedUtc = DateTime.UtcNow,
+                            SyncStatus = SyncStatus.Synced
+                        };
+                        await context.Devices.AddAsync(device, ct);
+                        _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
+                        return device;
+                    }
+                    else
+                    {
+                        if (existingDevice.LocationId != locationId)
+                        {
+                            // Check if device already exists at target location (race condition check)
+                            Device? inTargetLocation = await context.Devices
+                                .GetByProviderDeviceIdAsync(locationId, providerDeviceId, ct);
+
+                            if (inTargetLocation != null)
+                            {
+                                return inTargetLocation;  // Already exists there, use it
+                            }
+
+                            // Create NEW Device record instead of relocating
+                            // Devices are identified by (LocationId, ProviderDeviceId) pair.
+                            // If device moves to different location, it's a NEW device record.
+                            // This preserves forensic history and location-based queries.
+                            // Events at old location still reference old device record.
+                            var newDevice = new Device
+                            {
+                                Id = Guid.NewGuid(),
+                                LocationId = locationId,  // NEW location
+                                ProviderDeviceId = providerDeviceId,
+                                Name = name,
+                                Type = type,
+                                IsOnline = isOnline,
+                                MetadataJson = metadataJson,
+                                ApiResponseHash = apiResponseHash,
+                                LastSyncedUtc = DateTime.UtcNow,
+                                SyncStatus = SyncStatus.Synced
+                            };
+
+                            await context.Devices.AddAsync(newDevice, ct);
+                            _logger.LogInformation(
+                                "Device {DeviceName} ({ProviderDeviceId}) moved to new location; creating new record (NewDeviceId: {NewDeviceId}). " +
+                                "Old device {OldDeviceId} at location {OldLocationId} retained for history.",
+                                name, providerDeviceId, newDevice.Id, existingDevice.Id, existingDevice.LocationId);
+
+                            return newDevice;
+                        }
+
+                        // Update device properties if it exists in the same location
+                        existingDevice.Name = name;
+                        existingDevice.Type = type;
+                        existingDevice.IsOnline = isOnline;
+                        await context.Devices.UpdateAsync(existingDevice, ct);
+                        _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
+                        return existingDevice;
+                    }
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring device {DeviceName} for location {LocationId}",
+                    name, locationId);
+                throw;
+            }
+        }
+
+        public async Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct)
+        {
+            try
+            {
+                _ = await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    Device? device = await context.Devices.GetAsync(deviceId, ct);
+                    if (device != null)
+                    {
+                        // Events download concurrently (see RingMediaDownloadService's
+                        // Parallel.ForEachAsync), so calls here race and can complete in an order
+                        // unrelated to event timestamps. Only ever advance the watermark - never
+                        // let a later-finishing-but-earlier-timestamped event regress it and cause
+                        // the next incremental pull to re-scan (and potentially re-download) events
+                        // already recorded.
+                        if (device.LastSuccessfulPullAtUtc == null || latestSuccessfulPullTime > device.LastSuccessfulPullAtUtc.Value)
+                        {
+                            device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
+                            await context.Devices.UpdateAsync(device, ct);
+                            _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
+                                deviceId, latestSuccessfulPullTime);
+                        }
+                        else
+                        {
+                            _logger.LogDebug(
+                                "Skipped watermark update for device {DeviceId}: {Timestamp} is not newer than current watermark {Current}",
+                                deviceId, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Device {DeviceId} not found when attempting to update watermark", deviceId);
+                    }
+
+                    return true;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating device watermark for device {DeviceId}", deviceId);
+                throw;
+            }
+        }
+
+        public async Task<DateTime> GetAccountDownloadWatermarkAsync(Guid providerAccountId, CancellationToken ct)
+        {
+            try
+            {
+                ProviderAccount? account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
+                if (account?.LastDownloadTimeUtc.HasValue == true)
+                {
+                    _logger.LogInformation("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
+                    return account.LastDownloadTimeUtc.Value;
+                }
+
+                DateTime defaultStart = DateTime.UtcNow.AddDays(-181);
+                _logger.LogInformation("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
+                return defaultStart;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving account download watermark for account {AccountId}", providerAccountId);
+                throw;
+            }
+        }
+
+        public async Task UpdateAccountDownloadWatermarkAsync(Guid providerAccountId, DateTime latestDownloadTime, CancellationToken ct)
+        {
+            try
+            {
+                _ = await _unitOfWork.ExecuteAsync(async context =>
+                {
+                    ProviderAccount? account = await context.ProviderAccounts.GetAsync(providerAccountId, ct);
+                    if (account != null)
+                    {
+                        if (account.LastDownloadTimeUtc == null || latestDownloadTime > account.LastDownloadTimeUtc.Value)
+                        {
+                            account.LastDownloadTimeUtc = latestDownloadTime;
+                            await context.ProviderAccounts.UpdateAsync(account, ct);
+                            _logger.LogInformation("Advanced account download watermark for account {AccountId} to {Timestamp}",
+                                providerAccountId, latestDownloadTime);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Provider account {AccountId} not found when attempting to update download watermark", providerAccountId);
+                    }
+
+                    return true;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating account download watermark for account {AccountId}", providerAccountId);
+                throw;
+            }
+        }
+    }
+}

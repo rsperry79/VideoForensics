@@ -1,0 +1,118 @@
+@implements IDisposable
+@using VideoForensics.Ui.Shared.Contracts
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IDownloadProgressSource ProgressSource
+@inject IStringLocalizer<SharedResources> L
+
+@if (IsActive || _hasEverStarted)
+{
+    <div class="download-progress-panel">
+        <h3>@L["DownloadProgressTitle", CollectionType]</h3>
+
+        @{
+            var progress = _latest;
+        }
+
+        @if (progress is not null)
+        {
+            <p>
+                @L["DownloadProgressFiles", progress.FilesCompleted, progress.FilesTotal, FormatBytes(progress.BytesDownloaded)]
+            </p>
+        }
+
+        @if (progress is not null && progress.CurrentDeviceTotal > 0)
+        {
+            <p>@L["DownloadProgressDevice", progress.CurrentDeviceName, progress.CurrentDeviceIndex, progress.CurrentDeviceTotal]</p>
+        }
+
+        @if (progress is not null && !string.IsNullOrEmpty(progress.LastError))
+        {
+            <p style="color: red;">@L["DownloadProgressError", progress.LastError]</p>
+        }
+
+        <div class="activity-log" style="height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 4px; font-family: monospace; font-size: 0.85em;">
+            @foreach (var line in _activityLog)
+            {
+                <div>@line</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private const int MaxActivityLogLines = 200;
+
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public string CollectionType { get; set; } = "Videos";
+
+    private IDisposable? _subscription;
+    private bool _hasEverStarted;
+    private volatile bool _disposed;
+    private DownloadProgressSnapshot? _latest;
+    private readonly List<string> _activityLog = new();
+
+    protected override void OnInitialized()
+    {
+        // The source pushes snapshots, so the panel needs no timer. Its subscription is released in Dispose.
+        _subscription = ProgressSource.Progress.Subscribe(OnSnapshot);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsActive)
+        {
+            _hasEverStarted = true;
+        }
+    }
+
+    private void OnSnapshot(DownloadProgressSnapshot snapshot)
+    {
+        // Emissions arrive on the source's thread (a sampling timer or a SignalR callback), so the
+        // state change is applied on the renderer's thread.
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _latest = snapshot;
+            if (snapshot.Activity.Count > 0)
+            {
+                _activityLog.AddRange(snapshot.Activity);
+                if (_activityLog.Count > MaxActivityLogLines)
+                {
+                    _activityLog.RemoveRange(0, _activityLog.Count - MaxActivityLogLines);
+                }
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        double value = bytes;
+        string[] units = { "B", "KB", "MB", "GB" };
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+        return $"{value:0.##} {units[unitIndex]}";
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _subscription?.Dispose();
+        _subscription = null;
+    }
+}

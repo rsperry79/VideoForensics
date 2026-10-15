@@ -1,0 +1,309 @@
+@page "/settings/update-check"
+@inject NavigationManager NavigationManager
+@using VideoForensics.Client.Common.Contracts
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Services
+@inject IUpdateCheckService UpdateCheckService
+@inject IReleaseChannelService ReleaseChannelService
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<UpdateCheck> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+
+<div class="d-flex flex-row gap-2 mb-2">
+    <SfButton Content="@(_isChecking ? L["CheckingButton"] : L["CheckNowButton"])" OnClick="CheckNowAsync" Disabled="@_isChecking" CssClass="e-primary" />
+</div>
+
+@if (_isChecking)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_state is not null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column gap-3">
+                <div>
+                    <small class="text-muted">@L["CurrentVersionLabel"]</small>
+                    <p class="mb-0">@_state.CurrentVersion</p>
+                </div>
+
+                <div>
+                    <small class="text-muted">@L["LastCheckedLabel"]</small>
+                    <p class="mb-0">
+                        @if (_state.LastCheckedUtc is null)
+                        {
+                            @L["NeverChecked"]
+                        }
+                        else
+                        {
+                            @FormatTime(_state.LastCheckedUtc.Value)
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_state.UpdateAvailable)
+    {
+        <div class="card border-success mb-4">
+            <div class="card-body bg-light">
+                <h5 class="card-title text-success">@L["UpdateAvailableTitle"]</h5>
+                <p class="card-text">@L["UpdateAvailableMessage"]</p>
+
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <small class="text-muted">@L["LatestVersionLabel"]</small>
+                        <p class="mb-0"><strong>@_state.LatestVersion</strong></p>
+                    </div>
+
+                    @if (_state.DownloadUrl is not null)
+                    {
+                        <div>
+                            <a href="@_state.DownloadUrl" target="_blank" rel="noopener" class="btn btn-sm btn-success">@L["ViewReleaseButton"]</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <small class="text-muted">@L["NoDownloadUrlMessage"]</small>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_state.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger mb-4">
+            <small>@L["ErrorLabel"]</small>
+            <p class="mb-0">@_state.ErrorMessage</p>
+        </div>
+    }
+}
+
+@if (IsAdminOrAbove)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ReleaseChannelTitle"]</h5>
+
+            @if (_channelLoadError is not null)
+            {
+                <div class="alert alert-danger mb-3">@_channelLoadError</div>
+            }
+
+            @if (_currentChannel is not null)
+            {
+                @if (IsSuperAdminViewer)
+                {
+                    <div class="d-flex flex-column gap-2">
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                            <SfDropDownList TValue="UpdateReleaseChannel" TItem="KeyValuePair<UpdateReleaseChannel, string>" @bind-Value="_selectedChannel" DataSource="@_channelOptions" Enabled="@(!_isSavingChannel)" Style="max-width: 320px;">
+                                <DropDownListFieldSettings Text="Value" Value="Key" />
+                            </SfDropDownList>
+                            <SfButton Content="@(_isSavingChannel ? L["SavingChannelButton"] : L["SaveChannelButton"])" OnClick="SaveReleaseChannelAsync" Disabled="@_isSavingChannel" CssClass="e-primary" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <p class="mb-1">@ChannelDisplayName(_currentChannel.Value)</p>
+                        <small class="text-muted">@L["ReadOnlyChannelNote"]</small>
+                    </div>
+                }
+            }
+
+            @if (_channelSaveError is not null)
+            {
+                <div class="alert alert-danger mt-3 mb-0">@_channelSaveError</div>
+            }
+            else if (_channelSavedMessage is not null)
+            {
+                <div class="alert alert-success mt-3 mb-0">@_channelSavedMessage</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isChecking;
+    private string? _loadError;
+    private UpdateCheckState? _state;
+
+    private UpdateReleaseChannel? _currentChannel;
+    private UpdateReleaseChannel _selectedChannel = UpdateReleaseChannel.Stable;
+    private List<KeyValuePair<UpdateReleaseChannel, string>> _channelOptions = new();
+    private bool _isSavingChannel;
+    private string? _channelLoadError;
+    private string? _channelSaveError;
+    private string? _channelSavedMessage;
+
+    // Same role check as OperatorDetails: the server enforces SuperAdmin for changes, this only decides whether to show the control.
+    private bool IsSuperAdminViewer => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.SuperAdmin;
+
+    // Channel card is visible to Admin and above only. Viewers below Admin get no card and no channel request.
+    private bool IsAdminOrAbove => SessionState.IsSignedIn
+        && Enum.TryParse(SessionState.Role, out OperatorRole viewerRole)
+        && viewerRole >= OperatorRole.Admin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadState();
+        _channelOptions =
+        [
+            new KeyValuePair<UpdateReleaseChannel, string>(UpdateReleaseChannel.Stable, ChannelDisplayName(UpdateReleaseChannel.Stable)),
+            new KeyValuePair<UpdateReleaseChannel, string>(UpdateReleaseChannel.Testing, ChannelDisplayName(UpdateReleaseChannel.Testing)),
+        ];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            LoadState();
+            await LoadReleaseChannelAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadReleaseChannelAsync()
+    {
+        if (!IsAdminOrAbove)
+        {
+            return;
+        }
+
+        _channelLoadError = null;
+        try
+        {
+            _currentChannel = await ReleaseChannelService.GetReleaseChannelAsync(CancellationToken.None);
+            _selectedChannel = _currentChannel.Value;
+        }
+        catch (Exception ex)
+        {
+            _channelLoadError = L["ChannelLoadFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveReleaseChannelAsync()
+    {
+        if (_isSavingChannel)
+        {
+            return;
+        }
+
+        _isSavingChannel = true;
+        _channelSaveError = null;
+        _channelSavedMessage = null;
+        try
+        {
+            _currentChannel = await ReleaseChannelService.SetReleaseChannelAsync(_selectedChannel, CancellationToken.None);
+            _selectedChannel = _currentChannel.Value;
+            _channelSavedMessage = L["ChannelSavedMessage"];
+        }
+        catch (Exception ex)
+        {
+            _channelSaveError = L["ChannelSaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSavingChannel = false;
+        }
+    }
+
+    private string ChannelDisplayName(UpdateReleaseChannel channel) => channel switch
+    {
+        UpdateReleaseChannel.Stable => L["ChannelStable"].Value,
+        UpdateReleaseChannel.Testing => L["ChannelTesting"].Value,
+        _ => channel.ToString(),
+    };
+
+    private void LoadState()
+    {
+        _loadError = null;
+        try
+        {
+            _state = UpdateCheckService.GetState();
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["LoadFailed", ex.Message];
+        }
+    }
+
+    private async Task CheckNowAsync()
+    {
+        if (_isChecking)
+        {
+            return;
+        }
+
+        _isChecking = true;
+        _loadError = null;
+        try
+        {
+            await UpdateCheckService.TriggerCheckNowAsync(CancellationToken.None);
+            LoadState();
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["CheckFailed", ex.Message];
+        }
+        finally
+        {
+            _isChecking = false;
+        }
+    }
+
+    private string FormatTime(DateTime utcTime)
+    {
+        var localTime = utcTime.ToLocalTime();
+        var now = DateTime.Now;
+        var elapsed = now - localTime;
+
+        if (elapsed.TotalSeconds < 60)
+        {
+            return L["JustNow"].Value;
+        }
+        else if (elapsed.TotalMinutes < 60)
+        {
+            int minutes = (int)elapsed.TotalMinutes;
+            return minutes == 1 ? L["MinuteAgo"].Value : L["MinutesAgo", minutes].Value;
+        }
+        else if (elapsed.TotalHours < 24)
+        {
+            int hours = (int)elapsed.TotalHours;
+            return hours == 1 ? L["HourAgo"].Value : L["HoursAgo", hours].Value;
+        }
+        else if (elapsed.TotalDays < 7)
+        {
+            int days = (int)elapsed.TotalDays;
+            return days == 1 ? L["DayAgo"].Value : L["DaysAgo", days].Value;
+        }
+        else
+        {
+            return localTime.ToString("MMM d, yyyy");
+        }
+    }
+}

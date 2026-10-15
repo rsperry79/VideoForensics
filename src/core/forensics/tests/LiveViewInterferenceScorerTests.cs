@@ -1,8 +1,8 @@
-namespace VideoForensics.Providers.Ring.Forensics.Tests
+namespace VideoForensics.Core.Forensics.Tests
 {
     using VideoForensics.Data.Common.Entities;
-    using VideoForensics.Providers.Ring.Implementations;
-    using VideoForensics.Providers.Ring.Interfaces;
+    using VideoForensics.Core.Forensics.Implementations;
+    using VideoForensics.Core.Forensics.Interfaces;
 
     public class LiveViewInterferenceScorerTests
     {

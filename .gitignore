@@ -216,3 +216,5 @@ SelfTesterResults/
 
 testEnvironments.json
 test_results.txt
+# Archived plans are kept on disk only, not tracked
+plans/archive/

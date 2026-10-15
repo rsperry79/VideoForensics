@@ -1,0 +1,368 @@
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Identity;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
+using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Hubs;
+using VideoForensics.Core.Api.Contracts;
+
+namespace VideoForensics.WebApp.Api
+{
+    /// <summary>
+    /// Paired-device and Operator management (plan §5.4/§5.11): listing, revoking a single device,
+    /// and deactivating an Operator (bulk-revoking every device they've paired). All gated
+    /// SuperAdmin+Local - revocation is exactly as sensitive as pairing itself.
+    ///
+    /// Revocation here does two things, matching the plan's explicit "not just the next HTTP
+    /// request" requirement: it immediately blocks the device's next API request (enforced by
+    /// PairedDeviceAuthenticationHandler re-checking IsActive on every call), AND it forcibly
+    /// terminates any already-open LiveHub connection for that device via ILiveConnectionTracker -
+    /// token invalidation alone does nothing to a persistent SignalR connection that was
+    /// established before the revocation.
+    /// </summary>
+    public static class DeviceManagementEndpoints
+    {
+        public static void MapDeviceManagementEndpoints(this WebApplication app)
+        {
+            RouteGroupBuilder group = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+
+            _ = group.MapGet("/paired-devices", async (IPairedDeviceRepository devices, CancellationToken ct) =>
+                Results.Ok(await devices.ListAsync(ct)));
+
+            _ = group.MapGet("/operators", async (IOperatorRepository operators, CancellationToken ct) =>
+                Results.Ok(await operators.ListAsync(ct)));
+
+            _ = group.MapGet("/operators/{id:guid}", GetOperatorAsync);
+
+            _ = group.MapPost("/paired-devices/{id:guid}/revoke", async (
+                Guid id,
+                RevokeDeviceRequest request,
+                IPairedDeviceRepository devices,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                ILiveConnectionTracker connectionTracker,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                await devices.RevokeAsync(id, request.Reason, ct);
+                connectionTracker.ForceDisconnect(id);
+                await auditLog.LogAsync(SecurityAuditEventTypes.PairingRevoked,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    id, tierResolver.ResolveClientIp(context), request.Reason, isUrgent: true, ct);
+                return Results.Ok();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = group.MapPost("/operators/{id:guid}/deactivate", async (
+                Guid id,
+                RevokeDeviceRequest request,
+                IOperatorRepository operators,
+                IPairedDeviceRepository devices,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                ILiveConnectionTracker connectionTracker,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                await operators.DeactivateAsync(id, ct);
+                IReadOnlyList<Guid> revokedDeviceIds = await devices.RevokeAllForOperatorAsync(id, request.Reason, ct);
+                foreach (Guid revokedDeviceId in revokedDeviceIds)
+                {
+                    connectionTracker.ForceDisconnect(revokedDeviceId);
+                }
+
+                await auditLog.LogAsync(SecurityAuditEventTypes.OperatorDeactivated,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"Operator {id}, {revokedDeviceIds.Count} device(s) revoked: {request.Reason}", isUrgent: true, ct);
+
+                return Results.Ok(new { revokedDeviceCount = revokedDeviceIds.Count });
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = group.MapPost("/operators/{id:guid}/approve", async (
+                Guid id,
+                IOperatorRepository operators,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                await operators.ApproveAsync(id, ct);
+                await auditLog.LogAsync(SecurityAuditEventTypes.OperatorApproved,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"Operator {id} approved", isUrgent: true, ct);
+                return Results.Ok();
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = group.MapPost("/operators/{id:guid}/reset-password", async (
+                Guid id,
+                IOperatorRepository operators,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+
+                // Generate a temporary password (12 bytes of random data, base64url encoded)
+                string temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(12))
+                    .TrimEnd('=')  // Remove padding
+                    .Replace('+', '-').Replace('/', '_');  // URL-safe base64
+
+                var hasher = new PasswordHasher<Operator>();
+                // Create a minimal temp operator instance (PasswordHasher only uses it for type checking)
+                var tempOperator = new Operator
+                {
+                    Id = id,
+                    DisplayName = string.Empty,
+                    Username = string.Empty,
+                    FirstName = string.Empty,
+                    LastName = string.Empty,
+                    Email = string.Empty
+                };
+                string passwordHash = hasher.HashPassword(tempOperator, temporaryPassword);
+
+                await operators.SetPasswordAsync(id, passwordHash, mustChangePassword: true, ct);
+                await auditLog.LogAsync(SecurityAuditEventTypes.PasswordReset,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"Password reset for operator {id}", isUrgent: true, ct);
+
+                return Results.Ok(new { temporaryPassword });
+            })
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync)
+                .RequireRateLimiting("auth");
+
+            // Separate route group for UI mode management. Base policy is ReadOnly (any authenticated user),
+            // but routes require Admin role (which includes SuperAdmin). Unlike the SuperAdminLocal group above,
+            // these routes do NOT require Local network tier, so Admin from Internet is allowed.
+            RouteGroupBuilder uiModeGroup = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.ReadOnly);
+
+            _ = uiModeGroup.MapGet("/operators/{id:guid}/ui-mode", GetUiModeAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Admin)
+                .RequireRateLimiting("auth");
+
+            _ = uiModeGroup.MapPut("/operators/{id:guid}/ui-mode", SetUiModeAsync)
+                .RequireAuthorization(VideoForensicsPolicies.Admin)
+                .RequireRateLimiting("auth");
+
+            // Separate route group for operator credentials management. Base policy is the LOWEST
+            // requirement any route here needs (ReadOnly, i.e. "just signed in") - RequireAuthorization
+            // calls stack additively (AND-combined) rather than replacing each other, so a stricter
+            // group-level policy here would make it impossible for a per-route override to LOOSEN
+            // access back down for the self-service routes (/mine, /revoke's self-revoke path).
+            // Routes that need more than ReadOnly add their own stricter policy on top instead.
+            RouteGroupBuilder credentialGroup = app.MapGroup("/api/devices-management/operator-credentials").RequireAuthorization(VideoForensicsPolicies.ReadOnly);
+
+            _ = credentialGroup.MapGet("/pending", async (
+                IOperatorCredentialRepository credentials,
+                CancellationToken ct) =>
+                Results.Ok(await credentials.ListPendingApprovalAsync(ct)))
+            .RequireAuthorization(VideoForensicsPolicies.Admin)
+            .RequireRateLimiting("auth");
+
+            _ = credentialGroup.MapPost("/{id:guid}/approve", async (
+                Guid id,
+                IOperatorCredentialRepository credentials,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                await credentials.ApproveAsync(id, ct);
+                await auditLog.LogAsync(SecurityAuditEventTypes.CredentialApproved,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"Credential {id} approved", isUrgent: true, ct);
+                return Results.Ok();
+            })
+            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = credentialGroup.MapPost("/{id:guid}/revoke", async (
+                Guid id,
+                RevokeDeviceRequest request,
+                IOperatorCredentialRepository credentials,
+                ISecurityAuditLogger auditLog,
+                INetworkTierResolver tierResolver,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+                string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
+
+                OperatorCredential? credential = await credentials.GetAsync(id, ct);
+                if (credential == null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Allow if: (a) self-revoking own credential, OR (b) SuperAdmin+Local
+                bool isSelf = Guid.TryParse(operatorIdClaim, out Guid callerOperatorId) && callerOperatorId == credential.OperatorId;
+                bool isSuperAdminLocal = Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole role) && role >= OperatorRole.SuperAdmin
+                    && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+
+                if (!isSelf && !isSuperAdminLocal)
+                {
+                    return Results.Forbid();
+                }
+
+                await credentials.RevokeAsync(id, request.Reason, ct);
+                await auditLog.LogAsync(SecurityAuditEventTypes.CredentialRevoked,
+                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                    null, tierResolver.ResolveClientIp(context), $"Credential {id} revoked: {request.Reason}", isUrgent: true, ct);
+                return Results.Ok();
+            })
+            .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+            .RequireRateLimiting("auth")
+            .AddEndpointFilter<StepUpEndpointFilter>();
+
+            _ = credentialGroup.MapGet("/mine", async (
+                IOperatorCredentialRepository credentials,
+                HttpContext context,
+                CancellationToken ct) =>
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                if (!Guid.TryParse(operatorIdClaim, out Guid operatorId))
+                {
+                    return Results.Forbid();
+                }
+
+                return Results.Ok(await credentials.ListForOperatorAsync(operatorId, ct));
+            })
+            .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
+            .RequireRateLimiting("auth");
+        }
+
+        /// <summary>
+        /// Gets one operator's details for the operator-details page. Returns the secret-free
+        /// <see cref="OperatorDetailsDto"/> projection, never the raw entity (which carries PasswordHash).
+        /// </summary>
+        internal static async Task<IResult> GetOperatorAsync(Guid id, IOperatorRepository operators, CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            return op is null
+                ? Results.NotFound(new { error = "Operator not found" })
+                : Results.Ok(op.ToDto());
+        }
+
+        /// <summary>
+        /// Clears an operator's lockout state. Unlike approve/deactivate this restores existing
+        /// access rather than granting new access, so it deliberately carries no step-up requirement.
+        /// </summary>
+
+        /// <summary>
+        /// Gets the UI mode and lock status for an operator. Returns defaults (Standard, false) if no preferences row exists.
+        /// </summary>
+        private static async Task<IResult> GetUiModeAsync(
+            Guid id,
+            IOperatorRepository operators,
+            IOperatorPreferencesRepository preferences,
+            CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            if (op == null)
+            {
+                return Results.NotFound(new { error = "Operator not found" });
+            }
+
+            OperatorPreferences? prefs = await preferences.GetAsync(id, ct);
+            return Results.Ok(new OperatorUiModeDto(
+                prefs?.UiMode ?? "Standard",
+                prefs?.UiModeLocked ?? false
+            ));
+        }
+
+        /// <summary>
+        /// Sets the UI mode and lock status for an operator. Mode must be "Standard" or "Simple".
+        /// </summary>
+        private static async Task<IResult> SetUiModeAsync(
+            Guid id,
+            SetOperatorUiModeRequest request,
+            IOperatorRepository operators,
+            IOperatorPreferencesRepository preferences,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            Operator? op = await operators.GetAsync(id, ct);
+            if (op == null)
+            {
+                return Results.NotFound(new { error = "Operator not found" });
+            }
+
+            // Validate mode
+            if (request.Mode != "Standard" && request.Mode != "Simple")
+            {
+                return Results.BadRequest(new { error = "Invalid UI mode. Must be 'Standard' or 'Simple'." });
+            }
+
+            // Set the UI mode and return the saved preferences
+            OperatorPreferences saved = await preferences.SetUiModeAsync(id, request.Mode, request.Locked, ct);
+
+            // Log the change with the target operator's username
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            string details = $"target={op.Username} mode={request.Mode} locked={request.Locked}";
+            await auditLog.LogAsync(SecurityAuditEventTypes.OperatorUiModeChanged,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), details, isUrgent: false, ct);
+
+            return Results.Ok(new OperatorUiModeDto(saved.UiMode, saved.UiModeLocked));
+        }
+
+        private static async Task<IResult> UnlockAsync(
+            Guid id,
+            IOperatorRepository operators,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await operators.UnlockAsync(id, ct);
+            await auditLog.LogAsync(SecurityAuditEventTypes.OperatorUnlocked,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null, tierResolver.ResolveClientIp(context), $"Operator {id} unlocked", isUrgent: true, ct);
+            return Results.Ok();
+        }
+    }
+
+    public record RevokeDeviceRequest(string Reason);
+
+    internal static class OperatorDetailsMappingExtensions
+    {
+        /// <summary>Projects an Operator entity to the secret-free wire DTO.</summary>
+        internal static OperatorDetailsDto ToDto(this Operator op) => new(
+            op.Id,
+            op.DisplayName,
+            op.Username,
+            op.FirstName,
+            op.LastName,
+            op.Email,
+            op.Phone,
+            op.Role,
+            op.Active,
+            op.IsApproved,
+            op.CreatedAtUtc,
+            op.MustChangePassword,
+            op.PasswordUpdatedAtUtc,
+            op.FailedLoginAttemptCount,
+            op.LockedOutUntilUtc,
+            op.TwoFactorRequirementOverride,
+            op.IsPrimarySuperAdmin);
+    }
+}

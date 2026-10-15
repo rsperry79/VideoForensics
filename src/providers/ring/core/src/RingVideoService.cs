@@ -1,0 +1,1547 @@
+using Microsoft.Extensions.Logging;
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+using VideoForensics.Core.Helpers.Contracts;
+using VideoForensics.Core.Helpers.Media;
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Exceptions;
+using VideoForensics.Providers.Ring.Models;
+
+using static VideoForensics.Core.Helpers.Contracts.JsonSerializationMode;
+
+namespace VideoForensics.Providers.Ring
+{
+    /// <summary>
+    /// Orchestrates a full Ring video/snapshot download run: authentication, device and location
+    /// discovery, event filtering, the concurrent download/retry loop, settings and credential
+    /// persistence, and report/log file generation (failure TSV, camera-health TSV, per-event JSON,
+    /// raw API traffic). Everything user-facing is surfaced through <see cref="IDownloadReporter"/>
+    /// so this class has no dependency on any particular console/UI framework.
+    /// </summary>
+    public class RingVideoService
+    {
+        private readonly ILogger log;
+        private readonly IDownloadReporter reporter;
+        private readonly ICredentialStore credentialStore;
+        private readonly IReadOnlyDictionary<string, string> configLocationNames;
+        private readonly Filter defaultFilter;
+        private Session ringSession;
+
+        /// <summary>
+        /// Optional callback invoked after successful file download.
+        /// Ring.Videos can provide this to write metadata sidecars.
+        /// Signature: async Task (DoorbotHistoryEvent event, string filePath)
+        /// </summary>
+        public Func<DoorbotHistoryEvent, string, Task> OnFileDownloadedAsync { get; set; }
+        private static readonly SemaphoreSlim semaphore = new(10, 10);
+        private static int activeDls = 0;
+        private static long totalBytesDownloaded = 0;
+        private static readonly DateTime downloadStartTime = DateTime.Now;
+        public Filter Filter { get; set; } = new();
+        public RingCredentials Auth { get; set; } = new();
+        public readonly string SavedSettingsFolder;
+        public readonly string SavedSettingsFile;
+        private readonly IMediaValidator mediaValidator;
+        private readonly IJsonSerializer jsonSerializer;
+        private readonly ConcurrentBag<FailedDownload> newFailures = [];
+        private readonly HashSet<string> loadedEventIds = [];
+        private string reportsDirectory;
+        private string logsDirectory;
+        public static volatile bool IsRunActive = false;
+        private static readonly object rawApiLogLock = new();
+        private readonly Dictionary<Guid, string> locationNameCache = [];
+        private readonly Dictionary<long, Guid> deviceIdToLocationId = [];
+        private Devices cachedDevices = null;  // For enriching downloads with current device health
+
+        public RingVideoService(
+            ILogger<RingVideoService> logger,
+            IDownloadReporter reporter,
+            ICredentialStore credentialStore,
+            string dataDirectory,
+            IReadOnlyDictionary<string, string> configLocationNames = null,
+            Filter defaultFilter = null,
+            IMediaValidator mediaValidator = null,
+            IJsonSerializer jsonSerializer = null)
+        {
+            log = logger;
+            this.reporter = reporter;
+            this.credentialStore = credentialStore;
+            this.configLocationNames = configLocationNames;
+            this.defaultFilter = defaultFilter;
+            this.mediaValidator = mediaValidator ?? new MediaValidator();
+            this.jsonSerializer = jsonSerializer ?? new VideoForensics.Core.Helpers.Json.JsonSerializer();
+
+            SavedSettingsFolder = dataDirectory;
+            SavedSettingsFile = Path.Combine(dataDirectory, "RingVideosConfig.json");
+
+            try
+            {
+                ReadSettings();
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to load saved settings");
+                reporter.Warning("Failed to load saved settings");
+            }
+        }
+
+        private void ReadSettings()
+        {
+            try
+            {
+                string contents = System.IO.File.ReadAllText(SavedSettingsFile);
+                Config? settings = jsonSerializer.Deserialize<Config>(contents);
+                Filter = settings.Filter ?? new Filter();
+            }
+            catch (Exception)
+            {
+                Filter = defaultFilter ?? new Filter();
+            }
+        }
+
+        private void SaveSettings(DateTime? lastSuccessUtc, DateTime? lastFailureUtc)
+        {
+            //Set "next dates" on filter
+            if (lastFailureUtc.HasValue && !Filter.Snapshots)
+            {
+                Filter.StartDateTime = lastFailureUtc.Value.AddMinutes(-1).ToLocalTime();
+                Filter.EndDateTime = null;
+            }
+            else if (lastSuccessUtc.HasValue && !Filter.Snapshots)
+            {
+                Filter.StartDateTime = lastSuccessUtc.Value.ToLocalTime();
+                Filter.EndDateTime = null;
+            }
+
+            if (!Directory.Exists(SavedSettingsFolder))
+            {
+                _ = Directory.CreateDirectory(SavedSettingsFolder);
+            }
+
+            var conf = new Config()
+            {
+                Filter = Filter
+            };
+            string config = jsonSerializer.Serialize(conf, Pretty);
+
+            System.IO.File.WriteAllText(SavedSettingsFile, config);
+            log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
+        }
+
+        /// <summary>
+        /// Appends every raw Ring API call made this run to a JSONL log file under the reports
+        /// directory, so the full request/response traffic can be inspected for missing fields,
+        /// undocumented endpoints, or data our entity classes don't currently map.
+        /// </summary>
+        private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
+        private void LogRawApiCall(RawApiCall call)
+        {
+            if (string.IsNullOrEmpty(logsDirectory))
+            {
+                return;
+            }
+
+            try
+            {
+                var entry = new
+                {
+                    timestamp = call.Timestamp.ToString("o"),
+                    method = call.Method,
+                    url = call.Url,
+                    statusCode = call.StatusCode,
+                    bodyLength = call.Body?.Length ?? 0,
+                    body = call.Body
+                };
+                string line = jsonSerializer.Serialize(entry, Raw);
+
+                string logPath = Path.Combine(logsDirectory, "api_raw_responses.jsonl");
+                lock (rawApiLogLock)
+                {
+                    System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
+                    log.LogInformation("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
+                }
+            }
+            catch (Exception exe)
+            {
+                log.LogWarning(exe, "Failed to write raw API response log entry");
+            }
+        }
+
+        /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
+
+        private static int ringEventsFileCounter = 0;
+
+        /// <summary>
+        /// Appends session/auth lifecycle events (authenticate, refresh, throttle, retry) to a
+        /// human-readable debug log, separate from the full HTTP firehose.
+        /// </summary>
+        private void LogApiLifecycleEvent(ApiLifecycleEvent evt)
+        {
+            if (string.IsNullOrEmpty(logsDirectory))
+            {
+                return;
+            }
+
+            try
+            {
+                string line = $"{evt.Timestamp:o} [{evt.Category}] {evt.Message}";
+                string logPath = Path.Combine(logsDirectory, "session_debug.log");
+                lock (rawApiLogLock)
+                {
+                    System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
+                }
+            }
+            catch (Exception exe)
+            {
+                log.LogWarning(exe, "Failed to write session debug log entry");
+            }
+        }
+
+        /// <summary>
+        /// Writes the parsed Ring event ("ding") list from a history call to its own pretty-printed
+        /// JSON file, so it can be diffed against the raw HTTP body to spot anything our entity
+        /// classes silently drop or leave null.
+        /// </summary>
+        private void LogRingEventsBatch(RingEventsBatch batch)
+        {
+            if (string.IsNullOrEmpty(logsDirectory))
+            {
+                return;
+            }
+
+            try
+            {
+                DateTime localTime = batch.Timestamp.ToLocalTime();
+                int seq = Interlocked.Increment(ref ringEventsFileCounter);
+                string fileName = $"events-{localTime:yyyy-MM-dd}-T{localTime:HH_mm_ss}-{seq}.json";
+                string filePath = Path.Combine(logsDirectory, fileName);
+
+                using var doc = JsonDocument.Parse(batch.EventsJson);
+                string pretty = jsonSerializer.Serialize(doc, Pretty);
+
+                System.IO.File.WriteAllText(filePath, pretty, Utf8NoBom);
+                log.LogInformation("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
+            }
+            catch (Exception exe)
+            {
+                log.LogWarning(exe, "Failed to write ring events batch log file");
+            }
+        }
+
+        public string GetFilterMessage()
+        {
+            string expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath ?? string.Empty);
+            var message = new StringBuilder();
+            _ = message.AppendLine("----------------------------");
+            if (Filter.StartDateTime.HasValue)
+            {
+                _ = message.AppendLine($"Start Date:\t{Filter.StartDateTime.Value} [UTC: {Filter.StartDateTimeUtc.Value}]");
+            }
+
+            _ = Filter.EndDateTime.HasValue
+                ? message.AppendLine($"End Date:\t{Filter.EndDateTime.Value} [UTC: {Filter.EndDateTimeUtc.Value}]")
+                : message.AppendLine($"End Date:\tCurrent Time");
+
+            if (Filter.VideoCount != 10000)
+            {
+                _ = message.AppendLine($"Max downloads:\t{Filter.VideoCount}");
+            }
+
+            _ = message.AppendLine($"Only Starred:\t{Filter.OnlyStarred}");
+            _ = message.AppendLine($"Only Person:\t{Filter.OnlyPersonDetected}");
+            if (!string.IsNullOrWhiteSpace(Filter.Kind))
+            {
+                _ = message.AppendLine($"Event Kind:\t{Filter.Kind}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(Filter.DetectionType))
+            {
+                _ = message.AppendLine($"Detection:\t{Filter.DetectionType}");
+            }
+
+            _ = message.AppendLine($"Snapshots:\t{Filter.Snapshots}");
+            if (!string.IsNullOrWhiteSpace(expandedPath))
+            {
+                _ = message.AppendLine($"Download Path:\t{expandedPath}");
+            }
+
+            _ = message.AppendLine("----------------------------");
+            return message.ToString();
+        }
+
+        public void PrintFilterMessage(string firstLine)
+        {
+            try
+            {
+                reporter.Info("----------------------------");
+                reporter.Highlight(firstLine);
+                reporter.Info(GetFilterMessage());
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
+        public async Task<Session> Authenticate()
+        {
+            Session session = null;
+            try
+            {
+                session = await reporter.RunWithStatusAsync("Authenticating...", async updateStatus =>
+                {
+                    var progress = new Progress<AuthProgressEventArgs>(e =>
+                    {
+                        _ = updateStatus(e.Message);
+                        if (e.IsWarning)
+                        {
+                            reporter.Warning(e.Message);
+                            log.LogWarning(e.Message);
+                        }
+                        else
+                        {
+                            reporter.Info(e.Message);
+                        }
+                    });
+
+                    Session s = await Session.AuthenticateWithCredentials(
+                        Auth,
+                        twoFactorAuthCodeProvider: async () =>
+                        {
+                            // Two factor authentication is enabled on the account - a text message with a
+                            // code will have just been sent. Ask for it here.
+                            reporter.Info("Two factor authentication enabled on this account, please enter the token received in the text message on your phone:");
+                            string token = await reporter.PromptTwoFactorCodeAsync();
+                            if (!string.IsNullOrEmpty(token))
+                            {
+                                log.LogInformation("2FA token received");
+                            }
+
+                            return token;
+                        },
+                        progress: progress);
+
+                    await Task.Delay(500);
+                    return s;
+                });
+            }
+            catch (ThrottledException e)
+            {
+                reporter.Error(e.Message);
+            }
+            catch (AuthenticationFailedException e)
+            {
+                reporter.Error($"{e.Message}: Please validate your credentials");
+            }
+            catch (System.Net.WebException e)
+            {
+                reporter.Error($"{e.Message}: Connection failed, please validate your credentials.");
+            }
+            catch (Exception exe)
+            {
+                reporter.Error($"{exe.Message}");
+            }
+
+            if (session != null && session.OAuthToken != null)
+            {
+                SaveSettings(null, null);
+            }
+
+            return session;
+        }
+
+        public async Task<int> Run(CancellationToken ct)
+        {
+            try
+            {
+                log.LogInformation("Starting download run");
+            }
+            catch (IOException)
+            {
+                // Output redirected (e.g. running under CI or piped to a file) - nothing to clear
+            }
+
+            IsRunActive = true;
+            try
+            {
+                DateTime? lastSuccess = null;
+                DateTime? firstFailure = null;
+                int failedCount = 0;
+                List<(bool success, DoorbotHistoryEvent ding)> results = [];
+                ringSession = await Authenticate();
+                if (ringSession == null || !ringSession.IsAuthenticated)
+                {
+                    reporter.Error("Authentication failed. Please check your credentials.");
+                    return 999;
+                }
+
+                if (Filter.DownloadPath == null)
+                {
+                    reporter.Error("A valid download path '--path' argument is required");
+                    return -1;
+                }
+
+                string expandedPath = Environment.ExpandEnvironmentVariables(Filter.DownloadPath);
+                if (!string.IsNullOrWhiteSpace(expandedPath))
+                {
+                    if (!Directory.Exists(expandedPath))
+                    {
+                        _ = Directory.CreateDirectory(expandedPath);
+                    }
+                }
+                else
+                {
+                    reporter.Error("A valid download path '--path' argument is required");
+                    return -1;
+                }
+
+                // Initialize reports directory
+                reportsDirectory = Path.Combine(expandedPath, "reports");
+                if (!Directory.Exists(reportsDirectory))
+                {
+                    _ = Directory.CreateDirectory(reportsDirectory);
+                }
+
+                // Initialize logs directory
+                logsDirectory = Path.Combine(expandedPath, "logs");
+                if (!Directory.Exists(logsDirectory))
+                {
+                    _ = Directory.CreateDirectory(logsDirectory);
+                }
+
+                // Capture every raw API response for this run so we can inspect what Ring actually
+                // sends back (e.g. to spot fields/devices/locations our entities don't map).
+                // Unsubscribe first in case Run() is invoked more than once in this process (interactive mode).
+                ApiRawLogger.OnRawResponse -= LogRawApiCall;
+                ApiRawLogger.OnRawResponse += LogRawApiCall;
+                ApiRawLogger.OnEvent -= LogApiLifecycleEvent;
+                ApiRawLogger.OnEvent += LogApiLifecycleEvent;
+                ApiRawLogger.OnRingEvents -= LogRingEventsBatch;
+                ApiRawLogger.OnRingEvents += LogRingEventsBatch;
+
+                // Load existing failures to check for duplicates
+                LoadExistingFailures(reportsDirectory);
+
+                PrintFilterMessage("Fetching videos with the following settings:");
+                if (!Filter.Snapshots)
+                {
+                    DeviceList deviceList = new();
+                    if (Filter.DeviceId.HasValue && Filter.DeviceId.Value > 0)
+                    {
+                        deviceList.Devices.Add(new DeviceInfo() { Id = Filter.DeviceId.Value });
+                    }
+                    else
+                    {
+                        deviceList = await GetDevicesList();
+                    }
+
+                    // Fetch all devices (across every location this account has been shared into) and use
+                    // each device's LocationId to organize downloads
+                    var allDevices = new Devices
+                    {
+                        Doorbots = [],
+                        AuthorizedDoorbots = [],
+                        Chimes = [],
+                        StickupCams = []
+                    };
+
+                    try
+                    {
+                        Devices allDeviceResponse = await ringSession.GetRingDevices();
+                        if (allDeviceResponse != null)
+                        {
+                            if (allDeviceResponse.Doorbots != null)
+                            {
+                                allDevices.Doorbots.AddRange(allDeviceResponse.Doorbots);
+                            }
+
+                            if (allDeviceResponse.AuthorizedDoorbots != null)
+                            {
+                                allDevices.AuthorizedDoorbots.AddRange(allDeviceResponse.AuthorizedDoorbots);
+                            }
+
+                            if (allDeviceResponse.Chimes != null)
+                            {
+                                allDevices.Chimes.AddRange(allDeviceResponse.Chimes);
+                            }
+
+                            if (allDeviceResponse.StickupCams != null)
+                            {
+                                allDevices.StickupCams.AddRange(allDeviceResponse.StickupCams);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        reporter.Error($"Failed to fetch devices: {ex.Message}");
+                        log.LogError(ex, "Failed to fetch devices");
+                    }
+
+                    reporter.Highlight($"Found {(allDevices.Doorbots?.Count ?? 0) + (allDevices.Chimes?.Count ?? 0) + (allDevices.StickupCams?.Count ?? 0)} total devices across all locations");
+
+                    // Cache devices for enriching downloaded events with health data
+                    cachedDevices = allDevices;
+
+                    // Camera/doorbell health (connectivity, battery, wifi signal) comes embedded directly in
+                    // the ring_devices response already fetched above - no separate health API call needed.
+                    void PrintDeviceHealth(string name, DeviceHealth health)
+                    {
+                        if (health == null)
+                        {
+                            reporter.Info($"    {name}: (no health data returned)");
+                            return;
+                        }
+
+                        var parts = new List<string>();
+                        if (health.Connected.HasValue)
+                        {
+                            parts.Add(health.Connected.Value ? "connected" : "DISCONNECTED");
+                        }
+
+                        if (!string.IsNullOrEmpty(health.RssiCategory))
+                        {
+                            parts.Add($"wifi {health.RssiCategory}" + (health.Rssi.HasValue ? $" ({health.Rssi}dBm)" : ""));
+                        }
+
+                        if (health.BatteryPercentage.HasValue && health.BatteryPercentage.Value > 0)
+                        {
+                            parts.Add($"battery {health.BatteryPercentage}%");
+                        }
+                        else if (!string.IsNullOrEmpty(health.BatteryVoltageCategory))
+                        {
+                            parts.Add($"battery voltage {health.BatteryVoltageCategory}");
+                        }
+
+                        if (!string.IsNullOrEmpty(health.FirmwareVersionStatus))
+                        {
+                            parts.Add(health.FirmwareVersionStatus);
+                        }
+
+                        string line = $"    {name}: {(parts.Count > 0 ? string.Join(", ", parts) : "no telemetry")}";
+                        bool isConcern = health.Connected == false ||
+                           string.Equals(health.RssiCategory, "poor", StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(health.BatteryVoltageCategory, "poor", StringComparison.OrdinalIgnoreCase);
+                        if (isConcern)
+                        {
+                            reporter.Warning(line);
+                        }
+                        else
+                        {
+                            reporter.Info(line);
+                        }
+                    }
+
+                    if (allDevices.StickupCams.Count > 0 || allDevices.Doorbots.Count > 0 || allDevices.AuthorizedDoorbots.Count > 0)
+                    {
+                        reporter.Info("Camera health:");
+                        foreach (StickupCam d in allDevices.StickupCams)
+                        {
+                            PrintDeviceHealth(d.Description ?? $"Device {d.Id}", d.Health);
+                        }
+
+                        foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                        {
+                            PrintDeviceHealth(d.Description ?? $"Device {d.Id}", d.Health);
+                        }
+                    }
+
+                    // Build a device-id -> location-id lookup. The doorbot history API (used per-download)
+                    // does not embed location_id on its nested doorbot object, only the device-list APIs do -
+                    // so downloads must resolve location via this lookup keyed on device id, not ding.Doorbot.LocationId.
+                    deviceIdToLocationId.Clear();
+                    foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots).Where(d => d.LocationId.HasValue))
+                    {
+                        deviceIdToLocationId[d.Id] = d.LocationId.Value;
+                    }
+
+                    foreach (Chime? d in allDevices.Chimes.Where(d => d.LocationId.HasValue))
+                    {
+                        deviceIdToLocationId[d.Id] = d.LocationId.Value;
+                    }
+
+                    foreach (StickupCam? d in allDevices.StickupCams.Where(d => d.LocationId.HasValue))
+                    {
+                        deviceIdToLocationId[d.Id.Value] = d.LocationId.Value;
+                    }
+
+                    // Populate location name cache from the API
+                    reporter.Info("Loading location names...");
+                    try
+                    {
+                        List<Location> locations = await ringSession.GetLocations();
+                        if (locations != null && locations.Count > 0)
+                        {
+                            foreach (Location loc in locations)
+                            {
+                                if (loc.Id.HasValue && !string.IsNullOrEmpty(loc.Name))
+                                {
+                                    locationNameCache[loc.Id.Value] = loc.Name;
+                                    int deviceCount = deviceIdToLocationId.Count(kvp => kvp.Value == loc.Id.Value);
+                                    reporter.Info($"  {loc.Name} ({loc.Id}) - {deviceCount} device(s){(loc.IsOwner == false ? " [shared]" : string.Empty)}");
+
+                                    // Ring only returns devices this account has been explicitly granted access to on
+                                    // shared locations - a low count here can mean cameras exist but aren't visible to
+                                    // this account, not that the app failed to find them.
+                                    if (loc.IsOwner == false && deviceCount <= 1)
+                                    {
+                                        reporter.Warning($"    '{loc.Name}' is a shared location with only {deviceCount} visible device(s). " +
+                                           "If you expect more cameras here, ask the Ring account owner to grant this account access " +
+                                           "to them under Shared Users in the Ring app - newly added devices aren't shared automatically.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        reporter.Warning($"Failed to fetch locations from API: {ex.Message}");
+                        log.LogWarning(ex, "Failed to fetch location list from API");
+                    }
+
+                    // Fall back to config-supplied names for any location the API didn't cover
+                    if (configLocationNames != null)
+                    {
+                        foreach (KeyValuePair<string, string> kvp in configLocationNames)
+                        {
+                            if (Guid.TryParse(kvp.Key, out Guid locId) && !locationNameCache.ContainsKey(locId))
+                            {
+                                locationNameCache[locId] = kvp.Value;
+                                reporter.Info($"  {kvp.Value} ({locId}) [from config]");
+                            }
+                        }
+                    }
+
+                    GenerateCameraHealthReport(reportsDirectory, allDevices, locationNameCache);
+
+                    // Build device list from all locations
+                    DeviceList allDeviceList = new DeviceList().ExtractDevices(allDevices);
+
+                    List<DoorbotHistoryEvent> dings = [];
+                    try
+                    {
+                        foreach (DeviceInfo dev in allDeviceList.Devices)
+                        {
+                            dings.AddRange(await reporter.RunWithStatusAsync($"Querying for videos to download from {dev.Name}...", async updateStatus =>
+                            {
+                                List<DoorbotHistoryEvent> events = await ringSession.GetDoorbotsHistory(Filter.StartDateTimeUtc.Value, Filter.EndDateTimeUtc, dev.Id);
+                                await Task.Delay(500);
+                                return events;
+                            }));
+                        }
+                    }
+                    catch (Exception exe)
+                    {
+                        reporter.Error(exe.Message);
+                        log.LogError(exe.ToString());
+                        return -1;
+                    }
+
+                    if (Filter.OnlyStarred)
+                    {
+                        dings = dings.Where(d => d.Favorite == true).ToList();
+                    }
+
+                    if (Filter.OnlyPersonDetected)
+                    {
+                        dings = dings.Where(d => d.CvProperties != null &&
+                                                 (d.CvProperties.PersonDetected == true ||
+                                                  string.Equals(d.CvProperties.DetectionType, "human", StringComparison.OrdinalIgnoreCase))).ToList();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(Filter.DetectionType))
+                    {
+                        string detType = Filter.DetectionType.Trim();
+                        dings = dings.Where(d => d.CvProperties != null &&
+                                                 (string.Equals(d.CvProperties.DetectionType, detType, StringComparison.OrdinalIgnoreCase) ||
+                                                  (string.Equals(detType, "human", StringComparison.OrdinalIgnoreCase) && d.CvProperties.PersonDetected == true))).ToList();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(Filter.Kind))
+                    {
+                        string kind = Filter.Kind.Trim();
+                        dings = dings.Where(d => string.Equals(d.Kind, kind, StringComparison.OrdinalIgnoreCase)).ToList();
+                    }
+                    // Skip events that do not have a ready recording - snapshot/live-view events and
+                    // in-progress recordings would otherwise fail when attempting to download.
+                    dings = dings.Where(d => d.Recording != null &&
+                                             string.Equals(d.Recording.Status, "ready", StringComparison.OrdinalIgnoreCase)).ToList();
+                    dings = dings.OrderBy(d => d.CreatedAtDateTime).ToList();
+
+                    // Track event telemetry (battery, signal strength, AI detections)
+                    TrackEventTelemetry(dings, reportsDirectory, locationNameCache);
+
+                    int videoCount = dings.Count >= Filter.VideoCount ? Filter.VideoCount : dings.Count;
+
+                    // Print summary BEFORE starting downloads
+                    string limitmessage = "";
+                    int totalToDownload = videoCount;
+                    if (dings.Count() > Filter.VideoCount)
+                    {
+                        limitmessage = $" (Will download {Filter.VideoCount} of {dings.Count()} based on MaxCount setting)";
+                    }
+
+                    reporter.Info("");
+                    reporter.Highlight($"📊 Total Media: {dings.Count()} | Downloading: {totalToDownload}{limitmessage}");
+
+                    // Print device breakdown
+                    var byDevice = dings.Take(videoCount).GroupBy(d => d.Doorbot.Id).ToList();
+                    StringBuilder sb = new();
+                    if (!Filter.DeviceId.HasValue)
+                    {
+                        foreach (IGrouping<int, DoorbotHistoryEvent>? grp in byDevice)
+                        {
+                            string name = deviceList.Devices.Where(d => d.Id == grp.FirstOrDefault().Doorbot.Id).FirstOrDefault().Name;
+                            int count = grp.Count();
+                            string s = "";
+                            if (count > 1)
+                            {
+                                s = "s";
+                            }
+
+                            _ = sb.Append($"{grp.Count()} video{s} from {name} and ");
+                        }
+
+                        if (sb.Length > 4)
+                        {
+                            sb.Length -= 4;
+                            reporter.Info($"Will download {sb}");
+                        }
+                    }
+
+                    reporter.Info(""); // Blank line before downloads start
+
+                    // Every download gets its own persistent status row - grow the console buffer up front
+                    // so a large batch never scrolls mid-run and corrupts previously written rows.
+                    reporter.EnsureCapacity(videoCount);
+
+                    // NOW start the downloads
+                    List<Task<(bool success, DoorbotHistoryEvent ding)>> tasks = [];
+                    for (int i = 0; i < videoCount; i++)
+                    {
+                        if (ct.IsCancellationRequested)
+                        {
+                            reporter.Warning($"Stopped queuing new downloads at {i}/{videoCount} (shutdown requested). Waiting for in-flight downloads to finish...");
+                            break;
+                        }
+
+                        tasks.Add(SaveRecordingAsync(i + 1, dings[i], Filter, ct));
+                    }
+
+                    // Start background task to update speed every 5 seconds
+                    using var speedUpdateCancellation = new CancellationTokenSource();
+                    Task speedUpdateTask = UpdateSpeedPeriodically(speedUpdateCancellation.Token);
+
+                    results = (await Task.WhenAll(tasks.ToArray())).ToList();
+
+                    // Stop the speed update task and do one final refresh so the footer reflects the
+                    // now-zero active-download count instead of whatever was last drawn mid-run.
+                    speedUpdateCancellation.Cancel();
+                    UpdateFooterStatus();
+                    int success = results.Count(r => r.success == true);
+                    var successfulCreatedDates = results.Where(r => r.success == true).Select(r => r.ding.CreatedAtDateTime).ToList();
+                    lastSuccess = successfulCreatedDates.Any() ? successfulCreatedDates.Max() : null;
+                    failedCount = results.Count(r => r.success == false);
+                    reporter.Highlight($"{Environment.NewLine}Successfully downloaded {success} videos");
+
+                }
+                else
+                {
+                    _ = await DownloadSnapshots(Filter);
+                }
+
+                SaveSettings(lastSuccess, firstFailure);
+                if (failedCount > 0)
+                {
+                    reporter.Error($"{Environment.NewLine}Failed to download {failedCount} videos.");
+                    var failedCreatedDates = results.Where(r => r.success == false).Select(r => r.ding.CreatedAtDateTime).ToList();
+                    firstFailure = failedCreatedDates.Any() ? failedCreatedDates.Min() : null;
+                    if (firstFailure.HasValue)
+                    {
+                        _ = TimeZoneInfo.Local.GetUtcOffset(firstFailure.Value);
+                        DateTime est = firstFailure.Value.ToLocalTime();
+                        reporter.Warning($"Date of first failed download recorded ({est}). Rerun without a --start value to retry the downloads starting at that point");
+                    }
+                }
+
+                // Generate failure report
+                List<FailedDownload> existingFailures = LoadExistingFailuresList(reportsDirectory);
+                GenerateFailureReport(reportsDirectory, existingFailures);
+
+                reporter.Info($"{Environment.NewLine}Done!");
+                reporter.ClearItems();
+                return 0;
+            }
+            catch (Exception exe)
+            {
+                reporter.Error(exe.ToString());
+                log.LogError(exe.ToString());
+                return -1;
+            }
+            finally
+            {
+                IsRunActive = false;
+            }
+        }
+
+        public async Task<bool> DownloadSnapshots(Filter filter)
+        {
+            string expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
+            DateTime est = DateTime.Now;
+            string fileNameFormat = Path.Combine(expandedPath,
+                $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}-T{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}" + "--{0}.jpg");
+
+            Devices devices = await ringSession.GetRingDevices();
+            if (devices == null)
+            {
+                return false;
+            }
+
+            string fileName;
+            if (devices.Doorbots != null)
+            {
+                foreach (Doorbot d in devices.Doorbots)
+                {
+                    if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
+                    {
+                        fileName = string.Format(fileNameFormat, d.Description);
+                        _ = await GetSnapshot(d.Id, fileName);
+                    }
+                }
+            }
+
+            if (devices.Chimes != null)
+            {
+                foreach (Chime d in devices.Chimes)
+                {
+                    if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
+                    {
+                        fileName = string.Format(fileNameFormat, d.Description);
+                        _ = await GetSnapshot(d.Id, fileName);
+                    }
+                }
+            }
+
+            if (devices.AuthorizedDoorbots != null)
+            {
+                foreach (Doorbot d in devices.AuthorizedDoorbots)
+                {
+                    if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
+                    {
+                        fileName = string.Format(fileNameFormat, d.Description);
+                        _ = await GetSnapshot(d.Id, fileName);
+                    }
+                }
+            }
+
+            if (devices.StickupCams != null)
+            {
+                foreach (StickupCam d in devices.StickupCams)
+                {
+                    if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
+                    {
+                        fileName = string.Format(fileNameFormat, d.Description);
+                        _ = await GetSnapshot((int)d.Id, fileName);
+                    }
+                }
+            }
+
+            return true;
+
+        }
+        internal async Task<bool> GetSnapshot(int doorbotId, string fileName)
+        {
+            try
+            {
+                await ringSession.UpdateSnapshot(doorbotId);
+                await ringSession.GetLatestSnapshot(doorbotId, fileName);
+                reporter.Info($"Downloaded snapshot {fileName}");
+                log.LogInformation($"Downloaded snapshot {fileName}");
+                return true;
+            }
+            catch (Exception exe)
+            {
+                reporter.Warning($"Failed to download snapshot for device {doorbotId}: {exe.Message}");
+                log.LogError(exe, $"Failed to download snapshot for device {doorbotId}");
+                return false;
+            }
+        }
+
+        internal async Task<(bool, DoorbotHistoryEvent ding)> SaveRecordingAsync(int index, DoorbotHistoryEvent ding, Filter filter, CancellationToken ct)
+        {
+
+            await semaphore.WaitAsync();
+            object item = reporter.BeginItem("");
+            _ = Interlocked.Increment(ref activeDls);
+            try
+            {
+
+                string filename = string.Empty;
+                string expandedPath = Environment.ExpandEnvironmentVariables(filter.DownloadPath);
+
+                _ = TimeZoneInfo.Local.GetUtcOffset(ding.CreatedAtDateTime.Value);
+                DateTime est = ding.CreatedAtDateTime.Value.ToLocalTime();
+                string date = $"{est.Year}-{est.Month.ToString().PadLeft(2, '0')}-{est.Day.ToString().PadLeft(2, '0')}";
+                string time = $"{est.Hour.ToString().PadLeft(2, '0')}_{est.Minute.ToString().PadLeft(2, '0')}_{est.Second.ToString().PadLeft(2, '0')}";
+                string shortFileName = $"{date}-{time}-{ding.Kind}.mp4";
+
+                // Organize by location/camera name
+                string locationName = ResolveLocationName(ding.Doorbot.Id);
+
+                string locationDir = Path.Combine(expandedPath, locationName);
+                string cameraDir = Path.Combine(locationDir, ding.Doorbot.Description);
+                if (!Directory.Exists(cameraDir))
+                {
+                    _ = Directory.CreateDirectory(cameraDir);
+                }
+
+                filename = Path.Combine(cameraDir, shortFileName);
+
+                LogEventJson(ding, date, time);
+
+                string msg = $"{index.ToString().PadLeft(3, '0')}) {locationName}/{ding.Doorbot.Description}/{shortFileName} | {ding.CreatedAtDateTime.Value.ToLocalTime():MM/dd/yyyy hh:mm:ss tt} | {ding.Kind} :: ";
+                reporter.WriteItem(item, msg);
+                reporter.UpdateItem(item, "Downloading");
+
+                int attempt = 1;
+                Exception lastException = null;
+                string lastWebResponseBody = null;
+                DownloadRecording downloadInfo = null;
+                do
+                {
+                    attempt++;
+
+                    try
+                    {
+                        // Fetching the download info (URL + size, when the Ring service provides it) is a
+                        // required round-trip before we can download the bytes either way, so this doubles
+                        // as the check for whether the file we'd end up with already exists on disk.
+                        downloadInfo ??= await ringSession.GetDoorbotHistoryRecordingInfo(ding);
+
+                        if (mediaValidator.ValidateMediaExists(filename, downloadInfo.Size))
+                        {
+                            reporter.CompleteItem(item, "Exists");
+                            await WriteMetadataAsync(ding, filename, DateTime.Now.AddSeconds(-1), DateTime.Now);
+                            return (true, ding);
+                        }
+
+                        DateTime downloadStart = DateTime.UtcNow;
+                        await ringSession.GetDoorbotHistoryRecording(downloadInfo, filename);
+                        DateTime downloadEnd = DateTime.UtcNow;
+                        long fileSizeBytes = new FileInfo(filename).Length;
+                        _ = Interlocked.Add(ref totalBytesDownloaded, fileSizeBytes);
+                        reporter.CompleteItem(item, $"Complete - ({fileSizeBytes / 1048576} MB)");
+                        UpdateFooterStatus();
+                        await WriteMetadataAsync(ding, filename, downloadStart, downloadEnd, attempt - 1);
+                        break;
+                    }
+                    catch (AggregateException e)
+                    {
+                        lastException = e;
+                        if (e.InnerException != null && e.InnerException.GetType() == typeof(System.Net.WebException) && ((System.Net.WebException)e.InnerException).Response != null)
+                        {
+                            var webException = (System.Net.WebException)e.InnerException;
+                            using (var streamReader = new StreamReader(webException.Response.GetResponseStream()))
+                            {
+                                lastWebResponseBody = streamReader.ReadToEnd();
+                            }
+
+                            reporter.ErrorItem(item, $"Failed: ({(e.InnerException != null ? e.InnerException.Message : e.Message)} - {lastWebResponseBody})");
+                        }
+                        else
+                        {
+                            reporter.ErrorItem(item, $"Failed: ({(e.InnerException != null ? e.InnerException.Message : e.Message)})");
+                        }
+                    }
+                    catch (Exception exe)
+                    {
+                        lastException = exe;
+                        reporter.ErrorItem(item, $"Failed ({(exe.InnerException != null ? exe.InnerException.Message : exe.Message)})");
+                    }
+
+                    if (attempt >= 10 || ct.IsCancellationRequested)
+                    {
+                        reporter.WarnItem(item, ct.IsCancellationRequested
+                           ? "Giving up - shutdown requested."
+                           : $"Giving up after {attempt} tries.");
+                        RecordFailedDownload(ding, lastException, lastWebResponseBody);
+                        return (false, ding);
+                    }
+                    else
+                    {
+                        reporter.WarnItem(item, $"Retrying: {attempt + 1}/10.");
+                    }
+                } while (attempt < 10 && !ct.IsCancellationRequested);
+
+                return (true, ding);
+            }
+            finally
+            {
+                reporter.ReleaseItem(item);
+                _ = Interlocked.Decrement(ref activeDls);
+                _ = semaphore.Release();
+            }
+        }
+
+        private async Task WriteMetadataAsync(DoorbotHistoryEvent ding, string filename, DateTime downloadStart, DateTime downloadEnd, int attempts = 1)
+        {
+            try
+            {
+                if (OnFileDownloadedAsync != null)
+                {
+                    // Enrich event with current device health data if available
+                    if (cachedDevices != null && ding?.Doorbot != null)
+                    {
+                        Doorbot? device = FindDevice(cachedDevices, ding.Doorbot.Id);
+                        if (device?.Health != null)
+                        {
+                            ding.Doorbot.Health = device.Health;
+                        }
+
+                        if (device?.Features != null)
+                        {
+                            ding.Doorbot.Features = device.Features;
+                        }
+                    }
+
+                    await OnFileDownloadedAsync(ding, filename);
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning(ex, "Failed to write metadata sidecar for {filename}", filename);
+                // Don't throw - metadata failure shouldn't block the download process
+            }
+        }
+
+        private Doorbot FindDevice(Devices devices, int deviceId)
+        {
+            if (devices == null)
+            {
+                return null;
+            }
+
+            if (devices.Doorbots != null)
+            {
+                Doorbot? device = devices.Doorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null)
+                {
+                    return device;
+                }
+            }
+
+            if (devices.AuthorizedDoorbots != null)
+            {
+                Doorbot? device = devices.AuthorizedDoorbots.FirstOrDefault(d => d.Id == deviceId);
+                if (device != null)
+                {
+                    return device;
+                }
+            }
+
+            return null;
+        }
+
+        private string GetDownloadSpeed()
+        {
+            TimeSpan elapsed = DateTime.Now - downloadStartTime;
+            if (elapsed.TotalSeconds < 1)
+            {
+                return "calculating...";
+            }
+
+            double bytesPerSec = totalBytesDownloaded / elapsed.TotalSeconds;
+            double mbPerSec = bytesPerSec / (1024 * 1024);
+            return $"{mbPerSec:F2} MB/s";
+        }
+
+        private void UpdateFooterStatus()
+        {
+            string speed = GetDownloadSpeed();
+            string status = $"▓ Active Downloads: {activeDls} | Speed: {speed} | Total: {totalBytesDownloaded / (1024 * 1024)} MB";
+            reporter.UpdateFooter(status);
+        }
+
+        private async Task UpdateSpeedPeriodically(CancellationToken ct)
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await Task.Delay(5000, ct);
+                    if (!ct.IsCancellationRequested)
+                    {
+                        UpdateFooterStatus();
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
+            }
+        }
+
+        private void LoadExistingFailures(string reportsDir)
+        {
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                {
+                    return;
+                }
+
+                string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
+                if (!System.IO.File.Exists(tsvPath))
+                {
+                    return;
+                }
+
+                using (var reader = new StreamReader(tsvPath))
+                {
+                    string line;
+                    bool isHeader = true;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (isHeader)
+                        {
+                            isHeader = false;
+                            continue;
+                        }
+
+                        string[] parts = line.Split('\t');
+                        if (parts.Length >= 5)
+                        {
+                            _ = loadedEventIds.Add(parts[4]); // EventId is at index 4
+                        }
+                    }
+                }
+
+                log.LogInformation($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to load existing failures from report");
+            }
+        }
+
+        /// <summary>
+        /// Resolves a device id to its location name. The doorbot history API does not embed
+        /// location_id on its nested doorbot object, so this goes through the device-id -> location-id
+        /// lookup (built from the device-list APIs) rather than reading ding.Doorbot.LocationId directly.
+        /// </summary>
+        private string ResolveLocationName(long deviceId)
+        {
+            if (deviceIdToLocationId.TryGetValue(deviceId, out Guid locationId))
+            {
+                if (locationNameCache.TryGetValue(locationId, out string? name))
+                {
+                    return name;
+                }
+
+                return locationId.ToString()[..8]; // Fallback: first 8 chars of GUID
+            }
+
+            return "Unknown Location";
+        }
+
+        /// <summary>
+        /// Writes the full JSON of a single Ring event ("ding") to its own file, named to match the
+        /// downloaded video (camera-date-time-kind), so the two can be cross-referenced on disk.
+        /// </summary>
+        private void LogEventJson(DoorbotHistoryEvent ding, string date, string time)
+        {
+            if (string.IsNullOrEmpty(logsDirectory))
+            {
+                return;
+            }
+
+            try
+            {
+                string safeCameraName = string.Join("_", ding.Doorbot.Description.Split(Path.GetInvalidFileNameChars()));
+                string fileName = $"{safeCameraName}-{date}-T{time}-{ding.Kind}.json";
+                string filePath = Path.Combine(logsDirectory, fileName);
+
+                string json = jsonSerializer.Serialize(ding, Pretty);
+
+                System.IO.File.WriteAllText(filePath, json, Utf8NoBom);
+                log.LogInformation("PerEventJson {fileName} written", Path.GetFileName(filePath));
+            }
+            catch (Exception exe)
+            {
+                log.LogWarning(exe, "Failed to write per-event JSON log file");
+            }
+        }
+
+        private void RecordFailedDownload(DoorbotHistoryEvent ding, Exception exception, string webResponseBody = null)
+        {
+            try
+            {
+                string eventId = ding.Id.ToString();
+
+                // Skip if already recorded
+                if (loadedEventIds.Contains(eventId))
+                {
+                    log.LogInformation($"Skipping duplicate failure record for EventId {eventId}");
+                    return;
+                }
+
+                string errorDesc = ExtractErrorMessage(exception, webResponseBody);
+
+                string locationName = ResolveLocationName(ding.Doorbot.Id);
+
+                var failure = new FailedDownload
+                {
+                    Timestamp = DateTime.Now,
+                    LocationName = locationName,
+                    CameraName = ding.Doorbot.Description,
+                    CameraId = ding.Doorbot.Id,
+                    EventId = eventId,
+                    EventType = ding.Kind,
+                    CreatedAt = ding.CreatedAtDateTime.Value,
+                    ErrorDescription = errorDesc
+                };
+
+                newFailures.Add(failure);
+                _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
+                log.LogInformation($"Recorded failed download for EventId {eventId}: {errorDesc}");
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to record download failure");
+            }
+        }
+
+        private string ExtractErrorMessage(Exception exception, string webResponseBody = null)
+        {
+            return webResponseBody != null
+                ? webResponseBody.Length > 200 ? webResponseBody[..200] : webResponseBody
+                : exception?.InnerException != null ? exception.InnerException.Message : exception?.Message ?? "Unknown error";
+        }
+
+        private void GenerateFailureReport(string reportsDir, List<FailedDownload> existingFailures)
+        {
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
+
+                string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
+
+                // Merge existing and new failures, sort chronologically
+                var allFailures = existingFailures.Concat(newFailures.ToList())
+                   .OrderBy(f => f.Timestamp)
+                   .ToList();
+
+                if (allFailures.Count == 0)
+                {
+                    return;
+                }
+
+                using (var writer = new StreamWriter(tsvPath, false, Encoding.UTF8))
+                {
+                    // Write header
+                    writer.WriteLine("Date\tTime\tTimezone\tLocationName\tCameraName\tCameraId\tEventId\tEventType\tErrorDescription");
+
+                    // Write rows
+                    foreach (FailedDownload? failure in allFailures)
+                    {
+                        DateTime eventTime = failure.CreatedAt.ToLocalTime();
+                        TimeSpan tzInfo = TimeZoneInfo.Local.GetUtcOffset(failure.CreatedAt);
+                        string tzStr = $"UTC{(tzInfo.TotalHours >= 0 ? "+" : "")}{tzInfo.TotalHours:F0}";
+                        string line = $"{eventTime:yyyy-MM-dd}\t{eventTime:HH:mm:ss}\t{tzStr}\t{failure.LocationName}\t{failure.CameraName}\t{failure.CameraId}\t{failure.EventId}\t{failure.EventType}\t{failure.ErrorDescription}";
+                        writer.WriteLine(line);
+                    }
+                }
+
+                if (newFailures.Count > 0)
+                {
+                    log.LogInformation($"Generated failure report with {allFailures.Count} total entries ({newFailures.Count} new)");
+                }
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to generate failure report");
+            }
+        }
+
+        /// <summary>
+        /// Appends a snapshot of camera/doorbell connectivity, battery and wifi health to
+        /// reports/camera_health.tsv on every run, using the "health" object already embedded in the
+        /// ring_devices response - so a degraded battery or dropped-connection camera shows up in the
+        /// report history even if it never causes a download failure.
+        /// </summary>
+        private void GenerateCameraHealthReport(string reportsDir, Devices allDevices, Dictionary<Guid, string> locationNames)
+        {
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
+
+                string tsvPath = Path.Combine(reportsDir, "camera_health.tsv");
+                bool writeHeader = !System.IO.File.Exists(tsvPath);
+
+                var rows = new List<string>();
+
+                void AddRow(string name, long? id, string kind, Guid? locationId, DeviceHealth health)
+                {
+                    string locName = locationId.HasValue && locationNames.TryGetValue(locationId.Value, out string? ln) ? ln : "";
+                    string connected = health?.Connected?.ToString() ?? "";
+                    string batteryPct = health?.BatteryPercentage?.ToString() ?? "";
+                    string batteryVoltCat = health?.BatteryVoltageCategory ?? "";
+                    string rssiCat = health?.RssiCategory ?? "";
+                    string rssi = health?.Rssi?.ToString() ?? "";
+                    string fwStatus = health?.FirmwareVersionStatus ?? "";
+                    string ota = health?.OtaStatus ?? "";
+                    rows.Add($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}\t{locName}\t{name}\t{id}\t{kind}\t{connected}\t{batteryPct}\t{batteryVoltCat}\t{rssiCat}\t{rssi}\t{fwStatus}\t{ota}");
+                }
+
+                foreach (StickupCam d in allDevices.StickupCams)
+                {
+                    AddRow(d.Description ?? $"Device {d.Id}", d.Id, d.Kind, d.LocationId, d.Health);
+                }
+
+                foreach (Doorbot? d in allDevices.Doorbots.Concat(allDevices.AuthorizedDoorbots))
+                {
+                    AddRow(d.Description ?? $"Device {d.Id}", d.Id, d.Kind, d.LocationId, d.Health);
+                }
+
+                if (rows.Count == 0)
+                {
+                    return;
+                }
+
+                using (var writer = new StreamWriter(tsvPath, append: true, Encoding.UTF8))
+                {
+                    if (writeHeader)
+                    {
+                        writer.WriteLine("Timestamp\tLocationName\tCameraName\tCameraId\tKind\tConnected\tBatteryPercentage\tBatteryVoltageCategory\tWifiRssiCategory\tRssi\tFirmwareStatus\tOtaStatus");
+                    }
+
+                    foreach (string row in rows)
+                    {
+                        writer.WriteLine(row);
+                    }
+                }
+
+                log.LogInformation($"Appended {rows.Count} camera health entries to {tsvPath}");
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to generate camera health report");
+            }
+        }
+
+        private void TrackEventTelemetry(List<DoorbotHistoryEvent> events, string reportsDir, Dictionary<Guid, string> locationNames)
+        {
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                {
+                    _ = Directory.CreateDirectory(reportsDir);
+                }
+
+                string tsvPath = Path.Combine(reportsDir, "event_tracking.tsv");
+                bool writeHeader = !System.IO.File.Exists(tsvPath);
+
+                var rows = new List<string>();
+
+                foreach (DoorbotHistoryEvent evt in events)
+                {
+                    if (evt?.Doorbot?.Health == null)
+                    {
+                        continue;
+                    }
+
+                    DeviceHealth health = evt.Doorbot.Health;
+                    string timestamp = evt.CreatedAtDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? evt.CreatedAt ?? "";
+                    string eventId = evt.Id?.ToString() ?? "";
+                    string cameraId = evt.Doorbot.Id.ToString();
+                    string cameraName = evt.Doorbot.Description ?? "";
+                    string kind = evt.Kind ?? "";
+                    string batteryPct = health.BatteryPercentage?.ToString() ?? "";
+                    string batteryCategory = health.BatteryPercentageCategory ?? "";
+                    string signalStrength = health.LatestSignalStrength?.ToString("F1") ?? health.Rssi?.ToString("F1") ?? "";
+                    string signalCategory = health.LatestSignalCategory ?? health.RssiCategory ?? "";
+                    string packetLoss = health.PacketLoss?.ToString("F1") ?? "";
+                    string connected = health.Connected?.ToString() ?? "";
+                    string wifiName = health.WifiName ?? "";
+                    string fwVersion = evt.Doorbot.FirmwareVersion ?? "";
+
+                    string personDetected = evt.CvProperties?.PersonDetected?.ToString() ?? "";
+                    string detectionType = evt.CvProperties?.DetectionType ?? "";
+                    string confidence = evt.CvProperties?.Similarity?.ToString("F3") ?? evt.CvProperties?.Anomaly?.ToString("F3") ?? "";
+
+                    rows.Add($"{timestamp}\t{eventId}\t{cameraId}\t{cameraName}\t{kind}\t{batteryPct}\t{batteryCategory}\t{signalStrength}\t{signalCategory}\t{packetLoss}\t{connected}\t{wifiName}\t{fwVersion}\t{personDetected}\t{detectionType}\t{confidence}");
+                }
+
+                if (rows.Count == 0)
+                {
+                    return;
+                }
+
+                using (var writer = new StreamWriter(tsvPath, append: true, Encoding.UTF8))
+                {
+                    if (writeHeader)
+                    {
+                        writer.WriteLine("Timestamp\tEventId\tCameraId\tCameraName\tKind\tBatteryPercentage\tBatteryCategory\tSignalStrength\tSignalCategory\tPacketLoss\tConnected\tWifiName\tFirmwareVersion\tPersonDetected\tDetectionType\tConfidence");
+                    }
+
+                    foreach (string row in rows)
+                    {
+                        writer.WriteLine(row);
+                    }
+                }
+
+                log.LogInformation($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to generate event tracking report");
+            }
+        }
+
+        private List<FailedDownload> LoadExistingFailuresList(string reportsDir)
+        {
+            var existing = new List<FailedDownload>();
+            try
+            {
+                if (!Directory.Exists(reportsDir))
+                {
+                    return existing;
+                }
+
+                string tsvPath = Path.Combine(reportsDir, "download_failures.tsv");
+                if (!System.IO.File.Exists(tsvPath))
+                {
+                    return existing;
+                }
+
+                using var reader = new StreamReader(tsvPath);
+                string line;
+                bool isHeader = true;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (isHeader)
+                    {
+                        isHeader = false;
+                        continue;
+                    }
+
+                    string[] parts = line.Split('\t');
+                    if (parts.Length >= 8)
+                    {
+                        // Handle both old format (8 columns) and new format (9 columns with LocationName)
+                        bool isNewFormat = parts.Length >= 9;
+
+                        if (DateTime.TryParse($"{parts[0]} {parts[1]}", out DateTime eventTime))
+                        {
+                            string locationName = isNewFormat ? parts[3] : "Unknown Location";
+                            string cameraName = isNewFormat ? parts[4] : parts[3];
+                            string cameraIdStr = isNewFormat ? parts[5] : parts[4];
+                            string eventId = isNewFormat ? parts[6] : parts[5];
+                            string eventType = isNewFormat ? parts[7] : parts[6];
+                            string errorDesc = isNewFormat ? parts[8] : parts[7];
+
+                            if (int.TryParse(cameraIdStr, out int cameraId))
+                            {
+                                existing.Add(new FailedDownload
+                                {
+                                    Timestamp = eventTime,
+                                    LocationName = locationName,
+                                    CameraName = cameraName,
+                                    CameraId = cameraId,
+                                    EventId = eventId,
+                                    EventType = eventType,
+                                    CreatedAt = eventTime,
+                                    ErrorDescription = errorDesc
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception exe)
+            {
+                log.LogError(exe, "Failed to load existing failures list");
+            }
+
+            return existing;
+        }
+
+        public async Task<DeviceList> GetDevicesList(string username = "", string password = "")
+        {
+            if (ringSession == null)
+            {
+                if (!string.IsNullOrEmpty(username))
+                {
+                    Auth.UserName = username;
+                }
+
+                if (!string.IsNullOrEmpty(password))
+                {
+                    // Keep as a fallback credential only - don't discard a cached refresh token here,
+                    // see the matching note in Worker.SetFilterAndAuthValues.
+                    Auth.Password = password;
+                }
+
+                ringSession = await Authenticate();
+            }
+
+            Devices devices = new();
+            try
+            {
+                devices = await reporter.RunWithStatusAsync("Getting list of registered devices...", async updateStatus =>
+                {
+                    Devices d = await ringSession.GetRingDevices();
+                    await Task.Delay(500);
+                    return d;
+                });
+            }
+            catch (Exception exe)
+            {
+                reporter.Error(exe.Message);
+                log.LogError(exe.ToString());
+                return null;
+            }
+
+            DeviceList deviceList = new DeviceList().ExtractDevices(devices);
+            reporter.Highlight("Found registered devices:");
+            foreach (DeviceInfo x in deviceList.Devices)
+            {
+                reporter.Info($"{x.Name}\tId: {x.Id}");
+            }
+
+            return deviceList;
+        }
+
+        /// <summary>
+        /// Checks whether <paramref name="auth"/> has enough to attempt authentication with.
+        /// A refresh token alone is sufficient - AuthenticateWithCredentials tries it before falling
+        /// back to username/password, so username/password are only required when there's no refresh token.
+        /// </summary>
+        /// <returns>Null if authentication can proceed, otherwise a user-facing error message.</returns>
+        public static string ResolveAuthError(RingCredentials auth)
+        {
+            return !string.IsNullOrWhiteSpace(auth.RefreshToken)
+                ? null
+                : string.IsNullOrWhiteSpace(auth.UserName)
+                ? "A Ring username is required"
+                : string.IsNullOrWhiteSpace(auth.Password) ? "A Ring password is required" : null;
+        }
+    }
+}

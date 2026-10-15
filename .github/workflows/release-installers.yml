@@ -79,7 +79,7 @@ jobs:
 
       - name: Publish WebApp (linux-x64, self-contained)
         run: |
-          dotnet publish src/client/web/VideoForensics.WebApp \
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj \
             -c Release -r linux-x64 --self-contained true \
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" \
             -o /tmp/publish-linux
@@ -146,21 +146,21 @@ jobs:
 
       - name: Publish WebApp (win-x64, self-contained)
         run: |
-          dotnet publish src/client/web/VideoForensics.WebApp `
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj `
             -c Release -r win-x64 --self-contained true `
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-win
 
       - name: Publish MauiApp (win-x64, self-contained)
         run: |
-          dotnet publish src/client/maui/VideoForensics.MauiApp `
+          dotnet publish src/client/maui/VideoForensics.MauiApp/src/VideoForensics.MauiApp.csproj `
             -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
             -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
             -o publish-desktop
 
       - name: Publish DbSetup (win-x64, self-contained)
         run: |
-          dotnet publish src/utils/setup/VideoForensics.Utils.DbSetup.csproj `
+          dotnet publish src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj `
             -c Release -r win-x64 --self-contained true `
             -o publish-dbsetup
 
@@ -430,6 +430,20 @@ jobs:
           find release-artifacts/debian-package release-artifacts/windows-installer -type f -exec cp -v {} release-files/ \;
           echo "Release files ready:"
           ls -lah release-files/
+
+      - name: Write version.json release asset
+        shell: bash
+        run: |
+          # Moving tags (Testing, Release) carry no version, so the client reads the
+          # version from this asset instead. Install NBGV here so the step works on
+          # both branch and tag refs.
+          dotnet tool install --global nbgv || dotnet tool update --global nbgv
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          VERSION=$(nbgv get-version -v Version)
+          CHANNEL="${RELEASE_LABEL:-Tagged}"
+          jq -n --arg v "$VERSION" --arg c "$CHANNEL" '{version: $v, channel: $c}' > release-files/version.json
+          echo "Wrote release-files/version.json:"
+          cat release-files/version.json
 
       - name: Copy generated release notes
         shell: bash

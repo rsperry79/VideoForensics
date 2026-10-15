@@ -1,0 +1,378 @@
+@page "/query"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.QueryApi
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Dump
+@using VideoForensics.Ui.Shared.Services.Scope
+@using VideoForensics.Core.Providers.Common.Contracts
+@using Syncfusion.Blazor.Calendars
+@implements IDisposable
+@inject IProviderAuthService AuthService
+@inject IDeviceDiscoveryService DeviceDiscoveryService
+@inject IEventAndConfigService EventAndConfigService
+@inject IStringLocalizer<QueryApi> L
+@inject ScopeState ScopeState
+
+<h4 class="mb-4">@L["Title"]</h4>
+
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small>@L["Devices"]</small>
+        <div class="d-flex flex-column gap-2 mb-2">
+            <div>
+                <label>@L["LabelLocationId"]</label>
+                <SfTextBox @bind-Value="_locationIdInput" Placeholder="@L["PlaceholderLocationId"]" CssClass="w-100" />
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel-section">
+        <small>@L["DeviceEvents"]</small>
+        <div class="d-flex flex-column gap-2 mb-2">
+            <div>
+                <label>@L["LabelDeviceId"]</label>
+                <SfTextBox @bind-Value="_eventsDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" />
+            </div>
+        </div>
+    </div>
+</PageRightPanelContent>
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>
+    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatus" CssClass="e-primary" />
+    @if (_accountStatus is not null)
+    {
+        <p class="mt-2">@_accountStatus</p>
+    }
+</div>
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Locations"]</h5>
+    <SfButton Content="@L["GetLocations"]" OnClick="RunLocationsAsync" CssClass="e-primary" Disabled="@_locationsLoading" />
+    @if (!string.IsNullOrEmpty(_locationsError))
+    {
+        <div class="alert alert-danger mt-2">@_locationsError</div>
+    }
+    @if (_locations is not null)
+    {
+        @if (_locations.Count == 0)
+        {
+            <p class="mt-2">@L["NoLocationsFound"]</p>
+        }
+        else
+        {
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <ForensicGrid TItem="Location"
+                    DataSource="@_locations"
+                    ToInspector="@ToLocationInspector"
+                    OnRowSelected="@OnLocationRowSelected"
+                    Columns="@LocationGridColumns"
+                    ExportFileName="locations.csv"
+                    PageSize="20" />
+            </div>
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_locations" InitialExpandDepth="1" />
+            </details>
+        }
+    }
+</div>
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Devices"]</h5>
+    <SfButton Content="@L["GetDevices"]" OnClick="RunDevicesAsync" CssClass="e-primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(_locationIdInput))" />
+    @if (!string.IsNullOrEmpty(_devicesError))
+    {
+        <div class="alert alert-danger mt-2">@_devicesError</div>
+    }
+    @if (_devices is not null)
+    {
+        @if (_devices.Count == 0)
+        {
+            <p class="mt-2">@L["NoDevicesFound"]</p>
+        }
+        else
+        {
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <ForensicGrid TItem="Device"
+                    DataSource="@_devices"
+                    ToInspector="@ToDeviceInspector"
+                    OnRowSelected="@OnDeviceRowSelected"
+                    Columns="@DeviceGridColumns"
+                    ExportFileName="devices.csv"
+                    PageSize="20" />
+            </div>
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_devices" InitialExpandDepth="1" />
+            </details>
+        }
+    }
+</div>
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["DeviceEvents"] · @ScopeState.Current.FromUtc:yyyy-MM-dd → @ScopeState.Current.ToUtc:yyyy-MM-dd</h5>
+    <SfButton Content="@L["GetEvents"]" OnClick="RunEventsAsync" CssClass="e-primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(_eventsDeviceIdInput))" />
+    @if (!string.IsNullOrEmpty(_eventsError))
+    {
+        <div class="alert alert-danger mt-2">@_eventsError</div>
+    }
+    @if (_events is not null)
+    {
+        @if (_events.Count == 0)
+        {
+            <p class="mt-2">@L["NoEventsFound"]</p>
+        }
+        else
+        {
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <ForensicGrid TItem="DeviceEvent"
+                    DataSource="@_events"
+                    ToInspector="@ToDeviceEventInspector"
+                    Columns="@DeviceEventGridColumns"
+                    ExportFileName="device-events.csv"
+                    PageSize="20" />
+            </div>
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_events" InitialExpandDepth="1" />
+            </details>
+        }
+    }
+</div>
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["DeviceConfig"]</h5>
+    <div class="d-flex flex-row gap-2 mb-2">
+        <label>@L["LabelDeviceId"]</label>
+        <SfTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" Style="max-width: 200px;" />
+        <SfButton Content="@L["GetConfig"]" OnClick="RunDeviceConfigAsync" CssClass="e-primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+    </div>
+    @if (!string.IsNullOrEmpty(_configError))
+    {
+        <div class="alert alert-danger mt-2">@_configError</div>
+    }
+    @if (_configLoadedOnce)
+    {
+        @if (_config is null)
+        {
+            <p class="mt-2">@L["NoConfigFound"]</p>
+        }
+        else
+        {
+            <DumpView Value="@_config" InitialExpandDepth="2" Class="mt-2" />
+        }
+    }
+</div>
+
+@code {
+    private System.Action? _onScopeChangeHandler;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to scope changes to update the events section header
+        _onScopeChangeHandler = () =>
+        {
+            StateHasChanged();
+        };
+        ScopeState.OnChange += _onScopeChangeHandler;
+    }
+
+    // Account Status
+    private string? _accountStatus;
+
+    private void RunAccountStatus()
+    {
+        _accountStatus = AuthService.GetAuthStatus();
+    }
+
+    // Locations
+    private bool _locationsLoading;
+    private string? _locationsError;
+    private List<Location>? _locations;
+    private DateTime _locationsRetrievedAt;
+
+    private async Task RunLocationsAsync()
+    {
+        _locationsLoading = true;
+        _locationsError = null;
+        try
+        {
+            _locationsRetrievedAt = DateTime.UtcNow;
+            var locations = await DeviceDiscoveryService.GetLocationsAsync(CancellationToken.None);
+            _locations = locations.ToList();
+        }
+        catch (Exception ex)
+        {
+            _locationsError = L["FailedToGetLocations", ex.Message];
+        }
+        finally
+        {
+            _locationsLoading = false;
+        }
+    }
+
+    // Devices
+    private string _locationIdInput = string.Empty;
+    private bool _devicesLoading;
+    private string? _devicesError;
+    private List<Device>? _devices;
+    private DateTime _devicesRetrievedAt;
+
+    private async Task RunDevicesAsync()
+    {
+        _devicesLoading = true;
+        _devicesError = null;
+        try
+        {
+            _devicesRetrievedAt = DateTime.UtcNow;
+            var devices = await DeviceDiscoveryService.GetDevicesAsync(_locationIdInput, CancellationToken.None);
+            _devices = devices.ToList();
+        }
+        catch (Exception ex)
+        {
+            _devicesError = L["FailedToGetDevices", ex.Message];
+        }
+        finally
+        {
+            _devicesLoading = false;
+        }
+    }
+
+    // Device Events
+    private string _eventsDeviceIdInput = string.Empty;
+    private bool _eventsLoading;
+    private string? _eventsError;
+    private List<DeviceEvent>? _events;
+    private DateTime _eventsRetrievedAt;
+
+    private async Task RunEventsAsync()
+    {
+        _eventsLoading = true;
+        _eventsError = null;
+        try
+        {
+            _eventsRetrievedAt = DateTime.UtcNow;
+            var events = await EventAndConfigService.GetEventsAsync(
+                _eventsDeviceIdInput,
+                ScopeState.Current.FromUtc,
+                ScopeState.Current.ToUtc,
+                null,
+                CancellationToken.None);
+            _events = events.ToList();
+        }
+        catch (Exception ex)
+        {
+            _eventsError = L["FailedToGetEvents", ex.Message];
+        }
+        finally
+        {
+            _eventsLoading = false;
+        }
+    }
+
+    // Device Config
+    private string _configDeviceIdInput = string.Empty;
+    private bool _configLoading;
+    private bool _configLoadedOnce;
+    private string? _configError;
+    private VideoForensics.Core.Providers.Common.Contracts.DeviceConfig? _config;
+    private DateTime _configRetrievedAt;
+
+    private async Task RunDeviceConfigAsync()
+    {
+        _configLoading = true;
+        _configError = null;
+        try
+        {
+            _configRetrievedAt = DateTime.UtcNow;
+            _config = await EventAndConfigService.GetDeviceConfigAsync(_configDeviceIdInput, CancellationToken.None);
+            _configLoadedOnce = true;
+        }
+        catch (Exception ex)
+        {
+            _configError = L["FailedToGetConfig", ex.Message];
+        }
+        finally
+        {
+            _configLoading = false;
+        }
+    }
+
+    // Inspector Mappers
+    private InspectorModel ToLocationInspector(Location location)
+    {
+        return LocationInspectorMapper.ToInspector(location, _locationsRetrievedAt);
+    }
+
+    private InspectorModel ToDeviceInspector(Device device)
+    {
+        return DeviceInspectorMapper.ToInspector(device, _locationIdInput, _devicesRetrievedAt);
+    }
+
+    private InspectorModel ToDeviceEventInspector(DeviceEvent @event)
+    {
+        return DeviceEventInspectorMapper.ToInspector(
+            @event,
+            _eventsDeviceIdInput,
+            ScopeState.Current.FromUtc,
+            ScopeState.Current.ToUtc,
+            _eventsRetrievedAt);
+    }
+
+    // Row Selection Handlers
+    private Task OnLocationRowSelected(Location location)
+    {
+        _locationIdInput = QueryApiDrillDownHelpers.DrillDownLocationId(location);
+        return Task.CompletedTask;
+    }
+
+    private Task OnDeviceRowSelected(Device device)
+    {
+        _eventsDeviceIdInput = QueryApiDrillDownHelpers.DrillDownDeviceId(device);
+        return Task.CompletedTask;
+    }
+
+    // Grid Column Definitions
+    private RenderFragment LocationGridColumns => __builder =>
+    {
+        <GridColumn Field="@nameof(Location.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Location.Name)" HeaderText="@L["ColName"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Location.Address)" HeaderText="@L["ColAddress"]" MinWidth="100" />
+    };
+
+    private RenderFragment DeviceGridColumns => __builder =>
+    {
+        <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.Name)" HeaderText="@L["ColName"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.LocationId)" HeaderText="@L["ColLocationId"]" MinWidth="100" />
+        <GridColumn HeaderText="@L["ColOnline"]" MinWidth="100">
+            <Template>
+                @{
+                    var device = (Device)context;
+                    @(device.IsOnline ? L["Yes"] : L["No"])
+                }
+            </Template>
+        </GridColumn>
+    };
+
+    private RenderFragment DeviceEventGridColumns => __builder =>
+    {
+        <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+        <GridColumn Field="@nameof(DeviceEvent.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
+        <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+        <GridColumn Field="@nameof(DeviceEvent.SnapshotUrl)" HeaderText="@L["ColSnapshotUrl"]" MinWidth="100" />
+    };
+
+    void IDisposable.Dispose()
+    {
+        if (_onScopeChangeHandler is not null)
+        {
+            ScopeState.OnChange -= _onScopeChangeHandler;
+        }
+    }
+}

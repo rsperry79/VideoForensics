@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
@@ -601,7 +601,7 @@ namespace VideoForensics.Providers.Ring.Tests
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
 
             // Create the health source with the optional parameters
-            var authServiceMock = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var authServiceMock = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
 
             // Act
@@ -653,7 +653,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
 
-            var authService = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
@@ -689,7 +689,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
 
-            var authService = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false); // Restore failed
 
@@ -749,7 +749,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account1, account2 });
 
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
-            var authServiceMock = new Mock<VideoForensics.Providers.Common.Contracts.IProviderAuthService>();
+            var authServiceMock = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             var service = new RingHealthSource(logger, sessionProvider.Object, providerAccountRepository.Object, authServiceMock.Object);
 
             // Act

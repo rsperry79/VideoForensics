@@ -14,21 +14,20 @@ Projects live nested under `src/`, grouped by layer, not as flat top-level folde
 
 ```
 src/
-  clients/VideoForensics/                    # Console app
-  core/providers/providers-common/           # Platform-agnostic interfaces (Contracts/)
-  core/providers/providers-common-tests/     # Contract tests
-  core/providers/providers-core/             # Base classes (e.g. BaseVideoProvider)
-  core/providers/providers-core-tests/
+  core/Providers/Common/                     # Platform-agnostic provider contracts (Contracts/)
+  core/Providers/Common.Tests/               # Contract tests
+  core/Providers/Core/                       # Base classes (e.g. BaseVideoProvider)
+  core/Providers/Core.Tests/
   providers/ring/provider/                   # Ring provider implementation
-  providers/ring/provider/tests/
-  providers/ring/auth/, common/, core/, snapshots/, utils/, video/   # Ring sub-services, each with its own project + tests/
+  providers/ring/provider.Tests/
+  providers/ring/auth/, common/, core/, snapshots/, utils/, video/   # Ring sub-services, each with its own project + <name>.Tests/
   providers/wyze/provider/                   # Wyze provider implementation
-  providers/wyze/provider/tests/
+  providers/wyze/provider.Tests/
   providers/wyze/auth/, common/, core/, utils/                       # Wyze sub-services, each with its own project
-  data/common/, data/core/, data/database/, data/database/sqlite/    # Data access layer
+  data/Common/, data/Core/, data/Database/, data/Database/Sqlite/    # Data access layer (each with a sibling <name>.Tests/)
 ```
 
-There is no `archive/` directory in this repo — don't assume one exists.
+`archive/VideoForensics/` holds the retired console app (not in the solution; kept for reference). Don't read it unless asked.
 
 ## Adding a New Provider
 
@@ -39,7 +38,7 @@ There is no `archive/` directory in this repo — don't assume one exists.
    - `<Vendor>MediaDownloadService : IMediaDownloadService`
    - `<Vendor>EventAndConfigService : IEventAndConfigService`
 3. Implement `<Vendor>VideoProvider : BaseVideoProvider`
-4. Add comprehensive tests in a sibling `tests/` project
+4. Add comprehensive tests in a sibling `<Project>.Tests/` project
 
 ## Code Standards
 
@@ -87,11 +86,11 @@ See `/AES_ENCRYPTION_AUDIT_REPORT.md` (Section 10, Appendix) for full schedule a
 
 - **Every non-test code change ships with tests covering it.** This applies to new classes, new methods, and behavior changes to existing code (e.g. new branches, fallback paths, retry logic) — not just new interfaces. "Existing tests still pass" is not sufficient proof of coverage for new behavior; if a change adds a new code path, add a test that exercises that path. Treat a change with no accompanying test as incomplete, not as a follow-up to do later.
 - **Write code TDD-style: test first, then implementation.** For new behavior (a new class, method, branch, fallback/retry path, or bugfix), write the test(s) that describe the expected behavior before writing the code that satisfies them — the test should fail for the right reason first, then the implementation makes it pass. When dispatching to a subagent, tell it to write the test(s) first and confirm they fail, then implement, then confirm they pass — don't dispatch "implement X" and "test X" as if testing were an afterthought tacked onto a finished implementation.
-- Location: `<project>/tests/<Feature>Tests.cs` (sibling `tests/` project next to the implementation)
+- Location: `<Project>.Tests/<Feature>Tests.cs`, a sibling folder of the implementation project (never a `tests/` subfolder). The test project appears under the same solution folder as the implementation.
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`
 - Coverage: interfaces 100%, business logic >80%, integrations >70%
-- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `tests/` project.
+- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `<Project>.Tests/` project.
 - Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
 
 ## Documentation
@@ -111,7 +110,7 @@ Respond to the user with **terse, direct output**:
 
 ## Archive and docs directories
 
-Do not read or explore files in the `docs/` directory unless explicitly asked by the user. (There is currently no `archive/` directory in this repo — if one is added later, the same rule applies to it.)
+Do not read or explore files in the `docs/` directory unless explicitly asked by the user. The same rule applies to `archive/`.
 
 ## Client Requirements (client/server split)
 
@@ -135,13 +134,14 @@ Every user-visible string in `VideoForensics.Ui.Shared` (pages, components, dial
 - Tests that assert on text should go through the localizer or the resource key, not a duplicated English literal where practical.
 - Not user-visible, so exempt: log messages, exception messages not shown to users, route paths, CSS classes, test data.
 - Existing pages that are not yet localized (see `plans/maui-layout-theme-localization.md`) must be localized when they are next touched.
+- When dispatching a subagent to change a `VideoForensics.Ui.Shared` page, the brief must name the localization rule and list the page's existing literals to convert, so the subagent doesn't leave them in place.
 ## UI Layout (Desktop-First)
 
 `VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
 - Web app (full browser)
 - MAUI desktop (WinUI on Windows)
 
-**Mobile optimization is pending.** MAUI mobile (iOS/Android) needs a separate, touch-friendly layout with collapsible panels and vertical stacking instead of side-by-side panes. Do not add mobile-specific layout logic to MainLayout—create a new mobile layout component or detect platform and swap layouts at the Routes level.
+**Mobile layout is implemented.** `Routes.razor` uses `ResponsiveLayout` as the default layout, which swaps in `MobileLayout` below 600px (JS viewport detection). Keep mobile-specific layout logic out of MainLayout: add it to `MobileLayout` or `ResponsiveLayout`, not to MainLayout.
 
 ## Visual Studio MCP (`local-sdk`)
 
@@ -170,7 +170,7 @@ This constant is synchronized in two places: the `DefaultSuperAdminPassword` fie
 
 ## Syncfusion License (CI-baked-in)
 
-Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
+Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. Developers running from Visual Studio can set a user-level `SYNCFUSION_LICENSE_KEY` environment variable instead; it is checked after the ProgramData file and before the baked-in key (restart VS after setting it, since VS only sees env vars present at launch). See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
 
 ## Branching and pull requests
 
@@ -180,11 +180,28 @@ Every officially CI-built distributed binary ships with a Syncfusion Blazor lice
 - **Squash-merge every ordinary PR** (a work branch into `dev`, or the `dev` → `main` promotion) — never a merge commit, so `dev`'s and `main`'s history stay a single flattened commit per change.
 - **Exception: a `main` → `dev` reconciliation PR must use a real merge commit, never squash.** This only comes up if `main` and `dev` have genuinely diverged (e.g. `main` picked up an interim version of something `dev` later replaced) and a promotion PR shows real conflicts. Squashing a `main`-into-`dev` fix discards parent history, so git never records `main` as an ancestor of `dev` — the identical conflict then reappears on every future promotion attempt regardless of what `dev`'s content actually is, since git still diffs against the old pre-divergence merge-base. A real two-parent merge commit is the only way to permanently fix this. (Discovered when PR #82, a squashed fix for this exact scenario, didn't stop PR #72 from recomputing the same conflict — PR #84 redid it as a real merge and confirmed via `git log --format=%P` that both tips became parents.)
 
+## Instruction economy
+
+Every line here is loaded into every session, so each rule must earn its tokens.
+
+- **Enforce in code before prose.** If a rule can be checked by a build step, analyzer, test, CI check, script, or hook, build that instead of writing a paragraph about it. Keep only the residue a machine can't check.
+- **Server-side over local text.** Put behavior that can live in a CI workflow, `.editorconfig`, analyzer config, or a shared skill there, and reference it in one line.
+- **Terse rules.** One rule per bullet, imperative, no rationale unless the rule would be wrongly applied without it. Drop examples and history (e.g. past PR numbers) once the rule is clear.
+- **No duplicates.** State each rule once; link to its single home rather than restating it.
+- **Move long reference material out** of this file into a referenced file, unless it is needed on every task.
+- **Prune on every phase review:** remove rules that are obsolete, already enforced by tooling, or never triggered.
+
 ## Execution workflow
 
-- **Branching model:** `dev` is the integration branch — all plan/feature branches fork from it, and PRs from those branches target it. `main` is the release branch and must never be ahead of `dev`; it only ever moves forward by merging from `dev` (a release), never receives direct commits or feature branches of its own.
-- **When a plan is approved, create a new branch for it before any implementation work starts**, off of `dev` (or off the current branch if there's a clear reason to stack, but default to `dev`). Never implement a new plan's work directly on whatever branch happens to be checked out — that branch may hold unrelated in-progress work (uncommitted or committed), and mixing the two makes it impossible to review, revert, or PR either one cleanly. Name the branch for the plan's feature, not the session. If the working tree already has unrelated uncommitted changes when a plan is approved, stop and ask how to handle them before branching (don't silently carry them onto the new branch, and don't discard them).
-- **Always delegate implementation work to Sonnet 5.5 subagents (`model: "sonnet"`).** The main session plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Sonnet 5.5 subagent, and verify its output yourself (rebuild, run the tests, read the diff) rather than trusting its report. If a subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.), resolve the ambiguity in the brief and re-dispatch.
-- **Lite gate:** the default verification step after a subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their sibling `tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
+- **Branching model:** `dev` is the integration branch, and PRs from work branches target it. `wip` is the local development base: all code work starts from `wip`. `main` is the release branch and must never be ahead of `dev`; it only ever moves forward by merging from `dev` (a release), never receives direct commits or feature branches of its own.
+- **`wip` must never be behind `dev`.** Before starting code work, and before opening a PR from a branch that forks from `wip`, run `git fetch origin` and confirm `origin/dev` is an ancestor of `wip` (`git merge-base --is-ancestor origin/dev wip`). If it isn't, merge `dev` into `wip` (`git merge origin/dev`) before continuing. Re-check after any PR lands in `dev`, because squash merges add commits to `dev` that `wip` does not yet have.
+- **All code work happens in a git worktree forked from `wip`.** When a plan or feature is approved, first bring `wip` up to date with `dev` (above), then create the worktree and its branch from `wip`, e.g. `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`. Do all edits, commits, and builds in that worktree. Never implement work directly in the main checkout. Name the branch for the plan's feature, not the session.
+- **The main checkout's uncommitted changes stay where they are.** The worktree isolates new work from them, so don't carry them onto the new branch and don't discard them.
+- **Always delegate implementation work to Haiku 5.5 subagents (`model: "haiku"`).** The main session plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku 5.5 subagent, and verify its output yourself (rebuild, run the tests, read the diff) rather than trusting its report. If a subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.), resolve the ambiguity in the brief and re-dispatch.
+- **Lite gate:** the default verification step after a subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their sibling `<Project>.Tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
 - **Committing and pushing a branch (no PR yet) only requires the lite gate** to have already passed for every change being committed/pushed — do not run the full gate just to commit or push a branch.
-- **Full gate:** required before opening a pull request (not merely before a commit/push). **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first check if the current branch is up-to-date with the destination branch (dev) — if not, sync it (`git merge dev` or `git rebase dev` depending on history preference) to ensure building against the latest integration branch code; then update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump); wait for the build to complete, then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures (do not start tests while build is still running to avoid duplicating compilation work). This local gate is a precaution that catches issues before CI runs — CI (.github/workflows/ci.yml) will also build and test on any PR to dev/main, so the full gate is about catching issues early locally, not replacing CI validation. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
+- **Batch and phase handoff is automatic.** When a plan's batch or phase finishes and its lite gate passes, without waiting for user confirmation: (1) commit the batch on its worktree branch; (2) confirm `wip` contains `origin/dev` (`git merge-base --is-ancestor origin/dev wip`), merging `dev` into `wip` first if not; (3) merge the batch branch into `wip` in the main checkout; (4) `git push origin wip`; (5) start the next batch in a new worktree forked from the updated `wip`. Do not push the work branch itself unless asked. Stop and report instead of continuing when: the lite gate fails, a merge conflicts, the main checkout has unrelated uncommitted changes, or the next item needs a decision only the user can make (for example, a product question or the full gate). The full gate still requires confirmation before it runs.
+- **Full gate:** run only when opening a pull request to `dev` or `main`; never for commits, pushes, or merges into `wip`. **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first ensure `wip` contains `dev` (see the `wip` rule above), then check the work branch is up-to-date with `wip` — if not, sync it (`git merge wip` or `git rebase wip` depending on history preference) to ensure building against the latest integration branch code; then update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump); wait for the build to complete, then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures (do not start tests while build is still running to avoid duplicating compilation work). This local gate is a precaution that catches issues before CI runs — CI (.github/workflows/ci.yml) will also build and test on any PR to dev/main, so the full gate is about catching issues early locally, not replacing CI validation. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
+- **Failure capture:** when a task, subagent, build, test, tool, or connector call fails, append one line to `memory/task_failure_log.md` (`date | phase | what failed | cause | fix`) at the time it happens.
+- **Phase-end failure review (every phase):** before the phase handoff, read this phase's entries in `task_failure_log.md`. For each recurring or avoidable cause, draft the shortest single-sentence rule that would prevent it, and list the proposals in the final message. Ask the user whether to add each one here. Add only on a yes. Do not hold the handoff for the answer.
+- **Keep the failure log small:** after each review, delete entries that were resolved or promoted to a rule, and mark those covered by a rule as `(covered)`. Keep at most ~20 open entries; if over, summarize the oldest into one line each.

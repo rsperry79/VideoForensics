@@ -1,0 +1,525 @@
+using Microsoft.JSInterop;
+
+using System.Net.Http.Json;
+using System.Text.Json;
+
+namespace VideoForensics.Ui.Shared.Services
+{
+    /// <summary>
+    /// Drives the three WebAuthn ceremonies against the server's pairing/auth API (plan §5.1/§5.7):
+    /// passkey registration (pairing), passkey authentication (session sign-in), and step-up
+    /// re-authentication. Each ceremony is the same three-step shape - fetch options from the
+    /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/js/webauthn.js</c>,
+    /// post the result back - factored once here rather than duplicated across Pair.razor,
+    /// DeviceSignIn.razor, and every step-up-gated action.
+    ///
+    /// Every call goes through <see cref="ISelfApiHttpClientFactory"/> (plan §5.10/§5.12) rather than
+    /// building its own raw <see cref="HttpClient"/> - in the WebApp, several of these calls (login,
+    /// first-run setup, device pairing/registration) are PRE-AUTH: no <see cref="PairedSessionState"/>
+    /// session exists yet, so the factory must still attach a pre-auth network-tier header for
+    /// endpoints like <c>OperatorAuthEndpoints.LoginPasswordAsync</c>'s primary-SuperAdmin Local-only
+    /// check to recover the calling circuit's real tier - see
+    /// <c>WebAppSelfApiHttpClientFactory</c>/<c>SelfHttpServiceExtensions.CreateSelfHttpClientWithBearerToken</c>.
+    /// The explicit <c>bearerToken</c> parameter on <see cref="ISelfApiHttpClientFactory.CreateClient(string?)"/>
+    /// is used (rather than the factory's session-driven <see cref="ISelfApiHttpClientFactory.CreateClient()"/>)
+    /// because this class has no direct <see cref="PairedSessionState"/> dependency of its own - its
+    /// public methods already take the token as a parameter from whichever page calls them.
+    /// </summary>
+    public class WebAuthnClient
+    {
+        private readonly IJSRuntime _js;
+        private readonly ISelfApiHttpClientFactory _clientFactory;
+
+        public WebAuthnClient(IJSRuntime js, ISelfApiHttpClientFactory clientFactory)
+        {
+            _js = js;
+            _clientFactory = clientFactory;
+        }
+
+        public bool IsBrowserSupportRequired => true;
+
+        public virtual async Task<bool> IsAvailableAsync()
+        {
+            try
+            {
+                return await _js.InvokeAsync<bool>("vfWebAuthn.isAvailable");
+            }
+            catch (JSException)
+            {
+                return false;
+            }
+        }
+
+        public async Task<RegistrationResult> CompleteRegistrationAsync(
+            string pairingToken, string operatorDisplayName, string deviceName, string? sessionToken = null)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                $"api/v1/pairing/{pairingToken}/register/options",
+                new { operatorDisplayName, deviceName });
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
+            JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                $"api/v1/pairing/{pairingToken}/register/complete",
+                new { nonce, attestationResponse = attestation });
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return new RegistrationResult(
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("pairedDeviceId").GetGuid(),
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("isApproved").GetBoolean());
+        }
+
+        public async Task<(string SessionToken, Guid OperatorId, string Role)> SignInAsync()
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/v1/auth/webauthn/assertion-options", null);
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/assertion-complete",
+                new { nonce, assertionResponse = assertion });
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return (
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!);
+        }
+
+        /// <summary>Fresh passkey assertion for an already-signed-in session (plan §5.7) - returns the short-lived step-up token to attach as the X-StepUp-Token header on the one protected call it authorizes.</summary>
+        public virtual async Task<string> StepUpAsync(string sessionToken)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage optionsResponse = await client.PostAsync("api/v1/auth/webauthn/assertion-options", null);
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(optionsResponse));
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/stepup-complete",
+                new { nonce, assertionResponse = assertion });
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(completeResponse));
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return result.GetProperty("stepUpToken").GetString()!;
+        }
+
+        /// <summary>
+        /// Password sign-in. <c>HasPasskey</c> is true when the operator already has a non-revoked passkey;
+        /// when false, the caller should send them to passkey setup after sign-in.
+        /// When <c>RequiresTwoFactor</c> is true the server issued no session: the caller must complete the
+        /// second factor with <see cref="CompleteTwoFactorWithPasskeyAsync"/> (using <c>TwoFactorCorrelationId</c>)
+        /// or create a passkey with <see cref="CreatePasskeyLoginAsync"/>. Every other field is then default.
+        /// </summary>
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password)
+            => PostPasswordLoginAsync("api/v1/auth/login/password", username, password);
+
+        /// <summary>
+        /// Password sign-in that issues a LIMITED passkey-setup session (only passkey registration is accepted).
+        /// Used when the operator has to create a passkey before a second factor can be completed.
+        /// </summary>
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> CreatePasskeyLoginAsync(string username, string password)
+            => PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
+
+        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> PostPasswordLoginAsync(string path, string username, string password)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                path,
+                new { Username = username, Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), null, default, "", false, false, false, null, Array.Empty<string>());
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            if (IsTwoFactorRequired(result))
+            {
+                return (true, null, null, default, "", false, false, true, ReadTwoFactorCorrelationId(result), ReadTwoFactorMethods(result));
+            }
+
+            EnsureSignInFieldsPresent(result);
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("mustChangePassword").GetBoolean(),
+                result.GetProperty("hasPasskey").GetBoolean(),
+                false,
+                null,
+                Array.Empty<string>());
+        }
+
+        private static bool IsTwoFactorRequired(JsonElement body) =>
+            body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty("requiresTwoFactor", out JsonElement flag)
+            && flag.ValueKind == JsonValueKind.True;
+
+        /// <summary>
+        /// Second-factor methods the server accepts (e.g. "passkey"). A missing field defaults to passkey so
+        /// responses from servers that predate the field still work; unknown names are passed through and the
+        /// page ignores the ones it does not render.
+        /// </summary>
+        private static IReadOnlyList<string> ReadTwoFactorMethods(JsonElement body)
+        {
+            if (!body.TryGetProperty("twoFactorMethods", out JsonElement methods) || methods.ValueKind != JsonValueKind.Array)
+            {
+                return new[] { "passkey" };
+            }
+
+            return methods.EnumerateArray()
+                .Where(m => m.ValueKind == JsonValueKind.String)
+                .Select(m => m.GetString()!)
+                .ToList();
+        }
+
+        private static string ReadTwoFactorCorrelationId(JsonElement body)
+        {
+            if (!body.TryGetProperty("twoFactorCorrelationId", out JsonElement correlation) || correlation.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidOperationException("Sign-in response is missing 'twoFactorCorrelationId'.");
+            }
+
+            return correlation.GetString()!;
+        }
+
+        /// <summary>
+        /// Second factor after a password sign-in that returned <c>requiresTwoFactor</c>: runs a passkey assertion
+        /// and posts it with the correlation id. The response must carry <c>mustChangePassword</c> and
+        /// <c>hasPasskey</c>; a missing field fails loudly (see <see cref="EnsureSignInFieldsPresent"/>) rather than
+        /// defaulting, so a forced password change is never silently skipped or misreported.
+        /// </summary>
+        public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey)> CompleteTwoFactorWithPasskeyAsync(string username, string twoFactorCorrelationId)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-options",
+                new { Username = username });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "", false, false);
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-complete",
+                new { nonce, assertionResponse = assertion, twoFactorCorrelationId });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "", false, false);
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            EnsureSignInFieldsPresent(result);
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!,
+                result.GetProperty("mustChangePassword").GetBoolean(),
+                result.GetProperty("hasPasskey").GetBoolean());
+        }
+
+        /// <summary>
+        /// Diagnostic guard for the password sign-in body: names the first missing field and includes the
+        /// response with <c>sessionToken</c> redacted, so a server/client contract drift is visible on screen
+        /// without leaking the session token. Truncated to 500 characters.
+        /// </summary>
+        private static void EnsureSignInFieldsPresent(JsonElement body)
+        {
+            if (body.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidOperationException("Sign-in response is not a JSON object.");
+            }
+
+            foreach (string field in new[] { "sessionToken", "operatorId", "role", "mustChangePassword", "hasPasskey" })
+            {
+                if (!body.TryGetProperty(field, out _))
+                {
+                    throw new InvalidOperationException($"Sign-in response is missing '{field}'. Response: {RedactedSnippet(body)}");
+                }
+            }
+        }
+
+        private static string RedactedSnippet(JsonElement body)
+        {
+            System.Text.Json.Nodes.JsonNode? node = System.Text.Json.Nodes.JsonNode.Parse(body.GetRawText());
+            if (node is System.Text.Json.Nodes.JsonObject obj && obj.ContainsKey("sessionToken"))
+            {
+                obj["sessionToken"] = "<redacted>";
+            }
+
+            string text = node?.ToJsonString() ?? string.Empty;
+            return text.Length > 500 ? text[..500] : text;
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-options",
+                new { Username = username });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "");
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string assertionJson = await _js.InvokeAsync<string>("vfWebAuthn.authenticate", optionsJson);
+            JsonElement assertion = JsonSerializer.Deserialize<JsonElement>(assertionJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/webauthn/username-assertion-complete",
+                new { nonce, assertionResponse = assertion });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "");
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            return (
+                true,
+                null,
+                result.GetProperty("sessionToken").GetString()!,
+                result.GetProperty("operatorId").GetGuid(),
+                result.GetProperty("role").GetString()!);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorAsync(
+            string username, string password, string firstName, string lastName, string email, string? phone, string? displayName)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/register",
+                new { Username = username, Password = password, FirstName = firstName, LastName = lastName, Email = email, Phone = phone, DisplayName = displayName });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), false);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            bool isApproved = result.GetProperty("isApproved").GetBoolean();
+            return (true, null, isApproved);
+        }
+
+        /// <summary>Checks whether first-run setup is available: whether the Operators table is empty, and whether THIS caller is connecting from the local machine (required to actually complete setup - see SetupEndpoints.GetStatusAsync/CreateAdminAsync).</summary>
+        public async Task<(bool IsEmpty, bool IsLocal)> GetSetupStatusAsync()
+        {
+            using HttpClient client = CreateClient(null);
+            HttpResponseMessage response = await client.GetAsync("api/v1/setup/status");
+            if (!response.IsSuccessStatusCode)
+            {
+                // Fail safe: if the check itself fails, behave as if setup is unavailable and the caller
+                // is not local, so AuthGate falls back to /signin rather than risk exposing /setup.
+                return (false, false);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return (result.GetProperty("isEmpty").GetBoolean(), result.GetProperty("isLocal").GetBoolean());
+        }
+
+        /// <summary>First-run setup: create the initial SuperAdmin account. Only succeeds while the
+        /// operators table is empty - see SetupEndpoints.cs.</summary>
+        public async Task<(bool Success, string? ErrorMessage)> CreateSetupAdminAsync(string username, string password)
+        {
+            using HttpClient client = CreateClient(null);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/setup/create-admin",
+                new { Username = username, Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response));
+            }
+
+            return (true, null);
+        }
+
+        public virtual async Task<(bool Success, string? ErrorMessage, bool IsApproved)> RegisterOperatorCredentialAsync(string sessionToken, string label)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/operator-credentials/register/options",
+                new { Label = label });
+
+            if (!optionsResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(optionsResponse), false);
+            }
+
+            JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+            string nonce = optionsBody.GetProperty("nonce").GetString()!;
+            string optionsJson = optionsBody.GetProperty("options").GetRawText();
+
+            string attestationJson = await _js.InvokeAsync<string>("vfWebAuthn.register", optionsJson);
+            JsonElement attestation = JsonSerializer.Deserialize<JsonElement>(attestationJson);
+
+            HttpResponseMessage completeResponse = await client.PostAsJsonAsync(
+                "api/v1/auth/operator-credentials/register/complete",
+                new { nonce, attestationResponse = attestation, label });
+
+            if (!completeResponse.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(completeResponse), false);
+            }
+
+            JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
+            bool isApproved = result.GetProperty("isApproved").GetBoolean();
+            return (true, null, isApproved);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? NewSessionToken)> ChangePasswordAsync(
+            string sessionToken, string? currentPassword, string newPassword)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/change-password",
+                new { CurrentPassword = currentPassword, NewPassword = newPassword });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, await ExtractErrorAsync(response), null);
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            string newSessionToken = result.GetProperty("sessionToken").GetString()!;
+            return (true, null, newSessionToken);
+        }
+
+        public async Task<string> StepUpWithPasswordAsync(string sessionToken, string password)
+        {
+            using HttpClient client = CreateClient(sessionToken);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                "api/v1/auth/stepup/password",
+                new { Password = password });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ExtractErrorAsync(response));
+            }
+
+            JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return result.GetProperty("stepUpToken").GetString()!;
+        }
+
+        /// <summary>Fetches the currently-enabled authentication methods. Fails open (all methods assumed enabled) on error to prevent lockout during connection issues.</summary>
+        public virtual async Task<AuthMethodsInfo> GetAuthMethodsAsync()
+        {
+            try
+            {
+                using HttpClient client = CreateClient(null);
+                HttpResponseMessage response = await client.GetAsync("api/v1/auth/methods");
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Fail open: assume all methods are enabled if we can't check
+                    return new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: true);
+                }
+
+                JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return new AuthMethodsInfo(
+                    PasswordEnabled: result.TryGetProperty("password", out var p) ? p.GetBoolean() : true,
+                    PasskeyEnabled: result.TryGetProperty("passkey", out var pk) ? pk.GetBoolean() : true);
+            }
+            catch
+            {
+                // Fail open: assume all methods are enabled if an exception occurs
+                return new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: true);
+            }
+        }
+
+        private HttpClient CreateClient(string? bearerToken) => _clientFactory.CreateClient(bearerToken);
+
+        private static async Task<string> ExtractErrorAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                Dictionary<string, string>? doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                if (doc is not null && doc.TryGetValue("error", out string? msg))
+                {
+                    return msg;
+                }
+            }
+            catch (JsonException)
+            {
+            }
+
+            return $"Request failed: {response.StatusCode}";
+        }
+    }
+
+    public record RegistrationResult(Guid OperatorId, Guid PairedDeviceId, string Role, bool IsApproved);
+
+    public record AuthMethodsInfo(
+        bool PasswordEnabled,
+        bool PasskeyEnabled);
+}
