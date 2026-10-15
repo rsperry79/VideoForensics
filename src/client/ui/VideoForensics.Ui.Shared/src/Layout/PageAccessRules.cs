@@ -31,6 +31,10 @@ namespace VideoForensics.Ui.Shared.Layout
             new Dictionary<string, AccessPolicy>(StringComparer.OrdinalIgnoreCase)
             {
                 ["/chat"] = AccessPolicy.ReadOnly,
+                // Mirrors /api/v1/accounts (AccountEndpoints) and the device-config API, both SuperAdminLocal. On the WebApp
+                // these pages call repositories in-process, so this row is the only gate there.
+                ["/accounts"] = AccessPolicy.SuperAdminLocal,
+                ["/devices/config"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
                 ["/settings/security-events"] = AccessPolicy.ReadOnly,
                 ["/settings/operators"] = AccessPolicy.SuperAdminLocal,
