@@ -30,6 +30,7 @@ namespace VideoForensics.Data.Core.Tests
             RecordedAtUtc = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc),
             LightingMode = mode,
             VideoBitrateBps = bitrate,
+            BitrateEstimated = false,
             NoiseFloorDb = -70.0,
             SilenceFraction = 0.0,
             RedFlags = flagged ? "AudioDropout" : string.Empty
@@ -116,6 +117,26 @@ namespace VideoForensics.Data.Core.Tests
 
             Assert.NotNull(clip.RedFlags);
             Assert.Contains("BitrateCollapse", clip.RedFlags);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_EstimatedBitrateNotComparedWithMeasuredBaseline()
+        {
+            // Earlier clips only have estimated bitrates (size / duration, which includes audio and container overhead).
+            // A measured stream bitrate must not be judged against them.
+            MediaItem clip = Clip(_deviceId, "Ir", 0);
+            List<MediaItem> earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Ir", 4_000_000)).ToList();
+            foreach (MediaItem e in earlier)
+            {
+                e.BitrateEstimated = true;
+            }
+
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            Assert.DoesNotContain("BitrateCollapse", clip.RedFlags ?? string.Empty);
         }
     }
 }

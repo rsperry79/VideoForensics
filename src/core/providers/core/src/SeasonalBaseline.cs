@@ -70,8 +70,11 @@ namespace VideoForensics.Core.Providers.Core
         /// <summary>Minimum unflagged clips a bucket needs before its baseline is used.</summary>
         public const int MinimumBucketSamples = 10;
 
-        /// <summary>Builds a snapshot from the samples.</summary>
-        public static BaselineSnapshot Build(int version, IReadOnlyList<BaselineSample> samples)
+        /// <summary>
+        /// Builds a snapshot from the samples. The version is a hash of the clean samples, so identical history always gives
+        /// the same version and any change to the baseline gives a new one.
+        /// </summary>
+        public static BaselineSnapshot Build(IReadOnlyList<BaselineSample> samples)
         {
             List<BaselineSample> clean = samples.Where(s => !s.Flagged).ToList();
             var buckets = new Dictionary<BaselineBucket, BitrateBaseline>();
@@ -86,7 +89,17 @@ namespace VideoForensics.Core.Providers.Core
                 AddIfEnough(buckets, new BaselineBucket(byMode.Key, null), byMode.Select(s => s.BitrateBps).ToList());
             }
 
-            return new BaselineSnapshot(version, buckets);
+            return new BaselineSnapshot(ContentVersion(clean), buckets);
+        }
+
+        /// <summary>Stable 31-bit hash of the sorted sample contents.</summary>
+        private static int ContentVersion(IEnumerable<BaselineSample> clean)
+        {
+            string canonical = string.Join("\n", clean
+                .Select(s => $"{s.BitrateBps}|{s.Mode}|{s.Season}")
+                .OrderBy(x => x, StringComparer.Ordinal));
+            byte[] digest = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(canonical));
+            return BitConverter.ToInt32(digest, 0) & int.MaxValue;
         }
 
         private static void AddIfEnough(Dictionary<BaselineBucket, BitrateBaseline> buckets, BaselineBucket key, List<long> bitrates)

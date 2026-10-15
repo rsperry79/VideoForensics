@@ -15,7 +15,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 .Concat(Enumerable.Range(0, 10).Select(_ => Sample(100_000, LightingMode.Day, Season.Summer, flagged: true)))
                 .ToList();
 
-            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(1, samples);
+            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples);
 
             Assert.Equal(1_000_000, snapshot.Get(LightingMode.Day, Season.Summer)!.MedianBps);
         }
@@ -27,7 +27,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 .Concat(Enumerable.Range(0, 10).Select(_ => Sample(800_000, LightingMode.Day, Season.Winter)))
                 .ToList();
 
-            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(1, samples);
+            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples);
 
             Assert.Equal(1_400_000, snapshot.Get(LightingMode.Day, Season.Summer)!.MedianBps);
             Assert.Equal(800_000, snapshot.Get(LightingMode.Day, Season.Winter)!.MedianBps);
@@ -41,7 +41,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 .Concat(Enumerable.Range(0, 3).Select(_ => Sample(900_000, LightingMode.Ir, Season.Winter)))
                 .ToList();
 
-            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(1, samples);
+            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples);
 
             BitrateBaseline? winter = snapshot.Get(LightingMode.Ir, Season.Winter);
             Assert.NotNull(winter);
@@ -51,7 +51,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Build_TooFewSamplesOverall_HasNoBaseline()
         {
-            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(1, new[] { Sample(1_000_000, LightingMode.Day, Season.Summer) });
+            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(new[] { Sample(1_000_000, LightingMode.Day, Season.Summer) });
 
             Assert.Null(snapshot.Get(LightingMode.Day, Season.Summer));
         }
@@ -65,6 +65,24 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Season_FromMonth_MapsNorthernHemisphereMonths(int month, Season expected)
         {
             Assert.Equal(expected, SeasonExtensions.FromMonth(month));
+        }
+
+        [Fact]
+        public void Build_SameSamplesInAnyOrder_GivesSameVersion()
+        {
+            var a = new[] { Sample(1_000_000, LightingMode.Day, Season.Summer), Sample(900_000, LightingMode.Ir, Season.Winter) };
+            var b = new[] { a[1], a[0] };
+
+            Assert.Equal(SeasonalBaselineBuilder.Build(a).Version, SeasonalBaselineBuilder.Build(b).Version);
+        }
+
+        [Fact]
+        public void Build_ChangedSample_GivesNewVersion()
+        {
+            var before = Enumerable.Range(0, 10).Select(_ => Sample(1_000_000, LightingMode.Day, Season.Summer)).ToList();
+            var after = before.Append(Sample(1_000_000, LightingMode.Day, Season.Summer)).ToList();
+
+            Assert.NotEqual(SeasonalBaselineBuilder.Build(before).Version, SeasonalBaselineBuilder.Build(after).Version);
         }
     }
 }

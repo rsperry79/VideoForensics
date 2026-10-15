@@ -88,11 +88,12 @@ namespace VideoForensics.Data.Core.Services
             // Clean history is a clip that was analysed and raised no flags; unanalysed clips (null) are not history.
             IReadOnlyList<MediaItem> clean = others.Where(m => m.RedFlags == string.Empty).ToList();
 
+            // Only compare like with like: a stream-reported bitrate is never pooled with an estimated one.
             List<BaselineSample> samples = clean
-                .Where(m => m.VideoBitrateBps is not null && ParseMode(m.LightingMode) is not null)
+                .Where(m => m.VideoBitrateBps is not null && ParseMode(m.LightingMode) is not null && m.BitrateEstimated == bitrate?.BitrateEstimated)
                 .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, ParseMode(m.LightingMode)!.Value, SeasonExtensions.FromMonth(m.RecordedAtUtc.Month), Flagged: false))
                 .ToList();
-            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples.Count, samples);
+            BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples);
 
             // Without all three measurements the clip cannot be judged; say so rather than storing "no flags".
             if (bitrate is null || color is null || audio is null)
