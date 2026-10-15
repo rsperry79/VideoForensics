@@ -12,6 +12,8 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
 
+using VideoForensics.Hosting.Tests.Services;
+
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -72,6 +74,8 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = new();
+
+            public Dictionary<string, Mock<IDeviceDiscoveryService>> Discovery { get; } = new();
             public CapturingLoggerProvider Logs { get; } = new();
             public string[] EnabledProviders { get; set; } = ["Ring"];
 
@@ -126,6 +130,14 @@ namespace VideoForensics.Hosting.Tests
                         Auth[provider] = new Mock<IProviderAuthService>();
                     }
 
+                    if (!Discovery.ContainsKey(provider))
+                    {
+                        Discovery[provider] = new Mock<IDeviceDiscoveryService>();
+                    }
+
+                    // Provider discovery returns the same location and device the test seeds, so the pull has work to do.
+                    DiscoveryStub.Wire(account.Id, location, [device], Discovery[provider], Locations, Devices);
+
                     _ = Auth[provider].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(authResult);
                 }
 
@@ -144,6 +156,12 @@ namespace VideoForensics.Hosting.Tests
                 {
                     _ = _services.AddKeyedSingleton(provider, events.Object);
                     _ = _services.AddKeyedSingleton(provider, Auth[provider].Object);
+                    if (!Discovery.ContainsKey(provider))
+                    {
+                        Discovery[provider] = new Mock<IDeviceDiscoveryService>();
+                    }
+
+                    _ = _services.AddKeyedSingleton(provider, Discovery[provider].Object);
                 }
 
                 ServiceProvider sp = _services.BuildServiceProvider();
@@ -295,8 +313,10 @@ namespace VideoForensics.Hosting.Tests
             // Keyed services are registered under the configured spelling ("ring").
             h.Events["ring"] = h.Events["Ring"];
             h.Auth["ring"] = h.Auth["Ring"];
+            h.Discovery["ring"] = h.Discovery["Ring"];
             _ = h.Events.Remove("Ring");
             _ = h.Auth.Remove("Ring");
+            _ = h.Discovery.Remove("Ring");
             ScheduledSyncService service = h.Build();
 
             await service.RunOneTickAsync(CancellationToken.None);
