@@ -106,6 +106,23 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task RecordDownloadEventAsync_Cancelled_DuringAnalysis_PropagatesCancellation()
+        {
+            using var cts = new CancellationTokenSource();
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e3", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
+            _mockMediaAnalysis
+                .Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>()))
+                .Returns<Guid, CancellationToken>((_, ct) => { cts.Cancel(); ct.ThrowIfCancellationRequested(); return Task.CompletedTask; });
+
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _dataClient.RecordDownloadEventAsync(evt, media, cts.Token));
+        }
+
+        [Fact]
         public async Task IsMediaAlreadyDownloadedAsync_DelegatesToDownloadEventRepository()
         {
             // Arrange

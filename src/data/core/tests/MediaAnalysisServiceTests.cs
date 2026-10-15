@@ -138,5 +138,19 @@ namespace VideoForensics.Data.Core.Tests
 
             Assert.DoesNotContain("BitrateCollapse", clip.RedFlags ?? string.Empty);
         }
+
+        [Fact]
+        public async Task AnalyzeAsync_LightingModeRareForDevice_RaisesUnusualLighting()
+        {
+            // Twelve day clips and no IR history: an IR clip is rare for this device (under 5% of its history).
+            MediaItem clip = Clip(_deviceId, "Ir", 0);
+            List<MediaItem> earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Day", 1_000_000)).ToList();
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(1_000_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            Assert.Contains("UnusualLighting", clip.RedFlags);
+        }
     }
 }

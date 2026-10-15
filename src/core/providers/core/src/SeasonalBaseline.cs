@@ -12,14 +12,19 @@ namespace VideoForensics.Core.Providers.Core
     /// <summary>Season helpers.</summary>
     public static class SeasonExtensions
     {
-        /// <summary>Maps a month (1-12) to a northern-hemisphere season. Southern installs would need an offset.</summary>
-        public static Season FromMonth(int month) => month switch
+        /// <summary>Maps a month (1-12) to a season for the given hemisphere; southern seasons are six months out of phase.</summary>
+        public static Season FromMonth(int month, Hemisphere hemisphere)
         {
-            12 or 1 or 2 => Season.Winter,
-            3 or 4 or 5 => Season.Spring,
-            6 or 7 or 8 => Season.Summer,
-            _ => Season.Autumn
-        };
+            Season northern = month switch
+            {
+                12 or 1 or 2 => Season.Winter,
+                3 or 4 or 5 => Season.Spring,
+                6 or 7 or 8 => Season.Summer,
+                _ => Season.Autumn
+            };
+
+            return hemisphere == Hemisphere.Northern ? northern : (Season)(((int)northern + 2) % 4);
+        }
     }
 
     /// <summary>One clip's bitrate, with the lighting mode and season it was captured in, and whether it raised a red flag.</summary>

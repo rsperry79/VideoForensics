@@ -64,7 +64,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [InlineData(10, Season.Autumn)]
         public void Season_FromMonth_MapsNorthernHemisphereMonths(int month, Season expected)
         {
-            Assert.Equal(expected, SeasonExtensions.FromMonth(month));
+            Assert.Equal(expected, SeasonExtensions.FromMonth(month, Hemisphere.Northern));
         }
 
         [Fact]

@@ -144,7 +144,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         continue;
                     }
 
-                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetKeyedService<IDeviceDiscoveryService>(key), ct);
+                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -165,7 +165,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             ProviderAccount account,
             IEventAndConfigService eventService,
             IProviderAuthService authService,
-            IDeviceDiscoveryService? deviceDiscovery,
+            IDeviceDiscoveryService deviceDiscovery,
             CancellationToken ct)
         {
             string providerName = account.ProviderName;
