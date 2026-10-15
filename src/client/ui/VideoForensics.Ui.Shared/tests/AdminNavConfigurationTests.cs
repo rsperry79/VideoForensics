@@ -34,6 +34,7 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/auth-methods", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts", AccessPolicy.SuperAdminLocal)]
     [InlineData("/devices/config", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/review/export", AccessPolicy.SuperAdminLocal)]
     public void PageAccessRules_ListedPage_HasReviewedPolicy(string path, AccessPolicy expected)
     {
         Assert.True(PageAccessRules.TryGetPolicy(path, out AccessPolicy actual));
