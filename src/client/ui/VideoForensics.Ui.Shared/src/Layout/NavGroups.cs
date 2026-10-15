@@ -77,7 +77,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 new("Provider Accounts", "/accounts"),
                 new("Device Configuration", "/devices/config"),
                 new("Query API", "/query"),
-                new("API Tester", "/tools/ring-selftest")
+                new("API Tester", "/query/api-tester")
             ]),
 
             new("admin", "Admin", "/settings",

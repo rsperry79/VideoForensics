@@ -1,5 +1,7 @@
 @page "/query"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.QueryApi
@@ -14,9 +16,15 @@
 @inject IDeviceDiscoveryService DeviceDiscoveryService
 @inject IEventAndConfigService EventAndConfigService
 @inject IStringLocalizer<QueryApi> L
+@inject IStringLocalizer<SharedResources> SharedL
 @inject ScopeState ScopeState
 
-<h4 class="mb-4">@L["Title"]</h4>
+<Breadcrumb Items="@BreadcrumbItems" />
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+    <NavLink class="btn btn-outline-secondary" href="/query/api-tester">@SharedL["API Tester"]</NavLink>
+</div>
 
 <PageRightPanelContent>
     <div class="right-panel-section">
@@ -169,6 +177,12 @@
 </div>
 
 @code {
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], null)
+    ];
+
     private System.Action? _onScopeChangeHandler;
 
     protected override void OnInitialized()

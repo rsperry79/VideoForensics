@@ -380,3 +380,32 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
         SelfTestServiceMock.Verify(m => m.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
+
+public class RingSelfTestPage_Routing_Tests : RingSelfTestPageTestBase
+{
+    [Fact]
+    public void RingSelfTest_Routes_IncludesLegacyAndQueryApiSubpage()
+    {
+        var templates = typeof(RingSelfTest)
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), inherit: false)
+            .Cast<Microsoft.AspNetCore.Components.RouteAttribute>()
+            .Select(r => r.Template)
+            .ToList();
+
+        Assert.Contains("/tools/ring-selftest", templates);
+        Assert.Contains("/query/api-tester", templates);
+    }
+
+    [Fact]
+    public void RingSelfTestPage_Breadcrumb_LinksBackToQueryApi()
+    {
+        SelfTestServiceMock
+            .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+
+        var component = RenderPage();
+
+        var queryLink = component.FindAll("nav a").Single(a => a.GetAttribute("href") == "/query");
+        Assert.Equal("Query API", queryLink.TextContent.Trim());
+    }
+}
