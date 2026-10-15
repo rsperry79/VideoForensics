@@ -37,15 +37,8 @@ namespace VideoForensics.Core.Providers.Core
             psi.ArgumentList.Add("-show_streams");
             psi.ArgumentList.Add(mediaFilePath);
 
-            using Process? process = Process.Start(psi);
-            if (process is null)
-            {
-                return null;
-            }
-
-            string output = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
-            return process.ExitCode == 0 ? MediaBitrateAnalysis.FromFfprobeJson(output, fileSizeBytes) : null;
+            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
+            return result.ExitCode == 0 ? MediaBitrateAnalysis.FromFfprobeJson(result.StandardOutput, fileSizeBytes) : null;
         }
     }
 }

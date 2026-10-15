@@ -37,18 +37,8 @@ namespace VideoForensics.Core.Providers.Core
             psi.ArgumentList.Add("null");
             psi.ArgumentList.Add("-");
 
-            using Process? process = Process.Start(psi);
-            if (process is null)
-            {
-                return null;
-            }
-
-            Task<string> stderr = process.StandardError.ReadToEndAsync(ct);
-            string stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
-            _ = await stderr;
-
-            return process.ExitCode == 0 ? SaturationAnalysis.ParseStats(stdout) : null;
+            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
+            return result.ExitCode == 0 ? SaturationAnalysis.ParseStats(result.StandardOutput) : null;
         }
     }
 }

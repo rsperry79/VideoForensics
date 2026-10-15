@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Core.Tests
             VideoBitrateBps = bitrate,
             NoiseFloorDb = -70.0,
             SilenceFraction = 0.0,
-            RedFlags = flagged ? "AudioDropout" : null
+            RedFlags = flagged ? "AudioDropout" : string.Empty
         };
 
         private void SetUpClip(MediaItem clip, IReadOnlyList<MediaItem> earlier, MediaBitrateAnalysis bitrate, ClipColorStats color, AudioClipStats audio)
@@ -87,6 +87,35 @@ namespace VideoForensics.Data.Core.Tests
 
             Assert.Equal(string.Empty, clip.RedFlags);
             Assert.False(clip.JammingSuspected);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_ColourAnalysisUnavailable_LeavesFlagsNotEvaluated()
+        {
+            MediaItem clip = Clip(_deviceId, "Day", 0);
+            SetUpClip(clip, Array.Empty<MediaItem>(), new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                color: null!, new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            // Not evaluated is different from clean: a null here must not look like "no flags".
+            Assert.Null(clip.RedFlags);
+            Assert.Null(clip.JammingSuspected);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_UnknownStoredLightingMode_IsSkippedAndAnalysisStillCompletes()
+        {
+            MediaItem clip = Clip(_deviceId, "Ir", 0);
+            List<MediaItem> earlier = Enumerable.Range(0, 12).Select(_ => Clip(_deviceId, "Ir", 1_000_000)).ToList();
+            earlier.Add(Clip(_deviceId, "Legacy", 4_000_000));
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            Assert.NotNull(clip.RedFlags);
+            Assert.Contains("BitrateCollapse", clip.RedFlags);
         }
     }
 }

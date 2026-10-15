@@ -45,18 +45,8 @@ namespace VideoForensics.Core.Providers.Core
             psi.ArgumentList.Add("null");
             psi.ArgumentList.Add("-");
 
-            using Process? process = Process.Start(psi);
-            if (process is null)
-            {
-                return null;
-            }
-
-            Task<string> stderr = process.StandardError.ReadToEndAsync(ct);
-            string stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            string errors = await stderr;
-            await process.WaitForExitAsync(ct);
-
-            return process.ExitCode == 0 ? AudioStatsParser.Parse(stdout, errors, durationSeconds) : null;
+            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
+            return result.ExitCode == 0 ? AudioStatsParser.Parse(result.StandardOutput, result.StandardError, durationSeconds) : null;
         }
     }
 }

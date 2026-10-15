@@ -85,18 +85,31 @@ namespace VideoForensics.Data.Core.Services
             IReadOnlyList<MediaItem> others = (await _items.GetByDeviceIdAsync(media.DeviceId, ct))
                 .Where(m => m.Id != media.Id)
                 .ToList();
-            IReadOnlyList<MediaItem> clean = others.Where(m => string.IsNullOrEmpty(m.RedFlags)).ToList();
+            // Clean history is a clip that was analysed and raised no flags; unanalysed clips (null) are not history.
+            IReadOnlyList<MediaItem> clean = others.Where(m => m.RedFlags == string.Empty).ToList();
 
             List<BaselineSample> samples = clean
-                .Where(m => m.VideoBitrateBps is not null && m.LightingMode is not null)
-                .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, Enum.Parse<LightingMode>(m.LightingMode!), SeasonExtensions.FromMonth(m.RecordedAtUtc.Month), Flagged: false))
+                .Where(m => m.VideoBitrateBps is not null && ParseMode(m.LightingMode) is not null)
+                .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, ParseMode(m.LightingMode)!.Value, SeasonExtensions.FromMonth(m.RecordedAtUtc.Month), Flagged: false))
                 .ToList();
             BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples.Count, samples);
 
-            bool bitrateCollapsed = false;
-            if (bitrate is not null && media.LightingMode is { } modeName)
+            // Without all three measurements the clip cannot be judged; say so rather than storing "no flags".
+            if (bitrate is null || color is null || audio is null)
             {
-                BitrateBaseline? baseline = snapshot.Get(Enum.Parse<LightingMode>(modeName), SeasonExtensions.FromMonth(media.RecordedAtUtc.Month));
+                _logger.LogWarning("Media {MediaItemId} analysis incomplete (bitrate {HasBitrate}, colour {HasColor}, audio {HasAudio}); red flags not evaluated",
+                    media.Id, bitrate is not null, color is not null, audio is not null);
+                media.RedFlags = null;
+                media.JammingSuspected = null;
+                media.BaselineVersion = snapshot.Version;
+                await _items.UpdateAsync(media, ct);
+                return;
+            }
+
+            bool bitrateCollapsed = false;
+            if (ParseMode(media.LightingMode) is { } mode)
+            {
+                BitrateBaseline? baseline = snapshot.Get(mode, SeasonExtensions.FromMonth(media.RecordedAtUtc.Month));
                 bitrateCollapsed = InterferenceAssessor.Assess(bitrate.VideoBitrateBps, baseline).InterferenceSuspected;
             }
 
@@ -140,6 +153,10 @@ namespace VideoForensics.Data.Core.Services
             return value - median;
         }
 
+        /// <summary>Parses a stored lighting mode; unknown or legacy values yield null so one bad row cannot stop analysis.</summary>
+        private static LightingMode? ParseMode(string? name) =>
+            Enum.TryParse(name, out LightingMode mode) ? mode : null;
+
         /// <summary>True when this clip's lighting mode is rare among the device's clips.</summary>
         private static bool IsUnusualLighting(string? mode, IReadOnlyList<MediaItem> others)
         {
@@ -148,7 +165,7 @@ namespace VideoForensics.Data.Core.Services
                 return false;
             }
 
-            List<string> modes = others.Where(m => m.LightingMode is not null).Select(m => m.LightingMode!).ToList();
+            List<string> modes = others.Where(m => ParseMode(m.LightingMode) is not null).Select(m => m.LightingMode!).ToList();
             if (modes.Count < UnusualLightingMinimumSamples)
             {
                 return false;
