@@ -1713,10 +1713,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("BaselineVersion")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("BitrateAnalyzedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("BitrateEstimated")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ClippedPeakCount")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("DeviceId")
@@ -1753,8 +1759,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("IsPurged")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("JammingSuspected")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastVerifiedAtUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("LightingMode")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("MeanLuma")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("MeanSaturation")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("MediaFormat")
                         .IsRequired()
@@ -1767,6 +1785,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("NoiseFloorDb")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("PurgeReason")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -1777,6 +1798,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime>("RecordedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("RedFlags")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Resolution")
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
@@ -1785,6 +1809,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("SilenceFraction")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("SilentGapCount")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long?>("VideoBitrateBps")
                         .HasColumnType("INTEGER");

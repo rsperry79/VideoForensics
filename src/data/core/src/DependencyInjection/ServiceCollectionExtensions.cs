@@ -21,6 +21,9 @@ namespace VideoForensics.Data.Core.DependencyInjection
             _ = services.AddScoped<IWatermarkService, WatermarkService>();
             _ = services.AddActionLogger();
             services.TryAddSingleton<VideoForensics.Core.Providers.Core.IMediaBitrateAnalyzer, VideoForensics.Core.Providers.Core.FfprobeMediaBitrateAnalyzer>();
+            services.TryAddSingleton<VideoForensics.Core.Providers.Core.IClipColorAnalyzer, VideoForensics.Core.Providers.Core.FfmpegClipColorAnalyzer>();
+            services.TryAddSingleton<VideoForensics.Core.Providers.Core.IAudioClipAnalyzer, VideoForensics.Core.Providers.Core.FfmpegAudioAnalyzer>();
+            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)
