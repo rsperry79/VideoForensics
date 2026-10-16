@@ -15,16 +15,16 @@ Projects live nested under `src/`, grouped by layer, not as flat top-level folde
 ```
 src/
   core/Providers/Common/                     # Platform-agnostic provider contracts (Contracts/)
-  core/Providers/Common.Tests/               # Contract tests
+  core/Providers/Common/tests/               # Contract tests
   core/Providers/Core/                       # Base classes (e.g. BaseVideoProvider)
-  core/Providers/Core.Tests/
+  core/Providers/Core/tests/
   providers/ring/provider/                   # Ring provider implementation
-  providers/ring/provider.Tests/
-  providers/ring/auth/, common/, core/, snapshots/, utils/, video/   # Ring sub-services, each with its own project + <name>.Tests/
+  providers/ring/provider/tests/
+  providers/ring/auth/, common/, core/, snapshots/, utils/, video/   # Ring sub-services, each with its own project + <name>/tests/
   providers/wyze/provider/                   # Wyze provider implementation
-  providers/wyze/provider.Tests/
+  providers/wyze/provider/tests/
   providers/wyze/auth/, common/, core/, utils/                       # Wyze sub-services, each with its own project
-  data/Common/, data/Core/, data/Database/, data/Database/Sqlite/    # Data access layer (each with a sibling <name>.Tests/)
+  data/Common/, data/Core/, data/Database/, data/Database/Sqlite/    # Data access layer (each with its own <name>/tests/ subfolder)
 ```
 
 `archive/VideoForensics/` holds the retired console app (not in the solution; kept for reference). Don't read it unless asked.
@@ -38,7 +38,7 @@ src/
    - `<Vendor>MediaDownloadService : IMediaDownloadService`
    - `<Vendor>EventAndConfigService : IEventAndConfigService`
 3. Implement `<Vendor>VideoProvider : BaseVideoProvider`
-4. Add comprehensive tests in a sibling `<Project>.Tests/` project
+4. Add comprehensive tests in a `tests/` subfolder of the project
 
 ## Code Standards
 
@@ -86,11 +86,11 @@ See `/AES_ENCRYPTION_AUDIT_REPORT.md` (Section 10, Appendix) for full schedule a
 
 - **Every non-test code change ships with tests covering it.** This applies to new classes, new methods, and behavior changes to existing code (e.g. new branches, fallback paths, retry logic) — not just new interfaces. "Existing tests still pass" is not sufficient proof of coverage for new behavior; if a change adds a new code path, add a test that exercises that path. Treat a change with no accompanying test as incomplete, not as a follow-up to do later.
 - **Write code TDD-style: test first, then implementation.** For new behavior (a new class, method, branch, fallback/retry path, or bugfix), write the test(s) that describe the expected behavior before writing the code that satisfies them — the test should fail for the right reason first, then the implementation makes it pass. When dispatching to a subagent, tell it to write the test(s) first and confirm they fail, then implement, then confirm they pass — don't dispatch "implement X" and "test X" as if testing were an afterthought tacked onto a finished implementation.
-- Location: `<Project>.Tests/<Feature>Tests.cs`, a sibling folder of the implementation project (never a `tests/` subfolder). The test project appears under the same solution folder as the implementation.
+- Location: `<Project>/tests/<Feature>Tests.cs`, in a `tests/` subfolder of the implementation project. The test project appears under the same solution folder as the implementation.
 - Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
 - Naming: `<Class>_<Scenario>_<Expected>()`
 - Coverage: interfaces 100%, business logic >80%, integrations >70%
-- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the sibling `<Project>.Tests/` project.
+- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the `tests/` project.
 - Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
 
 ## Documentation
@@ -203,7 +203,7 @@ Every line here is loaded into every session, so each rule must earn its tokens.
 - **All code work happens in a git worktree forked from `wip`.** When a plan or feature is approved, first bring `wip` up to date with `dev` (above), then create the worktree and its branch from `wip`, e.g. `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`. Do all edits, commits, and builds in that worktree. Never implement work directly in the main checkout. Name the branch for the plan's feature, not the session.
 - **The main checkout's uncommitted changes stay where they are.** The worktree isolates new work from them, so don't carry them onto the new branch and don't discard them.
 - **Always delegate implementation work to Haiku 5.5 subagents (`model: "haiku"`).** The main session plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku 5.5 subagent, and verify its output yourself (rebuild, run the tests, read the diff) rather than trusting its report. If a subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.), resolve the ambiguity in the brief and re-dispatch.
-- **Lite gate:** the default verification step after a subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their sibling `<Project>.Tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
+- **Lite gate:** the default verification step after a subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their `tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
 - **Committing and pushing a branch (no PR yet) only requires the lite gate** to have already passed for every change being committed/pushed — do not run the full gate just to commit or push a branch.
 - **Batch and phase handoff is automatic.** When a plan's batch or phase finishes and its lite gate passes, without waiting for user confirmation: (1) commit the batch on its worktree branch; (2) confirm `wip` contains `origin/dev` (`git merge-base --is-ancestor origin/dev wip`), merging `dev` into `wip` first if not; (3) merge the batch branch into `wip` in the main checkout; (4) `git push origin wip`; (5) start the next batch in a new worktree forked from the updated `wip`. Do not push the work branch itself unless asked. Stop and report instead of continuing when: the lite gate fails, a merge conflicts, the main checkout has unrelated uncommitted changes, or the next item needs a decision only the user can make (for example, a product question or the full gate). The full gate still requires confirmation before it runs.
 - **Full gate:** run only when opening a pull request to `dev` or `main`; never for commits, pushes, or merges into `wip`. **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first ensure `wip` contains `dev` (see the `wip` rule above), then check the work branch is up-to-date with `wip` — if not, sync it (`git merge wip` or `git rebase wip` depending on history preference) to ensure building against the latest integration branch code; then update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump); wait for the build to complete, then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures (do not start tests while build is still running to avoid duplicating compilation work). This local gate is a precaution that catches issues before CI runs — CI (.github/workflows/ci.yml) will also build and test on any PR to dev/main, so the full gate is about catching issues early locally, not replacing CI validation. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
