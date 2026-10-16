@@ -204,14 +204,15 @@ namespace VideoForensics.Providers.Ring
             return index;
         }
 
-        private static List<EndpointDescriptor> ResolveSelection(IReadOnlyList<string> requestedKeys, bool destructive, bool noPhysical)
+        /// <summary>Builds the endpoint list for a run; "all" skips <see cref="EndpointDescriptor.ManualOnly"/> endpoints, which must be named explicitly.</summary>
+        public static List<EndpointDescriptor> ResolveSelection(IReadOnlyList<string> requestedKeys, bool destructive, bool noPhysical)
         {
             bool wantsAll = requestedKeys.Any(k => string.Equals(k, "all", StringComparison.OrdinalIgnoreCase));
 
             List<EndpointDescriptor> result;
             if (wantsAll)
             {
-                result = EndpointRegistry.All.Where(e => destructive || !e.Destructive).ToList();
+                result = EndpointRegistry.All.Where(e => !e.ManualOnly && (destructive || !e.Destructive)).ToList();
             }
             else
             {

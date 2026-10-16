@@ -53,6 +53,8 @@ namespace VideoForensics.Providers.Ring
         public bool NotApplicableWithoutAlarmHub { get; init; }
         /// <summary>Endpoint that Ring only accepts once a push client device is registered; a 422 "Client Device required" is "not-applicable" (see CallStatusClassifier).</summary>
         public bool RequiresPushRegistration { get; init; }
+        /// <summary>Runs only when named explicitly in --endpoints (never as part of --all or the default set), e.g. because it sounds a real alarm.</summary>
+        public bool ManualOnly { get; init; }
     }
 
     /// <summary>
@@ -275,6 +277,30 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/history?accountId={locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetAppLocationHistoryAsync(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "light-groups",
+                DisplayName = "Light groups",
+                Description = "Ring Smart Lighting groups configured at a location (groups host; override with --groups-api-base-url).",
+                SessionMethod = "Session.GetGroups(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/groups/v1/locations/{locationId}/groups",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetGroups(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "recording-url",
+                DisplayName = "Recording URL",
+                Description = "Download info for a footage clip from the recordings host (override with --recordings-api-base-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetPeriodicalFootage(footageId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/recordings/public/footages/{dingId}",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetPeriodicalFootage(DingId!)
+                    : throw new InvalidOperationException("recording-url requires --ding-id <id>")
             },
             new()
             {
@@ -663,6 +689,8 @@ namespace VideoForensics.Providers.Ring
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 Physical = true,
+                NotApplicableWithoutAlarmHub = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: triggers a momentary alarm event, doesn't change a persisted setting.",
                 Invoke = (session, target) => !string.IsNullOrWhiteSpace(AssetUuid)
                     ? session.TriggerAlarm(target.LocationId!.Value, AssetUuid!)

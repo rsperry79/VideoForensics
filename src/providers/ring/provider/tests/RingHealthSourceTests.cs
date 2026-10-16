@@ -38,7 +38,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync((Devices)null!);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -81,7 +81,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -131,7 +131,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -181,7 +181,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -225,7 +225,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -273,7 +273,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -310,7 +310,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -354,7 +354,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -380,7 +380,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange - Session.GetRingDevices throws an exception
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ThrowsAsync(new InvalidOperationException("Network error"));
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -419,7 +419,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -469,7 +469,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices())
                 .ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
@@ -490,7 +490,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             var cts = new CancellationTokenSource();
             cts.Cancel();
             _ = session.Setup(s => s.GetRingDevices())
@@ -524,7 +524,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
             _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
 
@@ -585,9 +585,9 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session1 = new Mock<Session>("user1", "pass1", null, null);
+            var session1 = new Mock<Session>("user1", "pass1", null, null, null);
             _ = session1.Setup(s => s.GetRingDevices()).ReturnsAsync(devices1);
-            var session2 = new Mock<Session>("user2", "pass2", null, null);
+            var session2 = new Mock<Session>("user2", "pass2", null, null, null);
             _ = session2.Setup(s => s.GetRingDevices()).ReturnsAsync(devices2);
 
             // Setup GetSession to return different sessions based on account id
@@ -637,7 +637,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("user", "pass", null, null);
+            var session = new Mock<Session>("user", "pass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
 
             // First call returns null, second call (after restore) returns session
@@ -726,7 +726,7 @@ namespace VideoForensics.Providers.Ring.Tests
             };
 
             var sessionProvider = new Mock<ISessionProvider>();
-            var session1 = new Mock<Session>("user1", "pass1", null, null);
+            var session1 = new Mock<Session>("user1", "pass1", null, null, null);
             _ = session1.Setup(s => s.GetRingDevices()).ThrowsAsync(new InvalidOperationException("Network error"));
 
             var health2 = new DeviceHealth { Connected = true, BatteryPercentage = 60, Rssi = -50.0, WifiName = "WiFi2", FirmwareVersion = "2.0.0" };
@@ -738,7 +738,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 AuthorizedDoorbots = null,
                 Chimes = null
             };
-            var session2 = new Mock<Session>("user2", "pass2", null, null);
+            var session2 = new Mock<Session>("user2", "pass2", null, null, null);
             _ = session2.Setup(s => s.GetRingDevices()).ReturnsAsync(devices2);
 
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(session1.Object);

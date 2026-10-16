@@ -229,11 +229,66 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void EndpointRegistry_LightGroups_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("light-groups");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+            Assert.Equal("https://api.ring.com/groups/v1/locations/{locationId}/groups", result.ApiPath);
+        }
+
+        [Fact]
+        public void EndpointRegistry_RecordingUrl_IsReadOnlyUnscoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("recording-url");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/recordings/public/footages/{dingId}", result.ApiPath);
+        }
+
+        [Fact]
         public void EndpointRegistry_SignallingTicket_IsNotApplicableWithoutAlarmHub()
         {
             EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");
             Assert.NotNull(result);
             Assert.True(result.NotApplicableWithoutAlarmHub);
+        }
+
+        [Fact]
+        public void EndpointRegistry_TriggerAlarm_IsManualOnlyAndAlarmHubOnly()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("trigger-alarm");
+            Assert.NotNull(result);
+            Assert.True(result.ManualOnly);
+            Assert.True(result.NotApplicableWithoutAlarmHub);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Runner_ResolveSelection_AllExcludesTriggerAlarm(bool destructive)
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["all"], destructive, noPhysical: false);
+            Assert.DoesNotContain(selected, e => e.Key == "trigger-alarm");
+            Assert.DoesNotContain(selected, e => e.ManualOnly);
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitTriggerAlarm_IsSelected()
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["trigger-alarm"], destructive: true, noPhysical: false);
+            Assert.Single(selected);
+            Assert.Equal("trigger-alarm", selected[0].Key);
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitTriggerAlarmWithoutDestructive_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => Runner.ResolveSelection(["trigger-alarm"], destructive: false, noPhysical: false));
         }
 
         [Fact]

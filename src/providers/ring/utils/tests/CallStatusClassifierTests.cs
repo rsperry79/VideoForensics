@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void CallStatusClassifier_RequiresPushRegistration422ClientDeviceRequired_ReturnsNotApplicable()
         {
             string status = CallStatusClassifier.Classify(CreateDescriptor(false, requiresPushRegistration: true), success: false,
-                new[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
+                new (int StatusCode, string? Body)[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
 
             Assert.Equal("not-applicable", status);
         }
@@ -82,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void CallStatusClassifier_RegularEndpoint422ClientDeviceRequired_ReturnsFailed()
         {
             string status = CallStatusClassifier.Classify(CreateDescriptor(false), success: false,
-                new[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
+                new (int StatusCode, string? Body)[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
 
             Assert.Equal("failed", status);
         }
@@ -91,7 +91,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void CallStatusClassifier_RequiresPushRegistration422OtherBody_ReturnsFailed()
         {
             string status = CallStatusClassifier.Classify(CreateDescriptor(false, requiresPushRegistration: true), success: false,
-                new[] { (StatusCode: 422, Body: "{\"error\":\"invalid doorbot\"}") });
+                new (int StatusCode, string? Body)[] { (StatusCode: 422, Body: "{\"error\":\"invalid doorbot\"}") });
 
             Assert.Equal("failed", status);
         }
