@@ -1,6 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using Microsoft.Extensions.Localization;
 using VideoForensics.Hosting;
+using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Contracts;
@@ -17,8 +19,26 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         PairedSessionState session,
         ISessionTokenService tokens,
         SessionNetworkContext network,
-        IStepUpAuthService stepUp) : ICircuitOperatorGate
+        IStepUpAuthService stepUp,
+        IStringLocalizer<SharedResources> localizer) : ICircuitOperatorGate
     {
+        public string Denial(AccessPolicy policy)
+        {
+            string key = policy switch
+            {
+                AccessPolicy.ReadOnly => "Denied_ReadOnly",
+                AccessPolicy.Review => "Denied_Review",
+                AccessPolicy.Admin => "Denied_Admin",
+                AccessPolicy.SuperAdmin => "Denied_SuperAdmin",
+                AccessPolicy.SuperAdminLocal => "Denied_LocalSuperAdmin",
+                AccessPolicy.SuperAdminLocalOrPasskey => "Denied_LocalSuperAdmin",
+                _ => "Denied_ReadOnly",
+            };
+            return localizer[key].Value;
+        }
+
+        public string StepUpDenial() => localizer["Denied_StepUp"].Value;
+
         public bool IsStepUpValid(string? stepUpToken)
         {
             if (!circuit.IsOpen)

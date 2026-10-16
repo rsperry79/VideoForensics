@@ -84,7 +84,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(policy))
             {
-                throw new UnauthorizedAccessException($"This case change requires {policy}.");
+                throw new UnauthorizedAccessException(gate.Denial(policy));
             }
         }
     }

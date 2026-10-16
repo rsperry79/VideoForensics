@@ -146,9 +146,10 @@ else
                 CancellationToken.None,
                 stepUpToken);
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
-            _result = new ExportResult { Success = false, ErrorMessage = L["ExportNotAuthorized"].Value };
+            // The guard's message is already localized to the operator's culture.
+            _result = new ExportResult { Success = false, ErrorMessage = ex.Message };
         }
         catch (Exception ex)
         {

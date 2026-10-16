@@ -21,13 +21,13 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(AccessPolicy.SuperAdminLocal))
             {
-                throw new UnauthorizedAccessException("Exporting evidence requires SuperAdminLocal.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.SuperAdminLocal));
             }
 
             // Matches the HTTP export, which requires step-up through the endpoint filter.
             if (!gate.IsStepUpValid(stepUpToken))
             {
-                throw new UnauthorizedAccessException("Exporting evidence requires step-up re-authentication.");
+                throw new UnauthorizedAccessException(gate.StepUpDenial());
             }
 
             return inner.ExportEvidenceAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, ct, stepUpToken);

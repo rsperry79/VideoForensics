@@ -95,7 +95,4 @@
   <data name="StepUpFailed" xml:space="preserve">
     <value>Passkey confirmation was not completed, so the evidence was not exported.</value>
   </data>
-  <data name="ExportNotAuthorized" xml:space="preserve">
-    <value>You are not allowed to export evidence.</value>
-  </data>
 </root>

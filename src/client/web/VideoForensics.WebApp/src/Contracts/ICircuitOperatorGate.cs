@@ -19,5 +19,11 @@ namespace VideoForensics.WebApp.Contracts
         /// there is no operator to re-authenticate, so this passes, as <see cref="Allows"/> does.
         /// </summary>
         bool IsStepUpValid(string? stepUpToken);
+
+        /// <summary>The localized message for an operator who does not satisfy <paramref name="policy"/>.</summary>
+        string Denial(AccessPolicy policy);
+
+        /// <summary>The localized message for a missing or invalid step-up.</summary>
+        string StepUpDenial();
     }
 }

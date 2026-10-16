@@ -17,7 +17,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(AccessPolicy.SuperAdminLocal))
             {
-                throw new UnauthorizedAccessException("Saving device configuration requires SuperAdminLocal.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.SuperAdminLocal));
             }
 
             return inner.AppendSnapshotAsync(snapshot, ct);

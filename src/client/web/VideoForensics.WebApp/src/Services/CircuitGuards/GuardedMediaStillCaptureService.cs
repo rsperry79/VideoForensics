@@ -21,7 +21,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(AccessPolicy.Review))
             {
-                throw new UnauthorizedAccessException("Capturing a still requires Review.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Review));
             }
 
             return inner.CaptureStillAsync(sourceMediaItemId, frameOffsetMs, clientPngBase64, caseId, pinReason, capturedBy, ct);

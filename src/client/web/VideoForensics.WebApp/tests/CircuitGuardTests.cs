@@ -1,6 +1,7 @@
 namespace VideoForensics.WebApp.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 using Moq;
 using VideoForensics.Client.Common.Contracts;
@@ -9,6 +10,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Contracts;
 using VideoForensics.WebApp.Services;
@@ -24,7 +26,17 @@ internal sealed class CircuitFixture
     public SessionNetworkContext Network { get; } = new();
     public Mock<IStepUpAuthService> StepUp { get; } = new();
 
-    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object);
+    public Mock<IStringLocalizer<SharedResources>> Localizer { get; } = CreateLocalizer();
+
+    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object, Localizer.Object);
+
+    /// <summary>Returns each key as its own text, so tests can assert which denial was produced.</summary>
+    private static Mock<IStringLocalizer<SharedResources>> CreateLocalizer()
+    {
+        var localizer = new Mock<IStringLocalizer<SharedResources>>();
+        localizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
+        return localizer;
+    }
 
     /// <summary>Signs the circuit in as an operator with the given role and kind, and records the tier.</summary>
     public void SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
@@ -416,12 +428,13 @@ public class GuardedConfigToolsOrchestrator_Tests
         var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
         gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("Only a SuperAdmin on this computer can do this.");
         var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
         var (success, message) = await guarded.FactoryResetAsync();
 
         Assert.False(success);
-        Assert.Contains("SuperAdminLocal", message);
+        Assert.Equal("Only a SuperAdmin on this computer can do this.", message);
         inner.Verify(c => c.FactoryResetAsync(It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -559,5 +572,27 @@ public class GuardedEvidenceExportStepUp_Tests
         inner.Verify(e => e.ExportEvidenceAsync(
             It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<CancellationToken>(), "step"), Times.Once);
+    }
+}
+
+public class CircuitOperatorGateDenial_Tests
+{
+    [Theory]
+    [InlineData(AccessPolicy.Admin, "Denied_Admin")]
+    [InlineData(AccessPolicy.SuperAdminLocal, "Denied_LocalSuperAdmin")]
+    [InlineData(AccessPolicy.Review, "Denied_Review")]
+    public void CircuitOperatorGate_Denial_ReturnsLocalizedTextForPolicy(AccessPolicy policy, string expectedKey)
+    {
+        var fixture = new CircuitFixture();
+
+        Assert.Equal(expectedKey, fixture.CreateGate().Denial(policy));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpDenial_ReturnsLocalizedStepUpText()
+    {
+        var fixture = new CircuitFixture();
+
+        Assert.Equal("Denied_StepUp", fixture.CreateGate().StepUpDenial());
     }
 }

@@ -50,7 +50,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(policy))
             {
-                return (false, $"This change requires {policy}.");
+                return (false, gate.Denial(policy));
             }
 
             return await change();
