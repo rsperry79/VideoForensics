@@ -30,7 +30,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(AccessPolicy.Admin))
             {
-                throw new UnauthorizedAccessException("Legal holds require Admin.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Admin));
             }
         }
     }

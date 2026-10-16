@@ -1,6 +1,7 @@
 namespace VideoForensics.WebApp.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 using Moq;
 using VideoForensics.Client.Common.Contracts;
@@ -9,6 +10,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.WebApp.Contracts;
 using VideoForensics.WebApp.Services;
@@ -22,8 +24,19 @@ internal sealed class CircuitFixture
     public Mock<ISessionTokenService> Tokens { get; } = new();
     public Mock<PairedSessionState> Session { get; } = new(new Mock<IJSRuntime>().Object);
     public SessionNetworkContext Network { get; } = new();
+    public Mock<IStepUpAuthService> StepUp { get; } = new();
 
-    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network);
+    public Mock<IStringLocalizer<SharedResources>> Localizer { get; } = CreateLocalizer();
+
+    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object, Localizer.Object);
+
+    /// <summary>Returns each key as its own text, so tests can assert which denial was produced.</summary>
+    private static Mock<IStringLocalizer<SharedResources>> CreateLocalizer()
+    {
+        var localizer = new Mock<IStringLocalizer<SharedResources>>();
+        localizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
+        return localizer;
+    }
 
     /// <summary>Signs the circuit in as an operator with the given role and kind, and records the tier.</summary>
     public void SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
@@ -244,6 +257,7 @@ public class CircuitGuardRegistration_Tests
         services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
         services.AddScoped(_ => new Mock<IJammingRepository>().Object);
+        services.AddScoped(_ => new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>().Object);
         services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
         var gate = new Mock<ICircuitOperatorGate>();
@@ -387,5 +401,198 @@ public class GuardedJammingRepository_Tests
         _ = await guarded.ListIncidentsAsync(null, null, null, CancellationToken.None);
 
         inner.Verify(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+}
+
+public class GuardedConfigToolsOrchestrator_Tests
+{
+    [Fact]
+    public async Task GuardedConfigToolsOrchestrator_HealthSync_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
+    {
+        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+
+        var (success, _) = await guarded.SetHealthSyncAsync(new Mock<IForensicsConfiguration>().Object, false);
+
+        Assert.False(success);
+        inner.Verify(c => c.SetHealthSyncAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedConfigToolsOrchestrator_FactoryReset_LocalAdminOnly_ReturnsFailureAndDoesNotReset()
+    {
+        // Factory reset is destructive and has no HTTP endpoint, so the server check is the only one. A denied call
+        // returns a failed result rather than throwing, so the page can show why.
+        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("Only a SuperAdmin on this computer can do this.");
+        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+
+        var (success, message) = await guarded.FactoryResetAsync();
+
+        Assert.False(success);
+        Assert.Equal("Only a SuperAdmin on this computer can do this.", message);
+        inner.Verify(c => c.FactoryResetAsync(It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedConfigToolsOrchestrator_Retention_AdminAllowed_CallsInner()
+    {
+        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        inner.Setup(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, "ok"));
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
+        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+
+        var (success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
+
+        Assert.True(success);
+        inner.Verify(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GuardedConfigToolsOrchestrator_Retention_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
+    {
+        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+
+        var (success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
+
+        Assert.False(success);
+        inner.Verify(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class CircuitOperatorGateStepUp_Tests
+{
+    [Fact]
+    public void CircuitOperatorGate_StepUpClosedCircuit_PassesWithoutToken()
+    {
+        // Background work has no operator to re-authenticate.
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = false;
+
+        Assert.True(fixture.CreateGate().IsStepUpValid(null));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpNoToken_Denies()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.False(fixture.CreateGate().IsStepUpValid(null));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpPasskeySession_ValidatesAgainstCredential()
+    {
+        // The endpoint filter binds a step-up to the paired-device claim, which for a passkey session is its credential.
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        Guid credentialId = Guid.NewGuid();
+        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+            Guid.NewGuid(), credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        fixture.StepUp.Setup(v => v.Validate("step", credentialId)).Returns(true);
+
+        Assert.True(fixture.CreateGate().IsStepUpValid("step"));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpPasswordSession_ValidatesAgainstOperator()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        Guid operatorId = Guid.NewGuid();
+        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+            operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        fixture.StepUp.Setup(v => v.Validate("step", operatorId)).Returns(true);
+
+        Assert.True(fixture.CreateGate().IsStepUpValid("step"));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpExpiredOrForged_Denies()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+        fixture.StepUp.Setup(v => v.Validate("expired", It.IsAny<Guid>())).Returns(false);
+
+        Assert.False(fixture.CreateGate().IsStepUpValid("expired"));
+    }
+}
+
+public class GuardedEvidenceExportStepUp_Tests
+{
+    private static (GuardedEvidenceExportService Guarded, Mock<IEvidenceExportService> Inner) Create(bool localAdmin, bool stepUpValid)
+    {
+        var inner = new Mock<IEvidenceExportService>();
+        inner.Setup(e => e.ExportEvidenceAsync(
+                It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .ReturnsAsync(new ExportResult { Success = true });
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(localAdmin);
+        gate.Setup(g => g.IsStepUpValid(It.IsAny<string?>())).Returns(stepUpValid);
+        return (new GuardedEvidenceExportService(inner.Object, gate.Object), inner);
+    }
+
+    [Fact]
+    public async Task GuardedEvidenceExportService_NoStepUp_ThrowsAndDoesNotExport()
+    {
+        var (guarded, inner) = Create(localAdmin: true, stepUpValid: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
+            new List<Guid>(), "out", null, null, null, CancellationToken.None, null));
+
+        inner.Verify(e => e.ExportEvidenceAsync(
+            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedEvidenceExportService_ValidStepUpAndLocalAdmin_Exports()
+    {
+        var (guarded, inner) = Create(localAdmin: true, stepUpValid: true);
+
+        var result = await guarded.ExportEvidenceAsync(
+            new List<Guid>(), "out", null, null, null, CancellationToken.None, "step");
+
+        Assert.True(result.Success);
+        inner.Verify(e => e.ExportEvidenceAsync(
+            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>(), "step"), Times.Once);
+    }
+}
+
+public class CircuitOperatorGateDenial_Tests
+{
+    [Theory]
+    [InlineData(AccessPolicy.Admin, "Denied_Admin")]
+    [InlineData(AccessPolicy.SuperAdminLocal, "Denied_LocalSuperAdmin")]
+    [InlineData(AccessPolicy.Review, "Denied_Review")]
+    public void CircuitOperatorGate_Denial_ReturnsLocalizedTextForPolicy(AccessPolicy policy, string expectedKey)
+    {
+        var fixture = new CircuitFixture();
+
+        Assert.Equal(expectedKey, fixture.CreateGate().Denial(policy));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpDenial_ReturnsLocalizedStepUpText()
+    {
+        var fixture = new CircuitFixture();
+
+        Assert.Equal("Denied_StepUp", fixture.CreateGate().StepUpDenial());
     }
 }

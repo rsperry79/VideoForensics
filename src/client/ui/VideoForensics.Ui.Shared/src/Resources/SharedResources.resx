@@ -653,4 +653,22 @@
   <data name="LLM API" xml:space="preserve">
     <value>LLM API</value>
   </data>
+  <data name="Denied_Review" xml:space="preserve">
+    <value>You need Review access to do this.</value>
+  </data>
+  <data name="Denied_Admin" xml:space="preserve">
+    <value>Only an administrator can do this.</value>
+  </data>
+  <data name="Denied_SuperAdmin" xml:space="preserve">
+    <value>Only a SuperAdmin can do this.</value>
+  </data>
+  <data name="Denied_LocalSuperAdmin" xml:space="preserve">
+    <value>Only a SuperAdmin on this computer can do this.</value>
+  </data>
+  <data name="Denied_StepUp" xml:space="preserve">
+    <value>Confirm with your passkey before doing this.</value>
+  </data>
+  <data name="Denied_ReadOnly" xml:space="preserve">
+    <value>You need to be signed in to do this.</value>
+  </data>
 </root>

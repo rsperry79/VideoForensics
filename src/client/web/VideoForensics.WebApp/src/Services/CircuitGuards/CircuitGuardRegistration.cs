@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.Extensions.DependencyInjection;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.WebApp.Contracts;
@@ -26,6 +27,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
 
             return services;

@@ -37,7 +37,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (!gate.Allows(AccessPolicy.Admin))
             {
-                throw new UnauthorizedAccessException("Recording jamming incidents requires Admin.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Admin));
             }
         }
     }

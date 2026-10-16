@@ -17,7 +17,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         {
             if (request.Destructive && !gate.Allows(AccessPolicy.SuperAdminLocal))
             {
-                throw new UnauthorizedAccessException("Destructive self-test runs require SuperAdminLocal.");
+                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.SuperAdminLocal));
             }
 
             return inner.StartRunAsync(request, cancellationToken);
