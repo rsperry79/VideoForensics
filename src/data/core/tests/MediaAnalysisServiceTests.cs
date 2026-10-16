@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using VideoForensics.Core.Providers.Core;
@@ -14,9 +15,17 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IMediaBitrateAnalyzer> _bitrate = new();
         private readonly Mock<IClipColorAnalyzer> _color = new();
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
+        private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
-        private MediaAnalysisService CreateSut() => new(_items.Object, _bitrate.Object, _color.Object, _audio.Object, NullLogger<MediaAnalysisService>.Instance);
+        private MediaAnalysisService CreateSut() => new(
+            _items.Object,
+            _devices.Object,
+            _bitrate.Object,
+            _color.Object,
+            _audio.Object,
+            Options.Create(new MediaAnalysisOptions()),
+            NullLogger<MediaAnalysisService>.Instance);
 
         private static MediaItem Clip(Guid deviceId, string mode, long bitrate, bool flagged = false) => new()
         {
@@ -151,6 +160,31 @@ namespace VideoForensics.Data.Core.Tests
             await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
 
             Assert.Contains("UnusualLighting", clip.RedFlags);
+        }
+
+        [Fact]
+        public async Task AnalyzeAsync_BitrateSteadilyFalling_RecordsBaselineDriftOnDevice()
+        {
+            // Forty clean clips whose bitrate falls from 1 Mb/s to 0.5 Mb/s over time: a steady drift, not a sudden fault.
+            var device = new Device { Id = _deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "d1", Name = "Front Door", Type = "doorbell" };
+            _devices.Setup(r => r.GetAsync(_deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(device);
+
+            var earlier = Enumerable.Range(0, 40).Select(i =>
+            {
+                MediaItem c = Clip(_deviceId, "Ir", (long)(1_000_000 - i * (500_000 / 40.0)));
+                c.RecordedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(i);
+                return c;
+            }).ToList();
+            MediaItem clip = Clip(_deviceId, "Ir", 500_000);
+            clip.RecordedAtUtc = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+            SetUpClip(clip, earlier, new MediaBitrateAnalysis(500_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), new AudioClipStats(0, -70.0, 0, 0.0));
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            _devices.Verify(r => r.UpdateAsync(
+                It.Is<Device>(d => d.BaselineDriftDetected == true && d.BaselineDriftChangeFraction > 0.15),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

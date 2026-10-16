@@ -283,6 +283,9 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
 
+// Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
+builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
+
 // Forensics query repositories (Phases 1-4) - MCP tools (Milestone 8 HTTP hosting)
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ITimelineRepository, VideoForensics.Data.Database.Repositories.TimelineRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRepository, VideoForensics.Data.Database.Repositories.IntegrityRepository>();
