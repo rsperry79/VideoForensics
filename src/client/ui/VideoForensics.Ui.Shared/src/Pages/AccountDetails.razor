@@ -8,6 +8,8 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountDetails> L
 
@@ -32,16 +34,9 @@ else
     {
         <div class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title mb-3">@(_displayName ?? _account.ProviderName)</h5>
-
                 <div class="mb-3">
-                    <label class="form-label fw-bold">@L["DisplayNameLabel"]</label>
-                    <p class="form-control-plaintext">@_displayName</p>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">@L["ProviderLabel"]</label>
-                    <p class="form-control-plaintext">@_account.ProviderName</p>
+                    <label class="form-label fw-bold">@L["AccountLabel"]</label>
+                    <h5 class="card-title">@(_accountEmail is null ? _account.ProviderName : $"{_account.ProviderName} - {_accountEmail}")</h5>
                 </div>
 
                 <div class="mb-3">
@@ -113,7 +108,7 @@ else
         {
             <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
                           ProviderName="@_account.ProviderName"
-                          InitialEmail="@_displayName"
+                          InitialEmail="@_accountEmail"
                           OnAuthenticated="HandleReAuthenticatedAsync" />
         }
 
@@ -127,7 +122,7 @@ else
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private VideoForensics.Data.Common.Entities.ProviderAccount? _account;
-    private string? _displayName;
+    private string? _accountEmail;
     private bool _isLoading = true;
     private bool _isBusy;
     private bool _confirmingRemove;
@@ -152,14 +147,11 @@ else
 
             if (_account is not null)
             {
-                _displayName = _account.ProviderName;
                 try
                 {
+                    // The provider login (email for Ring) is the account's name.
                     var user = await UserRepository.GetAsync(_account.UserId, CancellationToken.None);
-                    if (user is not null)
-                    {
-                        _displayName = user.DisplayName;
-                    }
+                    _accountEmail = user?.ProviderUserKey;
                 }
                 catch
                 {
@@ -199,7 +191,15 @@ else
         _statusMessage = null;
         try
         {
-            await ProviderAccountRepository.DeleteAsync(Id, CancellationToken.None);
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
+            // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken ?? throw new InvalidOperationException("Not signed in."));
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            using HttpResponseMessage response = await client.DeleteAsync($"api/v1/accounts/provider-accounts/{Id}", CancellationToken.None);
+            response.EnsureSuccessStatusCode();
 
             if (ForensicsConfig.ActiveProviderAccountId == Id)
             {
@@ -241,8 +241,14 @@ else
         _isSyncing = true;
         try
         {
-            var response = await HttpClient.PostAsJsonAsync(
-                $"api/v1/accounts/{Id}/sync-now",
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
+            // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
+            // Build the client the same way the other authenticated calls on this page do.
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            var response = await client.PostAsJsonAsync(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-now",
                 new { },
                 CancellationToken.None
             );

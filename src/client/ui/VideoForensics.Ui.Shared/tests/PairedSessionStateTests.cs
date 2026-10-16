@@ -104,6 +104,101 @@ public class PairedSessionStateTests : BunitContext
         Assert.True(state.IsSignedIn);
     }
 
+    [Fact]
+    public async Task PairedSessionState_RefreshPasskeySetupOnlyAsync_ServerReportsSessionEnded_ClearsSetupFlag()
+    {
+        // Arrange - loaded as setup-only (server said so), then the server ends the session after passkey registration
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        string body = "{\"passkeySetupOnly\":true}";
+        var factory = new Mock<ISelfApiHttpClientFactory>();
+        _ = factory.Setup(f => f.CreateClient(It.IsAny<string?>()))
+            .Returns(() => new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://localhost/") });
+        var services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+        await state.EnsureLoadedAsync();
+        Assert.True(state.PasskeySetupOnly);
+        body = "{\"passkeySetupOnly\":false}";
+
+        // Act
+        await state.RefreshPasskeySetupOnlyAsync();
+
+        // Assert
+        Assert.False(state.PasskeySetupOnly);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_RefreshPasskeySetupOnlyAsync_SessionKindCallFails_KeepsStoredFlag()
+    {
+        // Arrange
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.InternalServerError, "{}");
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+        await state.EnsureLoadedAsync();
+
+        // Act
+        await state.RefreshPasskeySetupOnlyAsync();
+
+        // Assert
+        Assert.True(state.PasskeySetupOnly);
+        Assert.True(state.IsSignedIn);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_ConfirmSessionAsync_ServerReturns401_ReturnsFalse()
+    {
+        // Arrange
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.Unauthorized, "{}");
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+        await state.EnsureLoadedAsync();
+
+        // Act
+        bool result = await state.ConfirmSessionAsync();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_ConfirmSessionAsync_ServerReturns200_ReturnsTrue()
+    {
+        // Arrange
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+        await state.EnsureLoadedAsync();
+
+        // Act
+        bool result = await state.ConfirmSessionAsync();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_ConfirmSessionAsync_NetworkFailure_ReturnsTrue()
+    {
+        // Arrange - the call throws; a transient failure must not sign the operator out
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var factory = new Mock<ISelfApiHttpClientFactory>();
+        _ = factory.Setup(f => f.CreateClient(It.IsAny<string?>())).Throws(new HttpRequestException("network down"));
+        var services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+        await state.EnsureLoadedAsync();
+
+        // Act
+        bool result = await state.ConfirmSessionAsync();
+
+        // Assert
+        Assert.True(result);
+        Assert.True(state.IsSignedIn);
+    }
+
     /// <summary>Builds a factory whose clients answer every request with the given status and body.</summary>
     private static (Mock<ISelfApiHttpClientFactory> Factory, IServiceProvider Services) CreateFactory(HttpStatusCode status, string body)
     {

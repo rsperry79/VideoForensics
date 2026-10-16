@@ -6,7 +6,7 @@
 <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
     <Found Context="routeData">
         <AuthGate>
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.ResponsiveLayout)" />
+            <PageAccessRouteView RouteData="routeData" DefaultLayout="typeof(Layout.ResponsiveLayout)" />
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </AuthGate>
     </Found>

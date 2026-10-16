@@ -63,6 +63,7 @@ namespace VideoForensics.Data.Database.Repositories
             try
             {
                 _ = db.ProviderAccounts.Add(account);
+                await AddDefaultScheduleIfMissingAsync(db, account.Id, ct);
                 _ = await db.SaveChangesAsync(ct);
                 _logger.LogInformation("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
             }
@@ -164,5 +165,14 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
         private static string SanitizeForLog(string value) =>
             value.Replace('\r', '_').Replace('\n', '_');
+
+        /// <summary>A newly linked account is enabled for scheduled sync by default; an existing schedule is left alone.</summary>
+        internal static async Task AddDefaultScheduleIfMissingAsync(VideoForensicsDbContext db, Guid providerAccountId, CancellationToken ct)
+        {
+            if (!await db.SyncSchedules.AnyAsync(s => s.ProviderAccountId == providerAccountId, ct))
+            {
+                _ = db.SyncSchedules.Add(SyncSchedule.CreateDefault(providerAccountId));
+            }
+        }
     }
 }

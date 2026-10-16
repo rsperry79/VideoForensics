@@ -1,4 +1,5 @@
 @page "/collect"
+@using VideoForensics.Ui.Shared.Layout
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -10,6 +11,7 @@
 @inject IVideoDownloadService DownloadService
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IDeviceRepository DeviceRepository
+@inject AccountSelectionState AccountSelectionState
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Collect> L
 
@@ -25,7 +27,16 @@ else if (!_isAuthenticated)
 }
 else if (!_hasProviderAccount)
 {
-    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"] <a href="/accounts/add">@L["AddProviderAccount"]</a></div>
+    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"]
+        @if (CanLinkProviderAccount)
+        {
+            <a href="/accounts/add">@L["AddProviderAccount"]</a>
+        }
+        else
+        {
+            @L["AskAdministratorToLinkAccount"]
+        }
+    </div>
 }
 else
 {
@@ -116,6 +127,10 @@ else
 }
 
 @code {
+
+    /// <summary>Only SuperAdmin on the Local tier may open the account wizard (/accounts/add), so only they get the link.</summary>
+    private bool CanLinkProviderAccount => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _hasProviderAccount;
@@ -162,12 +177,12 @@ else
     {
         try
         {
-            var accounts = await ProviderAccountRepository.ListActiveAsync(CancellationToken.None);
+            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
             _accounts = accounts.ToList();
             if (_accounts.Count > 0)
             {
-                _selectedAccountId = _accounts[0].Id;
-                await OnAccountChanged(_selectedAccountId);
+                Guid? remembered = await AccountSelectionState.GetSelectedAccountIdAsync(_accounts.Select(a => a.Id).ToList());
+                await OnAccountChanged(remembered ?? _accounts[0].Id);
             }
         }
         catch (Exception ex)
@@ -179,6 +194,7 @@ else
     private async Task OnAccountChanged(Guid selectedAccountId)
     {
         _selectedAccountId = selectedAccountId;
+        await AccountSelectionState.SetSelectedAccountIdAsync(selectedAccountId);
         _selectedAccount = _accounts.FirstOrDefault(a => a.Id == _selectedAccountId);
         _selectedDeviceIds.Clear();
 

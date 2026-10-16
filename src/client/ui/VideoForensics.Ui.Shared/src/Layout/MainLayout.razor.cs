@@ -62,7 +62,7 @@ namespace VideoForensics.Ui.Shared.Layout
             }
         }
 
-        private IReadOnlyList<NavItem> ActiveGroupItems
+        private IReadOnlyList<NavSection> ActiveGroupSections
         {
             get
             {
@@ -71,8 +71,7 @@ namespace VideoForensics.Ui.Shared.Layout
                     return [];
                 }
 
-                NavContext ctx = BuildContext();
-                return ActiveGroup.Items.Where(i => i.IsVisible(ctx)).ToList();
+                return NavGroups.SectionsFor(ActiveGroup, BuildContext());
             }
         }
 
@@ -185,7 +184,8 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private NavContext BuildContext()
         {
-            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported);
+            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported,
+                IsLocalTier: SessionState.IsLocalTier, IsPasskeySession: SessionState.IsPasskeySession);
         }
 
         private async Task ToggleLeftNavAsync()

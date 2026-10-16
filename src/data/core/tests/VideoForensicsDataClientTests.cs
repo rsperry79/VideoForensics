@@ -29,6 +29,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _mockIntegrityVerification;
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
+        private readonly Mock<IMediaAnalysisService> _mockMediaAnalysis;
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -51,6 +52,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockIntegrityVerification = new Mock<IIntegrityVerificationService>();
             _mockActionLogRepository = new Mock<IActionLogRepository>();
             _mockLogger = new Mock<ILogger<VideoForensicsDataClient>>();
+            _mockMediaAnalysis = new Mock<IMediaAnalysisService>();
 
             _dataClient = new VideoForensicsDataClient(
                 _mockUserRepository.Object,
@@ -68,7 +70,56 @@ namespace VideoForensics.Data.Core.Tests
                 _mockCredentialRepository.Object,
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockMediaAnalysis.Object);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_WithMedia_RunsAnalysisAfterSaveAndWaits()
+        {
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e1", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
+
+            _ = await _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None);
+
+            _mockMediaAnalysis.Verify(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_AnalysisFails_RecordingStillSucceeds()
+        {
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e2", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
+            _mockMediaAnalysis.Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("ffmpeg missing"));
+
+            DownloadEvent result = await _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None);
+
+            Assert.Same(evt, result);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_Cancelled_DuringAnalysis_PropagatesCancellation()
+        {
+            using var cts = new CancellationTokenSource();
+            var media = new MediaItem { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = "c.mp4", FilePath = "c.mp4", MediaFormat = "mp4", Sha256Hash = "h" };
+            var evt = new DownloadEvent { Id = Guid.NewGuid(), DeviceId = media.DeviceId, ProviderEventId = "e3", AppVersion = "test" };
+            var context = new Mock<IUnitOfWorkContext> { DefaultValue = DefaultValue.Mock };
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
+            _mockMediaAnalysis
+                .Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>()))
+                .Returns<Guid, CancellationToken>((_, ct) => { cts.Cancel(); ct.ThrowIfCancellationRequested(); return Task.CompletedTask; });
+
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _dataClient.RecordDownloadEventAsync(evt, media, cts.Token));
         }
 
         [Fact]

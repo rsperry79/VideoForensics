@@ -1,0 +1,18 @@
+/* Item and heading buttons are Syncfusion components, so their classes are reached with ::deep. */
+.left-nav-section ::deep .left-nav-section-header {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.left-nav-entry {
+    padding-left: 0.75rem;
+}
+
+.left-nav-entry ::deep .left-nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+}

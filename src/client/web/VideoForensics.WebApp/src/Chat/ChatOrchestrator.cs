@@ -328,8 +328,8 @@ namespace VideoForensics.WebApp.Chat
             var httpClient = _httpClientFactory.CreateClient();
 
             // Determine the local server's base address from configuration
-            int port = ServerAddressResolver.ResolveConfiguredPort(_configuration);
-            httpClient.BaseAddress = new Uri($"https://localhost:{port}");
+            int port = ServerAddressResolver.ResolveHttpPort(_configuration);
+            httpClient.BaseAddress = new Uri($"http://localhost:{port}");
 
             // Forward the current request's authorization header to the local MCP call
             if (_httpContextAccessor?.HttpContext?.Request.Headers.TryGetValue("Authorization", out var authHeader) == true)

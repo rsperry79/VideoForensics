@@ -64,10 +64,9 @@ Log.Logger = new LoggerConfiguration()
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Must run before AddSyncfusionBlazor() below. Reads the key from builder.Configuration so user secrets
-// (dev) and Azure App Settings / Key Vault references (prod) are honored; the early parameterless call
-// could not see IConfiguration because it ran before the host was built.
-VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent(builder.Configuration);
+// Must run before AddSyncfusionBlazor() below. Resolves the key from env vars and Client.Core user secrets
+// itself, so it does not depend on builder.Configuration having been built.
+VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
 
 // Windows Service hosting - enables running under Windows Service Control Manager while keeping
 // dotnet run/debugging unchanged (UseWindowsService is a no-op on non-Windows platforms and when
@@ -78,15 +77,26 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
 
-int listenPort = ServerAddressResolver.ResolveConfiguredPort(builder.Configuration);
+var listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
 builder.WebHost.ConfigureKestrel(options =>
 {
+    foreach (var endpoint in listenEndpoints)
+    {
+    // https endpoints get TLS via the ASP.NET development certificate; http endpoints stay plain.
+    void ConfigureHttps(Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions listenOptions)
+    {
+        if (endpoint.Scheme == "https")
+        {
+            listenOptions.UseHttps();
+        }
+    }
+
     if (configuredNetworkTier == NetworkTier.Local)
     {
         // Loopback only - genuinely unreachable from the LAN or internet at the socket level, not
         // merely discouraged by application logic. A device on the same network cannot even open a
         // TCP connection, let alone attempt to pair.
-        options.ListenLocalhost(listenPort);
+        options.ListenLocalhost(endpoint.Port, ConfigureHttps);
     }
     else
     {
@@ -94,7 +104,8 @@ builder.WebHost.ConfigureKestrel(options =>
         // Cloudflare Tunnel already establishes that "Internet" exposure comes from cloudflared
         // forwarding to localhost, not from Kestrel itself binding to a public address, so there is
         // no separate wider bind for Internet beyond what Network already needs for LAN reachability.
-        options.ListenAnyIP(listenPort);
+        options.ListenAnyIP(endpoint.Port, ConfigureHttps);
+    }
     }
 });
 
@@ -123,7 +134,7 @@ builder.Services.AddFido2(options =>
 {
     options.RPID = "localhost";
     options.RPName = "VideoForensics";
-    options.Origins = new HashSet<string> { "https://localhost:5162", "http://localhost:5162" };
+    options.Origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
 });
 
 builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName)
@@ -142,6 +153,7 @@ builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies()
 // 403'd despite both individual checks being correct by inspection.
 builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
 
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
@@ -377,6 +389,7 @@ builder.Services.AddScoped<WebPushClient>();
 // right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
+builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);

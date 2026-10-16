@@ -1,4 +1,6 @@
 @page "/tools/ring-selftest"
+@using VideoForensics.Ui.Shared.Layout
+@using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Core.Api.Contracts
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components
@@ -11,6 +13,7 @@
 @using Microsoft.Extensions.Logging
 @implements IAsyncDisposable
 @inject IRingSelfTestService SelfTestService
+@inject PairedSessionState SessionState
 @inject ISelfTestStatusSource StatusSource
 @inject ILogger<RingSelfTest> Logger
 @inject IStringLocalizer<RingSelfTest> L
@@ -389,7 +392,12 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
             _allEndpoints = endpoints.ToList();
 
             _readOnlyEndpoints = _allEndpoints.Where(e => !e.Destructive && !e.Physical).ToList();
-            _destructiveEndpoints = _allEndpoints.Where(e => e.Destructive || e.Physical).ToList();
+            // Destructive and physical endpoints are offered only to SuperAdmin on the Local tier, the same rule
+            // POST /api/v1/selftest/run enforces when Destructive is set. Off-Local the list is empty, not disabled.
+            bool canRunDestructive = PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
+            _destructiveEndpoints = canRunDestructive
+                ? _allEndpoints.Where(e => e.Destructive || e.Physical).ToList()
+                : [];
 
             // Initialize selected keys from current selections
             _selectedReadOnlyKeys = _selectedEndpoints

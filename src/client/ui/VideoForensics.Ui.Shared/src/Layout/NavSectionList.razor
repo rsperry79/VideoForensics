@@ -1,0 +1,92 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@using Syncfusion.Blazor.Buttons
+@inject IStringLocalizer<SharedResources> L
+
+@foreach (NavSection section in Sections)
+{
+    @if (section.Title is not null)
+    {
+        <div class="left-nav-section" data-section="@section.Title">
+            <SfButton Content="@L[section.Title]"
+                      CssClass="@("left-nav-section-header " + (IsOpen(section.Title) ? "e-primary" : "e-flat"))"
+                      OnClick="@(() => ToggleSection(section.Title))" />
+        </div>
+    }
+
+    @if (section.Title is null || IsOpen(section.Title))
+    {
+        @foreach (NavItem item in section.Items)
+        {
+            <div class="left-nav-entry" data-path="@item.Path">
+                <SfButton Content="@L[item.Text]"
+                          OnClick="@(() => OnItemSelected.InvokeAsync(item))"
+                          CssClass="@(ItemCssClass + " " + (IsActive(item) ? "e-primary" : "e-flat"))" />
+            </div>
+        }
+    }
+}
+
+@code {
+    /// <summary>Visible sections for the active tab, as produced by <see cref="NavGroups.SectionsFor"/>.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NavSection> Sections { get; set; } = [];
+
+    [Parameter]
+    public string CurrentPath { get; set; } = "/";
+
+    [Parameter]
+    public string CurrentQuery { get; set; } = "";
+
+    /// <summary>CSS class applied to each item button; the mobile drawer passes its own.</summary>
+    [Parameter]
+    public string ItemCssClass { get; set; } = "left-nav-item";
+
+    [Parameter]
+    public EventCallback<NavItem> OnItemSelected { get; set; }
+
+    // Only one heading is open at a time. Null means every heading is collapsed.
+    private string? _openTitle;
+    private string? _lastLocation;
+    private string? _lastSectionKey;
+
+    protected override void OnParametersSet()
+    {
+        // Reveal the section holding the current page when the page changes, or when the visible sections change
+        // underneath us (sections often arrive after the first render, once role and tier load). Other re-renders
+        // keep whatever the operator last opened, so a manual toggle is not undone.
+        string location = CurrentPath + CurrentQuery;
+        string sectionKey = string.Join("|", Sections.Select(s => s.Title ?? string.Empty));
+        bool locationChanged = location != _lastLocation;
+        bool openIsStale = sectionKey != _lastSectionKey && !Sections.Any(s => s.Title == _openTitle);
+
+        _lastLocation = location;
+        _lastSectionKey = sectionKey;
+        if (!locationChanged && !openIsStale)
+        {
+            return;
+        }
+
+        NavItem? active = ActiveItem;
+        _openTitle = Sections.FirstOrDefault(s => s.Items.Any(i => i == active))?.Title;
+    }
+
+    private bool IsOpen(string title) => _openTitle == title;
+
+    private void ToggleSection(string title)
+    {
+        _openTitle = _openTitle == title ? null : title;
+    }
+
+    private bool IsActive(NavItem item) => item == ActiveItem;
+
+    /// <summary>
+    /// The single item that owns the current page. Several items can match by prefix (e.g. "/settings" matches
+    /// "/settings/operators"), so the most specific match wins; otherwise General would highlight on every admin page.
+    /// </summary>
+    private NavItem? ActiveItem => Sections
+        .SelectMany(s => s.Items)
+        .Where(i => NavPathMatcher.Matches(CurrentPath, CurrentQuery, i.Path))
+        .OrderByDescending(i => i.Path.Split('?')[0].Length)
+        .FirstOrDefault();
+}

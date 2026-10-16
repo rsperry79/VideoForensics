@@ -156,7 +156,17 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive).ToList());
         }
 
-        public Task AddAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Add(account); return Task.CompletedTask; }
+        public Task AddAsync(ProviderAccount account, CancellationToken ct)
+        {
+            _ = _db.ProviderAccounts.Add(account);
+            // Same default as ProviderAccountRepository.AddAsync; this path is synchronous, so the check is too.
+            if (!_db.SyncSchedules.Any(s => s.ProviderAccountId == account.Id))
+            {
+                _ = _db.SyncSchedules.Add(SyncSchedule.CreateDefault(account.Id));
+            }
+
+            return Task.CompletedTask;
+        }
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Update(account); return Task.CompletedTask; }
         public Task DeleteAsync(Guid accountId, CancellationToken ct)
         {
@@ -338,6 +348,10 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
+        }
+        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)

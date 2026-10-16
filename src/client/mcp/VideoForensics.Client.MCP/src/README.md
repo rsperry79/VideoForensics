@@ -7,13 +7,13 @@ tools over stdio, for use by an MCP-aware AI client such as Claude Desktop.
 ## Build
 
 ```
-dotnet build src\clients\VideoForensics.Mcp\VideoForensics.Mcp.csproj -c Release
+dotnet build src\clients\VideoForensics.Client.MCP\VideoForensics.Client.MCP.csproj -c Release
 ```
 
 Or for a self-contained single-file executable:
 
 ```
-dotnet publish src\clients\VideoForensics.Mcp\VideoForensics.Mcp.csproj -c Release -r win-x64 --self-contained
+dotnet publish src\clients\VideoForensics.Client.MCP\VideoForensics.Client.MCP.csproj -c Release -r win-x64 --self-contained
 ```
 
 ## Configure Claude Desktop
@@ -26,7 +26,7 @@ launcher:
 {
   "mcpServers": {
     "videoforensics": {
-      "command": "C:\\path\\to\\repo\\src\\clients\\VideoForensics.Mcp\\bin\\Release\\net10.0\\VideoForensics.Mcp.exe"
+      "command": "C:\\path\\to\\repo\\src\\clients\\VideoForensics.Client.MCP\\bin\\Release\\net10.0\\VideoForensics.Client.MCP.exe"
     }
   }
 }
@@ -39,7 +39,7 @@ Or, without publishing a standalone exe, launch via `dotnet`:
   "mcpServers": {
     "videoforensics": {
       "command": "dotnet",
-      "args": ["C:\\path\\to\\repo\\src\\clients\\VideoForensics.Mcp\\bin\\Release\\net10.0\\VideoForensics.Mcp.dll"]
+      "args": ["C:\\path\\to\\repo\\src\\clients\\VideoForensics.Client.MCP\\bin\\Release\\net10.0\\VideoForensics.Client.MCP.dll"]
     }
   }
 }

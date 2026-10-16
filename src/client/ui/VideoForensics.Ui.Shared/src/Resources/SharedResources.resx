@@ -620,4 +620,37 @@
   <data name="NotFoundMessage" xml:space="preserve">
     <value>Sorry, there's nothing at this address.</value>
   </data>
+  <data name="Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Diagnostics &amp; Updates" xml:space="preserve">
+    <value>Diagnostics &amp; Updates</value>
+  </data>
+  <data name="Devices &amp; Network" xml:space="preserve">
+    <value>Devices &amp; Network</value>
+  </data>
+  <data name="Storage &amp; Data" xml:space="preserve">
+    <value>Storage &amp; Data</value>
+  </data>
+  <data name="Integrations" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="PageNotAuthorized" xml:space="preserve">
+    <value>You do not have access to this page.</value>
+  </data>
+  <data name="Security Events" xml:space="preserve">
+    <value>Security Events</value>
+  </data>
+  <data name="Pending Approvals" xml:space="preserve">
+    <value>Pending Approvals</value>
+  </data>
+  <data name="Login Methods" xml:space="preserve">
+    <value>Login Methods</value>
+  </data>
+  <data name="Server Logs" xml:space="preserve">
+    <value>Server Logs</value>
+  </data>
+  <data name="LLM API" xml:space="preserve">
+    <value>LLM API</value>
+  </data>
 </root>

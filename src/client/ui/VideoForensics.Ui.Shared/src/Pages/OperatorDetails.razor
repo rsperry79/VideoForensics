@@ -503,7 +503,10 @@ else
 
         try
         {
+            // Changing the 2FA override is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
             var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
             var payload = new { Override = newOverride };
             var response = await client.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{_operator.Id}/override", payload);
 

@@ -95,4 +95,24 @@ public class AuthGateTests : BunitContext
         string target = AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: false);
         Assert.Equal("/signin", target);
     }
+
+    [Fact]
+    public void AuthGate_ResolveFailureRedirectTarget_ReturnsSignInAndNeverProtectedRoute()
+    {
+        var target = AuthGate.ResolveFailureRedirectTarget();
+        Assert.Equal("/signin", target);
+        Assert.Equal(AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: true), target);
+    }
+
+    [Fact]
+    public void AuthGate_ResolveStaleSessionRedirectTarget_ServerRejectedToken_ReturnsSignIn()
+    {
+        Assert.Equal("/signin", AuthGate.ResolveStaleSessionRedirectTarget(sessionConfirmed: false));
+    }
+
+    [Fact]
+    public void AuthGate_ResolveStaleSessionRedirectTarget_ServerAcceptedToken_ReturnsNull()
+    {
+        Assert.Null(AuthGate.ResolveStaleSessionRedirectTarget(sessionConfirmed: true));
+    }
 }

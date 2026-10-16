@@ -3,7 +3,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
-@inject IProviderAuthService AuthService
+@inject PairedSessionState SessionState
 @inject IForensicsConfiguration Config
 @inject IForensicsConfigurationService ConfigService
 @inject ConfigToolsOrchestrator ConfigTools
@@ -218,7 +218,8 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 _retentionDays = Config.RetentionDaysDefault;

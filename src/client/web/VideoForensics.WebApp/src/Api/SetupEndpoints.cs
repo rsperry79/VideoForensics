@@ -88,6 +88,8 @@ namespace VideoForensics.WebApp.Api
                 Email = $"{request.Username}@localhost.invalid",
                 Role = OperatorRole.SuperAdmin,
                 IsApproved = true,
+                // /setup only runs on an empty database, so this account is the first SuperAdmin and the primary one.
+                IsPrimarySuperAdmin = true,
                 Active = true,
                 MustChangePassword = false,
                 CreatedAtUtc = DateTime.UtcNow,

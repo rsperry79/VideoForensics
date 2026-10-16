@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -177,6 +178,33 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Null(retrieved.LastErrorMessage);
             Assert.NotNull(retrieved.LastSuccessfulAuthUtc);
             Assert.True(retrieved.LastSuccessfulAuthUtc > DateTime.UtcNow.AddMinutes(-1));
+        }
+            [Fact]
+        public async Task ProviderAccountRepository_AddAsync_NewAccount_CreatesEnabledDefaultSyncSchedule()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount(Guid.NewGuid(), "Ring");
+
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            SyncSchedule schedule = await db.SyncSchedules.SingleAsync(s => s.ProviderAccountId == account.Id);
+            Assert.True(schedule.IsEnabled);
+            Assert.Null(schedule.EventNextRunUtc); // never run yet, so the first tick treats it as due
+            Assert.True(schedule.EventPollIntervalMinutes >= SyncSchedule.MinimumPollIntervalMinutes);
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_AddAsync_ExistingScheduleForAccount_DoesNotDuplicate()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount(Guid.NewGuid(), "Ring");
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            // Updating an existing account (for example on re-authentication) must not add a second schedule.
+            account.LastSuccessfulAuthUtc = DateTime.UtcNow;
+            await _repository.UpdateAsync(account, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Assert.Equal(1, await db.SyncSchedules.CountAsync(s => s.ProviderAccountId == account.Id));
         }
     }
 }

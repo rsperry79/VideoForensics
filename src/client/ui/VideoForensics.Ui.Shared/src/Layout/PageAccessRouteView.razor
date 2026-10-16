@@ -1,0 +1,77 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
+@implements IDisposable
+@inject PairedSessionState SessionState
+@inject IAppLockPreferencesStore AppLockPreferences
+@inject IStringLocalizer<SharedResources> L
+
+@* Renders nothing while signed out or until the server has reported the session's tier, so an allowed page never
+   flashes "not authorized" and a signed-out visitor never sees a page body (AuthGate redirects them). *@
+@if (SessionState.IsSignedIn && SessionState.ServerKindKnown)
+{
+    @if (IsAllowed)
+    {
+        <RouteView RouteData="RouteData" DefaultLayout="DefaultLayout" />
+    }
+    else
+    {
+        <LayoutView Layout="DefaultLayout">
+            <p role="alert" class="alert alert-warning m-4">@L["PageNotAuthorized"]</p>
+        </LayoutView>
+    }
+}
+
+@code {
+    /// <summary>The matched route. Each <c>@page</c> template is looked up in <see cref="PageAccessRules"/>.</summary>
+    [Parameter, EditorRequired]
+    public RouteData RouteData { get; set; } = default!;
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+
+    protected override void OnInitialized()
+    {
+        SessionState.ServerKindChanged += OnServerKindChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Loading is once per circuit and cached, so this is cheap on every render. The server call happens only
+        // when the tier is still unknown, and its completion re-renders through ServerKindChanged.
+        await SessionState.EnsureLoadedAsync();
+        await SessionState.EnsureServerKindAsync();
+    }
+
+    /// <summary>
+    /// A page is allowed only when every one of its <c>@page</c> templates is allowed, so an alias route cannot
+    /// bypass a rule on the primary route. A page with no route attribute is not gated here.
+    /// </summary>
+    private bool IsAllowed
+    {
+        get
+        {
+            NavContext ctx = BuildContext();
+            return RouteData.PageType
+                .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+                .OfType<RouteAttribute>()
+                .All(route => PageAccessRules.IsAllowed(route.Template, ctx));
+        }
+    }
+
+    private void OnServerKindChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private NavContext BuildContext() => NavContext.FromSession(SessionState, AppLockPreferences.IsSupported);
+
+    public void Dispose()
+    {
+        SessionState.ServerKindChanged -= OnServerKindChanged;
+    }
+}

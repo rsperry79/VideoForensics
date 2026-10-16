@@ -114,9 +114,9 @@ Do not read or explore files in the `docs/` directory unless explicitly asked by
 
 ## Client Requirements (client/server split)
 
-Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared`, `VideoForensics.Mcp`, or an MCP bridge process. Does not apply to `VideoForensics.WebApp` (it *is* the server). See the client/server split plan for full milestone context if one is active.
+Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared`, `VideoForensics.Client.MCP`, or an MCP bridge process. Does not apply to `VideoForensics.WebApp` (it *is* the server). See the client/server split plan for full milestone context if one is active.
 
-- **No direct provider/data access from any client host.** A "client host" is MAUI, `VideoForensics.Mcp`, and any MCP bridge process. None of them may reference `providers-common`, `providers-core`, any concrete provider (Ring, etc.), or `data.common`/`data.core`/`data.database*` in their `.csproj`. They may reference `VideoForensics.Api.Contracts` (DTOs) and `VideoForensics.Hosting` (for `AddVideoForensicsClientApi` and its `Remote*` implementations) only.
+- **No direct provider/data access from any client host.** A "client host" is MAUI, `VideoForensics.Client.MCP`, and any MCP bridge process. None of them may reference `providers-common`, `providers-core`, any concrete provider (Ring, etc.), or `data.common`/`data.core`/`data.database*` in their `.csproj`. They may reference `VideoForensics.Api.Contracts` (DTOs) and `VideoForensics.Hosting` (for `AddVideoForensicsClientApi` and its `Remote*` implementations) only.
 - **Interface names don't change.** `VideoForensics.Ui.Shared`'s `@inject IProviderAuthService`, `@inject IDeviceRepository`, etc. stay exactly as-is — a `Remote*` class implements the same interface a local implementation did, so DI substitution is silent and no `.razor` file needs editing for a client/server cutover.
 - **All wire calls use DTOs from `VideoForensics.Api.Contracts` and hit versioned `/api/v1/...` routes**, never a bare domain entity and never an unversioned route.
 - **Every `Remote*`/HTTP-backed class takes and forwards `CancellationToken`**, matching the interface signature it implements — no swallowing it.
@@ -168,9 +168,14 @@ For headless/scripted deployments that can't drive a browser wizard, the legacy 
 
 This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
 
-## Syncfusion License (CI-baked-in)
+## Syncfusion License
 
-Every officially CI-built distributed binary ships with a Syncfusion Blazor license key baked into the compiled `VideoForensics.Hosting.dll` at build time, sourced from the `SYNCFUSION_LICENSE_KEY` GitHub Actions secret. To enable this, set the secret in the repo's Settings > Secrets and variables > Actions to the Syncfusion license key value. Local/dev builds without the secret fall back to the existing unlicensed-dev-mode behavior. An end user or IT admin can still override by placing `%ProgramData%\VideoForensics\syncfusion-license.key` manually, which always takes priority. Developers running from Visual Studio can set a user-level `SYNCFUSION_LICENSE_KEY` environment variable instead; it is checked after the ProgramData file and before the baked-in key (restart VS after setting it, since VS only sees env vars present at launch). See `RegisterSyncfusionLicenseIfPresent()` in `VideoForensicsHostingExtensions.cs` for implementation details.
+One resolver, in `VideoForensics.Client.Core` (`SyncfusionLicenseRegistrar`). Hosting, MAUI, WebApp, and Ui.Shared tests call it; do not add another license reader.
+
+Priority: `%ProgramData%\VideoForensics\syncfusion-license.key` (IT override) > user secrets > key baked into `VideoForensics.Client.Core.dll` at CI build time.
+
+- CI: `SYNCFUSION_LICENSE_KEY` repo secret is passed to the build as `-p:SyncfusionLicenseKey` in `release-installers.yml` and `build-windows.yml`; test DLLs carry the key.
+- Developers: `dotnet user-secrets set SYNCFUSION_LICENSE_KEY <key>` in `src/client/core/VideoForensics.Client.Core/src`. No env var is read. Without a key, dev builds run unlicensed.
 
 ## Branching and pull requests
 

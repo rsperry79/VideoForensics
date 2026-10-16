@@ -1724,6 +1724,21 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task SessionKind_PasswordSession_ReportsLocalTierAndPasskeyFlags()
+        {
+            // Arrange - a password session. The tier value comes from the mocked resolver (default Local), so only
+            // the presence of the flag and the passkey result are asserted here; tier resolution has its own tests.
+            // Act
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, status);
+            using JsonDocument document = JsonDocument.Parse(body);
+            _ = document.RootElement.GetProperty("localTier").GetBoolean();
+            Assert.False(document.RootElement.GetProperty("passkeySession").GetBoolean());
+        }
+
+        [Fact]
         public async Task SessionKind_Unauthenticated_Returns401()
         {
             // Arrange - no bearer token

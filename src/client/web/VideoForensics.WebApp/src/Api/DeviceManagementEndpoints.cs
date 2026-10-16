@@ -187,7 +187,7 @@ namespace VideoForensics.WebApp.Api
                     null, tierResolver.ResolveClientIp(context), $"Credential {id} approved", isUrgent: true, ct);
                 return Results.Ok();
             })
-            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .RequireRateLimiting("auth")
             .AddEndpointFilter<StepUpEndpointFilter>();
 

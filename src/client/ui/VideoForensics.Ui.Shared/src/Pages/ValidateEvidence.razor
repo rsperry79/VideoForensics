@@ -5,7 +5,7 @@
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using Syncfusion.Blazor.Calendars
-@inject IProviderAuthService AuthService
+@inject PairedSessionState SessionState
 @inject IEvidenceValidationService EvidenceValidationService
 @inject IDeviceRepository DeviceRepository
 @inject NavigationManager NavigationManager
@@ -144,7 +144,8 @@ else
                 ? "reconcile"
                 : "integrity";
 
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);

@@ -11,6 +11,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets media items by device ID.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct);
 
+        /// <summary>Gets a device's newest media items by recording time, at most <paramref name="limit"/>.</summary>
+        Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct);
+
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 

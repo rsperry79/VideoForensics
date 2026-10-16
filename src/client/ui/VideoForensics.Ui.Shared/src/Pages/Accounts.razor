@@ -10,6 +10,9 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<Accounts> L
+@inject AccountSelectionState AccountSelectionState
+@inject PairedSessionState SessionState
+@inject WebAuthnClient WebAuthn
 @inject NavigationManager NavigationManager
 
 <h4 class="mb-4">@L["Title"]</h4>
@@ -57,14 +60,6 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
-                    <Template>
-                        @{
-                            var row = (AccountRow)context;
-                            @(row.Account.Id == ForensicsConfig.ActiveProviderAccountId ? L["Yes"] : "")
-                        }
-                    </Template>
-                </GridColumn>
                 <GridColumn HeaderText="" MinWidth="100">
                     <Template>
                         @{
@@ -86,7 +81,7 @@ else
                                     }
                                     <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
                                     <SfButton Content="@L["Schedule"]" OnClick="@((UIMouseEventArgs) => GoToAccountScheduleAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
-                                    <SfButton Content="@L["Select"]" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-primary" />
+                                    <SfButton Content="@(row.Account.Id == _selectedAccountId ? L["Selected"] : L["Select"])" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@(_isBusy || row.Account.Id == _selectedAccountId)" CssClass="e-primary" />
                                     <SfButton Content="@L["Remove"]" OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" CssClass="e-danger" />
                                 </div>
                             }
@@ -114,6 +109,7 @@ else
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private List<AccountRow> _rows = new();
+    private Guid? _selectedAccountId;
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private bool _isLoading = true;
     private bool _isBusy;
@@ -155,6 +151,7 @@ else
 
             _rows = rows;
             _filteredRows = _rows;
+            _selectedAccountId = await AccountSelectionState.GetSelectedAccountIdAsync(rows.Select(r => r.Account.Id).ToList());
         }
         finally
         {
@@ -168,6 +165,10 @@ else
         _statusMessage = null;
         try
         {
+            _selectedAccountId = accountId;
+            await AccountSelectionState.SetSelectedAccountIdAsync(accountId);
+
+            // The server-side active account still drives downloads, so keep it in step with this browser's choice.
             ForensicsConfig.ActiveProviderAccountId = accountId;
             try
             {
@@ -201,7 +202,15 @@ else
         _statusMessage = null;
         try
         {
-            await ProviderAccountRepository.DeleteAsync(accountId, CancellationToken.None);
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
+            // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
+            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken ?? throw new InvalidOperationException("Not signed in."));
+            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            using HttpResponseMessage response = await client.DeleteAsync($"api/v1/accounts/provider-accounts/{accountId}", CancellationToken.None);
+            response.EnsureSuccessStatusCode();
 
             if (ForensicsConfig.ActiveProviderAccountId == accountId)
             {

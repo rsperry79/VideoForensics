@@ -41,6 +41,27 @@ namespace VideoForensics.WebApp.Auth
     {
     }
 
+    /// <summary>Succeeds when the session is on the Local tier OR was established with an operator passkey (any tier).</summary>
+    public class RequireLocalOrPasskeyRequirement : IAuthorizationRequirement
+    {
+    }
+
+    public class RequireLocalOrPasskeyHandler : AuthorizationHandler<RequireLocalOrPasskeyRequirement>
+    {
+        protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RequireLocalOrPasskeyRequirement requirement)
+        {
+            string? tierClaim = context.User.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
+            bool local = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
+            bool passkey = context.User.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value == "OperatorPasskey";
+            if (local || passkey)
+            {
+                context.Succeed(requirement);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
     public class RequireLocalTierHandler : AuthorizationHandler<RequireLocalTierRequirement>
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RequireLocalTierRequirement requirement)
@@ -65,6 +86,9 @@ namespace VideoForensics.WebApp.Auth
         /// <summary>SuperAdmin role AND the Local network tier - see RequireLocalTierRequirement's doc comment for why this is a separate, non-bypassable check.</summary>
         public const string SuperAdminLocal = "VF.SuperAdminLocal";
 
+        /// <summary>SuperAdmin role AND (Local tier OR an operator-passkey session from any tier).</summary>
+        public const string SuperAdminLocalOrPasskey = "VF.SuperAdminLocalOrPasskey";
+
         public static void AddVideoForensicsPolicies(this AuthorizationOptions options)
         {
             options.AddPolicy(ReadOnly, p => p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.ReadOnly)));
@@ -75,6 +99,11 @@ namespace VideoForensics.WebApp.Auth
             {
                 p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.SuperAdmin));
                 p.Requirements.Add(new RequireLocalTierRequirement());
+            });
+            options.AddPolicy(SuperAdminLocalOrPasskey, p =>
+            {
+                p.Requirements.Add(new MinimumRoleRequirement(OperatorRole.SuperAdmin));
+                p.Requirements.Add(new RequireLocalOrPasskeyRequirement());
             });
         }
     }

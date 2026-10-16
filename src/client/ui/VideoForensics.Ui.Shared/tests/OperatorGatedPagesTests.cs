@@ -49,7 +49,7 @@ public abstract class OperatorGatedPageTestBase : BunitContext
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         ProviderAccountRepositoryMock
-            .Setup(m => m.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ProviderAccount>());
         DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
@@ -62,6 +62,7 @@ public abstract class OperatorGatedPageTestBase : BunitContext
         Services.AddScoped(_ => DeviceConfigRepositoryMock.Object);
         Services.AddScoped<RightPanelContentService>();
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
 
         SignInOperatorAsync().GetAwaiter().GetResult();
     }
@@ -77,6 +78,14 @@ public abstract class OperatorGatedPageTestBase : BunitContext
 
     protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
 
+    /// <summary>Signs in a SuperAdmin on the Local tier - the only operator who may open the account wizard.</summary>
+    protected async Task SignInAsSuperAdminLocalAsync()
+    {
+        var session = Services.GetRequiredService<PairedSessionState>();
+        await session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin");
+        session.SetServerSessionKind(localTier: true, passkeySession: false);
+    }
+
     protected void ProviderAccountLinked(bool linked) =>
         AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
@@ -88,6 +97,19 @@ public abstract class OperatorGatedPageTestBase : BunitContext
 
 public class Collect_OperatorGate_Tests : OperatorGatedPageTestBase
 {
+    [Fact]
+    public async Task Collect_NoRingAccountAndNotLocalSuperAdmin_ShowsAdminMessage_NotWizardLink()
+    {
+        await SignInOperatorAsync();
+        ProviderAccountLinked(false);
+
+        var component = Render<Collect>();
+
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Empty(component.FindAll("a[href='/accounts/add']"));
+        Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
+    }
+
     [Fact]
     public async Task Collect_OperatorSignedOut_ShowsSignInPrompt()
     {
@@ -103,7 +125,7 @@ public class Collect_OperatorGate_Tests : OperatorGatedPageTestBase
     [Fact]
     public async Task Collect_OperatorSignedInNoRingAccount_ShowsNoAccountMessage_NotSignInPrompt()
     {
-        await SignInOperatorAsync();
+        await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
         var component = Render<Collect>();
@@ -129,6 +151,19 @@ public class Collect_OperatorGate_Tests : OperatorGatedPageTestBase
 public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
 {
     [Fact]
+    public async Task CollectVideos_NoRingAccountAndNotLocalSuperAdmin_ShowsAdminMessage_NotWizardLink()
+    {
+        await SignInOperatorAsync();
+        ProviderAccountLinked(false);
+
+        var component = Render<CollectVideos>();
+
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Empty(component.FindAll("a[href='/accounts/add']"));
+        Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
+    }
+
+    [Fact]
     public async Task CollectVideos_OperatorSignedOut_ShowsSignInPrompt()
     {
         await SignOutOperatorAsync();
@@ -143,7 +178,7 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
     [Fact]
     public async Task CollectVideos_OperatorSignedInNoRingAccount_ShowsNoAccountMessage_NotSignInPrompt()
     {
-        await SignInOperatorAsync();
+        await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
         var component = Render<CollectVideos>();
@@ -170,6 +205,19 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
 public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
 {
     [Fact]
+    public async Task CollectSnapshots_NoRingAccountAndNotLocalSuperAdmin_ShowsAdminMessage_NotWizardLink()
+    {
+        await SignInOperatorAsync();
+        ProviderAccountLinked(false);
+
+        var component = Render<CollectSnapshots>();
+
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Empty(component.FindAll("a[href='/accounts/add']"));
+        Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
+    }
+
+    [Fact]
     public async Task CollectSnapshots_OperatorSignedOut_ShowsSignInPrompt()
     {
         await SignOutOperatorAsync();
@@ -184,7 +232,7 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
     [Fact]
     public async Task CollectSnapshots_OperatorSignedInNoRingAccount_ShowsNoAccountMessage_NotSignInPrompt()
     {
-        await SignInOperatorAsync();
+        await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
         var component = Render<CollectSnapshots>();
@@ -211,6 +259,19 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
 public class DeviceConfig_OperatorGate_Tests : OperatorGatedPageTestBase
 {
     [Fact]
+    public async Task DeviceConfigPage_NoRingAccountAndNotLocalSuperAdmin_ShowsAdminMessage_NotWizardLink()
+    {
+        await SignInOperatorAsync();
+        ProviderAccountLinked(false);
+
+        var component = Render<DeviceConfigPage>();
+
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Empty(component.FindAll("a[href='/accounts/add']"));
+        Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
+    }
+
+    [Fact]
     public async Task DeviceConfig_OperatorSignedOut_ShowsSignInPrompt()
     {
         await SignOutOperatorAsync();
@@ -225,7 +286,7 @@ public class DeviceConfig_OperatorGate_Tests : OperatorGatedPageTestBase
     [Fact]
     public async Task DeviceConfig_OperatorSignedInNoRingAccount_ShowsNoAccountMessage_NotSignInPrompt()
     {
-        await SignInOperatorAsync();
+        await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
         var component = Render<DeviceConfigPage>();

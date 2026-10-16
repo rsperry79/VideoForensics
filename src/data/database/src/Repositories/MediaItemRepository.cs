@@ -34,6 +34,18 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.MediaItems.Where(m => m.DeviceId == deviceId).ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .AsNoTracking()
+                .Where(m => m.DeviceId == deviceId)
+                .OrderByDescending(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Gets media items by device ID within a date range.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)

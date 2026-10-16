@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -23,6 +24,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
+        private readonly IMediaAnalysisService _mediaAnalysis;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -44,7 +46,8 @@ namespace VideoForensics.Data.Core.Services
             ICredentialRepository credentialRepository,
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
-            ILogger<VideoForensicsDataClient> logger)
+            ILogger<VideoForensicsDataClient> logger,
+            IMediaAnalysisService mediaAnalysis)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -62,6 +65,7 @@ namespace VideoForensics.Data.Core.Services
             IntegrityVerification = integrityVerification;
             ActionLog = actionLogRepository;
             _logger = logger;
+            _mediaAnalysis = mediaAnalysis;
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -117,6 +121,26 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
+        /// <summary>
+        /// Analyses a saved media item and waits for the result, so the next provider call is spaced by local analysis time.
+        /// Best-effort: an analysis failure is logged and never fails the recording.
+        /// </summary>
+        private async Task AnalyzeSavedMediaAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            try
+            {
+                await _mediaAnalysis.AnalyzeAsync(mediaItemId, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+            }
+        }
+
         public async Task<DownloadEvent> RecordDownloadEventAsync(
             DownloadEvent evt,
             MediaItem? media,
@@ -127,7 +151,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async context =>
+                DownloadEvent saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert by (DeviceId, ProviderEventId) rather than blind-inserting - repeated
                     // attempts at the same event (retries after a transient failure, or a permanent
@@ -184,6 +208,13 @@ namespace VideoForensics.Data.Core.Services
 
                     return evt;
                 }, ct);
+
+                if (media != null)
+                {
+                    await AnalyzeSavedMediaAsync(media.Id, ct);
+                }
+
+                return saved;
             }
             catch (Exception ex)
             {

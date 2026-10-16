@@ -104,4 +104,7 @@
   <data name="Schedule" xml:space="preserve">
     <value>Schedule</value>
   </data>
+  <data name="Selected" xml:space="preserve">
+    <value>Selected</value>
+  </data>
 </root>

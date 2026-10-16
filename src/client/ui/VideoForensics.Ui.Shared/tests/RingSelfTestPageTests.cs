@@ -116,6 +116,12 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         Services.AddScoped(_ => InspectorState);
         Services.AddLocalization();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        // The page checks the operator's tier before offering destructive endpoints. These tests exercise those
+        // endpoints, so they run as a SuperAdmin on the Local tier.
+        Services.AddScoped(sp => new VideoForensics.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
+        var session = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+        session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin").GetAwaiter().GetResult();
+        session.SetServerSessionKind(localTier: true, passkeySession: false);
 
         ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<SelfTestCallDto>, TestSfGrid>();
         ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();

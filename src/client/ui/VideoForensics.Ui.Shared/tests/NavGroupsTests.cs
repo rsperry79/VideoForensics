@@ -144,7 +144,8 @@ public class NavGroups_Tests
         var logsItem = group.Items.First(i => i.Path == "/settings/logs");
 
         Assert.Equal("Server Logs", logsItem.Text);
-        Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
         Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
         Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
         Assert.False(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false)));
@@ -170,8 +171,8 @@ public class NavGroups_Tests
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(operatorsItem.IsVisible(adminCtx));
 
-        // Should be visible to SuperAdmin
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        // Should be visible to SuperAdmin on the Local tier (the operator endpoints are SuperAdminLocal)
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(operatorsItem.IsVisible(superAdminCtx));
     }
 
@@ -185,8 +186,8 @@ public class NavGroups_Tests
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(devicesItem.IsVisible(adminCtx));
 
-        // Should be visible to SuperAdmin
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        // Should be visible to SuperAdmin on the Local tier
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(devicesItem.IsVisible(superAdminCtx));
     }
 
@@ -200,8 +201,8 @@ public class NavGroups_Tests
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(lockoutPolicyItem.IsVisible(adminCtx));
 
-        // Should be visible to SuperAdmin
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        // Should be visible to SuperAdmin on the Local tier
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(lockoutPolicyItem.IsVisible(superAdminCtx));
     }
 
@@ -215,8 +216,8 @@ public class NavGroups_Tests
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
         Assert.False(loginMethodsItem.IsVisible(adminCtx));
 
-        // Should be visible to SuperAdmin
-        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false);
+        // Should be visible to SuperAdmin on the Local tier
+        var superAdminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true);
         Assert.True(loginMethodsItem.IsVisible(superAdminCtx));
     }
 
