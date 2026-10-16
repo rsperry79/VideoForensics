@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Location Mode API.
         /// </summary>
-        public Uri RingModeApiBaseUrl => new("https://prd-api-us.prd.rings.solutions/api/v1/mode/");
+        public Uri RingModeApiBaseUrl => _endpoints.ModeApiBaseUrl;
 
         /// <summary>
         /// Returns the current Location Mode ("home", "away" or "disarmed") for the given location.

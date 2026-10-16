@@ -871,7 +871,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""mode"": ""away"" }");
             _ = await _mockSession!.Authenticate();
@@ -888,13 +888,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}",
                 System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationMode(locationId, "home");
 
-            (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"rs/mode/location/{locationId:D}"));
+            (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"mode/location/{locationId:D}"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Post, Method);
         }
@@ -1198,7 +1198,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}/settings",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""enabled"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1213,7 +1213,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSettings(locationId, @"{ ""enabled"": false }");
@@ -1228,7 +1228,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.EnableLocationModes(locationId);
@@ -1243,7 +1243,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.DisableLocationModes(locationId);
@@ -1259,7 +1259,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}/sharing",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""shareable"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1274,7 +1274,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSharing(locationId, @"{ ""shareable"": false }");
@@ -1292,7 +1292,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/monitoring/accounts/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""active"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1309,7 +1309,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             string assetUuid = "asset-1";
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
+                $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
                 System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 

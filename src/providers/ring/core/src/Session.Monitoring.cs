@@ -15,7 +15,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Alarm monitoring accounts API.
         /// </summary>
-        public Uri MonitoringApiBaseUrl => new("https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/");
+        public Uri MonitoringApiBaseUrl => _endpoints.MonitoringApiBaseUrl;
 
         /// <summary>
         /// Base Uri for Ring's event-manager history API (location-wide, distinct from
@@ -23,7 +23,7 @@ namespace VideoForensics.Providers.Ring
         /// (LOCATIONS_HISTORY_ENDPOINT) after the originally-guessed rs/history?locationId= path
         /// 404'd in a live ApiTester run.
         /// </summary>
-        public Uri RingEvmApiBaseUrl => new("https://api.ring.com/evm/v2/history/locations/");
+        public Uri RingEvmApiBaseUrl => _endpoints.EvmApiBaseUrl;
 
         /// <summary>
         /// Returns the alarm monitoring status for a location's account.

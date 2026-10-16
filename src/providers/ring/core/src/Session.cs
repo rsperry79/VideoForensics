@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri with which all Ring API requests start
         /// </summary>
-        public Uri BaseUrl => new("https://api.ring.com/clients_api/");
+        public Uri BaseUrl => _endpoints.ClientsApiBaseUrl;
 
         /// <summary>
         /// Boolean indicating if the current session is authenticated
@@ -105,6 +105,11 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         private readonly IVideoDownloader _videoDownloader;
 
+        /// <summary>
+        /// Base URIs for the Ring APIs; defaults to the production hosts.
+        /// </summary>
+        private readonly RingEndpointOptions _endpoints = new();
+
         #endregion
 
         #region Constructors
@@ -116,8 +121,10 @@ namespace VideoForensics.Providers.Ring
         /// <param name="password">Password for the Ring account</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
         /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
-        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
+        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null, RingEndpointOptions endpoints = null)
         {
+            _endpoints = endpoints ?? new RingEndpointOptions();
             Username = username;
             Password = password;
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
@@ -434,7 +441,7 @@ namespace VideoForensics.Providers.Ring
         /// Base Uri for the newer Ring devices API, which (unlike the legacy clients_api) exposes
         /// a working locations endpoint.
         /// </summary>
-        public Uri RingDevicesApiBaseUrl => new("https://api.ring.com/devices/v1/");
+        public Uri RingDevicesApiBaseUrl => _endpoints.DevicesApiBaseUrl;
 
         /// <summary>
         /// Returns the locations (with friendly names) visible to the current account.

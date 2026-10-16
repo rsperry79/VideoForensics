@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Smart Lighting groups API.
         /// </summary>
-        public Uri GroupsApiBaseUrl => new("https://api.ring.com/groups/v1/");
+        public Uri GroupsApiBaseUrl => _endpoints.GroupsApiBaseUrl;
 
         /// <summary>
         /// Returns the Smart Lighting groups configured at the given location.

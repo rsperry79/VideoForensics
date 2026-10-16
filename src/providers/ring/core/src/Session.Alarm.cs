@@ -20,7 +20,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's newer "api/v1" endpoints, used for asset socket tickets.
         /// </summary>
-        public Uri RingAppApiBaseUrl => new("https://api.ring.com/api/v1/");
+        public Uri RingAppApiBaseUrl => _endpoints.AppApiBaseUrl;
 
         /// <summary>
         /// Requests a ticket and opens a persistent device-command websocket ("asset socket") for the
