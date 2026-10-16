@@ -23,6 +23,9 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
 
             return services;
         }
