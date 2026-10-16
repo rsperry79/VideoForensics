@@ -199,6 +199,63 @@ public class PairedSessionStateTests : BunitContext
         Assert.True(state.IsSignedIn);
     }
 
+    [Fact]
+    public async Task PairedSessionState_ServerReportsLocalTier_SetsIsLocalTierAndKnown()
+    {
+        // Arrange - the server answers from this request's real connection, so Local means the operator is physically local
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false,\"localTier\":true,\"passkeySession\":false}");
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+
+        // Act
+        await state.EnsureLoadedAsync();
+
+        // Assert
+        Assert.True(state.IsLocalTier);
+        Assert.False(state.IsPasskeySession);
+        Assert.True(state.ServerKindKnown);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_ServerOmitsTier_FailsClosedToNotLocal()
+    {
+        // Arrange - an older server that does not report the tier must not unlock Local-only pages
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
+        var state = new PairedSessionState(JSInterop.JSRuntime, services);
+
+        // Act
+        await state.EnsureLoadedAsync();
+
+        // Assert
+        Assert.False(state.IsLocalTier);
+        Assert.True(state.ServerKindKnown);
+    }
+
+    [Fact]
+    public async Task PairedSessionState_ResolvedFromDi_WithSelfApiFactory_ReceivesServerTier()
+    {
+        // MAUI registers PairedSessionState with AddScoped<T>() and the default self-API factory. The container must
+        // pick the constructor that takes IServiceProvider, or the tier is never asked for and MAUI stays fail-closed.
+        string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, factoryServices) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false,\"localTier\":true,\"passkeySession\":false}");
+        var container = new ServiceCollection();
+        container.AddSingleton(JSInterop.JSRuntime);
+        container.AddSingleton(factoryServices.GetRequiredService<ISelfApiHttpClientFactory>());
+        container.AddScoped<PairedSessionState>();
+        await using ServiceProvider provider = container.BuildServiceProvider();
+        PairedSessionState state = provider.GetRequiredService<PairedSessionState>();
+
+        // Act
+        await state.EnsureLoadedAsync();
+
+        // Assert
+        Assert.True(state.IsLocalTier);
+    }
+
     /// <summary>Builds a factory whose clients answer every request with the given status and body.</summary>
     private static (Mock<ISelfApiHttpClientFactory> Factory, IServiceProvider Services) CreateFactory(HttpStatusCode status, string body)
     {
