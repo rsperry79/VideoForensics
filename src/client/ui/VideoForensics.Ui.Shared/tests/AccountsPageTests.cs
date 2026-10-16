@@ -138,7 +138,7 @@ public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void Accounts_ProviderSelectionExcludesProvider_HidesThatProvidersRows()
+    public async Task Accounts_ProviderSelectionExcludesProvider_HidesThatProvidersRows()
     {
         var cut = RenderPage();
         Assert.Contains("Wyze Owner", cut.Markup);
@@ -146,7 +146,7 @@ public class AccountsPage_ProviderFilter_Tests : AccountsPageTestBase
         var panel = Render(RightPanelFragment());
         var multiSelect = panel.FindComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], string>>();
 
-        panel.InvokeAsync(() => multiSelect.Instance.ValueChanged.InvokeAsync(new[] { "Ring" })).GetAwaiter().GetResult();
+        await panel.InvokeAsync(() => multiSelect.Instance.ValueChanged.InvokeAsync(new[] { "Ring" }));
 
         cut.WaitForAssertion(() =>
         {

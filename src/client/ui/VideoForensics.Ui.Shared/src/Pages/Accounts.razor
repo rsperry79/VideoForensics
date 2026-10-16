@@ -25,11 +25,6 @@
 }
 else
 {
-    @if (!string.IsNullOrEmpty(_statusMessage))
-    {
-        <p>@_statusMessage</p>
-    }
-
     @if (_rows.Count == 0)
     {
         <p>@L["NoAccountsLinked"]</p>
@@ -87,7 +82,6 @@ else
     private string[] _selectedProviders = Array.Empty<string>();
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private bool _isLoading = true;
-    private string? _statusMessage;
 
     protected override async Task OnInitializedAsync()
     {
