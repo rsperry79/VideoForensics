@@ -1,7 +1,13 @@
+using System.Security.Claims;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+
 using ModelContextProtocol.Server;
 
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.WebApp.Auth;
 
 namespace VideoForensics.WebApp.Mcp.Tools
 {
@@ -10,10 +16,31 @@ namespace VideoForensics.WebApp.Mcp.Tools
     public class JammingTools : ForensicsToolBase
     {
         private readonly JammingToolsOrchestrator _orchestrator;
+        private readonly IAuthorizationService _authorization;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public JammingTools(JammingToolsOrchestrator orchestrator, ILogger<JammingTools> logger) : base(logger)
+        public JammingTools(
+            JammingToolsOrchestrator orchestrator,
+            IAuthorizationService authorization,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<JammingTools> logger) : base(logger)
         {
             _orchestrator = orchestrator;
+            _authorization = authorization;
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        /// <summary>
+        /// Both writing tools persist incidents (and can create cases), which the HTTP jamming endpoints allow only to
+        /// Admin. MCP requests carry only baseline paired-device auth, so the caller's role is checked here.
+        /// </summary>
+        private async Task RequireAdminAsync()
+        {
+            ClaimsPrincipal? user = _httpContextAccessor.HttpContext?.User;
+            if (user is null || !(await _authorization.AuthorizeAsync(user, null, VideoForensicsPolicies.Admin)).Succeeded)
+            {
+                throw new UnauthorizedAccessException("Recording jamming incidents requires Admin.");
+            }
         }
 
         /// <summary>Detects jamming/interference from the device's RSSI health-snapshot history over the given window, persists any incidents found, and returns the full analysis. Fetch the jamming-analysis resource first for interpretation guidance.</summary>
@@ -25,6 +52,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("RunJammingDetection: device={DeviceId}, from={FromUtc}, to={ToUtc}", deviceId, fromUtc, toUtc);
+            await RequireAdminAsync();
             return await _orchestrator.AnalyzeJammingAsync(deviceId, fromUtc, toUtc, cancellationToken);
         }
 
@@ -41,6 +69,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("RecordJammingIncident: device={DeviceId}", deviceId);
+            await RequireAdminAsync();
             (bool success, string? message, JammingIncidentRecord? record) = await _orchestrator.RecordJammingIncidentAsync(
                 deviceId, startUtc, endUtc, affectedEventCount, averageDegradationDb, confidence, notes, cancellationToken);
             return new RecordIncidentResult { Success = success, Message = message, Record = record };
