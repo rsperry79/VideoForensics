@@ -163,7 +163,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -199,7 +199,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -235,7 +235,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -275,7 +275,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = [chime]
             };
 
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 
@@ -316,7 +316,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = null
             };
 
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
                 .ReturnsAsync(devicesResponse);
 

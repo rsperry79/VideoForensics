@@ -4,10 +4,36 @@ using VideoForensics.Ui.Shared.Services.Inspector;
 namespace VideoForensics.Ui.Shared.Services.QueryApi;
 
 /// <summary>
+/// A dropdown entry for the QueryApi filter panel: <see cref="Value"/> is the id used for queries, <see cref="Label"/> is shown to the user.
+/// </summary>
+public sealed record QueryApiSelectOption(string Value, string Label);
+
+/// <summary>
 /// Helpers for drill-down actions (row selection filling input fields).
 /// </summary>
 public static class QueryApiDrillDownHelpers
 {
+    /// <summary>
+    /// Human-readable label for a Location: its Name, or its Id when Name is blank (IDs are opaque, so Name is preferred).
+    /// </summary>
+    public static string LocationDisplayLabel(Location? location)
+    {
+        return PreferName(location?.Name, location?.Id);
+    }
+
+    /// <summary>
+    /// Human-readable label for a Device: its Name, or its Id when Name is blank.
+    /// </summary>
+    public static string DeviceDisplayLabel(Device? device)
+    {
+        return PreferName(device?.Name, device?.Id);
+    }
+
+    private static string PreferName(string? name, string? id)
+    {
+        return string.IsNullOrWhiteSpace(name) ? id ?? string.Empty : name;
+    }
+
     /// <summary>
     /// Extracts the location ID for drill-down (filling _locationIdInput when a Location row is selected).
     /// </summary>

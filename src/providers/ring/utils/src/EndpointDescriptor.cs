@@ -49,6 +49,12 @@ namespace VideoForensics.Providers.Ring
         public Func<EndpointTarget, RestorePlan?>? PrepareRestore { get; init; }
         /// <summary>Why a destructive endpoint has no PrepareRestore - shown in index.json instead of leaving it unexplained.</summary>
         public string? NoRestoreReason { get; init; }
+        /// <summary>Alarm-hub-only endpoint: on a camera-only account its 404 means "not applicable", not a failure (see CallStatusClassifier).</summary>
+        public bool NotApplicableWithoutAlarmHub { get; init; }
+        /// <summary>Endpoint that Ring only accepts once a push client device is registered; a 422 "Client Device required" is "not-applicable" (see CallStatusClassifier).</summary>
+        public bool RequiresPushRegistration { get; init; }
+        /// <summary>Runs only when named explicitly in --endpoints (never as part of --all or the default set), e.g. because it sounds a real alarm.</summary>
+        public bool ManualOnly { get; init; }
     }
 
     /// <summary>
@@ -113,7 +119,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Current home/away/disarmed mode for a location (camera-only locations without an Alarm hub).",
                 SessionMethod = "Session.GetLocationMode(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationMode(target.LocationId!.Value)
             },
@@ -207,12 +213,24 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "signalling-ticket",
+                DisplayName = "Signalling ticket",
+                Description = "Requests a live-view signalling ticket for the location (read-only).",
+                SessionMethod = "Session.GetSignallingTicketAsync(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationID={locationId}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws",
+                Scope = EndpointScope.PerLocation,
+                NotApplicableWithoutAlarmHub = true,
+                Invoke = (session, target) => session.GetSignallingTicketAsync(target.LocationId!.Value)
+            },
+            new()
+            {
                 Key = "location-mode-settings",
                 DisplayName = "Location mode settings",
                 Description = "Location Mode configuration (e.g. per-mode alert settings) for a location.",
                 SessionMethod = "Session.GetLocationModeSettings(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationModeSettings(target.LocationId!.Value)
             },
@@ -223,7 +241,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Location Mode sharing configuration for a location.",
                 SessionMethod = "Session.GetLocationModeSharing(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/sharing",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationModeSharing(target.LocationId!.Value)
             },
@@ -234,7 +252,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Alarm monitoring account status for a location.",
                 SessionMethod = "Session.GetAccountMonitoringStatus(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetAccountMonitoringStatus(target.LocationId!.Value)
             },
@@ -248,6 +266,41 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://api.ring.com/evm/v2/history/locations/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationHistory(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "app-location-history",
+                DisplayName = "App location history",
+                Description = "Location history from the app API (rs/history), distinct from the evm/v2 location-history.",
+                SessionMethod = "Session.GetAppLocationHistoryAsync(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/history?accountId={locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetAppLocationHistoryAsync(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "light-groups",
+                DisplayName = "Light groups",
+                Description = "Ring Smart Lighting groups configured at a location (groups host; override with --groups-api-base-url).",
+                SessionMethod = "Session.GetGroups(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/groups/v1/locations/{locationId}/groups",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetGroups(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "recording-url",
+                DisplayName = "Recording URL",
+                Description = "Download info for a footage clip from the recordings host (override with --recordings-api-base-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetPeriodicalFootage(footageId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/recordings/public/footages/{dingId}",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetPeriodicalFootage(DingId!)
+                    : throw new InvalidOperationException("recording-url requires --ding-id <id>")
             },
             new()
             {
@@ -292,17 +345,6 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://api.ring.com/clients_api/dings/active",
                 Scope = EndpointScope.None,
                 Invoke = (session, _) => session.GetActiveDings()
-            },
-            new()
-            {
-                Key = "location-details",
-                DisplayName = "Location details",
-                Description = "Single-location detail lookup under clients_api, distinct from the locations endpoint's devices/v1 listing.",
-                SessionMethod = "Session.GetLocation(locationId)",
-                HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}",
-                Scope = EndpointScope.PerLocation,
-                Invoke = (session, target) => session.GetLocation(target.LocationId!.Value)
             },
             new()
             {
@@ -446,7 +488,7 @@ namespace VideoForensics.Providers.Ring
                 DisplayName = "Snooze chime notifications",
                 Description = "Snoozes a chime's notifications for --dnd-seconds (default 60). Self-reverts after that duration.",
                 SessionMethod = "Session.SetDoNotDisturb(chimeId, seconds)",
-                HttpMethod = "PUT",
+                HttpMethod = "POST",
                 ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}/do_not_disturb",
                 Scope = EndpointScope.PerChime,
                 Destructive = true,
@@ -455,33 +497,12 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "set-night-mode",
-                DisplayName = "Toggle forced night mode",
-                Description = "Forces night mode on to test it, then restores the value captured from the devices listing beforehand.",
-                SessionMethod = "Session.SetNightMode(doorbotId, enabled)",
-                HttpMethod = "PUT",
-                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
-                Scope = EndpointScope.PerDoorbot,
-                Destructive = true,
-                Invoke = (session, target) => session.SetNightMode(target.DoorbotId!.Value, true),
-                PrepareRestore = target =>
-                {
-                    bool captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
-                    bool original = captured && snap!.NightModeEnabled!.Value;
-                    string description = captured
-                        ? $"night_mode={original}"
-                        : "unknown (not present in the devices listing for this doorbot) - restoring to disabled as a safe default";
-                    return new RestorePlan(description, captured, session => session.SetNightMode(target.DoorbotId!.Value, original));
-                }
-            },
-            new()
-            {
                 Key = "set-location-mode",
                 DisplayName = "Set location mode (arm/disarm)",
                 Description = "Reads the location's current mode, sets it to --location-mode-value to test it, then restores the mode that was read beforehand. Requires --location-mode-value; skipped if not provided. Briefly changes real security/arming state.",
                 SessionMethod = "Session.GetLocationMode(locationId) + Session.SetLocationMode(locationId, mode)",
                 HttpMethod = "GET, then POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 Invoke = async (session, target) =>
@@ -535,6 +556,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to ding push events",
                 Description = "Subscribes this account to ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToDingEvents(doorbotId)",
@@ -548,6 +570,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from ding push events",
                 Description = "Unsubscribes this account from ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromDingEvents(doorbotId)",
@@ -561,6 +584,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to motion push events",
                 Description = "Subscribes this account to motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToMotionEvents(doorbotId)",
@@ -574,6 +598,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from motion push events",
                 Description = "Unsubscribes this account from motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromMotionEvents(doorbotId)",
@@ -591,7 +616,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Enables Location Modes for a location that doesn't have them set up yet. Requires --destructive.",
                 SessionMethod = "Session.EnableLocationModes(locationId)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings/setup",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings/setup",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: one-time account setup action, not a toggle to revert - use disable-location-modes deliberately if you need to undo it.",
@@ -604,7 +629,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would disable Location Modes for a location, discarding its per-mode configuration. Always refuses to run - no safe way to auto-restore what was disabled. Included for completeness/discoverability only.",
                 SessionMethod = "Session.DisableLocationModes(locationId)",
                 HttpMethod = "DELETE",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -618,7 +643,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would overwrite a location's Location Mode settings. Requires a full settings payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
                 SessionMethod = "Session.SetLocationModeSettings(locationId, settingsJson)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -632,7 +657,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would overwrite a location's Location Mode sharing configuration. Requires a full payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
                 SessionMethod = "Session.SetLocationModeSharing(locationId, sharingJson)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/sharing",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -660,10 +685,12 @@ namespace VideoForensics.Providers.Ring
                 Description = "Sounds a REAL panic/user alarm for a monitored asset. Requires --asset-uuid (discover via account-monitoring-status); skipped if not provided. Audibly/visibly triggers real security response.",
                 SessionMethod = "Session.TriggerAlarm(locationId, assetUuid)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}/assets/{assetUuid}/userAlarm",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId}/assets/{assetUuid}/userAlarm",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 Physical = true,
+                NotApplicableWithoutAlarmHub = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: triggers a momentary alarm event, doesn't change a persisted setting.",
                 Invoke = (session, target) => !string.IsNullOrWhiteSpace(AssetUuid)
                     ? session.TriggerAlarm(target.LocationId!.Value, AssetUuid!)

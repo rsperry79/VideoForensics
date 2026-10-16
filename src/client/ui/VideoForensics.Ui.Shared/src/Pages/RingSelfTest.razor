@@ -1,4 +1,5 @@
 @page "/tools/ring-selftest"
+@page "/query/api-tester"
 @using VideoForensics.Ui.Shared.Layout
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Core.Api.Contracts
@@ -11,12 +12,17 @@
 @using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Contracts
 @using Microsoft.Extensions.Logging
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Resources
 @implements IAsyncDisposable
 @inject IRingSelfTestService SelfTestService
 @inject PairedSessionState SessionState
 @inject ISelfTestStatusSource StatusSource
 @inject ILogger<RingSelfTest> Logger
 @inject IStringLocalizer<RingSelfTest> L
+@inject IStringLocalizer<SharedResources> SharedL
+
+<Breadcrumb Items="@BreadcrumbItems" />
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <h4 style="margin: 0;">@L["Title"]</h4>
@@ -338,6 +344,14 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 }
 
 @code {
+    /// <summary>Sources &gt; Query API &gt; API Tester. The API Tester is the current page, so it has no link.</summary>
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], "/query"),
+        (SharedL["API Tester"], null)
+    ];
+
     private bool _isLoading = true;
     private bool _isRunning;
     private List<SelfTestEndpointDto> _allEndpoints = new();

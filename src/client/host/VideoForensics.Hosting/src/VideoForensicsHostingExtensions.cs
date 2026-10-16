@@ -78,7 +78,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
                 provider.GetRequiredService<IUserRepository>(),
-                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
+                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
+                endpoints: provider.GetService<VideoForensics.Providers.Ring.RingEndpointOptions>()
             );
         }
 
@@ -421,6 +422,7 @@ namespace VideoForensics.Hosting
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
             _ = services.AddScoped<ConfigToolsOrchestrator>();
+            _ = services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
 
             // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
             // optional capability - Ring's is registered here the same way its other four services

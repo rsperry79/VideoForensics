@@ -2,6 +2,8 @@ using ModelContextProtocol.Server;
 
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Contracts;
 
 namespace VideoForensics.WebApp.Mcp.Tools
 {
@@ -10,10 +12,12 @@ namespace VideoForensics.WebApp.Mcp.Tools
     public class JammingTools : ForensicsToolBase
     {
         private readonly JammingToolsOrchestrator _orchestrator;
+        private readonly IMcpCallerAuthorizer _authorizer;
 
-        public JammingTools(JammingToolsOrchestrator orchestrator, ILogger<JammingTools> logger) : base(logger)
+        public JammingTools(JammingToolsOrchestrator orchestrator, IMcpCallerAuthorizer authorizer, ILogger<JammingTools> logger) : base(logger)
         {
             _orchestrator = orchestrator;
+            _authorizer = authorizer;
         }
 
         /// <summary>Detects jamming/interference from the device's RSSI health-snapshot history over the given window, persists any incidents found, and returns the full analysis. Fetch the jamming-analysis resource first for interpretation guidance.</summary>
@@ -25,6 +29,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("RunJammingDetection: device={DeviceId}, from={FromUtc}, to={ToUtc}", deviceId, fromUtc, toUtc);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _orchestrator.AnalyzeJammingAsync(deviceId, fromUtc, toUtc, cancellationToken);
         }
 
@@ -41,6 +46,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("RecordJammingIncident: device={DeviceId}", deviceId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             (bool success, string? message, JammingIncidentRecord? record) = await _orchestrator.RecordJammingIncidentAsync(
                 deviceId, startUtc, endUtc, affectedEventCount, averageDegradationDb, confidence, notes, cancellationToken);
             return new RecordIncidentResult { Success = success, Message = message, Record = record };

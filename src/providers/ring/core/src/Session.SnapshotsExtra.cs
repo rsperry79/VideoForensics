@@ -19,12 +19,12 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's dedicated snapshot delivery host, separate from api.ring.com.
         /// </summary>
-        public Uri AppSnapsApiBaseUrl => new("https://app-snaps.ring.com/");
+        public Uri AppSnapsApiBaseUrl => _endpoints.AppSnapsApiBaseUrl;
 
         /// <summary>
         /// Base Uri for Ring's public recordings/footage host.
         /// </summary>
-        public Uri RingRecordingsApiBaseUrl => new("https://api.ring.com/recordings/public/");
+        public Uri RingRecordingsApiBaseUrl => _endpoints.RecordingsApiBaseUrl;
 
         /// <summary>
         /// Returns a previously captured snapshot identified by its UUID.

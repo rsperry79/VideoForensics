@@ -324,7 +324,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var sessionProvider = new Mock<ISessionProvider>();
-            var session = new Mock<Session>("testuser", "testpass", null, null);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session.Object);
             ILogger logger = new Mock<ILogger>().Object;
             IVideoForensicsDataClient dataClient = CreateMockDataClient();
@@ -361,7 +361,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var accountId = Guid.NewGuid();
             var sessionProvider = new Mock<ISessionProvider>();
-            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
 
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
 
@@ -385,7 +385,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var accountId = Guid.NewGuid();
             var sessionProvider = new Mock<ISessionProvider>();
-            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
 
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
 
@@ -414,7 +414,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             var accountId = Guid.NewGuid();
             var sessionProvider = new Mock<ISessionProvider>();
-            var mockSession = new Mock<Session>("testuser", "testpass", null, null);
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
 
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId)).Returns(mockSession.Object);
 
@@ -444,8 +444,8 @@ namespace VideoForensics.Providers.Ring.Tests
             var accountId1 = Guid.NewGuid();
             var accountId2 = Guid.NewGuid();
             var sessionProvider = new Mock<ISessionProvider>();
-            var mockSession1 = new Mock<Session>("user1", "pass1", null, null);
-            var mockSession2 = new Mock<Session>("user2", "pass2", null, null);
+            var mockSession1 = new Mock<Session>("user1", "pass1", null, null, null);
+            var mockSession2 = new Mock<Session>("user2", "pass2", null, null, null);
 
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId1)).Returns(mockSession1.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId2)).Returns(mockSession2.Object);

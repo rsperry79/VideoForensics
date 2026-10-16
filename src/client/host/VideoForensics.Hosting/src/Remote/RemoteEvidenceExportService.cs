@@ -29,7 +29,8 @@ namespace VideoForensics.Hosting.Remote
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? stepUpToken = null)
         {
             var request = new ExportEvidenceRequest(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase);
             string jsonContent = JsonSerializer.Serialize(request);
@@ -37,6 +38,10 @@ namespace VideoForensics.Hosting.Remote
             {
                 Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json")
             };
+            if (stepUpToken is not null)
+            {
+                httpRequest.Headers.Add("X-StepUp-Token", stepUpToken);
+            }
 
             HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, ct);
             _ = response.EnsureSuccessStatusCode();

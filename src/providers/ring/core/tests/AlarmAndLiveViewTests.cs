@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                $"api.ring.com/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
+                $"prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
                 System.Net.HttpStatusCode.OK,
                 @"{ ""assets"": [""asset-1""], ""ticket"": ""ticket-abc"", ""host"": ""asset-host.ring.com"" }");
             _ = await _mockSession.Authenticate();
@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                $"api.ring.com/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
+                $"prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
                 System.Net.HttpStatusCode.OK,
                 @"{ ""assets"": [""asset-1""], ""ticket"": ""ticket-abc"", ""host"": ""asset-host.ring.com"" }");
             _ = await _mockSession.Authenticate();
@@ -102,7 +102,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                $"api.ring.com/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
+                $"prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
                 System.Net.HttpStatusCode.OK,
                 @"{ ""assets"": [""asset-1""], ""ticket"": ""ticket-abc"", ""host"": ""asset-host.ring.com"" }");
             _ = await _mockSession.Authenticate();
@@ -145,7 +145,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                $"api.ring.com/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
+                $"prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationid={locationId:D}".ToLower(),
                 System.Net.HttpStatusCode.OK,
                 @"{ ""assets"": [""asset-1""], ""ticket"": ""ticket-abc"", ""host"": ""asset-host.ring.com"" }");
             _ = await _mockSession.Authenticate();
@@ -190,7 +190,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                "api.ring.com/api/v1/clap/ticket/request/signalsocket",
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""ticket"": ""signal-ticket-abc"" }");
             _ = await _mockSession.Authenticate();
@@ -236,7 +236,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                "api.ring.com/api/v1/clap/ticket/request/signalsocket",
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""ticket"": ""signal-ticket-abc"" }");
             _ = await _mockSession.Authenticate();
@@ -268,7 +268,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
             mockHandler.SetupResponse(
-                "api.ring.com/api/v1/clap/ticket/request/signalsocket",
+                "prd-api-us.prd.rings.solutions/api/v1/clap/ticket/request/signalsocket",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""ticket"": ""signal-ticket-abc"" }");
             _ = await _mockSession.Authenticate();

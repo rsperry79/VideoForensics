@@ -541,6 +541,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("ApiResponseHash")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("BaselineDriftChangeFraction")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime?>("BaselineDriftCheckedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("BaselineDriftDetected")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("DeviceFeaturesId")
                         .HasColumnType("TEXT");
 

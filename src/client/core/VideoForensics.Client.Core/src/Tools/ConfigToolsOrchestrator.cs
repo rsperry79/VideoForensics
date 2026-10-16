@@ -7,7 +7,7 @@ using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Tools
 {
-    public class ConfigToolsOrchestrator
+    public class ConfigToolsOrchestrator : VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator
     {
         private readonly ILogger<ConfigToolsOrchestrator> _logger;
         private readonly IForensicsConfigurationService _configService;
@@ -147,6 +147,28 @@ namespace VideoForensics.Client.Core.Tools
             await _configService.SaveConfigurationAsync(config, ct);
             _logger.LogInformation("Logging level set to {level}", level);
             return (true, $"Logging level updated to {level}");
+        }
+
+        public async Task<(bool Success, string Message)> SetHealthSyncAsync(
+            IForensicsConfiguration config,
+            bool enabled,
+            CancellationToken ct = default)
+        {
+            config.EnableHealthSync = enabled;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Health sync set to {enabled}", enabled);
+            return (true, enabled ? "Health sync enabled" : "Health sync disabled");
+        }
+
+        public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(
+            IForensicsConfiguration config,
+            bool enabled,
+            CancellationToken ct = default)
+        {
+            config.EnableMdnsAdvertisement = enabled;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("mDNS advertisement set to {enabled}", enabled);
+            return (true, enabled ? "mDNS advertisement enabled" : "mDNS advertisement disabled");
         }
 
         public async Task<(bool Success, string Message)> SetReportFormatAsync(

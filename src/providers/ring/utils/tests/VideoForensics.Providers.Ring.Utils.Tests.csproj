@@ -34,6 +34,10 @@
     <ProjectReference Include="../../core/src/VideoForensics.Providers.Ring.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- CliOptions is internal to the SelfTest exe; compile it in directly rather than referencing the exe. -->
+    <Compile Include="../../../../utils/selftest/src/CliOptions.cs" Link="Linked/CliOptions.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
   </ItemGroup>
 </Project>

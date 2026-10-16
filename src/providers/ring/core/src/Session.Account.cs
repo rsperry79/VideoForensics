@@ -74,7 +74,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's third-party integrations API.
         /// </summary>
-        public Uri RingIntegrationsApiBaseUrl => new("https://api.ring.com/integrations/");
+        public Uri RingIntegrationsApiBaseUrl => _endpoints.IntegrationsApiBaseUrl;
 
         /// <summary>
         /// Returns the Amazon Key lock associations for this account. Response shape is not

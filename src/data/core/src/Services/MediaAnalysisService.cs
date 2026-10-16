@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -21,11 +22,6 @@ namespace VideoForensics.Data.Core.Services
         /// </summary>
         public const int HistoryWindowClips = 500;
 
-        /// <summary>
-        /// Hemisphere used for season buckets. Fixed to northern until it becomes a per-install setting; southern installs
-        /// would otherwise bucket seasons six months out of phase.
-        /// </summary>
-        public const Hemisphere CameraHemisphere = Hemisphere.Northern;
 
         /// <summary>Clips needed before "this lighting mode is unusual for the device" can be judged.</summary>
         private const int UnusualLightingMinimumSamples = 10;
@@ -37,6 +33,8 @@ namespace VideoForensics.Data.Core.Services
         private const int AudioBaselineMinimumSamples = 10;
 
         private readonly IMediaItemRepository _items;
+        private readonly IDeviceRepository _devices;
+        private readonly Hemisphere _hemisphere;
         private readonly IMediaBitrateAnalyzer _bitrate;
         private readonly IClipColorAnalyzer _color;
         private readonly IAudioClipAnalyzer _audio;
@@ -45,12 +43,16 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Creates the service.</summary>
         public MediaAnalysisService(
             IMediaItemRepository items,
+            IDeviceRepository devices,
             IMediaBitrateAnalyzer bitrate,
             IClipColorAnalyzer color,
             IAudioClipAnalyzer audio,
+            IOptions<MediaAnalysisOptions> options,
             ILogger<MediaAnalysisService> logger)
         {
             _items = items;
+            _devices = devices;
+            _hemisphere = options.Value.Hemisphere;
             _bitrate = bitrate;
             _color = color;
             _audio = audio;
@@ -103,9 +105,25 @@ namespace VideoForensics.Data.Core.Services
             // Only compare like with like: a stream-reported bitrate is never pooled with an estimated one.
             List<BaselineSample> samples = clean
                 .Where(m => m.VideoBitrateBps is not null && ParseMode(m.LightingMode) is not null && m.BitrateEstimated == bitrate?.BitrateEstimated)
-                .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, ParseMode(m.LightingMode)!.Value, SeasonExtensions.FromMonth(m.RecordedAtUtc.Month, CameraHemisphere), Flagged: false))
+                .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, ParseMode(m.LightingMode)!.Value, SeasonExtensions.FromMonth(m.RecordedAtUtc.Month, _hemisphere), Flagged: false))
                 .ToList();
             BaselineSnapshot snapshot = SeasonalBaselineBuilder.Build(samples);
+
+            // Drift is a device property, not a clip one: a steady shift is reported for review, never folded into the baseline.
+            Device? device = await _devices.GetAsync(media.DeviceId, ct);
+            if (device is not null)
+            {
+                List<long> history = clean
+                    .Where(m => m.VideoBitrateBps is not null && m.BitrateEstimated == bitrate?.BitrateEstimated)
+                    .OrderBy(m => m.RecordedAtUtc)
+                    .Select(m => m.VideoBitrateBps!.Value)
+                    .ToList();
+                DriftReport drift = DriftDetector.Detect(history);
+                device.BaselineDriftDetected = drift.Drifting;
+                device.BaselineDriftChangeFraction = drift.ChangeFraction;
+                device.BaselineDriftCheckedAtUtc = DateTime.UtcNow;
+                await _devices.UpdateAsync(device, ct);
+            }
 
             // Without all three measurements the clip cannot be judged; say so rather than storing "no flags".
             if (bitrate is null || color is null || audio is null)
@@ -122,7 +140,7 @@ namespace VideoForensics.Data.Core.Services
             bool bitrateCollapsed = false;
             if (ParseMode(media.LightingMode) is { } mode)
             {
-                BitrateBaseline? baseline = snapshot.Get(mode, SeasonExtensions.FromMonth(media.RecordedAtUtc.Month, CameraHemisphere));
+                BitrateBaseline? baseline = snapshot.Get(mode, SeasonExtensions.FromMonth(media.RecordedAtUtc.Month, _hemisphere));
                 bitrateCollapsed = InterferenceAssessor.Assess(bitrate.VideoBitrateBps, baseline).InterferenceSuspected;
             }
 

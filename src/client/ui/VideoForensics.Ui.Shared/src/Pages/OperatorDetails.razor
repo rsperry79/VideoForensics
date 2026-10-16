@@ -7,6 +7,7 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject IStringLocalizer<OperatorDetails> L
+@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
 @inject VideoForensics.Client.Common.Contracts.IAdminOperatorService AdminOperatorService
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -16,7 +17,7 @@
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
-        <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a> @L["SignInToManage"]
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToManage"]
     </div>
 }
 
@@ -195,7 +196,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Operators", "/settings/operators"), ("Operator Details", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private bool _isLoading = true;
     private Operator? _operator;
     private string? _authError;
@@ -237,6 +238,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (SharedL["Operators"], "/settings/operators"), (L["Title"], null) };
         await LoadUiModeAsync();
         await LoadAsync();
     }

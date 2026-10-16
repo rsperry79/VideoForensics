@@ -92,4 +92,7 @@
   <data name="ExportFailed" xml:space="preserve">
     <value>Export failed: {0}</value>
   </data>
+  <data name="StepUpFailed" xml:space="preserve">
+    <value>Passkey confirmation was not completed, so the evidence was not exported.</value>
+  </data>
 </root>

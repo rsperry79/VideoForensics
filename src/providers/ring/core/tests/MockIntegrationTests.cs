@@ -691,7 +691,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public async Task MockSession_SetDoNotDisturb_CallsChimeEndpointWithPut()
+        public async Task MockSession_SetDoNotDisturb_CallsChimeEndpointWithPost()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
@@ -701,7 +701,40 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("do_not_disturb"));
             Assert.NotNull(Url);
-            Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(System.Net.Http.HttpMethod.Post, Method);
+        }
+
+        [Theory]
+        [InlineData(60, 1)]
+        [InlineData(61, 2)]
+        [InlineData(300, 5)]
+        public async Task MockSession_SetDoNotDisturb_SendsTimeInMinutesRoundedUp(int seconds, int expectedMinutes)
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetDoNotDisturb(789012, seconds);
+
+            string? body = mockHandler.RequestBodies.LastOrDefault(r => r.Url.Contains("do_not_disturb")).Body;
+            Assert.NotNull(body);
+            using var doc = System.Text.Json.JsonDocument.Parse(body!);
+            Assert.Equal(expectedMinutes, doc.RootElement.GetProperty("time").GetInt32());
+        }
+
+        [Fact]
+        public async Task MockSession_SetDoNotDisturb_ClampsTimeToMaxOf1440Minutes()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetDoNotDisturb(789012, 10 * 24 * 60 * 60);
+
+            string? body = mockHandler.RequestBodies.LastOrDefault(r => r.Url.Contains("do_not_disturb")).Body;
+            Assert.NotNull(body);
+            using var doc = System.Text.Json.JsonDocument.Parse(body!);
+            Assert.Equal(1440, doc.RootElement.GetProperty("time").GetInt32());
         }
 
         [Fact]
@@ -838,7 +871,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""mode"": ""away"" }");
             _ = await _mockSession!.Authenticate();
@@ -855,13 +888,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}",
                 System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationMode(locationId, "home");
 
-            (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"rs/mode/location/{locationId:D}"));
+            (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains($"mode/location/{locationId:D}"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Post, Method);
         }
@@ -1165,7 +1198,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}/settings",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""enabled"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1180,7 +1213,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSettings(locationId, @"{ ""enabled"": false }");
@@ -1195,7 +1228,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.EnableLocationModes(locationId);
@@ -1210,7 +1243,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.DisableLocationModes(locationId);
@@ -1226,7 +1259,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/mode/location/{locationId:D}/sharing",
+                $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""shareable"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1241,7 +1274,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"api.ring.com/rs/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSharing(locationId, @"{ ""shareable"": false }");
@@ -1259,7 +1292,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/monitoring/accounts/{locationId:D}",
+                $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}",
                 System.Net.HttpStatusCode.OK,
                 @"{ ""active"": true }");
             _ = await _mockSession!.Authenticate();
@@ -1276,7 +1309,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             string assetUuid = "asset-1";
             mockHandler.SetupResponse(
-                $"api.ring.com/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
+                $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
                 System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
@@ -1484,22 +1517,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public async Task MockSession_GetLocation_ReturnsRawJson()
-        {
-            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse(
-                $"api.ring.com/clients_api/locations/{locationId:D}",
-                System.Net.HttpStatusCode.OK,
-                @"{ ""name"": ""Home"" }");
-            _ = await _mockSession!.Authenticate();
-
-            JsonElement location = await _mockSession!.GetLocation(locationId);
-
-            Assert.Equal("Home", location.GetProperty("name").GetString());
-        }
-
-        [Fact]
         public async Task MockSession_GetLinkedChimeDoorbots_ReturnsRawJson()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
@@ -1550,7 +1567,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_Phase16Methods_ThrowWhenNotAuthenticated()
         {
             Session session = _mockHelper!.CreateSessionWithMockHandler();
-            var locationId = Guid.NewGuid();
 
             static async Task ExpectNotAuthenticated(Func<Task> action)
             {
@@ -1563,7 +1579,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             await ExpectNotAuthenticated(() => session.GetActiveDings());
-            await ExpectNotAuthenticated(() => session.GetLocation(locationId));
             await ExpectNotAuthenticated(() => session.GetLinkedChimeDoorbots(789012));
         }
 

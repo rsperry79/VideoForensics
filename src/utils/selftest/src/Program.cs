@@ -68,7 +68,7 @@ namespace VideoForensics.Utils.SelfTest
         /// no fixed key-ring path meant a token saved by one run couldn't reliably be decrypted by
         /// the next).
         /// </summary>
-        private static IServiceProvider BuildServiceProvider(string? dbPath)
+        private static IServiceProvider BuildServiceProvider(string? dbPath, VideoForensics.Providers.Ring.RingEndpointOptions? endpoints = null)
         {
             var services = new ServiceCollection();
             _ = services.AddLogging(b => b.AddProvider(new ConsoleWarningErrorLoggerProvider()));
@@ -88,6 +88,12 @@ namespace VideoForensics.Utils.SelfTest
             if (OperatingSystem.IsWindows())
             {
                 _ = dataProtectionBuilder.ProtectKeysWithDpapi();
+            }
+
+            if (endpoints is not null)
+            {
+                // Picked up by RingAuthService so every Session it creates targets the overridden hosts.
+                _ = services.AddSingleton(endpoints);
             }
 
             _ = services.AddVideoForensicsDataLayer(dbPath);
@@ -142,7 +148,7 @@ namespace VideoForensics.Utils.SelfTest
 
             // Same DI composition root as WebApp/the legacy console app, so credentials and their
             // encryption keys are shared with the rest of the app instead of living in a SelfTester-only silo.
-            IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath);
+            IServiceProvider serviceProvider = BuildServiceProvider(options.DbPath, options.ToEndpointOptions());
 
             ILogger<SelfTesterLogCategory> initLogger = serviceProvider.GetRequiredService<ILogger<SelfTesterLogCategory>>();
             try

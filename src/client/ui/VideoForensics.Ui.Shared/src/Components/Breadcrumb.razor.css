@@ -1,0 +1,6 @@
+/* Separator between crumbs; kept in CSS so the link/label text stays clean for assistive tech and tests. */
+.breadcrumb-trail > li + li::before {
+    content: "›";
+    padding-right: 0.5rem;
+    color: #999;
+}

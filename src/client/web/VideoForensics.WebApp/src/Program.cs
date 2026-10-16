@@ -9,6 +9,7 @@ using Syncfusion.Blazor;
 using System.Threading.RateLimiting;
 
 using VideoForensics.Core.Logging.DependencyInjection;
+using VideoForensics.WebApp.Services.CircuitGuards;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -283,6 +284,9 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
 
+// Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
+builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
+
 // Forensics query repositories (Phases 1-4) - MCP tools (Milestone 8 HTTP hosting)
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ITimelineRepository, VideoForensics.Data.Database.Repositories.TimelineRepository>();
 _ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRepository, VideoForensics.Data.Database.Repositories.IntegrityRepository>();
@@ -394,6 +398,7 @@ builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
@@ -420,6 +425,11 @@ builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
 builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
+
+    // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
+    // they wrap, so each decorator wraps the final registration.
+    builder.Services.AddCircuitOperatorGuards();
+    builder.Services.AddScoped<VideoForensics.WebApp.Contracts.IMcpCallerAuthorizer, VideoForensics.WebApp.Mcp.McpCallerAuthorizer>();
 
     WebApplication app = builder.Build();
 
