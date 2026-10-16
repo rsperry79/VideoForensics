@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Moq;
-using Syncfusion.Blazor.DropDowns;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Components.Inspector;
+using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Resources;
@@ -29,6 +29,7 @@ public class QueryApiPage_Tests : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         Services.AddSingleton(new ScopeState());
+        Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
         Services.AddSingleton(new Mock<IProviderAuthService>().Object);
@@ -63,30 +64,18 @@ public class QueryApiPage_Tests : BunitContext
     }
 
     [Fact]
-    public void QueryApiPage_LocationDropdown_ListsLoadedLocationsByNameWithIdValue()
+    public void QueryApiPage_SubpageButtons_LinkToDevicesEventsAndConfig()
     {
-        _discovery.Setup(d => d.GetLocationsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Location>
-            {
-                new("loc-1", "Home", "1 Main St"),
-                new("loc-2", "Office", null),
-            });
-
         var cut = Render<QueryApi>();
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Get Locations").Click();
-        cut.WaitForState(() => cut.FindComponents<ForensicGrid<Location>>().Count == 1);
 
-        var panel = Render(GetRightPanelContent());
-        var dropdown = panel.FindComponents<SfDropDownList<string, QueryApiSelectOption>>()
-            .Single(c => c.Instance.ID == "query-api-location-filter");
-        var options = dropdown.Instance.DataSource!.ToList();
-
-        Assert.Equal(new[] { "Home", "Office" }, options.Select(o => o.Label));
-        Assert.Equal(new[] { "loc-1", "loc-2" }, options.Select(o => o.Value));
+        var hrefs = cut.FindAll("a").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"))).ToList();
+        Assert.Contains(("Devices", "/query/devices"), hrefs);
+        Assert.Contains(("Events", "/query/events"), hrefs);
+        Assert.Contains(("Config", "/query/config"), hrefs);
     }
 
     [Fact]
-    public async Task QueryApiPage_LocationRowSelected_SetsLocationDropdownValue()
+    public async Task QueryApiPage_LocationRowSelected_SetsSharedLocationId()
     {
         _discovery.Setup(d => d.GetLocationsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Location>
@@ -102,17 +91,6 @@ public class QueryApiPage_Tests : BunitContext
         var grid = cut.FindComponent<ForensicGrid<Location>>();
         await cut.InvokeAsync(() => grid.Instance.OnRowSelected.InvokeAsync(new Location("loc-2", "Office", null)));
 
-        var panel = Render(GetRightPanelContent());
-        var dropdown = panel.FindComponents<SfDropDownList<string, QueryApiSelectOption>>()
-            .Single(c => c.Instance.ID == "query-api-location-filter");
-        Assert.Equal("loc-2", dropdown.Instance.Value);
-    }
-
-    private RenderFragment GetRightPanelContent()
-    {
-        var content = Services.GetRequiredService<RightPanelContentService>().Content;
-        Assert.NotNull(content);
-        return content;
+        Assert.Equal("loc-2", Services.GetRequiredService<IQueryApiFilterState>().LocationId);
     }
 }
-

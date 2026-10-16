@@ -155,4 +155,10 @@
   <data name="ColLocationId" xml:space="preserve">
     <value>Location Id</value>
   </data>
+  <data name="Config" xml:space="preserve">
+    <value>Config</value>
+  </data>
+  <data name="Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
 </root>

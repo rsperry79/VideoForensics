@@ -1,0 +1,70 @@
+@page "/query/config"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Components.Dump
+@using VideoForensics.Core.Providers.Common.Contracts
+@inject IEventAndConfigService EventAndConfigService
+@inject IStringLocalizer<QueryApiConfig> L
+@inject IStringLocalizer<SharedResources> SharedL
+
+<Breadcrumb Items="@BreadcrumbItems" />
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Title"]</h5>
+    <div class="d-flex flex-row gap-2 mb-2">
+        <label>@L["LabelDeviceId"]</label>
+        <SfTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" Style="max-width: 200px;" />
+        <SfButton Content="@L["GetConfig"]" OnClick="RunDeviceConfigAsync" CssClass="e-primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+    </div>
+    @if (!string.IsNullOrEmpty(_configError))
+    {
+        <div class="alert alert-danger mt-2">@_configError</div>
+    }
+    @if (_configLoadedOnce)
+    {
+        @if (_config is null)
+        {
+            <p class="mt-2">@L["NoConfigFound"]</p>
+        }
+        else
+        {
+            <DumpView Value="@_config" InitialExpandDepth="2" Class="mt-2" />
+        }
+    }
+</div>
+
+@code {
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], "/query"),
+        (L["Title"], null)
+    ];
+
+    // Device Config (its own device id input, unchanged)
+    private string _configDeviceIdInput = string.Empty;
+    private bool _configLoading;
+    private bool _configLoadedOnce;
+    private string? _configError;
+    private VideoForensics.Core.Providers.Common.Contracts.DeviceConfig? _config;
+
+    private async Task RunDeviceConfigAsync()
+    {
+        _configLoading = true;
+        _configError = null;
+        try
+        {
+            _config = await EventAndConfigService.GetDeviceConfigAsync(_configDeviceIdInput, CancellationToken.None);
+            _configLoadedOnce = true;
+        }
+        catch (Exception ex)
+        {
+            _configError = L["FailedToGetConfig", ex.Message];
+        }
+        finally
+        {
+            _configLoading = false;
+        }
+    }
+}
