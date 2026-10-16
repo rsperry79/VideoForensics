@@ -198,7 +198,8 @@ namespace VideoForensics.Providers.Ring
 
             index.Summary.TotalCalls = index.Calls.Count;
             index.Summary.Succeeded = index.Calls.Count(c => c.Success);
-            index.Summary.Failed = index.Calls.Count(c => !c.Success);
+            index.Summary.NotApplicable = index.Calls.Count(c => c.Status == CallStatusClassifier.NotApplicable);
+            index.Summary.Failed = index.Calls.Count(c => c.Status == CallStatusClassifier.Failed);
 
             return index;
         }
@@ -376,6 +377,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             record.ResultFile = primaryResultFile;
+            record.Status = CallStatusClassifier.Classify(descriptor, record.Success, raw.Select(r => r.StatusCode));
 
             return (record, invokeResult);
         }

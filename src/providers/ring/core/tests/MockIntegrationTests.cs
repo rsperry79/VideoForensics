@@ -1484,22 +1484,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public async Task MockSession_GetLocation_ReturnsRawJson()
-        {
-            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse(
-                $"api.ring.com/clients_api/locations/{locationId:D}",
-                System.Net.HttpStatusCode.OK,
-                @"{ ""name"": ""Home"" }");
-            _ = await _mockSession!.Authenticate();
-
-            JsonElement location = await _mockSession!.GetLocation(locationId);
-
-            Assert.Equal("Home", location.GetProperty("name").GetString());
-        }
-
-        [Fact]
         public async Task MockSession_GetLinkedChimeDoorbots_ReturnsRawJson()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
@@ -1550,7 +1534,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_Phase16Methods_ThrowWhenNotAuthenticated()
         {
             Session session = _mockHelper!.CreateSessionWithMockHandler();
-            var locationId = Guid.NewGuid();
 
             static async Task ExpectNotAuthenticated(Func<Task> action)
             {
@@ -1563,7 +1546,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             await ExpectNotAuthenticated(() => session.GetActiveDings());
-            await ExpectNotAuthenticated(() => session.GetLocation(locationId));
             await ExpectNotAuthenticated(() => session.GetLinkedChimeDoorbots(789012));
         }
 

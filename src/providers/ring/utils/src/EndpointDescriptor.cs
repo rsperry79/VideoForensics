@@ -49,6 +49,8 @@ namespace VideoForensics.Providers.Ring
         public Func<EndpointTarget, RestorePlan?>? PrepareRestore { get; init; }
         /// <summary>Why a destructive endpoint has no PrepareRestore - shown in index.json instead of leaving it unexplained.</summary>
         public string? NoRestoreReason { get; init; }
+        /// <summary>Alarm-hub-only endpoint: on a camera-only account its 404 means "not applicable", not a failure (see CallStatusClassifier).</summary>
+        public bool NotApplicableWithoutAlarmHub { get; init; }
     }
 
     /// <summary>
@@ -109,6 +111,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode",
+                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode",
                 Description = "Current home/away/disarmed mode for a location (camera-only locations without an Alarm hub).",
                 SessionMethod = "Session.GetLocationMode(locationId)",
@@ -208,6 +211,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode-settings",
+                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode settings",
                 Description = "Location Mode configuration (e.g. per-mode alert settings) for a location.",
                 SessionMethod = "Session.GetLocationModeSettings(locationId)",
@@ -219,6 +223,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode-sharing",
+                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode sharing",
                 Description = "Location Mode sharing configuration for a location.",
                 SessionMethod = "Session.GetLocationModeSharing(locationId)",
@@ -230,6 +235,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "account-monitoring-status",
+                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Alarm monitoring status",
                 Description = "Alarm monitoring account status for a location.",
                 SessionMethod = "Session.GetAccountMonitoringStatus(locationId)",
@@ -292,17 +298,6 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://api.ring.com/clients_api/dings/active",
                 Scope = EndpointScope.None,
                 Invoke = (session, _) => session.GetActiveDings()
-            },
-            new()
-            {
-                Key = "location-details",
-                DisplayName = "Location details",
-                Description = "Single-location detail lookup under clients_api, distinct from the locations endpoint's devices/v1 listing.",
-                SessionMethod = "Session.GetLocation(locationId)",
-                HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}",
-                Scope = EndpointScope.PerLocation,
-                Invoke = (session, target) => session.GetLocation(target.LocationId!.Value)
             },
             new()
             {
