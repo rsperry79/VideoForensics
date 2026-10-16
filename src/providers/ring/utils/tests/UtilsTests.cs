@@ -219,6 +219,16 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void EndpointRegistry_AppLocationHistory_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("app-location-history");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+        }
+
+        [Fact]
         public void EndpointRegistry_SignallingTicket_IsNotApplicableWithoutAlarmHub()
         {
             EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");

@@ -267,6 +267,17 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "app-location-history",
+                DisplayName = "App location history",
+                Description = "Location history from the app API (rs/history), distinct from the evm/v2 location-history.",
+                SessionMethod = "Session.GetAppLocationHistoryAsync(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/history?accountId={locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetAppLocationHistoryAsync(target.LocationId!.Value)
+            },
+            new()
+            {
                 Key = "profile",
                 DisplayName = "Account profile",
                 Description = "Profile of the currently authenticated account.",
