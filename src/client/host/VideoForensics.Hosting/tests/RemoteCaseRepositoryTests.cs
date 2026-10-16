@@ -584,5 +584,48 @@ namespace VideoForensics.Hosting.Tests
         }
 
         #endregion
+
+        #region ListForProviderAccountAsync Tests
+
+        [Fact]
+        public async Task ListForProviderAccountAsync_CallsAccountCasesRoute_ReturnsEntitiesWithoutCreatedBy()
+        {
+            var accountId = Guid.NewGuid();
+            var caseDto = new AccountCaseDto(
+                Id: Guid.NewGuid(),
+                CaseNumber: "detected-2026-10-15-12-00-0",
+                Title: "Driveway motion",
+                Status: "Open",
+                CaseType: "Detected",
+                ScopeFromUtc: DateTime.UtcNow.AddDays(-7),
+                CreatedAtUtc: DateTime.UtcNow.AddDays(-1));
+            string json = JsonSerializer.Serialize(new List<AccountCaseDto> { caseDto }, JsonOptions);
+
+            FakeHttpMessageHandler handler = new(async req =>
+            {
+                await Task.Yield();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+
+            HttpClient httpClient = CreateHttpClientWithHandler(handler);
+            var repo = new RemoteCaseRepository(httpClient);
+
+            IReadOnlyList<ForensicCase> result = await repo.ListForProviderAccountAsync(accountId, CancellationToken.None);
+
+            Assert.NotNull(handler.CapturedRequest);
+            Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
+            Assert.Equal($"/api/v1/accounts/provider-accounts/{accountId}/cases", handler.CapturedRequest.RequestUri?.PathAndQuery);
+            ForensicCase entity = Assert.Single(result);
+            Assert.Equal(caseDto.Id, entity.Id);
+            Assert.Equal(caseDto.CaseNumber, entity.CaseNumber);
+            Assert.Equal(caseDto.Title, entity.Title);
+            Assert.Equal(CaseStatus.Open, entity.Status);
+            Assert.Equal(string.Empty, entity.CreatedBy);
+        }
+
+        #endregion
     }
 }

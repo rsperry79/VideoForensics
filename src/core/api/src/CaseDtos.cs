@@ -126,9 +126,59 @@ namespace VideoForensics.Core.Api.Contracts
         string Reason
     );
 
-    /// <summary>Extension methods for mapping ForensicCase entities to/from ForensicCaseDto.</summary>
+    /// <summary>
+    /// Row for the account details page's case list. Case type is derived server-side from the case number prefix
+    /// so clients never parse case numbers.
+    /// </summary>
+    /// <param name="Id">Case ID, used for navigation.</param>
+    /// <param name="CaseNumber">Unique case number.</param>
+    /// <param name="Title">Case title.</param>
+    /// <param name="Status">Current status (Open or Closed).</param>
+    /// <param name="CaseType">Detected, Suspected, Manual, or Other.</param>
+    /// <param name="ScopeFromUtc">Date of event (start of the scope window, UTC), null when unset.</param>
+    /// <param name="CreatedAtUtc">Timestamp when the case was created.</param>
+    public record AccountCaseDto(
+        Guid Id,
+        string CaseNumber,
+        string Title,
+        string Status,
+        string CaseType,
+        DateTime? ScopeFromUtc,
+        DateTime CreatedAtUtc
+    );
+
+    /// <summary>Extension methods for mapping ForensicCase entities to/from ForensicCaseDto and AccountCaseDto.</summary>
     public static class ForensicCaseDtoMapping
     {
+        /// <summary>Converts a ForensicCase entity to an AccountCaseDto, deriving CaseType from CaseNumber.</summary>
+        public static AccountCaseDto ToDto(this VideoForensics.Data.Common.Entities.ForensicCase entity)
+        {
+            return new AccountCaseDto(
+                Id: entity.Id,
+                CaseNumber: entity.CaseNumber,
+                Title: entity.Title,
+                Status: entity.Status.ToString(),
+                CaseType: VideoForensics.Data.Common.Entities.CaseTypeClassifier.FromCaseNumber(entity.CaseNumber),
+                ScopeFromUtc: entity.ScopeFromUtc,
+                CreatedAtUtc: entity.CreatedAtUtc);
+        }
+
+        /// <summary>Converts an AccountCaseDto back to a partial ForensicCase entity (list fields only).</summary>
+        public static VideoForensics.Data.Common.Entities.ForensicCase ToDomain(this AccountCaseDto dto)
+        {
+            return new VideoForensics.Data.Common.Entities.ForensicCase
+            {
+                Id = dto.Id,
+                CaseNumber = dto.CaseNumber,
+                Title = dto.Title,
+                Status = Enum.Parse<VideoForensics.Data.Common.Entities.CaseStatus>(dto.Status),
+                CreatedBy = string.Empty,
+                CreatedAtUtc = dto.CreatedAtUtc,
+                UpdatedAtUtc = dto.CreatedAtUtc,
+                ScopeFromUtc = dto.ScopeFromUtc
+            };
+        }
+
         /// <summary>
         /// Converts a ForensicCase entity to a ForensicCaseDto.
         /// DeviceIds are provided separately by the caller (from GetDeviceIdsAsync).

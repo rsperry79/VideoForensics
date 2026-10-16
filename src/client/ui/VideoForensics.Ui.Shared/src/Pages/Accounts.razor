@@ -2,20 +2,22 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Core.Providers.Common.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
-@using VideoForensics.Ui.Shared.Services
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IUserRepository UserRepository
-@inject IProviderAuthService AuthService
-@inject IMultiProviderAuthService MultiProviderAuthService
-@inject IForensicsConfiguration ForensicsConfig
-@inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<Accounts> L
-@inject AccountSelectionState AccountSelectionState
-@inject PairedSessionState SessionState
-@inject WebAuthnClient WebAuthn
 @inject NavigationManager NavigationManager
 
 <h4 class="mb-4">@L["Title"]</h4>
+
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterProviders"]</small>
+        <SfMultiSelect TValue="string[]" TItem="string" DataSource="@_providerNames"
+            Value="@_selectedProviders" ValueChanged="OnProvidersChanged"
+            Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
+        </SfMultiSelect>
+    </div>
+</PageRightPanelContent>
 
 @if (_isLoading)
 {
@@ -23,36 +25,31 @@
 }
 else
 {
-    @if (!string.IsNullOrEmpty(_statusMessage))
-    {
-        <p>@_statusMessage</p>
-    }
-
     @if (_rows.Count == 0)
     {
         <p>@L["NoAccountsLinked"]</p>
     }
     else
     {
-        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true" AutoFit="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn HeaderText="" Width="60px" AllowSorting="false" AllowFiltering="false">
+                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]">
                     <Template>
                         @{
                             var row = (AccountRow)context;
                             @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
                             {
-                                <i class="material-icons" style="color: #d32f2f; cursor: help;" title="@($"{row.Account.LastErrorMessage}\n(as of {row.Account.LastErrorUtc?.ToString() ?? "unknown"})")">error</i>
+                                <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n(as of {row.Account.LastErrorUtc?.ToString() ?? L["UnknownTime"]})")">error</i>
                             }
+                            <span>@row.DisplayName</span>
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" MinWidth="100" />
-                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" MinWidth="100" />
-                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" MinWidth="100" />
-                <GridColumn HeaderText="@L["ColLastAuth"]" MinWidth="100">
+                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
+                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
+                <GridColumn HeaderText="@L["ColLastAuth"]">
                     <Template>
                         @{
                             var row = (AccountRow)context;
@@ -60,45 +57,17 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn HeaderText="" MinWidth="100">
+                <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
                     <Template>
                         @{
                             var row = (AccountRow)context;
-                            @if (_confirmingRemoveId == row.Account.Id)
-                            {
-                                <div class="d-flex gap-2">
-                                    <p>@L["AreYouSure"]</p>
-                                    <SfButton Content="@L["Yes"]" OnClick="() => RemoveAccountAsync(row.Account.Id)" Disabled="@_isBusy" CssClass="e-success" />
-                                    <SfButton Content="@L["No"]" OnClick="() => _confirmingRemoveId = null" Disabled="@_isBusy" CssClass="e-outline" />
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="d-flex gap-2">
-                                    @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
-                                    {
-                                        <SfButton Content="@L["Login"]" OnClick="() => OpenReAuthDialog(row)" Disabled="@_isBusy" CssClass="e-warning" />
-                                    }
-                                    <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
-                                    <SfButton Content="@L["Schedule"]" OnClick="@((UIMouseEventArgs) => GoToAccountScheduleAsync(row.Account.Id))" Disabled="@_isBusy" CssClass="e-info" />
-                                    <SfButton Content="@(row.Account.Id == _selectedAccountId ? L["Selected"] : L["Select"])" OnClick="() => SelectAccountAsync(row.Account.Id)" Disabled="@(_isBusy || row.Account.Id == _selectedAccountId)" CssClass="e-primary" />
-                                    <SfButton Content="@L["Remove"]" OnClick="() => _confirmingRemoveId = row.Account.Id" Disabled="@_isBusy" CssClass="e-danger" />
-                                </div>
-                            }
+                            <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
                         }
                     </Template>
                 </GridColumn>
             </GridColumns>
         </SfGrid>
     }
-}
-
-@if (_reAuthAccount is not null)
-{
-    <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
-                  ProviderName="@_reAuthAccount.Account.ProviderName"
-                  InitialEmail="@_reAuthAccount.DisplayName"
-                  OnAuthenticated="HandleReAuthenticatedAsync" />
 }
 
 <div class="mt-4">
@@ -109,14 +78,10 @@ else
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private List<AccountRow> _rows = new();
-    private Guid? _selectedAccountId;
+    private List<string> _providerNames = new();
+    private string[] _selectedProviders = Array.Empty<string>();
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private bool _isLoading = true;
-    private bool _isBusy;
-    private string? _statusMessage;
-    private Guid? _confirmingRemoveId;
-    private bool _reAuthDialogVisible;
-    private AccountRow? _reAuthAccount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,8 +115,10 @@ else
             }
 
             _rows = rows;
-            _filteredRows = _rows;
-            _selectedAccountId = await AccountSelectionState.GetSelectedAccountIdAsync(rows.Select(r => r.Account.Id).ToList());
+            _providerNames = rows.Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
+            // Every provider is selected by default so the grid starts with all accounts visible.
+            _selectedProviders = _providerNames.ToArray();
+            ApplyProviderFilter();
         }
         finally
         {
@@ -159,84 +126,16 @@ else
         }
     }
 
-    private async Task SelectAccountAsync(Guid accountId)
+    private void OnProvidersChanged(string[] selected)
     {
-        _isBusy = true;
-        _statusMessage = null;
-        try
-        {
-            _selectedAccountId = accountId;
-            await AccountSelectionState.SetSelectedAccountIdAsync(accountId);
-
-            // The server-side active account still drives downloads, so keep it in step with this browser's choice.
-            ForensicsConfig.ActiveProviderAccountId = accountId;
-            try
-            {
-                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-            }
-            catch (NotSupportedException)
-            {
-                _statusMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
-                return;
-            }
-
-            var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
-            _statusMessage = resumed
-                ? L["SwitchedAndResumed"]
-                : L["SwitchedNotResumed"];
-        }
-        catch (Exception ex)
-        {
-            _statusMessage = L["CouldNotSwitch", ex.Message];
-        }
-        finally
-        {
-            _isBusy = false;
-        }
+        _selectedProviders = selected ?? Array.Empty<string>();
+        ApplyProviderFilter();
     }
 
-    private async Task RemoveAccountAsync(Guid accountId)
+    private void ApplyProviderFilter()
     {
-        _isBusy = true;
-        _confirmingRemoveId = null;
-        _statusMessage = null;
-        try
-        {
-            await SessionState.EnsureLoadedAsync();
-            // Session state loads lazily; the token is only populated after this.
-            // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken ?? throw new InvalidOperationException("Not signed in."));
-            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
-            using HttpResponseMessage response = await client.DeleteAsync($"api/v1/accounts/provider-accounts/{accountId}", CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-
-            if (ForensicsConfig.ActiveProviderAccountId == accountId)
-            {
-                ForensicsConfig.ActiveProviderAccountId = null;
-                try
-                {
-                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-                }
-                catch (NotSupportedException)
-                {
-                    _statusMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
-                    return;
-                }
-            }
-
-            await LoadAccountsAsync();
-            _statusMessage = L["AccountRemoved"];
-        }
-        catch (Exception ex)
-        {
-            _statusMessage = L["CouldNotRemove", ex.Message];
-        }
-        finally
-        {
-            _isBusy = false;
-        }
+        var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
+        _filteredRows = _rows.Where(r => selected.Contains(r.Account.ProviderName)).ToList();
     }
 
     private void GoToAddAccount()
@@ -244,38 +143,8 @@ else
         NavigationManager.NavigateTo("/accounts/add");
     }
 
-    private async Task HandleAccountAddedAsync(AuthResult result)
-    {
-        _statusMessage = L["AccountAdded"];
-        await LoadAccountsAsync();
-    }
-
     private void GoToAccountDetailsAsync(Guid accountId)
     {
         NavigationManager.NavigateTo($"/accounts/{accountId}");
-    }
-
-    private void GoToAccountScheduleAsync(Guid accountId)
-    {
-        NavigationManager.NavigateTo($"/accounts/{accountId}/schedule");
-    }
-
-    private void OpenReAuthDialog(AccountRow row)
-    {
-        _reAuthAccount = row;
-        _reAuthDialogVisible = true;
-    }
-
-    private async Task HandleReAuthenticatedAsync(AuthResult result)
-    {
-        if (result.Success)
-        {
-            _statusMessage = L["AccountReauthenticated"];
-            await LoadAccountsAsync();
-        }
-        else
-        {
-            _statusMessage = L["CouldNotSwitch", result.ErrorMessage ?? "Authentication failed."];
-        }
     }
 }

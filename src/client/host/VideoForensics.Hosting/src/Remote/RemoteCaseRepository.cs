@@ -99,6 +99,20 @@ namespace VideoForensics.Hosting.Remote
             return (dtos ?? []).Select(x => x.ToDomain()).ToList();
         }
 
+        /// <summary>
+        /// Calls the account-scoped case route. The server returns <see cref="AccountCaseDto"/> rows, which carry only
+        /// the list-view fields, so the returned entities leave CreatedBy empty, UpdatedAtUtc equal to CreatedAtUtc,
+        /// and Description, LeadOperatorId, and ClosedBy/ClosedAtUtc unset. Callers needing full details must call GetAsync.
+        /// </summary>
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{providerAccountId}/cases", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<AccountCaseDto>? dtos = await response.Content.ReadFromJsonAsync<List<AccountCaseDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+        }
+
         /// <inheritdoc />
         public async Task UpdateDetailsAsync(
             Guid id,

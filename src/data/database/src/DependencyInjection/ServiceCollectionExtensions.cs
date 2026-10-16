@@ -27,6 +27,7 @@ namespace VideoForensics.Data.Database.DependencyInjection
             services.TryAddScoped<IUserRepository, UserRepository>();
             services.TryAddScoped<IProviderAccountRepository, ProviderAccountRepository>();
             services.TryAddScoped<ISyncScheduleRepository, SyncScheduleRepository>();
+            services.TryAddScoped<IProviderSyncRunRepository, ProviderSyncRunRepository>();
             services.TryAddScoped<IRingAccountRepository, RingAccountRepository>();
             services.TryAddScoped<ILocationRepository, LocationRepository>();
             services.TryAddScoped<IDeviceRepository, DeviceRepository>();

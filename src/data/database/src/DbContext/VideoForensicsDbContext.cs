@@ -205,6 +205,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the alerts triggered by jamming detection.</summary>
         public DbSet<Alert> Alerts { get; set; }
 
+        /// <summary>Gets or sets one row per account sync attempt (manual or initial).</summary>
+        public DbSet<ProviderSyncRun> ProviderSyncRuns { get; set; }
+
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
