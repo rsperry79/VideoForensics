@@ -62,98 +62,11 @@
   <data name="Devices" xml:space="preserve">
     <value>Devices</value>
   </data>
-  <data name="LabelLocationId" xml:space="preserve">
-    <value>Location Id</value>
-  </data>
-  <data name="PlaceholderLocationId" xml:space="preserve">
-    <value>Location Id</value>
-  </data>
-  <data name="GetDevices" xml:space="preserve">
-    <value>Get Devices</value>
-  </data>
-  <data name="NoDevicesFound" xml:space="preserve">
-    <value>No devices found.</value>
-  </data>
-  <data name="ColType" xml:space="preserve">
-    <value>Type</value>
-  </data>
-  <data name="ColOnline" xml:space="preserve">
-    <value>Online</value>
-  </data>
-  <data name="Yes" xml:space="preserve">
-    <value>Yes</value>
-  </data>
-  <data name="No" xml:space="preserve">
-    <value>No</value>
-  </data>
-  <data name="DeviceEvents" xml:space="preserve">
-    <value>Device Events</value>
-  </data>
-  <data name="LabelDeviceId" xml:space="preserve">
-    <value>Device Id</value>
-  </data>
-  <data name="PlaceholderDeviceId" xml:space="preserve">
-    <value>Device Id</value>
-  </data>
-  <data name="LabelFrom" xml:space="preserve">
-    <value>From</value>
-  </data>
-  <data name="LabelTo" xml:space="preserve">
-    <value>To</value>
-  </data>
-  <data name="GetEvents" xml:space="preserve">
-    <value>Get Events</value>
-  </data>
-  <data name="NoEventsFound" xml:space="preserve">
-    <value>No events found.</value>
-  </data>
-  <data name="ColEventType" xml:space="preserve">
-    <value>Event Type</value>
-  </data>
-  <data name="ColTimestamp" xml:space="preserve">
-    <value>Timestamp</value>
-  </data>
-  <data name="ColSnapshotUrl" xml:space="preserve">
-    <value>Snapshot URL</value>
-  </data>
-  <data name="DeviceConfig" xml:space="preserve">
-    <value>Device Config</value>
-  </data>
-  <data name="GetConfig" xml:space="preserve">
-    <value>Get Config</value>
-  </data>
-  <data name="NoConfigFound" xml:space="preserve">
-    <value>No configuration found for this device.</value>
-  </data>
-  <data name="ColMotionDetectionEnabled" xml:space="preserve">
-    <value>Motion Detection Enabled</value>
-  </data>
-  <data name="ColMotionSensitivity" xml:space="preserve">
-    <value>Motion Sensitivity</value>
-  </data>
-  <data name="ColRecordingMode" xml:space="preserve">
-    <value>Recording Mode</value>
-  </data>
   <data name="FailedToGetLocations" xml:space="preserve">
     <value>Failed to get locations: {0}</value>
   </data>
-  <data name="FailedToGetDevices" xml:space="preserve">
-    <value>Failed to get devices: {0}</value>
-  </data>
-  <data name="FailedToGetEvents" xml:space="preserve">
-    <value>Failed to get events: {0}</value>
-  </data>
-  <data name="FailedToGetConfig" xml:space="preserve">
-    <value>Failed to get device config: {0}</value>
-  </data>
-  <data name="ApplyFilter" xml:space="preserve">
-    <value>Apply Filter</value>
-  </data>
   <data name="RawResponse" xml:space="preserve">
     <value>Raw response</value>
-  </data>
-  <data name="ColLocationId" xml:space="preserve">
-    <value>Location Id</value>
   </data>
   <data name="Config" xml:space="preserve">
     <value>Config</value>
