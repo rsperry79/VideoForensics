@@ -10,6 +10,8 @@
 @inject HttpClient HttpClient
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject IProviderAuthService AuthService
+@inject AccountSelectionState AccountSelectionState
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountDetails> L
 
@@ -64,10 +66,10 @@ else
                     <div class="mb-3 p-3 border border-danger rounded" style="background-color: #fff5f5;">
                         <label class="form-label fw-bold text-danger">@L["LastErrorLabel"]</label>
                         <p class="form-control-plaintext mb-1">
-                            <strong>@L["TimeLabel"]</strong> @(_account.LastErrorUtc?.ToString() ?? "-")
+                            <strong>@L["TimeLabel"]</strong> @(_account.LastErrorUtc?.ToString() ?? L["NoValue"])
                         </p>
                         <p class="form-control-plaintext">
-                            <strong>@L["MessageLabel"]</strong> @(_account.LastErrorMessage ?? "-")
+                            <strong>@L["MessageLabel"]</strong> @(_account.LastErrorMessage ?? L["NoValue"])
                         </p>
                     </div>
                 }
@@ -82,6 +84,7 @@ else
                     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
                 }
                 <SfButton CssClass="e-primary" Content="@L["SyncSchedule"]" OnClick="GoToSyncSchedule" />
+                <SfButton CssClass="e-primary" Content="@(_account.Id == _selectedAccountId ? L["Selected"] : L["Select"])" OnClick="() => SelectAccountAsync(_account.Id)" Disabled="@(_isBusy || _account.Id == _selectedAccountId)" />
                 @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
                 {
                     <SfButton CssClass="e-warning" Content="@L["Login"]" OnClick="() => _reAuthDialogVisible = true" />
@@ -101,6 +104,102 @@ else
             else
             {
                 <SfButton CssClass="e-danger" Content="@L["RemoveAccount"]" OnClick="PromptRemove" Disabled="@_isBusy" />
+            }
+        </div>
+
+        <div id="sync-history" class="mb-4">
+            <h5>@L["SyncHistoryTitle"]</h5>
+            @if (_syncRunsError)
+            {
+                <p class="text-danger">@L["LoadListError"]</p>
+            }
+            else if (_syncRuns is not null && _syncRuns.Count == 0)
+            {
+                <p>@L["SyncNoRuns"]</p>
+            }
+            else if (_syncRuns is not null)
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@L["ColSyncTime"]</th>
+                            <th>@L["ColSyncStatus"]</th>
+                            <th>@L["ColDetails"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var run in _syncRuns)
+                        {
+                            <tr class="sync-run-row">
+                                <td>@run.StartedUtc.ToLocalTime().ToString("g")</td>
+                                <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ToggleRunDetailsAsync(run.Id)">@L["ColDetails"]</button>
+                                </td>
+                            </tr>
+                            @if (_expandedRunId == run.Id)
+                            {
+                                <tr class="sync-run-detail">
+                                    <td colspan="3">
+                                        @if (_runDetailError)
+                                        {
+                                            <p class="text-danger mb-0">@L["SyncDetailsError"]</p>
+                                        }
+                                        else if (_runDetail is not null)
+                                        {
+                                            <strong>@L["SyncDetailsTitle"]</strong>
+                                            <p class="mb-1"><strong>@L["SyncDetailsStarted"]</strong> @_runDetail.StartedUtc.ToLocalTime().ToString("g")</p>
+                                            <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> @(_runDetail.CompletedUtc?.ToLocalTime().ToString("g") ?? L["SyncNotCompleted"])</p>
+                                            <p class="mb-1"><strong>@L["ColSyncStatus"]</strong> @(_runDetail.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</p>
+                                            @if (!string.IsNullOrEmpty(_runDetail.ErrorMessage))
+                                            {
+                                                <p class="mb-0"><strong>@L["SyncDetailsMessage"]</strong> @_runDetail.ErrorMessage</p>
+                                            }
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div id="attached-cases" class="mb-4">
+            <h5>@L["AttachedCasesTitle"]</h5>
+            @if (_casesError)
+            {
+                <p class="text-danger">@L["LoadListError"]</p>
+            }
+            else if (_cases is not null && _cases.Count == 0)
+            {
+                <p>@L["CasesNone"]</p>
+            }
+            else if (_cases is not null)
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@L["ColCaseType"]</th>
+                            <th>@L["ColEventDate"]</th>
+                            <th>@L["ColCreatedDate"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var caseRow in _cases)
+                        {
+                            <tr class="case-row">
+                                <td>@CaseTypeLabel(caseRow.CaseType)</td>
+                                <td data-col="event-date">@(caseRow.ScopeFromUtc?.ToLocalTime().ToString("d"))</td>
+                                <td>@caseRow.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenCase(caseRow.Id)">@L["OpenCase"]</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             }
         </div>
 
@@ -125,16 +224,121 @@ else
     private string? _accountEmail;
     private bool _isLoading = true;
     private bool _isBusy;
+    private Guid? _selectedAccountId;
     private bool _confirmingRemove;
     private bool _reAuthDialogVisible;
     private bool _isSyncing;
     private string? _statusMessage;
     private SfToast _toastRef = null!;
+    private List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>? _syncRuns;
+    private bool _syncRunsError;
+    private List<VideoForensics.Core.Api.Contracts.AccountCaseDto>? _cases;
+    private bool _casesError;
+    private Guid? _expandedRunId;
+    private VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto? _runDetail;
+    private bool _runDetailError;
 
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], null) };
         await LoadAccountAsync();
+        // Render the account card first; the lists load after it and don't hold it up.
+        StateHasChanged();
+        if (_account is not null)
+        {
+            await LoadListsAsync();
+        }
+    }
+
+    private async Task LoadListsAsync()
+    {
+        await LoadSyncRunsAsync();
+        await LoadCasesAsync();
+    }
+
+    private async Task LoadSyncRunsAsync()
+    {
+        _expandedRunId = null;
+        _runDetail = null;
+        _runDetailError = false;
+        try
+        {
+            _syncRuns = await GetApiAsync<List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>>(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-runs") ?? new();
+            _syncRunsError = false;
+        }
+        catch
+        {
+            _syncRuns = null;
+            _syncRunsError = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task LoadCasesAsync()
+    {
+        try
+        {
+            _cases = await GetApiAsync<List<VideoForensics.Core.Api.Contracts.AccountCaseDto>>(
+                $"api/v1/accounts/provider-accounts/{Id}/cases") ?? new();
+            _casesError = false;
+        }
+        catch
+        {
+            _cases = null;
+            _casesError = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleRunDetailsAsync(Guid runId)
+    {
+        if (_expandedRunId == runId)
+        {
+            _expandedRunId = null;
+            _runDetail = null;
+            _runDetailError = false;
+            return;
+        }
+
+        _expandedRunId = runId;
+        _runDetail = null;
+        _runDetailError = false;
+        try
+        {
+            var detail = await GetApiAsync<VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto>(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-runs/{runId}");
+            if (_expandedRunId == runId)
+            {
+                _runDetail = detail;
+            }
+        }
+        catch
+        {
+            if (_expandedRunId == runId)
+            {
+                _runDetailError = true;
+            }
+        }
+    }
+
+    private void OpenCase(Guid caseId)
+    {
+        NavigationManager.NavigateTo($"/cases/{caseId}");
+    }
+
+    /// <summary>
+    /// GET against the account API with the paired-device bearer token. The injected HttpClient has
+    /// no base address or auth header in production, so the absolute URI and header are set per request.
+    /// </summary>
+    private async Task<T?> GetApiAsync<T>(string relativePath)
+    {
+        await SessionState.EnsureLoadedAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(new Uri(NavigationManager.BaseUri), relativePath));
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        using HttpResponseMessage response = await HttpClient.SendAsync(request, CancellationToken.None);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>(CancellationToken.None);
     }
 
     private async Task LoadAccountAsync()
@@ -157,6 +361,8 @@ else
                 {
                     // Fall back to ProviderName if user lookup fails
                 }
+
+                await LoadSelectionAsync();
             }
         }
         catch (Exception ex)
@@ -168,6 +374,69 @@ else
             _isLoading = false;
         }
     }
+
+    /// <summary>
+    /// Resolves which linked account this browser has selected. The selection is per-browser (localStorage),
+    /// so it is read against all linked accounts, not just this one.
+    /// </summary>
+    private async Task LoadSelectionAsync()
+    {
+        try
+        {
+            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
+            _selectedAccountId = await AccountSelectionState.GetSelectedAccountIdAsync(accounts.Select(a => a.Id).ToList());
+        }
+        catch
+        {
+            // Without the account list no selection can be shown; the rest of the page still works.
+            _selectedAccountId = null;
+        }
+    }
+
+    private async Task SelectAccountAsync(Guid accountId)
+    {
+        _isBusy = true;
+        _statusMessage = null;
+        try
+        {
+            _selectedAccountId = accountId;
+            await AccountSelectionState.SetSelectedAccountIdAsync(accountId);
+
+            // The server-side active account still drives downloads, so keep it in step with this browser's choice.
+            ForensicsConfig.ActiveProviderAccountId = accountId;
+            try
+            {
+                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+            }
+            catch (NotSupportedException)
+            {
+                _statusMessage = L["SettingServerOnly"];
+                return;
+            }
+
+            var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
+            _statusMessage = resumed
+                ? L["SwitchedAndResumed"]
+                : L["SwitchedNotResumed"];
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = L["CouldNotSwitch", ex.Message];
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    /// <summary>Maps the API's CaseType value to its localized label; unknown values show as Other.</summary>
+    private string CaseTypeLabel(string caseType) => caseType switch
+    {
+        "Detected" => L["CaseTypeDetected"],
+        "Suspected" => L["CaseTypeSuspected"],
+        "Manual" => L["CaseTypeManual"],
+        _ => L["CaseTypeOther"],
+    };
 
     private void GoToSyncSchedule()
     {
@@ -264,6 +533,7 @@ else
                 // Reload account details after a delay to show updated timestamp
                 await Task.Delay(2000);
                 await LoadAccountAsync();
+                await LoadSyncRunsAsync();
             }
             else
             {

@@ -124,6 +124,29 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("List active provider accounts")
                 .WithDescription("Retrieves all active provider accounts.");
 
+            _ = group.MapGet("/provider-accounts/{id:guid}/cases", async (Guid id, ICaseRepository cases, CancellationToken ct) =>
+                Results.Ok((await cases.ListForProviderAccountAsync(id, ct)).Select(x => x.ToDto())))
+                .RequireRateLimiting("media")
+                .WithSummary("List cases attached to a provider account")
+                .WithDescription("Retrieves the distinct cases with at least one scope device at a location the account can see, newest first.");
+
+            _ = group.MapGet("/provider-accounts/{id:guid}/sync-runs", async (Guid id, IProviderSyncRunRepository syncRuns, CancellationToken ct) =>
+                Results.Ok((await syncRuns.ListByProviderAccountIdAsync(id, ct)).Select(x => x.ToSummaryDto())))
+                .RequireRateLimiting("media")
+                .WithSummary("List sync runs for a provider account")
+                .WithDescription("Retrieves every sync attempt for the account, newest first.");
+
+            _ = group.MapGet("/provider-accounts/{id:guid}/sync-runs/{runId:guid}", async (Guid id, Guid runId, IProviderSyncRunRepository syncRuns, CancellationToken ct) =>
+            {
+                ProviderSyncRun? run = await syncRuns.GetAsync(runId, ct);
+
+                // A run belonging to another account is reported as missing so runs cannot be read across accounts.
+                return run == null || run.ProviderAccountId != id ? Results.NotFound() : Results.Ok(run.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get a sync run for a provider account")
+                .WithDescription("Retrieves a single sync attempt by ID. Returns 404 when the run does not belong to the account.");
+
             _ = group.MapGet("/provider-accounts/{id:guid}", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
             {
                 ProviderAccount? account = await accounts.GetAsync(id, ct);

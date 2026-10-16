@@ -2421,6 +2421,35 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("ProviderReconciliationRecords");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.ProviderSyncRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProviderAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderAccountId", "StartedUtc");
+
+                    b.ToTable("ProviderSyncRuns", (string)null);
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.PushSubscription", b =>
                 {
                     b.Property<Guid>("Id")
