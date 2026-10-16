@@ -179,7 +179,8 @@ namespace VideoForensics.Client.Core.Services
             string? providerDeviceKind,
             bool? isOnline,
             string? deviceTimeZone,
-            CancellationToken ct)
+            CancellationToken ct,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? deviceFields = null)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cached))
             {
@@ -245,7 +246,7 @@ namespace VideoForensics.Client.Core.Services
                 string deviceType = MapDeviceType(providerDeviceKind);
                 (string Json, string Hash) deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = deviceType, isOnline });
                 Data.Common.Entities.Device device = await _dataClient.EnsureDeviceAsync(
-                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct, timeZoneId: deviceTimeZone);
+                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct, timeZoneId: deviceTimeZone, details: deviceFields);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
@@ -352,7 +353,7 @@ namespace VideoForensics.Client.Core.Services
                 try
                 {
                     Guid deviceGuid = await EnsureDeviceIdentityAsync(
-                        device.Id, device.Name, device.LocationId, ResolveDeviceKind(device), device.IsOnline, ResolveTimeZone(device), cancellationToken);
+                        device.Id, device.Name, device.LocationId, ResolveDeviceKind(device), device.IsOnline, ResolveTimeZone(device), cancellationToken, device.Details);
                     deviceEffectiveStart = await _dataClient.GetWatermarkAsync(deviceGuid, startDate, force, cancellationToken);
                 }
                 catch (Exception ex)

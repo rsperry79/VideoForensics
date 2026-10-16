@@ -30,6 +30,24 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         decimal? BatteryVoltageValue = null,
         bool? IsExternalPowerConnected = null,
         string? OtaStatus = null,
-        DateTime? LastHeartbeatUtc = null
+        DateTime? LastHeartbeatUtc = null,
+        string? DeviceType = null,
+        string? FirmwareVersionStatus = null,
+        bool? BatteryPresent = null,
+        string? BatteryPercentageCategory = null,
+        string? BatteryVoltageCategory = null,
+        string? RssiCategory = null,
+        string? NetworkConnectionValue = null,
+        double? PacketLoss = null,
+        string? PacketLossCategory = null,
+        double? LatestSignalStrength = null,
+        string? LatestSignalCategory = null,
+        double? AverageSignalStrength = null,
+        string? AverageSignalCategory = null,
+        string? Firmware = null,
+        DateTime? UpdatedAtUtc = null,
+        double? PacketLossStrength = null,
+        bool? WifiIsRingNetwork = null,
+        bool? PtzConnected = null
     );
 }

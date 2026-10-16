@@ -196,7 +196,25 @@ namespace VideoForensics.Hosting.BackgroundServices
                             IsExternalPowerConnected = reading.IsExternalPowerConnected,
                             OtaStatus = reading.OtaStatus,
                             LastHeartbeatUtc = reading.LastHeartbeatUtc,
-                            CapturedAtUtc = DateTime.UtcNow
+                            CapturedAtUtc = DateTime.UtcNow,
+                            DeviceType = reading.DeviceType,
+                            FirmwareVersionStatus = reading.FirmwareVersionStatus,
+                            BatteryPresent = reading.BatteryPresent,
+                            BatteryPercentageCategory = reading.BatteryPercentageCategory,
+                            BatteryVoltageCategory = reading.BatteryVoltageCategory,
+                            RssiCategory = reading.RssiCategory,
+                            NetworkConnectionValue = reading.NetworkConnectionValue,
+                            PacketLoss = reading.PacketLoss,
+                            PacketLossCategory = reading.PacketLossCategory,
+                            LatestSignalStrength = reading.LatestSignalStrength,
+                            LatestSignalCategory = reading.LatestSignalCategory,
+                            AverageSignalStrength = reading.AverageSignalStrength,
+                            AverageSignalCategory = reading.AverageSignalCategory,
+                            Firmware = reading.Firmware,
+                            UpdatedAtUtc = reading.UpdatedAtUtc,
+                            PacketLossStrength = reading.PacketLossStrength,
+                            WifiIsRingNetwork = reading.WifiIsRingNetwork,
+                            PtzConnected = reading.PtzConnected
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
@@ -339,7 +357,25 @@ namespace VideoForensics.Hosting.BackgroundServices
                             IsExternalPowerConnected = reading.IsExternalPowerConnected,
                             OtaStatus = reading.OtaStatus,
                             LastHeartbeatUtc = reading.LastHeartbeatUtc,
-                            CapturedAtUtc = DateTime.UtcNow
+                            CapturedAtUtc = DateTime.UtcNow,
+                            DeviceType = reading.DeviceType,
+                            FirmwareVersionStatus = reading.FirmwareVersionStatus,
+                            BatteryPresent = reading.BatteryPresent,
+                            BatteryPercentageCategory = reading.BatteryPercentageCategory,
+                            BatteryVoltageCategory = reading.BatteryVoltageCategory,
+                            RssiCategory = reading.RssiCategory,
+                            NetworkConnectionValue = reading.NetworkConnectionValue,
+                            PacketLoss = reading.PacketLoss,
+                            PacketLossCategory = reading.PacketLossCategory,
+                            LatestSignalStrength = reading.LatestSignalStrength,
+                            LatestSignalCategory = reading.LatestSignalCategory,
+                            AverageSignalStrength = reading.AverageSignalStrength,
+                            AverageSignalCategory = reading.AverageSignalCategory,
+                            Firmware = reading.Firmware,
+                            UpdatedAtUtc = reading.UpdatedAtUtc,
+                            PacketLossStrength = reading.PacketLossStrength,
+                            WifiIsRingNetwork = reading.WifiIsRingNetwork,
+                            PtzConnected = reading.PtzConnected
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);

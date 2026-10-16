@@ -192,7 +192,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // This ensures all watermark updates within the batch operate on consistent device state.
                 (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -774,7 +774,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Resolve device identity and record snapshot download
                 (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -1232,7 +1232,7 @@ namespace VideoForensics.Providers.Ring.Services
             return string.IsNullOrWhiteSpace(kind) ? listType : kind;
         }
 
-        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct, string? timeZoneId = null)
+        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct, string? timeZoneId = null, DeviceDetailFields? deviceFields = null)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
@@ -1296,7 +1296,8 @@ namespace VideoForensics.Providers.Ring.Services
                 RingDeviceTypeMapper.MapDeviceType(providerDeviceKind),
                 isOnline,
                 ct: ct,
-                timeZoneId: timeZoneId);
+                timeZoneId: timeZoneId,
+                details: deviceFields);
 
             // Cache in the per-device dictionary
             _ = _deviceIdCache.TryAdd(providerDeviceId, device.Id);

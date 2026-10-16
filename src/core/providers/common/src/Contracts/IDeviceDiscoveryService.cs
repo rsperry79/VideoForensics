@@ -48,6 +48,26 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         string Type, // "camera", "doorbell", "base_station", etc.
         string LocationId,
         bool? IsOnline,
-        Dictionary<string, string>? Metadata = null
+        Dictionary<string, string>? Metadata = null,
+        DeviceDetailFields? Details = null
+    );
+
+    /// <summary>
+    /// Provider-supplied scalar device fields stored on the device row. Every property is optional:
+    /// null means the provider did not supply that value, and it is stored as null (never inferred).
+    /// </summary>
+    public sealed record DeviceDetailFields(
+        string? RingDeviceId = null,
+        string? RingKind = null,
+        string? FirmwareVersion = null,
+        double? Latitude = null,
+        double? Longitude = null,
+        string? Address = null,
+        bool? Subscribed = null,
+        bool? SubscribedMotions = null,
+        string? BatteryLife = null,
+        bool? ExternalConnection = null,
+        bool? Owned = null,
+        bool? Stolen = null
     );
 }

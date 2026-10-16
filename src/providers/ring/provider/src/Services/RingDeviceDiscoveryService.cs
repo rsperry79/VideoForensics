@@ -298,7 +298,8 @@ namespace VideoForensics.Providers.Ring.Services
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                             IsOnline: d.Health?.Connected ?? d.Subscribed,
-                            Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                            Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                            Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
                     }
                 }
@@ -317,7 +318,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "stickup_cam",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
                         }
                     }
@@ -337,7 +339,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
                         }
                     }
@@ -361,7 +364,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: c.Health?.Connected,
-                                Metadata: DeviceMetadata(c.Kind, c.TimeZone)
+                                Metadata: DeviceMetadata(c.Kind, c.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(c)
                             );
                         }
                     }
@@ -583,7 +587,8 @@ namespace VideoForensics.Providers.Ring.Services
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                             IsOnline: d.Health?.Connected ?? d.Subscribed,
-                            Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                            Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                            Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
                     }
                 }
@@ -601,7 +606,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
                         }
                     }
@@ -620,7 +626,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "stickup_cam",
                                 LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: s.Health?.Connected ?? s.Subscribed,
-                                Metadata: DeviceMetadata(s.Kind, s.TimeZone)
+                                Metadata: DeviceMetadata(s.Kind, s.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(s)
                             );
                         }
                     }
@@ -639,7 +646,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
                         }
                     }
@@ -658,7 +666,8 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: c.Health?.Connected,
-                                Metadata: DeviceMetadata(c.Kind, c.TimeZone)
+                                Metadata: DeviceMetadata(c.Kind, c.TimeZone),
+                                Details: RingDeviceDetailsMapper.ToDeviceFields(c)
                             );
                         }
                     }

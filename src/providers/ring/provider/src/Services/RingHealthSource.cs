@@ -178,7 +178,25 @@ namespace VideoForensics.Providers.Ring.Services
                     BatteryVoltageValue: health.BatteryVoltage,
                     IsExternalPowerConnected: RingHealthTelemetryMapper.ToExternalPowerConnected(health.ExtPowerState),
                     OtaStatus: health.OtaStatus,
-                    LastHeartbeatUtc: RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime)
+                    LastHeartbeatUtc: RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime),
+                    DeviceType: health.DeviceType,
+                    FirmwareVersionStatus: health.FirmwareVersionStatus,
+                    BatteryPresent: health.BatteryPresent,
+                    BatteryPercentageCategory: health.BatteryPercentageCategory,
+                    BatteryVoltageCategory: health.BatteryVoltageCategory,
+                    RssiCategory: health.RssiCategory,
+                    NetworkConnectionValue: health.NetworkConnectionValue,
+                    PacketLoss: health.PacketLoss,
+                    PacketLossCategory: health.PacketLossCategory,
+                    LatestSignalStrength: health.LatestSignalStrength,
+                    LatestSignalCategory: health.LatestSignalCategory,
+                    AverageSignalStrength: health.AverageSignalStrength,
+                    AverageSignalCategory: health.AverageSignalCategory,
+                    Firmware: health.Firmware,
+                    UpdatedAtUtc: RingHealthTelemetryMapper.ToUpdatedAtUtc(health.UpdatedAt),
+                    PacketLossStrength: health.PacketLossStrength,
+                    WifiIsRingNetwork: health.WifiIsRingNetwork,
+                    PtzConnected: health.PtzConnected
                 ));
             }
         }

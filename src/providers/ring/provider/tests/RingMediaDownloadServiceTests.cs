@@ -608,6 +608,38 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceIdentityAsync_WithDeviceFields_PassesFieldsToDataClient()
+        {
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = "123",
+                    Name = "Front Door",
+                    Type = "doorbell"
+                });
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            var fields = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(RingDeviceId: "aabbcc", Owned: true);
+
+            _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", null, CancellationToken.None, deviceFields: fields);
+
+            dataClient.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", (bool?)null,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                It.Is<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc")), Times.Once);
+        }
+
+        [Fact]
         public async Task EnsureDeviceIdentityAsync_WithTimeZone_PassesTimeZoneToDataClient()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();

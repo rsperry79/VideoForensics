@@ -29,5 +29,33 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>When the drift check last ran.</summary>
         public DateTime? BaselineDriftCheckedAtUtc { get; set; }
+
+        /// <summary>Ring's hex device_id (distinct from ProviderDeviceId, which is the numeric id).</summary>
+        public string? RingDeviceId { get; set; }
+
+        /// <summary>Raw Ring device kind, e.g. doorbell_v4.</summary>
+        public string? RingKind { get; set; }
+
+        public string? FirmwareVersion { get; set; }
+
+        public double? Latitude { get; set; }
+
+        public double? Longitude { get; set; }
+
+        /// <summary>The device's own address field. Not Locations.Address.</summary>
+        public string? Address { get; set; }
+
+        public bool? Subscribed { get; set; }
+
+        public bool? SubscribedMotions { get; set; }
+
+        /// <summary>Ring's battery_life kept as the raw value (Ring sends a number on some kinds, so it is stored as text).</summary>
+        public string? BatteryLife { get; set; }
+
+        public bool? ExternalConnection { get; set; }
+
+        public bool? Owned { get; set; }
+
+        public bool? Stolen { get; set; }
     }
 }

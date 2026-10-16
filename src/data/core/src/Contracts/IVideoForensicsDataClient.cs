@@ -62,7 +62,10 @@ namespace VideoForensics.Data.Core.Contracts
             string? apiResponseHash = null,
             CancellationToken ct = default);
 
-        /// <summary>Ensures a device exists for a location, creating or updating it as necessary.</summary>
+        /// <summary>
+        /// Ensures a device exists for a location, creating or updating it as necessary. When <paramref name="details"/>
+        /// is supplied, every detail column is written (a null field stores null); when null, existing detail columns are left as they are.
+        /// </summary>
         Task<Device> EnsureDeviceAsync(
             Guid locationId,
             string providerDeviceId,
@@ -72,7 +75,8 @@ namespace VideoForensics.Data.Core.Contracts
             string? metadataJson = null,
             string? apiResponseHash = null,
             CancellationToken ct = default,
-            string? timeZoneId = null);
+            string? timeZoneId = null,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null);
 
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);

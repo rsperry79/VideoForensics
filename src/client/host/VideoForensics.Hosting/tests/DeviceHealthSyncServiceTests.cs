@@ -128,6 +128,41 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_ReadingWithDetailFields_PersistsDetailColumns()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+
+            Device device = MakeDevice("ring-789");
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            var updatedAt = new DateTime(2026, 10, 16, 12, 30, 0, DateTimeKind.Utc);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new DeviceHealthReading("ring-789", Connected: true, BatteryPercentage: null, Rssi: null, WifiName: null, FirmwareVersion: null,
+                        DeviceType: "doorbell_v4", PacketLoss: 0.5, PacketLossCategory: "low", Firmware: "2.0.1",
+                        UpdatedAtUtc: updatedAt, WifiIsRingNetwork: false, PtzConnected: true)
+                ]);
+
+            DeviceHealth? captured = null;
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((DeviceHealth h, CancellationToken _) => h);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.NotNull(captured);
+            Assert.Equal("doorbell_v4", captured!.DeviceType);
+            Assert.Equal(0.5, captured.PacketLoss);
+            Assert.Equal("low", captured.PacketLossCategory);
+            Assert.Equal("2.0.1", captured.Firmware);
+            Assert.Equal(updatedAt, captured.UpdatedAtUtc);
+            Assert.False(captured.WifiIsRingNetwork);
+            Assert.True(captured.PtzConnected);
+            Assert.Null(captured.BatteryPresent);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()
         {
             (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();

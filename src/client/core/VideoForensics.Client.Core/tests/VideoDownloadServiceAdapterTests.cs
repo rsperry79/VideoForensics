@@ -383,6 +383,23 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task PreScanAsync_DeviceWithDetailFields_PassesDetailFieldsToEnsureDevice()
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device(
+                "dev-1", "Front", "doorbot", "loc-1", true,
+                Details: new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(RingDeviceId: "aabbcc", Owned: true));
+            _ = SetupIdentityScenario(device);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "dev-1", "Front", "doorbell", true,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.Is<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc" && f.Owned == true)), Times.Once);
+        }
+
+        [Fact]
         public async Task PreScanAsync_DeviceWithTimeZoneMetadata_PassesTimeZoneToEnsureDevice()
         {
             var device = new VideoForensics.Core.Providers.Common.Contracts.Device(

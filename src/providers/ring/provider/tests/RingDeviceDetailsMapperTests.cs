@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
@@ -155,6 +156,126 @@ namespace VideoForensics.Providers.Ring.Tests
             var details = new RingDeviceDetails(null, null, null, null, null, false, null, null, null, null, null, null);
 
             Assert.Empty(RingDeviceDetailsMapper.ToAlerts(details, DeviceId));
+        }
+
+        [Fact]
+        public void ToDeviceFields_Doorbot_MapsDeviceScalars()
+        {
+            var doorbot = new Doorbot
+            {
+                Id = 123,
+                DeviceId = "aabbcc",
+                Kind = "doorbell_v4",
+                FirmwareVersion = "2.0.1",
+                Latitude = 41.5,
+                Longitude = -87.6,
+                Address = "1 Main St",
+                Subscribed = true,
+                SubscribedMotions = false,
+                BatteryLife = 87,
+                ExternalConnection = true,
+                Owned = true,
+                Stolen = false
+            };
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.NotNull(fields);
+            Assert.Equal("aabbcc", fields!.RingDeviceId);
+            Assert.Equal("doorbell_v4", fields.RingKind);
+            Assert.Equal("2.0.1", fields.FirmwareVersion);
+            Assert.Equal(41.5, fields.Latitude);
+            Assert.Equal(-87.6, fields.Longitude);
+            Assert.Equal("1 Main St", fields.Address);
+            Assert.True(fields.Subscribed);
+            Assert.False(fields.SubscribedMotions);
+            Assert.Equal("87", fields.BatteryLife);
+            Assert.True(fields.ExternalConnection);
+            Assert.True(fields.Owned);
+            Assert.False(fields.Stolen);
+        }
+
+        [Fact]
+        public void ToDeviceFields_StickupCam_MapsBatteryLifeAsRawString()
+        {
+            var cam = new StickupCam
+            {
+                Id = 456L,
+                DeviceId = "ddeeff",
+                Kind = "stickup_cam_v4",
+                BatteryLife = 64L,
+                Subscribed = false,
+                Stolen = true
+            };
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(cam);
+
+            Assert.NotNull(fields);
+            Assert.Equal("ddeeff", fields!.RingDeviceId);
+            Assert.Equal("stickup_cam_v4", fields.RingKind);
+            Assert.Equal("64", fields.BatteryLife);
+            Assert.False(fields.Subscribed);
+            Assert.True(fields.Stolen);
+        }
+
+        [Fact]
+        public void ToDeviceFields_Chime_MapsOnlyFieldsChimeHas()
+        {
+            var chime = new Chime
+            {
+                Id = 789,
+                DeviceId = "112233",
+                Kind = "chime_v2",
+                FirmwareVersion = "1.1.0"
+            };
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(chime);
+
+            Assert.NotNull(fields);
+            Assert.Equal("112233", fields!.RingDeviceId);
+            Assert.Equal("chime_v2", fields.RingKind);
+            Assert.Equal("1.1.0", fields.FirmwareVersion);
+            Assert.Null(fields.Subscribed);
+            Assert.Null(fields.SubscribedMotions);
+            Assert.Null(fields.BatteryLife);
+            Assert.Null(fields.ExternalConnection);
+        }
+
+        [Fact]
+        public void ToDeviceFields_MissingSourceValues_StayNull()
+        {
+            var doorbot = new Doorbot { Id = 1 };
+
+            DeviceDetailFields? fields = RingDeviceDetailsMapper.ToDeviceFields(doorbot);
+
+            Assert.NotNull(fields);
+            Assert.Null(fields!.RingDeviceId);
+            Assert.Null(fields.RingKind);
+            Assert.Null(fields.FirmwareVersion);
+            Assert.Null(fields.Latitude);
+            Assert.Null(fields.Longitude);
+            Assert.Null(fields.Address);
+            Assert.Null(fields.Subscribed);
+            Assert.Null(fields.SubscribedMotions);
+            Assert.Null(fields.BatteryLife);
+            Assert.Null(fields.ExternalConnection);
+            Assert.Null(fields.Owned);
+            Assert.Null(fields.Stolen);
+        }
+
+        [Fact]
+        public void Find_Doorbot_ExposesDeviceFields()
+        {
+            var devices = new Devices
+            {
+                Doorbots = [new Doorbot { Id = 123, DeviceId = "aabbcc", Owned = true }]
+            };
+
+            RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, "123");
+
+            Assert.NotNull(details?.DeviceFields);
+            Assert.Equal("aabbcc", details!.DeviceFields!.RingDeviceId);
+            Assert.True(details.DeviceFields.Owned);
         }
     }
 }

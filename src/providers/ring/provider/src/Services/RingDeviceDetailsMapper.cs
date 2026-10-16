@@ -1,3 +1,6 @@
+using System.Globalization;
+
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
 
@@ -19,7 +22,8 @@ namespace VideoForensics.Providers.Ring.Services
         bool? PeopleOnlyEnabled,
         bool? ShadowCorrectionEnabled,
         bool? MotionMessageEnabled,
-        string? AlertConnection);
+        string? AlertConnection,
+        DeviceDetailFields? DeviceFields = null);
 
     /// <summary>Finds a device in a ring_devices response and maps it onto the DB entities it fills.</summary>
     public static class RingDeviceDetailsMapper
@@ -67,6 +71,59 @@ namespace VideoForensics.Providers.Ring.Services
                 LastSyncedUtc = nowUtc,
                 SyncStatus = SyncStatus.Synced
             };
+        }
+
+        /// <summary>
+        /// Builds the scalar device fields stored on the Devices row. Chimes report no subscription, battery or
+        /// external-connection values, so those stay null for them.
+        /// </summary>
+        public static DeviceDetailFields ToDeviceFields(Doorbot d)
+        {
+            return new DeviceDetailFields(
+                RingDeviceId: d.DeviceId,
+                RingKind: d.Kind,
+                FirmwareVersion: d.FirmwareVersion,
+                Latitude: d.Latitude,
+                Longitude: d.Longitude,
+                Address: d.Address,
+                Subscribed: d.Subscribed,
+                SubscribedMotions: d.SubscribedMotions,
+                BatteryLife: d.BatteryLife?.ToString(CultureInfo.InvariantCulture),
+                ExternalConnection: d.ExternalConnection,
+                Owned: d.Owned,
+                Stolen: d.Stolen);
+        }
+
+        /// <summary>Builds the scalar device fields stored on the Devices row for a stickup cam.</summary>
+        public static DeviceDetailFields ToDeviceFields(StickupCam s)
+        {
+            return new DeviceDetailFields(
+                RingDeviceId: s.DeviceId,
+                RingKind: s.Kind,
+                FirmwareVersion: s.FirmwareVersion,
+                Latitude: s.Latitude,
+                Longitude: s.Longitude,
+                Address: s.Address,
+                Subscribed: s.Subscribed,
+                SubscribedMotions: s.SubscribedMotions,
+                BatteryLife: s.BatteryLife?.ToString(CultureInfo.InvariantCulture),
+                ExternalConnection: s.ExternalConnection,
+                Owned: s.Owned,
+                Stolen: s.Stolen);
+        }
+
+        /// <summary>Builds the scalar device fields stored on the Devices row for a chime.</summary>
+        public static DeviceDetailFields ToDeviceFields(Chime c)
+        {
+            return new DeviceDetailFields(
+                RingDeviceId: c.DeviceId,
+                RingKind: c.Kind,
+                FirmwareVersion: c.FirmwareVersion,
+                Latitude: c.Latitude,
+                Longitude: c.Longitude,
+                Address: c.Address,
+                Owned: c.Owned,
+                Stolen: c.Stolen);
         }
 
         /// <summary>Builds the feature row, or null when the device has no features object.</summary>
@@ -122,7 +179,8 @@ namespace VideoForensics.Providers.Ring.Services
                 PeopleOnlyEnabled: f?.PeopleOnlyEnabled,
                 ShadowCorrectionEnabled: f?.ShadowCorrectionEnabled,
                 MotionMessageEnabled: f?.MotionMessageEnabled,
-                AlertConnection: d.Alerts?.Connection);
+                AlertConnection: d.Alerts?.Connection,
+                DeviceFields: ToDeviceFields(d));
         }
 
         private static RingDeviceDetails FromStickupCam(StickupCam s)
@@ -141,7 +199,8 @@ namespace VideoForensics.Providers.Ring.Services
                 PeopleOnlyEnabled: null,
                 ShadowCorrectionEnabled: null,
                 MotionMessageEnabled: null,
-                AlertConnection: s.Alerts?.Connection);
+                AlertConnection: s.Alerts?.Connection,
+                DeviceFields: ToDeviceFields(s));
         }
 
         private static RingDeviceDetails FromChime(Chime c)
@@ -159,7 +218,8 @@ namespace VideoForensics.Providers.Ring.Services
                 PeopleOnlyEnabled: null,
                 ShadowCorrectionEnabled: null,
                 MotionMessageEnabled: null,
-                AlertConnection: c.Alerts?.Connection);
+                AlertConnection: c.Alerts?.Connection,
+                DeviceFields: ToDeviceFields(c));
         }
     }
 }

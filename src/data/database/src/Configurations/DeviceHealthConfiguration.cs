@@ -21,6 +21,36 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(dh => dh.FirmwareVersion)
                 .HasMaxLength(256);
 
+            _ = builder.Property(dh => dh.DeviceType)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.FirmwareVersionStatus)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.BatteryPercentageCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.BatteryVoltageCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.RssiCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.NetworkConnectionValue)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.PacketLossCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.LatestSignalCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.AverageSignalCategory)
+                .HasMaxLength(256);
+
+            _ = builder.Property(dh => dh.Firmware)
+                .HasMaxLength(256);
+
             _ = builder.HasIndex(dh => new { dh.DeviceId, dh.CapturedAtUtc });
         }
     }

@@ -468,6 +468,32 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        /// <summary>
+        /// Copies provider detail fields onto a device row. A null <paramref name="details"/> is a no-op so a
+        /// sync that carries no detail fields never blanks values already on record; a non-null one overwrites
+        /// every column, so a field the provider no longer reports is stored as null.
+        /// </summary>
+        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details)
+        {
+            if (details == null)
+            {
+                return;
+            }
+
+            device.RingDeviceId = details.RingDeviceId;
+            device.RingKind = details.RingKind;
+            device.FirmwareVersion = details.FirmwareVersion;
+            device.Latitude = details.Latitude;
+            device.Longitude = details.Longitude;
+            device.Address = details.Address;
+            device.Subscribed = details.Subscribed;
+            device.SubscribedMotions = details.SubscribedMotions;
+            device.BatteryLife = details.BatteryLife;
+            device.ExternalConnection = details.ExternalConnection;
+            device.Owned = details.Owned;
+            device.Stolen = details.Stolen;
+        }
+
         public async Task<Device> EnsureDeviceAsync(
             Guid locationId,
             string providerDeviceId,
@@ -477,7 +503,8 @@ namespace VideoForensics.Data.Core.Services
             string? metadataJson = null,
             string? apiResponseHash = null,
             CancellationToken ct = default,
-            string? timeZoneId = null)
+            string? timeZoneId = null,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null)
         {
             try
             {
@@ -514,6 +541,7 @@ namespace VideoForensics.Data.Core.Services
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
+                        ApplyDetailFields(device, details);
                         await context.Devices.AddAsync(device, ct);
                         _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
                         return device;
@@ -550,6 +578,7 @@ namespace VideoForensics.Data.Core.Services
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced
                             };
+                            ApplyDetailFields(newDevice, details);
 
                             await context.Devices.AddAsync(newDevice, ct);
                             _logger.LogInformation(
@@ -571,6 +600,7 @@ namespace VideoForensics.Data.Core.Services
                             existingDevice.TimeZoneId = timeZoneId;
                         }
 
+                        ApplyDetailFields(existingDevice, details);
                         await context.Devices.UpdateAsync(existingDevice, ct);
                         _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;

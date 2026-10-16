@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace VideoForensics.Providers.Ring.Services
 {
     /// <summary>
@@ -15,6 +17,22 @@ namespace VideoForensics.Providers.Ring.Services
                 0 => false,
                 _ => null
             };
+        }
+
+        /// <summary>
+        /// Ring's health updated_at is an ISO-8601 string. A value without an offset is read as UTC, and
+        /// null, empty or unparseable text returns null rather than a guessed time.
+        /// </summary>
+        public static DateTime? ToUpdatedAtUtc(string? updatedAt)
+        {
+            if (string.IsNullOrWhiteSpace(updatedAt))
+            {
+                return null;
+            }
+
+            return DateTimeOffset.TryParse(updatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset when)
+                ? when.UtcDateTime
+                : null;
         }
 
         /// <summary>

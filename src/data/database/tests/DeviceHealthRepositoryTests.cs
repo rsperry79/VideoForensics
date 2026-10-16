@@ -359,5 +359,58 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(5, history1.Count);
             Assert.Equal(3, history2.Count);
         }
+
+        [Fact]
+        public async Task DeviceHealthRepository_AddAsync_PreservesDeviceHealthDetailFields()
+        {
+            var deviceId = Guid.NewGuid();
+            var health = new DeviceHealth
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                CapturedAtUtc = DateTime.UtcNow,
+                DeviceType = "doorbell_v4",
+                FirmwareVersionStatus = "up_to_date",
+                BatteryPresent = true,
+                BatteryPercentageCategory = "high",
+                BatteryVoltageCategory = "ok",
+                RssiCategory = "good",
+                NetworkConnectionValue = "wifi",
+                PacketLoss = 0.5,
+                PacketLossCategory = "low",
+                LatestSignalStrength = -42.0,
+                LatestSignalCategory = "strong",
+                AverageSignalStrength = -45.5,
+                AverageSignalCategory = "strong",
+                Firmware = "2.0.1",
+                UpdatedAtUtc = new DateTime(2026, 10, 16, 12, 30, 0, DateTimeKind.Utc),
+                PacketLossStrength = 0.9,
+                WifiIsRingNetwork = false,
+                PtzConnected = true
+            };
+
+            _ = await _repository.AddAsync(health, CancellationToken.None);
+            DeviceHealth? retrieved = await _repository.GetLatestAsync(deviceId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("doorbell_v4", retrieved.DeviceType);
+            Assert.Equal("up_to_date", retrieved.FirmwareVersionStatus);
+            Assert.True(retrieved.BatteryPresent);
+            Assert.Equal("high", retrieved.BatteryPercentageCategory);
+            Assert.Equal("ok", retrieved.BatteryVoltageCategory);
+            Assert.Equal("good", retrieved.RssiCategory);
+            Assert.Equal("wifi", retrieved.NetworkConnectionValue);
+            Assert.Equal(0.5, retrieved.PacketLoss);
+            Assert.Equal("low", retrieved.PacketLossCategory);
+            Assert.Equal(-42.0, retrieved.LatestSignalStrength);
+            Assert.Equal("strong", retrieved.LatestSignalCategory);
+            Assert.Equal(-45.5, retrieved.AverageSignalStrength);
+            Assert.Equal("strong", retrieved.AverageSignalCategory);
+            Assert.Equal("2.0.1", retrieved.Firmware);
+            Assert.Equal(new DateTime(2026, 10, 16, 12, 30, 0, DateTimeKind.Utc), retrieved.UpdatedAtUtc);
+            Assert.Equal(0.9, retrieved.PacketLossStrength);
+            Assert.False(retrieved.WifiIsRingNetwork);
+            Assert.True(retrieved.PtzConnected);
+        }
     }
 }

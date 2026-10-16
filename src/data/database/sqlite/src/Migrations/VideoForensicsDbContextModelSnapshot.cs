@@ -538,6 +538,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ApiResponseHash")
                         .HasColumnType("TEXT");
 
@@ -550,6 +554,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("BaselineDriftDetected")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("BatteryLife")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("DeviceFeaturesId")
                         .HasColumnType("TEXT");
 
@@ -557,6 +565,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("DeviceLocationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("ExternalConnection")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<bool?>("IsOnline")
@@ -571,8 +586,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastSyncedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("REAL");
+
                     b.Property<Guid>("LocationId")
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
@@ -582,10 +603,30 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("Owned")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ProviderDeviceId")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("RingDeviceId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RingKind")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Stolen")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Subscribed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SubscribedMotions")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("SyncStatus")
                         .HasColumnType("INTEGER");
@@ -772,7 +813,25 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AverageSignalCategory")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("AverageSignalStrength")
+                        .HasColumnType("REAL");
+
                     b.Property<decimal?>("BatteryPercentage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BatteryPercentageCategory")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("BatteryPresent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BatteryVoltageCategory")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<decimal?>("BatteryVoltageValue")
@@ -784,7 +843,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Firmware")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirmwareVersionStatus")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
@@ -797,9 +868,43 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastHeartbeatUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LatestSignalCategory")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("LatestSignalStrength")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("NetworkConnectionValue")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OtaStatus")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("PacketLoss")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("PacketLossCategory")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("PacketLossStrength")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool?>("PtzConnected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RssiCategory")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("WifiIsRingNetwork")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("WifiName")
                         .HasMaxLength(256)

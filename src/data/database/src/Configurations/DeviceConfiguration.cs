@@ -27,6 +27,21 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(d => d.TimeZoneId)
                 .HasMaxLength(256);
 
+            _ = builder.Property(d => d.RingDeviceId)
+                .HasMaxLength(256);
+
+            _ = builder.Property(d => d.RingKind)
+                .HasMaxLength(256);
+
+            _ = builder.Property(d => d.FirmwareVersion)
+                .HasMaxLength(256);
+
+            _ = builder.Property(d => d.Address)
+                .HasMaxLength(512);
+
+            _ = builder.Property(d => d.BatteryLife)
+                .HasMaxLength(256);
+
             _ = builder.HasIndex(d => new { d.LocationId, d.ProviderDeviceId })
                 .IsUnique();
 

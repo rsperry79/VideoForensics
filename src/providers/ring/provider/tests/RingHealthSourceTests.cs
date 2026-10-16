@@ -788,5 +788,89 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Single(readings);
             Assert.Equal("200", readings[0].ProviderDeviceId);
         }
+
+        [Fact]
+        public async Task FetchHealthAsync_DeviceHealthDetailFields_AreCarriedOnReading()
+        {
+            // Arrange: every new health field on Ring's health object must reach the reading unchanged.
+            var health = new DeviceHealth
+            {
+                Connected = true,
+                DeviceType = "doorbell_v4",
+                FirmwareVersionStatus = "up_to_date",
+                BatteryPresent = true,
+                BatteryPercentageCategory = "high",
+                BatteryVoltageCategory = "ok",
+                RssiCategory = "good",
+                NetworkConnectionValue = "wifi",
+                PacketLoss = 0.5,
+                PacketLossCategory = "low",
+                LatestSignalStrength = -42.0,
+                LatestSignalCategory = "strong",
+                AverageSignalStrength = -45.5,
+                AverageSignalCategory = "strong",
+                Firmware = "2.0.1",
+                UpdatedAt = "2026-10-16T12:30:00Z",
+                PacketLossStrength = 0.9,
+                WifiIsRingNetwork = false,
+                PtzConnected = true
+            };
+            var doorbot = new Doorbot { Id = 100, Description = "Door 1", Health = health };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var service = new RingHealthSource(logger, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            // Assert
+            DeviceHealthReading reading = Assert.Single(readings);
+            Assert.Equal("doorbell_v4", reading.DeviceType);
+            Assert.Equal("up_to_date", reading.FirmwareVersionStatus);
+            Assert.True(reading.BatteryPresent);
+            Assert.Equal("high", reading.BatteryPercentageCategory);
+            Assert.Equal("ok", reading.BatteryVoltageCategory);
+            Assert.Equal("good", reading.RssiCategory);
+            Assert.Equal("wifi", reading.NetworkConnectionValue);
+            Assert.Equal(0.5, reading.PacketLoss);
+            Assert.Equal("low", reading.PacketLossCategory);
+            Assert.Equal(-42.0, reading.LatestSignalStrength);
+            Assert.Equal("strong", reading.LatestSignalCategory);
+            Assert.Equal(-45.5, reading.AverageSignalStrength);
+            Assert.Equal("strong", reading.AverageSignalCategory);
+            Assert.Equal("2.0.1", reading.Firmware);
+            Assert.Equal(new DateTime(2026, 10, 16, 12, 30, 0, DateTimeKind.Utc), reading.UpdatedAtUtc);
+            Assert.Equal(0.9, reading.PacketLossStrength);
+            Assert.False(reading.WifiIsRingNetwork);
+            Assert.True(reading.PtzConnected);
+        }
+
+        [Fact]
+        public async Task FetchHealthAsync_MissingHealthDetailFields_StayNull()
+        {
+            var doorbot = new Doorbot { Id = 100, Description = "Door 1", Health = new DeviceHealth { Connected = true } };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+
+            ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
+            var service = new RingHealthSource(logger, sessionProvider.Object);
+
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            DeviceHealthReading reading = Assert.Single(readings);
+            Assert.Null(reading.DeviceType);
+            Assert.Null(reading.PacketLoss);
+            Assert.Null(reading.BatteryPresent);
+            Assert.Null(reading.UpdatedAtUtc);
+            Assert.Null(reading.PtzConnected);
+        }
     }
 }
