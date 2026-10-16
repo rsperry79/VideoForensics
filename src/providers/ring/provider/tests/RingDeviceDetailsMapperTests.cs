@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
@@ -239,6 +241,34 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Null(fields.SubscribedMotions);
             Assert.Null(fields.BatteryLife);
             Assert.Null(fields.ExternalConnection);
+        }
+
+        [Fact]
+        public void ToDeviceFields_ChimeJsonWithoutLocationOrOwnership_MapsAbsentValuesToNull()
+        {
+            const string json = """{"id":789,"device_id":"112233","kind":"chime_v2","firmware_version":"1.1.0"}""";
+            Chime chime = JsonSerializer.Deserialize<Chime>(json)!;
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(chime);
+
+            Assert.Null(fields.Latitude);
+            Assert.Null(fields.Longitude);
+            Assert.Null(fields.Owned);
+            Assert.Null(fields.Stolen);
+        }
+
+        [Fact]
+        public void ToDeviceFields_ChimeJsonWithLocationAndOwnership_MapsValues()
+        {
+            const string json = """{"id":789,"device_id":"112233","latitude":41.5,"longitude":-87.6,"owned":true,"stolen":false}""";
+            Chime chime = JsonSerializer.Deserialize<Chime>(json)!;
+
+            DeviceDetailFields fields = RingDeviceDetailsMapper.ToDeviceFields(chime);
+
+            Assert.Equal(41.5, fields.Latitude);
+            Assert.Equal(-87.6, fields.Longitude);
+            Assert.True(fields.Owned);
+            Assert.False(fields.Stolen);
         }
 
         [Fact]

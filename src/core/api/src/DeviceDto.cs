@@ -16,6 +16,18 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="LastSyncedUtc">Timestamp of the last successful sync operation, in UTC. Null if never synced.</param>
     /// <param name="SyncStatus">Current sync status: Pending, Synced, Stale, or Error.</param>
     /// <param name="ApiResponseHash">Hash of the last API response for change detection; null if not applicable.</param>
+    /// <param name="RingDeviceId">Ring's hex device_id. Null if the provider gave none.</param>
+    /// <param name="RingKind">Raw Ring device kind, e.g. doorbell_v4. Null if unknown.</param>
+    /// <param name="FirmwareVersion">Device firmware version. Null if unknown.</param>
+    /// <param name="Latitude">Device latitude. Null if unknown.</param>
+    /// <param name="Longitude">Device longitude. Null if unknown.</param>
+    /// <param name="Address">The device's own address field. Null if unknown.</param>
+    /// <param name="Subscribed">True if subscribed to Ring service. Null if unknown.</param>
+    /// <param name="SubscribedMotions">True if subscribed to motion events. Null if unknown.</param>
+    /// <param name="BatteryLife">Ring's raw battery_life value, kept as text. Null if unknown.</param>
+    /// <param name="ExternalConnection">True if externally connected (wired). Null if unknown.</param>
+    /// <param name="Owned">True if the device is owned by the account. Null if unknown.</param>
+    /// <param name="Stolen">True if the device is flagged as stolen. Null if unknown.</param>
     public record DeviceDto(
         Guid Id,
         Guid LocationId,
@@ -29,7 +41,19 @@ namespace VideoForensics.Core.Api.Contracts
         string? TimeZoneId,
         DateTime? LastSyncedUtc,
         SyncStatusDto SyncStatus,
-        string? ApiResponseHash
+        string? ApiResponseHash,
+        string? RingDeviceId = null,
+        string? RingKind = null,
+        string? FirmwareVersion = null,
+        double? Latitude = null,
+        double? Longitude = null,
+        string? Address = null,
+        bool? Subscribed = null,
+        bool? SubscribedMotions = null,
+        string? BatteryLife = null,
+        bool? ExternalConnection = null,
+        bool? Owned = null,
+        bool? Stolen = null
     );
 
     /// <summary>Sync status enumeration for a device.</summary>
@@ -66,7 +90,19 @@ namespace VideoForensics.Core.Api.Contracts
                 TimeZoneId: entity.TimeZoneId,
                 LastSyncedUtc: entity.LastSyncedUtc,
                 SyncStatus: (SyncStatusDto)entity.SyncStatus,
-                ApiResponseHash: entity.ApiResponseHash
+                ApiResponseHash: entity.ApiResponseHash,
+                RingDeviceId: entity.RingDeviceId,
+                RingKind: entity.RingKind,
+                FirmwareVersion: entity.FirmwareVersion,
+                Latitude: entity.Latitude,
+                Longitude: entity.Longitude,
+                Address: entity.Address,
+                Subscribed: entity.Subscribed,
+                SubscribedMotions: entity.SubscribedMotions,
+                BatteryLife: entity.BatteryLife,
+                ExternalConnection: entity.ExternalConnection,
+                Owned: entity.Owned,
+                Stolen: entity.Stolen
             );
         }
 
@@ -89,7 +125,19 @@ namespace VideoForensics.Core.Api.Contracts
                 TimeZoneId = dto.TimeZoneId,
                 LastSyncedUtc = dto.LastSyncedUtc,
                 SyncStatus = (VideoForensics.Data.Common.Entities.SyncStatus)dto.SyncStatus,
-                ApiResponseHash = dto.ApiResponseHash
+                ApiResponseHash = dto.ApiResponseHash,
+                RingDeviceId = dto.RingDeviceId,
+                RingKind = dto.RingKind,
+                FirmwareVersion = dto.FirmwareVersion,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Address = dto.Address,
+                Subscribed = dto.Subscribed,
+                SubscribedMotions = dto.SubscribedMotions,
+                BatteryLife = dto.BatteryLife,
+                ExternalConnection = dto.ExternalConnection,
+                Owned = dto.Owned,
+                Stolen = dto.Stolen
             };
         }
     }

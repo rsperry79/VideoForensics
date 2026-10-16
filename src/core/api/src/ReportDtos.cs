@@ -15,6 +15,24 @@
     /// <param name="LastHeartbeatUtc">Timestamp of the last known heartbeat, in UTC. Null if unknown.</param>
     /// <param name="FirmwareVersion">Device firmware version at time of capture. Null if unknown.</param>
     /// <param name="CapturedAtUtc">Timestamp when this health metric was captured, in UTC.</param>
+    /// <param name="DeviceType">Raw Ring device_type. Null if unknown.</param>
+    /// <param name="FirmwareVersionStatus">Ring firmware_version_status. Null if unknown.</param>
+    /// <param name="BatteryPresent">True if the device has a battery. Null if unknown.</param>
+    /// <param name="BatteryPercentageCategory">Ring's battery percentage category label. Null if unknown.</param>
+    /// <param name="BatteryVoltageCategory">Ring's battery voltage category label. Null if unknown.</param>
+    /// <param name="RssiCategory">Ring's RSSI category label. Null if unknown.</param>
+    /// <param name="NetworkConnectionValue">Ring's network connection value. Null if unknown.</param>
+    /// <param name="PacketLoss">Packet loss reported by Ring. Null if unknown.</param>
+    /// <param name="PacketLossCategory">Ring's packet loss category label. Null if unknown.</param>
+    /// <param name="LatestSignalStrength">Latest signal strength reported by Ring. Null if unknown.</param>
+    /// <param name="LatestSignalCategory">Ring's latest signal category label. Null if unknown.</param>
+    /// <param name="AverageSignalStrength">Average signal strength reported by Ring. Null if unknown.</param>
+    /// <param name="AverageSignalCategory">Ring's average signal category label. Null if unknown.</param>
+    /// <param name="Firmware">Ring's firmware field. Null if unknown.</param>
+    /// <param name="UpdatedAtUtc">Ring's updated_at timestamp, in UTC. Null if unknown.</param>
+    /// <param name="PacketLossStrength">Packet loss strength reported by Ring. Null if unknown.</param>
+    /// <param name="WifiIsRingNetwork">True if the WiFi network is a Ring network. Null if unknown.</param>
+    /// <param name="PtzConnected">True if a PTZ connection is present. Null if unknown.</param>
     public record DeviceHealthDto(
         Guid Id,
         Guid DeviceId,
@@ -27,7 +45,25 @@
         bool? IsOnline,
         DateTime? LastHeartbeatUtc,
         string? FirmwareVersion,
-        DateTime CapturedAtUtc
+        DateTime CapturedAtUtc,
+        string? DeviceType = null,
+        string? FirmwareVersionStatus = null,
+        bool? BatteryPresent = null,
+        string? BatteryPercentageCategory = null,
+        string? BatteryVoltageCategory = null,
+        string? RssiCategory = null,
+        string? NetworkConnectionValue = null,
+        double? PacketLoss = null,
+        string? PacketLossCategory = null,
+        double? LatestSignalStrength = null,
+        string? LatestSignalCategory = null,
+        double? AverageSignalStrength = null,
+        string? AverageSignalCategory = null,
+        string? Firmware = null,
+        DateTime? UpdatedAtUtc = null,
+        double? PacketLossStrength = null,
+        bool? WifiIsRingNetwork = null,
+        bool? PtzConnected = null
     );
 
     /// <summary>
@@ -238,7 +274,25 @@
                 IsOnline: entity.IsOnline,
                 LastHeartbeatUtc: entity.LastHeartbeatUtc,
                 FirmwareVersion: entity.FirmwareVersion,
-                CapturedAtUtc: entity.CapturedAtUtc
+                CapturedAtUtc: entity.CapturedAtUtc,
+                DeviceType: entity.DeviceType,
+                FirmwareVersionStatus: entity.FirmwareVersionStatus,
+                BatteryPresent: entity.BatteryPresent,
+                BatteryPercentageCategory: entity.BatteryPercentageCategory,
+                BatteryVoltageCategory: entity.BatteryVoltageCategory,
+                RssiCategory: entity.RssiCategory,
+                NetworkConnectionValue: entity.NetworkConnectionValue,
+                PacketLoss: entity.PacketLoss,
+                PacketLossCategory: entity.PacketLossCategory,
+                LatestSignalStrength: entity.LatestSignalStrength,
+                LatestSignalCategory: entity.LatestSignalCategory,
+                AverageSignalStrength: entity.AverageSignalStrength,
+                AverageSignalCategory: entity.AverageSignalCategory,
+                Firmware: entity.Firmware,
+                UpdatedAtUtc: entity.UpdatedAtUtc,
+                PacketLossStrength: entity.PacketLossStrength,
+                WifiIsRingNetwork: entity.WifiIsRingNetwork,
+                PtzConnected: entity.PtzConnected
             );
         }
 
@@ -258,7 +312,25 @@
                 IsOnline = dto.IsOnline,
                 LastHeartbeatUtc = dto.LastHeartbeatUtc,
                 FirmwareVersion = dto.FirmwareVersion,
-                CapturedAtUtc = dto.CapturedAtUtc
+                CapturedAtUtc = dto.CapturedAtUtc,
+                DeviceType = dto.DeviceType,
+                FirmwareVersionStatus = dto.FirmwareVersionStatus,
+                BatteryPresent = dto.BatteryPresent,
+                BatteryPercentageCategory = dto.BatteryPercentageCategory,
+                BatteryVoltageCategory = dto.BatteryVoltageCategory,
+                RssiCategory = dto.RssiCategory,
+                NetworkConnectionValue = dto.NetworkConnectionValue,
+                PacketLoss = dto.PacketLoss,
+                PacketLossCategory = dto.PacketLossCategory,
+                LatestSignalStrength = dto.LatestSignalStrength,
+                LatestSignalCategory = dto.LatestSignalCategory,
+                AverageSignalStrength = dto.AverageSignalStrength,
+                AverageSignalCategory = dto.AverageSignalCategory,
+                Firmware = dto.Firmware,
+                UpdatedAtUtc = dto.UpdatedAtUtc,
+                PacketLossStrength = dto.PacketLossStrength,
+                WifiIsRingNetwork = dto.WifiIsRingNetwork,
+                PtzConnected = dto.PtzConnected
             };
         }
 
