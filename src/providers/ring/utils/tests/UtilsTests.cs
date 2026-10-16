@@ -1735,4 +1735,20 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Equal(defaults.DevicesApiBaseUrl, mapped.DevicesApiBaseUrl);
         }
     }
+    public class SelfTestDefaultDatabasePathTests
+    {
+        [Fact]
+        public void DefaultDatabasePath_NoOverride_MatchesAppDatabaseRoot()
+        {
+            string expected = Path.Combine(
+                new VideoForensics.Core.Helpers.Platform.StorageLocationProvider()
+                    .GetDefaultRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Database),
+                "videoforensics.db");
+
+            string actual = CliOptions.DefaultDatabasePath();
+
+            Assert.Equal(expected, actual);
+            Assert.EndsWith(Path.Combine("Database", "videoforensics.db"), actual);
+        }
+    }
 }
