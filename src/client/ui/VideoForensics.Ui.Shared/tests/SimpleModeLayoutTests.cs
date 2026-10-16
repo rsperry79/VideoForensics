@@ -46,6 +46,8 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         Services.AddScoped<ScopeState>();
         Services.AddScoped<RightPanelContentService>();
         Services.AddScoped(sp => new LayoutPreferencesState(sp.GetRequiredService<IJSRuntime>()));
+        // AccountSwitcher in the right panel resolves the account selection on every layout render.
+        Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
 
         // Register PairedSessionState for SimpleLayout and other components
         var session = new PairedSessionState(JSInterop.JSRuntime);
