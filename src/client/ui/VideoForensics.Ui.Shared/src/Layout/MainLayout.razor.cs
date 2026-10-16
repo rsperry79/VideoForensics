@@ -340,7 +340,32 @@ namespace VideoForensics.Ui.Shared.Layout
             Nav.LocationChanged -= OnLocationChanged;
             ThemeService.OnChange -= StateHasChanged;
             SessionState.AuthenticationExpired -= OnAuthenticationExpired;
-            _selfRef?.Dispose();
+            _ = ReleaseRightPanelHandleAsync();
+        }
+
+        /// <summary>
+        /// Detaches the JS listener before releasing the reference it calls back through. Disposing the reference first
+        /// would leave the listener calling a dead object ("no tracked object with id").
+        /// </summary>
+        private async Task ReleaseRightPanelHandleAsync()
+        {
+            try
+            {
+                if (_rightPanelHandleAttached)
+                {
+                    await JS.InvokeVoidAsync("vfPanelResize.detach", _rightPanelHandleId);
+                }
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or ObjectDisposedException)
+            {
+                // Circuit already gone or script missing - nothing left to detach.
+            }
+            finally
+            {
+                _rightPanelHandleAttached = false;
+                _selfRef?.Dispose();
+                _selfRef = null;
+            }
         }
     }
 }
