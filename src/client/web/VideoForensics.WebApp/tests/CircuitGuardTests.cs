@@ -395,6 +395,20 @@ public class GuardedJammingRepository_Tests
 public class GuardedConfigToolsOrchestrator_Tests
 {
     [Fact]
+    public async Task GuardedConfigToolsOrchestrator_HealthSync_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
+    {
+        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+
+        var (success, _) = await guarded.SetHealthSyncAsync(new Mock<IForensicsConfiguration>().Object, false);
+
+        Assert.False(success);
+        inner.Verify(c => c.SetHealthSyncAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GuardedConfigToolsOrchestrator_FactoryReset_LocalAdminOnly_ReturnsFailureAndDoesNotReset()
     {
         // Factory reset is destructive and has no HTTP endpoint, so the server check is the only one. A denied call

@@ -149,6 +149,28 @@ namespace VideoForensics.Client.Core.Tools
             return (true, $"Logging level updated to {level}");
         }
 
+        public async Task<(bool Success, string Message)> SetHealthSyncAsync(
+            IForensicsConfiguration config,
+            bool enabled,
+            CancellationToken ct = default)
+        {
+            config.EnableHealthSync = enabled;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("Health sync set to {enabled}", enabled);
+            return (true, enabled ? "Health sync enabled" : "Health sync disabled");
+        }
+
+        public async Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(
+            IForensicsConfiguration config,
+            bool enabled,
+            CancellationToken ct = default)
+        {
+            config.EnableMdnsAdvertisement = enabled;
+            await _configService.SaveConfigurationAsync(config, ct);
+            _logger.LogInformation("mDNS advertisement set to {enabled}", enabled);
+            return (true, enabled ? "mDNS advertisement enabled" : "mDNS advertisement disabled");
+        }
+
         public async Task<(bool Success, string Message)> SetReportFormatAsync(
             IForensicsConfiguration config,
             string format,

@@ -125,9 +125,17 @@ else
         _result = null;
         try
         {
-            // Exporting evidence needs a fresh passkey step-up, the same as the HTTP export. A failed or cancelled
-            // step-up throws here and is shown below as the export error.
-            string stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
+            // Exporting evidence needs a fresh passkey step-up, the same as the HTTP export.
+            string stepUpToken;
+            try
+            {
+                stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
+            }
+            catch (Exception)
+            {
+                _result = new ExportResult { Success = false, ErrorMessage = L["StepUpFailed"].Value };
+                return;
+            }
 
             _result = await EvidenceExportService.ExportEvidenceAsync(
                 _mediaItemIds,
@@ -137,6 +145,10 @@ else
                 string.IsNullOrWhiteSpace(_passphrase) ? null : _passphrase,
                 CancellationToken.None,
                 stepUpToken);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _result = new ExportResult { Success = false, ErrorMessage = L["ExportNotAuthorized"].Value };
         }
         catch (Exception ex)
         {

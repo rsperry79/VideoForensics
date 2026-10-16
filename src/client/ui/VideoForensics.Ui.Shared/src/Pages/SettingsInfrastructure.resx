@@ -71,4 +71,7 @@
   <data name="CancelButton" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="AdminOnlySettingsNote" xml:space="preserve">
+    <value>Only a SuperAdmin on this computer can change these settings.</value>
+  </data>
 </root>

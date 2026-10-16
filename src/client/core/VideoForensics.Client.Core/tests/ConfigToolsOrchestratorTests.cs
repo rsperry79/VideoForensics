@@ -176,6 +176,30 @@ namespace VideoForensics.Client.Core.Tests
                 Times.Once);
         }
 
+        [Fact]
+        public async Task SetHealthSyncAsync_Disabled_SavesConfiguration()
+        {
+            var config = new ForensicsConfiguration { EnableHealthSync = true };
+
+            (bool Success, string Message) = await _orchestrator.SetHealthSyncAsync(config, false, CancellationToken.None);
+
+            Assert.True(Success);
+            Assert.False(config.EnableHealthSync);
+            _configServiceMock.Verify(s => s.SaveConfigurationAsync(config, CancellationToken.None), Times.Once);
+        }
+
+        [Fact]
+        public async Task SetMdnsAdvertisementAsync_Enabled_SavesConfiguration()
+        {
+            var config = new ForensicsConfiguration { EnableMdnsAdvertisement = false };
+
+            (bool Success, string Message) = await _orchestrator.SetMdnsAdvertisementAsync(config, true, CancellationToken.None);
+
+            Assert.True(Success);
+            Assert.True(config.EnableMdnsAdvertisement);
+            _configServiceMock.Verify(s => s.SaveConfigurationAsync(config, CancellationToken.None), Times.Once);
+        }
+
         [Theory]
         [InlineData("json")]
         [InlineData("xml")]

@@ -37,6 +37,12 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         public Task<(bool Success, string Message)> SetReportFormatAsync(IForensicsConfiguration config, string format, CancellationToken ct = default) =>
             Run(AccessPolicy.Admin, () => inner.SetReportFormatAsync(config, format, ct));
 
+        public Task<(bool Success, string Message)> SetHealthSyncAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default) =>
+            Run(AccessPolicy.Admin, () => inner.SetHealthSyncAsync(config, enabled, ct));
+
+        public Task<(bool Success, string Message)> SetMdnsAdvertisementAsync(IForensicsConfiguration config, bool enabled, CancellationToken ct = default) =>
+            Run(AccessPolicy.Admin, () => inner.SetMdnsAdvertisementAsync(config, enabled, ct));
+
         public Task<(bool Success, string Message)> FactoryResetAsync(CancellationToken ct = default, string? downloadDirOverride = null, string? dbPathOverride = null) =>
             Run(AccessPolicy.SuperAdminLocal, () => inner.FactoryResetAsync(ct, downloadDirOverride, dbPathOverride));
 
