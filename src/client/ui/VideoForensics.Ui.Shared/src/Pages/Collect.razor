@@ -1,4 +1,5 @@
 @page "/collect"
+@using VideoForensics.Ui.Shared.Layout
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -26,7 +27,16 @@ else if (!_isAuthenticated)
 }
 else if (!_hasProviderAccount)
 {
-    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"] <a href="/accounts/add">@L["AddProviderAccount"]</a></div>
+    <div class="alert alert-info" data-testid="no-provider-account">@L["NoProviderAccount"]
+        @if (CanLinkProviderAccount)
+        {
+            <a href="/accounts/add">@L["AddProviderAccount"]</a>
+        }
+        else
+        {
+            @L["AskAdministratorToLinkAccount"]
+        }
+    </div>
 }
 else
 {
@@ -117,6 +127,10 @@ else
 }
 
 @code {
+
+    /// <summary>Only SuperAdmin on the Local tier may open the account wizard (/accounts/add), so only they get the link.</summary>
+    private bool CanLinkProviderAccount => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _hasProviderAccount;

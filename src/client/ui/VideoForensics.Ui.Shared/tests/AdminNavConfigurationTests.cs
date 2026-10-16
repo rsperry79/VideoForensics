@@ -35,6 +35,12 @@ public class AdminNavConfiguration_Tests
     [InlineData("/accounts", AccessPolicy.SuperAdminLocal)]
     [InlineData("/devices/config", AccessPolicy.SuperAdminLocal)]
     [InlineData("/review/export", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/query", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/accounts/add", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/analyze?analysis=reports", AccessPolicy.ReadOnly)]
+    [InlineData("/analyze?analysis=anomalies", AccessPolicy.ReadOnly)]
+    [InlineData("/analyze?analysis=access", AccessPolicy.ReadOnly)]
+    [InlineData("/analyze?analysis=jamming", AccessPolicy.Admin)]
     public void PageAccessRules_ListedPage_HasReviewedPolicy(string path, AccessPolicy expected)
     {
         Assert.True(PageAccessRules.TryGetPolicy(path, out AccessPolicy actual));
@@ -48,6 +54,15 @@ public class AdminNavConfiguration_Tests
     public void PageAccessRules_RemoteAdmin_CannotOpenLocalOnlyAdminPage(string path)
     {
         Assert.False(PageAccessRules.IsAllowed(path, Ctx(OperatorRole.Admin)));
+    }
+
+    [Fact]
+    public void PageAccessRules_JammingTab_ReadOnlyOperator_Denied_ButReportsTabAllowed()
+    {
+        // Analyze tabs are keyed by query, so one tab's rule must not leak to another.
+        Assert.False(PageAccessRules.IsAllowed("/analyze?analysis=jamming", Ctx(OperatorRole.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze?analysis=reports", Ctx(OperatorRole.ReadOnly)));
+        Assert.True(PageAccessRules.IsAllowed("/analyze", Ctx(OperatorRole.ReadOnly)));
     }
 
     [Fact]

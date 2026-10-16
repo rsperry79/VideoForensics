@@ -3,6 +3,7 @@
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Components.Analysis
+@using VideoForensics.Ui.Shared.Layout
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Scope
 @inject PairedSessionState SessionState
@@ -27,22 +28,34 @@ else if (!_isAuthenticated)
 else
 {
     <div class="mb-3">
-        <button class="btn @(_activeAnalysis == "reports" ? "btn-primary active" : "btn-outline-primary")"
-                @onclick="@(() => SelectAnalysis("reports"))" data-testid="analysis-reports">
-            Reports
-        </button>
-        <button class="btn @(_activeAnalysis == "anomalies" ? "btn-primary active" : "btn-outline-primary")"
-                @onclick="@(() => SelectAnalysis("anomalies"))" data-testid="analysis-anomalies">
-            Signal Anomalies
-        </button>
-        <button class="btn @(_activeAnalysis == "access" ? "btn-primary active" : "btn-outline-primary")"
-                @onclick="@(() => SelectAnalysis("access"))" data-testid="analysis-access">
-            Access Control
-        </button>
-        <button class="btn @(_activeAnalysis == "jamming" ? "btn-primary active" : "btn-outline-primary")"
-                @onclick="@(() => SelectAnalysis("jamming"))" data-testid="analysis-jamming">
-            Jamming Analysis
-        </button>
+        @if (CanOpen("reports"))
+        {
+            <button class="btn @(_activeAnalysis == "reports" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => SelectAnalysis("reports"))" data-testid="analysis-reports">
+                Reports
+            </button>
+        }
+        @if (CanOpen("anomalies"))
+        {
+            <button class="btn @(_activeAnalysis == "anomalies" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => SelectAnalysis("anomalies"))" data-testid="analysis-anomalies">
+                Signal Anomalies
+            </button>
+        }
+        @if (CanOpen("access"))
+        {
+            <button class="btn @(_activeAnalysis == "access" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => SelectAnalysis("access"))" data-testid="analysis-access">
+                Access Control
+            </button>
+        }
+        @if (CanOpen("jamming"))
+        {
+            <button class="btn @(_activeAnalysis == "jamming" ? "btn-primary active" : "btn-outline-primary")"
+                    @onclick="@(() => SelectAnalysis("jamming"))" data-testid="analysis-jamming">
+                Jamming Analysis
+            </button>
+        }
     </div>
 
     <div class="mb-3 p-3 bg-light">
@@ -105,6 +118,13 @@ else
                     }
                 }
 
+                // A tab the operator may not open (e.g. Jamming for a ReadOnly operator, from a shared link) falls back
+                // to the first tab they may open, so the page never shows a tab with no visible control.
+                if (!CanOpen(_activeAnalysis))
+                {
+                    _activeAnalysis = AnalysisTabs.FirstOrDefault(CanOpen) ?? _activeAnalysis;
+                }
+
                 // Subscribe to scope changes
                 ScopeState.OnChange += OnScopeChanged;
             }
@@ -115,6 +135,12 @@ else
         }
     }
 
+    private static readonly string[] AnalysisTabs = ["reports", "anomalies", "access", "jamming"];
+
+    /// <summary>Whether the operator may open an analysis tab; the rule for each tab is in <see cref="PageAccessRules"/>.</summary>
+    private bool CanOpen(string analysis) =>
+        PageAccessRules.IsAllowed($"/analyze?analysis={analysis}", NavContext.FromSession(SessionState, appLockSupported: false));
+
     private void OnScopeChanged()
     {
         // Trigger re-render when scope changes
@@ -123,7 +149,7 @@ else
 
     private void SelectAnalysis(string analysis)
     {
-        if (!IsValidAnalysis(analysis))
+        if (!IsValidAnalysis(analysis) || !CanOpen(analysis))
         {
             return;
         }
