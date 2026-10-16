@@ -174,7 +174,11 @@ namespace VideoForensics.Providers.Ring.Services
                     BatteryPercentage: health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
                     Rssi: health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
                     WifiName: health.WifiName,
-                    FirmwareVersion: health.FirmwareVersion
+                    FirmwareVersion: health.FirmwareVersion,
+                    BatteryVoltageValue: health.BatteryVoltage,
+                    IsExternalPowerConnected: RingHealthTelemetryMapper.ToExternalPowerConnected(health.ExtPowerState),
+                    OtaStatus: health.OtaStatus,
+                    LastHeartbeatUtc: RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime)
                 ));
             }
         }

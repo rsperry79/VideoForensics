@@ -100,6 +100,14 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Serializes an API response object to JSON and computes its SHA256 hash for audit/change tracking.</summary>
+        /// <summary>Returns the provider's device time zone from discovery metadata, or null when the provider gave none.</summary>
+        private static string? ResolveTimeZone(VideoForensics.Core.Providers.Common.Contracts.Device device)
+        {
+            return device.Metadata != null && device.Metadata.TryGetValue("time_zone", out string? timeZone) && !string.IsNullOrWhiteSpace(timeZone)
+                ? timeZone
+                : null;
+        }
+
         /// <summary>
         /// Picks the provider's device kind: the explicit "kind" metadata (e.g. doorbell_v4) when the
         /// provider supplied one, otherwise the discovered device type.
@@ -170,6 +178,7 @@ namespace VideoForensics.Client.Core.Services
             string? providerLocationId,
             string? providerDeviceKind,
             bool? isOnline,
+            string? deviceTimeZone,
             CancellationToken ct)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cached))
@@ -236,7 +245,7 @@ namespace VideoForensics.Client.Core.Services
                 string deviceType = MapDeviceType(providerDeviceKind);
                 (string Json, string Hash) deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = deviceType, isOnline });
                 Data.Common.Entities.Device device = await _dataClient.EnsureDeviceAsync(
-                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct);
+                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct, timeZoneId: deviceTimeZone);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
@@ -343,7 +352,7 @@ namespace VideoForensics.Client.Core.Services
                 try
                 {
                     Guid deviceGuid = await EnsureDeviceIdentityAsync(
-                        device.Id, device.Name, device.LocationId, ResolveDeviceKind(device), device.IsOnline, cancellationToken);
+                        device.Id, device.Name, device.LocationId, ResolveDeviceKind(device), device.IsOnline, ResolveTimeZone(device), cancellationToken);
                     deviceEffectiveStart = await _dataClient.GetWatermarkAsync(deviceGuid, startDate, force, cancellationToken);
                 }
                 catch (Exception ex)

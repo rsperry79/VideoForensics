@@ -19,6 +19,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
+        private readonly IDeviceDetailsRepository _deviceDetailsRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
@@ -39,6 +40,7 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
+            IDeviceDetailsRepository deviceDetailsRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -57,6 +59,7 @@ namespace VideoForensics.Data.Core.Services
             _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthRepository = deviceHealthRepository;
+            _deviceDetailsRepository = deviceDetailsRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -93,6 +96,25 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
+                throw;
+            }
+        }
+
+        public async Task RecordDeviceDetailsAsync(
+            Guid deviceId,
+            Guid? healthId,
+            DeviceCapabilities? capabilities,
+            DeviceFeatures? features,
+            IReadOnlyList<DeviceAlerts>? alerts,
+            CancellationToken ct)
+        {
+            try
+            {
+                await _deviceDetailsRepository.UpsertAsync(deviceId, healthId, capabilities, features, alerts, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
                 throw;
             }
         }
@@ -454,7 +476,8 @@ namespace VideoForensics.Data.Core.Services
             bool? isOnline,
             string? metadataJson = null,
             string? apiResponseHash = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string? timeZoneId = null)
         {
             try
             {
@@ -487,6 +510,7 @@ namespace VideoForensics.Data.Core.Services
                             IsOnline = isOnline,
                             MetadataJson = metadataJson,
                             ApiResponseHash = apiResponseHash,
+                            TimeZoneId = timeZoneId,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
@@ -522,6 +546,7 @@ namespace VideoForensics.Data.Core.Services
                                 IsOnline = isOnline,
                                 MetadataJson = metadataJson,
                                 ApiResponseHash = apiResponseHash,
+                                TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced
                             };
@@ -539,6 +564,13 @@ namespace VideoForensics.Data.Core.Services
                         existingDevice.Name = name;
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
+                        // Only overwrite the stored time zone when this sync actually carries one, so a
+                        // later response without time_zone never blanks a value already on record.
+                        if (!string.IsNullOrWhiteSpace(timeZoneId))
+                        {
+                            existingDevice.TimeZoneId = timeZoneId;
+                        }
+
                         await context.Devices.UpdateAsync(existingDevice, ct);
                         _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;

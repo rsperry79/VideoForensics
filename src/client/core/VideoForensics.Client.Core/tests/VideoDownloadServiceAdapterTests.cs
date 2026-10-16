@@ -383,6 +383,21 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task PreScanAsync_DeviceWithTimeZoneMetadata_PassesTimeZoneToEnsureDevice()
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device(
+                "dev-1", "Front", "doorbot", "loc-1", true,
+                new Dictionary<string, string> { ["time_zone"] = "America/New_York" });
+            _ = SetupIdentityScenario(device);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "dev-1", "Front", "doorbell", true,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), timeZoneId: "America/New_York"), Times.Once);
+        }
+
+        [Fact]
         public async Task PreScanAsync_LocationWithoutAddress_StoresNullAddress()
         {
             var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", true);

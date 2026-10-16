@@ -97,6 +97,37 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_ReadingWithTelemetry_PersistsVoltagePowerOtaHeartbeatAndLinksHealthId()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+
+            Device device = MakeDevice("ring-456");
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            var heartbeat = new DateTime(2023, 11, 14, 22, 13, 20, DateTimeKind.Utc);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new DeviceHealthReading("ring-456", Connected: true, BatteryPercentage: 60m, Rssi: -60, WifiName: null, FirmwareVersion: null,
+                        BatteryVoltageValue: 12.25m, IsExternalPowerConnected: false, OtaStatus: "downloading", LastHeartbeatUtc: heartbeat)
+                ]);
+
+            DeviceHealth? captured = null;
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((DeviceHealth h, CancellationToken _) => h);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.NotNull(captured);
+            Assert.Equal(12.25m, captured!.BatteryVoltageValue);
+            Assert.False(captured.IsExternalPowerConnected);
+            Assert.Equal("downloading", captured.OtaStatus);
+            Assert.Equal(heartbeat, captured.LastHeartbeatUtc);
+            dataClient.Verify(d => d.RecordDeviceDetailsAsync(device.Id, captured!.Id, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_ReadingForUnknownDevice_IsSkipped()
         {
             (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();

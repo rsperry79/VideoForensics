@@ -608,6 +608,98 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceIdentityAsync_WithTimeZone_PassesTimeZoneToDataClient()
+        {
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "loc-1" });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = "123",
+                    Name = "Front Door",
+                    Type = "doorbell",
+                    IsOnline = true
+                });
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+
+            _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", true, CancellationToken.None, timeZoneId: "America/Chicago");
+
+            dataClient.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", true,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), timeZoneId: "America/Chicago"), Times.Once);
+        }
+
+        [Fact]
+        public async Task ResolveDeviceDetailsAsync_ReturnsTimeZoneFromRingDevice()
+        {
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot { Id = 123, TimeZone = "America/Denver" }]
+            });
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, new Mock<IVideoForensicsDataClient>().Object);
+
+            Providers.Ring.Services.RingDeviceDetails? details = await service.ResolveDeviceDetailsAsync(session.Object, "123", CancellationToken.None);
+
+            Assert.Equal("America/Denver", details?.TimeZone);
+        }
+
+        [Fact]
+        public async Task CaptureDeviceHealthSnapshotAsync_WritesHealthTelemetryAndDeviceDetails()
+        {
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<VideoForensics.Data.Common.Entities.DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((VideoForensics.Data.Common.Entities.DeviceHealth h, CancellationToken _) => h);
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot
+                {
+                    Id = 123,
+                    FirmwareVersion = "2.0.1",
+                    Features = new Entities.DoorbotFeatures { MotionsEnabled = true, NightVisionEnabled = true },
+                    Health = new Entities.DeviceHealth
+                    {
+                        Connected = true,
+                        BatteryPercentage = 80,
+                        Rssi = -50,
+                        BatteryVoltage = 12.5m,
+                        ExtPowerState = 1,
+                        OtaStatus = "idle",
+                        LastUpdateTime = 1_700_000_000L
+                    }
+                }]
+            });
+            Guid deviceGuid = Guid.NewGuid();
+
+            await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", deviceGuid, CancellationToken.None);
+
+            dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<VideoForensics.Data.Common.Entities.DeviceHealth>(h =>
+                h.DeviceId == deviceGuid
+                && h.BatteryVoltageValue == 12.5m
+                && h.IsExternalPowerConnected == true
+                && h.OtaStatus == "idle"
+                && h.LastHeartbeatUtc == new DateTime(2023, 11, 14, 22, 13, 20, DateTimeKind.Utc)), It.IsAny<CancellationToken>()), Times.Once);
+
+            dataClient.Verify(d => d.RecordDeviceDetailsAsync(
+                deviceGuid,
+                It.Is<Guid?>(id => id.HasValue),
+                It.Is<VideoForensics.Data.Common.Entities.DeviceCapabilities>(c => c.HasMotionDetection == true && c.HasNightVision == true && c.FirmwareVersion == "2.0.1"),
+                It.Is<VideoForensics.Data.Common.Entities.DeviceFeatures?>(f => f != null && f.MotionsEnabled == true),
+                It.IsAny<IReadOnlyList<VideoForensics.Data.Common.Entities.DeviceAlerts>?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task EnsureDeviceIdentityAsync_DoorbellOffline_StoresDoorbellTypeAndNotOnline()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();

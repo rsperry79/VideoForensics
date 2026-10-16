@@ -15,7 +15,6 @@ namespace VideoForensics.Providers.Ring.Services
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
-        private readonly IDeviceCapabilitiesRepository? _capabilitiesRepository;
         private readonly ILocationMetadataRepository? _metadataRepository;
         private readonly ILocationRepository? _locationRepository;
         private readonly ApiResponseNormalizer? _normalizer;
@@ -43,14 +42,12 @@ namespace VideoForensics.Providers.Ring.Services
         public RingDeviceDiscoveryService(
             ILogger logger,
             ISessionProvider sessionProvider,
-            IDeviceCapabilitiesRepository? capabilitiesRepository = null,
             ILocationMetadataRepository? metadataRepository = null,
             ApiResponseNormalizer? normalizer = null,
             ILocationRepository? locationRepository = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
-            _capabilitiesRepository = capabilitiesRepository;
             _metadataRepository = metadataRepository;
             _normalizer = normalizer;
             _locationRepository = locationRepository;
@@ -176,10 +173,24 @@ namespace VideoForensics.Providers.Ring.Services
         /// with no resolvable location_id (UnknownLocationId) are skipped since there's nothing to
         /// group them under.
         /// </summary>
-        /// <summary>Carries Ring's raw device <c>kind</c> (e.g. doorbell_v4) so the stored device type can be derived from it.</summary>
-        private static Dictionary<string, string>? KindMetadata(string? kind)
+        /// <summary>
+        /// Carries Ring's raw device <c>kind</c> (e.g. doorbell_v4), so the stored device type can be derived from it,
+        /// and its <c>time_zone</c>, so Devices.TimeZoneId can be stored. Missing values are omitted, not blanked.
+        /// </summary>
+        private static Dictionary<string, string>? DeviceMetadata(string? kind, string? timeZone)
         {
-            return string.IsNullOrWhiteSpace(kind) ? null : new Dictionary<string, string> { ["kind"] = kind };
+            var metadata = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(kind))
+            {
+                metadata["kind"] = kind;
+            }
+
+            if (!string.IsNullOrWhiteSpace(timeZone))
+            {
+                metadata["time_zone"] = timeZone;
+            }
+
+            return metadata.Count > 0 ? metadata : null;
         }
 
         /// <summary>
@@ -287,7 +298,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                             IsOnline: d.Health?.Connected ?? d.Subscribed,
-                            Metadata: KindMetadata(d.Kind)
+                            Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                         );
                     }
                 }
@@ -306,7 +317,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "stickup_cam",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: KindMetadata(d.Kind)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                             );
                         }
                     }
@@ -326,7 +337,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: KindMetadata(d.Kind)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                             );
                         }
                     }
@@ -350,7 +361,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: c.Health?.Connected,
-                                Metadata: KindMetadata(c.Kind)
+                                Metadata: DeviceMetadata(c.Kind, c.TimeZone)
                             );
                         }
                     }
@@ -364,9 +375,6 @@ namespace VideoForensics.Providers.Ring.Services
                     _logger.LogInformation("  Device: {DeviceId} - {DeviceName} ({DeviceType}), Location: {LocationId}, Online: {IsOnline}",
                         device.Id, device.Name, device.Type, device.LocationId, device.IsOnline);
                 }
-
-                // Persist device capabilities to database (non-critical, fire-and-forget)
-                _ = Task.Run(() => PersistDeviceCapabilitiesAsync(allAccountDevices, cancellationToken), cancellationToken);
 
                 ReadOnlyCollection<Device> readOnlyDevices = allAccountDevices.AsReadOnly();
                 _cachedAllDevices = (readOnlyDevices, DateTime.UtcNow);
@@ -575,7 +583,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                             IsOnline: d.Health?.Connected ?? d.Subscribed,
-                            Metadata: KindMetadata(d.Kind)
+                            Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                         );
                     }
                 }
@@ -593,7 +601,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: KindMetadata(d.Kind)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                             );
                         }
                     }
@@ -612,7 +620,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "stickup_cam",
                                 LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: s.Health?.Connected ?? s.Subscribed,
-                                Metadata: KindMetadata(s.Kind)
+                                Metadata: DeviceMetadata(s.Kind, s.TimeZone)
                             );
                         }
                     }
@@ -631,7 +639,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: d.Health?.Connected ?? d.Subscribed,
-                                Metadata: KindMetadata(d.Kind)
+                                Metadata: DeviceMetadata(d.Kind, d.TimeZone)
                             );
                         }
                     }
@@ -650,7 +658,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
                                 IsOnline: c.Health?.Connected,
-                                Metadata: KindMetadata(c.Kind)
+                                Metadata: DeviceMetadata(c.Kind, c.TimeZone)
                             );
                         }
                     }
@@ -781,85 +789,6 @@ namespace VideoForensics.Providers.Ring.Services
         private static string? MetadataValue(Location location, string key)
         {
             return location.Metadata != null && location.Metadata.TryGetValue(key, out string? value) ? value : null;
-        }
-
-        /// <summary>
-        /// Persists device capabilities for all devices discovered from Ring API.
-        /// Runs as a fire-and-forget background task since it's non-critical infrastructure.
-        /// Note: Ring device IDs are strings; we use a deterministic Guid hash for persistence.
-        /// </summary>
-        private async Task PersistDeviceCapabilitiesAsync(List<Device> devices, CancellationToken ct)
-        {
-            if (_capabilitiesRepository == null)
-            {
-                _logger.LogDebug("Device capabilities repository not available; skipping persistence");
-                return;
-            }
-
-            try
-            {
-                foreach (Device device in devices)
-                {
-                    if (string.IsNullOrEmpty(device.Id))
-                    {
-                        _logger.LogWarning("Device has no ID; skipping capability persistence for this device");
-                        continue;
-                    }
-
-                    // Convert Ring string device ID to a deterministic Guid using namespace hashing
-                    // This ensures the same device ID always maps to the same Guid across runs
-                    Guid deviceGuid = GuidFromString(device.Id);
-
-                    // Skip if already persisted for this device
-                    Data.Common.Entities.DeviceCapabilities? existing = await _capabilitiesRepository.GetByDeviceIdAsync(deviceGuid, ct);
-                    if (existing != null)
-                    {
-                        _logger.LogDebug("Device capabilities already persisted for device {DeviceId}", device.Id);
-                        continue;
-                    }
-
-                    var caps = new VideoForensics.Data.Common.Entities.DeviceCapabilities
-                    {
-                        Id = Guid.NewGuid(),
-                        DeviceId = deviceGuid,
-                        HasAudio = true,
-                        HasMotionDetection = true,
-                        HasCloudStorage = true
-                    };
-
-                    await _capabilitiesRepository.AddAsync(caps, ct);
-                    _logger.LogDebug("Persisted capabilities for device {DeviceId} ({DeviceName})", device.Id, device.Name);
-                }
-
-                _logger.LogDebug("Device capabilities persistence completed for {DeviceCount} device(s)", devices.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Skipping device capabilities persistence (non-critical operation failed)");
-            }
-        }
-
-        /// <summary>
-        /// Converts a string device ID to a deterministic Guid using namespace-based GUID hashing.
-        /// This ensures consistent Guid generation for the same string across multiple runs.
-        /// </summary>
-        private static Guid GuidFromString(string deviceId)
-        {
-            // Use a fixed namespace GUID for Ring device IDs
-            _ = new Guid("3d84d9b5-91d4-4c7f-b6a9-2e7c8f3d1e9a");
-
-            // Create version 5 (SHA-1) GUID from namespace and device ID
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(deviceId);
-            using var sha1 = System.Security.Cryptography.SHA1.Create();
-            byte[] hash = sha1.ComputeHash(bytes);
-            byte[] guidBytes = new byte[16];
-            Array.Copy(hash, guidBytes, 16);
-
-            // Set version to 5 (SHA-1 based)
-            guidBytes[6] = (byte)((guidBytes[6] & 0x0f) | 0x50);
-            guidBytes[8] = (byte)((guidBytes[8] & 0x3f) | 0x80);
-
-            return new Guid(guidBytes);
         }
     }
 }

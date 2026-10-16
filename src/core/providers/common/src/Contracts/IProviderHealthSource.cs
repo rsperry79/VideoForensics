@@ -19,12 +19,17 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     }
 
     /// <summary>One device's point-in-time health telemetry, keyed by the provider's own device id (not the DB Guid).</summary>
+    /// <remarks>The trailing telemetry fields are optional so providers that don't report them can omit them.</remarks>
     public record DeviceHealthReading(
         string ProviderDeviceId,
         bool? Connected,
         decimal? BatteryPercentage,
         int? Rssi,
         string? WifiName,
-        string? FirmwareVersion
+        string? FirmwareVersion,
+        decimal? BatteryVoltageValue = null,
+        bool? IsExternalPowerConnected = null,
+        string? OtaStatus = null,
+        DateTime? LastHeartbeatUtc = null
     );
 }

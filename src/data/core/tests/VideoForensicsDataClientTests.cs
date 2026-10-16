@@ -21,6 +21,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
         private readonly Mock<IDeviceHealthRepository> _mockDeviceHealthRepository;
+        private readonly Mock<IDeviceDetailsRepository> _mockDeviceDetailsRepository;
         private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IWatermarkService> _mockWatermarkService;
@@ -44,6 +45,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
+            _mockDeviceDetailsRepository = new Mock<IDeviceDetailsRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockWatermarkService = new Mock<IWatermarkService>();
@@ -63,6 +65,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthRepository.Object,
+                _mockDeviceDetailsRepository.Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
@@ -814,6 +817,61 @@ namespace VideoForensics.Data.Core.Tests
             mockDeviceRepoInContext.Verify(
                 x => x.AddAsync(It.Is<Device>(d => d.IsOnline == null), It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithTimeZone_StoresTimeZoneIdOnCreate()
+        {
+            // Arrange: Ring's device time_zone must land in Devices.TimeZoneId (it was previously dropped).
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-tz", "Front", "doorbell", true, timeZoneId: "America/New_York", ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("America/New_York", result.TimeZoneId);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_ExistingDeviceWithTimeZone_UpdatesTimeZoneId()
+        {
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-tz2", Name = "Front", Type = "doorbell", TimeZoneId = null };
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-tz2", "Front", "doorbell", true, timeZoneId: "Europe/London", ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("Europe/London", result.TimeZoneId);
+        }
+
+        [Fact]
+        public async Task RecordDeviceDetailsAsync_DelegatesToDeviceDetailsRepository()
+        {
+            Guid deviceId = Guid.NewGuid();
+            Guid healthId = Guid.NewGuid();
+            var caps = new DeviceCapabilities { Id = Guid.NewGuid(), DeviceId = deviceId };
+
+            await _dataClient.RecordDeviceDetailsAsync(deviceId, healthId, caps, null, null, CancellationToken.None);
+
+            _mockDeviceDetailsRepository.Verify(r => r.UpsertAsync(deviceId, healthId, caps, null, null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

@@ -495,6 +495,44 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task GetDevicesAsync_CarriesTimeZoneInMetadata()
+        {
+            string locationId = "66666666-6666-6666-6666-666666666666";
+            var doorbot = new Doorbot { Id = 401, Description = "Front", LocationId = Guid.Parse(locationId), Kind = "doorbell_v4", TimeZone = "America/Chicago" };
+            var chime = new Chime { Id = 402, Description = "Hall", LocationId = Guid.Parse(locationId), Kind = "chime_pro_v2", TimeZone = "America/Chicago" };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot], Chimes = [chime] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Assert.Equal("America/Chicago", result.Single(d => d.Id == "401").Metadata!["time_zone"]);
+            Assert.Equal("America/Chicago", result.Single(d => d.Id == "402").Metadata!["time_zone"]);
+        }
+
+        [Fact]
+        public async Task GetDevicesAsync_NoTimeZoneFromRing_OmitsTimeZoneMetadata()
+        {
+            string locationId = "77777777-7777-7777-7777-777777777777";
+            var doorbot = new Doorbot { Id = 403, Description = "Side", LocationId = Guid.Parse(locationId), Kind = "doorbell_v4", TimeZone = null };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Assert.False(result.Single().Metadata!.ContainsKey("time_zone"));
+        }
+
+        [Fact]
         public void ToContractLocation_MapsAddressPartsTimezoneAndOwner()
         {
             var ring = new VideoForensics.Providers.Ring.Entities.Location

@@ -437,6 +437,34 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task FetchHealthAsync_WithTelemetryFields_MapsVoltagePowerOtaAndHeartbeat()
+        {
+            var health = new DeviceHealth
+            {
+                Connected = true,
+                BatteryVoltage = 12.5m,
+                ExtPowerState = 1,
+                OtaStatus = "idle",
+                LastUpdateTime = 1_700_000_000L
+            };
+            var devices = new Devices { Doorbots = [new Doorbot { Id = 555, Description = "Porch", Health = health }] };
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingHealthSource(new Mock<ILogger<RingHealthSource>>().Object, sessionProvider.Object);
+
+            IReadOnlyList<DeviceHealthReading> readings = await service.FetchHealthAsync(CancellationToken.None);
+
+            DeviceHealthReading reading = Assert.Single(readings);
+            Assert.Equal(12.5m, reading.BatteryVoltageValue);
+            Assert.True(reading.IsExternalPowerConnected);
+            Assert.Equal("idle", reading.OtaStatus);
+            Assert.Equal(new DateTime(2023, 11, 14, 22, 13, 20, DateTimeKind.Utc), reading.LastHeartbeatUtc);
+        }
+
+        [Fact]
         public void ConstructorThrowsOnNullLogger()
         {
             // Arrange

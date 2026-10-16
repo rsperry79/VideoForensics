@@ -192,10 +192,16 @@ namespace VideoForensics.Hosting.BackgroundServices
                             WifiSignalRssi = reading.Rssi,
                             WifiName = reading.WifiName,
                             FirmwareVersion = reading.FirmwareVersion,
+                            BatteryVoltageValue = reading.BatteryVoltageValue,
+                            IsExternalPowerConnected = reading.IsExternalPowerConnected,
+                            OtaStatus = reading.OtaStatus,
+                            LastHeartbeatUtc = reading.LastHeartbeatUtc,
                             CapturedAtUtc = DateTime.UtcNow
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
+                        // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
+                        await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
@@ -329,10 +335,16 @@ namespace VideoForensics.Hosting.BackgroundServices
                             WifiSignalRssi = reading.Rssi,
                             WifiName = reading.WifiName,
                             FirmwareVersion = reading.FirmwareVersion,
+                            BatteryVoltageValue = reading.BatteryVoltageValue,
+                            IsExternalPowerConnected = reading.IsExternalPowerConnected,
+                            OtaStatus = reading.OtaStatus,
+                            LastHeartbeatUtc = reading.LastHeartbeatUtc,
                             CapturedAtUtc = DateTime.UtcNow
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
+                        // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
+                        await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
                     }
 

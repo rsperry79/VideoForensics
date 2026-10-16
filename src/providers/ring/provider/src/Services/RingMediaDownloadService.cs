@@ -191,7 +191,8 @@ namespace VideoForensics.Providers.Ring.Services
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
                 (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken);
+                RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -772,7 +773,8 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve device identity and record snapshot download
                 (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken);
+                RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -1230,7 +1232,7 @@ namespace VideoForensics.Providers.Ring.Services
             return string.IsNullOrWhiteSpace(kind) ? listType : kind;
         }
 
-        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct)
+        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct, string? timeZoneId = null)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
@@ -1293,7 +1295,8 @@ namespace VideoForensics.Providers.Ring.Services
                 deviceName,
                 RingDeviceTypeMapper.MapDeviceType(providerDeviceKind),
                 isOnline,
-                ct: ct);
+                ct: ct,
+                timeZoneId: timeZoneId);
 
             // Cache in the per-device dictionary
             _ = _deviceIdCache.TryAdd(providerDeviceId, device.Id);
@@ -1301,42 +1304,86 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Fetches this device's current battery/connectivity telemetry and persists it as a
-        /// DeviceHealth metric, so gap-analysis can later explain a recording gap with real data
+        /// Fetches this device's current battery/connectivity telemetry and its device details (capabilities,
+        /// features, alerts) and persists them, so gap-analysis can later explain a recording gap with real data
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
-        private async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
+        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
         {
             try
             {
                 Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+
+                Guid? healthId = null;
                 Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
                     _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                }
+                else
+                {
+                    Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
+                    _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
+                    healthId = deviceHealth.Id;
+                    _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                        providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                }
+
+                RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
+                if (details == null)
+                {
+                    _logger.LogDebug("No device details available for device {DeviceId} in this run", providerDeviceId);
                     return;
                 }
 
-                var deviceHealth = new Data.Common.Entities.DeviceHealth
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceGuid,
-                    IsOnline = health.Connected,
-                    BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                    WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
-                    WifiName = health.WifiName,
-                    FirmwareVersion = health.FirmwareVersion,
-                    CapturedAtUtc = DateTime.UtcNow
-                };
-
-                _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
-                _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                    providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                DateTime nowUtc = DateTime.UtcNow;
+                await _dataClient.RecordDeviceDetailsAsync(
+                    deviceGuid,
+                    healthId,
+                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc),
+                    RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
+                    RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
+                    ct);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health metric for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+            }
+        }
+
+        /// <summary>Maps Ring's health telemetry onto a DeviceHealths row for the given device.</summary>
+        internal static Data.Common.Entities.DeviceHealth BuildDeviceHealth(Entities.DeviceHealth health, Guid deviceGuid, DateTime capturedAtUtc)
+        {
+            return new Data.Common.Entities.DeviceHealth
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceGuid,
+                IsOnline = health.Connected,
+                BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
+                BatteryVoltageValue = health.BatteryVoltage,
+                WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
+                WifiName = health.WifiName,
+                FirmwareVersion = health.FirmwareVersion,
+                IsExternalPowerConnected = RingHealthTelemetryMapper.ToExternalPowerConnected(health.ExtPowerState),
+                OtaStatus = health.OtaStatus,
+                LastHeartbeatUtc = RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime),
+                CapturedAtUtc = capturedAtUtc
+            };
+        }
+
+        /// <summary>Returns the device's details from the cached ring_devices response, or null when they cannot be read.</summary>
+        internal async Task<RingDeviceDetails?> ResolveDeviceDetailsAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                return RingDeviceDetailsMapper.Find(devices, providerDeviceId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
+                return null;
             }
         }
 

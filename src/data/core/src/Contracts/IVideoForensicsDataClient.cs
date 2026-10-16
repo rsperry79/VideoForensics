@@ -71,7 +71,8 @@ namespace VideoForensics.Data.Core.Contracts
             bool? isOnline,
             string? metadataJson = null,
             string? apiResponseHash = null,
-            CancellationToken ct = default);
+            CancellationToken ct = default,
+            string? timeZoneId = null);
 
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);
@@ -84,6 +85,18 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>Records a time-series device health metric.</summary>
         Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
+
+        /// <summary>
+        /// Upserts a device's capability, feature and alert rows and links Devices.DeviceHealthId /
+        /// DeviceFeaturesId. Null capabilities/features and an empty or null alert list leave existing rows untouched.
+        /// </summary>
+        Task RecordDeviceDetailsAsync(
+            Guid deviceId,
+            Guid? healthId,
+            DeviceCapabilities? capabilities,
+            DeviceFeatures? features,
+            IReadOnlyList<DeviceAlerts>? alerts,
+            CancellationToken ct);
 
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);
