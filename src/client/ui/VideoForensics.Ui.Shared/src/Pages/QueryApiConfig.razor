@@ -1,12 +1,15 @@
 @page "/query/config"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Contracts
 @using VideoForensics.Ui.Shared.Resources
 @using VideoForensics.Ui.Shared.Components.Dump
 @using VideoForensics.Core.Providers.Common.Contracts
 @inject IEventAndConfigService EventAndConfigService
 @inject IStringLocalizer<QueryApiConfig> L
+@implements IDisposable
 @inject IStringLocalizer<SharedResources> SharedL
+@inject IQueryApiFilterState FilterState
 
 <Breadcrumb Items="@BreadcrumbItems" />
 
@@ -14,8 +17,8 @@
     <h5 class="mt-4 mb-2">@L["Title"]</h5>
     <div class="d-flex flex-row gap-2 mb-2">
         <label>@L["LabelDeviceId"]</label>
-        <SfTextBox @bind-Value="_configDeviceIdInput" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" Style="max-width: 200px;" />
-        <SfButton Content="@L["GetConfig"]" OnClick="RunDeviceConfigAsync" CssClass="e-primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(_configDeviceIdInput))" />
+        <SfTextBox ID="query-api-config-device-filter" @bind-Value="DeviceIdValue" Placeholder="@L["PlaceholderDeviceId"]" CssClass="w-100" Style="max-width: 200px;" />
+        <SfButton Content="@L["GetConfig"]" OnClick="RunDeviceConfigAsync" CssClass="e-primary" Disabled="@(_configLoading || string.IsNullOrWhiteSpace(FilterState.DeviceId))" />
     </div>
     @if (!string.IsNullOrEmpty(_configError))
     {
@@ -42,12 +45,30 @@
         (L["Title"], null)
     ];
 
-    // Device Config (its own device id input, unchanged)
-    private string _configDeviceIdInput = string.Empty;
+    // The device id is the shared Query API selection, so it carries over from the Events and Devices pages.
+    private string DeviceIdValue
+    {
+        get => FilterState.DeviceId ?? string.Empty;
+        set => FilterState.SetDeviceId(string.IsNullOrEmpty(value) ? null : value);
+    }
+
+    // Device Config
     private bool _configLoading;
     private bool _configLoadedOnce;
     private string? _configError;
     private VideoForensics.Core.Providers.Common.Contracts.DeviceConfig? _config;
+
+    protected override void OnInitialized()
+    {
+        FilterState.OnChange += OnFilterChanged;
+    }
+
+    private void OnFilterChanged() => _ = InvokeAsync(StateHasChanged);
+
+    void IDisposable.Dispose()
+    {
+        FilterState.OnChange -= OnFilterChanged;
+    }
 
     private async Task RunDeviceConfigAsync()
     {
@@ -55,7 +76,7 @@
         _configError = null;
         try
         {
-            _config = await EventAndConfigService.GetDeviceConfigAsync(_configDeviceIdInput, CancellationToken.None);
+            _config = await EventAndConfigService.GetDeviceConfigAsync(FilterState.DeviceId ?? string.Empty, CancellationToken.None);
             _configLoadedOnce = true;
         }
         catch (Exception ex)

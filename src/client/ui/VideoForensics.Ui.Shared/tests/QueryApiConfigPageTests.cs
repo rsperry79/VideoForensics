@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Moq;
+using Syncfusion.Blazor.Inputs;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
@@ -46,5 +47,40 @@ public class QueryApiConfigPage_Tests : BunitContext
         Assert.Equal("/query", items[1].QuerySelector("a")?.GetAttribute("href"));
         Assert.Equal("page", items[2].GetAttribute("aria-current"));
         Assert.Equal("Device Config", items[2].TextContent.Trim());
+    }
+
+    [Fact]
+    public void QueryApiConfigPage_SharedDeviceIdSet_ShowsInDeviceTextBox()
+    {
+        Services.GetRequiredService<IQueryApiFilterState>().SetDeviceId("dev-7");
+
+        var cut = Render<QueryApiConfig>();
+
+        var textBox = cut.FindComponents<SfTextBox>().Single(c => c.Instance.ID == "query-api-config-device-filter");
+        Assert.Equal("dev-7", textBox.Instance.Value);
+    }
+
+    [Fact]
+    public async Task QueryApiConfigPage_DeviceTextBoxChanged_CallsSetDeviceIdOnSharedState()
+    {
+        var cut = Render<QueryApiConfig>();
+        var textBox = cut.FindComponents<SfTextBox>().Single(c => c.Instance.ID == "query-api-config-device-filter");
+
+        await cut.InvokeAsync(() => textBox.Instance.ValueChanged.InvokeAsync("dev-9"));
+
+        Assert.Equal("dev-9", Services.GetRequiredService<IQueryApiFilterState>().DeviceId);
+    }
+
+    [Fact]
+    public void QueryApiConfigPage_DeviceIdSetBeforeNavigation_IsReflectedOnConfigPage()
+    {
+        // Simulates a DeviceId chosen on another Query API subpage: same circuit, so same shared state.
+        var filterState = Services.GetRequiredService<IQueryApiFilterState>();
+        filterState.SetDeviceId("dev-42");
+
+        var cut = Render<QueryApiConfig>();
+
+        var textBox = cut.FindComponents<SfTextBox>().Single(c => c.Instance.ID == "query-api-config-device-filter");
+        Assert.Equal("dev-42", textBox.Instance.Value);
     }
 }
