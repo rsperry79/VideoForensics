@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// Ensures a device exists in the database with the correct account/location identity,
         /// and caches the result per device ID so redundant EnsureDeviceAsync calls are avoided.
         /// </summary>
-        Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool isOnline, CancellationToken ct);
+        Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct);
 
         /// <summary>
         /// Sets the active provider account ID for this resolution session.
@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Services
             _cachedProviderAccountId = accountId;
         }
 
-        public async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool isOnline, CancellationToken ct)
+        public async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))

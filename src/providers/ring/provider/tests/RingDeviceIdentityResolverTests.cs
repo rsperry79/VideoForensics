@@ -57,6 +57,20 @@ namespace VideoForensics.Providers.Ring.Tests
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task EnsureDeviceIdentityAsync_UnknownOnlineState_StoresNullOnline()
+        {
+            var dataClient = CreateDataClient();
+            var resolver = new RingDeviceIdentityResolver(dataClient.Object, new Mock<ILogger>().Object);
+            resolver.SetActiveProviderAccountId(Guid.NewGuid());
+
+            _ = await resolver.EnsureDeviceIdentityAsync("789", "Unknown Thing", "loc-1", "chime_v2", null, CancellationToken.None);
+
+            dataClient.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "789", "Unknown Thing", "chime", (bool?)null,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         private static Mock<IVideoForensicsDataClient> CreateDataClient()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();
@@ -70,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     Name = "loc-1"
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
-                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(),
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {

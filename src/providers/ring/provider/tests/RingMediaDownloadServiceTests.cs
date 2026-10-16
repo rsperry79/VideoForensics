@@ -476,7 +476,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Doorbots = [new Entities.Doorbot { Id = 123, Kind = "doorbell_v4", Subscribed = true, Health = new Entities.DeviceHealth { Connected = false } }]
             };
 
-            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "123");
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "123");
 
             Assert.Equal("doorbell_v4", kind);
             Assert.False(isOnline);
@@ -490,7 +490,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 StickupCams = [new Entities.StickupCam { Id = 456, Kind = "", Subscribed = true }]
             };
 
-            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "456");
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "456");
 
             Assert.Equal("stickup_cam", kind);
             Assert.True(isOnline);
@@ -504,21 +504,107 @@ namespace VideoForensics.Providers.Ring.Tests
                 Chimes = [new Entities.Chime { Id = 789, Kind = "chime_v2", Health = new Entities.DeviceHealth { Connected = true } }]
             };
 
-            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "789");
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "789");
 
             Assert.Equal("chime_v2", kind);
             Assert.True(isOnline);
         }
 
         [Fact]
-        public void ResolveDeviceState_DeviceNotInList_ReturnsNoKindAndOffline()
+        public void ResolveDeviceState_DeviceNotInList_ReturnsNoKindAndNullOnline()
         {
             var devices = new Entities.Devices { Doorbots = [] };
 
-            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "999");
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "999");
 
             Assert.Null(kind);
-            Assert.False(isOnline);
+            Assert.Null(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_NullDeviceList_ReturnsNoKindAndNullOnline()
+        {
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(null, "123");
+
+            Assert.Null(kind);
+            Assert.Null(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_DoorbotWithNoHealthOrSubscribed_ReturnsKindAndNullOnline()
+        {
+            var devices = new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot { Id = 123, Kind = "doorbell_v4", Subscribed = null, Health = null }]
+            };
+
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "123");
+
+            Assert.Equal("doorbell_v4", kind);
+            Assert.Null(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_ChimeWithNoHealth_ReturnsKindAndNullOnline()
+        {
+            var devices = new Entities.Devices
+            {
+                Chimes = [new Entities.Chime { Id = 789, Kind = "chime_v2", Health = null }]
+            };
+
+            (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "789");
+
+            Assert.Equal("chime_v2", kind);
+            Assert.Null(isOnline);
+        }
+
+        [Fact]
+        public async Task ResolveDeviceStateAsync_DeviceListFetchFails_ReturnsNoKindAndNullOnline()
+        {
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ThrowsAsync(new InvalidOperationException("Ring device list unavailable"));
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, new Mock<IVideoForensicsDataClient>().Object);
+
+            (string? kind, bool? isOnline) = await service.ResolveDeviceStateAsync(session.Object, "123", CancellationToken.None);
+
+            Assert.Null(kind);
+            Assert.Null(isOnline);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceIdentityAsync_UnknownOnlineState_StoresNullOnline()
+        {
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderLocationId = "loc-1",
+                    Name = "loc-1"
+                });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = "123",
+                    Name = "Front Door",
+                    Type = "doorbell",
+                    IsOnline = null
+                });
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+
+            _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", null, CancellationToken.None);
+
+            dataClient.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", (bool?)null,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -535,7 +621,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     Name = "loc-1"
                 });
             _ = dataClient.Setup(d => d.EnsureDeviceAsync(
-                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(),
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
                 {

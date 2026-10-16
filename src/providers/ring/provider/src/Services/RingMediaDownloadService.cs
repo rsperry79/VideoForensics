@@ -190,7 +190,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
-                (string? deviceKind, bool deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
@@ -771,7 +771,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Resolve device identity and record snapshot download
-                (string? snapshotDeviceKind, bool snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken);
                 resolvedDeviceGuid = deviceGuid;
 
@@ -1164,10 +1164,10 @@ namespace VideoForensics.Providers.Ring.Services
 
         /// <summary>
         /// Looks up a device's real kind and online state from the device list (the same source discovery
-        /// uses). Falls back to (null, false) when the list can't be fetched, so the device is recorded as
-        /// Unknown/offline rather than the download failing.
+        /// uses). Returns (null, null) when the list can't be fetched, so the device is recorded as Unknown
+        /// with an unknown online state rather than the download failing.
         /// </summary>
-        private async Task<(string? Kind, bool IsOnline)> ResolveDeviceStateAsync(Session session, string providerDeviceId, CancellationToken ct)
+        internal async Task<(string? Kind, bool? IsOnline)> ResolveDeviceStateAsync(Session session, string providerDeviceId, CancellationToken ct)
         {
             Entities.Devices? devices;
             try
@@ -1176,8 +1176,8 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown/offline", providerDeviceId);
-                return (null, false);
+                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
+                return (null, null);
             }
 
             return ResolveDeviceState(devices, providerDeviceId);
@@ -1185,41 +1185,42 @@ namespace VideoForensics.Providers.Ring.Services
 
         /// <summary>
         /// Finds the device in the list and returns its raw kind plus online state. Online follows discovery's
-        /// rule: Health.Connected first, then Subscribed (doorbots and stickup cams), then false. Chimes have no
-        /// Subscribed field, so they use Health only.
+        /// rule: Health.Connected first, then Subscribed (doorbots and stickup cams). Chimes have no Subscribed
+        /// field, so they use Health only. Returns null online when none of those is present, so an unknown
+        /// state is never stored as offline.
         /// </summary>
-        internal static (string? Kind, bool IsOnline) ResolveDeviceState(Entities.Devices? devices, string providerDeviceId)
+        internal static (string? Kind, bool? IsOnline) ResolveDeviceState(Entities.Devices? devices, string providerDeviceId)
         {
             if (devices == null)
             {
-                return (null, false);
+                return (null, null);
             }
 
             Entities.Doorbot? doorbot = devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
             if (doorbot != null)
             {
-                return (KindOrListType(doorbot.Kind, "doorbot"), doorbot.Health?.Connected ?? doorbot.Subscribed ?? false);
+                return (KindOrListType(doorbot.Kind, "doorbot"), doorbot.Health?.Connected ?? doorbot.Subscribed);
             }
 
             Entities.StickupCam? stickupCam = devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId);
             if (stickupCam != null)
             {
-                return (KindOrListType(stickupCam.Kind, "stickup_cam"), stickupCam.Health?.Connected ?? stickupCam.Subscribed ?? false);
+                return (KindOrListType(stickupCam.Kind, "stickup_cam"), stickupCam.Health?.Connected ?? stickupCam.Subscribed);
             }
 
             Entities.Doorbot? authorizedDoorbot = devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
             if (authorizedDoorbot != null)
             {
-                return (KindOrListType(authorizedDoorbot.Kind, "authorized_doorbot"), authorizedDoorbot.Health?.Connected ?? authorizedDoorbot.Subscribed ?? false);
+                return (KindOrListType(authorizedDoorbot.Kind, "authorized_doorbot"), authorizedDoorbot.Health?.Connected ?? authorizedDoorbot.Subscribed);
             }
 
             Entities.Chime? chime = devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId);
             if (chime != null)
             {
-                return (KindOrListType(chime.Kind, "chime"), chime.Health?.Connected ?? false);
+                return (KindOrListType(chime.Kind, "chime"), chime.Health?.Connected);
             }
 
-            return (null, false);
+            return (null, null);
         }
 
         // Discovery's device Metadata["kind"] is the raw Ring kind; when Ring omits it, discovery's Type
@@ -1229,7 +1230,7 @@ namespace VideoForensics.Providers.Ring.Services
             return string.IsNullOrWhiteSpace(kind) ? listType : kind;
         }
 
-        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool isOnline, CancellationToken ct)
+        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
