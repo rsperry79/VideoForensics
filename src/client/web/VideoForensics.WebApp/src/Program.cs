@@ -9,6 +9,7 @@ using Syncfusion.Blazor;
 using System.Threading.RateLimiting;
 
 using VideoForensics.Core.Logging.DependencyInjection;
+using VideoForensics.WebApp.Services.CircuitGuards;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -420,6 +421,10 @@ builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
 builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
+
+    // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
+    // they wrap, so each decorator wraps the final registration.
+    builder.Services.AddCircuitOperatorGuards();
 
     WebApplication app = builder.Build();
 
