@@ -425,6 +425,7 @@ builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVers
     // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
     // they wrap, so each decorator wraps the final registration.
     builder.Services.AddCircuitOperatorGuards();
+    builder.Services.AddScoped<VideoForensics.WebApp.Contracts.IMcpCallerAuthorizer, VideoForensics.WebApp.Mcp.McpCallerAuthorizer>();
 
     WebApplication app = builder.Build();
 
