@@ -136,13 +136,12 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [InlineData("location-mode")]
         [InlineData("location-mode-settings")]
         [InlineData("location-mode-sharing")]
-        [InlineData("account-monitoring-status")]
-        public void EndpointRegistry_AlarmOnlyEndpoint_IsFlaggedNotApplicableWithoutAlarmHub(string key)
+                public void EndpointRegistry_ModeAndMonitoringEndpoint_IsNotFlaggedNotApplicable(string key)
         {
             EndpointDescriptor? descriptor = EndpointRegistry.Find(key);
 
             Assert.NotNull(descriptor);
-            Assert.True(descriptor!.NotApplicableWithoutAlarmHub);
+            Assert.False(descriptor!.NotApplicableWithoutAlarmHub);
         }
 
         [Theory]

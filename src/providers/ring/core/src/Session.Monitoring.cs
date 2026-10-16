@@ -15,7 +15,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for the Ring Alarm monitoring accounts API.
         /// </summary>
-        public Uri MonitoringApiBaseUrl => new("https://api.ring.com/rs/monitoring/accounts/");
+        public Uri MonitoringApiBaseUrl => new("https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/");
 
         /// <summary>
         /// Base Uri for Ring's event-manager history API (location-wide, distinct from

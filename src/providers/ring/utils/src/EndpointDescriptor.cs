@@ -113,7 +113,6 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode",
-                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode",
                 Description = "Current home/away/disarmed mode for a location (camera-only locations without an Alarm hub).",
                 SessionMethod = "Session.GetLocationMode(locationId)",
@@ -213,7 +212,6 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode-settings",
-                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode settings",
                 Description = "Location Mode configuration (e.g. per-mode alert settings) for a location.",
                 SessionMethod = "Session.GetLocationModeSettings(locationId)",
@@ -225,7 +223,6 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "location-mode-sharing",
-                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Location mode sharing",
                 Description = "Location Mode sharing configuration for a location.",
                 SessionMethod = "Session.GetLocationModeSharing(locationId)",
@@ -237,7 +234,6 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "account-monitoring-status",
-                NotApplicableWithoutAlarmHub = true,
                 DisplayName = "Alarm monitoring status",
                 Description = "Alarm monitoring account status for a location.",
                 SessionMethod = "Session.GetAccountMonitoringStatus(locationId)",
