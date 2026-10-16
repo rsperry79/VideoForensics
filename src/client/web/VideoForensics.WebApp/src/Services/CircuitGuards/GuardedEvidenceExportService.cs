@@ -1,0 +1,29 @@
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.WebApp.Contracts;
+
+namespace VideoForensics.WebApp.Services.CircuitGuards
+{
+    /// <summary>
+    /// Guards the in-process evidence export that the Export Evidence page runs. The HTTP export also requires
+    /// SuperAdminLocal plus step-up; step-up is enforced on that endpoint, not here.
+    /// </summary>
+    public sealed class GuardedEvidenceExportService(IEvidenceExportService inner, ICircuitOperatorGate gate) : IEvidenceExportService
+    {
+        public Task<ExportResult> ExportEvidenceAsync(
+            IReadOnlyList<Guid> mediaItemIds,
+            string outputDirectory,
+            string? caseReference,
+            string? recipientDescription,
+            string? passphrase,
+            CancellationToken ct)
+        {
+            if (!gate.Allows(AccessPolicy.SuperAdminLocal))
+            {
+                throw new UnauthorizedAccessException("Exporting evidence requires SuperAdminLocal.");
+            }
+
+            return inner.ExportEvidenceAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, ct);
+        }
+    }
+}
