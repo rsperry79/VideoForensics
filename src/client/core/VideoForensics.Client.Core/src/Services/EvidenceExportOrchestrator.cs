@@ -41,8 +41,11 @@ namespace VideoForensics.Client.Core.Services
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? stepUpToken = null)
         {
+            // The step-up token is checked by the host before this runs (the WebApp's circuit guard). The local
+            // export does not re-check it, so it must only be reached through that guard.
             string resolvedOutputDirectory = ResolveSafeOutputDirectory(outputDirectory);
             var result = new ExportResult();
 

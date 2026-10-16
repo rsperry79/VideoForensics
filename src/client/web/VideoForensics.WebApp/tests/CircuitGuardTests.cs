@@ -22,8 +22,9 @@ internal sealed class CircuitFixture
     public Mock<ISessionTokenService> Tokens { get; } = new();
     public Mock<PairedSessionState> Session { get; } = new(new Mock<IJSRuntime>().Object);
     public SessionNetworkContext Network { get; } = new();
+    public Mock<IStepUpAuthService> StepUp { get; } = new();
 
-    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network);
+    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object);
 
     /// <summary>Signs the circuit in as an operator with the given role and kind, and records the tier.</summary>
     public void SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
@@ -438,5 +439,111 @@ public class GuardedConfigToolsOrchestrator_Tests
 
         Assert.False(success);
         inner.Verify(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class CircuitOperatorGateStepUp_Tests
+{
+    [Fact]
+    public void CircuitOperatorGate_StepUpClosedCircuit_PassesWithoutToken()
+    {
+        // Background work has no operator to re-authenticate.
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = false;
+
+        Assert.True(fixture.CreateGate().IsStepUpValid(null));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpNoToken_Denies()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.False(fixture.CreateGate().IsStepUpValid(null));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpPasskeySession_ValidatesAgainstCredential()
+    {
+        // The endpoint filter binds a step-up to the paired-device claim, which for a passkey session is its credential.
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        Guid credentialId = Guid.NewGuid();
+        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+            Guid.NewGuid(), credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        fixture.StepUp.Setup(v => v.Validate("step", credentialId)).Returns(true);
+
+        Assert.True(fixture.CreateGate().IsStepUpValid("step"));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpPasswordSession_ValidatesAgainstOperator()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        Guid operatorId = Guid.NewGuid();
+        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+            operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        fixture.StepUp.Setup(v => v.Validate("step", operatorId)).Returns(true);
+
+        Assert.True(fixture.CreateGate().IsStepUpValid("step"));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_StepUpExpiredOrForged_Denies()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+        fixture.StepUp.Setup(v => v.Validate("expired", It.IsAny<Guid>())).Returns(false);
+
+        Assert.False(fixture.CreateGate().IsStepUpValid("expired"));
+    }
+}
+
+public class GuardedEvidenceExportStepUp_Tests
+{
+    private static (GuardedEvidenceExportService Guarded, Mock<IEvidenceExportService> Inner) Create(bool localAdmin, bool stepUpValid)
+    {
+        var inner = new Mock<IEvidenceExportService>();
+        inner.Setup(e => e.ExportEvidenceAsync(
+                It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .ReturnsAsync(new ExportResult { Success = true });
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(localAdmin);
+        gate.Setup(g => g.IsStepUpValid(It.IsAny<string?>())).Returns(stepUpValid);
+        return (new GuardedEvidenceExportService(inner.Object, gate.Object), inner);
+    }
+
+    [Fact]
+    public async Task GuardedEvidenceExportService_NoStepUp_ThrowsAndDoesNotExport()
+    {
+        var (guarded, inner) = Create(localAdmin: true, stepUpValid: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
+            new List<Guid>(), "out", null, null, null, CancellationToken.None, null));
+
+        inner.Verify(e => e.ExportEvidenceAsync(
+            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedEvidenceExportService_ValidStepUpAndLocalAdmin_Exports()
+    {
+        var (guarded, inner) = Create(localAdmin: true, stepUpValid: true);
+
+        var result = await guarded.ExportEvidenceAsync(
+            new List<Guid>(), "out", null, null, null, CancellationToken.None, "step");
+
+        Assert.True(result.Success);
+        inner.Verify(e => e.ExportEvidenceAsync(
+            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>(), "step"), Times.Once);
     }
 }

@@ -16,14 +16,21 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? stepUpToken = null)
         {
             if (!gate.Allows(AccessPolicy.SuperAdminLocal))
             {
                 throw new UnauthorizedAccessException("Exporting evidence requires SuperAdminLocal.");
             }
 
-            return inner.ExportEvidenceAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, ct);
+            // Matches the HTTP export, which requires step-up through the endpoint filter.
+            if (!gate.IsStepUpValid(stepUpToken))
+            {
+                throw new UnauthorizedAccessException("Exporting evidence requires step-up re-authentication.");
+            }
+
+            return inner.ExportEvidenceAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, ct, stepUpToken);
         }
     }
 }

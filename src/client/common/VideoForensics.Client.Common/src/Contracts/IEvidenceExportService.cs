@@ -41,6 +41,7 @@ namespace VideoForensics.Client.Common.Contracts
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
-            CancellationToken ct);
+            CancellationToken ct,
+            string? stepUpToken = null);
     }
 }

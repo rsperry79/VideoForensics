@@ -193,6 +193,47 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal("Export failed: disk full", result.ErrorMessage);
         }
 
+        [Fact]
+        public async Task ExportEvidenceAsync_WithStepUpToken_SendsStepUpHeader()
+        {
+            // The server's endpoint filter checks this header, so the export must carry it when one is supplied.
+            string? stepUpHeader = null;
+            var handler = new CaptureHttpMessageHandler(async (request, ct) =>
+            {
+                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out var values) ? values.Single() : null;
+                var dto = new ExportResultDto(true, "/a.zip", "h", 1, [], null);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json"),
+                };
+            });
+            var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await service.ExportEvidenceAsync([Guid.NewGuid()], "out", null, null, null, CancellationToken.None, "step-token");
+
+            Assert.Equal("step-token", stepUpHeader);
+        }
+
+        [Fact]
+        public async Task ExportEvidenceAsync_WithoutStepUpToken_OmitsStepUpHeader()
+        {
+            string? stepUpHeader = "unset";
+            var handler = new CaptureHttpMessageHandler(async (request, ct) =>
+            {
+                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out var values) ? values.Single() : null;
+                var dto = new ExportResultDto(true, "/a.zip", "h", 1, [], null);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json"),
+                };
+            });
+            var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await service.ExportEvidenceAsync([Guid.NewGuid()], "out", null, null, null, CancellationToken.None);
+
+            Assert.Null(stepUpHeader);
+        }
+
         /// <summary>Helper class to capture HTTP requests and control responses.</summary>
         private class CaptureHttpMessageHandler : HttpMessageHandler
         {

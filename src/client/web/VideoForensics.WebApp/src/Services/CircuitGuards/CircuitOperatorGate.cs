@@ -16,8 +16,29 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         CircuitScope circuit,
         PairedSessionState session,
         ISessionTokenService tokens,
-        SessionNetworkContext network) : ICircuitOperatorGate
+        SessionNetworkContext network,
+        IStepUpAuthService stepUp) : ICircuitOperatorGate
     {
+        public bool IsStepUpValid(string? stepUpToken)
+        {
+            if (!circuit.IsOpen)
+            {
+                return true;
+            }
+
+            string? token = session.SessionToken;
+            SessionPrincipal? principal = token is null ? null : tokens.Validate(token);
+            if (principal is null || stepUpToken is null)
+            {
+                return false;
+            }
+
+            // The endpoint filter binds a step-up to the paired-device claim when present, else to the operator. A
+            // passkey session's paired-device claim is its credential, so mirror that choice here.
+            Guid subject = principal.CredentialId ?? principal.OperatorId;
+            return stepUp.Validate(stepUpToken, subject);
+        }
+
         public bool Allows(AccessPolicy policy)
         {
             if (!circuit.IsOpen)

@@ -49,6 +49,8 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         Services.AddScoped(_ => Mock.Of<IServerLocationInformationService>());
         Services.AddScoped(sp => new ConfigToolsOrchestrator(
             NullLogger<ConfigToolsOrchestrator>.Instance, sp.GetRequiredService<IForensicsConfigurationService>()));
+        // The export page runs a passkey step-up before exporting; the gate test only checks the operator is signed in.
+        Services.AddScoped(_ => new Mock<VideoForensics.Ui.Shared.Services.WebAuthnClient>(Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Mock.Of<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory>()).Object);
         // The pages inject the interface; the host registers it over the concrete orchestrator.
         Services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
         Services.AddScoped<RightPanelContentService>();

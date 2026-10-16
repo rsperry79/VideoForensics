@@ -3,6 +3,7 @@
 @using Microsoft.Extensions.Localization
 @inject PairedSessionState SessionState
 @inject IEvidenceExportService EvidenceExportService
+@inject WebAuthnClient WebAuthn
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
 
@@ -124,13 +125,18 @@ else
         _result = null;
         try
         {
+            // Exporting evidence needs a fresh passkey step-up, the same as the HTTP export. A failed or cancelled
+            // step-up throws here and is shown below as the export error.
+            string stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
+
             _result = await EvidenceExportService.ExportEvidenceAsync(
                 _mediaItemIds,
                 _outputDirectory,
                 string.IsNullOrWhiteSpace(_caseReference) ? null : _caseReference,
                 string.IsNullOrWhiteSpace(_recipientDescription) ? null : _recipientDescription,
                 string.IsNullOrWhiteSpace(_passphrase) ? null : _passphrase,
-                CancellationToken.None);
+                CancellationToken.None,
+                stepUpToken);
         }
         catch (Exception ex)
         {
