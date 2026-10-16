@@ -421,6 +421,7 @@ namespace VideoForensics.Hosting
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
             _ = services.AddScoped<ConfigToolsOrchestrator>();
+            _ = services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
 
             // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
             // optional capability - Ring's is registered here the same way its other four services

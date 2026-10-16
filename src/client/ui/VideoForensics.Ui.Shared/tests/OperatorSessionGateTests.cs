@@ -49,6 +49,8 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         Services.AddScoped(_ => Mock.Of<IServerLocationInformationService>());
         Services.AddScoped(sp => new ConfigToolsOrchestrator(
             NullLogger<ConfigToolsOrchestrator>.Instance, sp.GetRequiredService<IForensicsConfigurationService>()));
+        // The pages inject the interface; the host registers it over the concrete orchestrator.
+        Services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
         Services.AddScoped<RightPanelContentService>();
         Services.AddScoped(_ => Mock.Of<ICultureSwitcher>());
         Services.AddScoped(_ => Mock.Of<IOperatorPreferencesRepository>());
