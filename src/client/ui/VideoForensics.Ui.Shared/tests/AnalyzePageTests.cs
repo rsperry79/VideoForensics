@@ -379,6 +379,27 @@ public class Analyze_ScopeChange_Tests : AnalyzePageTestBase
 /// <summary>Scenario 5: the Jamming panel, deep-linked directly.</summary>
 public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
 {
+    public Analyze_JammingDeepLink_Tests()
+    {
+        // The Jamming tab is Admin-only (PageAccessRules), so the deep-link scenarios run as an Admin.
+        Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Admin").GetAwaiter().GetResult();
+    }
+
+    [Fact]
+    public async Task JammingDeepLink_ReadOnlyOperator_FallsBackToReportsTab_NoJammingPanel()
+    {
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "ReadOnly");
+        var device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        NavigateToAnalysis("jamming");
+
+        var component = RenderPage();
+
+        Assert.Empty(component.FindAll("[data-testid='analysis-jamming']"));
+        Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
+        JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public void OneDevice_JammingPanelShown_OrchestratorInvokedForThatDevice()
     {

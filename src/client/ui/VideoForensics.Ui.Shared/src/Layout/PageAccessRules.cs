@@ -46,6 +46,9 @@ namespace VideoForensics.Ui.Shared.Layout
                 ["/query"] = AccessPolicy.SuperAdminLocal,
                 // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
                 ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
+                // Account detail and schedule pages call /api/v1/accounts (SuperAdminLocal) and sync endpoints.
+                ["/accounts/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/schedule"] = AccessPolicy.SuperAdminLocal,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
