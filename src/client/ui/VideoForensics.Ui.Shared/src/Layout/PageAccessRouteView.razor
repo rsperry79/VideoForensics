@@ -68,19 +68,7 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private NavContext BuildContext()
-    {
-        OperatorRole? role = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole parsed)
-            ? parsed
-            : null;
-
-        return new NavContext(
-            SessionState.IsSignedIn,
-            role,
-            AppLockPreferences.IsSupported,
-            IsLocalTier: SessionState.IsLocalTier,
-            IsPasskeySession: SessionState.IsPasskeySession);
-    }
+    private NavContext BuildContext() => NavContext.FromSession(SessionState, AppLockPreferences.IsSupported);
 
     public void Dispose()
     {

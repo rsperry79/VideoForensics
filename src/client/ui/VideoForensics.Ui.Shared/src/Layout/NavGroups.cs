@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Ui.Shared.Layout
 {
@@ -35,6 +36,21 @@ namespace VideoForensics.Ui.Shared.Layout
     /// <summary>Role/session state needed to evaluate nav and page access.</summary>
     public sealed record NavContext(bool IsSignedIn, OperatorRole? Role, bool AppLockSupported, string UiMode = "Standard", bool UiModeLocked = false, bool IsLocalTier = false, bool IsPasskeySession = false)
     {
+        /// <summary>Builds the access context for the current circuit's session, using the server-reported tier.</summary>
+        public static NavContext FromSession(PairedSessionState session, bool appLockSupported)
+        {
+            OperatorRole? role = session.Role is not null && Enum.TryParse<OperatorRole>(session.Role, out OperatorRole parsed)
+                ? parsed
+                : null;
+
+            return new NavContext(
+                session.IsSignedIn,
+                role,
+                appLockSupported,
+                IsLocalTier: session.IsLocalTier,
+                IsPasskeySession: session.IsPasskeySession);
+        }
+
         /// <summary>True when signed in with a role at or above <paramref name="minimum"/>.</summary>
         public bool HasRole(OperatorRole minimum)
         {

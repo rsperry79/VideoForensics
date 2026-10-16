@@ -35,6 +35,17 @@ namespace VideoForensics.Ui.Shared.Layout
                 // these pages call repositories in-process, so this row is the only gate there.
                 ["/accounts"] = AccessPolicy.SuperAdminLocal,
                 ["/devices/config"] = AccessPolicy.SuperAdminLocal,
+                // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
+                // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
+                ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
+                ["/analyze?analysis=anomalies"] = AccessPolicy.ReadOnly,
+                ["/analyze?analysis=access"] = AccessPolicy.ReadOnly,
+                ["/analyze?analysis=jamming"] = AccessPolicy.Admin,
+                // Query API calls provider services directly with the linked account, with no server policy, so it is
+                // treated like the other provider-credential pages.
+                ["/query"] = AccessPolicy.SuperAdminLocal,
+                // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
+                ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
@@ -63,7 +74,8 @@ namespace VideoForensics.Ui.Shared.Layout
         /// <summary>Returns the policy a page requires, if the page is listed. Query strings are ignored.</summary>
         public static bool TryGetPolicy(string path, out AccessPolicy policy)
         {
-            return Rules.TryGetValue(StripQuery(path), out policy);
+            // A query-keyed row (e.g. an Analyze tab) wins over the bare path; otherwise the bare path is used.
+            return Rules.TryGetValue(path, out policy) || Rules.TryGetValue(StripQuery(path), out policy);
         }
 
         /// <summary>True when the operator in <paramref name="ctx"/> may open <paramref name="path"/>. Unlisted paths are allowed.</summary>
