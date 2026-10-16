@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   validate:
@@ -41,20 +42,44 @@ jobs:
             echo "::error::SYNCFUSION_LICENSE_KEY secret is not set; installers would ship unlicensed."
             exit 1
           fi
-      - name: Restore NuGet cache
-        uses: actions/cache@v6
-        with:
-          key: nuget-cache-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
-          path: ~/.nuget/packages
-      - name: Restore
-        run: dotnet restore VideoForensics.CI.slnf
-      - name: Build
-        run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore
-      - name: Test
-        run: dotnet test VideoForensics.CI.slnf --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" || true
+
+
+  # A merge's release uses the CI run that built it. A manual run uses the newest successful CI run for the chosen
+  # branch, and only when that run built the commit being released. Either way nothing is rebuilt here.
+  resolve-source:
+    needs: [validate]
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.pick.outputs.run_id }}
+
+    steps:
+      - name: Pick the CI run whose artifacts to package
+        id: pick
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          CURRENT_RUN: ${{ github.run_id }}
+        run: |
+          if [ "$EVENT" != "workflow_dispatch" ]; then
+            echo "run_id=$CURRENT_RUN" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUN=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch "$REF_NAME" --status success --limit 1 --json databaseId,headSha --jq '.[0]')
+          if [ -z "$RUN" ] || [ "$RUN" = "null" ]; then
+            echo "::error::No successful CI run exists for $REF_NAME. Merge the change so CI builds it first."
+            exit 1
+          fi
+          HEAD_SHA=$(echo "$RUN" | jq -r .headSha)
+          if [ "$HEAD_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::The newest successful CI run built $HEAD_SHA, not $GITHUB_SHA. Wait for CI on this commit."
+            exit 1
+          fi
+          echo "run_id=$(echo "$RUN" | jq -r .databaseId)" >> "$GITHUB_OUTPUT"
 
   build-debian:
-    needs: [validate]
+    needs: [validate, resolve-source]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract-version.outputs.version }}
@@ -86,12 +111,20 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected version: $VERSION"
 
-      - name: Publish WebApp (linux-x64, self-contained)
+      - name: Download Linux publish output
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-publish
+          run-id: ${{ needs.resolve-source.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: .
+
+      - name: Extract Linux publish output
+        shell: bash
         run: |
-          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj \
-            -c Release -r linux-x64 --self-contained true \
-            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" \
-            -o /tmp/publish-linux
+          tar -xf linux-publish.tar
+          rm -rf /tmp/publish-linux
+          mv publish-linux /tmp/publish-linux
 
       - name: Download and bundle cloudflared binary
         # Cloudflare publishes static Linux binaries directly (not via apt), so - same as
@@ -126,7 +159,7 @@ jobs:
             deploy/debian/videoforensics_${{ steps.extract-version.outputs.version }}_amd64.deb.sha256
 
   build-windows:
-    needs: [validate]
+    needs: [validate, resolve-source]
     runs-on: windows-latest
     outputs:
       version: ${{ steps.extract-version.outputs.version }}
@@ -153,25 +186,17 @@ jobs:
           Add-Content $env:GITHUB_OUTPUT "version=$version"
           Write-Host "Detected version: $version"
 
-      - name: Publish WebApp (win-x64, self-contained)
-        run: |
-          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj `
-            -c Release -r win-x64 --self-contained true `
-            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
-            -o publish-win
+      - name: Download Windows publish output
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-publish
+          run-id: ${{ needs.resolve-source.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: .
 
-      - name: Publish MauiApp (win-x64, self-contained)
-        run: |
-          dotnet publish src/client/maui/VideoForensics.MauiApp/src/VideoForensics.MauiApp.csproj `
-            -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
-            -p:SyncfusionLicenseKey="${{ secrets.SYNCFUSION_LICENSE_KEY }}" `
-            -o publish-desktop
-
-      - name: Publish DbSetup (win-x64, self-contained)
-        run: |
-          dotnet publish src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj `
-            -c Release -r win-x64 --self-contained true `
-            -o publish-dbsetup
+      - name: Extract Windows publish output
+        shell: bash
+        run: tar -xf windows-publish.tar
 
       - name: Download and bundle FFmpeg binaries
         shell: pwsh
