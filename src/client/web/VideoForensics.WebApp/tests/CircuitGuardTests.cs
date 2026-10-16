@@ -243,6 +243,7 @@ public class CircuitGuardRegistration_Tests
         services.AddScoped(_ => new Mock<ICaseRepository>().Object);
         services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
+        services.AddScoped(_ => new Mock<IJammingRepository>().Object);
         services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
         var gate = new Mock<ICircuitOperatorGate>();
@@ -344,5 +345,47 @@ public class GuardedMediaStillCaptureService_Tests
         inner.Verify(r => r.CaptureStillAsync(
             It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+}
+
+public class GuardedJammingRepository_Tests
+{
+    private static (GuardedJammingRepository Guarded, Mock<IJammingRepository> Inner) Create(bool allowed)
+    {
+        var inner = new Mock<IJammingRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(allowed);
+        return (new GuardedJammingRepository(inner.Object, gate.Object), inner);
+    }
+
+    [Fact]
+    public async Task GuardedJammingRepository_UpsertIncident_ReviewOperator_ThrowsAndDoesNotWrite()
+    {
+        var (guarded, inner) = Create(allowed: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
+
+        inner.Verify(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedJammingRepository_RecomputeStats_ReviewOperator_ThrowsAndDoesNotRecompute()
+    {
+        var (guarded, inner) = Create(allowed: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RecomputeStatsAsync(Guid.NewGuid(), CancellationToken.None));
+
+        inner.Verify(r => r.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedJammingRepository_ListIncidents_ReviewOperator_StillPassesThrough()
+    {
+        var (guarded, inner) = Create(allowed: false);
+        inner.Setup(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new List<JammingIncidentRecord>());
+
+        _ = await guarded.ListIncidentsAsync(null, null, null, CancellationToken.None);
+
+        inner.Verify(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
