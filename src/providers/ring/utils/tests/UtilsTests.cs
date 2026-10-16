@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Utils.SelfTest;
 
 using Xunit;
 
@@ -205,6 +206,24 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Equal("devices", result.Key);
             Assert.Equal("List devices", result.DisplayName);
             Assert.Equal(EndpointScope.None, result.Scope);
+        }
+
+        [Fact]
+        public void EndpointRegistry_SignallingTicket_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+        }
+
+        [Fact]
+        public void EndpointRegistry_SignallingTicket_IsNotApplicableWithoutAlarmHub()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");
+            Assert.NotNull(result);
+            Assert.True(result.NotApplicableWithoutAlarmHub);
         }
 
         [Fact]
@@ -1515,6 +1534,101 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             bool found = EndpointSchemaMap.TryGetExpectedType("unknown", out Type? type);
             Assert.False(found);
             Assert.Null(type);
+        }
+    }
+    public class CliHostOverrideTests
+    {
+        public static TheoryData<string> Flags => new()
+        {
+            "--clients-api-base-url",
+            "--app-api-base-url",
+            "--mode-api-base-url",
+            "--monitoring-api-base-url",
+        };
+
+        private static Uri? Read(CliOptions o, string flag) => flag switch
+        {
+            "--clients-api-base-url" => o.ClientsApiBaseUrl,
+            "--app-api-base-url" => o.AppApiBaseUrl,
+            "--mode-api-base-url" => o.ModeApiBaseUrl,
+            "--monitoring-api-base-url" => o.MonitoringApiBaseUrl,
+            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+        };
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideValidUrl_StoresUri(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "https://example.test/base/"]);
+            Assert.Null(error);
+            Assert.Equal(new Uri("https://example.test/base/"), Read(options!, flag));
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideHttpUrl_StoresUri(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "http://localhost:8080/"]);
+            Assert.Null(error);
+            Assert.NotNull(Read(options!, flag));
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideInvalidUrl_ReturnsError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "not a url"]);
+            Assert.Null(options);
+            Assert.Equal($"{flag} value 'not a url' is not a valid absolute URL", error);
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideNonHttpScheme_ReturnsError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "ftp://example.test/"]);
+            Assert.Null(options);
+            Assert.Equal($"{flag} value 'ftp://example.test/' is not a valid absolute URL", error);
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideMissingValue_ReturnsMissingValueError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag]);
+            Assert.Null(options);
+            Assert.Equal($"Missing value for {flag}", error);
+        }
+
+        [Fact]
+        public void CliOptions_HelpText_MentionsHostOverridesAndEveryFlag()
+        {
+            Assert.Contains("HOST OVERRIDES", CliOptions.HelpText);
+            foreach (string flag in new[] { "--clients-api-base-url", "--app-api-base-url", "--mode-api-base-url", "--monitoring-api-base-url" })
+            {
+                Assert.Contains(flag, CliOptions.HelpText);
+            }
+        }
+
+        [Fact]
+        public void CliOptions_ToEndpointOptions_NoOverrides_ReturnsNull()
+        {
+            (CliOptions? options, _) = CliOptions.Parse([]);
+            Assert.Null(options!.ToEndpointOptions());
+        }
+
+        [Fact]
+        public void CliOptions_ToEndpointOptions_OnlyOverriddenPropertiesChange()
+        {
+            (CliOptions? options, _) = CliOptions.Parse(["--app-api-base-url", "https://probe.test/api/v1/"]);
+            Ring.RingEndpointOptions mapped = options!.ToEndpointOptions()!;
+            var defaults = new Ring.RingEndpointOptions();
+
+            Assert.Equal(new Uri("https://probe.test/api/v1/"), mapped.AppApiBaseUrl);
+            Assert.Equal(defaults.ClientsApiBaseUrl, mapped.ClientsApiBaseUrl);
+            Assert.Equal(defaults.ModeApiBaseUrl, mapped.ModeApiBaseUrl);
+            Assert.Equal(defaults.MonitoringApiBaseUrl, mapped.MonitoringApiBaseUrl);
+            Assert.Equal(defaults.DevicesApiBaseUrl, mapped.DevicesApiBaseUrl);
         }
     }
 }

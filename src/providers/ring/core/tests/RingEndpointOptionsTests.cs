@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Assert.Equal("https://api.ring.com/clients_api/", o.ClientsApiBaseUrl.ToString());
             Assert.Equal("https://api.ring.com/devices/v1/", o.DevicesApiBaseUrl.ToString());
-            Assert.Equal("https://api.ring.com/api/v1/", o.AppApiBaseUrl.ToString());
+            Assert.Equal("https://prd-api-us.prd.rings.solutions/api/v1/", o.AppApiBaseUrl.ToString());
             Assert.Equal("https://api.ring.com/commands/v1/", o.CommandsApiBaseUrl.ToString());
             Assert.Equal("https://api.ring.com/groups/v1/", o.GroupsApiBaseUrl.ToString());
             Assert.Equal("https://prd-api-us.prd.rings.solutions/api/v1/mode/", o.ModeApiBaseUrl.ToString());

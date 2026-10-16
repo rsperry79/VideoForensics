@@ -32,6 +32,43 @@ namespace VideoForensics.Utils.SelfTest
         public bool Quiet;
         public bool VerifyDb;
         public string? DbPath;
+        public Uri? ClientsApiBaseUrl;
+        public Uri? AppApiBaseUrl;
+        public Uri? ModeApiBaseUrl;
+        public Uri? MonitoringApiBaseUrl;
+
+        /// <summary>
+        /// Maps the host-override flags to a <see cref="VideoForensics.Providers.Ring.RingEndpointOptions"/>,
+        /// changing only the overridden properties. Returns null when no override was given so callers keep
+        /// the production defaults.
+        /// </summary>
+        public VideoForensics.Providers.Ring.RingEndpointOptions? ToEndpointOptions()
+        {
+            if (ClientsApiBaseUrl is null && AppApiBaseUrl is null && ModeApiBaseUrl is null && MonitoringApiBaseUrl is null)
+            {
+                return null;
+            }
+
+            var endpoints = new VideoForensics.Providers.Ring.RingEndpointOptions();
+            if (ClientsApiBaseUrl is not null) endpoints.ClientsApiBaseUrl = ClientsApiBaseUrl;
+            if (AppApiBaseUrl is not null) endpoints.AppApiBaseUrl = AppApiBaseUrl;
+            if (ModeApiBaseUrl is not null) endpoints.ModeApiBaseUrl = ModeApiBaseUrl;
+            if (MonitoringApiBaseUrl is not null) endpoints.MonitoringApiBaseUrl = MonitoringApiBaseUrl;
+            return endpoints;
+        }
+
+        private static bool TryParseHttpUrl(string value, out Uri? uri)
+        {
+            if (Uri.TryCreate(value, UriKind.Absolute, out Uri? parsed)
+                && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps))
+            {
+                uri = parsed;
+                return true;
+            }
+
+            uri = null;
+            return false;
+        }
 
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
@@ -191,6 +228,34 @@ namespace VideoForensics.Utils.SelfTest
                         options.DbPath = args[++i];
                         break;
 
+                    case "--clients-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --clients-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? clientsUrl))
+                            return (null, $"--clients-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.ClientsApiBaseUrl = clientsUrl;
+                        break;
+
+                    case "--app-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --app-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? appUrl))
+                            return (null, $"--app-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.AppApiBaseUrl = appUrl;
+                        break;
+
+                    case "--mode-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --mode-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? modeUrl))
+                            return (null, $"--mode-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.ModeApiBaseUrl = modeUrl;
+                        break;
+
+                    case "--monitoring-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --monitoring-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? monitoringUrl))
+                            return (null, $"--monitoring-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.MonitoringApiBaseUrl = monitoringUrl;
+                        break;
+
                     default:
                         if (arg.StartsWith("--") || arg.StartsWith("-"))
                             return (null, $"Unrecognized argument: {arg}");
@@ -302,6 +367,13 @@ namespace VideoForensics.Utils.SelfTest
                                      %ProgramData%\VideoForensics\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
                                      --verify-db alike.
+
+        HOST OVERRIDES (probe a different Ring host without a code change; each takes an absolute
+        http/https URL, unset flags keep the production defaults):
+          --clients-api-base-url <url>      Override the Ring clients API base URL.
+          --app-api-base-url <url>          Override the Ring app API base URL.
+          --mode-api-base-url <url>         Override the Ring Location Mode API base URL.
+          --monitoring-api-base-url <url>   Override the Ring Alarm monitoring accounts API base URL.
 
         CREDENTIALS (first match wins):
           The active account's saved refresh token - the same IForensicsConfiguration.ActiveProviderAccountId

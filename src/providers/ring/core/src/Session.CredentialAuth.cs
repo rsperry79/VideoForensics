@@ -16,6 +16,7 @@ namespace VideoForensics.Providers.Ring
         /// <param name="twoFactorAuthCodeProvider">Called to retrieve a two-factor code from the user when the account requires it. If null, <see cref="Exceptions.TwoFactorAuthenticationRequiredException"/> propagates instead of prompting.</param>
         /// <param name="progress">Optional progress notifications for UI feedback (e.g. spinner text). Purely informational - callers should not rely on it for control flow.</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when there's no valid refresh token and no username/password to fall back to, or the username/password are invalid.</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the provided two-factor code was incorrect.</exception>
@@ -24,7 +25,8 @@ namespace VideoForensics.Providers.Ring
             RingCredentials credentials,
             Func<Task<string>> twoFactorAuthCodeProvider = null,
             IProgress<AuthProgressEventArgs> progress = null,
-            System.Net.Http.HttpMessageHandler messageHandler = null)
+            System.Net.Http.HttpMessageHandler messageHandler = null,
+            RingEndpointOptions endpoints = null)
         {
             if (credentials == null)
             {
@@ -38,7 +40,7 @@ namespace VideoForensics.Providers.Ring
                 try
                 {
                     progress?.Report(new AuthProgressEventArgs("Authenticating using refresh token from previous session..."));
-                    session = await GetSessionByRefreshToken(credentials.RefreshToken, messageHandler);
+                    session = await GetSessionByRefreshToken(credentials.RefreshToken, messageHandler, endpoints);
                     progress?.Report(new AuthProgressEventArgs("Refresh token authentication succeeded"));
                 }
                 catch (Exception ex)
@@ -56,7 +58,7 @@ namespace VideoForensics.Providers.Ring
                         "No valid refresh token and no username/password provided to authenticate with");
                 }
 
-                session = new Session(credentials.UserName, credentials.Password, messageHandler);
+                session = new Session(credentials.UserName, credentials.Password, messageHandler, null, endpoints);
                 progress?.Report(new AuthProgressEventArgs("Authenticating using provided username and password..."));
 
                 try

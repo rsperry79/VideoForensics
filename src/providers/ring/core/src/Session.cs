@@ -136,8 +136,10 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
         /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
-        private Session(System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
+        private Session(System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null, RingEndpointOptions endpoints = null)
         {
+            _endpoints = endpoints ?? new RingEndpointOptions();
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
             _videoDownloader = videoDownloader ?? new VideoDownloader();
         }
@@ -151,14 +153,15 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         /// <param name="refreshToken">RefreshToken received from the prior authentication</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
         /// <returns>Authenticated session based on the RefreshToken or NULL if the session could not be authenticated</returns>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public static async Task<Session> GetSessionByRefreshToken(string refreshToken, System.Net.Http.HttpMessageHandler messageHandler = null)
+        public static async Task<Session> GetSessionByRefreshToken(string refreshToken, System.Net.Http.HttpMessageHandler messageHandler = null, RingEndpointOptions endpoints = null)
         {
-            var session = new Session(messageHandler);
+            var session = new Session(messageHandler, null, endpoints);
             await session.RefreshSession(refreshToken);
             return session;
         }

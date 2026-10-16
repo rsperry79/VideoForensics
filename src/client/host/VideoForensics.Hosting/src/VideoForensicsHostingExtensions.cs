@@ -78,7 +78,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
                 provider.GetRequiredService<IUserRepository>(),
-                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
+                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
+                endpoints: provider.GetService<VideoForensics.Providers.Ring.RingEndpointOptions>()
             );
         }
 

@@ -14,8 +14,8 @@ namespace VideoForensics.Providers.Ring
         /// <summary>Base Uri for the Ring devices API.</summary>
         public Uri DevicesApiBaseUrl { get; set; } = new("https://api.ring.com/devices/v1/");
 
-        /// <summary>Base Uri for the Ring app API.</summary>
-        public Uri AppApiBaseUrl { get; set; } = new("https://api.ring.com/api/v1/");
+        /// <summary>Base Uri for the Ring app API (served from the prd-api-us host, which also serves the clap signalling tickets).</summary>
+        public Uri AppApiBaseUrl { get; set; } = new("https://prd-api-us.prd.rings.solutions/api/v1/");
 
         /// <summary>Base Uri for the Ring commands API.</summary>
         public Uri CommandsApiBaseUrl { get; set; } = new("https://api.ring.com/commands/v1/");

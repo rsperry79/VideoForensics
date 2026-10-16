@@ -37,17 +37,26 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
+        /// Requests a signalling/asset-socket ticket for the location (read-only GET) and returns the raw JSON.
+        /// </summary>
+        /// <param name="locationId">ID of the location to request a ticket for</param>
+        public async Task<string> GetSignallingTicketAsync(Guid locationId)
+        {
+            await EnsureSessionValid();
+
+            var ticketUri = new Uri(RingAppApiBaseUrl,
+                $"clap/tickets?locationID={locationId:D}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws");
+            return await _httpUtility.GetContents(ticketUri, AuthenticationToken, _hardwareId);
+        }
+
+        /// <summary>
         /// Overload accepting an explicit IWebSocketTransport - used by tests to inject a fake
         /// transport instead of opening a real websocket, and available to consumers who want to
         /// supply their own transport (e.g. for logging or a proxied connection).
         /// </summary>
         public async Task<RingAssetSocket> ConnectAssetSocket(Guid locationId, IWebSocketTransport transport)
         {
-            await EnsureSessionValid();
-
-            var ticketUri = new Uri(RingAppApiBaseUrl,
-                $"clap/tickets?locationID={locationId:D}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws");
-            string response = await _httpUtility.GetContents(ticketUri, AuthenticationToken, _hardwareId);
+            string response = await GetSignallingTicketAsync(locationId);
             ClapTicketResponse? ticketResponse = JsonSerializer.Deserialize<ClapTicketResponse>(response);
 
             if (ticketResponse == null || string.IsNullOrEmpty(ticketResponse.Host) || string.IsNullOrEmpty(ticketResponse.Ticket))
