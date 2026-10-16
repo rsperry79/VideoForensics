@@ -1,6 +1,7 @@
 name: Build Windows
 
-# Reusable: restores NuGet packages and builds the test solution. Uploads the compiled output for test-windows.
+# Reusable: restores NuGet packages, builds the test solution and, on dev and main pushes, publishes the apps that the
+# release packages. The release downloads these outputs from this run and never publishes again.
 on:
   workflow_call:
 
@@ -37,6 +38,62 @@ jobs:
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: dotnet build VideoForensics.CI.slnf --configuration Release --no-restore -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY"
+
+      # Publish once here for dev and main pushes. The release packages these outputs, so it does not rebuild them.
+      - name: Publish WebApp (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: >
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj
+          -c Release -r win-x64 --self-contained true -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY" -o publish-win
+
+      - name: Publish MauiApp (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: >
+          dotnet publish src/client/maui/VideoForensics.MauiApp/src/VideoForensics.MauiApp.csproj
+          -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY" -o publish-desktop
+
+      - name: Publish DbSetup (win-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        run: >
+          dotnet publish src/utils/dbsetup/src/VideoForensics.Utils.DbSetup.csproj
+          -c Release -r win-x64 --self-contained true -o publish-dbsetup
+
+      - name: Publish WebApp (linux-x64, self-contained)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+        run: >
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj
+          -c Release -r linux-x64 --self-contained true -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY" -o publish-linux
+
+      - name: Archive publish outputs
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        shell: bash
+        run: |
+          tar -cf windows-publish.tar publish-win publish-desktop publish-dbsetup
+          tar -cf linux-publish.tar publish-linux
+
+      - name: Upload Windows publish output
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-publish
+          path: windows-publish.tar
+
+      - name: Upload Linux publish output
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-publish
+          path: linux-publish.tar
 
       # Hand the compiled output to test-windows as one tar, so every file keeps its exact repo-relative path.
       # upload-artifact would store paths relative to their common ancestor and could place files wrongly.
