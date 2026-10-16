@@ -178,6 +178,10 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Enables or disables night mode (forced infrared/black-and-white) on a camera.
         /// </summary>
+        /// <remarks>
+        /// Retained but not exposed by the self-tester: Ring rejects or ignores every tried request shape
+        /// for this camera (probe date 2026-10-16). Do not re-add the self-tester endpoint without a working shape.
+        /// </remarks>
         /// <param name="doorbotId">ID of the device to toggle night mode on</param>
         /// <param name="enabled">True to force night mode on, false to let the device decide automatically</param>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>

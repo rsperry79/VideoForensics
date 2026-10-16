@@ -452,27 +452,6 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "set-night-mode",
-                DisplayName = "Toggle forced night mode",
-                Description = "Forces night mode on to test it, then restores the value captured from the devices listing beforehand.",
-                SessionMethod = "Session.SetNightMode(doorbotId, enabled)",
-                HttpMethod = "PUT",
-                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
-                Scope = EndpointScope.PerDoorbot,
-                Destructive = true,
-                Invoke = (session, target) => session.SetNightMode(target.DoorbotId!.Value, true),
-                PrepareRestore = target =>
-                {
-                    bool captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
-                    bool original = captured && snap!.NightModeEnabled!.Value;
-                    string description = captured
-                        ? $"night_mode={original}"
-                        : "unknown (not present in the devices listing for this doorbot) - restoring to disabled as a safe default";
-                    return new RestorePlan(description, captured, session => session.SetNightMode(target.DoorbotId!.Value, original));
-                }
-            },
-            new()
-            {
                 Key = "set-location-mode",
                 DisplayName = "Set location mode (arm/disarm)",
                 Description = "Reads the location's current mode, sets it to --location-mode-value to test it, then restores the mode that was read beforehand. Requires --location-mode-value; skipped if not provided. Briefly changes real security/arming state.",

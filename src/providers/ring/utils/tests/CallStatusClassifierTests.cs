@@ -162,5 +162,11 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         {
             Assert.Null(EndpointRegistry.Find("location-details"));
         }
+
+        [Fact]
+        public void EndpointRegistry_SetNightMode_IsRemoved()
+        {
+            Assert.Null(EndpointRegistry.Find("set-night-mode"));
+        }
     }
 }
