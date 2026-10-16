@@ -66,6 +66,16 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Adds an event detection to the current transaction context.</summary>
         Task AddEventDetectionAsync(EventDetection detection, CancellationToken ct);
 
+        /// <summary>
+        /// Inserts or updates the single EventDetection for <paramref name="detection"/>.EventId. When one already exists
+        /// it is updated in place, its zones and type occurrences are removed so the caller can re-add them, and
+        /// <paramref name="detection"/>.Id is set to the existing row's Id. Returns the persisted detection Id.
+        /// </summary>
+        Task<Guid> UpsertEventDetectionAsync(EventDetection detection, CancellationToken ct);
+
+        /// <summary>Removes the event's existing security alerts and detected persons so a repeat upsert can re-add them without duplicating.</summary>
+        Task ClearEventAlertsAndPersonsAsync(Guid eventId, bool clearAlerts, bool clearPersons, CancellationToken ct);
+
         /// <summary>Adds event detection zones to the current transaction context.</summary>
         Task AddEventDetectionZonesAsync(List<EventDetectionZone> zones, CancellationToken ct);
 

@@ -338,5 +338,108 @@ namespace VideoForensics.Client.Core.Tests
             // The error should be about no devices, not a crash from unescaped log input
             Assert.Contains("No devices found", error);
         }
+
+        private (Guid AccountId, Guid LocationGuid) SetupIdentityScenario(
+            VideoForensics.Core.Providers.Common.Contracts.Device device,
+            string? locationAddress = null)
+        {
+            Guid accountId = Guid.NewGuid();
+            Guid locationGuid = Guid.NewGuid();
+            _ = _configMock.Setup(c => c.ActiveProviderAccountId).Returns(accountId);
+
+            var location = new VideoForensics.Core.Providers.Common.Contracts.Location(device.LocationId, "Home", locationAddress);
+            _ = _deviceServiceMock
+                .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[location]));
+            _ = _deviceServiceMock
+                .Setup(s => s.GetDevicesAsync(device.LocationId, It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device>)[device]));
+
+            _ = _dataClientMock
+                .Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = locationGuid, ProviderLocationId = device.LocationId, Name = "Home" });
+            _ = _dataClientMock
+                .Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = device.Id, Name = device.Name, Type = device.Type });
+            return (accountId, locationGuid);
+        }
+
+        [Fact]
+        public async Task PreScanAsync_LocationWithAddress_StoresRealAddressAndHashInOwnField()
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", true);
+            (Guid accountId, _) = SetupIdentityScenario(device, "1 Main St");
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureLocationAsync(
+                accountId,
+                "loc-1",
+                "Home",
+                "1 Main St",
+                It.IsAny<string?>(),
+                It.Is<string?>(h => h != null && h.Length == 64),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task PreScanAsync_LocationWithoutAddress_StoresNullAddress()
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", true);
+            (Guid accountId, _) = SetupIdentityScenario(device, null);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureLocationAsync(
+                accountId, "loc-1", "Home", null, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("doorbot", "doorbell")]
+        [InlineData("authorized_doorbot", "doorbell")]
+        [InlineData("stickup_cam", "camera")]
+        [InlineData("chime", "chime")]
+        [InlineData("something_new", "Unknown")]
+        [InlineData("", "Unknown")]
+        public async Task PreScanAsync_DeviceType_MapsFromProviderKind(string providerType, string expected)
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", providerType, "loc-1", true);
+            _ = SetupIdentityScenario(device);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "dev-1", "Front", expected, It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("doorbell_v4", "doorbell")]
+        [InlineData("stickup_cam_lunar", "camera")]
+        [InlineData("chime_pro_v2", "chime")]
+        public async Task PreScanAsync_DeviceKindMetadata_TakesPrecedenceOverType(string kind, string expected)
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device(
+                "dev-1", "Front", "something_new", "loc-1", true, new Dictionary<string, string> { ["kind"] = kind });
+            _ = SetupIdentityScenario(device);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "dev-1", "Front", expected, It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task PreScanAsync_DeviceIsOnline_ComesFromDiscoveredDevice(bool isOnline)
+        {
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", isOnline);
+            _ = SetupIdentityScenario(device);
+
+            await _adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            _dataClientMock.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "dev-1", "Front", It.IsAny<string>(), isOnline, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 }

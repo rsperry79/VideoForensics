@@ -9,6 +9,7 @@ using VideoForensics.Providers.Ring.Services;
 using Xunit;
 
 using CommonContracts = VideoForensics.Core.Providers.Common.Contracts;
+using LocationMetadataEntity = VideoForensics.Data.Common.Entities.LocationMetadata;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -392,6 +393,134 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert - Verifies account-aware method returns null when no session
             Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetDevicesAsync_IsOnline_ComesFromHealthConnectedNotSubscribed()
+        {
+            string locationId = "44444444-4444-4444-4444-444444444444";
+            var doorbot = new Doorbot
+            {
+                Id = 300,
+                Description = "Offline Door",
+                LocationId = Guid.Parse(locationId),
+                Subscribed = true,
+                Health = new DeviceHealth { Connected = false }
+            };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Device device = Assert.Single(result);
+            Assert.False(device.IsOnline);
+        }
+
+        [Fact]
+        public async Task GetDevicesAsync_CarriesRingKindInMetadata()
+        {
+            string locationId = "55555555-5555-5555-5555-555555555555";
+            var doorbot = new Doorbot { Id = 301, Description = "Front", LocationId = Guid.Parse(locationId), Kind = "doorbell_v4" };
+            var chime = new Chime { Id = 302, Description = "Hall", LocationId = Guid.Parse(locationId), Kind = "chime_pro_v2" };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot], Chimes = [chime] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Assert.Equal("doorbell_v4", result.Single(d => d.Id == "301").Metadata!["kind"]);
+            Assert.Equal("chime_pro_v2", result.Single(d => d.Id == "302").Metadata!["kind"]);
+        }
+
+        [Fact]
+        public void ToContractLocation_MapsAddressPartsTimezoneAndOwner()
+        {
+            var ring = new VideoForensics.Providers.Ring.Entities.Location
+            {
+                Id = Guid.Parse("66666666-6666-6666-6666-666666666666"),
+                Name = "Home",
+                IsOwner = true,
+                Address = new LocationAddress { Address1 = "1 Main St", City = "Springfield", State = "IL", ZipCode = "62701", TimeZone = "America/Chicago" }
+            };
+
+            CommonContracts.Location location = RingDeviceDiscoveryService.ToContractLocation(ring);
+
+            Assert.Equal("1 Main St", location.Address);
+            Assert.Equal("Springfield", location.Metadata!["city"]);
+            Assert.Equal("IL", location.Metadata["state"]);
+            Assert.Equal("62701", location.Metadata["zip_code"]);
+            Assert.Equal("America/Chicago", location.Metadata["timezone"]);
+            Assert.Equal("true", location.Metadata["is_owner"]);
+        }
+
+        [Fact]
+        public async Task PersistLocationMetadataAsync_NewLocation_AddsMetadataWithAllFields()
+        {
+            var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
+            LocationMetadataEntity? added = null;
+            _ = repo.Setup(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()))
+                .Callback<LocationMetadataEntity, CancellationToken>((m, _) => added = m)
+                .Returns(Task.CompletedTask);
+            var service = new RingDeviceDiscoveryService(
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+            var location = new CommonContracts.Location("loc-1", "Home", "1 Main St", new Dictionary<string, string>
+            {
+                ["city"] = "Springfield",
+                ["state"] = "IL",
+                ["zip_code"] = "62701",
+                ["timezone"] = "America/Chicago",
+                ["is_owner"] = "true"
+            });
+
+            await service.PersistLocationMetadataAsync([location], CancellationToken.None);
+
+            Assert.NotNull(added);
+            Assert.Equal("1 Main St", added.StreetAddress);
+            Assert.Equal("Springfield", added.City);
+            Assert.Equal("IL", added.State);
+            Assert.Equal("62701", added.PostalCode);
+            Assert.Equal("America/Chicago", added.TimeZoneId);
+            Assert.True(added.IsOwner);
+        }
+
+        [Fact]
+        public async Task PersistLocationMetadataAsync_ExistingStaleRecord_UpdatesInsteadOfAdding()
+        {
+            var existing = new LocationMetadataEntity { Id = Guid.NewGuid(), LastSyncedUtc = DateTime.UtcNow.AddHours(-1) };
+            var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
+            _ = repo.Setup(r => r.GetByLocationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+            var service = new RingDeviceDiscoveryService(
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+            var location = new CommonContracts.Location("loc-1", "Home", "2 Oak Ave", new Dictionary<string, string> { ["city"] = "Peoria" });
+
+            await service.PersistLocationMetadataAsync([location], CancellationToken.None);
+
+            repo.Verify(r => r.UpdateAsync(It.Is<LocationMetadataEntity>(m => m.City == "Peoria" && m.StreetAddress == "2 Oak Ave"), It.IsAny<CancellationToken>()), Times.Once);
+            repo.Verify(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task PersistLocationMetadataAsync_RecentlySyncedRecord_IsSkipped()
+        {
+            var existing = new LocationMetadataEntity { Id = Guid.NewGuid(), LastSyncedUtc = DateTime.UtcNow };
+            var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
+            _ = repo.Setup(r => r.GetByLocationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+            var service = new RingDeviceDiscoveryService(
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+
+            await service.PersistLocationMetadataAsync([new CommonContracts.Location("loc-1", "Home")], CancellationToken.None);
+
+            repo.Verify(r => r.UpdateAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+            repo.Verify(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

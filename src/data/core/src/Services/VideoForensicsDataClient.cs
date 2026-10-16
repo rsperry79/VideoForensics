@@ -241,11 +241,20 @@ namespace VideoForensics.Data.Core.Services
                     Event upserted = await context.Events.UpsertAsync(evt, ct);
 
                     // Persist detection-related entities if provided
+                    // Idempotent: this runs several times per event, so detection and its child rows are
+                    // upserted/replaced rather than appended.
                     if (detection != null)
                     {
                         detection.EventId = upserted.Id;
-                        await context.DetectionEntities.AddEventDetectionAsync(detection, ct);
+                        _ = await context.DetectionEntities.UpsertEventDetectionAsync(detection, ct);
                         upserted.EventDetectionId = detection.Id;
+                    }
+
+                    bool hasAlerts = alerts != null && alerts.Count > 0;
+                    bool hasPersons = persons != null && persons.Count > 0;
+                    if (hasAlerts || hasPersons)
+                    {
+                        await context.DetectionEntities.ClearEventAlertsAndPersonsAsync(upserted.Id, hasAlerts, hasPersons, ct);
                     }
 
                     if (zones != null && zones.Count > 0)
