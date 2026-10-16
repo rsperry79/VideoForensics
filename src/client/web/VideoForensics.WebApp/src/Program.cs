@@ -395,6 +395,7 @@ builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();

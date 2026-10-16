@@ -500,6 +500,9 @@
   <data name="BreadcrumbBack" xml:space="preserve">
     <value>Go back to previous page</value>
   </data>
+  <data name="BreadcrumbNavLabel" xml:space="preserve">
+    <value>Breadcrumb</value>
+  </data>
   <data name="ChatThinking" xml:space="preserve">
     <value>Thinking...</value>
   </data>

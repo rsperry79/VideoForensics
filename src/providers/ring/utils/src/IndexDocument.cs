@@ -56,6 +56,8 @@ namespace VideoForensics.Providers.Ring
         public DateTime StartedAtUtc { get; set; }
         public double DurationMs { get; set; }
         public bool Success { get; set; }
+        /// <summary>"passed", "failed" or "not-applicable" - see CallStatusClassifier.</summary>
+        public string Status { get; set; } = "";
         public string? Error { get; set; }
         /// <summary>Path to the raw response body file, relative to index.json's own directory.</summary>
         public string? ResultFile { get; set; }
@@ -100,5 +102,6 @@ namespace VideoForensics.Providers.Ring
         public int TotalCalls { get; set; }
         public int Succeeded { get; set; }
         public int Failed { get; set; }
+        public int NotApplicable { get; set; }
     }
 }

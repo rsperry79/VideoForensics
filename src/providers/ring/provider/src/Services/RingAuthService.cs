@@ -24,6 +24,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IUserRepository? _userRepository;
         private readonly INotificationDispatcher? _notificationDispatcher;
         private readonly ApiResponseNormalizer? _normalizer;
+        private readonly RingEndpointOptions? _endpoints;
 
         public RingAuthService(
             ILogger logger,
@@ -34,8 +35,10 @@ namespace VideoForensics.Providers.Ring.Services
             IProviderAccountRepository? providerAccountRepository = null,
             IUserRepository? userRepository = null,
             INotificationDispatcher? notificationDispatcher = null,
-            ApiResponseNormalizer? normalizer = null)
+            ApiResponseNormalizer? normalizer = null,
+            RingEndpointOptions? endpoints = null)
         {
+            _endpoints = endpoints;
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
@@ -63,7 +66,8 @@ namespace VideoForensics.Providers.Ring.Services
                 Session session = await Session.AuthenticateWithCredentials(
                     credentials,
                     twoFactorAuthCodeProvider: twoFactorAuthCodeProvider,
-                    progress: null!
+                    progress: null!,
+                    endpoints: _endpoints
                 );
 
                 if (session?.OAuthToken != null)
@@ -471,7 +475,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // For refresh token flow, we don't need 2FA — Ring API handles it server-side
-                Session session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!);
+                Session session = await Session.AuthenticateWithCredentials(credentials, twoFactorAuthCodeProvider: null, progress: null!, endpoints: _endpoints);
 
                 if (session?.OAuthToken == null)
                 {

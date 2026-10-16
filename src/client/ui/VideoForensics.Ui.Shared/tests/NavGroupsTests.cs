@@ -97,7 +97,8 @@ public class NavGroups_Tests
         Assert.Contains("/accounts", itemPaths);
         Assert.Contains("/devices/config", itemPaths);
         Assert.Contains("/query", itemPaths);
-        Assert.Contains("/tools/ring-selftest", itemPaths);
+        Assert.Contains("/query/api-tester", itemPaths);
+        Assert.DoesNotContain("/tools/ring-selftest", itemPaths);
     }
 
     [Fact]

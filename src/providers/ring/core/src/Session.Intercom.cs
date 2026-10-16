@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri for Ring's device command API, used for Intercom unlock.
         /// </summary>
-        public Uri RingCommandsApiBaseUrl => new("https://api.ring.com/commands/v1/");
+        public Uri RingCommandsApiBaseUrl => _endpoints.CommandsApiBaseUrl;
 
         /// <summary>
         /// Unlocks a Ring Intercom device. This triggers a real, physical door unlock.
