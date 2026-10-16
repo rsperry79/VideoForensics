@@ -377,7 +377,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             record.ResultFile = primaryResultFile;
-            record.Status = CallStatusClassifier.Classify(descriptor, record.Success, raw.Select(r => r.StatusCode));
+            record.Status = CallStatusClassifier.Classify(descriptor, record.Success, raw.Select(r => (StatusCode: r.StatusCode, Body: (string?)r.Body)));
 
             return (record, invokeResult);
         }

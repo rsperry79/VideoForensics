@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
 {
     public class CallStatusClassifierTests
     {
-        private static EndpointDescriptor CreateDescriptor(bool notApplicableWithoutAlarmHub) => new()
+        private static EndpointDescriptor CreateDescriptor(bool notApplicableWithoutAlarmHub, bool requiresPushRegistration = false) => new()
         {
             Key = "test-endpoint",
             DisplayName = "Test Endpoint",
@@ -17,7 +17,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             HttpMethod = "GET",
             ApiPath = "https://api.example.com/test",
             Invoke = (_, _) => Task.CompletedTask,
-            NotApplicableWithoutAlarmHub = notApplicableWithoutAlarmHub
+            NotApplicableWithoutAlarmHub = notApplicableWithoutAlarmHub,
+            RequiresPushRegistration = requiresPushRegistration
         };
 
         [Fact]
@@ -66,6 +67,52 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             string status = CallStatusClassifier.Classify(CreateDescriptor(false), success: true, new[] { 200 });
 
             Assert.Equal("passed", status);
+        }
+
+        [Fact]
+        public void CallStatusClassifier_RequiresPushRegistration422ClientDeviceRequired_ReturnsNotApplicable()
+        {
+            string status = CallStatusClassifier.Classify(CreateDescriptor(false, requiresPushRegistration: true), success: false,
+                new[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
+
+            Assert.Equal("not-applicable", status);
+        }
+
+        [Fact]
+        public void CallStatusClassifier_RegularEndpoint422ClientDeviceRequired_ReturnsFailed()
+        {
+            string status = CallStatusClassifier.Classify(CreateDescriptor(false), success: false,
+                new[] { (StatusCode: 422, Body: "{\"error\":\"Client Device required\"}") });
+
+            Assert.Equal("failed", status);
+        }
+
+        [Fact]
+        public void CallStatusClassifier_RequiresPushRegistration422OtherBody_ReturnsFailed()
+        {
+            string status = CallStatusClassifier.Classify(CreateDescriptor(false, requiresPushRegistration: true), success: false,
+                new[] { (StatusCode: 422, Body: "{\"error\":\"invalid doorbot\"}") });
+
+            Assert.Equal("failed", status);
+        }
+
+        [Fact]
+        public void EndpointDescriptor_RequiresPushRegistration_DefaultsToFalse()
+        {
+            Assert.False(CreateDescriptor(false).RequiresPushRegistration);
+        }
+
+        [Theory]
+        [InlineData("subscribe-ding-events")]
+        [InlineData("unsubscribe-ding-events")]
+        [InlineData("subscribe-motion-events")]
+        [InlineData("unsubscribe-motion-events")]
+        public void EndpointRegistry_PushSubscriptionEndpoint_IsFlaggedRequiresPushRegistration(string key)
+        {
+            EndpointDescriptor? descriptor = EndpointRegistry.Find(key);
+
+            Assert.NotNull(descriptor);
+            Assert.True(descriptor!.RequiresPushRegistration);
         }
 
         [Fact]

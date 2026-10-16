@@ -155,12 +155,12 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
-        /// Snoozes/mutes a chime's notifications for a given duration. Unlike the other setters in this file,
-        /// this endpoint is inferred rather than confirmed against a reference implementation - verify the
-        /// exact path/body against a live capture (see api_raw_responses.jsonl) before relying on it.
+        /// Snoozes/mutes a chime's notifications for a given duration. POSTs to chimes/{id}/do_not_disturb
+        /// with body <c>{"time": minutes}</c>; the wire unit is MINUTES, so <paramref name="seconds"/> is
+        /// converted (rounded up) and clamped to 1..1440 (24 hours).
         /// </summary>
         /// <param name="chimeId">ID of the chime to snooze</param>
-        /// <param name="seconds">Number of seconds to snooze notifications for</param>
+        /// <param name="seconds">Number of seconds to snooze notifications for (sent as minutes, rounded up, 1 to 1440)</param>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
@@ -170,8 +170,9 @@ namespace VideoForensics.Providers.Ring
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"chimes/{chimeId}/do_not_disturb");
-            string bodyContent = JsonSerializer.Serialize(new { time = seconds });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
+            int minutes = Math.Clamp((int)Math.Ceiling(seconds / 60.0), 1, 1440);
+            string bodyContent = JsonSerializer.Serialize(new { time = minutes });
+            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Post, null, bodyContent, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>

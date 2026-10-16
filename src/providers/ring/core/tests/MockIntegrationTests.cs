@@ -691,7 +691,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public async Task MockSession_SetDoNotDisturb_CallsChimeEndpointWithPut()
+        public async Task MockSession_SetDoNotDisturb_CallsChimeEndpointWithPost()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
@@ -701,7 +701,40 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.Contains("do_not_disturb"));
             Assert.NotNull(Url);
-            Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(System.Net.Http.HttpMethod.Post, Method);
+        }
+
+        [Theory]
+        [InlineData(60, 1)]
+        [InlineData(61, 2)]
+        [InlineData(300, 5)]
+        public async Task MockSession_SetDoNotDisturb_SendsTimeInMinutesRoundedUp(int seconds, int expectedMinutes)
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetDoNotDisturb(789012, seconds);
+
+            string? body = mockHandler.RequestBodies.LastOrDefault(r => r.Url.Contains("do_not_disturb")).Body;
+            Assert.NotNull(body);
+            using var doc = System.Text.Json.JsonDocument.Parse(body!);
+            Assert.Equal(expectedMinutes, doc.RootElement.GetProperty("time").GetInt32());
+        }
+
+        [Fact]
+        public async Task MockSession_SetDoNotDisturb_ClampsTimeToMaxOf1440Minutes()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetDoNotDisturb(789012, 10 * 24 * 60 * 60);
+
+            string? body = mockHandler.RequestBodies.LastOrDefault(r => r.Url.Contains("do_not_disturb")).Body;
+            Assert.NotNull(body);
+            using var doc = System.Text.Json.JsonDocument.Parse(body!);
+            Assert.Equal(1440, doc.RootElement.GetProperty("time").GetInt32());
         }
 
         [Fact]

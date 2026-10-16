@@ -51,6 +51,8 @@ namespace VideoForensics.Providers.Ring
         public string? NoRestoreReason { get; init; }
         /// <summary>Alarm-hub-only endpoint: on a camera-only account its 404 means "not applicable", not a failure (see CallStatusClassifier).</summary>
         public bool NotApplicableWithoutAlarmHub { get; init; }
+        /// <summary>Endpoint that Ring only accepts once a push client device is registered; a 422 "Client Device required" is "not-applicable" (see CallStatusClassifier).</summary>
+        public bool RequiresPushRegistration { get; init; }
     }
 
     /// <summary>
@@ -441,7 +443,7 @@ namespace VideoForensics.Providers.Ring
                 DisplayName = "Snooze chime notifications",
                 Description = "Snoozes a chime's notifications for --dnd-seconds (default 60). Self-reverts after that duration.",
                 SessionMethod = "Session.SetDoNotDisturb(chimeId, seconds)",
-                HttpMethod = "PUT",
+                HttpMethod = "POST",
                 ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}/do_not_disturb",
                 Scope = EndpointScope.PerChime,
                 Destructive = true,
@@ -530,6 +532,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to ding push events",
                 Description = "Subscribes this account to ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToDingEvents(doorbotId)",
@@ -543,6 +546,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from ding push events",
                 Description = "Unsubscribes this account from ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromDingEvents(doorbotId)",
@@ -556,6 +560,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to motion push events",
                 Description = "Subscribes this account to motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToMotionEvents(doorbotId)",
@@ -569,6 +574,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from motion push events",
                 Description = "Unsubscribes this account from motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromMotionEvents(doorbotId)",

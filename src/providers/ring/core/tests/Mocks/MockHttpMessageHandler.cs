@@ -17,6 +17,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         /// </summary>
         public List<(HttpMethod Method, string Url)> RequestLog { get; } = [];
 
+        /// <summary>Url and request body (null when the request had no body) for every request sent.</summary>
+        public List<(string Url, string? Body)> RequestBodies { get; } = [];
+
         public MockHttpMessageHandler()
         {
             // Setup default mock responses for authentication
@@ -96,6 +99,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         {
             string requestUrl = request.RequestUri?.ToString().ToLower() ?? string.Empty;
             RequestLog.Add((request.Method, request.RequestUri?.ToString() ?? string.Empty));
+            string? requestBody = request.Content == null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            RequestBodies.Add((request.RequestUri?.ToString() ?? string.Empty, requestBody));
 
             // Find matching response
             string? matchingKey = _responses.Keys.FirstOrDefault(k => requestUrl.Contains(k.Replace("https://", "").Replace("http://", "")));
