@@ -19,5 +19,14 @@ namespace VideoForensics.Data.Common.Entities
         public Guid? DeviceHealthId { get; set; }
         public Guid? DeviceFeaturesId { get; set; }
         public Guid? DeviceLocationId { get; set; }
+
+        /// <summary>True when the device's clean bitrate history shows a steady drift; null if not yet checked.</summary>
+        public bool? BaselineDriftDetected { get; set; }
+
+        /// <summary>Relative change in the device's bitrate median across its history, earliest to latest window.</summary>
+        public double? BaselineDriftChangeFraction { get; set; }
+
+        /// <summary>When the drift check last ran.</summary>
+        public DateTime? BaselineDriftCheckedAtUtc { get; set; }
     }
 }
