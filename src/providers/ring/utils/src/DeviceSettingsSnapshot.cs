@@ -8,11 +8,12 @@ namespace VideoForensics.Providers.Ring
     /// call runs, so the endpoint that changes one of them can restore it afterward instead of
     /// leaving the account in a different state than it found it in.
     /// </summary>
-    public sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled);
+    public sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled, string? Description = null);
 
     /// <summary>
     /// Parses the raw JSON body of GET ring_devices to pull out the settings values the tester's
-    /// destructive endpoints can mutate (volume, chime type, night mode, motion detection), keyed
+    /// destructive endpoints can mutate (volume, chime type, night mode, motion detection) plus the device
+    /// description (name, needed by the form-encoded volume/chime-type calls), keyed
     /// by doorbot id. The Ring.Ring.Api <see cref="Entities.Doorbot"/> class doesn't
     /// model these fields at all, so this reads the raw payload directly rather than the
     /// deserialized entity. Field paths below are confirmed against a live capture (not inferred):
@@ -67,7 +68,9 @@ namespace VideoForensics.Providers.Ring
                             chimeDuration = chime.TryGetProperty("duration", out JsonElement cd) && cd.TryGetInt32(out int cdi) ? cdi : null;
                         }
 
-                        result[id] = new DoorbotSettingsSnapshot(volume, chimeType, chimeEnabled, chimeDuration, nightMode, motionDetection);
+                        string? description = device.TryGetProperty("description", out JsonElement desc) && desc.ValueKind == JsonValueKind.String ? desc.GetString() : null;
+
+                        result[id] = new DoorbotSettingsSnapshot(volume, chimeType, chimeEnabled, chimeDuration, nightMode, motionDetection, description);
                     }
                 }
             }

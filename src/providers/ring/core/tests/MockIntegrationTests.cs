@@ -655,11 +655,25 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
-            await _mockSession!.SetVolume(123456, 5);
+            await _mockSession!.SetVolume(123456, 5, "Front Door");
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(new Uri(_mockSession!.BaseUrl, "doorbots/123456").ToString(), Url);
+            Assert.Equal("application/x-www-form-urlencoded", mockHandler.RequestContentTypes.Last(r => r.Url == Url).ContentType);
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url == Url).Body);
+            Assert.Equal("Front Door", form["doorbot[description]"]);
+            Assert.Equal("5", form["doorbot[settings][doorbell_volume]"]);
+            Assert.Equal(2, form.Count);
+        }
+
+        private static Dictionary<string, string> ParseForm(string? body)
+        {
+            Assert.NotNull(body);
+            return body!.Split('&').Select(p => p.Split('=', 2))
+                .ToDictionary(p => Uri.UnescapeDataString(p[0].Replace('+', ' ')), p => Uri.UnescapeDataString(p[1].Replace('+', ' ')));
         }
 
         [Fact]
@@ -683,11 +697,33 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
-            await _mockSession!.SetChimeType(123456, 1, enabled: true, duration: 3);
+            await _mockSession!.SetChimeType(123456, 1, "Front Door", enabled: true, duration: 3);
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(new Uri(_mockSession!.BaseUrl, "doorbots/123456").ToString(), Url);
+            Assert.Equal("application/x-www-form-urlencoded", mockHandler.RequestContentTypes.Last(r => r.Url == Url).ContentType);
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url == Url).Body);
+            Assert.Equal("Front Door", form["doorbot[description]"]);
+            Assert.Equal("1", form["doorbot[settings][chime_settings][type]"]);
+            Assert.Equal("True", form["doorbot[settings][chime_settings][enable]"]);
+            Assert.Equal("3", form["doorbot[settings][chime_settings][duration]"]);
+        }
+
+        [Fact]
+        public async Task MockSession_SetChimeType_OmitsEnableAndDurationWhenNotGiven()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetChimeType(123456, 2, "Front Door");
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url.EndsWith("doorbots/123456")).Body);
+            Assert.Equal(2, form.Count);
+            Assert.Equal("2", form["doorbot[settings][chime_settings][type]"]);
         }
 
         [Fact]
@@ -915,9 +951,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 catch (Exceptions.SessionNotAuthenticatedException) { }
             }
 
-            await ExpectNotAuthenticated(() => session.SetVolume(123456, 5));
+            await ExpectNotAuthenticated(() => session.SetVolume(123456, 5, "Front Door"));
             await ExpectNotAuthenticated(() => session.SetMotionDetection(123456, true));
-            await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1));
+            await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1, "Front Door"));
             await ExpectNotAuthenticated(() => session.SetDoNotDisturb(789012, 60));
             await ExpectNotAuthenticated(() => session.SetNightMode(123456, true));
             await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new Entities.AdvancedMotionZones()));

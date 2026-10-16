@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession.Authenticate();
 
-            await _mockSession.SetVolume(123456, 7);
+            await _mockSession.SetVolume(123456, 7, "Front Door");
 
             lock (_captured)
             {

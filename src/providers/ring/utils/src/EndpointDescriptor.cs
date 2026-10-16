@@ -77,6 +77,15 @@ namespace VideoForensics.Providers.Ring
         public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = [];
         public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = [];
 
+        // The form-encoded doorbots PUT needs doorbot[description] (the device name); take it from the
+        // same devices-listing snapshot the restore values come from rather than inventing one.
+        private static string RequireDeviceName(EndpointTarget target)
+        {
+            return OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && !string.IsNullOrEmpty(snap.Description)
+                ? snap.Description
+                : throw new InvalidOperationException($"No device name (description) found in the devices listing for doorbot {target.DoorbotId}");
+        }
+
         public static readonly IReadOnlyList<EndpointDescriptor> All =
         [
             new()
@@ -429,16 +438,16 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-volume",
                 DisplayName = "Set doorbell/camera volume",
                 Description = "Sets the ringtone/notification volume to test it, then restores the value captured from the devices listing beforehand. Requires --volume-level (0-11); skipped if not provided.",
-                SessionMethod = "Session.SetVolume(doorbotId, volume)",
+                SessionMethod = "Session.SetVolume(doorbotId, volume, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => VolumeLevel.HasValue
-                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value)
+                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-volume requires --volume-level <0-11>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume }
-                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume))
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume, Description: { } volumeDeviceName }
+                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume, volumeDeviceName))
                     : null
             },
             new()
@@ -467,19 +476,19 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-chime-type",
                 DisplayName = "Set existing chime type",
                 Description = "Sets the wired chime type (0=Mechanical, 1=Digital, 2=Not Present) to test it, then restores the values captured from the devices listing beforehand. Requires --chime-type-value; skipped if not provided.",
-                SessionMethod = "Session.SetChimeType(doorbotId, type)",
+                SessionMethod = "Session.SetChimeType(doorbotId, type, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => ChimeTypeValue.HasValue
-                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value)
+                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-chime-type requires --chime-type-value <0|1|2>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType }
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType, Description: { } chimeDeviceName }
                     ? new RestorePlan(
                         $"chime_settings.type={chimeType}, enable={snap.ChimeEnabled}, duration={snap.ChimeDuration}",
                         WasCaptured: true,
-                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, snap.ChimeEnabled, snap.ChimeDuration))
+                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, chimeDeviceName, snap.ChimeEnabled, snap.ChimeDuration))
                     : null
             },
             new()
