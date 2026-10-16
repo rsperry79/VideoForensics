@@ -2,7 +2,6 @@
 
 ## Blocked
 - [ ] **Calibrate media-analysis thresholds on real footage.** Blocked: no downloaded clips exist yet, so nothing can be checked against real Ring footage. Needs downloads (provider calls) to be approved first. Covers: brightness (`DarkLumaCeiling`), saturation (`GrayscaleSaturationCeiling`), clipping (`FullScaleToleranceDb`, `ClippedPeakThreshold`), noise rise (`NoiseFloorRiseThresholdDb`), dropouts (`DropoutGapThreshold`, `DropoutSilenceRiseFraction`), bitrate collapse (`SuspectedFraction`), minimum baseline size (`MinimumBucketSamples`), and the history window (`HistoryWindowClips`).
-
 - [ ] **HDR brightness.** Blocked: needs real HDR clips. Check that true HDR footage is not misclassified as dark or day after the 8-bit conversion.
 - [ ] **Confirm `silencedetect` and `astats` output on a real Ring clip.** Blocked: needs downloaded Ring clips with audio (AAC in MP4).
 - [ ] **Initial sync on a new account, end to end.** Blocked: needs a real Ring sign-in through the add-account wizard, which only you can do.
