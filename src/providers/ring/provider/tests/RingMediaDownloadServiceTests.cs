@@ -467,5 +467,93 @@ namespace VideoForensics.Providers.Ring.Tests
             sessionProvider.Verify(sp => sp.GetSession(accountId1), Times.Once);
             sessionProvider.Verify(sp => sp.GetSession(accountId2), Times.Once);
         }
+
+        [Fact]
+        public void ResolveDeviceState_DoorbotHealthOffline_ReturnsKindAndOfflineEvenIfSubscribed()
+        {
+            var devices = new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot { Id = 123, Kind = "doorbell_v4", Subscribed = true, Health = new Entities.DeviceHealth { Connected = false } }]
+            };
+
+            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "123");
+
+            Assert.Equal("doorbell_v4", kind);
+            Assert.False(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_StickupCamWithoutHealth_UsesSubscribedAndFallsBackToListType()
+        {
+            var devices = new Entities.Devices
+            {
+                StickupCams = [new Entities.StickupCam { Id = 456, Kind = "", Subscribed = true }]
+            };
+
+            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "456");
+
+            Assert.Equal("stickup_cam", kind);
+            Assert.True(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_ChimeConnected_ReturnsChimeKindAndOnline()
+        {
+            var devices = new Entities.Devices
+            {
+                Chimes = [new Entities.Chime { Id = 789, Kind = "chime_v2", Health = new Entities.DeviceHealth { Connected = true } }]
+            };
+
+            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "789");
+
+            Assert.Equal("chime_v2", kind);
+            Assert.True(isOnline);
+        }
+
+        [Fact]
+        public void ResolveDeviceState_DeviceNotInList_ReturnsNoKindAndOffline()
+        {
+            var devices = new Entities.Devices { Doorbots = [] };
+
+            (string? kind, bool isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "999");
+
+            Assert.Null(kind);
+            Assert.False(isOnline);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceIdentityAsync_DoorbellOffline_StoresDoorbellTypeAndNotOnline()
+        {
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderLocationId = "loc-1",
+                    Name = "loc-1"
+                });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = "123",
+                    Name = "Front Door",
+                    Type = "doorbell",
+                    IsOnline = false
+                });
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, dataClient.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+
+            _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", false, CancellationToken.None);
+
+            dataClient.Verify(d => d.EnsureDeviceAsync(
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 }

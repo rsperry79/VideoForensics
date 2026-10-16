@@ -180,7 +180,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Assert.NotEmpty(allDevices);
 
                 // Act 5: Download video from first online device
-                var onlineDevices = allDevices.Where(d => d.IsOnline).ToList();
+                var onlineDevices = allDevices.Where(d => d.IsOnline == true).ToList();
                 if (onlineDevices.Any())
                 {
                     Device device = onlineDevices.First();
@@ -255,7 +255,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 // Group devices by type
                 var devicesByType = allDevices
-                    .Where(d => d.IsOnline)
+                    .Where(d => d.IsOnline == true)
                     .GroupBy(d => d.Type)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -345,7 +345,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
                 Assert.NotEmpty(allDevices);
 
-                var onlineDevices = allDevices.Where(d => d.IsOnline).ToList();
+                var onlineDevices = allDevices.Where(d => d.IsOnline == true).ToList();
                 if (!onlineDevices.Any())
                 {
                     return; // Skip if no online devices

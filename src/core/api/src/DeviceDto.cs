@@ -8,7 +8,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ProviderDeviceId">The provider's unique identifier for this device (e.g., Ring device ID).</param>
     /// <param name="Name">User-friendly name of the device (e.g., "Front Door Camera").</param>
     /// <param name="Type">Device type (e.g., "camera", "doorbell", "alarm_hub").</param>
-    /// <param name="IsOnline">True if the device is currently online and reachable.</param>
+    /// <param name="IsOnline">True if online, False if offline, Null if the provider gave no state.</param>
     /// <param name="MetadataJson">Additional device metadata in JSON format, provider-specific.</param>
     /// <param name="LastSuccessfulPullAtUtc">Timestamp of the last successful data pull from the provider, in UTC. Null if never synced.</param>
     /// <param name="LastPullAttemptAtUtc">Timestamp of the last attempted data pull from the provider, in UTC. Null if never attempted.</param>
@@ -22,7 +22,7 @@ namespace VideoForensics.Core.Api.Contracts
         string ProviderDeviceId,
         string Name,
         string Type,
-        bool IsOnline,
+        bool? IsOnline,
         string? MetadataJson,
         DateTime? LastSuccessfulPullAtUtc,
         DateTime? LastPullAttemptAtUtc,

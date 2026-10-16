@@ -190,7 +190,8 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, cancellationToken);
+                (string? deviceKind, bool deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -770,7 +771,8 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Resolve device identity and record snapshot download
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
+                (string? snapshotDeviceKind, bool snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -1160,7 +1162,74 @@ namespace VideoForensics.Providers.Ring.Services
             _cachedProviderAccountId = accountId;
         }
 
-        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
+        /// <summary>
+        /// Looks up a device's real kind and online state from the device list (the same source discovery
+        /// uses). Falls back to (null, false) when the list can't be fetched, so the device is recorded as
+        /// Unknown/offline rather than the download failing.
+        /// </summary>
+        private async Task<(string? Kind, bool IsOnline)> ResolveDeviceStateAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            Entities.Devices? devices;
+            try
+            {
+                devices = await GetDevicesForHealthAsync(session, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown/offline", providerDeviceId);
+                return (null, false);
+            }
+
+            return ResolveDeviceState(devices, providerDeviceId);
+        }
+
+        /// <summary>
+        /// Finds the device in the list and returns its raw kind plus online state. Online follows discovery's
+        /// rule: Health.Connected first, then Subscribed (doorbots and stickup cams), then false. Chimes have no
+        /// Subscribed field, so they use Health only.
+        /// </summary>
+        internal static (string? Kind, bool IsOnline) ResolveDeviceState(Entities.Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return (null, false);
+            }
+
+            Entities.Doorbot? doorbot = devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
+            if (doorbot != null)
+            {
+                return (KindOrListType(doorbot.Kind, "doorbot"), doorbot.Health?.Connected ?? doorbot.Subscribed ?? false);
+            }
+
+            Entities.StickupCam? stickupCam = devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId);
+            if (stickupCam != null)
+            {
+                return (KindOrListType(stickupCam.Kind, "stickup_cam"), stickupCam.Health?.Connected ?? stickupCam.Subscribed ?? false);
+            }
+
+            Entities.Doorbot? authorizedDoorbot = devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
+            if (authorizedDoorbot != null)
+            {
+                return (KindOrListType(authorizedDoorbot.Kind, "authorized_doorbot"), authorizedDoorbot.Health?.Connected ?? authorizedDoorbot.Subscribed ?? false);
+            }
+
+            Entities.Chime? chime = devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId);
+            if (chime != null)
+            {
+                return (KindOrListType(chime.Kind, "chime"), chime.Health?.Connected ?? false);
+            }
+
+            return (null, false);
+        }
+
+        // Discovery's device Metadata["kind"] is the raw Ring kind; when Ring omits it, discovery's Type
+        // (the list the device came from) is the fallback, which is the same thing VideoDownloadServiceAdapter does.
+        private static string KindOrListType(string? kind, string listType)
+        {
+            return string.IsNullOrWhiteSpace(kind) ? listType : kind;
+        }
+
+        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool isOnline, CancellationToken ct)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
@@ -1221,8 +1290,8 @@ namespace VideoForensics.Providers.Ring.Services
                 locationGuid,
                 providerDeviceId,
                 deviceName,
-                "camera",
-                true,
+                RingDeviceTypeMapper.MapDeviceType(providerDeviceKind),
+                isOnline,
                 ct: ct);
 
             // Cache in the per-device dictionary

@@ -780,6 +780,43 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_UnknownOnlineState_StoresNull()
+        {
+            // Arrange: Ring gave no connection/subscription state, so the online flag is unknown.
+            var locationId = Guid.NewGuid();
+            string providerDeviceId = "device-unknown-state";
+            bool? isOnline = null;
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, providerDeviceId, "Unknown Cam", "camera", isOnline, ct: CancellationToken.None);
+
+            // Assert: unknown is stored as null, not false.
+            Assert.Null(result.IsOnline);
+            mockDeviceRepoInContext.Verify(
+                x => x.AddAsync(It.Is<Device>(d => d.IsOnline == null), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_CreatesNewDeviceWhenMovedToNewLocation()
         {
             // Arrange: device was previously recorded under a placeholder/synthetic location.

@@ -428,6 +428,60 @@ namespace VideoForensics.Client.Core.Tests
                 It.IsAny<Guid>(), "dev-1", "Front", expected, It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task PreScanAsync_FirstPass_PersistsLocationMetadataAfterLocationRowCreated()
+        {
+            // Arrange - discovery exposes the metadata-persist capability; the Location row must exist before it runs.
+            var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", true);
+            Guid locationGuid = Guid.NewGuid();
+            var discoveredLocation = new VideoForensics.Core.Providers.Common.Contracts.Location(
+                "loc-1", "Home", null, new Dictionary<string, string> { ["city"] = "Peoria" });
+
+            var discovery = new Mock<IDeviceDiscoveryService>();
+            _ = discovery.As<ILocationMetadataPersister>();
+            _ = discovery
+                .Setup(s => s.GetLocationsAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>)[discoveredLocation]));
+            _ = discovery
+                .Setup(s => s.GetDevicesAsync("loc-1", It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult((IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device>)[device]));
+
+            bool locationRowStored = false;
+            _ = _dataClientMock
+                .Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback(() => locationRowStored = true)
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = locationGuid, ProviderLocationId = "loc-1", Name = "Home" });
+            _ = _dataClientMock
+                .Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = device.Id, Name = device.Name, Type = device.Type });
+
+            bool persistedAfterRowExisted = false;
+            IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>? persisted = null;
+            _ = discovery
+                .As<ILocationMetadataPersister>()
+                .Setup(p => p.PersistLocationMetadataAsync(It.IsAny<IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>>(), It.IsAny<CancellationToken>()))
+                .Callback<IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>, CancellationToken>((locations, _) =>
+                {
+                    persisted = locations;
+                    persistedAfterRowExisted = locationRowStored;
+                })
+                .Returns(Task.CompletedTask);
+
+            var adapter = new VideoDownloadServiceAdapter(
+                _loggerMock.Object, _videoProviderMock.Object, _authServiceMock.Object, _downloadServiceMock.Object,
+                discovery.Object, _dataClientMock.Object, _configMock.Object);
+
+            // Act - single pass, no prior discovery
+            await adapter.PreScanAsync(_testTempPath, DateTime.Today, DateTime.Today.AddDays(1));
+
+            // Assert - metadata persisted once, after the Location row was created, with discovery data intact
+            Assert.True(persistedAfterRowExisted);
+            Assert.NotNull(persisted);
+            VideoForensics.Core.Providers.Common.Contracts.Location captured = Assert.Single(persisted!);
+            Assert.Equal("loc-1", captured.Id);
+            Assert.Equal("Peoria", captured.Metadata!["city"]);
+        }
+
         [Theory]
         [InlineData(true)]
         [InlineData(false)]

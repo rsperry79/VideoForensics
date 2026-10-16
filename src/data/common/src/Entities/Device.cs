@@ -8,7 +8,8 @@ namespace VideoForensics.Data.Common.Entities
         public required string ProviderDeviceId { get; set; }
         public required string Name { get; set; }
         public required string Type { get; set; }
-        public bool IsOnline { get; set; }
+        /// <summary>Last known online state; null when the provider gave no connection or subscription state.</summary>
+        public bool? IsOnline { get; set; }
         public string? MetadataJson { get; set; }
         public DateTime? LastSuccessfulPullAtUtc { get; set; }
         public DateTime? LastPullAttemptAtUtc { get; set; }

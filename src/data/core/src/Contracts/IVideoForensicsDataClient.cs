@@ -68,7 +68,7 @@ namespace VideoForensics.Data.Core.Contracts
             string providerDeviceId,
             string name,
             string type,
-            bool isOnline,
+            bool? isOnline,
             string? metadataJson = null,
             string? apiResponseHash = null,
             CancellationToken ct = default);

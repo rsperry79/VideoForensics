@@ -559,7 +559,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid?>("DeviceLocationId")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsOnline")
+                    b.Property<bool?>("IsOnline")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("LastPullAttemptAtUtc")

@@ -422,6 +422,59 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task GetDevicesAsync_IsOnline_NullWhenRingGivesNoState()
+        {
+            // Ring returned neither health nor subscription state, so online is unknown (null), not offline.
+            string locationId = "55555555-5555-5555-5555-555555555555";
+            var doorbot = new Doorbot
+            {
+                Id = 301,
+                Description = "Unknown State Door",
+                LocationId = Guid.Parse(locationId),
+                Subscribed = null,
+                Health = null
+            };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Device device = Assert.Single(result);
+            Assert.Null(device.IsOnline);
+        }
+
+        [Fact]
+        public async Task GetDevicesAsync_IsOnline_TrueWhenHealthConnected()
+        {
+            string locationId = "66666666-6666-6666-6666-666666666666";
+            var doorbot = new Doorbot
+            {
+                Id = 302,
+                Description = "Online Door",
+                LocationId = Guid.Parse(locationId),
+                Subscribed = false,
+                Health = new DeviceHealth { Connected = true }
+            };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Device device = Assert.Single(result);
+            Assert.True(device.IsOnline);
+        }
+
+        [Fact]
         public async Task GetDevicesAsync_CarriesRingKindInMetadata()
         {
             string locationId = "55555555-5555-5555-5555-555555555555";
@@ -471,7 +524,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 .Callback<LocationMetadataEntity, CancellationToken>((m, _) => added = m)
                 .Returns(Task.CompletedTask);
             var service = new RingDeviceDiscoveryService(
-                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object, locationRepository: CreateLocationRepository("loc-1", Guid.NewGuid()).Object);
             var location = new CommonContracts.Location("loc-1", "Home", "1 Main St", new Dictionary<string, string>
             {
                 ["city"] = "Springfield",
@@ -499,7 +552,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
             _ = repo.Setup(r => r.GetByLocationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
             var service = new RingDeviceDiscoveryService(
-                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object, locationRepository: CreateLocationRepository("loc-1", Guid.NewGuid()).Object);
             var location = new CommonContracts.Location("loc-1", "Home", "2 Oak Ave", new Dictionary<string, string> { ["city"] = "Peoria" });
 
             await service.PersistLocationMetadataAsync([location], CancellationToken.None);
@@ -515,12 +568,65 @@ namespace VideoForensics.Providers.Ring.Tests
             var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
             _ = repo.Setup(r => r.GetByLocationIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
             var service = new RingDeviceDiscoveryService(
-                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object);
+                new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, metadataRepository: repo.Object, locationRepository: CreateLocationRepository("loc-1", Guid.NewGuid()).Object);
 
             await service.PersistLocationMetadataAsync([new CommonContracts.Location("loc-1", "Home")], CancellationToken.None);
 
             repo.Verify(r => r.UpdateAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
             repo.Verify(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task PersistLocationMetadataAsync_LocationRowExists_MetadataLocationIdEqualsLocationRowId()
+        {
+            Guid locationRowId = Guid.NewGuid();
+            LocationMetadataEntity? added = null;
+            var metadataRepo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
+            _ = metadataRepo.Setup(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()))
+                .Callback<LocationMetadataEntity, CancellationToken>((m, _) => added = m)
+                .Returns(Task.CompletedTask);
+            var service = new RingDeviceDiscoveryService(
+                new Mock<ILogger>().Object,
+                new Mock<ISessionProvider>().Object,
+                metadataRepository: metadataRepo.Object,
+                locationRepository: CreateLocationRepository("loc-1", locationRowId).Object);
+
+            await service.PersistLocationMetadataAsync([new CommonContracts.Location("loc-1", "Home")], CancellationToken.None);
+
+            Assert.NotNull(added);
+            Assert.Equal(locationRowId, added.LocationId);
+        }
+
+        [Fact]
+        public async Task PersistLocationMetadataAsync_LocationRowMissing_WritesNoMetadata()
+        {
+            var locationRepo = new Mock<VideoForensics.Data.Common.Contracts.ILocationRepository>();
+            _ = locationRepo.Setup(r => r.GetByProviderLocationIdAsync("loc-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((VideoForensics.Data.Common.Entities.Location?)null);
+            var metadataRepo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
+            var service = new RingDeviceDiscoveryService(
+                new Mock<ILogger>().Object,
+                new Mock<ISessionProvider>().Object,
+                metadataRepository: metadataRepo.Object,
+                locationRepository: locationRepo.Object);
+
+            await service.PersistLocationMetadataAsync([new CommonContracts.Location("loc-1", "Home")], CancellationToken.None);
+
+            metadataRepo.Verify(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+            metadataRepo.Verify(r => r.UpdateAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        private static Mock<VideoForensics.Data.Common.Contracts.ILocationRepository> CreateLocationRepository(string providerLocationId, Guid locationId)
+        {
+            var repo = new Mock<VideoForensics.Data.Common.Contracts.ILocationRepository>();
+            _ = repo.Setup(r => r.GetByProviderLocationIdAsync(providerLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location
+                {
+                    Id = locationId,
+                    ProviderLocationId = providerLocationId,
+                    Name = "Home"
+                });
+            return repo;
         }
     }
 }

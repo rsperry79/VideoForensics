@@ -34,6 +34,8 @@ namespace VideoForensics.Client.Core.Services
         // Real location names discovered via DiscoverUniqueDevicesAsync, keyed by provider location id.
         private readonly Dictionary<string, string> _knownLocationNames = [];
         private readonly Dictionary<string, string> _knownLocationAddresses = [];
+        // Full discovered location records (incl. provider metadata) for the metadata-persist seam.
+        private readonly Dictionary<string, VideoForensics.Core.Providers.Common.Contracts.Location> _knownLocations = [];
         private string? _cachedLocationName;
         private readonly Dictionary<string, Guid> _deviceIdCache = [];
         // Device ID to location name mapping, set by the caller before downloading
@@ -167,7 +169,7 @@ namespace VideoForensics.Client.Core.Services
             string deviceName,
             string? providerLocationId,
             string? providerDeviceKind,
-            bool isOnline,
+            bool? isOnline,
             CancellationToken ct)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cached))
@@ -220,6 +222,15 @@ namespace VideoForensics.Client.Core.Services
                     locationGuid = location.Id;
                     _locationIdCache[effectiveLocationId] = locationGuid;
                     _cachedLocationName = location.Name;
+
+                    // Persist metadata now that the Location row exists, so a fresh database gets its
+                    // metadata on the first pass instead of waiting for the next discovery run.
+                    // The 5-minute throttle lives in the discovery service.
+                    if (_deviceService is VideoForensics.Core.Providers.Common.Contracts.ILocationMetadataPersister persister
+                        && _knownLocations.TryGetValue(effectiveLocationId, out VideoForensics.Core.Providers.Common.Contracts.Location? discovered))
+                    {
+                        await persister.PersistLocationMetadataAsync([discovered], ct);
+                    }
                 }
 
                 string deviceType = MapDeviceType(providerDeviceKind);
@@ -260,6 +271,7 @@ namespace VideoForensics.Client.Core.Services
             foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
             {
                 _knownLocationNames[location.Id] = location.Name;
+                _knownLocations[location.Id] = location;
                 if (!string.IsNullOrWhiteSpace(location.Address))
                 {
                     _knownLocationAddresses[location.Id] = location.Address;

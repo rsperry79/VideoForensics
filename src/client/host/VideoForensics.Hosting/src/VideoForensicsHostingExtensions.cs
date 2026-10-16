@@ -90,7 +90,9 @@ namespace VideoForensics.Hosting
         {
             return new RingDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                provider.GetRequiredService<ISessionProvider>()
+                provider.GetRequiredService<ISessionProvider>(),
+                metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
+                locationRepository: provider.GetRequiredService<ILocationRepository>()
             );
         }
 

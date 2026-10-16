@@ -11,12 +11,13 @@ using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
 {
-    public class RingDeviceDiscoveryService : IDeviceDiscoveryService
+    public class RingDeviceDiscoveryService : IDeviceDiscoveryService, ILocationMetadataPersister
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly IDeviceCapabilitiesRepository? _capabilitiesRepository;
         private readonly ILocationMetadataRepository? _metadataRepository;
+        private readonly ILocationRepository? _locationRepository;
         private readonly ApiResponseNormalizer? _normalizer;
 
         // Sentinel used when a device's own location_id is missing from Ring's API response. Never
@@ -44,13 +45,15 @@ namespace VideoForensics.Providers.Ring.Services
             ISessionProvider sessionProvider,
             IDeviceCapabilitiesRepository? capabilitiesRepository = null,
             ILocationMetadataRepository? metadataRepository = null,
-            ApiResponseNormalizer? normalizer = null)
+            ApiResponseNormalizer? normalizer = null,
+            ILocationRepository? locationRepository = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _capabilitiesRepository = capabilitiesRepository;
             _metadataRepository = metadataRepository;
             _normalizer = normalizer;
+            _locationRepository = locationRepository;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -283,7 +286,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                            IsOnline: d.Health?.Connected ?? d.Subscribed,
                             Metadata: KindMetadata(d.Kind)
                         );
                     }
@@ -302,7 +305,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                                IsOnline: d.Health?.Connected ?? d.Subscribed,
                                 Metadata: KindMetadata(d.Kind)
                             );
                         }
@@ -322,7 +325,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                                IsOnline: d.Health?.Connected ?? d.Subscribed,
                                 Metadata: KindMetadata(d.Kind)
                             );
                         }
@@ -346,7 +349,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: c.Description ?? "Unknown Device",
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: c.Health?.Connected ?? false,
+                                IsOnline: c.Health?.Connected,
                                 Metadata: KindMetadata(c.Kind)
                             );
                         }
@@ -571,7 +574,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                            IsOnline: d.Health?.Connected ?? d.Subscribed,
                             Metadata: KindMetadata(d.Kind)
                         );
                     }
@@ -589,7 +592,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                                IsOnline: d.Health?.Connected ?? d.Subscribed,
                                 Metadata: KindMetadata(d.Kind)
                             );
                         }
@@ -608,7 +611,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: s.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: s.Health?.Connected ?? s.Subscribed ?? false,
+                                IsOnline: s.Health?.Connected ?? s.Subscribed,
                                 Metadata: KindMetadata(s.Kind)
                             );
                         }
@@ -627,7 +630,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed ?? false,
+                                IsOnline: d.Health?.Connected ?? d.Subscribed,
                                 Metadata: KindMetadata(d.Kind)
                             );
                         }
@@ -646,7 +649,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: c.Description ?? "Unknown Device",
                                 Type: "chime",
                                 LocationId: c.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: c.Health?.Connected ?? false,
+                                IsOnline: c.Health?.Connected,
                                 Metadata: KindMetadata(c.Kind)
                             );
                         }
@@ -705,7 +708,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// Captures and persists location metadata as an audit trail of location discovery.
         /// Runs as a fire-and-forget background task for forensic completeness.
         /// </summary>
-        internal async Task PersistLocationMetadataAsync(IReadOnlyList<Location> locations, CancellationToken ct)
+        public async Task PersistLocationMetadataAsync(IReadOnlyList<Location> locations, CancellationToken ct = default)
         {
             if (_metadataRepository == null)
             {
@@ -723,9 +726,20 @@ namespace VideoForensics.Providers.Ring.Services
                         continue;
                     }
 
-                    // LocationMetadata.LocationId is a deterministic Guid derived from the provider location id
-                    // (same scheme as device capabilities), so repeat discoveries find the same row.
-                    Guid locationGuid = GuidFromString(location.Id);
+                    // LocationMetadata.LocationId must be the real Locations.Id, not a hash of the provider id:
+                    // Locations.Id is a random Guid assigned when the Location row is created, so a hashed id
+                    // never joins. The Location row is created after discovery (by the download adapter), so
+                    // skip until it exists; a later discovery pass persists it.
+                    VideoForensics.Data.Common.Entities.Location? dbLocation = _locationRepository == null
+                        ? null
+                        : await _locationRepository.GetByProviderLocationIdAsync(location.Id, ct);
+                    if (dbLocation == null)
+                    {
+                        _logger.LogDebug("Location row not stored yet for location {LocationId}; metadata capture deferred", location.Id);
+                        continue;
+                    }
+
+                    Guid locationGuid = dbLocation.Id;
 
                     LocationMetadata? existing = await _metadataRepository.GetByLocationIdAsync(locationGuid, ct);
                     if (existing?.LastSyncedUtc > DateTime.UtcNow.AddMinutes(-5))
