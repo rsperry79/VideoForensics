@@ -240,6 +240,9 @@ public class CircuitGuardRegistration_Tests
         services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
         services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
+        services.AddScoped(_ => new Mock<ICaseRepository>().Object);
+        services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
         services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
         var gate = new Mock<ICircuitOperatorGate>();
@@ -275,5 +278,71 @@ public class CircuitGuardRegistration_Tests
         public Task DeleteAsync(Guid accountId, CancellationToken ct) => Task.CompletedTask;
         public Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+}
+
+public class GuardedCaseRepository_Tests
+{
+    [Fact]
+    public async Task GuardedCaseRepository_CloseAsync_ReviewOnly_ThrowsAndDoesNotClose()
+    {
+        // Review is enough for case edits but not for close and reopen, which the server requires Admin for.
+        var inner = new Mock<ICaseRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(true);
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new GuardedCaseRepository(inner.Object, gate.Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CloseAsync(Guid.NewGuid(), "op", CancellationToken.None));
+
+        inner.Verify(r => r.CloseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedCaseRepository_RemoveItemAsync_ReadOnlyOperator_ThrowsAndDoesNotRemove()
+    {
+        var inner = new Mock<ICaseRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
+        var guarded = new GuardedCaseRepository(inner.Object, gate.Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RemoveItemAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
+
+        inner.Verify(r => r.RemoveItemAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class GuardedLegalHoldRepository_Tests
+{
+    [Fact]
+    public async Task GuardedLegalHoldRepository_ReleaseAsync_ReviewOperator_ThrowsAndDoesNotRelease()
+    {
+        var inner = new Mock<ILegalHoldRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new GuardedLegalHoldRepository(inner.Object, gate.Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ReleaseAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
+
+        inner.Verify(r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
+
+public class GuardedMediaStillCaptureService_Tests
+{
+    [Fact]
+    public async Task GuardedMediaStillCaptureService_Capture_ReadOnlyOperator_ThrowsAndDoesNotCapture()
+    {
+        var inner = new Mock<IMediaStillCaptureService>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
+        var guarded = new GuardedMediaStillCaptureService(inner.Object, gate.Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CaptureStillAsync(
+            Guid.NewGuid(), 0, null, null, null, "op", CancellationToken.None));
+
+        inner.Verify(r => r.CaptureStillAsync(
+            It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }
