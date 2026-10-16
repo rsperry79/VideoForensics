@@ -1544,6 +1544,13 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             "--app-api-base-url",
             "--mode-api-base-url",
             "--monitoring-api-base-url",
+            "--devices-api-base-url",
+            "--commands-api-base-url",
+            "--groups-api-base-url",
+            "--evm-api-base-url",
+            "--integrations-api-base-url",
+            "--recordings-api-base-url",
+            "--app-snaps-api-base-url",
         };
 
         private static Uri? Read(CliOptions o, string flag) => flag switch
@@ -1552,6 +1559,13 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             "--app-api-base-url" => o.AppApiBaseUrl,
             "--mode-api-base-url" => o.ModeApiBaseUrl,
             "--monitoring-api-base-url" => o.MonitoringApiBaseUrl,
+            "--devices-api-base-url" => o.DevicesApiBaseUrl,
+            "--commands-api-base-url" => o.CommandsApiBaseUrl,
+            "--groups-api-base-url" => o.GroupsApiBaseUrl,
+            "--evm-api-base-url" => o.EvmApiBaseUrl,
+            "--integrations-api-base-url" => o.IntegrationsApiBaseUrl,
+            "--recordings-api-base-url" => o.RecordingsApiBaseUrl,
+            "--app-snaps-api-base-url" => o.AppSnapsApiBaseUrl,
             _ => throw new ArgumentOutOfRangeException(nameof(flag)),
         };
 
@@ -1604,7 +1618,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void CliOptions_HelpText_MentionsHostOverridesAndEveryFlag()
         {
             Assert.Contains("HOST OVERRIDES", CliOptions.HelpText);
-            foreach (string flag in new[] { "--clients-api-base-url", "--app-api-base-url", "--mode-api-base-url", "--monitoring-api-base-url" })
+            foreach (string flag in new[] { "--clients-api-base-url", "--app-api-base-url", "--mode-api-base-url", "--monitoring-api-base-url", "--devices-api-base-url", "--commands-api-base-url", "--groups-api-base-url", "--evm-api-base-url", "--integrations-api-base-url", "--recordings-api-base-url", "--app-snaps-api-base-url" })
             {
                 Assert.Contains(flag, CliOptions.HelpText);
             }
@@ -1615,6 +1629,31 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         {
             (CliOptions? options, _) = CliOptions.Parse([]);
             Assert.Null(options!.ToEndpointOptions());
+        }
+
+        private static Uri MappedUri(Ring.RingEndpointOptions e, string flag) => flag switch
+        {
+            "--clients-api-base-url" => e.ClientsApiBaseUrl,
+            "--app-api-base-url" => e.AppApiBaseUrl,
+            "--mode-api-base-url" => e.ModeApiBaseUrl,
+            "--monitoring-api-base-url" => e.MonitoringApiBaseUrl,
+            "--devices-api-base-url" => e.DevicesApiBaseUrl,
+            "--commands-api-base-url" => e.CommandsApiBaseUrl,
+            "--groups-api-base-url" => e.GroupsApiBaseUrl,
+            "--evm-api-base-url" => e.EvmApiBaseUrl,
+            "--integrations-api-base-url" => e.IntegrationsApiBaseUrl,
+            "--recordings-api-base-url" => e.RecordingsApiBaseUrl,
+            "--app-snaps-api-base-url" => e.AppSnapsApiBaseUrl,
+            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+        };
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_ToEndpointOptions_MapsFlagToMatchingProperty(string flag)
+        {
+            (CliOptions? options, _) = CliOptions.Parse([flag, "https://probe.test/x/"]);
+            Ring.RingEndpointOptions mapped = options!.ToEndpointOptions()!;
+            Assert.Equal(new Uri("https://probe.test/x/"), MappedUri(mapped, flag));
         }
 
         [Fact]

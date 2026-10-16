@@ -36,6 +36,13 @@ namespace VideoForensics.Utils.SelfTest
         public Uri? AppApiBaseUrl;
         public Uri? ModeApiBaseUrl;
         public Uri? MonitoringApiBaseUrl;
+        public Uri? DevicesApiBaseUrl;
+        public Uri? CommandsApiBaseUrl;
+        public Uri? GroupsApiBaseUrl;
+        public Uri? EvmApiBaseUrl;
+        public Uri? IntegrationsApiBaseUrl;
+        public Uri? RecordingsApiBaseUrl;
+        public Uri? AppSnapsApiBaseUrl;
 
         /// <summary>
         /// Maps the host-override flags to a <see cref="VideoForensics.Providers.Ring.RingEndpointOptions"/>,
@@ -44,7 +51,14 @@ namespace VideoForensics.Utils.SelfTest
         /// </summary>
         public VideoForensics.Providers.Ring.RingEndpointOptions? ToEndpointOptions()
         {
-            if (ClientsApiBaseUrl is null && AppApiBaseUrl is null && ModeApiBaseUrl is null && MonitoringApiBaseUrl is null)
+            if (ClientsApiBaseUrl is null && AppApiBaseUrl is null && ModeApiBaseUrl is null && MonitoringApiBaseUrl is null
+                && DevicesApiBaseUrl is null
+                && CommandsApiBaseUrl is null
+                && GroupsApiBaseUrl is null
+                && EvmApiBaseUrl is null
+                && IntegrationsApiBaseUrl is null
+                && RecordingsApiBaseUrl is null
+                && AppSnapsApiBaseUrl is null)
             {
                 return null;
             }
@@ -54,6 +68,13 @@ namespace VideoForensics.Utils.SelfTest
             if (AppApiBaseUrl is not null) endpoints.AppApiBaseUrl = AppApiBaseUrl;
             if (ModeApiBaseUrl is not null) endpoints.ModeApiBaseUrl = ModeApiBaseUrl;
             if (MonitoringApiBaseUrl is not null) endpoints.MonitoringApiBaseUrl = MonitoringApiBaseUrl;
+            if (DevicesApiBaseUrl is not null) endpoints.DevicesApiBaseUrl = DevicesApiBaseUrl;
+            if (CommandsApiBaseUrl is not null) endpoints.CommandsApiBaseUrl = CommandsApiBaseUrl;
+            if (GroupsApiBaseUrl is not null) endpoints.GroupsApiBaseUrl = GroupsApiBaseUrl;
+            if (EvmApiBaseUrl is not null) endpoints.EvmApiBaseUrl = EvmApiBaseUrl;
+            if (IntegrationsApiBaseUrl is not null) endpoints.IntegrationsApiBaseUrl = IntegrationsApiBaseUrl;
+            if (RecordingsApiBaseUrl is not null) endpoints.RecordingsApiBaseUrl = RecordingsApiBaseUrl;
+            if (AppSnapsApiBaseUrl is not null) endpoints.AppSnapsApiBaseUrl = AppSnapsApiBaseUrl;
             return endpoints;
         }
 
@@ -256,6 +277,55 @@ namespace VideoForensics.Utils.SelfTest
                         options.MonitoringApiBaseUrl = monitoringUrl;
                         break;
 
+                    case "--devices-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --devices-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? devicesUrl))
+                            return (null, $"--devices-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.DevicesApiBaseUrl = devicesUrl;
+                        break;
+
+                    case "--commands-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --commands-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? commandsUrl))
+                            return (null, $"--commands-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.CommandsApiBaseUrl = commandsUrl;
+                        break;
+
+                    case "--groups-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --groups-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? groupsUrl))
+                            return (null, $"--groups-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.GroupsApiBaseUrl = groupsUrl;
+                        break;
+
+                    case "--evm-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --evm-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? evmUrl))
+                            return (null, $"--evm-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.EvmApiBaseUrl = evmUrl;
+                        break;
+
+                    case "--integrations-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --integrations-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? integrationsUrl))
+                            return (null, $"--integrations-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.IntegrationsApiBaseUrl = integrationsUrl;
+                        break;
+
+                    case "--recordings-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --recordings-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? recordingsUrl))
+                            return (null, $"--recordings-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.RecordingsApiBaseUrl = recordingsUrl;
+                        break;
+
+                    case "--app-snaps-api-base-url":
+                        if (i + 1 >= args.Length) return (null, "Missing value for --app-snaps-api-base-url");
+                        if (!TryParseHttpUrl(args[++i], out Uri? appSnapsUrl))
+                            return (null, $"--app-snaps-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        options.AppSnapsApiBaseUrl = appSnapsUrl;
+                        break;
+
                     default:
                         if (arg.StartsWith("--") || arg.StartsWith("-"))
                             return (null, $"Unrecognized argument: {arg}");
@@ -374,6 +444,13 @@ namespace VideoForensics.Utils.SelfTest
           --app-api-base-url <url>          Override the Ring app API base URL.
           --mode-api-base-url <url>         Override the Ring Location Mode API base URL.
           --monitoring-api-base-url <url>   Override the Ring Alarm monitoring accounts API base URL.
+          --devices-api-base-url <url>      Override the Ring devices API base URL.
+          --commands-api-base-url <url>     Override the Ring commands API base URL.
+          --groups-api-base-url <url>       Override the Ring groups API base URL.
+          --evm-api-base-url <url>          Override the Ring event-manager history API base URL.
+          --integrations-api-base-url <url> Override the Ring integrations API base URL.
+          --recordings-api-base-url <url>   Override the Ring recordings API base URL.
+          --app-snaps-api-base-url <url>    Override the Ring app snapshots API base URL.
 
         CREDENTIALS (first match wins):
           The active account's saved refresh token - the same IForensicsConfiguration.ActiveProviderAccountId
