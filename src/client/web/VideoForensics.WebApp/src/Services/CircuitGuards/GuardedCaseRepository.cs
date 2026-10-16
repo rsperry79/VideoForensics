@@ -77,6 +77,9 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         public Task<IReadOnlyList<ForensicCase>> ListCasesContainingAsync(CaseItemKind kind, Guid targetId, CancellationToken ct) =>
             inner.ListCasesContainingAsync(kind, targetId, ct);
 
+        public Task<IReadOnlyList<ForensicCase>> ListForProviderAccountAsync(Guid providerAccountId, CancellationToken ct) =>
+            inner.ListForProviderAccountAsync(providerAccountId, ct);
+
         public Task<ForensicCase> CreateFromJammingDetectionAsync(JammingIncidentRecord jammingIncident, CancellationToken ct) =>
             inner.CreateFromJammingDetectionAsync(jammingIncident, ct);
 
