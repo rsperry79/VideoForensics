@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.ObjectModel;
@@ -20,6 +21,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILocationRepository? _locationRepository;
         private readonly ApiResponseNormalizer? _normalizer;
         private readonly RingAccountSettingsPersister? _settingsPersister;
+        private readonly IRingEventHistoryWriter? _eventHistoryWriter;
 
         // Sentinel used when a device's own location_id is missing from Ring's API response. Never
         // fall back to the locationId that was requested here - the legacy ring_devices endpoint's
@@ -47,7 +49,8 @@ namespace VideoForensics.Providers.Ring.Services
             ILocationMetadataRepository? metadataRepository = null,
             ApiResponseNormalizer? normalizer = null,
             ILocationRepository? locationRepository = null,
-            RingAccountSettingsPersister? settingsPersister = null)
+            RingAccountSettingsPersister? settingsPersister = null,
+            IRingEventHistoryWriter? eventHistoryWriter = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
@@ -55,6 +58,7 @@ namespace VideoForensics.Providers.Ring.Services
             _normalizer = normalizer;
             _locationRepository = locationRepository;
             _settingsPersister = settingsPersister;
+            _eventHistoryWriter = eventHistoryWriter;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -512,6 +516,9 @@ namespace VideoForensics.Providers.Ring.Services
                 // Once per fresh fetch (a cache hit returns above, so a sync fetches account settings once).
                 await PersistAccountSettingsAsync(session, providerAccountId, result, cancellationToken);
 
+                // Runs whether or not the settings persister is configured, and after it, so a settings failure never blocks the event feeds.
+                await PersistEventHistoryAsync(session, providerAccountId, result, cancellationToken);
+
                 _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
 
                 return result;
@@ -610,6 +617,131 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogWarning(ex, "Ring {Area} fetch failed; sync continues", area);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Fetches and persists an account's event-history feeds: doorbot history and video search for each doorbot,
+        /// then location events, evm location history and app location history for each location. Every step runs
+        /// through <see cref="SyncFeedAsync"/>, so one failing feed or doorbot never stops the others. All calls are reads.
+        /// </summary>
+        private async Task PersistEventHistoryAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        {
+            IRingEventHistoryWriter? eventWriter = _eventHistoryWriter;
+            if (eventWriter == null)
+            {
+                return;
+            }
+
+            IReadOnlyList<Device> devices = [];
+            await SyncFeedAsync("device list", async () =>
+            {
+                devices = await GetAllDevicesUnfilteredAsync(providerAccountId, ct);
+            }, ct);
+
+            foreach (Device device in devices)
+            {
+                // Chimes have no doorbot history or video search; the other device ids are numeric doorbot ids.
+                if (device.Type == "chime" || !long.TryParse(device.Id, out long doorbotId))
+                {
+                    continue;
+                }
+
+                await SyncFeedAsync("doorbot history", async () =>
+                {
+                    List<Entities.DoorbotHistoryEvent> history = await session.GetDoorbotsHistory(doorbotId);
+                    foreach (Entities.DoorbotHistoryEvent evt in history)
+                    {
+                        var mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
+                        await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
+                    }
+                }, ct);
+
+                await SyncFeedAsync("video search", async () =>
+                {
+                    List<Entities.VideoSearchItem> items = await session.VideoSearch(doorbotId, cancellationToken: ct);
+                    foreach (Entities.VideoSearchItem item in items)
+                    {
+                        var mapped = RingEventHistoryMapper.MapVideoSearch(item, providerAccountId);
+                        await eventWriter.ReplaceVideoSearchEventAsync(providerAccountId, mapped.Event, mapped.Details, ct);
+                    }
+                }, ct);
+            }
+
+            foreach (Location location in locations)
+            {
+                if (!Guid.TryParse(location.Id, out Guid locationGuid))
+                {
+                    _logger.LogWarning("Skipping Ring event history: location id is not a GUID");
+                    continue;
+                }
+
+                await SyncFeedAsync("location events", async () =>
+                {
+                    Entities.LocationEventsResponse? page = await session.GetLocationEventsResponse(locationGuid);
+                    if (page is null)
+                    {
+                        return;
+                    }
+
+                    await eventWriter.ReplaceLocationEventPageAsync(RingEventHistoryMapper.MapLocationEventsPage(location.Id, page.Meta), ct);
+                    foreach (Entities.LocationEvent evt in page.Events ?? [])
+                    {
+                        var mapped = RingEventHistoryMapper.MapLocationEvent(evt, location.Id);
+                        await eventWriter.ReplaceLocationEventAsync(mapped.Event, mapped.Details, ct);
+                    }
+                }, ct);
+
+                await SyncFeedAsync("location history", async () =>
+                {
+                    JsonElement raw = await session.GetLocationHistory(locationGuid, ct);
+                    Entities.LocationHistoryResponse? response = raw.Deserialize<Entities.LocationHistoryResponse>();
+                    if (response is null)
+                    {
+                        return;
+                    }
+
+                    await eventWriter.ReplaceLocationHistoryPageAsync(RingEventHistoryMapper.MapLocationHistoryPage(location.Id, response.PaginationKey), ct);
+                    foreach (Entities.LocationHistoryItem item in response.Items ?? [])
+                    {
+                        var mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
+                        await eventWriter.ReplaceLocationHistoryEventAsync(mapped.Event, mapped.Details, ct);
+                    }
+                }, ct);
+
+                await SyncFeedAsync("app location history", async () =>
+                {
+                    string json = await session.GetAppLocationHistoryAsync(locationGuid, cancellationToken: ct);
+                    List<Entities.AppLocationHistoryMessage>? messages = JsonSerializer.Deserialize<List<Entities.AppLocationHistoryMessage>>(json);
+                    foreach (Entities.AppLocationHistoryMessage message in messages ?? [])
+                    {
+                        await eventWriter.ReplaceAppLocationHistoryMessageAsync(RingEventHistoryMapper.MapAppLocationHistory(message), ct);
+                    }
+                }, ct);
+            }
+        }
+
+        /// <summary>
+        /// Runs one event-history fetch-and-persist step. A 404 is logged at information level and skipped; any other
+        /// failure is logged as a warning that names only the feed, and the sync continues. Cancellation is rethrown.
+        /// </summary>
+        private async Task SyncFeedAsync(string feed, Func<Task> fetchAndPersist, CancellationToken ct)
+        {
+            try
+            {
+                await fetchAndPersist();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DeviceUnknownException)
+            {
+                _logger.LogInformation("Ring {Feed} not available (not found); skipped", feed);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Ring {Feed} sync failed; sync continues", feed);
             }
         }
 

@@ -93,7 +93,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ISessionProvider>(),
                 metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
                 locationRepository: provider.GetRequiredService<ILocationRepository>(),
-                settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>()
+                settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>(),
+                eventHistoryWriter: provider.GetService<IRingEventHistoryWriter>()
             );
         }
 
