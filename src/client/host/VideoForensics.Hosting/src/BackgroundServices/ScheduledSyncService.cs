@@ -186,6 +186,10 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             DateTime startedUtc = _time.GetUtcNow().UtcDateTime;
             string? outcome;
+            SyncRunTotals? totals = null;
+
+            // Same DI scope as every account in this tick, so reset before each pull to keep one account's counts out of the next.
+            ISyncRunTally? tally = sp.GetService<ISyncRunTally>();
 
             try
             {
@@ -208,9 +212,12 @@ namespace VideoForensics.Hosting.BackgroundServices
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
                         deviceDiscovery,
-                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>());
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
+                        tally);
 
+                    tally?.Reset();
                     await pull.PullAccountEventsAsync(accountId, from, ct);
+                    totals = tally?.Snapshot();
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -229,7 +236,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 outcome = ex.Message;
             }
 
-            await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome);
+            await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, totals);
 
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;

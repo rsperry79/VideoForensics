@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Services;
 using Location = VideoForensics.Core.Providers.Common.Contracts.Location;
 using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using LocationEntity = VideoForensics.Data.Common.Entities.Location;
@@ -14,12 +16,16 @@ namespace VideoForensics.Hosting.Services
     {
         /// <summary>Pulls events and configuration for all devices in a provider account.</summary>
         /// <param name="accountId">The provider account ID.</param>
-        /// <param name="fromTimestampUtc">Start timestamp for event retrieval. If null, defaults to DateTime.MinValue for first-time pulls.</param>
+        /// <param name="fromTimestampUtc">Explicit start of the pull. Null means the account's watermark, or one year ago for the initial backfill.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         Task PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, CancellationToken cancellationToken);
     }
 
-    /// <summary>Pulls events and configuration from provider accounts automatically.</summary>
+    /// <summary>
+    /// Pulls events and configuration from provider accounts. Discovers the inventory, then runs the shared batched media pull
+    /// (<see cref="IEventMediaPuller"/>) for the window. The account's last-pull watermark is the only "last sync" time, and it
+    /// moves only past batches whose events were all pulled.
+    /// </summary>
     public class EventPullService : IEventPullService
     {
         private readonly IEventAndConfigService _eventAndConfigService;
@@ -28,26 +34,45 @@ namespace VideoForensics.Hosting.Services
         private readonly IProviderAccountRepository _providerAccountRepository;
         private readonly ILogger<EventPullService> _logger;
         private readonly IDeviceDiscoveryService _deviceDiscovery;
+        private readonly ISyncRunTally? _syncRunTally;
+        private readonly ISyncRunOptions? _syncRunOptions;
+        private readonly IMediaDownloadService? _mediaDownloadService;
+        private readonly IEventMediaPuller _mediaPuller;
+        private readonly string _mediaRoot;
 
         /// <summary>
-        /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
-        /// the provider and persists them, then pulls events for every discovered device. Connecting an account stores no
-        /// inventory, so discovery is what makes a first sync work.
+        /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices, then pulls
+        /// media for the window in batches. The sync kind in <paramref name="syncRunOptions"/> decides whether the events and config
+        /// steps run; a missing registration runs both.
         /// </summary>
+        /// <param name="mediaDownloadService">The provider's media download service. Null means no media can be pulled, so no event is counted.</param>
+        /// <param name="mediaRoot">Root folder for media; each account writes under its own subfolder. Null uses the platform's media folder.</param>
+        /// <param name="minRequestInterval">Minimum gap between provider media requests. Null uses one second.</param>
         public EventPullService(
             IEventAndConfigService eventAndConfigService,
             IDeviceRepository deviceRepository,
             ILocationRepository locationRepository,
             IProviderAccountRepository providerAccountRepository,
             IDeviceDiscoveryService deviceDiscovery,
-            ILogger<EventPullService>? logger = null)
+            ILogger<EventPullService>? logger = null,
+            ISyncRunTally? syncRunTally = null,
+            ISyncRunOptions? syncRunOptions = null,
+            IMediaDownloadService? mediaDownloadService = null,
+            string? mediaRoot = null,
+            TimeSpan? minRequestInterval = null,
+            IEventMediaPuller? mediaPuller = null)
         {
+            _syncRunOptions = syncRunOptions;
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
             _locationRepository = locationRepository;
             _providerAccountRepository = providerAccountRepository;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventPullService>.Instance;
             _deviceDiscovery = deviceDiscovery;
+            _syncRunTally = syncRunTally;
+            _mediaDownloadService = mediaDownloadService;
+            _mediaPuller = mediaPuller ?? new EventMediaPuller(minRequestInterval: minRequestInterval);
+            _mediaRoot = mediaRoot ?? new StorageLocationProvider().GetDefaultRoot(StorageCategory.Media);
         }
 
         public async Task PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, CancellationToken cancellationToken)
@@ -62,52 +87,43 @@ namespace VideoForensics.Hosting.Services
                 }
 
                 Inventory inventory = await DiscoverInventoryAsync(accountId, cancellationToken);
+                _syncRunTally?.SetInventory(inventory.LocationCount, inventory.Devices.Count);
 
                 if (inventory.LocationCount == 0)
                 {
                     _logger.LogInformation("No locations found for account");
-                    account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                     return;
                 }
 
-                var startTime = fromTimestampUtc ?? DateTime.MinValue;
-                var endTime = DateTime.UtcNow;
+                SyncRunOptions runOptions = _syncRunOptions?.Current ?? new SyncRunOptions();
+                bool runsEvents = runOptions.Kind is SyncRunKind.Default or SyncRunKind.Events;
+                bool runsConfig = runOptions.Kind is SyncRunKind.Default or SyncRunKind.Config;
                 var deviceErrors = new List<string>();
 
-                foreach (var device in inventory.Devices)
+                if (runsEvents)
                 {
-                    if (device == null) continue;
+                    DateTime nowUtc = DateTime.UtcNow;
+                    DateTime windowStart = fromTimestampUtc ?? account.LastSuccessfulAuthUtc ?? nowUtc.AddYears(-1);
+                    DateTime windowEnd = runOptions.EndUtc ?? nowUtc;
+                    await PullMediaAsync(account, inventory, windowStart, windowEnd, advanceWatermark: runOptions.EndUtc is null, deviceErrors, cancellationToken);
+                }
 
-                    try
+                if (runsConfig)
+                {
+                    foreach (InventoryDevice item in inventory.Devices)
                     {
-                        _logger.LogDebug("Pulling events for device");
-
-                        await _eventAndConfigService.GetEventsAsync(
-                            accountId,
-                            device.ProviderDeviceId,
-                            startTime,
-                            endTime,
-                            eventType: null,
-                            cancellationToken
-                        );
-
-                        await _eventAndConfigService.GetDeviceConfigAsync(accountId, device.ProviderDeviceId, cancellationToken);
-
-                        device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
-                        device.LastPullAttemptAtUtc = DateTime.UtcNow;
-                        await _deviceRepository.UpdateAsync(device, cancellationToken);
-
-                        _logger.LogDebug("Successfully pulled events for device");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to pull events for device");
-                        device.LastPullAttemptAtUtc = DateTime.UtcNow;
-                        await _deviceRepository.UpdateAsync(device, cancellationToken);
-                        var deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
-                        deviceErrors.Add($"Device {deviceName}: {ex.Message}");
+                        try
+                        {
+                            _ = await _eventAndConfigService.GetDeviceConfigAsync(accountId, item.Device.ProviderDeviceId, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to pull configuration for device");
+                            _syncRunTally?.AddFeedFailure();
+                            deviceErrors.Add($"Device {item.Device.Name ?? item.Device.ProviderDeviceId ?? "Unknown Device"}: {ex.Message}");
+                        }
                     }
                 }
 
@@ -118,14 +134,13 @@ namespace VideoForensics.Hosting.Services
                 }
                 else
                 {
-                    account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     account.LastErrorUtc = null;
                 }
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                _logger.LogInformation("Successfully pulled events for account");
+                _logger.LogInformation("Finished pulling events for account");
             }
             catch (Exception ex)
             {
@@ -141,8 +156,98 @@ namespace VideoForensics.Hosting.Services
             }
         }
 
+        /// <summary>
+        /// Runs the shared batched pull for the account's devices and records its honest counts. A device's last-pull time moves
+        /// only when that device had new media pulled in this run. Without a media service nothing can be pulled, so nothing is counted.
+        /// </summary>
+        private async Task PullMediaAsync(
+            ProviderAccount account,
+            Inventory inventory,
+            DateTime windowStart,
+            DateTime windowEnd,
+            bool advanceWatermark,
+            List<string> deviceErrors,
+            CancellationToken cancellationToken)
+        {
+            if (_mediaDownloadService is null)
+            {
+                _logger.LogWarning("No media download service is registered; events were not pulled");
+                return;
+            }
+
+            // Each account writes into its own folder under the media root. The account id is only used in the path, never logged.
+            string accountFolder = Path.Combine(_mediaRoot, account.Id.ToString("N"));
+            _ = Directory.CreateDirectory(accountFolder);
+            _mediaDownloadService.SetActiveProviderAccountId(account.Id);
+
+            IReadOnlyList<MediaPullDevice> devices = inventory.Devices
+                .Select(item => new MediaPullDevice(item.Device.ProviderDeviceId, accountFolder, item.ProviderLocationId))
+                .ToList();
+
+            var request = new MediaPullRequest(windowStart, windowEnd, advanceWatermark, devices);
+            var watermarkStore = new AccountWatermarkStore(account, _providerAccountRepository);
+            MediaPullResult result = await _mediaPuller.PullAsync(_mediaDownloadService, watermarkStore, request, cancellationToken);
+
+            _syncRunTally?.AddEventsPulled(result.Pulled);
+            _syncRunTally?.AddEventsAlreadyPresent(result.AlreadyPresent);
+            _syncRunTally?.AddEventsNotPulled(result.NotPulled);
+            for (int i = 0; i < result.FeedsFailed; i++)
+            {
+                _syncRunTally?.AddFeedFailure();
+            }
+
+            if (result.FeedsFailed > 0)
+            {
+                deviceErrors.Add($"{result.FeedsFailed} device media pull(s) failed");
+            }
+
+            _logger.LogInformation(
+                "Media pull: {Pulled} downloaded, {AlreadyPresent} already present, {NotPulled} not pulled over {Batches} batch(es)",
+                result.Pulled, result.AlreadyPresent, result.NotPulled, result.BatchesCompleted);
+
+            DateTime nowUtc = DateTime.UtcNow;
+            foreach (InventoryDevice item in inventory.Devices)
+            {
+                item.Device.LastPullAttemptAtUtc = nowUtc;
+                MediaPullDeviceResult? deviceResult = result.Devices.FirstOrDefault(d => d.DeviceId == item.Device.ProviderDeviceId);
+                if (deviceResult is { Pulled: > 0 })
+                {
+                    item.Device.LastSuccessfulPullAtUtc = nowUtc;
+                }
+
+                await _deviceRepository.UpdateAsync(item.Device, cancellationToken);
+            }
+        }
+
+        /// <summary>A device with the provider location it was discovered under.</summary>
+        private sealed record InventoryDevice(DeviceEntity Device, string ProviderLocationId);
+
         /// <summary>The locations and devices a pull works from. <see cref="LocationCount"/> zero means nothing to pull.</summary>
-        private sealed record Inventory(int LocationCount, List<DeviceEntity> Devices);
+        private sealed record Inventory(int LocationCount, List<InventoryDevice> Devices);
+
+        /// <summary>
+        /// Persists the account's watermark (its LastSuccessfulAuthUtc, the last-pull time a normal sync starts from) through the account repository.
+        /// </summary>
+        private sealed class AccountWatermarkStore : IMediaPullProgressStore
+        {
+            private readonly ProviderAccount _account;
+            private readonly IProviderAccountRepository _repository;
+
+            public AccountWatermarkStore(ProviderAccount account, IProviderAccountRepository repository)
+            {
+                _account = account;
+                _repository = repository;
+            }
+
+            public Task<DateTime?> GetWatermarkUtcAsync(CancellationToken cancellationToken) =>
+                Task.FromResult(_account.LastSuccessfulAuthUtc);
+
+            public async Task SetWatermarkUtcAsync(DateTime watermarkUtc, CancellationToken cancellationToken)
+            {
+                _account.LastSuccessfulAuthUtc = watermarkUtc;
+                await _repository.UpdateAsync(_account, cancellationToken);
+            }
+        }
 
         /// <summary>
         /// Asks the provider for the account's locations and devices and saves any that are new or changed. Errors propagate so the
@@ -151,7 +256,7 @@ namespace VideoForensics.Hosting.Services
         private async Task<Inventory> DiscoverInventoryAsync(Guid accountId, CancellationToken cancellationToken)
         {
             IReadOnlyList<Location> remoteLocations = await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
-            var devices = new List<DeviceEntity>();
+            var devices = new List<InventoryDevice>();
 
             foreach (Location remoteLocation in remoteLocations)
             {
@@ -159,7 +264,8 @@ namespace VideoForensics.Hosting.Services
                 IReadOnlyList<Device> remoteDevices = await _deviceDiscovery.GetDevicesAsync(accountId, remoteLocation.Id, cancellationToken);
                 foreach (Device remoteDevice in remoteDevices)
                 {
-                    devices.Add(await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken));
+                    DeviceEntity device = await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken);
+                    devices.Add(new InventoryDevice(device, remoteLocation.Id));
                 }
             }
 

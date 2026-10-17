@@ -52,5 +52,20 @@ namespace VideoForensics.Data.Database.Repositories
             account.LastConfigSyncUtc = utcNow;
             _ = await db.SaveChangesAsync(ct);
         }
+
+        public async Task<bool> SetConfigIntervalHoursAsync(Guid providerAccountId, int hours, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            RingAccount? account = await db.RingAccounts
+                .FirstOrDefaultAsync(a => a.ProviderAccountId == providerAccountId, ct);
+            if (account is null)
+            {
+                return false;
+            }
+
+            account.ConfigSyncIntervalHours = hours;
+            _ = await db.SaveChangesAsync(ct);
+            return true;
+        }
     }
 }

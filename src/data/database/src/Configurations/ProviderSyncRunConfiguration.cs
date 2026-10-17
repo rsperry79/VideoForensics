@@ -17,6 +17,10 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(r => r.ErrorMessage)
                 .HasMaxLength(1024);
 
+            _ = builder.Property(r => r.SyncType)
+                .HasMaxLength(16)
+                .HasDefaultValue("Unknown");
+
             // Serves the account details list: filter by account, newest first.
             _ = builder.HasIndex(r => new { r.ProviderAccountId, r.StartedUtc });
         }

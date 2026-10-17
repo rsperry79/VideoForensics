@@ -8,6 +8,7 @@ using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Services;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
@@ -41,6 +42,23 @@ namespace VideoForensics.Providers.Ring.Services
             if (value > 0)
             {
                 _maxConcurrentFileDownloads = value;
+            }
+        }
+
+        // Spaces Ring video requests. One request in flight and a minimum gap between request starts
+        // keeps an account's media pull under Ring's rate limit; set per run by SetRequestPacing.
+        private readonly MediaRequestPacer _pacer = new();
+
+        // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
+        private TimeSpan? _lastRetryAfter;
+
+        /// <inheritdoc />
+        public void SetRequestPacing(int maxConcurrent, TimeSpan minRequestInterval)
+        {
+            SetMaxConcurrentDownloads(maxConcurrent);
+            if (minRequestInterval >= TimeSpan.Zero)
+            {
+                _pacer.MinInterval = minRequestInterval;
             }
         }
 
@@ -183,6 +201,8 @@ namespace VideoForensics.Providers.Ring.Services
                 bool rateLimited = false;
                 int otherItemFailures = 0;
                 int permanentlySkipped = 0;
+                int alreadyPresentFiles = 0;
+                int throttledItems = 0;
 
                 _activeDownloads = 0;
                 _peakActiveDownloadsForBatch = 0;
@@ -302,6 +322,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 lock (_statusLock)
                                 {
                                     downloadedFiles++;
+                                    alreadyPresentFiles++;
                                     downloadedBytes += existingSize;
                                     mediaFilesValidated++;
                                     validatedFiles.Add(fileName);
@@ -361,19 +382,38 @@ namespace VideoForensics.Providers.Ring.Services
                         {
                             int concurrentNow = Interlocked.Increment(ref _activeDownloads);
                             InterlockedMax(ref _peakActiveDownloadsForBatch, concurrentNow);
+                            bool fetchedWithoutThrottle;
                             try
                             {
-                                await RetryWithBackoffAsync(async () =>
-                                {
-                                    await session.GetDoorbotHistoryRecording(@event, fileName);
-                                }, $"video for event {@event.Id}", rateLimitCts.Token);
+                                // A 429 waits Retry-After (or 60s) and retries this event; it never cancels the batch.
+                                fetchedWithoutThrottle = await ThrottleRetry.RunAsync(
+                                    () => RetryWithBackoffAsync(async () =>
+                                    {
+                                        await _pacer.WaitTurnAsync(rateLimitCts.Token);
+                                        await session.GetDoorbotHistoryRecording(@event, fileName);
+                                    }, $"video for event {@event.Id}", rateLimitCts.Token),
+                                    (wait, ct) =>
+                                    {
+                                        _lastRetryAfter = wait;
+                                        _logger.LogWarning("Ring throttled video for event {EventId}; waiting {Seconds}s before retrying it", @event.Id, wait.TotalSeconds);
+                                        return Task.Delay(wait, ct);
+                                    },
+                                    rateLimitCts.Token);
                             }
                             finally
                             {
                                 _ = Interlocked.Decrement(ref _activeDownloads);
                             }
 
-                            if (File.Exists(fileName))
+                            if (!fetchedWithoutThrottle)
+                            {
+                                // Still throttled after retries: not pulled in this run and not recorded as a permanent failure,
+                                // so the next sync tries it again.
+                                _ = Interlocked.Increment(ref throttledItems);
+                                _logger.LogWarning("Ring kept throttling event {EventId}; it is not pulled this run", @event.Id);
+                                _activityLog.Enqueue($"[yellow]⊘[/] {EscapeMarkup(Path.GetFileName(fileName))}: rate limited by Ring, will retry next sync");
+                            }
+                            else if (File.Exists(fileName))
                             {
                                 long downloadedSize = new FileInfo(fileName).Length;
                                 bool validated = downloadedSize > 0;
@@ -641,6 +681,10 @@ namespace VideoForensics.Providers.Ring.Services
                     {
                         skipReason = "cancelled";
                     }
+                    else if (throttledItems > 0)
+                    {
+                        skipReason = throttledItems == 1 ? "1 item still rate limited by Ring" : $"{throttledItems} items still rate limited by Ring";
+                    }
                     else if (otherItemFailures > 0)
                     {
                         skipReason = otherItemFailures == 1 ? "1 item failed to download" : $"{otherItemFailures} items failed to download";
@@ -663,7 +707,10 @@ namespace VideoForensics.Providers.Ring.Services
                     MediaFilesValidated: mediaFilesValidated,
                     ValidatedFiles: validatedFiles,
                     FilesMatched: effectiveMatched,
-                    SkipReason: skipReason
+                    SkipReason: skipReason,
+                    FilesAlreadyPresent: alreadyPresentFiles,
+                    RateLimited: rateLimited || throttledItems > 0,
+                    RetryAfter: _lastRetryAfter
                 );
             }
             catch (Exception ex)

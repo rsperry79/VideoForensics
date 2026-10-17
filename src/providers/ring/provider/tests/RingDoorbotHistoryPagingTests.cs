@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Moq;
 
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;
@@ -115,13 +116,60 @@ namespace VideoForensics.Providers.Ring.Tests
                 || e.Message.Contains(AccessToken, StringComparison.Ordinal));
         }
 
+        [Fact]
+        public async Task RingDoorbotHistoryPaging_RangeStartInsidePage_StopsAfterThatPageAndSkipsOlderEvents()
+        {
+            // Page of 100 with one event per hour going back from the range end. Events at or after the start (the first 51)
+            // are written; the page's oldest event is before the start, so no further page is requested.
+            DateTime rangeEnd = new(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc);
+            DateTime rangeStart = rangeEnd.AddHours(-50);
+            var handler = CreateHandler(_ => HourlyPage(1000, 100, rangeEnd));
+            var writer = CreateWriter(out List<string> written);
+            var holder = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Custom, StartUtc: rangeStart, EndUtc: rangeEnd) };
+
+            await SyncAsync(handler, writer, new RecordingLogger(), holder);
+
+            Assert.Single(handler.HistoryQueries);
+            Assert.Equal(51, written.Count);
+        }
+
+        [Fact]
+        public async Task RingVideoSearch_RangeStart_SendsStartAsDateFrom()
+        {
+            var handler = CreateHandler(_ => "[]");
+            var writer = CreateWriter(out _);
+            DateTime rangeStart = new(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+            var holder = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Custom, StartUtc: rangeStart, EndUtc: rangeStart.AddDays(1)) };
+
+            await SyncAsync(handler, writer, new RecordingLogger(), holder);
+
+            string expectedFrom = new DateTimeOffset(rangeStart.Date.AddSeconds(1)).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+            Assert.Contains(handler.VideoSearchQueries, q => q.Contains($"date_from={expectedFrom}", StringComparison.Ordinal));
+        }
+
+        /// <summary>A page of <paramref name="count"/> events, one per hour going back from <paramref name="newest"/>, with descending ids.</summary>
+        private static string HourlyPage(long newestId, int count, DateTime newest)
+        {
+            var sb = new StringBuilder("[");
+            for (int i = 0; i < count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(',');
+                }
+                string createdAt = newest.AddHours(-i).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                sb.Append(CultureInfo.InvariantCulture, $"{{\"id\":{newestId - i},\"created_at\":\"{createdAt}\",\"answered\":false,\"kind\":\"ding\",\"events\":[]}}");
+            }
+            return sb.Append(']').ToString();
+        }
+
         /// <summary>Runs one sync for the account through the stub session.</summary>
-        private static async Task SyncAsync(PagingStubHandler handler, Mock<IRingEventHistoryWriter> writer, RecordingLogger logger)
+        private static async Task SyncAsync(PagingStubHandler handler, Mock<IRingEventHistoryWriter> writer, RecordingLogger logger, SyncRunOptionsHolder? runOptions = null)
         {
             var session = new Session("user@example.com", "password", handler);
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(AccountId)).Returns(session);
-            var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object, eventHistoryWriter: writer.Object);
+            var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object, eventHistoryWriter: writer.Object, syncRunOptions: runOptions);
 
             await session.Authenticate();
             _ = await service.GetLocationsAsync(AccountId);
@@ -194,9 +242,20 @@ namespace VideoForensics.Providers.Ring.Tests
             /// <summary>Path plus query of every doorbot history request, in order.</summary>
             public List<string> HistoryQueries => [.. _historyQueries];
 
+            /// <summary>Query string of every video search request, in order.</summary>
+            public List<string> VideoSearchQueries => [.. _videoSearchQueries];
+
+            private readonly ConcurrentQueue<string> _videoSearchQueries = new();
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string url = request.RequestUri?.GetLeftPart(UriPartial.Path) ?? string.Empty;
+
+                if (request.RequestUri!.AbsolutePath == "/clients_api/video_search/history")
+                {
+                    _videoSearchQueries.Enqueue(request.RequestUri.Query);
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"video_search\":[]}"), RequestMessage = request });
+                }
 
                 if (url.StartsWith("https://oauth.ring.com/", StringComparison.Ordinal))
                 {

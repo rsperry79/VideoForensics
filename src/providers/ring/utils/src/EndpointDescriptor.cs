@@ -326,6 +326,19 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "ding-share-play",
+                DisplayName = "Event share play URL",
+                Description = "Raw share/play response for a ding from the clients API path used by ring-client-api (returns a playable video URL). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingSharePlayAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingSharePlayAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-share-play requires --ding-id <id>")
+            },
+            new()
+            {
                 Key = "profile",
                 DisplayName = "Account profile",
                 Description = "Profile of the currently authenticated account.",

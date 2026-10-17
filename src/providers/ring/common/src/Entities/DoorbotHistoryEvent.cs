@@ -57,8 +57,9 @@ namespace VideoForensics.Providers.Ring.Entities
         [JsonPropertyName("cv_properties")]
         public CvProperties CvProperties { get; set; }
 
-        /// <summary>Length of the event in seconds.</summary>
+        /// <summary>Length of the event in seconds. Ring sends decimals (40.0) on some events, so it is rounded on read.</summary>
         [JsonPropertyName("duration")]
+        [JsonConverter(typeof(VideoForensics.Providers.Ring.Converters.DecimalToIntConverter))]
         public int? Duration { get; set; }
 
         [JsonPropertyName("is_e2ee")]

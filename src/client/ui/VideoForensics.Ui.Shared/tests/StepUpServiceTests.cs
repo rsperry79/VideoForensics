@@ -1,6 +1,8 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
 using VideoForensics.Ui.Shared.Services;
@@ -25,12 +27,12 @@ public class StepUpServiceTests : BunitContext
         return webAuthn;
     }
 
-    private async Task<PairedSessionState> SignedInSessionAsync(bool passkeySession, bool passwordSession)
+    private async Task<PairedSessionState> SignedInSessionAsync(bool passkeySession, bool passwordSession, bool twoFactorRequired = false)
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("session-token", Guid.NewGuid(), "SuperAdmin");
         // Set after SetAsync: the server's answer is what the service routes on.
-        session.SetServerSessionKind(localTier: true, passkeySession, passwordSession);
+        session.SetServerSessionKind(localTier: true, passkeySession, passwordSession, twoFactorRequired);
         return session;
     }
 
@@ -39,7 +41,7 @@ public class StepUpServiceTests : BunitContext
     {
         var webAuthn = CreateWebAuthn();
         var session = await SignedInSessionAsync(passkeySession: true, passwordSession: false);
-        var service = new StepUpService(webAuthn.Object, session);
+        var service = new StepUpService(webAuthn.Object, session, Services.GetRequiredService<NavigationManager>());
         bool prompted = false;
         service.RegisterPasswordPrompt(() => { prompted = true; return Task.FromResult<string?>("unused"); });
 
@@ -55,7 +57,7 @@ public class StepUpServiceTests : BunitContext
     {
         var webAuthn = CreateWebAuthn();
         var session = await SignedInSessionAsync(passkeySession: false, passwordSession: true);
-        var service = new StepUpService(webAuthn.Object, session);
+        var service = new StepUpService(webAuthn.Object, session, Services.GetRequiredService<NavigationManager>());
         service.RegisterPasswordPrompt(() => Task.FromResult<string?>("correct horse"));
 
         string token = await service.GetStepUpTokenAsync();
@@ -70,7 +72,7 @@ public class StepUpServiceTests : BunitContext
     {
         var webAuthn = CreateWebAuthn();
         var session = await SignedInSessionAsync(passkeySession: false, passwordSession: true);
-        var service = new StepUpService(webAuthn.Object, session);
+        var service = new StepUpService(webAuthn.Object, session, Services.GetRequiredService<NavigationManager>());
         service.RegisterPasswordPrompt(() => Task.FromResult<string?>(null));
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetStepUpTokenAsync());
@@ -79,11 +81,29 @@ public class StepUpServiceTests : BunitContext
     }
 
     [Fact]
+    public async Task StepUpService_PasswordSessionWhenTwoFactorRequired_SendsToPasskeySetupWithoutPrompt()
+    {
+        // The role's policy needs a passkey, so a password confirmation is not accepted; the operator is sent to upgrade.
+        var webAuthn = CreateWebAuthn();
+        var session = await SignedInSessionAsync(passkeySession: false, passwordSession: true, twoFactorRequired: true);
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var service = new StepUpService(webAuthn.Object, session, nav);
+        bool prompted = false;
+        service.RegisterPasswordPrompt(() => { prompted = true; return Task.FromResult<string?>("secret"); });
+
+        _ = await Assert.ThrowsAsync<PasskeyUpgradeRequiredException>(() => service.GetStepUpTokenAsync());
+
+        Assert.False(prompted);
+        Assert.EndsWith("/settings/passkeys?setup=true", nav.Uri);
+        webAuthn.Verify(w => w.StepUpWithPasswordAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
     public async Task StepUpService_PasswordSessionWithoutDialog_Throws()
     {
         var webAuthn = CreateWebAuthn();
         var session = await SignedInSessionAsync(passkeySession: false, passwordSession: true);
-        var service = new StepUpService(webAuthn.Object, session);
+        var service = new StepUpService(webAuthn.Object, session, Services.GetRequiredService<NavigationManager>());
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetStepUpTokenAsync());
     }

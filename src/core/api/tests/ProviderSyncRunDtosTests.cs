@@ -76,5 +76,55 @@ namespace VideoForensics.Core.Api.Contracts.Tests
             Assert.False(dto.Success);
             Assert.Null(dto.CompletedUtc);
         }
+
+        [Fact]
+        public void ProviderSyncRunDtoMapping_ToSummaryDto_MapsSyncTypeAndCounts()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: null);
+            run.SyncType = "Full";
+            run.DevicesSynced = 3;
+            run.LocationsSynced = 1;
+            run.EventsSynced = 42;
+            run.ConfigAreasSynced = 6;
+            run.FeedsFailed = 0;
+
+            ProviderSyncRunSummaryDto dto = run.ToSummaryDto();
+
+            Assert.Equal("Full", dto.SyncType);
+            Assert.Equal(3, dto.DevicesSynced);
+            Assert.Equal(1, dto.LocationsSynced);
+            Assert.Equal(42, dto.EventsSynced);
+            Assert.Equal(6, dto.ConfigAreasSynced);
+            Assert.Equal(0, dto.FeedsFailed);
+        }
+
+        [Fact]
+        public void ProviderSyncRunDtoMapping_ToSummaryDto_OldRowKeepsUnknownTypeAndNullCounts()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: null);
+
+            ProviderSyncRunSummaryDto dto = run.ToSummaryDto();
+
+            Assert.Equal("Unknown", dto.SyncType);
+            Assert.Null(dto.DevicesSynced);
+            Assert.Null(dto.EventsSynced);
+            Assert.Null(dto.FeedsFailed);
+        }
+
+        [Fact]
+        public void ProviderSyncRunDtoMapping_ToDto_MapsSyncTypeAndCounts()
+        {
+            ProviderSyncRun run = CreateRun(success: false, errorMessage: "boom", completedUtc: null);
+            run.SyncType = "Events";
+            run.EventsSynced = 7;
+            run.FeedsFailed = 2;
+
+            ProviderSyncRunDetailDto dto = run.ToDto();
+
+            Assert.Equal("Events", dto.SyncType);
+            Assert.Equal(7, dto.EventsSynced);
+            Assert.Equal(2, dto.FeedsFailed);
+            Assert.Null(dto.ConfigAreasSynced);
+        }
     }
 }

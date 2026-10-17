@@ -24,6 +24,9 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly IRingEventHistoryWriter? _eventHistoryWriter;
         private readonly IRingAccountSyncState? _syncState;
         private readonly TimeProvider _timeProvider;
+        private readonly ISyncRunTally? _syncRunTally;
+        private readonly ISyncRunOptions? _syncRunOptions;
+        private readonly RingDeviceSettingsPersister? _deviceSettingsPersister;
 
         // Sentinel used when a device's own location_id is missing from Ring's API response. Never
         // fall back to the locationId that was requested here - the legacy ring_devices endpoint's
@@ -54,8 +57,13 @@ namespace VideoForensics.Providers.Ring.Services
             RingAccountSettingsPersister? settingsPersister = null,
             IRingEventHistoryWriter? eventHistoryWriter = null,
             IRingAccountSyncState? syncState = null,
-            TimeProvider? timeProvider = null)
+            TimeProvider? timeProvider = null,
+            ISyncRunTally? syncRunTally = null,
+            ISyncRunOptions? syncRunOptions = null,
+            RingDeviceSettingsPersister? deviceSettingsPersister = null)
         {
+            _syncRunOptions = syncRunOptions;
+            _deviceSettingsPersister = deviceSettingsPersister;
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _metadataRepository = metadataRepository;
@@ -65,6 +73,7 @@ namespace VideoForensics.Providers.Ring.Services
             _eventHistoryWriter = eventHistoryWriter;
             _syncState = syncState;
             _timeProvider = timeProvider ?? TimeProvider.System;
+            _syncRunTally = syncRunTally;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -448,15 +457,6 @@ namespace VideoForensics.Providers.Ring.Services
             await _locationsCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
-                {
-                    _logger.LogInformation("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
-                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
-                    return _cachedLocations;
-                }
-
-                _logger.LogInformation("Fetching Ring locations");
-
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
@@ -464,68 +464,43 @@ namespace VideoForensics.Providers.Ring.Services
                     return new List<Location>().AsReadOnly();
                 }
 
-                _logger.LogInformation("Ring session exists: OAuthToken = {HasToken}",
-                    session.OAuthToken != null ? "yes" : "no");
-
-                // Ensure session is valid before calling APIs
-                try
+                IReadOnlyList<Location> result;
+                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
                 {
-                    await session.EnsureSessionValid();
-                    _logger.LogInformation("Ring session validation passed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Ring session validation failed");
-                    throw;
-                }
+                    _logger.LogInformation("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
+                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
+                    result = _cachedLocations;
 
-                List<Entities.Location>? locations = await session.GetLocations();
-                _logger.LogInformation("GetLocations() completed for account {AccountId}, returned collection type: {Type}",
-                    providerAccountId, locations?.GetType().Name ?? "null");
-
-                if (locations == null)
-                {
-                    _logger.LogWarning("GetLocations returned null for account {AccountId}", providerAccountId);
-                    return new List<Location>().AsReadOnly();
-                }
-
-                _logger.LogInformation("GetLocations returned {RawLocationCount} location(s) for account {AccountId}",
-                    locations.Count, providerAccountId);
-
-                IReadOnlyList<Location> result = locations
-                    .Where(l => l.Id.HasValue)
-                    .Select(ToContractLocation)
-                    .ToList()
-                    .AsReadOnly();
-
-                if (result.Count == 0)
-                {
-                    _logger.LogWarning("GetLocations returned zero locations for account {AccountId}; deriving from device list", providerAccountId);
-                    result = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
+                    // The config and event calls below need a valid session even when the device list is cached.
+                    await EnsureSessionValidAsync(session);
                 }
                 else
                 {
-                    var knownIds = new HashSet<string>(result.Select(l => l.Id));
-                    IReadOnlyList<Location> derived = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
-                    var orphaned = derived.Where(l => !knownIds.Contains(l.Id)).ToList();
-                    if (orphaned.Count > 0)
+                    IReadOnlyList<Location>? fetched = await FetchLocationsAsync(session, providerAccountId, cancellationToken);
+                    if (fetched == null)
                     {
-                        _logger.LogWarning("Found {Count} orphaned device location_id(s) for account {AccountId}", orphaned.Count, providerAccountId);
-                        result = result.Concat(orphaned).ToList().AsReadOnly();
+                        return new List<Location>().AsReadOnly();
                     }
+
+                    result = fetched;
+                    _cachedLocations = result;
+                    _cachedLocationsAt = DateTime.UtcNow;
                 }
 
-                _logger.LogInformation("Found {LocationCount} locations for account {AccountId}", result.Count, providerAccountId);
-                _cachedLocations = result;
-                _cachedLocationsAt = DateTime.UtcNow;
+                // Config and event feeds run on every call, cached or fresh. The cache only skips the device list fetch.
+                // Config runs before events so a settings failure never blocks the event feeds.
+                // The sync kind chooses which of them run; the legacy (Default) sync runs both, config under its gate.
+                SyncRunOptions runOptions = _syncRunOptions?.Current ?? new SyncRunOptions();
+                if (runOptions.Kind is SyncRunKind.Default or SyncRunKind.Config)
+                {
+                    await RunConfigSyncIfDueAsync(session, providerAccountId, result, force: runOptions.Kind == SyncRunKind.Config, cancellationToken);
+                }
 
-                // Config (settings) runs on the gate's schedule; a cache hit returns above, so it never runs twice in one fresh fetch.
-                await RunConfigSyncIfDueAsync(session, providerAccountId, result, cancellationToken);
+                if (runOptions.Kind is SyncRunKind.Default or SyncRunKind.Events)
+                {
+                    await PersistEventHistoryAsync(session, providerAccountId, result, runOptions.StartUtc, runOptions.EndUtc, cancellationToken);
+                }
 
-                // Events run on every fresh fetch, and after config so a settings failure never blocks the event feeds.
-                await PersistEventHistoryAsync(session, providerAccountId, result, cancellationToken);
-
-                _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
 
                 return result;
             }
@@ -541,22 +516,96 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Validates the session before any Ring API call. Logs the outcome and rethrows on failure.
+        /// </summary>
+        private async Task EnsureSessionValidAsync(Session session)
+        {
+            try
+            {
+                await session.EnsureSessionValid();
+                _logger.LogInformation("Ring session validation passed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ring session validation failed");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Fetches the account's locations from Ring (derived from devices when Ring returns none or omits some). Returns
+        /// null when Ring returned no location collection at all, so the caller skips config and events for that call.
+        /// The metadata task is started here, once per fresh fetch, as it was before the cache split.
+        /// </summary>
+        private async Task<IReadOnlyList<Location>?> FetchLocationsAsync(Session session, Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Fetching Ring locations");
+            _logger.LogInformation("Ring session exists: OAuthToken = {HasToken}",
+                session.OAuthToken != null ? "yes" : "no");
+
+            await EnsureSessionValidAsync(session);
+
+            List<Entities.Location>? locations = await session.GetLocations();
+            _logger.LogInformation("GetLocations() completed for account {AccountId}, returned collection type: {Type}",
+                providerAccountId, locations?.GetType().Name ?? "null");
+
+            if (locations == null)
+            {
+                _logger.LogWarning("GetLocations returned null for account {AccountId}", providerAccountId);
+                return null;
+            }
+
+            _logger.LogInformation("GetLocations returned {RawLocationCount} location(s) for account {AccountId}",
+                locations.Count, providerAccountId);
+
+            IReadOnlyList<Location> result = locations
+                .Where(l => l.Id.HasValue)
+                .Select(ToContractLocation)
+                .ToList()
+                .AsReadOnly();
+
+            if (result.Count == 0)
+            {
+                _logger.LogWarning("GetLocations returned zero locations for account {AccountId}; deriving from device list", providerAccountId);
+                result = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
+            }
+            else
+            {
+                var knownIds = new HashSet<string>(result.Select(l => l.Id));
+                IReadOnlyList<Location> derived = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
+                var orphaned = derived.Where(l => !knownIds.Contains(l.Id)).ToList();
+                if (orphaned.Count > 0)
+                {
+                    _logger.LogWarning("Found {Count} orphaned device location_id(s) for account {AccountId}", orphaned.Count, providerAccountId);
+                    result = result.Concat(orphaned).ToList().AsReadOnly();
+                }
+            }
+
+            _logger.LogInformation("Found {LocationCount} locations for account {AccountId}", result.Count, providerAccountId);
+            _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
+            return result;
+        }
+
+        /// <summary>
         /// Runs the config fetches only when the account's config interval has elapsed since the last completed config sync
-        /// (or none has completed). The sync is marked completed only when an account-level fetch (profile or ringtones)
+        /// (or none has completed), unless <paramref name="force"/> is set by a Config sync. The sync is marked completed only when an account-level fetch (profile or ringtones)
         /// succeeded, so a sync where those all fail is retried on the next run. Without a sync-state store, config runs on
         /// every fresh fetch, as it did before the gate existed.
         /// </summary>
-        private async Task RunConfigSyncIfDueAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        private async Task RunConfigSyncIfDueAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, bool force, CancellationToken ct)
         {
             if (_syncState == null)
             {
+                _syncRunTally?.MarkConfigRan();
                 _ = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
+                await PersistDeviceSettingsAsync(session, ct);
                 return;
             }
 
             RingConfigSyncState state = await _syncState.GetConfigSyncStateAsync(providerAccountId, ct);
             DateTime utcNow = _timeProvider.GetUtcNow().UtcDateTime;
-            bool due = state.LastConfigSyncUtc is null
+            bool due = force
+                || state.LastConfigSyncUtc is null
                 || utcNow - state.LastConfigSyncUtc.Value >= TimeSpan.FromHours(Math.Max(1, state.IntervalHours));
 
             // Logged by provider name, not account id: this gate only has the provider account id, and ids are not logged.
@@ -566,11 +615,106 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
+            _syncRunTally?.MarkConfigRan();
             bool accountLevelSucceeded = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
+            await PersistDeviceSettingsAsync(session, ct);
             if (accountLevelSucceeded)
             {
                 await _syncState.MarkConfigSyncCompletedAsync(providerAccountId, utcNow, ct);
             }
+        }
+
+        /// <summary>
+        /// Fetches each doorbot's and stickup cam's settings object, overlays it onto the device list entry, and writes the
+        /// result through <see cref="RingDeviceSettingsPersister"/>. Runs only inside the config gate. Chimes are not asked for
+        /// settings. Each device is isolated: a failure is logged with the device name only and the next device still runs.
+        /// The device list entry supplies owner, features and the other fields the settings endpoint does not carry.
+        /// </summary>
+        private async Task PersistDeviceSettingsAsync(Session session, CancellationToken ct)
+        {
+            RingDeviceSettingsPersister? persister = _deviceSettingsPersister;
+            if (persister == null)
+            {
+                return;
+            }
+
+            Entities.Devices? devices = await FetchForSyncAsync("device list", () => session.GetRingDevices(), ct);
+            if (devices == null)
+            {
+                return;
+            }
+
+            foreach (Entities.Doorbot doorbot in (devices.Doorbots ?? []).Concat(devices.AuthorizedDoorbots ?? []).DistinctBy(d => d.Id))
+            {
+                await PersistOneDeviceSettingsAsync(persister, session, devices, doorbot.Id, doorbot.Description, ct, root =>
+                {
+                    doorbot.Settings = root.Deserialize<Entities.DoorbotSettings>() ?? new Entities.DoorbotSettings();
+                    doorbot.ZoneSettings = ReadZoneSettings(root);
+                });
+            }
+
+            foreach (Entities.StickupCam cam in devices.StickupCams ?? [])
+            {
+                if (!cam.Id.HasValue)
+                {
+                    continue;
+                }
+
+                await PersistOneDeviceSettingsAsync(persister, session, devices, cam.Id.Value, cam.Description, ct, root =>
+                {
+                    cam.Settings = root.Deserialize<Entities.StickupCamSettings>() ?? new Entities.StickupCamSettings();
+                    cam.ZoneSettings = ReadZoneSettings(root);
+                });
+            }
+        }
+
+        /// <summary>
+        /// Runs one device's settings fetch, applies it to the device's list entry, and persists the mapped result. A 404 is
+        /// logged at information level and skipped; any other failure is logged as a warning naming the device only.
+        /// The error type is logged instead of the message, because Ring's messages can carry request URLs.
+        /// </summary>
+        private async Task PersistOneDeviceSettingsAsync(
+            RingDeviceSettingsPersister persister,
+            Session session,
+            Entities.Devices devices,
+            long doorbotId,
+            string? description,
+            CancellationToken ct,
+            Action<JsonElement> applySettings)
+        {
+            string deviceName = description ?? "Unknown Device";
+            string providerDeviceId = doorbotId.ToString();
+            try
+            {
+                JsonElement root = await session.GetDeviceSettings(doorbotId, ct);
+                applySettings(root);
+
+                RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
+                if (details != null && await persister.PersistAsync(providerDeviceId, details, ct))
+                {
+                    _syncRunTally?.AddConfigArea();
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DeviceUnknownException)
+            {
+                _logger.LogInformation("Ring device settings not found for {DeviceName}; skipped", deviceName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Ring device settings failed for {DeviceName} ({ErrorType}); sync continues", deviceName, ex.GetType().Name);
+            }
+        }
+
+        /// <summary>Reads the zone_settings object from a device settings response. Null when Ring sent none.</summary>
+        private static Entities.ZoneSettings? ReadZoneSettings(JsonElement root)
+        {
+            return root.TryGetProperty("zone_settings", out JsonElement zones) && zones.ValueKind == JsonValueKind.Object
+                ? zones.Deserialize<Entities.ZoneSettings>()
+                : null;
         }
 
         /// <summary>
@@ -593,6 +737,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 accountLevelSucceeded = true;
                 await _settingsPersister.PersistProfileAsync(profile, providerAccountId, ct);
+                _syncRunTally?.AddConfigArea();
             }
 
             Entities.RingtonesResponse? ringtones = await FetchForSyncAsync("ringtone", () => session.GetRingtones(), ct);
@@ -600,6 +745,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 accountLevelSucceeded = true;
                 await _settingsPersister.PersistRingtonesAsync(ringtones, providerAccountId, ct);
+                _syncRunTally?.AddConfigArea();
             }
 
             foreach (Location location in locations)
@@ -614,6 +760,7 @@ namespace VideoForensics.Providers.Ring.Services
                 if (groups != null)
                 {
                     await _settingsPersister.PersistLightGroupsAsync(groups, location.Id, ct);
+                    _syncRunTally?.AddConfigArea();
                 }
 
                 // A 404 means the location has no mode data (for example no Location Modes); that is expected, not a fault.
@@ -621,18 +768,21 @@ namespace VideoForensics.Providers.Ring.Services
                 if (mode != null)
                 {
                     await _settingsPersister.PersistLocationModeAsync(mode, location.Id, ct);
+                    _syncRunTally?.AddConfigArea();
                 }
 
                 Entities.LocationModeSettingsResponse? modeSettings = await FetchForSyncAsync("location mode settings", () => session.GetLocationModeSettings(locationGuid), ct, notFoundIsExpected: true);
                 if (modeSettings != null)
                 {
                     await _settingsPersister.PersistLocationModeSettingsAsync(modeSettings, location.Id, ct);
+                    _syncRunTally?.AddConfigArea();
                 }
 
                 Entities.LocationModeSharingResponse? sharing = await FetchForSyncAsync("location mode sharing", () => session.GetLocationModeSharing(locationGuid), ct, notFoundIsExpected: true);
                 if (sharing != null)
                 {
                     await _settingsPersister.PersistLocationModeSharingAsync(sharing, location.Id, ct);
+                    _syncRunTally?.AddConfigArea();
                 }
             }
 
@@ -671,7 +821,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// then location events, evm location history and app location history for each location. Every step runs
         /// through <see cref="SyncFeedAsync"/>, so one failing feed or doorbot never stops the others. All calls are reads.
         /// </summary>
-        private async Task PersistEventHistoryAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        private async Task PersistEventHistoryAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, DateTime? startUtc, DateTime? endUtc, CancellationToken ct)
         {
             IRingEventHistoryWriter? eventWriter = _eventHistoryWriter;
             if (eventWriter == null)
@@ -693,11 +843,12 @@ namespace VideoForensics.Providers.Ring.Services
                     continue;
                 }
 
-                await SyncFeedAsync("doorbot history", () => PersistDoorbotHistoryAsync(session, doorbotId, device.Name, eventWriter, ct), ct);
+                await SyncFeedAsync("doorbot history", () => PersistDoorbotHistoryAsync(session, doorbotId, device.Name, eventWriter, startUtc, ct), ct);
 
                 await SyncFeedAsync("video search", async () =>
                 {
-                    List<Entities.VideoSearchItem> items = await session.VideoSearch(doorbotId, cancellationToken: ct);
+                    // Null bounds keep the provider's default 30-day window; a sync range sets both ends.
+                    List<Entities.VideoSearchItem> items = await session.VideoSearch(doorbotId, dateFrom: startUtc, dateTo: endUtc, cancellationToken: ct);
                     foreach (Entities.VideoSearchItem item in items)
                     {
                         var mapped = RingEventHistoryMapper.MapVideoSearch(item, providerAccountId);
@@ -759,6 +910,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        /// <summary>
+        /// Puts a parsed history timestamp on UTC. DoorbotHistoryEvent parses "Z" timestamps to local time, so comparing them
+        /// with a UTC range start without converting would shift the cut-off by the machine's offset.
+        /// </summary>
+        private static DateTime ToUtc(DateTime value) => value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+
         /// <summary>Items requested per doorbot history page; a page shorter than this is the last one.</summary>
         private const int DoorbotHistoryPageSize = 100;
 
@@ -771,7 +928,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// move past the cursor (a repeat would loop forever), or after <see cref="DoorbotHistoryPageCap"/> pages.
         /// The cap logs the doorbell name only; the remaining history is fetched on the next sync.
         /// </summary>
-        private async Task PersistDoorbotHistoryAsync(Session session, long doorbotId, string doorbellName, IRingEventHistoryWriter eventWriter, CancellationToken ct)
+        private async Task PersistDoorbotHistoryAsync(Session session, long doorbotId, string doorbellName, IRingEventHistoryWriter eventWriter, DateTime? startUtc, CancellationToken ct)
         {
             long? cursor = null;
             for (int pageNumber = 1; ; pageNumber++)
@@ -790,13 +947,20 @@ namespace VideoForensics.Providers.Ring.Services
                     return;
                 }
 
+                // With a sync range, events older than its start are skipped. Once a page reaches past the start, older pages are out of range too.
+                bool reachedStart = startUtc.HasValue && page.Any(e => e.CreatedAtDateTime is { } created && ToUtc(created) < startUtc.Value);
                 foreach (Entities.DoorbotHistoryEvent evt in page)
                 {
+                    if (startUtc.HasValue && (evt.CreatedAtDateTime is not { } created || ToUtc(created) < startUtc.Value))
+                    {
+                        continue;
+                    }
+
                     var mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
                     await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
                 }
 
-                if (page.Count < DoorbotHistoryPageSize || !oldestId.HasValue)
+                if (reachedStart || page.Count < DoorbotHistoryPageSize || !oldestId.HasValue)
                 {
                     return;
                 }
@@ -832,6 +996,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
+                _syncRunTally?.AddFeedFailure();
                 _logger.LogWarning(ex, "Ring {Feed} sync failed; sync continues", feed);
             }
         }

@@ -1621,7 +1621,7 @@ namespace VideoForensics.WebApp.Tests
         /// route registration. Only the repositories and token service are mocked. Only this route is mapped,
         /// because mapping the whole operator-auth group needs every one of its unrelated services.
         /// </summary>
-        private static async Task<(HttpStatusCode Status, string Body)> RequestSessionKindAsync(bool limited, bool sendToken)
+        private static async Task<(HttpStatusCode Status, string Body)> RequestSessionKindAsync(bool limited, bool sendToken, bool twoFactorRequired = false)
         {
             const string token = "session-kind-token";
             var operatorId = Guid.NewGuid();
@@ -1643,6 +1643,7 @@ namespace VideoForensics.WebApp.Tests
                 Active = true,
                 IsApproved = true,
                 Username = $"session-kind-{operatorId:N}",
+                Role = OperatorRole.Admin,
                 FirstName = "Session",
                 LastName = "Kind",
                 Email = $"{operatorId:N}@test.invalid",
@@ -1654,11 +1655,15 @@ namespace VideoForensics.WebApp.Tests
             var credentials = new Mock<IOperatorCredentialRepository>();
             _ = credentials.Setup(c => c.ListForOperatorAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<OperatorCredential>());
 
+            var roleRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            _ = roleRequirements.Setup(r => r.GetRequirementForRoleAsync(OperatorRole.Admin, It.IsAny<CancellationToken>())).ReturnsAsync(twoFactorRequired);
+
             var builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
             _ = builder.Services.AddSingleton(tokenService.Object);
             _ = builder.Services.AddSingleton(operators.Object);
             _ = builder.Services.AddSingleton(credentials.Object);
+            _ = builder.Services.AddSingleton(roleRequirements.Object);
             _ = builder.Services.AddSingleton(new Mock<IPairedDeviceRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
             _ = builder.Services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
@@ -1738,6 +1743,28 @@ namespace VideoForensics.WebApp.Tests
             Assert.False(document.RootElement.GetProperty("passkeySession").GetBoolean());
             // A password login is the only session that re-enters a password for step-up.
             Assert.True(document.RootElement.GetProperty("passwordSession").GetBoolean());
+        }
+
+        [Fact]
+        public async Task SessionKind_PasswordSessionInRoleRequiringTwoFactor_ReportsTwoFactorRequired()
+        {
+            // The policy requires a second factor, which is a passkey, so a password-only operator must upgrade before
+            // a destructive change. Passkey sessions still report the flag; the client decides what applies.
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true, twoFactorRequired: true);
+
+            Assert.Equal(HttpStatusCode.OK, status);
+            using JsonDocument document = JsonDocument.Parse(body);
+            Assert.True(document.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+
+        [Fact]
+        public async Task SessionKind_PasswordSessionInRoleWithoutTwoFactor_ReportsTwoFactorNotRequired()
+        {
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true, twoFactorRequired: false);
+
+            Assert.Equal(HttpStatusCode.OK, status);
+            using JsonDocument document = JsonDocument.Parse(body);
+            Assert.False(document.RootElement.GetProperty("twoFactorRequired").GetBoolean());
         }
 
         [Fact]

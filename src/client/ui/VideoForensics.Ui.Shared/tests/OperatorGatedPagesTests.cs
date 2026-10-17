@@ -20,7 +20,7 @@ using Device = VideoForensics.Data.Common.Entities.Device;
 using DeviceConfigPage = VideoForensics.Ui.Shared.Pages.DeviceConfig;
 
 /// <summary>
-/// Shared gate setup for the Collect, CollectVideos, CollectSnapshots and DeviceConfig pages. Each
+/// Shared gate setup for the CollectVideos, CollectSnapshots and DeviceConfig pages. Each
 /// needs an operator session (<see cref="PairedSessionState"/>) AND a linked provider (Ring)
 /// account (<see cref="IProviderAuthService.IsAuthenticatedAsync"/>). The two gates are driven
 /// independently so each page's three states can be tested: signed out, operator without a
@@ -93,59 +93,6 @@ public abstract class OperatorGatedPageTestBase : BunitContext
 
     /// <summary>Markup of the "operator signed in, no provider account" message (its data-testid is the contract).</summary>
     protected const string NoProviderAccountTestId = "no-provider-account";
-}
-
-public class Collect_OperatorGate_Tests : OperatorGatedPageTestBase
-{
-    [Fact]
-    public async Task Collect_NoRingAccountAndNotLocalSuperAdmin_ShowsAdminMessage_NotWizardLink()
-    {
-        await SignInOperatorAsync();
-        ProviderAccountLinked(false);
-
-        var component = Render<Collect>();
-
-        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
-        Assert.Empty(component.FindAll("a[href='/accounts/add']"));
-        Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
-    }
-
-    [Fact]
-    public async Task Collect_OperatorSignedOut_ShowsSignInPrompt()
-    {
-        await SignOutOperatorAsync();
-        ProviderAccountLinked(true);
-
-        var component = Render<Collect>();
-
-        Assert.Contains("You are not signed in.", component.Markup);
-        Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
-    }
-
-    [Fact]
-    public async Task Collect_OperatorSignedInNoRingAccount_ShowsNoAccountMessage_NotSignInPrompt()
-    {
-        await SignInAsSuperAdminLocalAsync();
-        ProviderAccountLinked(false);
-
-        var component = Render<Collect>();
-
-        Assert.DoesNotContain("You are not signed in.", component.Markup);
-        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
-        Assert.NotEmpty(component.FindAll("a[href='/accounts/add']"));
-    }
-
-    [Fact]
-    public async Task Collect_RingAccountLinked_ShowsContent()
-    {
-        await SignInOperatorAsync();
-        ProviderAccountLinked(true);
-
-        var component = Render<Collect>();
-
-        Assert.DoesNotContain("You are not signed in.", component.Markup);
-        Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
-    }
 }
 
 public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase

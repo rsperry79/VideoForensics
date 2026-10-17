@@ -3003,9 +3003,30 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("CompletedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ConfigAreasSynced")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DevicesSynced")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(1024)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("EventsAlreadyPresent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EventsNotPulled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EventsSynced")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FeedsFailed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LocationsSynced")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
@@ -3015,6 +3036,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<bool>("Success")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SyncType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Unknown");
 
                     b.HasKey("Id");
 

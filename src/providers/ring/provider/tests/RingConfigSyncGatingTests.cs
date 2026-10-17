@@ -4,6 +4,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Moq;
 
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Services;
@@ -127,9 +128,147 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Null(state.LastConfigSyncUtc);
         }
 
+        [Fact]
+        public async Task RingConfigSyncGating_FirstSync_TallyReportsConfigRanWithSixAreas()
+        {
+            var tally = new SyncRunTally();
+
+            _ = await SyncAsync(CreateHandler(), CreateWriter(), new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger(), tally);
+
+            SyncRunTotals totals = tally.Snapshot();
+            Assert.True(totals.ConfigRan);
+            // Profile, ringtones, then groups, mode, mode settings and mode sharing for the one location.
+            Assert.Equal(6, totals.ConfigAreasSynced);
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_CacheHitWithConfigDue_RunsConfigAndTallyReportsFull()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            var tally = new SyncRunTally();
+            RingDeviceDiscoveryService service = await BuildServiceAsync(handler, writer, state, clock, new RecordingLogger(), tally);
+            _ = await service.GetLocationsAsync(AccountId);
+
+            // Config is due (no last completed run) while the locations cache is still fresh.
+            state.ForgetLastConfigSync();
+            tally.Reset();
+            clock.Advance(TimeSpan.FromMinutes(1));
+            _ = await service.GetLocationsAsync(AccountId);
+
+            Assert.Equal(2, handler.CountRequests(ProfileUrl));
+            Assert.Equal(StartUtc.AddMinutes(1), state.LastConfigSyncUtc);
+            SyncRunTotals totals = tally.Snapshot();
+            Assert.True(totals.ConfigRan);
+            Assert.Equal(6, totals.ConfigAreasSynced);
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_CacheHitWithinInterval_SkipsConfigButRunsEventFeeds()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            var tally = new SyncRunTally();
+            RingDeviceDiscoveryService service = await BuildServiceAsync(handler, writer, state, clock, new RecordingLogger(), tally);
+            _ = await service.GetLocationsAsync(AccountId);
+
+            tally.Reset();
+            clock.Advance(TimeSpan.FromMinutes(1));
+            _ = await service.GetLocationsAsync(AccountId);
+
+            Assert.Equal(1, handler.CountRequests(ProfileUrl));
+            Assert.Equal(StartUtc, state.LastConfigSyncUtc);
+            Assert.Equal(2, handler.CountRequests(LocationEventsUrl));
+            SyncRunTotals totals = tally.Snapshot();
+            Assert.False(totals.ConfigRan);
+            Assert.Equal(0, totals.ConfigAreasSynced);
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_SecondSyncWithinInterval_TallyReportsConfigNotRan()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
+            clock.Advance(TimeSpan.FromHours(1));
+            var tally = new SyncRunTally();
+
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), tally);
+
+            SyncRunTotals totals = tally.Snapshot();
+            Assert.False(totals.ConfigRan);
+            Assert.Equal(0, totals.ConfigAreasSynced);
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_SyncKindConfig_RunsConfigEvenWhenNotDue()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
+
+            clock.Advance(TimeSpan.FromHours(1));
+            var forced = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Config, SyncRangeKind.SinceLast) };
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), runOptions: forced);
+
+            Assert.Equal(2, handler.CountRequests(ProfileUrl));
+            Assert.Equal(StartUtc.AddHours(1), state.LastConfigSyncUtc);
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_SyncKindEvents_SkipsConfigAndRunsEventFeeds()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            var eventsOnly = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.SinceLast) };
+
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), runOptions: eventsOnly);
+
+            Assert.Equal(0, handler.CountRequests(ProfileUrl));
+            Assert.Equal(0, handler.CountRequests(GroupsUrl));
+            Assert.Null(state.LastConfigSyncUtc);
+            Assert.Equal(1, handler.CountRequests(LocationEventsUrl));
+        }
+
+        [Fact]
+        public async Task RingConfigSyncGating_SyncKindSnapshots_SkipsConfigAndEventFeeds()
+        {
+            var state = new InMemorySyncState();
+            var clock = new ManualTimeProvider(StartUtc);
+            var handler = CreateHandler();
+            var writer = CreateWriter();
+            var snapshotsOnly = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Snapshots, SyncRangeKind.SinceLast) };
+
+            _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), runOptions: snapshotsOnly);
+
+            Assert.Equal(0, handler.CountRequests(ProfileUrl));
+            Assert.Equal(0, handler.CountRequests(LocationEventsUrl));
+            Assert.Null(state.LastConfigSyncUtc);
+        }
+
         /// <summary>Runs one sync on a fresh service instance (fresh locations cache) and returns the locations.</summary>
         private static async Task<IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>> SyncAsync(
-            StubSessionHandler handler, Mock<IRingAccountSettingsWriter> writer, InMemorySyncState state, ManualTimeProvider clock, RecordingLogger logger)
+            StubSessionHandler handler, Mock<IRingAccountSettingsWriter> writer, InMemorySyncState state, ManualTimeProvider clock, RecordingLogger logger, SyncRunTally? tally = null,
+            SyncRunOptionsHolder? runOptions = null)
+        {
+            RingDeviceDiscoveryService service = await BuildServiceAsync(handler, writer, state, clock, logger, tally, runOptions);
+            return await service.GetLocationsAsync(AccountId);
+        }
+
+        /// <summary>Builds one service instance over the stub session, so repeated calls share its locations cache.</summary>
+        private static async Task<RingDeviceDiscoveryService> BuildServiceAsync(
+            StubSessionHandler handler, Mock<IRingAccountSettingsWriter> writer, InMemorySyncState state, ManualTimeProvider clock, RecordingLogger logger, SyncRunTally? tally,
+            SyncRunOptionsHolder? runOptions = null)
         {
             var session = new Session("user@example.com", "password", handler);
             var sessionProvider = new Mock<ISessionProvider>();
@@ -140,9 +279,11 @@ namespace VideoForensics.Providers.Ring.Tests
                 settingsPersister: new RingAccountSettingsPersister(writer.Object, logger),
                 eventHistoryWriter: new Mock<IRingEventHistoryWriter>().Object,
                 syncState: state,
-                timeProvider: clock);
+                timeProvider: clock,
+                syncRunTally: tally,
+                syncRunOptions: runOptions);
             _ = await session.Authenticate();
-            return await service.GetLocationsAsync(AccountId);
+            return service;
         }
 
         /// <summary>Serves account-settings, location-settings and the account's device list; event feeds are left to 404.</summary>
@@ -185,10 +326,19 @@ namespace VideoForensics.Providers.Ring.Tests
             public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct) =>
                 Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
 
+            /// <summary>Simulates a state with no completed config run, as after a fresh account or a reset.</summary>
+            public void ForgetLastConfigSync() => LastConfigSyncUtc = null;
+
             public Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)
             {
                 LastConfigSyncUtc = utcNow;
                 return Task.CompletedTask;
+            }
+
+            public Task<bool> SetConfigIntervalHoursAsync(Guid providerAccountId, int hours, CancellationToken ct)
+            {
+                IntervalHours = hours;
+                return Task.FromResult(true);
             }
         }
 

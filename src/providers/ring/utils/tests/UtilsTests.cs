@@ -268,6 +268,34 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void EndpointRegistry_DingSharePlay_IsReadOnlyUnscopedClientsApi()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("ding-share-play");
+            Assert.NotNull(result);
+            Assert.Equal("GET", result.HttpMethod);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true", result.ApiPath);
+        }
+
+        [Fact]
+        public async Task EndpointRegistry_DingSharePlay_WithoutDingId_Throws()
+        {
+            string? previous = EndpointRegistry.DingId;
+            try
+            {
+                EndpointRegistry.DingId = null;
+                EndpointDescriptor descriptor = EndpointRegistry.Find("ding-share-play")!;
+                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+            }
+            finally
+            {
+                EndpointRegistry.DingId = previous;
+            }
+        }
+
+        [Fact]
         public void EndpointRegistry_RecordingUrl_IsReadOnlyUnscoped()
         {
             EndpointDescriptor? result = EndpointRegistry.Find("recording-url");

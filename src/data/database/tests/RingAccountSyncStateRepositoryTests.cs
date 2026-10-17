@@ -37,6 +37,24 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task RingAccountSyncStateRepository_SetConfigIntervalHoursAsync_ValidAccount_StoresInterval()
+        {
+            bool saved = await _repository.SetConfigIntervalHoursAsync(ProviderAccountId, 48, CancellationToken.None);
+
+            Assert.True(saved);
+            RingConfigSyncState state = await _repository.GetConfigSyncStateAsync(ProviderAccountId, CancellationToken.None);
+            Assert.Equal(48, state.IntervalHours);
+        }
+
+        [Fact]
+        public async Task RingAccountSyncStateRepository_SetConfigIntervalHoursAsync_UnknownAccount_ReturnsFalse()
+        {
+            bool saved = await _repository.SetConfigIntervalHoursAsync(Guid.NewGuid(), 12, CancellationToken.None);
+
+            Assert.False(saved);
+        }
+
+        [Fact]
         public async Task RingAccountSyncStateRepository_GetConfigSyncStateAsync_NewAccount_ReturnsDefaultIntervalOf24Hours()
         {
             RingConfigSyncState state = await _repository.GetConfigSyncStateAsync(ProviderAccountId, CancellationToken.None);

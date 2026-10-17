@@ -67,10 +67,6 @@ namespace VideoForensics.Hosting.Tests.Services
                 It.Is<DeviceEntity>(d => d.ProviderDeviceId == "dev-1" && d.Name == "Front Door" && d.Type == "doorbell"), cancellationToken), Times.Once);
             _mockDeviceRepository.Verify(r => r.AddAsync(
                 It.Is<DeviceEntity>(d => d.ProviderDeviceId == "dev-2" && d.Type == "speaker"), cancellationToken), Times.Once);
-            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
-                accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, cancellationToken), Times.Once);
-            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
-                accountId, "dev-2", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, cancellationToken), Times.Once);
         }
 
         [Fact]

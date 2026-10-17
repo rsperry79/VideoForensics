@@ -95,8 +95,27 @@ namespace VideoForensics.Hosting
                 locationRepository: provider.GetRequiredService<ILocationRepository>(),
                 settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>(),
                 eventHistoryWriter: provider.GetService<IRingEventHistoryWriter>(),
-                syncState: provider.GetService<IRingAccountSyncState>()
+                syncState: provider.GetService<IRingAccountSyncState>(),
+                syncRunTally: provider.GetService<ISyncRunTally>(),
+                syncRunOptions: provider.GetService<ISyncRunOptions>(),
+                deviceSettingsPersister: BuildRingDeviceSettingsPersister(provider)
             );
+        }
+
+        /// <summary>
+        /// Builds the Ring device-settings persister over the data client and device repository. Null when either is not
+        /// registered in this host (a client host without the data layer), so the config sync skips device settings there.
+        /// </summary>
+        private static RingDeviceSettingsPersister? BuildRingDeviceSettingsPersister(IServiceProvider provider)
+        {
+            IVideoForensicsDataClient? dataClient = provider.GetService<IVideoForensicsDataClient>();
+            IDeviceRepository? deviceRepository = provider.GetService<IDeviceRepository>();
+            if (dataClient == null || deviceRepository == null)
+            {
+                return null;
+            }
+
+            return new RingDeviceSettingsPersister(dataClient, deviceRepository, provider.GetRequiredService<ILogger<RingDeviceSettingsPersister>>());
         }
 
         /// <summary>
@@ -535,6 +554,8 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<INotificationDispatcher>(BuildNotificationDispatcher);
 
             // Event pull service for background sync of provider account events (Phase 2).
+            services.TryAddScoped<ISyncRunTally, SyncRunTally>();
+            services.TryAddScoped<ISyncRunOptions, SyncRunOptionsHolder>();
             _ = services.AddScoped<IEventPullService, EventPullService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
@@ -553,6 +574,10 @@ namespace VideoForensics.Hosting
         public static IServiceCollection AddVideoForensicsMultiProviderServices(
             this IServiceCollection services, IEnumerable<string> enabledProviders)
         {
+            // Per-scope tally shared by the discovery service and the event pull, so one sync's counts land on its run row.
+            services.TryAddScoped<ISyncRunTally, SyncRunTally>();
+            services.TryAddScoped<ISyncRunOptions, SyncRunOptionsHolder>();
+
             foreach (string providerName in enabledProviders ?? Enumerable.Empty<string>())
             {
                 if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))

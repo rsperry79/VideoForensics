@@ -15,5 +15,11 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Records that a config sync completed at <paramref name="utcNow"/>. A no-op when the account row does not exist.</summary>
         Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct);
+
+        /// <summary>
+        /// Saves the account's config interval. Returns false when the account has no Ring row, so nothing was stored.
+        /// The caller validates the range; this method stores what it is given.
+        /// </summary>
+        Task<bool> SetConfigIntervalHoursAsync(Guid providerAccountId, int hours, CancellationToken ct);
     }
 }

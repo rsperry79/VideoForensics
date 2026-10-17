@@ -3,6 +3,9 @@
 @using VideoForensics.Data.Common.Contracts
 @inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@inject PairedSessionState SessionState
+@using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountSyncSchedule> L
 
@@ -26,6 +29,18 @@ else
     <div class="card p-4">
         <div class="card-body">
             <h5 class="card-title">@L["ConfigureSyncSettings"]</h5>
+
+            <div id="config-sync-interval" class="mb-4">
+                <label for="config-sync-interval-hours" class="form-label fw-bold">@L["ConfigSyncIntervalLabel"]</label>
+                <div>
+                    <input id="config-sync-interval-hours" type="number" class="form-control" style="width: 8rem;"
+                           min="1" max="720" value="@_configSyncHours" @onchange="OnConfigSyncIntervalChangedAsync" />
+                </div>
+                @if (_configSyncIntervalError)
+                {
+                    <p class="text-danger mb-0 mt-1">@L["ConfigSyncIntervalInvalid"]</p>
+                }
+            </div>
 
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
@@ -145,6 +160,8 @@ else
             </EditForm>
         </div>
     </div>
+
+    <SfToast @ref="_toastRef" />
 }
 
 @code {
@@ -173,6 +190,106 @@ else
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
         await LoadScheduleAsync();
+        await LoadConfigSyncIntervalAsync();
+    }
+
+    private const int DefaultConfigSyncHours = 24;
+    private const int MinConfigSyncHours = 1;
+    private const int MaxConfigSyncHours = 720;
+    private int _configSyncHours = DefaultConfigSyncHours;
+    private bool _configSyncIntervalError;
+    private SfToast _toastRef = null!;
+
+    private async Task LoadConfigSyncIntervalAsync()
+    {
+        try
+        {
+            var interval = await GetApiAsync<VideoForensics.Core.Api.Contracts.ConfigSyncIntervalDto>(
+                $"api/v1/accounts/provider-accounts/{Id}/config-sync-interval");
+            _configSyncHours = interval?.Hours ?? DefaultConfigSyncHours;
+        }
+        catch
+        {
+            // The interval is a setting, not a list; when it can't be read the default stays on screen.
+            _configSyncHours = DefaultConfigSyncHours;
+        }
+        _configSyncIntervalError = false;
+        StateHasChanged();
+    }
+
+    private async Task OnConfigSyncIntervalChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int hours)
+            || hours < MinConfigSyncHours || hours > MaxConfigSyncHours)
+        {
+            _configSyncIntervalError = true;
+            return;
+        }
+
+        _configSyncIntervalError = false;
+        if (hours == _configSyncHours)
+        {
+            return;
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await SendApiAsync(
+                HttpMethod.Put, $"api/v1/accounts/provider-accounts/{Id}/config-sync-interval", new VideoForensics.Core.Api.Contracts.ConfigSyncIntervalDto(hours));
+            if (response.IsSuccessStatusCode)
+            {
+                _configSyncHours = hours;
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = L["ConfigSyncIntervalSaved"],
+                    Icon = "e-success"
+                });
+            }
+            else
+            {
+                await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+                {
+                    Title = L["ConfigSyncIntervalSaveFailed"],
+                    Icon = "e-danger"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _toastRef.ShowAsync(new Syncfusion.Blazor.Notifications.ToastModel
+            {
+                Title = L["ErrorTitle"],
+                Content = ex.Message,
+                Icon = "e-danger"
+            });
+        }
+    }
+
+    /// <summary>
+    /// GET against the account API with the paired-device bearer token.
+    /// </summary>
+    private async Task<T?> GetApiAsync<T>(string relativePath)
+    {
+        using HttpResponseMessage response = await SendApiAsync(HttpMethod.Get, relativePath);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Sends a request to the account API with the paired-device bearer token and an optional JSON body.
+    /// The injected HttpClient has no base address or auth header in production, so the absolute URI and
+    /// header are set per request. The caller disposes the response.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendApiAsync(HttpMethod method, string relativePath, object? body = null)
+    {
+        await SessionState.EnsureLoadedAsync();
+        using var request = new HttpRequestMessage(method, new Uri(new Uri(NavigationManager.BaseUri), relativePath));
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body, options: System.Text.Json.JsonSerializerOptions.Web);
+        }
+        return await HttpClient.SendAsync(request, CancellationToken.None);
     }
 
     private List<TimeOption> BuildTimeOptions()

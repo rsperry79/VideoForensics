@@ -22,12 +22,16 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly DateTime _lastAuth = new(2026, 10, 14, 18, 0, 0, DateTimeKind.Utc);
 
+        private readonly SyncRunOptionsHolder _holder = new();
+
         private AccountSyncRunner CreateSut() => new(
             _mockAuth.Object,
             _mockPull.Object,
             _mockAccounts.Object,
             _mockRuns.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            syncRunTally: null,
+            syncRunOptions: _holder);
 
         private ProviderAccountEntity Account() => new()
         {
@@ -122,6 +126,94 @@ namespace VideoForensics.Hosting.Tests.Services
 
             _mockAccounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccountEntity>(a => a.LastErrorMessage != null), It.IsAny<CancellationToken>()), Times.Once);
             _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunAsync_EventsSinceLast_PullsFromLastSuccessAndPublishesOptions()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            var options = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.SinceLast);
+
+            await CreateSut().RunAsync(_accountId, options, CancellationToken.None);
+
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(SyncRunKind.Events, _holder.Current.Kind);
+            Assert.Equal(_lastAuth, _holder.Current.StartUtc);
+        }
+
+        [Fact]
+        public async Task RunAsync_SinceLastWithNoPriorSuccess_PullsFromThirtyDaysAgo()
+        {
+            var account = Account();
+            account.LastSuccessfulAuthUtc = null;
+            SetupAccount(account);
+            SetupRestore(true);
+            DateTime before = DateTime.UtcNow;
+
+            await CreateSut().RunAsync(_accountId, new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.SinceLast), CancellationToken.None);
+
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId,
+                It.Is<DateTime?>(from => from!.Value >= before.AddDays(-30).AddSeconds(-1) && from.Value <= DateTime.UtcNow.AddDays(-30).AddSeconds(1)),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunAsync_DaysRange_PullsFromNowMinusDays()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            DateTime before = DateTime.UtcNow;
+
+            await CreateSut().RunAsync(_accountId, new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Days, Days: 7), CancellationToken.None);
+
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId,
+                It.Is<DateTime?>(from => from!.Value >= before.AddDays(-7).AddSeconds(-1) && from.Value <= DateTime.UtcNow.AddDays(-7).AddSeconds(1)),
+                It.IsAny<CancellationToken>()), Times.Once);
+            Assert.NotNull(_holder.Current.StartUtc);
+        }
+
+        [Fact]
+        public async Task RunAsync_CustomRange_PullsFromStartAndPublishesEnd()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            var start = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+            var end = new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc);
+
+            await CreateSut().RunAsync(_accountId,
+                new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Custom, StartUtc: start, EndUtc: end), CancellationToken.None);
+
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, start, It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(start, _holder.Current.StartUtc);
+            Assert.Equal(end, _holder.Current.EndUtc);
+        }
+
+        [Fact]
+        public async Task RunAsync_ConfigKind_PublishesConfigKindToPull()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+
+            await CreateSut().RunAsync(_accountId, new SyncRunOptions(SyncRunKind.Config, SyncRangeKind.SinceLast), CancellationToken.None);
+
+            Assert.Equal(SyncRunKind.Config, _holder.Current.Kind);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunAsync_LegacyNoOptions_LeavesRangeUnsetSoProviderKeepsDefaults()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+
+            await CreateSut().RunAsync(_accountId, CancellationToken.None);
+
+            // The legacy button keeps its old behaviour: default kind, no range published to the provider.
+            Assert.Equal(SyncRunKind.Default, _holder.Current.Kind);
+            Assert.Null(_holder.Current.StartUtc);
+            Assert.Null(_holder.Current.EndUtc);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -313,5 +405,98 @@ namespace VideoForensics.Hosting.Tests.Services
 
             Assert.Equal("pull boom", thrown.Message);
         }
+
+        [Fact]
+        public async Task RunAsync_ConfigRanDuringPull_RecordsFullSyncWithConfigAndInventoryCounts()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            var tally = new SyncRunTally();
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .Callback<Guid, DateTime?, CancellationToken>((_, _, _) =>
+                {
+                    tally.SetInventory(locationCount: 1, deviceCount: 3);
+                    tally.MarkConfigRan();
+                    tally.AddConfigArea();
+                    tally.AddConfigArea();
+                    tally.AddEventsPulled(42);
+                })
+                .Returns(Task.CompletedTask);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSutWithTally(tally).RunAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Full", run.SyncType);
+            Assert.True(run.ConfigAreasSynced > 0);
+            Assert.Equal(2, run.ConfigAreasSynced);
+            Assert.Equal(3, run.DevicesSynced);
+            Assert.Equal(1, run.LocationsSynced);
+            Assert.Equal(42, run.EventsSynced);
+            Assert.Equal(0, run.FeedsFailed);
+        }
+
+        [Fact]
+        public async Task RunAsync_EventsOnlyPull_RecordsEventsSyncWithNoConfigAreas()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            var tally = new SyncRunTally();
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .Callback<Guid, DateTime?, CancellationToken>((_, _, _) =>
+                {
+                    tally.SetInventory(locationCount: 1, deviceCount: 2);
+                    tally.AddEventsPulled(42);
+                })
+                .Returns(Task.CompletedTask);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSutWithTally(tally).RunAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Events", run.SyncType);
+            Assert.Equal(0, run.ConfigAreasSynced);
+            Assert.Equal(42, run.EventsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_RestoreFailsBeforePull_RecordsUnknownSyncTypeWithNoCounts()
+        {
+            SetupAccount(Account());
+            SetupRestore(false);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSutWithTally(new SyncRunTally()).RunAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Unknown", run.SyncType);
+            Assert.Null(run.ConfigAreasSynced);
+            Assert.Null(run.EventsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_PullLeavesStaleTallyFromEarlierRun_ResetsTallyBeforePull()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            var tally = new SyncRunTally();
+            tally.MarkConfigRan();
+            tally.AddEventsPulled(99);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSutWithTally(tally).RunAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Events", run.SyncType);
+            Assert.Equal(0, run.EventsSynced);
+        }
+
+        private AccountSyncRunner CreateSutWithTally(ISyncRunTally tally) => new(
+            _mockAuth.Object,
+            _mockPull.Object,
+            _mockAccounts.Object,
+            _mockRuns.Object,
+            _mockLogger.Object,
+            tally);
     }
 }

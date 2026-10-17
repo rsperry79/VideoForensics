@@ -140,6 +140,27 @@
   <data name="SyncNoRuns" xml:space="preserve">
     <value>No syncs have run for this account yet.</value>
   </data>
+  <data name="SyncRecordsSummary" xml:space="preserve">
+    <value>Devices {0}, Locations {1}, Events pulled {2}, Config {3}, Failed {4}</value>
+  </data>
+  <data name="SyncRecordsUnknown" xml:space="preserve">
+    <value>Not recorded</value>
+  </data>
+  <data name="SyncTypeEvents" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="SyncTypeFull" xml:space="preserve">
+    <value>Full</value>
+  </data>
+  <data name="SyncTypeUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ColSyncRecords" xml:space="preserve">
+    <value>Records</value>
+  </data>
+  <data name="ColSyncType" xml:space="preserve">
+    <value>Type</value>
+  </data>
   <data name="SyncDetailsTitle" xml:space="preserve">
     <value>Sync details</value>
   </data>
@@ -179,21 +200,6 @@
   <data name="LoadListError" xml:space="preserve">
     <value>Could not load this list.</value>
   </data>
-  <data name="Select" xml:space="preserve">
-    <value>Select</value>
-  </data>
-  <data name="Selected" xml:space="preserve">
-    <value>Selected</value>
-  </data>
-  <data name="SwitchedAndResumed" xml:space="preserve">
-    <value>Switched active account and resumed session.</value>
-  </data>
-  <data name="SwitchedNotResumed" xml:space="preserve">
-    <value>Switched active account, but the saved session could not be resumed. You may need to sign in again.</value>
-  </data>
-  <data name="CouldNotSwitch" xml:space="preserve">
-    <value>Could not switch account: {0}</value>
-  </data>
   <data name="CaseTypeDetected" xml:space="preserve">
     <value>Detected</value>
   </data>
@@ -208,5 +214,47 @@
   </data>
   <data name="NoValue" xml:space="preserve">
     <value>-</value>
+  </data>
+  <data name="CustomEndLabel" xml:space="preserve">
+    <value>End date</value>
+  </data>
+  <data name="CustomStartLabel" xml:space="preserve">
+    <value>Start date</value>
+  </data>
+  <data name="LatestSyncRunLabel" xml:space="preserve">
+    <value>Latest sync run:</value>
+  </data>
+  <data name="RangeCustom" xml:space="preserve">
+    <value>Custom days</value>
+  </data>
+  <data name="RangeDays30" xml:space="preserve">
+    <value>30 days</value>
+  </data>
+  <data name="RangeDays60" xml:space="preserve">
+    <value>60 days</value>
+  </data>
+  <data name="RangeDays90" xml:space="preserve">
+    <value>90 days</value>
+  </data>
+  <data name="RangeLabel" xml:space="preserve">
+    <value>Range</value>
+  </data>
+  <data name="RangeSinceLast" xml:space="preserve">
+    <value>Since last</value>
+  </data>
+  <data name="ShowLatestSyncRun" xml:space="preserve">
+    <value>Show in sync history</value>
+  </data>
+  <data name="SyncPanelTitle" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="SyncTypeConfig" xml:space="preserve">
+    <value>Config</value>
+  </data>
+  <data name="SyncTypeDropdownLabel" xml:space="preserve">
+    <value>Sync type</value>
+  </data>
+  <data name="SyncTypeSnapshots" xml:space="preserve">
+    <value>Snapshots</value>
   </data>
 </root>

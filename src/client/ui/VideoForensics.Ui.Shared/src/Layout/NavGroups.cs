@@ -70,7 +70,6 @@ namespace VideoForensics.Ui.Shared.Layout
             new("evidence", "Evidence", "/evidence",
             [
                 new("Evidence", "/evidence"),
-                new("Collect", "/collect"),
                 new("Analyze", "/analyze",
                     Children:
                     [

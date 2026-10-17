@@ -7,11 +7,27 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="StartedUtc">UTC time the sync started.</param>
     /// <param name="CompletedUtc">UTC time the sync finished; null when the run did not complete.</param>
     /// <param name="Success">True when the sync finished without an account error.</param>
+    /// <param name="SyncType">"Full", "Events" or "Unknown".</param>
+    /// <param name="DevicesSynced">Devices discovered; null for rows with no recorded counts.</param>
+    /// <param name="LocationsSynced">Locations discovered; null for rows with no recorded counts.</param>
+    /// <param name="EventsSynced">Event-feed items written; null for rows with no recorded counts.</param>
+    /// <param name="ConfigAreasSynced">Config areas written; null for rows with no recorded counts.</param>
+    /// <param name="FeedsFailed">Feed-level failures; null for rows with no recorded counts.</param>
+    /// <param name="EventsNotPulled">Matched events whose media was not pulled; null for rows with no recorded counts.</param>
+    /// <param name="EventsAlreadyPresent">The part of EventsSynced already on disk from an earlier run; null for rows with no recorded counts.</param>
     public record ProviderSyncRunSummaryDto(
         Guid Id,
         DateTime StartedUtc,
         DateTime? CompletedUtc,
-        bool Success
+        bool Success,
+        string SyncType = "Unknown",
+        int? DevicesSynced = null,
+        int? LocationsSynced = null,
+        int? EventsSynced = null,
+        int? ConfigAreasSynced = null,
+        int? FeedsFailed = null,
+        int? EventsNotPulled = null,
+        int? EventsAlreadyPresent = null
     );
 
     /// <summary>
@@ -23,13 +39,29 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="CompletedUtc">UTC time the sync finished; null when the run did not complete.</param>
     /// <param name="Success">True when the sync finished without an account error.</param>
     /// <param name="ErrorMessage">Failure message for an unsuccessful run; null when Success is true.</param>
+    /// <param name="SyncType">"Full", "Events" or "Unknown".</param>
+    /// <param name="DevicesSynced">Devices discovered; null for rows with no recorded counts.</param>
+    /// <param name="LocationsSynced">Locations discovered; null for rows with no recorded counts.</param>
+    /// <param name="EventsSynced">Event-feed items written; null for rows with no recorded counts.</param>
+    /// <param name="ConfigAreasSynced">Config areas written; null for rows with no recorded counts.</param>
+    /// <param name="FeedsFailed">Feed-level failures; null for rows with no recorded counts.</param>
+    /// <param name="EventsNotPulled">Matched events whose media was not pulled; null for rows with no recorded counts.</param>
+    /// <param name="EventsAlreadyPresent">The part of EventsSynced already on disk from an earlier run; null for rows with no recorded counts.</param>
     public record ProviderSyncRunDetailDto(
         Guid Id,
         Guid ProviderAccountId,
         DateTime StartedUtc,
         DateTime? CompletedUtc,
         bool Success,
-        string? ErrorMessage
+        string? ErrorMessage,
+        string SyncType = "Unknown",
+        int? DevicesSynced = null,
+        int? LocationsSynced = null,
+        int? EventsSynced = null,
+        int? ConfigAreasSynced = null,
+        int? FeedsFailed = null,
+        int? EventsNotPulled = null,
+        int? EventsAlreadyPresent = null
     );
 
     /// <summary>Extension methods for mapping ProviderSyncRun entities to sync run DTOs.</summary>
@@ -48,7 +80,15 @@ namespace VideoForensics.Core.Api.Contracts
                 StartedUtc: entity.StartedUtc,
                 CompletedUtc: entity.CompletedUtc,
                 Success: entity.Success,
-                ErrorMessage: entity.ErrorMessage);
+                ErrorMessage: entity.ErrorMessage,
+                SyncType: entity.SyncType,
+                DevicesSynced: entity.DevicesSynced,
+                LocationsSynced: entity.LocationsSynced,
+                EventsSynced: entity.EventsSynced,
+                ConfigAreasSynced: entity.ConfigAreasSynced,
+                FeedsFailed: entity.FeedsFailed,
+                EventsNotPulled: entity.EventsNotPulled,
+                EventsAlreadyPresent: entity.EventsAlreadyPresent);
         }
 
         /// <summary>
@@ -63,7 +103,15 @@ namespace VideoForensics.Core.Api.Contracts
                 Id: entity.Id,
                 StartedUtc: entity.StartedUtc,
                 CompletedUtc: entity.CompletedUtc,
-                Success: entity.Success);
+                Success: entity.Success,
+                SyncType: entity.SyncType,
+                DevicesSynced: entity.DevicesSynced,
+                LocationsSynced: entity.LocationsSynced,
+                EventsSynced: entity.EventsSynced,
+                ConfigAreasSynced: entity.ConfigAreasSynced,
+                FeedsFailed: entity.FeedsFailed,
+                EventsNotPulled: entity.EventsNotPulled,
+                EventsAlreadyPresent: entity.EventsAlreadyPresent);
         }
     }
 }
