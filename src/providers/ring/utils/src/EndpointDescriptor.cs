@@ -313,6 +313,19 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "ding-recording",
+                DisplayName = "Ding recording (clients API)",
+                Description = "Raw recording response for a ding from the clients API path used by python-ring-doorbell (compare with recording-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingRecordingAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/recording",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingRecordingAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-recording requires --ding-id <id>")
+            },
+            new()
+            {
                 Key = "profile",
                 DisplayName = "Account profile",
                 Description = "Profile of the currently authenticated account.",
@@ -722,17 +735,21 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "unlock-intercom",
-                DisplayName = "Unlock Intercom",
-                Description = "Unlocks a Ring Intercom device. Triggers a REAL, physical door unlock. Requires --doorbot-id (the Intercom's device id).",
+                Key = "intercom-unlock",
+                DisplayName = "Intercom unlock (manual only)",
+                Description = "Unlocks a Ring Intercom door. NEVER TESTED against a live device. Requires a Ring Intercom device. Triggers a REAL, physical door unlock - only run with --endpoints intercom-unlock --destructive --doorbot-id <intercom id>. Never part of --all or default runs.",
                 SessionMethod = "Session.Unlock(deviceId)",
+                // Session.Unlock sends PUT (the commands/v1 device_rpc path confirmed in a live run); this descriptor documents what is actually sent.
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/commands/v1/devices/{deviceId}/device_rpc",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Physical = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: Ring Intercom auto re-locks after its own timeout; this client exposes no immediate re-lock command to call.",
-                Invoke = (session, target) => session.Unlock(target.DoorbotId!.Value)
+                Invoke = (session, target) => target.DoorbotId is { } deviceId
+                    ? session.Unlock(deviceId)
+                    : throw new InvalidOperationException("intercom-unlock requires --doorbot-id <intercom device id>")
             },
         ];
 
