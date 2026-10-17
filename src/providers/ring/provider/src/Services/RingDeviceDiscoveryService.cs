@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Providers.Ring.Exceptions;
 using LocationMetadata = VideoForensics.Data.Common.Entities.LocationMetadata;
 using SyncStatus = VideoForensics.Data.Common.Entities.SyncStatus;
 using VideoForensics.Data.Core.Services;
@@ -18,6 +19,7 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ILocationMetadataRepository? _metadataRepository;
         private readonly ILocationRepository? _locationRepository;
         private readonly ApiResponseNormalizer? _normalizer;
+        private readonly RingAccountSettingsPersister? _settingsPersister;
 
         // Sentinel used when a device's own location_id is missing from Ring's API response. Never
         // fall back to the locationId that was requested here - the legacy ring_devices endpoint's
@@ -44,13 +46,15 @@ namespace VideoForensics.Providers.Ring.Services
             ISessionProvider sessionProvider,
             ILocationMetadataRepository? metadataRepository = null,
             ApiResponseNormalizer? normalizer = null,
-            ILocationRepository? locationRepository = null)
+            ILocationRepository? locationRepository = null,
+            RingAccountSettingsPersister? settingsPersister = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _metadataRepository = metadataRepository;
             _normalizer = normalizer;
             _locationRepository = locationRepository;
+            _settingsPersister = settingsPersister;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -505,6 +509,9 @@ namespace VideoForensics.Providers.Ring.Services
                 _cachedLocations = result;
                 _cachedLocationsAt = DateTime.UtcNow;
 
+                // Once per fresh fetch (a cache hit returns above, so a sync fetches account settings once).
+                await PersistAccountSettingsAsync(session, providerAccountId, result, cancellationToken);
+
                 _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
 
                 return result;
@@ -517,6 +524,92 @@ namespace VideoForensics.Providers.Ring.Services
             finally
             {
                 _ = _locationsCacheLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Fetches and persists the account's profile and ringtones, then each location's light groups, location
+        /// mode, mode settings and mode sharing. Each fetch is isolated: a failure is logged and the rest still run.
+        /// The profile's authentication token is never read, logged or passed on.
+        /// </summary>
+        private async Task PersistAccountSettingsAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        {
+            if (_settingsPersister == null)
+            {
+                return;
+            }
+
+            Entities.Profile? profile = await FetchForSyncAsync("profile", () => session.GetProfile(), ct);
+            if (profile != null)
+            {
+                await _settingsPersister.PersistProfileAsync(profile, providerAccountId, ct);
+            }
+
+            Entities.RingtonesResponse? ringtones = await FetchForSyncAsync("ringtone", () => session.GetRingtones(), ct);
+            if (ringtones != null)
+            {
+                await _settingsPersister.PersistRingtonesAsync(ringtones, providerAccountId, ct);
+            }
+
+            foreach (Location location in locations)
+            {
+                if (!Guid.TryParse(location.Id, out Guid locationGuid))
+                {
+                    _logger.LogWarning("Skipping Ring location settings: location id is not a GUID");
+                    continue;
+                }
+
+                Entities.GroupsResponse? groups = await FetchForSyncAsync("light group", () => session.GetGroups(locationGuid, ct), ct);
+                if (groups != null)
+                {
+                    await _settingsPersister.PersistLightGroupsAsync(groups, location.Id, ct);
+                }
+
+                // A 404 means the location has no mode data (for example no Location Modes); that is expected, not a fault.
+                Entities.LocationMode? mode = await FetchForSyncAsync("location mode", () => session.GetLocationMode(locationGuid), ct, notFoundIsExpected: true);
+                if (mode != null)
+                {
+                    await _settingsPersister.PersistLocationModeAsync(mode, location.Id, ct);
+                }
+
+                Entities.LocationModeSettingsResponse? modeSettings = await FetchForSyncAsync("location mode settings", () => session.GetLocationModeSettings(locationGuid), ct, notFoundIsExpected: true);
+                if (modeSettings != null)
+                {
+                    await _settingsPersister.PersistLocationModeSettingsAsync(modeSettings, location.Id, ct);
+                }
+
+                Entities.LocationModeSharingResponse? sharing = await FetchForSyncAsync("location mode sharing", () => session.GetLocationModeSharing(locationGuid), ct, notFoundIsExpected: true);
+                if (sharing != null)
+                {
+                    await _settingsPersister.PersistLocationModeSharingAsync(sharing, location.Id, ct);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Runs one settings fetch and returns null on failure. A 404 is logged at information level when
+        /// <paramref name="notFoundIsExpected"/> is set (the location has no such data), otherwise as a warning.
+        /// Cancellation is rethrown. Only the settings area is logged, never an account or session identifier.
+        /// </summary>
+        private async Task<T?> FetchForSyncAsync<T>(string area, Func<Task<T>> fetch, CancellationToken ct, bool notFoundIsExpected = false) where T : class
+        {
+            try
+            {
+                return await fetch();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (DeviceUnknownException) when (notFoundIsExpected)
+            {
+                _logger.LogInformation("Ring {Area} not available for this location (not found); skipped", area);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Ring {Area} fetch failed; sync continues", area);
+                return null;
             }
         }
 

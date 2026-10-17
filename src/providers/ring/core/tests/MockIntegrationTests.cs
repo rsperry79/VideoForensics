@@ -834,12 +834,29 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 @"{ ""device_groups"": [ { ""device_group_id"": ""grp-1"", ""name"": ""Backyard Lights"" } ] }");
             _ = await _mockSession!.Authenticate();
 
-            List<Entities.Group> groups = await _mockSession!.GetGroups(locationId);
+            Entities.GroupsResponse response = await _mockSession!.GetGroups(locationId);
 
-            Assert.NotNull(groups);
-            Assert.Equal(1, groups.Count);
-            Assert.Equal("grp-1", groups[0].DeviceGroupId);
-            Assert.Equal("Backyard Lights", groups[0].Name);
+            Assert.NotNull(response.DeviceGroups);
+            Assert.Equal(1, response.DeviceGroups!.Count);
+            Assert.Equal("grp-1", response.DeviceGroups[0].DeviceGroupId);
+            Assert.Equal("Backyard Lights", response.DeviceGroups[0].Name);
+        }
+
+        [Fact]
+        public async Task MockSession_GetGroups_ReturnsIsOwnerWithGroups()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/groups/v1/locations/{locationId:D}/groups",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""device_groups"": null, ""is_owner"": false }");
+            _ = await _mockSession!.Authenticate();
+
+            Entities.GroupsResponse response = await _mockSession!.GetGroups(locationId);
+
+            Assert.False(response.IsOwner);
+            Assert.Null(response.DeviceGroups);
         }
 
         [Fact]
@@ -1236,12 +1253,15 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""enabled"": true }");
+                @"{ ""disarmed"": [], ""home"": [ { ""deviceId"": ""dev-1"", ""deviceIdType"": ""doorbot"", ""actions"": [ ""enableMotionDetection"" ] } ], ""away"": [], ""options"": { ""defaultCameraOnlyMode"": ""home"" }, ""lastUpdateTimeMS"": 5 }");
             _ = await _mockSession!.Authenticate();
 
-            JsonElement settings = await _mockSession!.GetLocationModeSettings(locationId);
+            Entities.LocationModeSettingsResponse settings = await _mockSession!.GetLocationModeSettings(locationId);
 
-            Assert.True(settings.GetProperty("enabled").GetBoolean());
+            Assert.Equal("home", settings.Options!.DefaultCameraOnlyMode);
+            Assert.Single(settings.Home!);
+            Assert.Equal("dev-1", settings.Home![0].DeviceId);
+            Assert.Equal(5L, settings.LastUpdateTimeMs);
         }
 
         [Fact]
@@ -1297,12 +1317,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""shareable"": true }");
+                @"{ ""sharedUsersEnabled"": true, ""lastUpdateTimeMS"": 7 }");
             _ = await _mockSession!.Authenticate();
 
-            JsonElement sharing = await _mockSession!.GetLocationModeSharing(locationId);
+            Entities.LocationModeSharingResponse sharing = await _mockSession!.GetLocationModeSharing(locationId);
 
-            Assert.True(sharing.GetProperty("shareable").GetBoolean());
+            Assert.True(sharing.SharedUsersEnabled);
+            Assert.Equal(7L, sharing.LastUpdateTimeMs);
         }
 
         [Fact]
@@ -1425,15 +1446,18 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 "api.ring.com/clients_api/ringtones",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""audios"": [ { ""id"": ""chime_default_ding_2"", ""description"": ""Default Ding"", ""category"": ""ding"", ""available"": true } ] }");
+                @"{ ""audios"": [ { ""id"": ""chime_default_ding_2"", ""description"": ""Default Ding"", ""category"": ""ding"", ""available"": true } ], ""default_ding_id"": ""chime_default_ding_2"", ""default_ding_user_id"": ""user-1"" }");
             _ = await _mockSession!.Authenticate();
 
-            List<Entities.Ringtone> ringtones = await _mockSession!.GetRingtones();
+            Entities.RingtonesResponse response = await _mockSession!.GetRingtones();
 
-            Assert.Equal(1, ringtones.Count);
-            Assert.Equal("Default Ding", ringtones[0].Description);
-            Assert.Equal("chime_default_ding_2", ringtones[0].Id);
-            Assert.Equal("ding", ringtones[0].Category);
+            Assert.NotNull(response.Ringtones);
+            Assert.Equal(1, response.Ringtones!.Count);
+            Assert.Equal("Default Ding", response.Ringtones[0].Description);
+            Assert.Equal("chime_default_ding_2", response.Ringtones[0].Id);
+            Assert.Equal("ding", response.Ringtones[0].Category);
+            Assert.Equal("chime_default_ding_2", response.DefaultDingId);
+            Assert.Equal("user-1", response.DefaultDingUserId);
         }
 
         [Fact]

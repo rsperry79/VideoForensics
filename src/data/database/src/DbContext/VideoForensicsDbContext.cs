@@ -115,6 +115,57 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the Ring account feature records.</summary>
         public DbSet<RingAccountFeatures> RingAccountFeatures { get; set; }
 
+        /// <summary>Gets or sets the Ring account profiles (every field except the authentication token).</summary>
+        public DbSet<RingAccountProfile> RingAccountProfiles { get; set; }
+
+        /// <summary>Gets or sets the Ring session feature flags of a profile, typed columns only.</summary>
+        public DbSet<RingAccountSessionFeatures> RingAccountSessionFeatures { get; set; }
+
+        /// <summary>Gets or sets the profile flags that have no dedicated column.</summary>
+        public DbSet<RingAccountProfileFlag> RingAccountProfileFlags { get; set; }
+
+        /// <summary>Gets or sets the array elements of profile flags.</summary>
+        public DbSet<RingAccountProfileFlagItem> RingAccountProfileFlagItems { get; set; }
+
+        /// <summary>Gets or sets the Ring chime ringtones.</summary>
+        public DbSet<RingAccountRingtone> RingAccountRingtones { get; set; }
+
+        /// <summary>Gets or sets the device kinds each ringtone supports.</summary>
+        public DbSet<RingAccountRingtoneDeviceKind> RingAccountRingtoneDeviceKinds { get; set; }
+
+        /// <summary>Gets or sets the default ringtone ids of a Ring account.</summary>
+        public DbSet<RingAccountRingtoneDefaults> RingAccountRingtoneDefaults { get; set; }
+
+        /// <summary>Gets or sets the Smart Lighting group sets, one per location.</summary>
+        public DbSet<LightGroupSet> LightGroupSets { get; set; }
+
+        /// <summary>Gets or sets the Smart Lighting groups.</summary>
+        public DbSet<LightGroup> LightGroups { get; set; }
+
+        /// <summary>Gets or sets the device ids of Smart Lighting groups.</summary>
+        public DbSet<LightGroupDevice> LightGroupDevices { get; set; }
+
+        /// <summary>Gets or sets the current location modes.</summary>
+        public DbSet<RingLocationMode> RingLocationModes { get; set; }
+
+        /// <summary>Gets or sets the raw notYetParticipatingInMode elements of location modes.</summary>
+        public DbSet<RingLocationModeNotYetParticipating> RingLocationModeNotYetParticipating { get; set; }
+
+        /// <summary>Gets or sets the location mode settings, one per location.</summary>
+        public DbSet<RingLocationModeSettings> RingLocationModeSettings { get; set; }
+
+        /// <summary>Gets or sets the supported action groups of location mode settings.</summary>
+        public DbSet<RingLocationModeSupportedActionGroup> RingLocationModeSupportedActionGroups { get; set; }
+
+        /// <summary>Gets or sets the per-mode device entries of location mode settings.</summary>
+        public DbSet<RingLocationModeSettingsEntry> RingLocationModeSettingsEntries { get; set; }
+
+        /// <summary>Gets or sets the enabled and supported actions of location mode entries.</summary>
+        public DbSet<RingLocationModeSettingsEntryAction> RingLocationModeSettingsEntryActions { get; set; }
+
+        /// <summary>Gets or sets the location mode sharing state, one per location.</summary>
+        public DbSet<RingLocationModeSharing> RingLocationModeSharings { get; set; }
+
         /// <summary>Gets or sets the device capabilities.</summary>
         public DbSet<DeviceCapabilities> DeviceCapabilities { get; set; }
 

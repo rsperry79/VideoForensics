@@ -92,8 +92,19 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
-                locationRepository: provider.GetRequiredService<ILocationRepository>()
+                locationRepository: provider.GetRequiredService<ILocationRepository>(),
+                settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>()
             );
+        }
+
+        /// <summary>
+        /// Builds the Ring account-settings persister (profile, ringtones, light groups, location mode) over the data-layer writer.
+        /// </summary>
+        private static RingAccountSettingsPersister BuildRingAccountSettingsPersister(IServiceProvider provider)
+        {
+            return new RingAccountSettingsPersister(
+                provider.GetRequiredService<IRingAccountSettingsWriter>(),
+                provider.GetRequiredService<ILogger<RingAccountSettingsPersister>>());
         }
 
         /// <summary>
@@ -287,6 +298,7 @@ namespace VideoForensics.Hosting
             {
                 _ = services.AddScoped<IProviderAuthService>(BuildRingAuthService);
                 _ = services.AddScoped<IDeviceDiscoveryService>(BuildRingDeviceDiscoveryService);
+                services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                 _ = services.AddScoped<IMediaDownloadService>(BuildRingMediaDownloadService);
                 _ = services.AddScoped<IEventAndConfigService>(BuildRingEventAndConfigService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
@@ -545,6 +557,7 @@ namespace VideoForensics.Hosting
                 {
                     _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildRingAuthService(provider));
                     _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildRingDeviceDiscoveryService(provider));
+                    services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                     _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildRingMediaDownloadService(provider));
                     _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildRingEventAndConfigService(provider));
                     _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(

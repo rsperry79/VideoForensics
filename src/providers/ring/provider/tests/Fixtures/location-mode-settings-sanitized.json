@@ -1,0 +1,127 @@
+{
+  "disarmed": [
+    {
+      "deviceId": "sanitized-device-1",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally",
+        "conciergeModeOff"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    },
+    {
+      "deviceId": "sanitized-device-2",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    }
+  ],
+  "home": [
+    {
+      "deviceId": "sanitized-device-1",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally",
+        "conciergeModeOff"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    },
+    {
+      "deviceId": "sanitized-device-2",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    }
+  ],
+  "away": [
+    {
+      "deviceId": "sanitized-device-1",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally",
+        "conciergeModeOff"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    },
+    {
+      "deviceId": "sanitized-device-2",
+      "deviceIdType": "doorbot",
+      "actions": [
+        "enableMotionDetection",
+        "allowLiveViewLocally"
+      ],
+      "supportedActions": {
+        "liveView": [
+          "blockLiveViewLocally",
+          "allowLiveViewLocally"
+        ],
+        "motionDetection": [
+          "disableMotionDetection",
+          "enableMotionDetection"
+        ]
+      }
+    }
+  ],
+  "options": {
+    "supportedActionGroups": [
+      "liveView",
+      "motionDetection"
+    ],
+    "defaultCameraOnlyMode": "away"
+  },
+  "lastUpdateTimeMS": 1759274193564
+}

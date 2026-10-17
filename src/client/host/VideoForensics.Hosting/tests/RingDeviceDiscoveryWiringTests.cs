@@ -36,6 +36,10 @@ namespace VideoForensics.Hosting.Tests
             object? metadataRepository = GetPrivateField(discovery, "_metadataRepository");
             Assert.NotNull(locationRepository);
             Assert.NotNull(metadataRepository);
+
+            // Account settings (profile, ringtones, light groups, location mode) are persisted during sync.
+            object? settingsPersister = GetPrivateField(discovery, "_settingsPersister");
+            Assert.IsType<VideoForensics.Providers.Ring.Services.RingAccountSettingsPersister>(settingsPersister);
         }
 
         private static object? GetPrivateField(object instance, string name)
