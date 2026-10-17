@@ -517,6 +517,29 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
+        /// Returns one page of history for a single doorbot, newest first. Pass the id of the oldest item on the previous
+        /// page as <paramref name="olderThan"/> to get the next page. Unlike <see cref="GetDoorbotsHistory(long?, int?)"/>
+        /// this makes exactly one request and does not follow the cursor itself.
+        /// </summary>
+        /// <param name="doorbotId">Id of the doorbot to retrieve the history for</param>
+        /// <param name="limit">Maximum number of items to request in this page</param>
+        /// <param name="olderThan">Only return items older than this history id. Null for the first (newest) page.</param>
+        /// <param name="cancellationToken">Cancels the request</param>
+        /// <returns>The items in this page, or an empty list when Ring returns none</returns>
+        /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
+        public virtual async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistoryPageAsync(long doorbotId, int limit, long? olderThan, CancellationToken cancellationToken = default)
+        {
+            await EnsureSessionValid();
+
+            string olderThanQuery = olderThan.HasValue ? $"&older_than={olderThan.Value}" : string.Empty;
+            var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/history?limit={limit}{olderThanQuery}");
+
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+
+            return JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response) ?? [];
+        }
+
+        /// <summary>
         /// Returns all events registered for all the available doorbots
         /// </summary>
         /// <param name="limit">Amount of history items to retrieve. If you don't provide this value, Ring will default to returning only the most recent 20 items.</param>

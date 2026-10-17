@@ -647,15 +647,7 @@ namespace VideoForensics.Providers.Ring.Services
                     continue;
                 }
 
-                await SyncFeedAsync("doorbot history", async () =>
-                {
-                    List<Entities.DoorbotHistoryEvent> history = await session.GetDoorbotsHistory(doorbotId);
-                    foreach (Entities.DoorbotHistoryEvent evt in history)
-                    {
-                        var mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
-                        await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
-                    }
-                }, ct);
+                await SyncFeedAsync("doorbot history", () => PersistDoorbotHistoryAsync(session, doorbotId, device.Name, eventWriter, ct), ct);
 
                 await SyncFeedAsync("video search", async () =>
                 {
@@ -718,6 +710,59 @@ namespace VideoForensics.Providers.Ring.Services
                         await eventWriter.ReplaceAppLocationHistoryMessageAsync(RingEventHistoryMapper.MapAppLocationHistory(message), ct);
                     }
                 }, ct);
+            }
+        }
+
+        /// <summary>Items requested per doorbot history page; a page shorter than this is the last one.</summary>
+        private const int DoorbotHistoryPageSize = 100;
+
+        /// <summary>Upper bound on history pages fetched per doorbot in one sync, so one busy doorbell cannot hold a sync.</summary>
+        private const int DoorbotHistoryPageCap = 200;
+
+        /// <summary>
+        /// Pages one doorbot's full history newest-first and persists each page before requesting the next, so a
+        /// long history never sits in memory. Stops on an empty page, a short page, a page whose oldest id does not
+        /// move past the cursor (a repeat would loop forever), or after <see cref="DoorbotHistoryPageCap"/> pages.
+        /// The cap logs the doorbell name only; the remaining history is fetched on the next sync.
+        /// </summary>
+        private async Task PersistDoorbotHistoryAsync(Session session, long doorbotId, string doorbellName, IRingEventHistoryWriter eventWriter, CancellationToken ct)
+        {
+            long? cursor = null;
+            for (int pageNumber = 1; ; pageNumber++)
+            {
+                List<Entities.DoorbotHistoryEvent> page = await session.GetDoorbotsHistoryPageAsync(doorbotId, DoorbotHistoryPageSize, cursor, ct);
+                if (page.Count == 0)
+                {
+                    return;
+                }
+
+                // Ring pages newest-first, so the oldest id on this page is the cursor for the next one.
+                long? oldestId = page.Where(e => e.Id.HasValue).Select(e => e.Id!.Value).Cast<long?>().Min();
+                if (cursor.HasValue && oldestId.HasValue && oldestId.Value >= cursor.Value)
+                {
+                    _logger.LogWarning("Ring doorbot history paging for {DoorbellName} stopped: the page did not move past the previous cursor", doorbellName);
+                    return;
+                }
+
+                foreach (Entities.DoorbotHistoryEvent evt in page)
+                {
+                    var mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
+                    await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
+                }
+
+                if (page.Count < DoorbotHistoryPageSize || !oldestId.HasValue)
+                {
+                    return;
+                }
+
+                if (pageNumber == DoorbotHistoryPageCap)
+                {
+                    _logger.LogInformation("Ring doorbot history for {DoorbellName} reached the {PageCap}-page sync cap; the rest will be fetched on the next sync",
+                        doorbellName, DoorbotHistoryPageCap);
+                    return;
+                }
+
+                cursor = oldestId;
             }
         }
 
