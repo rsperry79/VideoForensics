@@ -725,6 +725,27 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void DeviceSettingsSnapshot_NestedVolumeAndMotionOnly_ReadsFromVolumeAndMotionSettings()
+        {
+            // Shape of a real capture: no root doorbell_volume or motion_detection_enabled.
+            string json = @"{
+                ""doorbots"": [{
+                    ""id"": 123,
+                    ""settings"": {
+                        ""volume_settings"": { ""doorbell_volume"": 11 },
+                        ""motion_settings"": { ""motion_detection_enabled"": false }
+                    }
+                }]
+            }";
+
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
+            Assert.Equal(11, snapshot.Volume);
+            Assert.False(snapshot.MotionDetectionEnabled);
+        }
+
+        [Fact]
         public void DeviceSettingsSnapshot_ParsesMultipleDevices()
         {
             string json = @"{

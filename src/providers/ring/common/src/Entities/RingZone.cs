@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Core.Helpers.Json.Converters;
+using VideoForensics.Providers.Ring.Converters;
 
 namespace VideoForensics.Providers.Ring.Entities
 {
@@ -22,6 +23,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public RingZoneProperties Properties { get; set; }
 
         [JsonPropertyName("state")]
+        [JsonConverter(typeof(ZoneStateConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? State { get; set; }
 

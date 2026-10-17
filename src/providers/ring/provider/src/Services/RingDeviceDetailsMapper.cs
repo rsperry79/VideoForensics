@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 
@@ -102,9 +103,9 @@ namespace VideoForensics.Providers.Ring.Services
                 OwnerEmail: d.Owner?.Email,
                 RingType: d.Type,
                 MotionSnoozeJson: RawJson(d.MotionSnooze),
-                DoorbellVolume: ToInt(d.Settings?.DoorbellVolume),
+                DoorbellVolume: ToInt(NestedLong(d.Settings?.AdditionalFields, "volume_settings", "doorbell_volume") ?? d.Settings?.DoorbellVolume),
                 NightModeOn: d.Settings?.NightModeOn,
-                MotionDetectionEnabled: d.Settings?.MotionDetectionEnabled,
+                MotionDetectionEnabled: NestedBool(d.Settings?.AdditionalFields, "motion_settings", "motion_detection_enabled") ?? d.Settings?.MotionDetectionEnabled,
                 SettingsChimeType: ToInt(d.Settings?.ChimeSettings?.Type),
                 SettingsChimeEnabled: d.Settings?.ChimeSettings?.Enable,
                 SettingsChimeDuration: ToInt(d.Settings?.ChimeSettings?.Duration),
@@ -139,7 +140,7 @@ namespace VideoForensics.Providers.Ring.Services
                 LiveViewPresetProfile: st?.LiveViewPresetProfile,
                 PirSensitivity1: ToInt(st?.PirSensitivity1),
                 VodSuspended: ToFlag(st?.VodSuspended),
-                DoorbellVolume: ToInt(st?.DoorbellVolume),
+                DoorbellVolume: ToInt(NestedLong(st?.AdditionalFields, "volume_settings", "doorbell_volume") ?? st?.DoorbellVolume),
                 VodStatus: st?.VodStatus,
                 AdvancedMotionDetectionEnabled: st?.AdvancedMotionDetectionEnabled,
                 AdvancedMotionDetectionHumanOnlyMode: st?.AdvancedMotionDetectionHumanOnlyMode,
@@ -482,6 +483,41 @@ namespace VideoForensics.Providers.Ring.Services
         private static string? ExtraJson(Dictionary<string, JsonElement>? extra)
         {
             return extra is { Count: > 0 } ? JsonSerializer.Serialize(extra) : null;
+        }
+
+        /// <summary>
+        /// Reads a number from a nested settings object kept in AdditionalFields (e.g. volume_settings.doorbell_volume).
+        /// Real captures put doorbell_volume and motion_detection_enabled there, not at the settings root.
+        /// </summary>
+        private static long? NestedLong(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
+        {
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            return obj.TryGetProperty(valueKey, out JsonElement value) && value.TryGetInt64(out long number) ? number : null;
+        }
+
+        /// <summary>Reads a boolean from a nested settings object kept in AdditionalFields. Null when absent or not a boolean.</summary>
+        private static bool? NestedBool(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
+        {
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (!obj.TryGetProperty(valueKey, out JsonElement value))
+            {
+                return null;
+            }
+
+            return value.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => null
+            };
         }
 
         /// <summary>Narrows a Ring number to int, or null when it does not fit (never truncates silently).</summary>
