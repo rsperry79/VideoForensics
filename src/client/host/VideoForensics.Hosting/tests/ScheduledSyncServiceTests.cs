@@ -541,6 +541,32 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_ScheduledPullSucceeds_RecordsSyncTypeFromPullStartDate()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.Equal(account.LastSuccessfulAuthUtc is null ? "Full" : "Incremental", run.SyncType);
+            Assert.Null(run.EventsSynced);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_AuthRestoreReturnsFalse_LeavesSyncTypeNull()
+        {
+            var h = new Harness();
+            _ = h.AddAccount("Ring", authResult: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Null(Assert.Single(h.Runs).SyncType);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_PullRecordsAccountError_WritesFailureRunWithAccountMessage()
         {
             var h = new Harness();

@@ -7,9 +7,32 @@ using VideoForensics.Hosting.Contracts;
 
 namespace VideoForensics.Hosting.Services
 {
+    /// <summary>What a manual sync should cover.</summary>
+    public enum AccountSyncType
+    {
+        /// <summary>Events and snapshots.</summary>
+        All,
+
+        /// <summary>Events only.</summary>
+        Events,
+
+        /// <summary>Snapshots only.</summary>
+        Snapshots
+    }
+
+    /// <summary>A manual sync request: what to sync and over which period.</summary>
+    /// <param name="Type">Which data to sync.</param>
+    /// <param name="FromUtc">Start of the period; null with <paramref name="AllHistory"/> means the provider's whole history.</param>
+    /// <param name="ToUtc">End of the period, when the user picked a custom range.</param>
+    /// <param name="AllHistory">True to cover the provider's full history.</param>
+    public sealed record AccountSyncRequest(AccountSyncType Type, DateTime? FromUtc, DateTime? ToUtc, bool AllHistory);
+
     /// <summary>Runs a manual sync for one account: restore its saved credentials, then pull.</summary>
     public interface IAccountSyncRunner
     {
+        /// <summary>Like <see cref="RunAsync(Guid, CancellationToken)"/> but honours the requested sync type and period.</summary>
+        Task RunAsync(Guid accountId, AccountSyncRequest request, CancellationToken cancellationToken);
+
         /// <summary>Restores the account's session and pulls its inventory and events. Failures are recorded on the account.</summary>
         Task RunAsync(Guid accountId, CancellationToken cancellationToken);
 
@@ -31,6 +54,19 @@ namespace VideoForensics.Hosting.Services
     /// </summary>
     internal static class ProviderSyncRunRecorder
     {
+        /// <summary>SyncType recorded when the pull covered the provider's whole event history (no start date).</summary>
+        internal const string FullSyncType = "Full";
+
+        /// <summary>SyncType recorded when the pull covered events since a start date.</summary>
+        internal const string IncrementalSyncType = "Incremental";
+
+        /// <summary>SyncType recorded for a snapshots-only sync.</summary>
+        internal const string SnapshotsSyncType = "Snapshots";
+
+        /// <summary>Maps the pull's start date to a sync type: no start date means the full history was pulled.</summary>
+        internal static string SyncTypeFor(DateTime? fromTimestampUtc) =>
+            fromTimestampUtc is null ? FullSyncType : IncrementalSyncType;
+
         /// <summary>Maximum stored length of ProviderSyncRun.ErrorMessage (matches the column's max length).</summary>
         internal const int MaxErrorMessageLength = 1024;
 
@@ -163,6 +199,10 @@ namespace VideoForensics.Hosting.Services
             SyncAsync(accountId, fullHistory: false, options, cancellationToken);
 
         /// <inheritdoc />
+        public Task RunAsync(Guid accountId, AccountSyncRequest request, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, request.AllHistory, cancellationToken, request);
+
+        /// <inheritdoc />
         public Task RunInitialAsync(Guid accountId, CancellationToken cancellationToken) =>
             SyncAsync(accountId, fullHistory: true, options: null, cancellationToken);
 
@@ -208,7 +248,7 @@ namespace VideoForensics.Hosting.Services
             catch (Exception ex)
             {
                 // Record the failure, then rethrow the original exception; recording never replaces it.
-                await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, ex.Message);
+                await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, ex.Message, syncType);
                 throw;
             }
 
@@ -272,6 +312,16 @@ namespace VideoForensics.Hosting.Services
             {
                 _syncRunOptions.Current = published;
             }
+
+            // Snapshots-only: there is no snapshot pull in this runner, so the event pull is skipped rather than
+            // run against the wrong data. The restore above still validates the session.
+            if (request?.Type == AccountSyncType.Snapshots)
+            {
+                return null;
+            }
+
+            // An explicit period wins; otherwise since the last successful auth. The pull has no end date yet, so ToUtc is not applied.
+            DateTime? from = fullHistory ? null : request?.FromUtc ?? account.LastSuccessfulAuthUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
             await eventPullService.PullAccountEventsAsync(accountId, from, cancellationToken);

@@ -177,6 +177,7 @@ else
             }
             else if (_syncRuns is not null)
             {
+                <div class="table-responsive">
                 <table class="table table-sm">
                     <thead>
                         <tr>
@@ -226,6 +227,7 @@ else
                         }
                     </tbody>
                 </table>
+                </div>
             }
         </div>
 
@@ -316,6 +318,42 @@ else
     private string CustomStartText => _customStart.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     private string CustomEndText => _customEnd.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    private VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto? LatestRun =>
+        _syncRuns?.OrderByDescending(r => r.StartedUtc).FirstOrDefault();
+
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _syncRange = e.Value?.ToString() ?? "30";
+        if (_syncRange == SyncRequestBuilder.CustomRange)
+        {
+            (_customStart, _customEnd) = SyncRequestBuilder.DefaultCustomRange(DateTime.Today);
+        }
+    }
+
+    private string SyncTypeChoiceLabel(string type) => type switch
+    {
+        "Events" => L["SyncChoiceEvents"],
+        "Snapshots" => L["SyncChoiceSnapshots"],
+        _ => L["SyncChoiceAll"],
+    };
+
+    private string RangeLabel(string range) => range switch
+    {
+        "30" => L["SyncRange30"],
+        "60" => L["SyncRange60"],
+        "90" => L["SyncRange90"],
+        "365" => L["SyncRange365"],
+        SyncRequestBuilder.AllRange => L["SyncRangeAll"],
+        _ => L["SyncRangeCustom"],
+    };
+
+    private string SyncTypeLabel(string? type) => type switch
+    {
+        "Full" => L["SyncTypeFull"],
+        "Incremental" => L["SyncTypeIncremental"],
+        _ => L["SyncTypeUnknown"],
+    };
 
     protected override async Task OnInitializedAsync()
     {

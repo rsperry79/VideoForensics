@@ -234,6 +234,33 @@ namespace VideoForensics.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RunAsync_SuccessfulRun_RecordsIncrementalSyncType()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSut().RunAsync(_accountId, CancellationToken.None);
+
+            Assert.Equal("Incremental", Assert.Single(runs).SyncType);
+        }
+
+        [Fact]
+        public async Task RunInitialAsync_SuccessfulRun_RecordsFullSyncTypeAndLeavesUntalliedCountsNull()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Full", run.SyncType);
+            Assert.Null(run.EventsSynced);
+            Assert.Null(run.DevicesSynced);
+        }
+
+        [Fact]
         public async Task RunInitialAsync_SuccessfulRun_RecordsSuccessWithCompletedUtc()
         {
             SetupAccount(Account());
