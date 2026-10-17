@@ -93,8 +93,10 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RingAccountSettingsSync_GetLocationsAsync_CachedSecondCall_DoesNotRefetchAccountSettings()
+        public async Task RingAccountSettingsSync_GetLocationsAsync_CachedSecondCall_ReusesLocationsButRefetchesAccountSettings()
         {
+            // The location cache only skips the location/device list fetch; config sync runs on every call.
+            // Throttling of account settings is the job of the config sync gate (IRingAccountSyncState), absent here.
             var handler = CreateHandler();
             var writer = CreateWriter();
             var logger = new RecordingLogger();
@@ -104,9 +106,11 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = await service.GetLocationsAsync(AccountId);
             _ = await service.GetLocationsAsync(AccountId);
 
-            Assert.Equal(1, handler.CountRequests(ProfileUrl));
-            Assert.Equal(1, handler.CountRequests(RingtonesUrl));
-            Assert.Equal(1, handler.CountRequests(GroupsUrl));
+            Assert.Equal(1, handler.CountRequests(LocationsUrl));
+            Assert.Equal(1, handler.CountRequests(RingDevicesUrl));
+            Assert.Equal(2, handler.CountRequests(ProfileUrl));
+            Assert.Equal(2, handler.CountRequests(RingtonesUrl));
+            Assert.Equal(2, handler.CountRequests(GroupsUrl));
         }
 
         [Fact]

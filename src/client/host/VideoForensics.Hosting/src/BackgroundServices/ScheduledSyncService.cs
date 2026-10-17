@@ -138,7 +138,8 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                     IEventAndConfigService? eventService = sp.GetKeyedService<IEventAndConfigService>(key);
                     IProviderAuthService? authService = sp.GetKeyedService<IProviderAuthService>(key);
-                    if (eventService == null || authService == null)
+                    IMediaDownloadService? mediaService = sp.GetKeyedService<IMediaDownloadService>(key);
+                    if (eventService == null || authService == null || mediaService == null)
                     {
                         _logger.LogWarning("Scheduled sync skipped: no keyed provider services are registered for {ProviderName}", providerName);
                         continue;
@@ -149,7 +150,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         continue;
                     }
 
-                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), ct);
+                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -171,6 +172,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             IEventAndConfigService eventService,
             IProviderAuthService authService,
             IDeviceDiscoveryService deviceDiscovery,
+            IMediaDownloadService mediaService,
             CancellationToken ct)
         {
             string providerName = account.ProviderName;
@@ -205,7 +207,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc; // first run: same as the manual sync-now endpoint
 
-                    // EventPullService is bound to ONE event service, so build it per account around its provider's keyed service.
+                    // EventPullService is bound to ONE event service and ONE media service (which does the actual event/media pull), so build it per account around its provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
                         sp.GetRequiredService<IDeviceRepository>(),
@@ -213,7 +215,9 @@ namespace VideoForensics.Hosting.BackgroundServices
                         sp.GetRequiredService<IProviderAccountRepository>(),
                         deviceDiscovery,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
-                        tally);
+                        tally,
+                        sp.GetService<ISyncRunOptions>(),
+                        mediaService);
 
                     tally?.Reset();
                     await pull.PullAccountEventsAsync(accountId, from, ct);

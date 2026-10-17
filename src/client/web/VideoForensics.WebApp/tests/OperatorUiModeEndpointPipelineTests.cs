@@ -105,6 +105,7 @@ namespace VideoForensics.WebApp.Tests
             _ = builder.Services.AddSingleton(new Mock<VideoForensics.WebApp.Hubs.ILiveConnectionTracker>().Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(TestScheme).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestScheme, _ => { });
             _ = builder.Services.AddRateLimiter(options =>
