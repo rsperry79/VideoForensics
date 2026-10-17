@@ -490,6 +490,100 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task GetLatestReleaseAsync_SecondCallAfterEtag_SendsIfNoneMatchAndReturnsCachedOn304()
+        {
+            var ifNoneMatchValues = new List<string?>();
+            int call = 0;
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                ifNoneMatchValues.Add(request.Headers.IfNoneMatch.FirstOrDefault()?.Tag);
+                call++;
+                if (call == 1)
+                {
+                    HttpResponseMessage ok = JsonResponse(ListJson(GetRealisticReleaseJson("v1.5.0")));
+                    ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"abc123\"");
+                    return Task.FromResult(ok);
+                }
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var first = await client.GetLatestReleaseAsync(CancellationToken.None);
+            var second = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Equal(2, call);
+            Assert.Null(ifNoneMatchValues[0]);
+            Assert.Equal("\"abc123\"", ifNoneMatchValues[1]);
+            Assert.NotNull(first);
+            Assert.Same(first, second);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_EtagCachedPerChannel_TestingDoesNotReuseStableEtag()
+        {
+            var ifNoneMatchValues = new List<string?>();
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                ifNoneMatchValues.Add(request.Headers.IfNoneMatch.FirstOrDefault()?.Tag);
+                HttpResponseMessage ok = JsonResponse(ListJson(
+                    GetRealisticReleaseJson("v1.5.0"),
+                    GetRealisticReleaseJson("v1.6.0-dev.1", prerelease: true)));
+                ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"abc123\"");
+                return Task.FromResult(ok);
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            _ = await client.GetLatestReleaseAsync(CancellationToken.None);
+            var testing = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.Null(ifNoneMatchValues[1]);
+            Assert.Equal("v1.6.0-dev.1", testing!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_ForbiddenWithRemainingZero_ThrowsRateLimitWithResetTime()
+        {
+            DateTimeOffset reset = DateTimeOffset.FromUnixTimeSeconds(1_900_000_000);
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.Forbidden);
+                response.Headers.Add("X-RateLimit-Remaining", "0");
+                response.Headers.Add("X-RateLimit-Reset", reset.ToUnixTimeSeconds().ToString());
+                return Task.FromResult(response);
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            GitHubRateLimitException ex = await Assert.ThrowsAsync<GitHubRateLimitException>(
+                () => client.GetLatestReleaseAsync(CancellationToken.None));
+
+            Assert.Equal(reset, ex.ResetAtUtc);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_TooManyRequestsWithoutResetHeader_ThrowsRateLimitWithDefaultReset()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage((HttpStatusCode)429)));
+
+            var client = new GitHubReleaseClient(httpClient);
+            DateTimeOffset before = DateTimeOffset.UtcNow;
+            GitHubRateLimitException ex = await Assert.ThrowsAsync<GitHubRateLimitException>(
+                () => client.GetLatestTestingReleaseAsync(CancellationToken.None));
+            DateTimeOffset after = DateTimeOffset.UtcNow;
+
+            Assert.InRange(ex.ResetAtUtc, before.AddMinutes(60), after.AddMinutes(60));
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_ServerError_ReturnsNullAndDoesNotThrow()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+
+            var result = await new GitHubReleaseClient(httpClient).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
         public async Task GetLatestTestingReleaseAsync_ChosenReleaseHasVersionJson_UsesItsVersion()
         {
             string list = ListJson(

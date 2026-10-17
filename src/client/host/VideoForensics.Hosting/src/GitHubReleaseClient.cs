@@ -1,9 +1,25 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace VideoForensics.Hosting
 {
+    /// <summary>
+    /// Thrown when the GitHub API rejects a request because the rate limit is exhausted.
+    /// </summary>
+    public class GitHubRateLimitException : Exception
+    {
+        /// <summary>When the rate limit window resets (UTC).</summary>
+        public DateTimeOffset ResetAtUtc { get; }
+
+        public GitHubRateLimitException(DateTimeOffset resetAtUtc)
+            : base($"GitHub API rate limit exceeded; resets at {resetAtUtc:u}.")
+        {
+            ResetAtUtc = resetAtUtc;
+        }
+    }
+
     /// <summary>
     /// Information about a GitHub release fetched from the GitHub Releases REST API.
     /// <paramref name="Version"/> is read from the release's <c>version.json</c> asset when present; it is null otherwise.
@@ -82,7 +98,39 @@ namespace VideoForensics.Hosting
         {
             try
             {
-                using HttpResponseMessage response = await _httpClient.GetAsync(ReleaseListEndpoint, ct);
+                ChannelCache cache = prerelease ? _testingCache : _stableCache;
+                string? etag;
+                lock (cache)
+                {
+                    etag = cache.ETag;
+                }
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseListEndpoint);
+                if (etag != null && System.Net.Http.Headers.EntityTagHeaderValue.TryParse(etag, out var parsedEtag))
+                {
+                    request.Headers.IfNoneMatch.Add(parsedEtag);
+                }
+
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    // Conditional hits are not counted against the rate limit; reuse the previous result.
+                    lock (cache)
+                    {
+                        if (cache.HasResult)
+                        {
+                            return cache.Result;
+                        }
+                    }
+
+                    return null;
+                }
+
+                if (IsRateLimited(response))
+                {
+                    throw new GitHubRateLimitException(GetResetAtUtc(response));
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -98,7 +146,20 @@ namespace VideoForensics.Hosting
                     && r.Prerelease == prerelease
                     && r.TagName.StartsWith('v'));
 
-                return match == null ? null : await MapReleaseAsync(match, ct);
+                GitHubReleaseInfo? result = match == null ? null : await MapReleaseAsync(match, ct);
+
+                lock (cache)
+                {
+                    cache.ETag = response.Headers.ETag?.ToString();
+                    cache.Result = result;
+                    cache.HasResult = true;
+                }
+
+                return result;
+            }
+            catch (GitHubRateLimitException)
+            {
+                throw;
             }
             catch
             {
@@ -108,6 +169,40 @@ namespace VideoForensics.Hosting
         }
 
         private static readonly JsonSerializerOptions SerializerOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+        /// <summary>In-memory ETag and mapped result for one channel (guarded by lock on the instance).</summary>
+        private sealed class ChannelCache
+        {
+            public string? ETag;
+            public GitHubReleaseInfo? Result;
+            public bool HasResult;
+        }
+
+        private readonly ChannelCache _stableCache = new();
+        private readonly ChannelCache _testingCache = new();
+
+        private static bool IsRateLimited(HttpResponseMessage response)
+        {
+            if ((int)response.StatusCode == 429)
+            {
+                return true;
+            }
+
+            return response.StatusCode == HttpStatusCode.Forbidden
+                && response.Headers.TryGetValues("X-RateLimit-Remaining", out IEnumerable<string>? values)
+                && values.FirstOrDefault()?.Trim() == "0";
+        }
+
+        private static DateTimeOffset GetResetAtUtc(HttpResponseMessage response)
+        {
+            if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? values)
+                && long.TryParse(values.FirstOrDefault(), out long unixSeconds))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+            }
+
+            return DateTimeOffset.UtcNow.AddMinutes(60);
+        }
 
         private async Task<GitHubReleaseInfo> MapReleaseAsync(GitHubReleaseDto releaseDto, CancellationToken ct)
         {
