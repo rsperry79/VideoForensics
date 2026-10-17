@@ -1,5 +1,6 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Core.Providers.Common.Contracts;
     using VideoForensics.Data.Common.Contracts;
@@ -36,7 +37,10 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Returns(Task.CompletedTask);
         }
 
-        private AccountSyncRunner Sut() => new(_auth.Object, _pull.Object, _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
+            new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
 
         [Fact]
         public async Task RunAsync_EventsWithFromDate_PullsFromThatDate()

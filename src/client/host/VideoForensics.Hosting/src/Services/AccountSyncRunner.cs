@@ -148,8 +148,7 @@ namespace VideoForensics.Hosting.Services
     /// <inheritdoc />
     public class AccountSyncRunner : IAccountSyncRunner
     {
-        private readonly IProviderAuthService _authService;
-        private readonly IEventPullService _eventPullService;
+        private readonly IServiceProvider _services;
         private readonly IProviderAccountRepository _accounts;
         private readonly IProviderSyncRunRepository _syncRuns;
         private readonly ISnapshotSyncService _snapshotSync;
@@ -167,8 +166,7 @@ namespace VideoForensics.Hosting.Services
         /// "All" syncs.
         /// </summary>
         public AccountSyncRunner(
-            IProviderAuthService authService,
-            IEventPullService eventPullService,
+            IServiceProvider services,
             IProviderAccountRepository accounts,
             IProviderSyncRunRepository syncRuns,
             ILogger<AccountSyncRunner> logger,
@@ -177,8 +175,7 @@ namespace VideoForensics.Hosting.Services
             IServiceProvider? services = null,
             ISnapshotSyncService? snapshotSync = null)
         {
-            _authService = authService;
-            _eventPullService = eventPullService;
+            _services = services;
             _accounts = accounts;
             _syncRuns = syncRuns;
             _snapshotSync = snapshotSync;

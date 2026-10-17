@@ -1,5 +1,6 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Core.Providers.Common.Contracts;
     using VideoForensics.Data.Common.Contracts;
@@ -26,8 +27,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly SyncRunOptionsHolder _holder = new();
 
         private AccountSyncRunner CreateSut() => new(
-            _mockAuth.Object,
-            _mockPull.Object,
+            new ServiceCollection().AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
             _mockLogger.Object,

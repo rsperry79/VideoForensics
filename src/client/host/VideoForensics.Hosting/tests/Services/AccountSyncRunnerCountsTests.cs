@@ -1,5 +1,6 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Hosting.Contracts;
     using VideoForensics.Core.Providers.Common.Contracts;
@@ -35,7 +36,10 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Returns(Task.CompletedTask);
         }
 
-        private AccountSyncRunner Sut() => new(_auth.Object, _pull.Object, _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
+            new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
 
         [Fact]
         public async Task RunAsync_PullReportsCounts_RecordsCountsOnRun()
@@ -228,6 +232,45 @@ namespace VideoForensics.Hosting.Tests.Services
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, false), CancellationToken.None);
 
             _snapshots.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunAsync_TwoProvidersRegisteredKeyed_RestoresAndPullsThroughTheAccountsProvider()
+        {
+            _account.ProviderName = "Wyze";
+            var ringAuth = new Mock<IProviderAuthService>();
+            var ringPull = new Mock<IEventPullService>();
+            var wyzeAuth = new Mock<IProviderAuthService>();
+            var wyzePull = new Mock<IEventPullService>();
+            wyzeAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever registered last.
+            var services = new ServiceCollection();
+            services.AddKeyedScoped("Wyze", (_, _) => wyzeAuth.Object);
+            services.AddKeyedScoped("Wyze", (_, _) => wyzePull.Object);
+            services.AddKeyedScoped("Ring", (_, _) => ringAuth.Object);
+            services.AddKeyedScoped("Ring", (_, _) => ringPull.Object);
+            services.AddScoped(_ => ringAuth.Object);
+            services.AddScoped(_ => ringPull.Object);
+            var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+
+            await sut.RunAsync(_id, CancellationToken.None);
+
+            wyzeAuth.Verify(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>()), Times.Once);
+            wyzePull.Verify(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
+            ringAuth.Verify(a => a.RestoreFromSavedCredentialsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            ringPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunAsync_NoKeyedServiceForProvider_FallsBackToUnkeyedServices()
+        {
+            _account.ProviderName = "Uniview";
+
+            await Sut().RunAsync(_id, CancellationToken.None);
+
+            _auth.Verify(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }
