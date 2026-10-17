@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+
 namespace VideoForensics.Ui.Shared.Services
 {
     /// <summary>
@@ -7,14 +9,19 @@ namespace VideoForensics.Ui.Shared.Services
     /// </summary>
     public sealed class StepUpService
     {
+        /// <summary>Where a password-only operator upgrades to a passkey when the role policy requires one.</summary>
+        internal const string PasskeySetupPath = "/settings/passkeys?setup=true";
+
         private readonly WebAuthnClient _webAuthn;
         private readonly PairedSessionState _session;
+        private readonly NavigationManager _navigation;
         private Func<Task<string?>>? _passwordPrompt;
 
-        public StepUpService(WebAuthnClient webAuthn, PairedSessionState session)
+        public StepUpService(WebAuthnClient webAuthn, PairedSessionState session, NavigationManager navigation)
         {
             _webAuthn = webAuthn;
             _session = session;
+            _navigation = navigation;
         }
 
         /// <summary>
@@ -39,6 +46,13 @@ namespace VideoForensics.Ui.Shared.Services
             if (!_session.IsPasswordSession)
             {
                 return await _webAuthn.StepUpAsync(token);
+            }
+
+            // Policy: a role that requires a second factor must confirm with a passkey, so a password is not enough.
+            if (_session.IsTwoFactorRequired)
+            {
+                _navigation.NavigateTo(PasskeySetupPath);
+                throw new PasskeyUpgradeRequiredException();
             }
 
             if (_passwordPrompt is null)

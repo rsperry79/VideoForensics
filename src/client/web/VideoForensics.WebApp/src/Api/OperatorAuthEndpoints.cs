@@ -1049,6 +1049,7 @@ namespace VideoForensics.WebApp.Api
         private static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
             IOperatorRepository operators,
+            ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1068,6 +1069,13 @@ namespace VideoForensics.WebApp.Api
                 // No password set on this account (e.g. passkey-only or a service-account operator) -
                 // this step-up path isn't usable for them; fail rather than crash on a null hash.
                 return Results.Unauthorized();
+            }
+
+            // Policy: a role whose two-factor requirement is a passkey cannot confirm with a password. Refused before the
+            // password is checked, so a password-only operator is told to upgrade rather than tested.
+            if (await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, roleRequirements, ct))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             // Verify password
