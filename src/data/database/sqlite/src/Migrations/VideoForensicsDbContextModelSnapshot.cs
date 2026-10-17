@@ -3078,8 +3078,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("AuthenticatedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ConfigSyncIntervalHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(24);
+
                     b.Property<string>("Features")
                         .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastConfigSyncUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastSyncedUtc")

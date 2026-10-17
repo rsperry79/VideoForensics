@@ -22,6 +22,8 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly ApiResponseNormalizer? _normalizer;
         private readonly RingAccountSettingsPersister? _settingsPersister;
         private readonly IRingEventHistoryWriter? _eventHistoryWriter;
+        private readonly IRingAccountSyncState? _syncState;
+        private readonly TimeProvider _timeProvider;
 
         // Sentinel used when a device's own location_id is missing from Ring's API response. Never
         // fall back to the locationId that was requested here - the legacy ring_devices endpoint's
@@ -50,7 +52,9 @@ namespace VideoForensics.Providers.Ring.Services
             ApiResponseNormalizer? normalizer = null,
             ILocationRepository? locationRepository = null,
             RingAccountSettingsPersister? settingsPersister = null,
-            IRingEventHistoryWriter? eventHistoryWriter = null)
+            IRingEventHistoryWriter? eventHistoryWriter = null,
+            IRingAccountSyncState? syncState = null,
+            TimeProvider? timeProvider = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
@@ -59,6 +63,8 @@ namespace VideoForensics.Providers.Ring.Services
             _locationRepository = locationRepository;
             _settingsPersister = settingsPersister;
             _eventHistoryWriter = eventHistoryWriter;
+            _syncState = syncState;
+            _timeProvider = timeProvider ?? TimeProvider.System;
         }
 
         public async Task<IReadOnlyList<Location>> GetLocationsAsync(CancellationToken cancellationToken = default)
@@ -513,10 +519,10 @@ namespace VideoForensics.Providers.Ring.Services
                 _cachedLocations = result;
                 _cachedLocationsAt = DateTime.UtcNow;
 
-                // Once per fresh fetch (a cache hit returns above, so a sync fetches account settings once).
-                await PersistAccountSettingsAsync(session, providerAccountId, result, cancellationToken);
+                // Config (settings) runs on the gate's schedule; a cache hit returns above, so it never runs twice in one fresh fetch.
+                await RunConfigSyncIfDueAsync(session, providerAccountId, result, cancellationToken);
 
-                // Runs whether or not the settings persister is configured, and after it, so a settings failure never blocks the event feeds.
+                // Events run on every fresh fetch, and after config so a settings failure never blocks the event feeds.
                 await PersistEventHistoryAsync(session, providerAccountId, result, cancellationToken);
 
                 _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
@@ -535,26 +541,64 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Runs the config fetches only when the account's config interval has elapsed since the last completed config sync
+        /// (or none has completed). The sync is marked completed only when an account-level fetch (profile or ringtones)
+        /// succeeded, so a sync where those all fail is retried on the next run. Without a sync-state store, config runs on
+        /// every fresh fetch, as it did before the gate existed.
+        /// </summary>
+        private async Task RunConfigSyncIfDueAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        {
+            if (_syncState == null)
+            {
+                _ = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
+                return;
+            }
+
+            RingConfigSyncState state = await _syncState.GetConfigSyncStateAsync(providerAccountId, ct);
+            DateTime utcNow = _timeProvider.GetUtcNow().UtcDateTime;
+            bool due = state.LastConfigSyncUtc is null
+                || utcNow - state.LastConfigSyncUtc.Value >= TimeSpan.FromHours(Math.Max(1, state.IntervalHours));
+
+            // Logged by provider name, not account id: this gate only has the provider account id, and ids are not logged.
+            if (!due)
+            {
+                _logger.LogDebug("Ring account config sync not due yet; skipping profile, ringtone and location settings fetches");
+                return;
+            }
+
+            bool accountLevelSucceeded = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
+            if (accountLevelSucceeded)
+            {
+                await _syncState.MarkConfigSyncCompletedAsync(providerAccountId, utcNow, ct);
+            }
+        }
+
+        /// <summary>
         /// Fetches and persists the account's profile and ringtones, then each location's light groups, location
         /// mode, mode settings and mode sharing. Each fetch is isolated: a failure is logged and the rest still run.
         /// The profile's authentication token is never read, logged or passed on.
+        /// Returns true when the profile or the ringtones fetch succeeded.
         /// </summary>
-        private async Task PersistAccountSettingsAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
+        private async Task<bool> PersistAccountSettingsAsync(Session session, Guid providerAccountId, IReadOnlyList<Location> locations, CancellationToken ct)
         {
             if (_settingsPersister == null)
             {
-                return;
+                return false;
             }
+
+            bool accountLevelSucceeded = false;
 
             Entities.Profile? profile = await FetchForSyncAsync("profile", () => session.GetProfile(), ct);
             if (profile != null)
             {
+                accountLevelSucceeded = true;
                 await _settingsPersister.PersistProfileAsync(profile, providerAccountId, ct);
             }
 
             Entities.RingtonesResponse? ringtones = await FetchForSyncAsync("ringtone", () => session.GetRingtones(), ct);
             if (ringtones != null)
             {
+                accountLevelSucceeded = true;
                 await _settingsPersister.PersistRingtonesAsync(ringtones, providerAccountId, ct);
             }
 
@@ -591,6 +635,8 @@ namespace VideoForensics.Providers.Ring.Services
                     await _settingsPersister.PersistLocationModeSharingAsync(sharing, location.Id, ct);
                 }
             }
+
+            return accountLevelSucceeded;
         }
 
         /// <summary>
