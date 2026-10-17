@@ -58,6 +58,8 @@ namespace VideoForensics.WebApp.Tests
                     new Claim(VideoForensicsClaimTypes.NetworkTier, tier),
                     new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
                 ], TestScheme);
+                if (Request.Headers.TryGetValue("X-Test-CredentialKind", out var ck))
+                    identity.AddClaim(new Claim(VideoForensicsClaimTypes.CredentialKind, ck.ToString()));
                 return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), TestScheme)));
             }
         }
@@ -102,6 +104,7 @@ namespace VideoForensics.WebApp.Tests
             _ = builder.Services.AddSingleton(tier.Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(TestScheme).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestScheme, _ => { });
             if (heartbeat.HasValue)
@@ -214,6 +217,32 @@ namespace VideoForensics.WebApp.Tests
             await using var host = await StartAsync();
             var resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Anonymous", "1")), HttpCompletionOption.ResponseHeadersRead);
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("Network")]
+        [InlineData("Internet")]
+        public async Task Logs_PasskeySessionOnNonLocalTier_IsReadable(string tier)
+        {
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
+            {
+                r.Headers.Add("X-Test-Tier", tier);
+                r.Headers.Add("X-Test-CredentialKind", "OperatorPasskey");
+            }), HttpCompletionOption.ResponseHeadersRead);
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task Logs_PasswordSessionOnNetworkTier_IsForbidden()
+        {
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
+            {
+                r.Headers.Add("X-Test-Tier", "Network");
+                r.Headers.Add("X-Test-CredentialKind", "Password");
+            }), HttpCompletionOption.ResponseHeadersRead);
+            Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
         }
 
         // Log reads are read-only, so they need no passkey step-up. Only destructive or system changes are challenged.

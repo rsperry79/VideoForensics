@@ -60,23 +60,29 @@ namespace VideoForensics.Hosting
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
+        private const string ReleaseListEndpoint = "repos/rsperry79/VideoForensics/releases?per_page=30";
+
         public async Task<GitHubReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct)
         {
-            // Fetch the release tagged with "Release" (main branch latest)
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Release", ct);
+            // Stable channel: newest published, non-prerelease, versioned ("v...") release. The frozen "Release" label is stale.
+            return await FetchLatestVersionedAsync(prerelease: false, ct);
         }
 
         public async Task<GitHubReleaseInfo?> GetLatestTestingReleaseAsync(CancellationToken ct)
         {
-            // Fetch the release tagged with "Testing" (dev branch latest)
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Testing", ct);
+            // Testing channel: newest published prerelease with a versioned ("v...") tag. The frozen "Testing" label is stale.
+            return await FetchLatestVersionedAsync(prerelease: true, ct);
         }
 
-        private async Task<GitHubReleaseInfo?> FetchReleaseAsync(string endpoint, CancellationToken ct)
+        /// <summary>
+        /// Reads the release list (newest first) and maps the first non-draft release whose prerelease flag matches
+        /// and whose tag starts with "v". Returns null when none matches or on any failure.
+        /// </summary>
+        private async Task<GitHubReleaseInfo?> FetchLatestVersionedAsync(bool prerelease, CancellationToken ct)
         {
             try
             {
-                using HttpResponseMessage response = await _httpClient.GetAsync(endpoint, ct);
+                using HttpResponseMessage response = await _httpClient.GetAsync(ReleaseListEndpoint, ct);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -84,33 +90,41 @@ namespace VideoForensics.Hosting
                 }
 
                 string content = await response.Content.ReadAsStringAsync(ct);
-                var releaseDto = JsonSerializer.Deserialize<GitHubReleaseDto>(content, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+                var releases = JsonSerializer.Deserialize<List<GitHubReleaseDto>>(content, SerializerOptions);
 
-                if (releaseDto == null)
-                {
-                    return null;
-                }
+                GitHubReleaseDto? match = releases?.FirstOrDefault(r =>
+                    r != null
+                    && !r.Draft
+                    && r.Prerelease == prerelease
+                    && r.TagName.StartsWith('v'));
 
-                var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
-                    ?? new List<GitHubReleaseAsset>();
-
-                // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
-                string? version = await TryFetchVersionAsync(assets, ct) ?? TryParseVersionFromAssetNames(assets);
-
-                return new GitHubReleaseInfo(
-                    releaseDto.TagName,
-                    releaseDto.HtmlUrl,
-                    releaseDto.Draft,
-                    releaseDto.Prerelease,
-                    assets,
-                    version
-                );
+                return match == null ? null : await MapReleaseAsync(match, ct);
             }
             catch
             {
                 // Catch any exception (JSON parse errors, network errors, etc.) and return null rather than propagating.
                 return null;
             }
+        }
+
+        private static readonly JsonSerializerOptions SerializerOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+        private async Task<GitHubReleaseInfo> MapReleaseAsync(GitHubReleaseDto releaseDto, CancellationToken ct)
+        {
+            var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
+                ?? new List<GitHubReleaseAsset>();
+
+            // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
+            string? version = await TryFetchVersionAsync(assets, ct) ?? TryParseVersionFromAssetNames(assets);
+
+            return new GitHubReleaseInfo(
+                releaseDto.TagName,
+                releaseDto.HtmlUrl,
+                releaseDto.Draft,
+                releaseDto.Prerelease,
+                assets,
+                version
+            );
         }
 
         /// <summary>

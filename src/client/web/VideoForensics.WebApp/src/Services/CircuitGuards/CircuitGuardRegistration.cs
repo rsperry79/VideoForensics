@@ -24,7 +24,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IReleaseChannelService>((inner, sp) => new GuardedReleaseChannelService(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<ISecurityAuditLogger>()));
+            services.DecorateScoped<IReleaseChannelService>((inner, sp) => new GuardedReleaseChannelService(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<ISecurityAuditLogger>(), sp.GetRequiredService<SessionNetworkContext>()));
             services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));

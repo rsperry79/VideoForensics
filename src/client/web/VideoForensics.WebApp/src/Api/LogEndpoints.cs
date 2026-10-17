@@ -24,7 +24,7 @@ namespace VideoForensics.WebApp.Api
 
     /// <summary>
     /// Server log viewer API endpoints: history query and live streaming for SuperAdmin users on local tier.
-    /// Requires SuperAdminLocal authorization + step-up token validation.
+    /// Requires SuperAdmin (Local for password sign-in; passkey from any tier) + step-up token validation.
     /// </summary>
     public static class LogEndpoints
     {
@@ -36,7 +36,7 @@ namespace VideoForensics.WebApp.Api
 
         public static void MapLogEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/logs").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/logs").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             // Read-only: no passkey step-up. Step-up is reserved for destructive or system changes.
             _ = group.MapGet("/", GetLogsAsync).WithName("GetLogs");

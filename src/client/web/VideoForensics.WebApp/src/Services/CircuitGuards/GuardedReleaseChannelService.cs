@@ -7,12 +7,13 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards release-channel changes. Matches PUT /api/v1/release-channel, which requires SuperAdminLocal; reading stays open.
-    /// A successful change is audited like the endpoint does; a circuit has no HttpContext, so the source IP is null.
+    /// A successful change is audited like the endpoint does; a circuit has no HttpContext, so the source IP is the one captured at circuit start.
     /// </summary>
     public sealed class GuardedReleaseChannelService(
         IReleaseChannelService inner,
         ICircuitOperatorGate gate,
-        ISecurityAuditLogger auditLog) : IReleaseChannelService
+        ISecurityAuditLogger auditLog,
+        SessionNetworkContext network) : IReleaseChannelService
     {
         /// <inheritdoc />
         public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default) =>
@@ -29,7 +30,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             UpdateReleaseChannel oldChannel = await inner.GetReleaseChannelAsync(cancellationToken);
             UpdateReleaseChannel saved = await inner.SetReleaseChannelAsync(channel, cancellationToken);
 
-            await auditLog.LogAsync(SecurityAuditEventTypes.ReleaseChannelChanged, gate.OperatorId, null, null,
+            await auditLog.LogAsync(SecurityAuditEventTypes.ReleaseChannelChanged, gate.OperatorId, null, network.ClientIp,
                 $"Release channel changed from '{oldChannel}' to '{channel}'", isUrgent: true, cancellationToken);
 
             return saved;

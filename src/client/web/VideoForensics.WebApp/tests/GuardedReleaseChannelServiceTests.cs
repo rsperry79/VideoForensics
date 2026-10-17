@@ -1,8 +1,11 @@
 namespace VideoForensics.WebApp.Tests;
 
+using Microsoft.AspNetCore.Http;
 using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
+using VideoForensics.WebApp.Services;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.WebApp.Contracts;
 using VideoForensics.WebApp.Services.CircuitGuards;
@@ -17,7 +20,45 @@ public class GuardedReleaseChannelServiceTests
         Mock<IReleaseChannelService> Inner,
         Mock<ISecurityAuditLogger> Audit);
 
-    private static Fixture Create(bool allowed)
+    private static SessionNetworkContext NetworkWithIp(string? ip)
+    {
+        var network = new SessionNetworkContext();
+        if (ip is not null)
+        {
+            var httpContext = new DefaultHttpContext();
+            var resolver = new Mock<INetworkTierResolver>();
+            resolver.Setup(r => r.ResolveClientIp(httpContext)).Returns(ip);
+            network.CaptureFromInitialConnection(httpContext, resolver.Object);
+        }
+
+        return network;
+    }
+
+    [Fact]
+    public async Task GuardedReleaseChannelService_Set_Allowed_AuditsCapturedClientIp()
+    {
+        var f = Create(allowed: true, NetworkWithIp("203.0.113.7"));
+
+        await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
+
+        f.Audit.Verify(a => a.LogAsync(
+            SecurityAuditEventTypes.ReleaseChannelChanged, ActingOperatorId, null, "203.0.113.7",
+            It.IsAny<string?>(), true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GuardedReleaseChannelService_Set_Allowed_NoCapturedIp_AuditsNullIp()
+    {
+        var f = Create(allowed: true, NetworkWithIp(null));
+
+        await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
+
+        f.Audit.Verify(a => a.LogAsync(
+            SecurityAuditEventTypes.ReleaseChannelChanged, ActingOperatorId, null, null,
+            It.IsAny<string?>(), true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static Fixture Create(bool allowed, SessionNetworkContext? network = null)
     {
         var inner = new Mock<IReleaseChannelService>();
         inner.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UpdateReleaseChannel.Stable);
@@ -28,7 +69,7 @@ public class GuardedReleaseChannelServiceTests
         gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("denied");
         gate.SetupGet(g => g.OperatorId).Returns(ActingOperatorId);
         var audit = new Mock<ISecurityAuditLogger>();
-        return new Fixture(new GuardedReleaseChannelService(inner.Object, gate.Object, audit.Object), inner, audit);
+        return new Fixture(new GuardedReleaseChannelService(inner.Object, gate.Object, audit.Object, network ?? new SessionNetworkContext()), inner, audit);
     }
 
     [Fact]
