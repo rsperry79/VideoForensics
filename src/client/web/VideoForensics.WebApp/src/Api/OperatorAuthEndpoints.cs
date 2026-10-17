@@ -125,13 +125,17 @@ namespace VideoForensics.WebApp.Api
             // The UI reads these to hide Local-only and passkey-only pages; the policies remain the enforcement.
             string? tierClaim = user.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
             bool localTier = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
-            bool passkeySession = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value == "OperatorPasskey";
+            string? credentialKind = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value;
+            bool passkeySession = credentialKind == "OperatorPasskey";
+            // Password sessions re-enter their password for step-up; the client needs this to pick the prompt.
+            bool passwordSession = credentialKind == "Password";
 
             return Results.Ok(new
             {
                 passkeySetupOnly = user.HasClaim(VideoForensicsClaimTypes.PasskeySetupOnly, "true"),
                 localTier,
                 passkeySession,
+                passwordSession,
             });
         }
 

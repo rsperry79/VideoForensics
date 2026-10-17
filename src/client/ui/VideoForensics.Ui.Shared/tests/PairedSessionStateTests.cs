@@ -21,6 +21,26 @@ public class PairedSessionStateTests : BunitContext
     }
 
     [Fact]
+    public async Task PairedSessionState_PasswordSessionKind_ExposesIsPasswordSessionAndResetsOnNewSession()
+    {
+        // Arrange
+        var state = new PairedSessionState(JSInterop.JSRuntime);
+
+        // Act - the server reports a password session
+        state.SetServerSessionKind(localTier: true, passkeySession: false, passwordSession: true);
+
+        // Assert
+        Assert.True(state.IsPasswordSession);
+        Assert.False(state.IsPasskeySession);
+
+        // Act - a new sign-in clears the answer until the server reports it again
+        await state.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
+
+        // Assert
+        Assert.False(state.IsPasswordSession);
+    }
+
+    [Fact]
     public async Task PairedSessionState_SetAsyncWithPasskeySetupOnly_PersistsFlag()
     {
         // Arrange

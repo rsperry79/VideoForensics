@@ -65,6 +65,12 @@ namespace VideoForensics.Ui.Shared.Services
         public virtual bool IsPasskeySession { get; private set; }
 
         /// <summary>
+        /// True when the server reports the session was established with a password login. Such a session confirms
+        /// destructive changes by re-entering its password, not with a passkey. In-memory only, as <see cref="IsPasskeySession"/>.
+        /// </summary>
+        public virtual bool IsPasswordSession { get; private set; }
+
+        /// <summary>
         /// True once the server has reported the tier and credential kind for the current session. False after sign-in
         /// until the next check, so page guards keep Local-only pages closed rather than trusting a stale answer.
         /// </summary>
@@ -191,7 +197,7 @@ namespace VideoForensics.Ui.Shared.Services
                 }
 
                 serverPasskeySetupOnly = kind.PasskeySetupOnly;
-                SetServerSessionKind(kind.LocalTier, kind.PasskeySession);
+                SetServerSessionKind(kind.LocalTier, kind.PasskeySession, kind.PasswordSession);
             }
             catch (Exception)
             {
@@ -213,9 +219,9 @@ namespace VideoForensics.Ui.Shared.Services
         /// Records the tier and credential kind the server reported for this session. Public so hosts and tests can
         /// seed it; marks the answer as known and notifies listeners.
         /// </summary>
-        public void SetServerSessionKind(bool localTier, bool passkeySession)
+        public void SetServerSessionKind(bool localTier, bool passkeySession, bool passwordSession = false)
         {
-            ApplyServerSessionKind(localTier, passkeySession, known: true);
+            ApplyServerSessionKind(localTier, passkeySession, known: true, passwordSession);
         }
 
         public async Task SetAsync(string sessionToken, Guid operatorId, string role, bool mustChangePassword = false, bool passkeySetupOnly = false)
@@ -256,10 +262,11 @@ namespace VideoForensics.Ui.Shared.Services
             AuthenticationExpired?.Invoke();
         }
 
-        private void ApplyServerSessionKind(bool localTier, bool passkeySession, bool known)
+        private void ApplyServerSessionKind(bool localTier, bool passkeySession, bool known, bool passwordSession = false)
         {
             IsLocalTier = localTier;
             IsPasskeySession = passkeySession;
+            IsPasswordSession = passwordSession;
             ServerKindKnown = known;
             ServerKindChanged?.Invoke();
         }
@@ -283,6 +290,6 @@ namespace VideoForensics.Ui.Shared.Services
         private record StoredSession(string SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool PasskeySetupOnly = false);
 
         // Response of GET /api/v1/auth/session-kind. Tier and passkey default to false so an older server that omits them fails closed.
-        private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false);
+        private sealed record SessionKindResponse(bool PasskeySetupOnly, bool LocalTier = false, bool PasskeySession = false, bool PasswordSession = false);
     }
 }

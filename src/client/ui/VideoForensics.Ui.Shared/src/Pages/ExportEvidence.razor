@@ -4,6 +4,7 @@
 @inject PairedSessionState SessionState
 @inject IEvidenceExportService EvidenceExportService
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
 @inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
@@ -131,7 +132,7 @@ else
             string stepUpToken;
             try
             {
-                stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
+                stepUpToken = await StepUp.GetStepUpTokenAsync();
             }
             catch (Exception)
             {

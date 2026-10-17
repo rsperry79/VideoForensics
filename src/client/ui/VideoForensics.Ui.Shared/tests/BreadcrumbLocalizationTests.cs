@@ -28,6 +28,7 @@ public class BreadcrumbLocalizationTests : BunitContext
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         Services.AddScoped(_ => new PairedSessionState(JSInterop.JSRuntime));
         Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
         Services.AddScoped(_ => new Mock<IAdminOperatorService>().Object);
         Services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         Services.AddScoped(_ => new Mock<ISelfApiHttpClientFactory>().Object);

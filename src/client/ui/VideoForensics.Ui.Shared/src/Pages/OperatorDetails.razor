@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject IStringLocalizer<OperatorDetails> L
 @inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
 @inject VideoForensics.Client.Common.Contracts.IAdminOperatorService AdminOperatorService
@@ -372,7 +373,7 @@ else
         {
             // Revocation is high-risk (plan §5.7) - a fresh passkey assertion is required at the
             // moment of the action, not just an already-open session.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
@@ -406,7 +407,7 @@ else
         {
             // Approval is high-risk (plan §5.7) - a fresh passkey assertion is required at the
             // moment of the action, not just an already-open session.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
@@ -468,7 +469,7 @@ else
         {
             // Password reset is high-risk (plan §5.7) - a fresh passkey assertion is required at the
             // moment of the action, not just an already-open session.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
@@ -506,7 +507,7 @@ else
         try
         {
             // Changing the 2FA override is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
             var payload = new { Override = newOverride };
@@ -556,7 +557,7 @@ else
         try
         {
             // Unlock is high-risk (plan §5.7) - a fresh passkey assertion is required
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);

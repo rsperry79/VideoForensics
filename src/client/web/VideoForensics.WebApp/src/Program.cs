@@ -363,6 +363,7 @@ builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
 // to the pairing/auth API in Api/PairingEndpoints.cs.
 builder.Services.AddScoped<PairedSessionState>();
 builder.Services.AddScoped<WebAuthnClient>();
+builder.Services.AddScoped<StepUpService>();
 builder.Services.AddScoped<IMediaContentUrlProvider, LocalMediaContentUrlProvider>();
 
 // This circuit's real network tier (plan §5.10/§5.12), captured once from the browser's actual

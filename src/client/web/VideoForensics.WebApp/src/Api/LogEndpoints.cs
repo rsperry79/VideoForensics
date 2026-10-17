@@ -38,8 +38,9 @@ namespace VideoForensics.WebApp.Api
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/logs").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
-            _ = group.MapGet("/", GetLogsAsync).WithName("GetLogs").AddEndpointFilter<StepUpEndpointFilter>();
-            _ = group.MapGet("/stream", StreamLogsAsync).WithName("StreamLogs").AddEndpointFilter<StepUpEndpointFilter>();
+            // Read-only: no passkey step-up. Step-up is reserved for destructive or system changes.
+            _ = group.MapGet("/", GetLogsAsync).WithName("GetLogs");
+            _ = group.MapGet("/stream", StreamLogsAsync).WithName("StreamLogs");
         }
 
         /// <summary>

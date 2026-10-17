@@ -133,12 +133,14 @@ public sealed class ManualTimeProvider : TimeProvider
 public sealed class FakeLogViewerService : ILogViewerService
 {
     private readonly object _gate = new();
-    private readonly List<(LogQuery Query, string Token)> _pageCalls = new();
+    private readonly List<PageCall> _pageCalls = new();
     private readonly List<StreamCall> _streamCalls = new();
 
-    public Func<int, LogQuery, string, LogPage> OnGetPage { get; set; } = (_, _, _) => new LogPage(Array.Empty<LogEntry>(), 0, false);
+    public sealed record PageCall(LogQuery Query);
 
-    public IReadOnlyList<(LogQuery Query, string Token)> PageCalls
+    public Func<int, LogQuery, CancellationToken, LogPage> OnGetPage { get; set; } = (_, _, _) => new LogPage(Array.Empty<LogEntry>(), 0, false);
+
+    public IReadOnlyList<PageCall> PageCalls
     {
         get { lock (_gate) { return _pageCalls.ToList(); } }
     }
@@ -148,18 +150,18 @@ public sealed class FakeLogViewerService : ILogViewerService
         get { lock (_gate) { return _streamCalls.ToList(); } }
     }
 
-    public Task<LogPage> GetPageAsync(LogQuery query, string stepUpToken, CancellationToken ct)
+    public Task<LogPage> GetPageAsync(LogQuery query, CancellationToken ct)
     {
         int index;
         lock (_gate)
         {
             index = _pageCalls.Count;
-            _pageCalls.Add((query, stepUpToken));
+            _pageCalls.Add(new PageCall(query));
         }
 
         try
         {
-            return Task.FromResult(OnGetPage(index, query, stepUpToken));
+            return Task.FromResult(OnGetPage(index, query, ct));
         }
         catch (Exception ex)
         {
@@ -167,9 +169,9 @@ public sealed class FakeLogViewerService : ILogViewerService
         }
     }
 
-    public IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, string stepUpToken, CancellationToken ct)
+    public IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, CancellationToken ct)
     {
-        var call = new StreamCall(query, stepUpToken);
+        var call = new StreamCall(query);
         ct.Register(() => call.Cancelled = true);
         lock (_gate)
         {
@@ -181,14 +183,12 @@ public sealed class FakeLogViewerService : ILogViewerService
 
     public sealed class StreamCall
     {
-        public StreamCall(LogQuery query, string token)
+        public StreamCall(LogQuery query)
         {
             Query = query;
-            Token = token;
         }
 
         public LogQuery Query { get; }
-        public string Token { get; }
         public Channel<LogEntry> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<LogEntry>();
         public volatile bool Cancelled;
 
@@ -209,8 +209,6 @@ public abstract class ServerLogsPageTestBase : BunitContext
     protected static readonly TimeSpan RenderDelay = TimeSpan.FromMilliseconds(100);
     protected static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
 
-    private int _stepUpCount;
-
     protected ServerLogsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -221,34 +219,12 @@ public abstract class ServerLogsPageTestBase : BunitContext
         Services.AddSingleton<ILogViewerService>(Logs);
         Services.AddSingleton<TimeProvider>(Time);
 
-        WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
-        WebAuthn
-            .Setup(w => w.StepUpAsync(It.IsAny<string>()))
-            .Returns(() =>
-            {
-                int n = Interlocked.Increment(ref _stepUpCount);
-                if (PendingStepUp is not null)
-                {
-                    return PendingStepUp.Task;
-                }
-
-                return StepUpFailures.TryDequeue(out Exception? failure)
-                    ? Task.FromException<string>(failure)
-                    : Task.FromResult($"tok-{n}");
-            });
-        Services.AddScoped(_ => WebAuthn.Object);
-
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     protected FakeLogViewerService Logs { get; } = new();
     protected ManualTimeProvider Time { get; } = new();
-    protected Mock<WebAuthnClient> WebAuthn { get; }
     protected BunitJSModuleInterop Module { get; }
-    protected Queue<Exception> StepUpFailures { get; } = new();
-
-    /// <summary>When set, the step-up stays pending until the test completes it, as while the passkey prompt is open.</summary>
-    protected TaskCompletionSource<string>? PendingStepUp { get; set; }
 
     protected async Task SignInSuperAdminAsync()
     {
@@ -334,7 +310,6 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         Assert.Equal("Information", query.MinLevel);
         Assert.Null(query.Search);
         Assert.Null(query.AfterSequence);
-        Assert.Equal("tok-1", Logs.PageCalls[0].Token);
     }
 
     [Fact]
@@ -347,76 +322,29 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Assert.Equal(10, Logs.StreamCalls[0].Query.AfterSequence);
         Assert.Equal("Information", Logs.StreamCalls[0].Query.MinLevel);
-        Assert.Equal("tok-1", Logs.StreamCalls[0].Token);
     }
 
     [Fact]
-    public async Task ServerLogsPage_StepUpCancelled_ShowsMessageAndDoesNotCallService()
+    public async Task ServerLogsPage_SignedIn_LoadsWithoutPasskeyChallenge()
     {
-        StepUpFailures.Enqueue(new InvalidOperationException("user cancelled"));
-
-        var page = await RenderSignedInAsync();
-
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-stepup-error']")));
-        Assert.Contains("user cancelled", page.Find("[data-testid='logs-stepup-error']").TextContent);
-        Assert.Empty(Logs.PageCalls);
-        Assert.Empty(Logs.StreamCalls);
-        // Unverified: the status badge stays hidden so no log state is shown without a passkey.
-        Assert.Empty(page.FindAll("[data-testid='logs-status']"));
-    }
-
-    [Fact]
-    public async Task ServerLogsPage_StepUpCancelled_TryAgainStepsUpAgainAndLoads()
-    {
-        StepUpFailures.Enqueue(new InvalidOperationException("user cancelled"));
-        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "after retry"));
-        var page = await RenderSignedInAsync();
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-retry']")));
-
-        page.Find("[data-testid='logs-retry']").Click();
-
-        page.WaitForAssertion(() => Assert.Contains("after retry", page.Markup));
-        Assert.Empty(page.FindAll("[data-testid='logs-stepup-error']"));
-        Assert.Equal("tok-2", Assert.Single(Logs.PageCalls).Token);
-    }
-
-    [Fact]
-    public async Task ServerLogsPage_BeforeStepUpCompletes_HidesLogBodyAndStatus()
-    {
-        PendingStepUp = new TaskCompletionSource<string>();
-        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "secret entry"));
-
-        var page = await RenderSignedInAsync();
-
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-verifying']")));
-        Assert.Empty(page.FindAll("[data-testid='logs-viewport']"));
-        Assert.Empty(page.FindAll("[data-testid='logs-status']"));
-        Assert.DoesNotContain("secret entry", page.Markup);
-        Assert.Empty(Logs.PageCalls);
-    }
-
-    [Fact]
-    public async Task ServerLogsPage_AfterStepUpCompletes_ShowsLogBody()
-    {
-        PendingStepUp = new TaskCompletionSource<string>();
+        // Logs are read-only: the page loads straight away, with no step-up prompt and no verifying state.
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "visible entry"));
+
         var page = await RenderSignedInAsync();
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-verifying']")));
 
-        PendingStepUp.SetResult("tok-1");
-
-        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-viewport']")));
+        page.WaitForAssertion(() => Assert.Contains("visible entry", page.Markup));
+        Assert.NotEmpty(page.FindAll("[data-testid='logs-viewport']"));
         Assert.Empty(page.FindAll("[data-testid='logs-verifying']"));
+        Assert.Single(Logs.PageCalls);
     }
 
     [Fact]
-    public async Task ServerLogsPage_SignedOut_DoesNotStepUpOrCallService()
+    public async Task ServerLogsPage_SignedOut_DoesNotCallService()
     {
         var page = Render<ServerLogs>();
 
         await Task.Delay(100);
         Assert.Empty(Logs.PageCalls);
-        WebAuthn.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Never);
         Assert.Empty(page.FindAll("[data-testid='log-row']"));
     }
 
@@ -557,8 +485,6 @@ public class ServerLogsPageFilterTests : ServerLogsPageTestBase
         Assert.Equal("Error", Logs.StreamCalls[1].Query.MinLevel);
         Assert.Equal(9, Logs.StreamCalls[1].Query.AfterSequence);
         Assert.True(Logs.StreamCalls[0].Cancelled);
-        // The cached token is reused; changing a filter does not prompt for step-up again.
-        Assert.Equal("tok-1", Logs.PageCalls[1].Token);
         page.WaitForAssertion(() => Assert.Equal(new long[] { 9 }, RowSequences(page)));
     }
 
@@ -659,48 +585,30 @@ public class ServerLogsPagePauseTests : ServerLogsPageTestBase
 public class ServerLogsPageErrorTests : ServerLogsPageTestBase
 {
     [Fact]
-    public async Task ServerLogsPage_Unauthorized_StepsUpAgainExactlyOnceThenShowsAccessDenied()
+    public async Task ServerLogsPage_Forbidden_ShowsAccessDeniedWithoutRetry()
     {
         Logs.OnGetPage = (_, _, _) => throw new HttpRequestException("denied", null, HttpStatusCode.Forbidden);
 
         var page = await RenderSignedInAsync();
 
         page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-denied']")));
-        WebAuthn.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Exactly(2));
-        Assert.Equal(2, Logs.PageCalls.Count);
-        Assert.Equal("tok-1", Logs.PageCalls[0].Token);
-        Assert.Equal("tok-2", Logs.PageCalls[1].Token);
+        Assert.Single(Logs.PageCalls);
         Assert.Empty(Logs.StreamCalls);
         Assert.Equal("disconnected", Status(page));
     }
 
     [Fact]
-    public async Task ServerLogsPage_UnauthorizedOnce_ReStepsUpAndRecovers()
-    {
-        Logs.OnGetPage = (i, _, _) => i == 0
-            ? throw new HttpRequestException("expired", null, HttpStatusCode.Unauthorized)
-            : PageOf(1, Entry(1, message: "recovered"));
-
-        var page = await RenderSignedInAsync();
-
-        page.WaitForAssertion(() => Assert.Contains("recovered", page.Markup));
-        Assert.Equal("tok-2", Logs.PageCalls[1].Token);
-        Assert.Empty(page.FindAll("[data-testid='logs-denied']"));
-    }
-
-    [Fact]
-    public async Task ServerLogsPage_StreamUnauthorized_ReStepsUpThenReconnectsWithNewToken()
+    public async Task ServerLogsPage_StreamForbidden_ShowsAccessDeniedWithoutReconnect()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(5, Entry(5));
         var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
-        Logs.StreamCalls[0].Fail(new HttpRequestException("expired", null, HttpStatusCode.Unauthorized));
+        Logs.StreamCalls[0].Fail(new HttpRequestException("denied", null, HttpStatusCode.Forbidden));
 
-        await UntilAsync(() => Logs.StreamCalls.Count == 2, "stream reconnect");
-        Assert.Equal("tok-2", Logs.StreamCalls[1].Token);
-        Assert.Equal(5, Logs.StreamCalls[1].Query.AfterSequence);
-        Assert.Empty(page.FindAll("[data-testid='logs-denied']"));
+        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-denied']")));
+        Assert.Single(Logs.StreamCalls);
+        Assert.Equal("disconnected", Status(page));
     }
 
     [Fact]
@@ -719,7 +627,6 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
         await Time.FireAsync(TimeSpan.FromSeconds(1));
         await UntilAsync(() => Logs.StreamCalls.Count == 2, "reconnect");
         Assert.Equal(12, Logs.StreamCalls[1].Query.AfterSequence);
-        Assert.Equal("tok-1", Logs.StreamCalls[1].Token);
         Assert.Single(Logs.PageCalls);
 
         // A reconnect that fails immediately doubles the wait: 1s, 2s, ...
@@ -749,7 +656,7 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
     }
 
     [Fact]
-    public async Task ServerLogsPage_GetPageTransientError_RetriesWithBackoffWithoutNewStepUp()
+    public async Task ServerLogsPage_GetPageTransientError_RetriesWithBackoff()
     {
         Logs.OnGetPage = (i, _, _) => i == 0
             ? throw new HttpRequestException("down", null, HttpStatusCode.ServiceUnavailable)
@@ -761,7 +668,7 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
         await Time.FireAsync(TimeSpan.FromSeconds(1));
 
         page.WaitForAssertion(() => Assert.Contains("finally", page.Markup));
-        WebAuthn.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Once);
+        Assert.Equal(2, Logs.PageCalls.Count);
     }
 }
 

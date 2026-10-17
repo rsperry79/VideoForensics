@@ -1,7 +1,10 @@
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components
 @using VideoForensics.Ui.Shared.Layout
 @using VideoForensics.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
+
+<StepUpPasswordDialog />
 
 <Router AppAssembly="typeof(Layout.MainLayout).Assembly">
     <Found Context="routeData">

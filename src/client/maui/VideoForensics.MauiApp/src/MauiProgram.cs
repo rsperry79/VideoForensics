@@ -155,6 +155,7 @@ namespace VideoForensics.MauiApp
             // individual Security*/Pair/NetworkSettings/DeviceSignIn pages that share this UI project.
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.PairedSessionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
 
             // Pages/Security*.razor's self-API calls (plan §5.10/§5.12) - MAUI has no self-call
             // network-tier concern (it always talks to a remote/LAN server, never itself), so it gets

@@ -1736,6 +1736,8 @@ namespace VideoForensics.WebApp.Tests
             using JsonDocument document = JsonDocument.Parse(body);
             _ = document.RootElement.GetProperty("localTier").GetBoolean();
             Assert.False(document.RootElement.GetProperty("passkeySession").GetBoolean());
+            // A password login is the only session that re-enters a password for step-up.
+            Assert.True(document.RootElement.GetProperty("passwordSession").GetBoolean());
         }
 
         [Fact]

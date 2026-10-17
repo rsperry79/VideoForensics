@@ -5,6 +5,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject IJSRuntime JS
 @inject IStringLocalizer<MyPasskeys> L
 
@@ -110,7 +111,6 @@ else
                             @if (_pendingRevokeCredentialId == cred.Id)
                             {
                                 <div class="d-flex flex-row gap-2 align-items-center mt-2">
-                                    <SfTextBox @bind-Value="_passwordInput" PlaceHolder="@L["PasswordPlaceholder"].Value" Type="Syncfusion.Blazor.Inputs.InputType.Password" Style="max-width: 200px;" CssClass="form-control" />
                                     <SfButton Content="@L["ConfirmButton"]" OnClick="() => ConfirmRevoke(cred.Id)" CssClass="e-danger" />
                                     <SfButton Content="@L["CancelButton"]" OnClick="CancelRevoke" CssClass="e-flat" />
                                 </div>
@@ -142,7 +142,6 @@ else
     private string? _addError;
     private bool _addSuccess;
     private string _labelInput = string.Empty;
-    private string _passwordInput = string.Empty;
     private Guid? _pendingRevokeCredentialId;
     private bool _isAdding;
     // Set when a setup-session passkey was added but is still awaiting admin approval.
@@ -292,19 +291,17 @@ else
     private void BeginRevoke(Guid credentialId)
     {
         _pendingRevokeCredentialId = credentialId;
-        _passwordInput = string.Empty;
         _revokeError = null;
     }
 
     private void CancelRevoke()
     {
         _pendingRevokeCredentialId = null;
-        _passwordInput = string.Empty;
     }
 
     private async Task ConfirmRevoke(Guid credentialId)
     {
-        if (string.IsNullOrWhiteSpace(_passwordInput) || SessionState.SessionToken is null)
+        if (SessionState.SessionToken is null)
         {
             return;
         }
@@ -312,8 +309,8 @@ else
         _revokeError = null;
         try
         {
-            // Step-up via password since this page is for operators who may not have approved passkeys yet
-            var stepUpToken = await WebAuthn.StepUpWithPasswordAsync(SessionState.SessionToken, _passwordInput);
+            // Passkey sessions confirm with a passkey; password sessions re-enter their password (StepUpService decides).
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);

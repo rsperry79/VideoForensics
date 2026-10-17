@@ -39,6 +39,7 @@ public class OperatorDetailsAdminViewTests : BunitContext
 
         Services.AddScoped(_ => _admin.Object);
         Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
         _session = new PairedSessionState(JSInterop.JSRuntime);
         Services.AddScoped(_ => _session);
         // Singleton factory (not an instance) so the BunitContext service provider disposes the listener at teardown.
