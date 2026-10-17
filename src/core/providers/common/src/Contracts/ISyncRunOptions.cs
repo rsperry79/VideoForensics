@@ -29,6 +29,9 @@ namespace VideoForensics.Core.Providers.Common.Contracts
 
         /// <summary>From <see cref="SyncRunOptions.StartUtc"/> to <see cref="SyncRunOptions.EndUtc"/>.</summary>
         Custom,
+
+        /// <summary>The provider's whole retained history, up to the one-year initial-backfill horizon.</summary>
+        All,
     }
 
     /// <summary>
@@ -40,12 +43,14 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="Days">Days back from now. Used when <paramref name="RangeKind"/> is Days.</param>
     /// <param name="StartUtc">Window start. Null leaves the provider's default (full history) in place.</param>
     /// <param name="EndUtc">Window end. Null means now.</param>
+    /// <param name="IncludeSnapshots">True when a Default-kind sync should also fetch snapshots after the pull (the "All" sync type). Ignored by other kinds.</param>
     public sealed record SyncRunOptions(
         SyncRunKind Kind = SyncRunKind.Default,
         SyncRangeKind RangeKind = SyncRangeKind.SinceLast,
         int? Days = null,
         DateTime? StartUtc = null,
-        DateTime? EndUtc = null);
+        DateTime? EndUtc = null,
+        bool IncludeSnapshots = false);
 
     /// <summary>
     /// The options of the sync running in this DI scope. Scoped, like <see cref="ISyncRunTally"/>: the runner sets it before

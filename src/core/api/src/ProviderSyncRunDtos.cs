@@ -15,6 +15,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="FeedsFailed">Feed-level failures; null for rows with no recorded counts.</param>
     /// <param name="EventsNotPulled">Matched events whose media was not pulled; null for rows with no recorded counts.</param>
     /// <param name="EventsAlreadyPresent">The part of EventsSynced already on disk from an earlier run; null for rows with no recorded counts.</param>
+    /// <param name="SnapshotsSynced">Snapshots saved by the run; null when snapshots were not part of it.</param>
     public record ProviderSyncRunSummaryDto(
         Guid Id,
         DateTime StartedUtc,
@@ -27,7 +28,8 @@ namespace VideoForensics.Core.Api.Contracts
         int? ConfigAreasSynced = null,
         int? FeedsFailed = null,
         int? EventsNotPulled = null,
-        int? EventsAlreadyPresent = null
+        int? EventsAlreadyPresent = null,
+        int? SnapshotsSynced = null
     );
 
     /// <summary>
@@ -47,6 +49,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="FeedsFailed">Feed-level failures; null for rows with no recorded counts.</param>
     /// <param name="EventsNotPulled">Matched events whose media was not pulled; null for rows with no recorded counts.</param>
     /// <param name="EventsAlreadyPresent">The part of EventsSynced already on disk from an earlier run; null for rows with no recorded counts.</param>
+    /// <param name="SnapshotsSynced">Snapshots saved by the run; null when snapshots were not part of it.</param>
     public record ProviderSyncRunDetailDto(
         Guid Id,
         Guid ProviderAccountId,
@@ -61,7 +64,8 @@ namespace VideoForensics.Core.Api.Contracts
         int? ConfigAreasSynced = null,
         int? FeedsFailed = null,
         int? EventsNotPulled = null,
-        int? EventsAlreadyPresent = null
+        int? EventsAlreadyPresent = null,
+        int? SnapshotsSynced = null
     );
 
     /// <summary>Extension methods for mapping ProviderSyncRun entities to sync run DTOs.</summary>
@@ -88,7 +92,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ConfigAreasSynced: entity.ConfigAreasSynced,
                 FeedsFailed: entity.FeedsFailed,
                 EventsNotPulled: entity.EventsNotPulled,
-                EventsAlreadyPresent: entity.EventsAlreadyPresent);
+                EventsAlreadyPresent: entity.EventsAlreadyPresent,
+                SnapshotsSynced: entity.SnapshotsSynced);
         }
 
         /// <summary>
@@ -111,7 +116,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ConfigAreasSynced: entity.ConfigAreasSynced,
                 FeedsFailed: entity.FeedsFailed,
                 EventsNotPulled: entity.EventsNotPulled,
-                EventsAlreadyPresent: entity.EventsAlreadyPresent);
+                EventsAlreadyPresent: entity.EventsAlreadyPresent,
+                SnapshotsSynced: entity.SnapshotsSynced);
         }
     }
 }

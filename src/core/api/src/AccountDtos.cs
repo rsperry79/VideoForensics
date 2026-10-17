@@ -202,8 +202,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// Request body for POST /api/v1/accounts/provider-accounts/{id}/sync-now. A missing body runs the legacy sync.
     /// Null fields default to SyncType "Events" and RangeKind "SinceLast".
     /// </summary>
-    /// <param name="SyncType">"Config", "Snapshots" or "Events".</param>
-    /// <param name="RangeKind">"SinceLast", "Days" or "Custom".</param>
+    /// <param name="SyncType">"All" (events and snapshots), "Config", "Snapshots" or "Events".</param>
+    /// <param name="RangeKind">"SinceLast", "Days", "Custom" or "All" (the provider's retained history).</param>
     /// <param name="Days">Days back from now, 1 to 3650. Required when RangeKind is "Days".</param>
     /// <param name="StartUtc">Range start, required for "Custom". Must be before EndUtc.</param>
     /// <param name="EndUtc">Range end, required for "Custom".</param>

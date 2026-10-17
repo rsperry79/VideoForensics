@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Hosting.Tests
@@ -40,6 +41,27 @@ namespace VideoForensics.Hosting.Tests
             // Account settings (profile, ringtones, light groups, location mode) are persisted during sync.
             object? settingsPersister = GetPrivateField(discovery, "_settingsPersister");
             Assert.IsType<VideoForensics.Providers.Ring.Services.RingAccountSettingsPersister>(settingsPersister);
+        }
+
+        [Fact]
+        public void AddVideoForensicsMultiProviderServices_EnabledProviders_RegistersKeyedEventPullServicePerProvider()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddLogging();
+            _ = services.AddSingleton(new Mock<ISessionProvider>().Object);
+            _ = services.AddVideoForensicsDataLayer(Path.Combine(Path.GetTempPath(), "wiring-test.db"));
+            _ = services.AddVideoForensicsMultiProviderServices(["Ring", "Wyze"]);
+
+            using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = false });
+
+            // The pull must use the provider's own event and discovery services, not whichever registered last.
+            foreach (string name in new[] { "Ring", "Wyze" })
+            {
+                IEventPullService pull = provider.GetRequiredKeyedService<IEventPullService>(name);
+                Assert.Same(provider.GetRequiredKeyedService<IEventAndConfigService>(name), GetPrivateField(pull, "_eventAndConfigService"));
+                Assert.Same(provider.GetRequiredKeyedService<IDeviceDiscoveryService>(name), GetPrivateField(pull, "_deviceDiscovery"));
+                Assert.NotNull(GetPrivateField(pull, "_mediaDownloadService"));
+            }
         }
 
         private static object? GetPrivateField(object instance, string name)

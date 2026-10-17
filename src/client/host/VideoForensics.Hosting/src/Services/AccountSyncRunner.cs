@@ -1,7 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 
 namespace VideoForensics.Hosting.Services
 {
@@ -46,11 +48,20 @@ namespace VideoForensics.Hosting.Services
             account is null ? AccountNotFoundMessage : account.LastErrorMessage;
 
         /// <summary>
-        /// Sync type for a run row. "Full" when the config gate ran, "Events" when only event feeds ran; "Unknown" when
-        /// the run never reached the pull (no totals), so its counts are not a real zero.
+        /// Sync type for a run row. "Snapshots" for a snapshots-only run, "Full" when the config gate ran, "Events" when only
+        /// event feeds ran; "Unknown" when the run never reached the pull (no totals), so its counts are not a real zero.
         /// </summary>
-        internal static string SyncTypeFor(SyncRunTotals? totals) =>
-            totals is null ? "Unknown" : totals.ConfigRan ? "Full" : "Events";
+        internal static string SyncTypeFor(SyncRunTotals? totals, SyncRunKind kind = SyncRunKind.Default) =>
+            totals is null ? "Unknown"
+            : kind == SyncRunKind.Snapshots ? "Snapshots"
+            : totals.ConfigRan ? "Full" : "Events";
+
+        /// <summary>
+        /// True when the sync fetches snapshots after the pull: a Snapshots sync, or an "All" sync (a Default kind that
+        /// asked for snapshots). The legacy and initial syncs never fetch snapshots.
+        /// </summary>
+        internal static bool IncludesSnapshots(SyncRunOptions? options) =>
+            options is { Kind: SyncRunKind.Snapshots } or { Kind: SyncRunKind.Default, IncludeSnapshots: true };
 
         /// <summary>
         /// Writes one completed run row. Success is true only when <paramref name="errorMessage"/> is null.
@@ -63,7 +74,8 @@ namespace VideoForensics.Hosting.Services
             Guid accountId,
             DateTime startedUtc,
             string? errorMessage,
-            SyncRunTotals? totals = null)
+            SyncRunTotals? totals = null,
+            SyncRunKind kind = SyncRunKind.Default)
         {
             try
             {
@@ -79,14 +91,15 @@ namespace VideoForensics.Hosting.Services
                     CompletedUtc = DateTime.UtcNow,
                     Success = errorMessage is null,
                     ErrorMessage = stored,
-                    SyncType = SyncTypeFor(totals),
+                    SyncType = SyncTypeFor(totals, kind),
                     LocationsSynced = totals?.LocationsSynced,
                     DevicesSynced = totals?.DevicesSynced,
                     EventsSynced = totals?.EventsSynced,
                     EventsNotPulled = totals?.EventsNotPulled,
                     EventsAlreadyPresent = totals?.EventsAlreadyPresent,
                     ConfigAreasSynced = totals?.ConfigAreasSynced,
-                    FeedsFailed = totals?.FeedsFailed
+                    FeedsFailed = totals?.FeedsFailed,
+                    SnapshotsSynced = totals?.SnapshotsSynced
                 }, CancellationToken.None);
             }
             catch (Exception ex)
@@ -106,10 +119,15 @@ namespace VideoForensics.Hosting.Services
         private readonly ILogger<AccountSyncRunner> _logger;
         private readonly ISyncRunTally? _syncRunTally;
         private readonly ISyncRunOptions? _syncRunOptions;
+        private readonly IServiceProvider? _services;
+        private readonly ISnapshotSyncService? _snapshotSync;
 
         /// <summary>
         /// Creates the runner. The tally, when registered, supplies the sync type and counts recorded on each run. The options
         /// holder, when registered, receives the sync kind and window before each pull so the providers can read them.
+        /// When <paramref name="services"/> is given, the auth and event pull services are resolved by the account's provider
+        /// name (keyed), with the injected ones as the fallback. A snapshot service, when registered, runs for Snapshots and
+        /// "All" syncs.
         /// </summary>
         public AccountSyncRunner(
             IProviderAuthService authService,
@@ -118,7 +136,9 @@ namespace VideoForensics.Hosting.Services
             IProviderSyncRunRepository syncRuns,
             ILogger<AccountSyncRunner> logger,
             ISyncRunTally? syncRunTally = null,
-            ISyncRunOptions? syncRunOptions = null)
+            ISyncRunOptions? syncRunOptions = null,
+            IServiceProvider? services = null,
+            ISnapshotSyncService? snapshotSync = null)
         {
             _authService = authService;
             _eventPullService = eventPullService;
@@ -127,6 +147,8 @@ namespace VideoForensics.Hosting.Services
             _logger = logger;
             _syncRunTally = syncRunTally;
             _syncRunOptions = syncRunOptions;
+            _services = services;
+            _snapshotSync = snapshotSync;
         }
 
         /// <summary>What a sync attempt produced: the failure message (null on success) and the counts when a pull ran.</summary>
@@ -151,7 +173,7 @@ namespace VideoForensics.Hosting.Services
         /// </summary>
         internal static (DateTime? From, SyncRunOptions Published) ResolveWindow(SyncRunOptions? options, DateTime? lastSuccessUtc, bool fullHistory, DateTime nowUtc)
         {
-            if (fullHistory || options is null || options.Kind == SyncRunKind.Default)
+            if (fullHistory || options is null || (options.Kind == SyncRunKind.Default && !options.IncludeSnapshots))
             {
                 return (fullHistory ? null : lastSuccessUtc, new SyncRunOptions());
             }
@@ -160,7 +182,10 @@ namespace VideoForensics.Hosting.Services
             {
                 SyncRangeKind.Days => nowUtc.AddDays(-(options.Days ?? 0)),
                 SyncRangeKind.Custom => options.StartUtc,
-                _ => lastSuccessUtc ?? nowUtc.AddDays(-30),
+                // The provider's retained history, bounded by the one-year initial-backfill horizon.
+                SyncRangeKind.All => nowUtc.AddYears(-1),
+                // An "All" sync (Default kind) keeps the legacy start; the other kinds look back 30 days when there is no prior sync.
+                _ => options.Kind == SyncRunKind.Default ? lastSuccessUtc : lastSuccessUtc ?? nowUtc.AddDays(-30),
             };
             DateTime? end = options.RangeKind == SyncRangeKind.Custom ? options.EndUtc : null;
             return (start, options with { StartUtc = start, EndUtc = end });
@@ -187,7 +212,7 @@ namespace VideoForensics.Hosting.Services
                 throw;
             }
 
-            await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, outcome.Error, outcome.Totals);
+            await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, outcome.Error, outcome.Totals, options?.Kind ?? SyncRunKind.Default);
         }
 
         /// <summary>
@@ -197,17 +222,24 @@ namespace VideoForensics.Hosting.Services
         private async Task<SyncOutcome> RestoreAndPullAsync(Guid accountId, bool fullHistory, SyncRunOptions? options, CancellationToken cancellationToken)
         {
             // A missing account cannot be restored or pulled, so record that instead of a success.
-            if (await _accounts.GetAsync(accountId, cancellationToken) is null)
+            ProviderAccount? initial = await _accounts.GetAsync(accountId, cancellationToken);
+            if (initial is null)
             {
                 _logger.LogWarning("Sync skipped: provider account not found");
                 return new SyncOutcome(ProviderSyncRunRecorder.AccountNotFoundMessage, null);
             }
 
+            // Provider services are chosen by the account's provider name: the unkeyed service is only whichever provider
+            // registered last, so with several providers it can belong to the wrong one. Same keyed lookup as the snapshot
+            // sync and the scheduled sync; the injected service stays the fallback when none are keyed.
+            IProviderAuthService authService = _services?.GetKeyedService<IProviderAuthService>(initial.ProviderName) ?? _authService;
+            IEventPullService eventPullService = _services?.GetKeyedService<IEventPullService>(initial.ProviderName) ?? _eventPullService;
+
             // Provider sessions are in-memory: after a server restart the account must be restored from its saved
             // credentials before discovery or pulls can reach the provider. A failed restore is recorded, not swallowed.
             try
             {
-                if (!await _authService.RestoreFromSavedCredentialsAsync(accountId, cancellationToken))
+                if (!await authService.RestoreFromSavedCredentialsAsync(accountId, cancellationToken))
                 {
                     await RecordErrorAsync(accountId, ProviderSyncRunRecorder.RestoreFailedMessage, cancellationToken);
                     return new SyncOutcome(ProviderSyncRunRecorder.RestoreFailedMessage, null);
@@ -242,12 +274,25 @@ namespace VideoForensics.Hosting.Services
             }
 
             // The pull records its own failures on the account; it does not throw for them.
-            await _eventPullService.PullAccountEventsAsync(accountId, from, cancellationToken);
+            await eventPullService.PullAccountEventsAsync(accountId, from, cancellationToken);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
-            return new SyncOutcome(
-                ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken)),
-                _syncRunTally?.Snapshot());
+            string? error = ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+            SyncRunTotals? totals = _syncRunTally?.Snapshot();
+
+            if (!ProviderSyncRunRecorder.IncludesSnapshots(options) || _snapshotSync is null)
+            {
+                return new SyncOutcome(error, totals);
+            }
+
+            // Snapshots run even when the pull failed, so one failure never hides the other; errors are joined.
+            // Note Ring fetches a fresh snapshot per device here, and ignores the window.
+            SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, published.StartUtc, published.EndUtc, cancellationToken);
+            string? combined = error is null ? snapshots.ErrorMessage
+                : snapshots.ErrorMessage is null ? error
+                : $"{error}; {snapshots.ErrorMessage}";
+            totals = (totals ?? new SyncRunTotals(false, 0, 0, 0, 0, 0)) with { SnapshotsSynced = snapshots.SnapshotsSaved };
+            return new SyncOutcome(combined, totals);
         }
 
         private async Task RecordErrorAsync(Guid accountId, string message, CancellationToken cancellationToken)

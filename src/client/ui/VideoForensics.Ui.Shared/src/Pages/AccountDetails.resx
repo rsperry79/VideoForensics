@@ -260,4 +260,16 @@
   <data name="SyncTypeSnapshots" xml:space="preserve">
     <value>Snapshots</value>
   </data>
+  <data name="SyncTypeAll" xml:space="preserve">
+    <value>All (events and snapshots)</value>
+  </data>
+  <data name="RangeDays365" xml:space="preserve">
+    <value>Last 365 days</value>
+  </data>
+  <data name="RangeAllHistory" xml:space="preserve">
+    <value>All history</value>
+  </data>
+  <data name="SyncRecordsSnapshots" xml:space="preserve">
+    <value>Snapshots {0}</value>
+  </data>
 </root>

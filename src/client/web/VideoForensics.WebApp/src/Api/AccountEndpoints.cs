@@ -322,7 +322,7 @@ namespace VideoForensics.WebApp.Api
             })
                 .RequireRateLimiting("media")
                 .WithSummary("Queue manual sync of events and device configuration")
-                .WithDescription("Initiates background sync. A body picks the sync type (Config, Snapshots, Events) and the range (SinceLast, Days, Custom); no body runs the legacy sync.");
+                .WithDescription("Initiates background sync. A body picks the sync type (All, Config, Snapshots, Events) and the range (SinceLast, Days, Custom, All); no body runs the legacy sync.");
 
             _ = adminGroup.MapGet("/provider-accounts/{id:guid}/config-sync-interval", async (
                 Guid id,
@@ -377,20 +377,33 @@ namespace VideoForensics.WebApp.Api
             }
 
             SyncRunKind kind;
+            bool includeSnapshots = false;
             string syncType = request.SyncType ?? "Events";
             if (string.Equals(syncType, "Events", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Events;
+            else if (string.Equals(syncType, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                // "All" is the Default kind (config under its gate, then events) plus a snapshot pass.
+                kind = SyncRunKind.Default;
+                includeSnapshots = true;
+            }
             else if (string.Equals(syncType, "Config", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Config;
             else if (string.Equals(syncType, "Snapshots", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Snapshots;
             else
             {
-                error = "SyncType must be Config, Snapshots or Events.";
+                error = "SyncType must be All, Config, Snapshots or Events.";
                 return false;
             }
 
             string rangeName = request.RangeKind ?? "SinceLast";
             if (string.Equals(rangeName, "SinceLast", StringComparison.OrdinalIgnoreCase))
             {
-                options = new SyncRunOptions(kind, SyncRangeKind.SinceLast);
+                options = new SyncRunOptions(kind, SyncRangeKind.SinceLast, IncludeSnapshots: includeSnapshots);
+                return true;
+            }
+
+            if (string.Equals(rangeName, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                options = new SyncRunOptions(kind, SyncRangeKind.All, IncludeSnapshots: includeSnapshots);
                 return true;
             }
 
@@ -402,7 +415,7 @@ namespace VideoForensics.WebApp.Api
                     return false;
                 }
 
-                options = new SyncRunOptions(kind, SyncRangeKind.Days, Days: request.Days.Value);
+                options = new SyncRunOptions(kind, SyncRangeKind.Days, Days: request.Days.Value, IncludeSnapshots: includeSnapshots);
                 return true;
             }
 
@@ -422,11 +435,11 @@ namespace VideoForensics.WebApp.Api
                     return false;
                 }
 
-                options = new SyncRunOptions(kind, SyncRangeKind.Custom, StartUtc: start, EndUtc: end);
+                options = new SyncRunOptions(kind, SyncRangeKind.Custom, StartUtc: start, EndUtc: end, IncludeSnapshots: includeSnapshots);
                 return true;
             }
 
-            error = "RangeKind must be SinceLast, Days or Custom.";
+            error = "RangeKind must be SinceLast, Days, Custom or All.";
             return false;
         }
 

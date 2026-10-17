@@ -44,6 +44,7 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="FeedsFailed">Feed-level failures.</param>
     /// <param name="EventsNotPulled">Matched events whose media was not pulled.</param>
     /// <param name="EventsAlreadyPresent">The part of EventsSynced that was already on disk and not fetched again.</param>
+    /// <param name="SnapshotsSynced">Snapshots saved by the run; null when snapshots were not part of it. Set by the runner, not the tally.</param>
     public sealed record SyncRunTotals(
         bool ConfigRan,
         int LocationsSynced,
@@ -52,5 +53,6 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         int EventsSynced,
         int FeedsFailed,
         int EventsNotPulled = 0,
-        int EventsAlreadyPresent = 0);
+        int EventsAlreadyPresent = 0,
+        int? SnapshotsSynced = null);
 }

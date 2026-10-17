@@ -92,12 +92,13 @@ else
                     <div>
                         <label for="sync-type" class="form-label">@L["SyncTypeDropdownLabel"]</label>
                         <select id="sync-type" class="form-select" @bind="_syncType" disabled="@_isSyncing">
+                            <option value="All">@L["SyncTypeAll"]</option>
                             <option value="Config">@L["SyncTypeConfig"]</option>
                             <option value="Snapshots">@L["SyncTypeSnapshots"]</option>
                             <option value="Events">@L["SyncTypeEvents"]</option>
                         </select>
                     </div>
-                    @if (_syncType == "Events")
+                    @if (SyncRequestBuilder.UsesRange(_syncType))
                     {
                         <div>
                             <label for="sync-range" class="form-label">@L["RangeLabel"]</label>
@@ -106,6 +107,8 @@ else
                                 <option value="30">@L["RangeDays30"]</option>
                                 <option value="60">@L["RangeDays60"]</option>
                                 <option value="90">@L["RangeDays90"]</option>
+                                <option value="365">@L["RangeDays365"]</option>
+                                <option value="All">@L["RangeAllHistory"]</option>
                                 <option value="Custom">@L["RangeCustom"]</option>
                             </select>
                         </div>
@@ -191,7 +194,7 @@ else
                                 <td>@run.StartedUtc.ToLocalTime().ToString("g")</td>
                                 <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
                                 <td>@SyncTypeLabel(run.SyncType)</td>
-                                <td>@RecordsText(run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed)</td>
+                                <td>@RecordsText(run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced)</td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ToggleRunDetailsAsync(run.Id)">@L["ColDetails"]</button>
                                 </td>
@@ -211,7 +214,7 @@ else
                                             <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> @(_runDetail.CompletedUtc?.ToLocalTime().ToString("g") ?? L["SyncNotCompleted"])</p>
                                             <p class="mb-1"><strong>@L["ColSyncStatus"]</strong> @(_runDetail.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</p>
                                             <p class="mb-1"><strong>@L["ColSyncType"]</strong> @SyncTypeLabel(_runDetail.SyncType)</p>
-                                            <p class="mb-1"><strong>@L["ColSyncRecords"]</strong> @RecordsText(_runDetail.DevicesSynced, _runDetail.LocationsSynced, _runDetail.EventsSynced, _runDetail.ConfigAreasSynced, _runDetail.FeedsFailed)</p>
+                                            <p class="mb-1"><strong>@L["ColSyncRecords"]</strong> @RecordsText(_runDetail.DevicesSynced, _runDetail.LocationsSynced, _runDetail.EventsSynced, _runDetail.ConfigAreasSynced, _runDetail.FeedsFailed, _runDetail.SnapshotsSynced)</p>
                                             @if (!string.IsNullOrEmpty(_runDetail.ErrorMessage))
                                             {
                                                 <p class="mb-0"><strong>@L["SyncDetailsMessage"]</strong> @_runDetail.ErrorMessage</p>
@@ -426,14 +429,14 @@ else
     {
         "Full" => L["SyncTypeFull"].Value,
         "Events" => L["SyncTypeEvents"].Value,
+        "Snapshots" => L["SyncTypeSnapshots"].Value,
         _ => L["SyncTypeUnknown"].Value,
     };
 
     /// <summary>Localized record counts for a sync run; "Not recorded" when the run has no counts (rows older than the counts).</summary>
-    private string RecordsText(int? devices, int? locations, int? events, int? configAreas, int? feedsFailed) =>
-        devices is null && locations is null && events is null && configAreas is null && feedsFailed is null
-            ? L["SyncRecordsUnknown"].Value
-            : string.Format(L["SyncRecordsSummary"].Value, devices ?? 0, locations ?? 0, events ?? 0, configAreas ?? 0, feedsFailed ?? 0);
+    private string RecordsText(int? devices, int? locations, int? events, int? configAreas, int? feedsFailed, int? snapshots = null) =>
+        SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, devices, locations, events, configAreas, feedsFailed, snapshots, L["SyncRecordsSnapshots"].Value)
+            ?? L["SyncRecordsUnknown"].Value;
 
     /// <summary>
     /// GET against the account API with the paired-device bearer token.
@@ -572,32 +575,8 @@ else
     }
 
     /// <summary>Builds the sync-now body from the panel: a custom range runs from the start day through the end day, local time.</summary>
-    private VideoForensics.Core.Api.Contracts.SyncNowRequest BuildSyncNowRequest()
-    {
-        // Config and Snapshots ignore the window on the server, and the range controls are hidden for them, so they send the default.
-        if (_syncType != "Events")
-        {
-            return new VideoForensics.Core.Api.Contracts.SyncNowRequest(_syncType, SinceLastRange, null, null, null);
-        }
-
-        if (_syncRange == CustomRange)
-        {
-            return new VideoForensics.Core.Api.Contracts.SyncNowRequest(
-                _syncType, CustomRange, null,
-                LocalDayStartUtc(_customStart),
-                LocalDayStartUtc(_customEnd.AddDays(1)));
-        }
-
-        if (int.TryParse(_syncRange, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int days))
-        {
-            return new VideoForensics.Core.Api.Contracts.SyncNowRequest(_syncType, "Days", days, null, null);
-        }
-
-        return new VideoForensics.Core.Api.Contracts.SyncNowRequest(_syncType, SinceLastRange, null, null, null);
-    }
-
-    private static DateTime LocalDayStartUtc(DateOnly day) =>
-        DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
+    private VideoForensics.Core.Api.Contracts.SyncNowRequest BuildSyncNowRequest() =>
+        SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd);
 
     private async Task SyncNowAsync()
     {

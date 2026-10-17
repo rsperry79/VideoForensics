@@ -459,6 +459,72 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
+    public void AccountDetails_SyncTypeAll_ShowsRangeSelectorWithAllHistoryChoice()
+    {
+        SetEmptyLists();
+
+        var cut = RenderPage();
+        cut.WaitForElement("#sync-type").Change("All");
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("#sync-range option"), o => o.GetAttribute("value") == "All"));
+    }
+
+    [Fact]
+    public void AccountDetails_SyncTypeAllWithAllHistory_PostsAllTypeAndAllRange()
+    {
+        SetEmptyLists();
+        SetJson("/sync-now", new { });
+
+        var cut = RenderPage();
+        cut.WaitForElement("#sync-type").Change("All");
+        cut.WaitForElement("#sync-range").Change("All");
+        FindButtons(cut, Strings["SyncNow"]).Single().Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
+        var root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
+        Assert.Equal("All", root.GetProperty("syncType").GetString());
+        Assert.Equal("All", root.GetProperty("rangeKind").GetString());
+    }
+
+    [Fact]
+    public void AccountDetails_SyncRunWithSnapshotCount_ShowsSnapshotsTypeAndCount()
+    {
+        var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
+        SetJson("/sync-runs", new[]
+        {
+            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true, SyncType: "Snapshots", SnapshotsSynced: 5),
+        });
+        SetJson("/cases", Array.Empty<AccountCaseDto>());
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
+        string row = cut.Find("#sync-history .sync-run-row").TextContent;
+        Assert.Contains(Strings["SyncTypeSnapshots"], row);
+        Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 5), row);
+        Assert.DoesNotContain(Strings["SyncRecordsUnknown"], row);
+    }
+
+    [Fact]
+    public void AccountDetails_SyncRunWithCountsAndSnapshots_AppendsSnapshotCount()
+    {
+        var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
+        SetJson("/sync-runs", new[]
+        {
+            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true,
+                SyncType: "Events", DevicesSynced: 3, LocationsSynced: 1, EventsSynced: 42, ConfigAreasSynced: 0, FeedsFailed: 0, SnapshotsSynced: 3),
+        });
+        SetJson("/cases", Array.Empty<AccountCaseDto>());
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
+        string row = cut.Find("#sync-history .sync-run-row").TextContent;
+        Assert.Contains(string.Format(Strings["SyncRecordsSummary"], 3, 1, 42, 0, 0), row);
+        Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 3), row);
+    }
+
+    [Fact]
     public void AccountDetails_SyncRunsLoaded_ShowsLatestRunInSyncOutput()
     {
         var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);

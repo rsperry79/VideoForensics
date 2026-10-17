@@ -186,6 +186,49 @@ namespace VideoForensics.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task SyncNow_AllTypeAllHistory_RunsDefaultKindWithSnapshotsOverAllRange()
+        {
+            _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"All\",\"rangeKind\":\"All\"}"));
+
+            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(SyncRunKind.Default, options.Kind);
+            Assert.Equal(SyncRangeKind.All, options.RangeKind);
+            Assert.True(options.IncludeSnapshots);
+        }
+
+        [Fact]
+        public async Task SyncNow_AllTypeDays_KeepsDaysAndSnapshots()
+        {
+            _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"all\",\"rangeKind\":\"Days\",\"days\":30}"));
+
+            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(SyncRunKind.Default, options.Kind);
+            Assert.Equal(SyncRangeKind.Days, options.RangeKind);
+            Assert.Equal(30, options.Days);
+            Assert.True(options.IncludeSnapshots);
+        }
+
+        [Fact]
+        public async Task SyncNow_EventsAllHistory_RunsEventsKindWithoutSnapshots()
+        {
+            _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"Events\",\"rangeKind\":\"All\"}"));
+
+            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(SyncRunKind.Events, options.Kind);
+            Assert.Equal(SyncRangeKind.All, options.RangeKind);
+            Assert.False(options.IncludeSnapshots);
+        }
+
+        [Fact]
+        public async Task SyncNow_NoBody_DoesNotAskForSnapshots()
+        {
+            _ = await _client.PostAsync(SyncNowUrl, null);
+
+            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(options.IncludeSnapshots);
+        }
+
+        [Fact]
         public async Task ConfigSyncInterval_Get_ReturnsStoredHours()
         {
             _syncState.Setup(s => s.GetConfigSyncStateAsync(_accountId, It.IsAny<CancellationToken>()))

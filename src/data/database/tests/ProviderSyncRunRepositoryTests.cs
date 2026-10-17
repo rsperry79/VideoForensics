@@ -83,6 +83,30 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task AddAsync_RunWithSnapshotsSynced_PersistsIt()
+        {
+            ProviderSyncRun run = Build(Guid.NewGuid(), new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc));
+            run.SnapshotsSynced = 4;
+            await _repository.AddAsync(run, CancellationToken.None);
+
+            ProviderSyncRun? stored = await _repository.GetAsync(run.Id, CancellationToken.None);
+
+            Assert.Equal(4, stored?.SnapshotsSynced);
+        }
+
+        [Fact]
+        public async Task AddAsync_RunWithoutSnapshotsSynced_StoresNull()
+        {
+            ProviderSyncRun run = Build(Guid.NewGuid(), new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc));
+            await _repository.AddAsync(run, CancellationToken.None);
+
+            ProviderSyncRun? stored = await _repository.GetAsync(run.Id, CancellationToken.None);
+
+            Assert.NotNull(stored);
+            Assert.Null(stored.SnapshotsSynced);
+        }
+
+        [Fact]
         public async Task GetAsync_UnknownId_ReturnsNull()
         {
             ProviderSyncRun? result = await _repository.GetAsync(Guid.NewGuid(), CancellationToken.None);

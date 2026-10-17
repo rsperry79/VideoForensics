@@ -50,5 +50,8 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Feed-level failures during the sync; null when not recorded.</summary>
         public int? FeedsFailed { get; set; }
+
+        /// <summary>Snapshots saved by this run (Snapshots or All syncs); null when snapshots were not part of the run.</summary>
+        public int? SnapshotsSynced { get; set; }
     }
 }

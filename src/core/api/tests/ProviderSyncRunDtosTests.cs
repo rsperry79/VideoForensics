@@ -67,6 +67,25 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         }
 
         [Fact]
+        public void ProviderSyncRunDtoMapping_SnapshotsSynced_MapsToBothDtos()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: DateTime.UtcNow);
+            run.SnapshotsSynced = 5;
+
+            Assert.Equal(5, run.ToSummaryDto().SnapshotsSynced);
+            Assert.Equal(5, run.ToDto().SnapshotsSynced);
+        }
+
+        [Fact]
+        public void ProviderSyncRunDtoMapping_NoSnapshotCount_StaysNull()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: DateTime.UtcNow);
+
+            Assert.Null(run.ToSummaryDto().SnapshotsSynced);
+            Assert.Null(run.ToDto().SnapshotsSynced);
+        }
+
+        [Fact]
         public void ProviderSyncRunDtoMapping_ToSummaryDto_FailedRun_KeepsSuccessFalse()
         {
             ProviderSyncRun run = CreateRun(success: false, errorMessage: "boom", completedUtc: null);

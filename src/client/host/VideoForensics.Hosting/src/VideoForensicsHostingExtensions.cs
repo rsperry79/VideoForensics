@@ -557,6 +557,7 @@ namespace VideoForensics.Hosting
             services.TryAddScoped<ISyncRunTally, SyncRunTally>();
             services.TryAddScoped<ISyncRunOptions, SyncRunOptionsHolder>();
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
             return services;
@@ -619,6 +620,20 @@ namespace VideoForensics.Hosting
                 {
                     throw new InvalidOperationException($"Unknown provider '{providerName}' in AddVideoForensicsMultiProviderServices - expected 'Ring', 'Uniview', or 'Wyze'.");
                 }
+
+                // The pull is built from this provider's own keyed event, discovery and media services, so a manual sync of one
+                // provider's account never pulls through whichever provider registered last. It shares the scope's tally and
+                // options with the runner, so the counts and the sync kind reach the same run row.
+                _ = services.AddKeyedScoped<IEventPullService>(providerName, (provider, key) => new EventPullService(
+                    provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
+                    provider.GetRequiredService<IDeviceRepository>(),
+                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
+                    provider.GetService<ILogger<EventPullService>>(),
+                    provider.GetService<ISyncRunTally>(),
+                    provider.GetService<ISyncRunOptions>(),
+                    provider.GetRequiredKeyedService<IMediaDownloadService>(providerName)));
             }
 
             return services;
