@@ -1345,7 +1345,8 @@ namespace VideoForensics.Providers.Ring.Services
                     RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc),
                     RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
                     RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
-                    ct);
+                    ct,
+                    RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceGuid));
             }
             catch (Exception ex)
             {
@@ -1356,21 +1357,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>Maps Ring's health telemetry onto a DeviceHealths row for the given device.</summary>
         internal static Data.Common.Entities.DeviceHealth BuildDeviceHealth(Entities.DeviceHealth health, Guid deviceGuid, DateTime capturedAtUtc)
         {
-            return new Data.Common.Entities.DeviceHealth
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceGuid,
-                IsOnline = health.Connected,
-                BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                BatteryVoltageValue = health.BatteryVoltage,
-                WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
-                WifiName = health.WifiName,
-                FirmwareVersion = health.FirmwareVersion,
-                IsExternalPowerConnected = RingHealthTelemetryMapper.ToExternalPowerConnected(health.ExtPowerState),
-                OtaStatus = health.OtaStatus,
-                LastHeartbeatUtc = RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime),
-                CapturedAtUtc = capturedAtUtc
-            };
+            return RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, capturedAtUtc);
         }
 
         /// <summary>Returns the device's details from the cached ring_devices response, or null when they cannot be read.</summary>

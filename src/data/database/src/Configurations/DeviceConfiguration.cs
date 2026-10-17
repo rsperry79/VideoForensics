@@ -42,6 +42,18 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(d => d.BatteryLife)
                 .HasMaxLength(256);
 
+            _ = builder.Property(d => d.MotionSnoozePresetProfile).HasMaxLength(256);
+            _ = builder.Property(d => d.LiveViewPresetProfile).HasMaxLength(256);
+            _ = builder.Property(d => d.VodStatus).HasMaxLength(256);
+            _ = builder.Property(d => d.DingAudioUserId).HasMaxLength(256);
+            _ = builder.Property(d => d.DingAudioId).HasMaxLength(256);
+            _ = builder.Property(d => d.MotionAudioUserId).HasMaxLength(256);
+            _ = builder.Property(d => d.MotionAudioId).HasMaxLength(256);
+            _ = builder.Property(d => d.OwnerId).HasMaxLength(256);
+            _ = builder.Property(d => d.OwnerFirstName).HasMaxLength(256);
+            _ = builder.Property(d => d.OwnerLastName).HasMaxLength(256);
+            _ = builder.Property(d => d.OwnerEmail).HasMaxLength(512);
+
             _ = builder.HasIndex(d => new { d.LocationId, d.ProviderDeviceId })
                 .IsUnique();
 

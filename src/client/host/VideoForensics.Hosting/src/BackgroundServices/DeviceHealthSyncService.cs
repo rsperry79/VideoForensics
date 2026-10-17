@@ -214,7 +214,9 @@ namespace VideoForensics.Hosting.BackgroundServices
                             UpdatedAtUtc = reading.UpdatedAtUtc,
                             PacketLossStrength = reading.PacketLossStrength,
                             WifiIsRingNetwork = reading.WifiIsRingNetwork,
-                            PtzConnected = reading.PtzConnected
+                            PtzConnected = reading.PtzConnected,
+                            RingHealthId = reading.RingHealthId,
+                            SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
@@ -375,7 +377,9 @@ namespace VideoForensics.Hosting.BackgroundServices
                             UpdatedAtUtc = reading.UpdatedAtUtc,
                             PacketLossStrength = reading.PacketLossStrength,
                             WifiIsRingNetwork = reading.WifiIsRingNetwork,
-                            PtzConnected = reading.PtzConnected
+                            PtzConnected = reading.PtzConnected,
+                            RingHealthId = reading.RingHealthId,
+                            SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);

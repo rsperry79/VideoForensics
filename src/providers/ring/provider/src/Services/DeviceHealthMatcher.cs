@@ -26,7 +26,13 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             Doorbot? authorizedDoorbot = devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
-            return authorizedDoorbot?.Health;
+            if (authorizedDoorbot?.Health != null)
+            {
+                return authorizedDoorbot.Health;
+            }
+
+            Chime? chime = devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId);
+            return chime?.Health;
         }
     }
 }

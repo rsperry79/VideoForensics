@@ -542,6 +542,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("AdvancedMotionDetectionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("AdvancedMotionDetectionHumanOnlyMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ApiResponseHash")
                         .HasColumnType("TEXT");
 
@@ -558,6 +564,18 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("BatteryLife2")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("BatteryVoltage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("BatteryVoltage2")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ChimeVolume")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("DeviceFeaturesId")
                         .HasColumnType("TEXT");
 
@@ -566,6 +584,32 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<Guid?>("DeviceLocationId")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("DingAudioId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DingAudioUserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DoNotDisturbSecondsLeft")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DoorbellVolume")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableAudioRecording")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableVod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("EnableWhiteLeds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ExposureControl")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool?>("ExternalConnection")
                         .HasColumnType("INTEGER");
@@ -589,6 +633,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("Latitude")
                         .HasColumnType("REAL");
 
+                    b.Property<string>("LedStatus")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LightBrightness")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LightSettingsMetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LiveViewPresetProfile")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("LocationId")
                         .HasColumnType("TEXT");
 
@@ -598,12 +655,70 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("MetadataJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MotionAudioId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotionAudioUserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("MotionDetectionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MotionSnoozeJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotionSnoozePresetProfile")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("NightMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("NightModeOn")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool?>("Owned")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OwnerEmail")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerFirstName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerLastName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PirSensitivity1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSettingsSensitivity1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSettingsSensitivity2")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSettingsSensitivity3")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSettingsZoneEnable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PirSettingsZoneMask")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ProviderDeviceId")
@@ -618,6 +733,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("RingKind")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("RingRingId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RingType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SettingsChimeDuration")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SettingsChimeEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SettingsChimeType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SettingsMetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SirenSecondsRemaining")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool?>("Stolen")
                         .HasColumnType("INTEGER");
@@ -640,6 +776,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("VodStatus")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("VodSuspended")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("LocationId");
@@ -650,6 +793,86 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("Devices");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ZoneKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceAdvancedMotionZones");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZoneVertex", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceAdvancedMotionZoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceAdvancedMotionZoneId");
+
+                    b.ToTable("DeviceAdvancedMotionZoneVertices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedObjectSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Day")
+                        .HasColumnType("REAL");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Night")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceAdvancedObjectSettings");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAlerts", b =>
                 {
                     b.Property<Guid>("Id")
@@ -658,6 +881,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<string>("AlertType")
                         .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlertValue")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("DeviceId")
@@ -794,10 +1020,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("PeopleOnlyEnabled")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("RingtonesEnabled")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool?>("ShadowCorrectionEnabled")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool?>("ShowRecordings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ShowVodSettings")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -896,6 +1128,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool?>("PtzConnected")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("RingHealthId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("RssiCategory")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -918,6 +1153,163 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId", "CapturedAtUtc");
 
                     b.ToTable("DeviceHealths");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealthRpcCommand", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Command")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceHealthId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceHealthId");
+
+                    b.ToTable("DeviceHealthRpcCommands");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceLiveViewPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Preset")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceLiveViewPresets");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceMotionSnoozePreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Preset")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceMotionSnoozePresets");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Style")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ZoneId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceZones");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZoneDetectionType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceZoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceZoneId");
+
+                    b.ToTable("DeviceZoneDetectionTypes");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZoneVertex", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceZoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceZoneId");
+
+                    b.ToTable("DeviceZoneVertices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DownloadEvent", b =>
@@ -2953,6 +3345,42 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZoneVertex", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZone", null)
+                        .WithMany("Vertices")
+                        .HasForeignKey("DeviceAdvancedMotionZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealthRpcCommand", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
+                        .WithMany("SupportedRpcCommands")
+                        .HasForeignKey("DeviceHealthId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZoneDetectionType", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceZone", null)
+                        .WithMany("DetectionTypes")
+                        .HasForeignKey("DeviceZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZoneVertex", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceZone", null)
+                        .WithMany("Vertices")
+                        .HasForeignKey("DeviceZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.JammingScheduleWindow", b =>
                 {
                     b.HasOne("VideoForensics.Data.Common.Entities.SyncSchedule", null)
@@ -3019,6 +3447,23 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Navigation("MotionZones");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceAdvancedMotionZone", b =>
+                {
+                    b.Navigation("Vertices");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceHealth", b =>
+                {
+                    b.Navigation("SupportedRpcCommands");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZone", b =>
+                {
+                    b.Navigation("DetectionTypes");
+
+                    b.Navigation("Vertices");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Operator", b =>

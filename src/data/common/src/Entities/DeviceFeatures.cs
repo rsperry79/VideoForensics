@@ -12,5 +12,11 @@ namespace VideoForensics.Data.Common.Entities
         public bool? ShadowCorrectionEnabled { get; set; }
         public bool? MotionMessageEnabled { get; set; }
         public bool? NightVisionEnabled { get; set; }
+
+        /// <summary>Stickup cam show_vod_settings feature flag.</summary>
+        public bool? ShowVodSettings { get; set; }
+
+        /// <summary>Chime ringtones_enabled feature flag.</summary>
+        public bool? RingtonesEnabled { get; set; }
     }
 }

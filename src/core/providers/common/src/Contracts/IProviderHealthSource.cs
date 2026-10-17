@@ -48,6 +48,8 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         DateTime? UpdatedAtUtc = null,
         double? PacketLossStrength = null,
         bool? WifiIsRingNetwork = null,
-        bool? PtzConnected = null
+        bool? PtzConnected = null,
+        long? RingHealthId = null,
+        IReadOnlyList<string>? SupportedRpcCommands = null
     );
 }

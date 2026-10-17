@@ -51,5 +51,11 @@ namespace VideoForensics.Data.Common.Entities
         public bool? WifiIsRingNetwork { get; set; }
 
         public bool? PtzConnected { get; set; }
+
+        /// <summary>Ring health object id (the "id" key), for matching a reading to Ring's record.</summary>
+        public long? RingHealthId { get; set; }
+
+        /// <summary>Ring supported_rpc_commands, one child row per command in Ring order.</summary>
+        public List<DeviceHealthRpcCommand> SupportedRpcCommands { get; set; } = [];
     }
 }

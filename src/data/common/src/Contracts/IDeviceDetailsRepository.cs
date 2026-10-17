@@ -19,6 +19,7 @@ namespace VideoForensics.Data.Common.Contracts
             DeviceCapabilities? capabilities,
             DeviceFeatures? features,
             IReadOnlyList<DeviceAlerts>? alerts,
-            CancellationToken ct);
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null);
     }
 }

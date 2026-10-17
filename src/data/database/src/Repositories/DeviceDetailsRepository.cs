@@ -25,7 +25,8 @@ namespace VideoForensics.Data.Database.Repositories
             DeviceCapabilities? capabilities,
             DeviceFeatures? features,
             IReadOnlyList<DeviceAlerts>? alerts,
-            CancellationToken ct)
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
@@ -86,6 +87,8 @@ namespace VideoForensics.Data.Database.Repositories
                         existingFeatures.ShadowCorrectionEnabled = features.ShadowCorrectionEnabled;
                         existingFeatures.MotionMessageEnabled = features.MotionMessageEnabled;
                         existingFeatures.NightVisionEnabled = features.NightVisionEnabled;
+                        existingFeatures.ShowVodSettings = features.ShowVodSettings;
+                        existingFeatures.RingtonesEnabled = features.RingtonesEnabled;
                     }
 
                     device.DeviceFeaturesId = existingFeatures.Id;
@@ -106,8 +109,14 @@ namespace VideoForensics.Data.Database.Repositories
                         else
                         {
                             existingAlert.IsEnabled = alert.IsEnabled;
+                            existingAlert.AlertValue = alert.AlertValue;
                         }
                     }
+                }
+
+                if (settings != null)
+                {
+                    await ReplaceSettingsChildrenAsync(db, deviceId, settings, ct);
                 }
 
                 _ = await db.SaveChangesAsync(ct);
@@ -117,6 +126,93 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Replaces the device's preset and advanced-zone rows with the given complete lists. Replacing (rather than
+        /// merging) means a preset or zone Ring no longer reports is removed, not left behind as a stale row.
+        /// </summary>
+        private static async Task ReplaceSettingsChildrenAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, CancellationToken ct)
+        {
+            db.DeviceMotionSnoozePresets.RemoveRange(await db.DeviceMotionSnoozePresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+            db.DeviceLiveViewPresets.RemoveRange(await db.DeviceLiveViewPresets.Where(p => p.DeviceId == deviceId).ToListAsync(ct));
+
+            List<DeviceAdvancedMotionZone> existingZones = await db.DeviceAdvancedMotionZones
+                .Include(z => z.Vertices)
+                .Where(z => z.DeviceId == deviceId)
+                .ToListAsync(ct);
+            db.DeviceAdvancedMotionZoneVertices.RemoveRange(existingZones.SelectMany(z => z.Vertices));
+            db.DeviceAdvancedMotionZones.RemoveRange(existingZones);
+
+            foreach (DeviceMotionSnoozePreset preset in settings.MotionSnoozePresets)
+            {
+                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                preset.DeviceId = deviceId;
+                _ = db.DeviceMotionSnoozePresets.Add(preset);
+            }
+
+            foreach (DeviceLiveViewPreset preset in settings.LiveViewPresets)
+            {
+                preset.Id = preset.Id == Guid.Empty ? Guid.NewGuid() : preset.Id;
+                preset.DeviceId = deviceId;
+                _ = db.DeviceLiveViewPresets.Add(preset);
+            }
+
+            foreach (DeviceAdvancedMotionZone zone in settings.AdvancedMotionZones)
+            {
+                zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
+                zone.DeviceId = deviceId;
+                foreach (DeviceAdvancedMotionZoneVertex vertex in zone.Vertices)
+                {
+                    vertex.Id = vertex.Id == Guid.Empty ? Guid.NewGuid() : vertex.Id;
+                    vertex.DeviceAdvancedMotionZoneId = zone.Id;
+                }
+
+                _ = db.DeviceAdvancedMotionZones.Add(zone);
+            }
+
+            // Zones and object settings are only replaced when the caller supplied them (null leaves stored rows as they are).
+            if (settings.Zones != null)
+            {
+                List<DeviceZone> existingZoneRows = await db.DeviceZones
+                    .Include(z => z.DetectionTypes)
+                    .Include(z => z.Vertices)
+                    .Where(z => z.DeviceId == deviceId)
+                    .ToListAsync(ct);
+                db.DeviceZoneDetectionTypes.RemoveRange(existingZoneRows.SelectMany(z => z.DetectionTypes));
+                db.DeviceZoneVertices.RemoveRange(existingZoneRows.SelectMany(z => z.Vertices));
+                db.DeviceZones.RemoveRange(existingZoneRows);
+
+                foreach (DeviceZone zone in settings.Zones)
+                {
+                    zone.Id = zone.Id == Guid.Empty ? Guid.NewGuid() : zone.Id;
+                    zone.DeviceId = deviceId;
+                    foreach (DeviceZoneDetectionType detectionType in zone.DetectionTypes)
+                    {
+                        detectionType.Id = detectionType.Id == Guid.Empty ? Guid.NewGuid() : detectionType.Id;
+                        detectionType.DeviceZoneId = zone.Id;
+                    }
+
+                    foreach (DeviceZoneVertex vertex in zone.Vertices)
+                    {
+                        vertex.Id = vertex.Id == Guid.Empty ? Guid.NewGuid() : vertex.Id;
+                        vertex.DeviceZoneId = zone.Id;
+                    }
+
+                    _ = db.DeviceZones.Add(zone);
+                }
+            }
+
+            if (settings.AdvancedObjectSettings != null)
+            {
+                db.DeviceAdvancedObjectSettings.RemoveRange(await db.DeviceAdvancedObjectSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct));
+                foreach (DeviceAdvancedObjectSetting setting in settings.AdvancedObjectSettings)
+                {
+                    setting.Id = setting.Id == Guid.Empty ? Guid.NewGuid() : setting.Id;
+                    setting.DeviceId = deviceId;
+                    _ = db.DeviceAdvancedObjectSettings.Add(setting);
+                }
             }
         }
     }

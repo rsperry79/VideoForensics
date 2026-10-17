@@ -68,6 +68,77 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         string? BatteryLife = null,
         bool? ExternalConnection = null,
         bool? Owned = null,
-        bool? Stolen = null
+        bool? Stolen = null,
+        bool? EnableVod = null,
+        int? ExposureControl = null,
+        string? MotionSnoozePresetProfile = null,
+        string? LiveViewPresetProfile = null,
+        int? PirSensitivity1 = null,
+        bool? VodSuspended = null,
+        int? DoorbellVolume = null,
+        string? VodStatus = null,
+        bool? AdvancedMotionDetectionEnabled = null,
+        bool? AdvancedMotionDetectionHumanOnlyMode = null,
+        bool? EnableAudioRecording = null,
+        bool? EnableWhiteLeds = null,
+        int? ChimeVolume = null,
+        string? DingAudioUserId = null,
+        string? DingAudioId = null,
+        string? MotionAudioUserId = null,
+        string? MotionAudioId = null,
+        int? DoNotDisturbSecondsLeft = null,
+        int? LightBrightness = null,
+        string? OwnerId = null,
+        string? OwnerFirstName = null,
+        string? OwnerLastName = null,
+        string? OwnerEmail = null,
+        IReadOnlyList<string>? MotionSnoozePresets = null,
+        IReadOnlyList<string>? LiveViewPresets = null,
+        IReadOnlyList<AdvancedMotionZoneDetail>? AdvancedMotionZones = null,
+        string? RingType = null,
+        string? RingRingId = null,
+        string? BatteryLife2 = null,
+        decimal? BatteryVoltage = null,
+        decimal? BatteryVoltage2 = null,
+        string? LedStatus = null,
+        int? SirenSecondsRemaining = null,
+        int? NightMode = null,
+        string? MotionSnoozeJson = null,
+        string? SettingsMetadataJson = null,
+        string? LightSettingsMetadataJson = null,
+        int? PirSettingsSensitivity1 = null,
+        int? PirSettingsSensitivity2 = null,
+        int? PirSettingsSensitivity3 = null,
+        int? PirSettingsZoneEnable = null,
+        int? PirSettingsZoneMask = null,
+        bool? NightModeOn = null,
+        bool? MotionDetectionEnabled = null,
+        int? SettingsChimeType = null,
+        bool? SettingsChimeEnabled = null,
+        int? SettingsChimeDuration = null,
+        IReadOnlyList<DeviceZoneDetail>? Zones = null,
+        IReadOnlyList<AdvancedObjectSettingDetail>? AdvancedObjectSettings = null
     );
+
+    /// <summary>
+    /// One motion or package zone from zone_settings. Source is "motion" or "package". Detection types keep Ring order;
+    /// vertices use the 1-based list position as Position.
+    /// </summary>
+    public sealed record DeviceZoneDetail(
+        string Source,
+        string? ZoneId,
+        string? Name,
+        int? State,
+        string? Style,
+        IReadOnlyList<string> DetectionTypes,
+        IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);
+
+    /// <summary>One advanced object setting (e.g. human_detection_confidence) with its day and night values.</summary>
+    public sealed record AdvancedObjectSettingDetail(string SettingKey, double? Day, double? Night);
+
+    /// <summary>An advanced motion zone (zone1..zone3) as Ring reports it. Vertices are listed in Ring order.</summary>
+    public sealed record AdvancedMotionZoneDetail(string ZoneKey, string? Name, int? State, IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);
+
+    /// <summary>One zone vertex. Position is Ring's 1-based vertex number (vertex1..vertex8).</summary>
+    public sealed record AdvancedMotionZoneVertexDetail(int Position, double? X, double? Y);
 }

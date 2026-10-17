@@ -421,6 +421,9 @@ namespace VideoForensics.Hosting
                 )
             );
 
+            // Server-tier release channel: reads/persists IForensicsConfiguration directly (client hosts get RemoteReleaseChannelService).
+            _ = services.AddScoped<IReleaseChannelService, VideoForensics.Hosting.Local.LocalReleaseChannelService>();
+
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
             _ = services.AddScoped<ConfigToolsOrchestrator>();

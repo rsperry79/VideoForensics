@@ -57,5 +57,113 @@ namespace VideoForensics.Data.Common.Entities
         public bool? Owned { get; set; }
 
         public bool? Stolen { get; set; }
+
+        /// <summary>Stickup cam enable_vod setting.</summary>
+        public bool? EnableVod { get; set; }
+
+        public int? ExposureControl { get; set; }
+
+        public string? MotionSnoozePresetProfile { get; set; }
+
+        public string? LiveViewPresetProfile { get; set; }
+
+        public int? PirSensitivity1 { get; set; }
+
+        public bool? VodSuspended { get; set; }
+
+        public int? DoorbellVolume { get; set; }
+
+        public string? VodStatus { get; set; }
+
+        public bool? AdvancedMotionDetectionEnabled { get; set; }
+
+        public bool? AdvancedMotionDetectionHumanOnlyMode { get; set; }
+
+        public bool? EnableAudioRecording { get; set; }
+
+        public bool? EnableWhiteLeds { get; set; }
+
+        /// <summary>Chime volume setting.</summary>
+        public int? ChimeVolume { get; set; }
+
+        public string? DingAudioUserId { get; set; }
+
+        public string? DingAudioId { get; set; }
+
+        public string? MotionAudioUserId { get; set; }
+
+        public string? MotionAudioId { get; set; }
+
+        /// <summary>Seconds remaining in a chime's do-not-disturb window; null when Ring reports no window.</summary>
+        public int? DoNotDisturbSecondsLeft { get; set; }
+
+        /// <summary>Stickup cam light brightness.</summary>
+        public int? LightBrightness { get; set; }
+
+        /// <summary>Ring owner id, stored as text.</summary>
+        public string? OwnerId { get; set; }
+
+        /// <summary>Owner name and email are personal data; they are stored only because the device record requires them.</summary>
+        public string? OwnerFirstName { get; set; }
+
+        public string? OwnerLastName { get; set; }
+
+        public string? OwnerEmail { get; set; }
+
+        /// <summary>Raw Ring device type from a doorbot, e.g. "doorbot".</summary>
+        public string? RingType { get; set; }
+
+        /// <summary>Ring's <c>ring_id</c> on a stickup cam.</summary>
+        public string? RingRingId { get; set; }
+
+        /// <summary>Stickup cam battery_life_2, stored as text like BatteryLife.</summary>
+        public string? BatteryLife2 { get; set; }
+
+        public decimal? BatteryVoltage { get; set; }
+
+        public decimal? BatteryVoltage2 { get; set; }
+
+        /// <summary>Stickup cam led_status as text: the string value, or the raw JSON when Ring sends an object or number.</summary>
+        public string? LedStatus { get; set; }
+
+        /// <summary>Seconds remaining on a stickup cam siren_status.</summary>
+        public int? SirenSecondsRemaining { get; set; }
+
+        public int? NightMode { get; set; }
+
+        /// <summary>Raw JSON of motion_snooze. Ring sends an object on doorbots and a value of undetermined shape on stickup cams, so it is kept as received.</summary>
+        public string? MotionSnoozeJson { get; set; }
+
+        /// <summary>Raw JSON of settings keys not modelled by a named column (doorbot and stickup cam settings).</summary>
+        public string? SettingsMetadataJson { get; set; }
+
+        /// <summary>Raw JSON of light_settings keys other than brightness.</summary>
+        public string? LightSettingsMetadataJson { get; set; }
+
+        /// <summary>pir_settings.sensitivity_1..3 and zone fields. Separate from PirSensitivity1, which is the top-level pir_sensitivity_1.</summary>
+        public int? PirSettingsSensitivity1 { get; set; }
+
+        public int? PirSettingsSensitivity2 { get; set; }
+
+        public int? PirSettingsSensitivity3 { get; set; }
+
+        public int? PirSettingsZoneEnable { get; set; }
+
+        public int? PirSettingsZoneMask { get; set; }
+
+        /// <summary>Doorbot settings.night_mode_on.</summary>
+        public bool? NightModeOn { get; set; }
+
+        /// <summary>Doorbot settings.motion_detection_enabled.</summary>
+        public bool? MotionDetectionEnabled { get; set; }
+
+        /// <summary>Doorbot settings.chime_settings.type.</summary>
+        public int? SettingsChimeType { get; set; }
+
+        /// <summary>Doorbot settings.chime_settings.enable.</summary>
+        public bool? SettingsChimeEnabled { get; set; }
+
+        /// <summary>Doorbot settings.chime_settings.duration.</summary>
+        public int? SettingsChimeDuration { get; set; }
     }
 }

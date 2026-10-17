@@ -127,6 +127,33 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the device alerts.</summary>
         public DbSet<DeviceAlerts> DeviceAlerts { get; set; }
 
+        /// <summary>Gets or sets the device motion snooze presets.</summary>
+        public DbSet<DeviceMotionSnoozePreset> DeviceMotionSnoozePresets { get; set; }
+
+        /// <summary>Gets or sets the device live view presets.</summary>
+        public DbSet<DeviceLiveViewPreset> DeviceLiveViewPresets { get; set; }
+
+        /// <summary>Gets or sets the device advanced motion zones.</summary>
+        public DbSet<DeviceAdvancedMotionZone> DeviceAdvancedMotionZones { get; set; }
+
+        /// <summary>Gets or sets the device advanced motion zone vertices.</summary>
+        public DbSet<DeviceAdvancedMotionZoneVertex> DeviceAdvancedMotionZoneVertices { get; set; }
+
+        /// <summary>Gets or sets the device motion and package zones.</summary>
+        public DbSet<DeviceZone> DeviceZones { get; set; }
+
+        /// <summary>Gets or sets the detection types of device zones.</summary>
+        public DbSet<DeviceZoneDetectionType> DeviceZoneDetectionTypes { get; set; }
+
+        /// <summary>Gets or sets the vertices of device zones.</summary>
+        public DbSet<DeviceZoneVertex> DeviceZoneVertices { get; set; }
+
+        /// <summary>Gets or sets the advanced object settings of a device.</summary>
+        public DbSet<DeviceAdvancedObjectSetting> DeviceAdvancedObjectSettings { get; set; }
+
+        /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
+        public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
+
         /// <summary>Gets or sets the location metadata.</summary>
         public DbSet<LocationMetadata> LocationMetadata { get; set; }
 

@@ -6,6 +6,9 @@ namespace VideoForensics.Data.Common.Entities
         public Guid Id { get; set; }
         public Guid DeviceId { get; set; }
         public string? AlertType { get; set; }
+
+        /// <summary>Ring alert status value, e.g. the connection alert status "online". Null when Ring gave none.</summary>
+        public string? AlertValue { get; set; }
         public bool? IsEnabled { get; set; }
     }
 }

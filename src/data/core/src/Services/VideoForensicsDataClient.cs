@@ -106,11 +106,12 @@ namespace VideoForensics.Data.Core.Services
             DeviceCapabilities? capabilities,
             DeviceFeatures? features,
             IReadOnlyList<DeviceAlerts>? alerts,
-            CancellationToken ct)
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null)
         {
             try
             {
-                await _deviceDetailsRepository.UpsertAsync(deviceId, healthId, capabilities, features, alerts, ct);
+                await _deviceDetailsRepository.UpsertAsync(deviceId, healthId, capabilities, features, alerts, ct, settings);
             }
             catch (Exception ex)
             {
@@ -492,6 +493,50 @@ namespace VideoForensics.Data.Core.Services
             device.ExternalConnection = details.ExternalConnection;
             device.Owned = details.Owned;
             device.Stolen = details.Stolen;
+            device.EnableVod = details.EnableVod;
+            device.ExposureControl = details.ExposureControl;
+            device.MotionSnoozePresetProfile = details.MotionSnoozePresetProfile;
+            device.LiveViewPresetProfile = details.LiveViewPresetProfile;
+            device.PirSensitivity1 = details.PirSensitivity1;
+            device.VodSuspended = details.VodSuspended;
+            device.DoorbellVolume = details.DoorbellVolume;
+            device.VodStatus = details.VodStatus;
+            device.AdvancedMotionDetectionEnabled = details.AdvancedMotionDetectionEnabled;
+            device.AdvancedMotionDetectionHumanOnlyMode = details.AdvancedMotionDetectionHumanOnlyMode;
+            device.EnableAudioRecording = details.EnableAudioRecording;
+            device.EnableWhiteLeds = details.EnableWhiteLeds;
+            device.ChimeVolume = details.ChimeVolume;
+            device.DingAudioUserId = details.DingAudioUserId;
+            device.DingAudioId = details.DingAudioId;
+            device.MotionAudioUserId = details.MotionAudioUserId;
+            device.MotionAudioId = details.MotionAudioId;
+            device.DoNotDisturbSecondsLeft = details.DoNotDisturbSecondsLeft;
+            device.LightBrightness = details.LightBrightness;
+            device.OwnerId = details.OwnerId;
+            device.OwnerFirstName = details.OwnerFirstName;
+            device.OwnerLastName = details.OwnerLastName;
+            device.OwnerEmail = details.OwnerEmail;
+            device.RingType = details.RingType;
+            device.RingRingId = details.RingRingId;
+            device.BatteryLife2 = details.BatteryLife2;
+            device.BatteryVoltage = details.BatteryVoltage;
+            device.BatteryVoltage2 = details.BatteryVoltage2;
+            device.LedStatus = details.LedStatus;
+            device.SirenSecondsRemaining = details.SirenSecondsRemaining;
+            device.NightMode = details.NightMode;
+            device.MotionSnoozeJson = details.MotionSnoozeJson;
+            device.SettingsMetadataJson = details.SettingsMetadataJson;
+            device.LightSettingsMetadataJson = details.LightSettingsMetadataJson;
+            device.PirSettingsSensitivity1 = details.PirSettingsSensitivity1;
+            device.PirSettingsSensitivity2 = details.PirSettingsSensitivity2;
+            device.PirSettingsSensitivity3 = details.PirSettingsSensitivity3;
+            device.PirSettingsZoneEnable = details.PirSettingsZoneEnable;
+            device.PirSettingsZoneMask = details.PirSettingsZoneMask;
+            device.NightModeOn = details.NightModeOn;
+            device.MotionDetectionEnabled = details.MotionDetectionEnabled;
+            device.SettingsChimeType = details.SettingsChimeType;
+            device.SettingsChimeEnabled = details.SettingsChimeEnabled;
+            device.SettingsChimeDuration = details.SettingsChimeDuration;
         }
 
         public async Task<Device> EnsureDeviceAsync(

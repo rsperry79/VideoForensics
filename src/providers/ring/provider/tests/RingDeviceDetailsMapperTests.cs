@@ -66,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public void Find_Chime_ReturnsTimeZoneAndFirmwareWithoutFeatureRow()
+        public void Find_Chime_ReturnsTimeZoneFirmwareAndFeaturesFlag()
         {
             var devices = new Devices
             {
@@ -78,7 +78,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(details);
             Assert.Equal("Asia/Tokyo", details!.TimeZone);
             Assert.Equal("1.1.0", details.FirmwareVersion);
-            Assert.False(details.HasFeatures);
+            Assert.True(details.HasFeatures);
             Assert.Null(details.AlertConnection);
         }
 

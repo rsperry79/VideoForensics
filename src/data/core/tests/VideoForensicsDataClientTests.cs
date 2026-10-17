@@ -854,6 +854,79 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_WithSettingsScalars_StoresOwnerAndSettingsOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                EnableVod: true, ExposureControl: 3, VodStatus: "active", DingAudioId: "d1", DoNotDisturbSecondsLeft: 1800,
+                LightBrightness: 80, OwnerId: "42", OwnerFirstName: "Pat", OwnerLastName: "Lee", OwnerEmail: "pat@example.com");
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-settings", "Porch", "camera", true, details: details, ct: CancellationToken.None);
+
+            Assert.True(result.EnableVod);
+            Assert.Equal(3, result.ExposureControl);
+            Assert.Equal("active", result.VodStatus);
+            Assert.Equal("d1", result.DingAudioId);
+            Assert.Equal(1800, result.DoNotDisturbSecondsLeft);
+            Assert.Equal(80, result.LightBrightness);
+            Assert.Equal("42", result.OwnerId);
+            Assert.Equal("Pat", result.OwnerFirstName);
+            Assert.Equal("Lee", result.OwnerLastName);
+            Assert.Equal("pat@example.com", result.OwnerEmail);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithRemainingScalars_StoresOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                RingType: "doorbot", RingRingId: "abc", BatteryLife2: "55", BatteryVoltage: 12.5m, BatteryVoltage2: 3.3m,
+                LedStatus: "on", SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
+                SettingsMetadataJson: "{\"k\":1}", LightSettingsMetadataJson: "{\"s\":1}", PirSettingsSensitivity1: 1,
+                PirSettingsSensitivity2: 2, PirSettingsSensitivity3: 3, PirSettingsZoneEnable: 1, PirSettingsZoneMask: 15,
+                NightModeOn: true, MotionDetectionEnabled: false, SettingsChimeType: 2, SettingsChimeEnabled: true, SettingsChimeDuration: 3);
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-remaining", "Porch", "camera", true, details: details, ct: CancellationToken.None);
+
+            Assert.Equal("doorbot", result.RingType);
+            Assert.Equal("abc", result.RingRingId);
+            Assert.Equal("55", result.BatteryLife2);
+            Assert.Equal(12.5m, result.BatteryVoltage);
+            Assert.Equal(3.3m, result.BatteryVoltage2);
+            Assert.Equal("on", result.LedStatus);
+            Assert.Equal(30, result.SirenSecondsRemaining);
+            Assert.Equal(1, result.NightMode);
+            Assert.Equal("{\"until\":5}", result.MotionSnoozeJson);
+            Assert.Equal("{\"k\":1}", result.SettingsMetadataJson);
+            Assert.Equal("{\"s\":1}", result.LightSettingsMetadataJson);
+            Assert.Equal(2, result.PirSettingsSensitivity2);
+            Assert.Equal(15, result.PirSettingsZoneMask);
+            Assert.True(result.NightModeOn);
+            Assert.False(result.MotionDetectionEnabled);
+            Assert.Equal(2, result.SettingsChimeType);
+            Assert.True(result.SettingsChimeEnabled);
+            Assert.Equal(3, result.SettingsChimeDuration);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_ExistingDeviceWithoutDetailFields_LeavesStoredDetailFieldsUntouched()
         {
             var locationId = Guid.NewGuid();

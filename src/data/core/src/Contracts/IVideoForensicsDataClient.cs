@@ -100,7 +100,8 @@ namespace VideoForensics.Data.Core.Contracts
             DeviceCapabilities? capabilities,
             DeviceFeatures? features,
             IReadOnlyList<DeviceAlerts>? alerts,
-            CancellationToken ct);
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null);
 
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);

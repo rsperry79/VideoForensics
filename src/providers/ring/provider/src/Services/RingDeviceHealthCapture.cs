@@ -54,35 +54,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return;
                 }
 
-                var deviceHealth = new Data.Common.Entities.DeviceHealth
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceGuid,
-                    IsOnline = health.Connected,
-                    BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                    WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
-                    WifiName = health.WifiName,
-                    FirmwareVersion = health.FirmwareVersion,
-                    CapturedAtUtc = DateTime.UtcNow,
-                    DeviceType = health.DeviceType,
-                    FirmwareVersionStatus = health.FirmwareVersionStatus,
-                    BatteryPresent = health.BatteryPresent,
-                    BatteryPercentageCategory = health.BatteryPercentageCategory,
-                    BatteryVoltageCategory = health.BatteryVoltageCategory,
-                    RssiCategory = health.RssiCategory,
-                    NetworkConnectionValue = health.NetworkConnectionValue,
-                    PacketLoss = health.PacketLoss,
-                    PacketLossCategory = health.PacketLossCategory,
-                    LatestSignalStrength = health.LatestSignalStrength,
-                    LatestSignalCategory = health.LatestSignalCategory,
-                    AverageSignalStrength = health.AverageSignalStrength,
-                    AverageSignalCategory = health.AverageSignalCategory,
-                    Firmware = health.Firmware,
-                    UpdatedAtUtc = RingHealthTelemetryMapper.ToUpdatedAtUtc(health.UpdatedAt),
-                    PacketLossStrength = health.PacketLossStrength,
-                    WifiIsRingNetwork = health.WifiIsRingNetwork,
-                    PtzConnected = health.PtzConnected
-                };
+                Data.Common.Entities.DeviceHealth deviceHealth = RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
 
                 _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                 _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",

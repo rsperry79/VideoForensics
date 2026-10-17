@@ -90,6 +90,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 AddReadings(readings, devices.Doorbots, d => d.Id.ToString(), d => d.Health);
                                 AddReadings(readings, devices.StickupCams, d => d.Id?.ToString(), d => d.Health);
                                 AddReadings(readings, devices.AuthorizedDoorbots, d => d.Id.ToString(), d => d.Health);
+                                AddReadings(readings, devices.Chimes, c => c.Id.ToString(), c => c.Health);
                             }
                         }
                         catch (Exception ex)
@@ -138,6 +139,7 @@ namespace VideoForensics.Providers.Ring.Services
                 AddReadings(readings, devices.Doorbots, d => d.Id.ToString(), d => d.Health);
                 AddReadings(readings, devices.StickupCams, d => d.Id?.ToString(), d => d.Health);
                 AddReadings(readings, devices.AuthorizedDoorbots, d => d.Id.ToString(), d => d.Health);
+                AddReadings(readings, devices.Chimes, c => c.Id.ToString(), c => c.Health);
 
                 return readings;
             }
@@ -196,7 +198,9 @@ namespace VideoForensics.Providers.Ring.Services
                     UpdatedAtUtc: RingHealthTelemetryMapper.ToUpdatedAtUtc(health.UpdatedAt),
                     PacketLossStrength: health.PacketLossStrength,
                     WifiIsRingNetwork: health.WifiIsRingNetwork,
-                    PtzConnected: health.PtzConnected
+                    PtzConnected: health.PtzConnected,
+                    RingHealthId: health.Id,
+                    SupportedRpcCommands: health.SupportedRpcCommands
                 ));
             }
         }

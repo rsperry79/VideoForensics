@@ -128,6 +128,34 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_ReadingWithRingHealthIdAndRpcCommands_PersistsThemOnHealthRow()
+        {
+            (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();
+
+            Device device = MakeDevice("ring-456");
+            _ = deviceRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([device]);
+            _ = healthSource.Setup(h => h.FetchHealthAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
+                    new DeviceHealthReading("ring-456", Connected: true, BatteryPercentage: 60m, Rssi: -60, WifiName: null, FirmwareVersion: null,
+                        RingHealthId: 77, SupportedRpcCommands: ["reboot", "siren"])
+                ]);
+
+            DeviceHealth? captured = null;
+            _ = dataClient.Setup(d => d.RecordDeviceHealthAsync(It.IsAny<DeviceHealth>(), It.IsAny<CancellationToken>()))
+                .Callback<DeviceHealth, CancellationToken>((h, _) => captured = h)
+                .ReturnsAsync((DeviceHealth h, CancellationToken _) => h);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.NotNull(captured);
+            Assert.Equal(77L, captured!.RingHealthId);
+            Assert.Equal(["reboot", "siren"], captured.SupportedRpcCommands.Select(c => c.Command));
+            Assert.Equal([0, 1], captured.SupportedRpcCommands.Select(c => c.Position));
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_ReadingWithDetailFields_PersistsDetailColumns()
         {
             (DeviceHealthSyncService? service, Mock<IProviderHealthSource>? healthSource, Mock<IDeviceRepository>? deviceRepo, Mock<IVideoForensicsDataClient>? dataClient, _) = CreateService();

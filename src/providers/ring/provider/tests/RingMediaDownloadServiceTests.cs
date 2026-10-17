@@ -728,7 +728,8 @@ namespace VideoForensics.Providers.Ring.Tests
                 It.Is<VideoForensics.Data.Common.Entities.DeviceCapabilities>(c => c.HasMotionDetection == true && c.HasNightVision == true && c.FirmwareVersion == "2.0.1"),
                 It.Is<VideoForensics.Data.Common.Entities.DeviceFeatures?>(f => f != null && f.MotionsEnabled == true),
                 It.IsAny<IReadOnlyList<VideoForensics.Data.Common.Entities.DeviceAlerts>?>(),
-                It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<CancellationToken>(),
+                It.Is<VideoForensics.Data.Common.Contracts.DeviceSettingsChildren?>(s => s != null)), Times.Once);
         }
 
         [Fact]
