@@ -14,7 +14,7 @@ namespace VideoForensics.Hosting.Tests
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
         [Fact]
-        public async Task ExportEvidenceAsync_WithValidMediaItems_CallsCorrectEndpoint()
+        public async Task ExportEvidenceAsync_WithCaseId_CallsCorrectEndpoint()
         {
             // Arrange
             bool requestCaptured = false;
@@ -43,14 +43,13 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceExportService(httpClient);
 
-            Guid[] mediaIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+            Guid caseId = Guid.NewGuid();
             var cts = new CancellationTokenSource();
 
             // Act
             ExportResult result = await service.ExportEvidenceAsync(
-                mediaIds,
+                caseId,
                 "/output",
-                "CASE-001",
                 "Detective Smith",
                 "mypassphrase",
                 cts.Token);
@@ -85,9 +84,8 @@ namespace VideoForensics.Hosting.Tests
             _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 _ = await service.ExportEvidenceAsync(
-                    new[] { Guid.NewGuid() },
+                    Guid.NewGuid(),
                     "/output",
-                    null,
                     null,
                     null,
                     CancellationToken.None);
@@ -110,9 +108,8 @@ namespace VideoForensics.Hosting.Tests
             _ = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
                 _ = await service.ExportEvidenceAsync(
-                    new[] { Guid.NewGuid() },
+                    Guid.NewGuid(),
                     "/output",
-                    null,
                     null,
                     null,
                     CancellationToken.None);
@@ -142,9 +139,8 @@ namespace VideoForensics.Hosting.Tests
 
             // Act
             _ = await service.ExportEvidenceAsync(
-                new[] { Guid.NewGuid() },
+                Guid.NewGuid(),
                 "/output",
-                null,
                 null,
                 null,
                 cts.Token);
@@ -177,9 +173,8 @@ namespace VideoForensics.Hosting.Tests
 
             // Act
             ExportResult result = await service.ExportEvidenceAsync(
-                new[] { Guid.NewGuid() },
+                Guid.NewGuid(),
                 "/output",
-                null,
                 null,
                 null,
                 CancellationToken.None);
@@ -209,7 +204,7 @@ namespace VideoForensics.Hosting.Tests
             });
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
-            _ = await service.ExportEvidenceAsync([Guid.NewGuid()], "out", null, null, null, CancellationToken.None, "step-token");
+            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), "out", null, null, CancellationToken.None, "step-token");
 
             Assert.Equal("step-token", stepUpHeader);
         }
@@ -229,9 +224,32 @@ namespace VideoForensics.Hosting.Tests
             });
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
 
-            _ = await service.ExportEvidenceAsync([Guid.NewGuid()], "out", null, null, null, CancellationToken.None);
+            _ = await service.ExportEvidenceAsync(Guid.NewGuid(), "out", null, null, CancellationToken.None);
 
             Assert.Null(stepUpHeader);
+        }
+
+        [Fact]
+        public async Task ExportEvidenceAsync_SendsCaseIdInRequestBody()
+        {
+            string? body = null;
+            var handler = new CaptureHttpMessageHandler(async (request, ct) =>
+            {
+                body = await request.Content!.ReadAsStringAsync(ct);
+                var dto = new ExportResultDto(true, "/a.zip", "h", 1, [], null);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json"),
+                };
+            });
+            var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+            Guid caseId = Guid.NewGuid();
+
+            _ = await service.ExportEvidenceAsync(caseId, "out", "recipient", null, CancellationToken.None);
+
+            using JsonDocument doc = JsonDocument.Parse(body!);
+            Assert.Equal(caseId, doc.RootElement.GetProperty("CaseId").GetGuid());
+            Assert.False(doc.RootElement.TryGetProperty("MediaItemIds", out _));
         }
 
         /// <summary>Helper class to capture HTTP requests and control responses.</summary>

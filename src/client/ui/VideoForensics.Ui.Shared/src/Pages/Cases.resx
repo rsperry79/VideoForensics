@@ -35,6 +35,9 @@
   <data name="CasesTitle" xml:space="preserve">
     <value>Cases</value>
   </data>
+  <data name="FilterStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
   <data name="FilterAll" xml:space="preserve">
     <value>All</value>
   </data>

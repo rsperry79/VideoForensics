@@ -26,19 +26,20 @@ namespace VideoForensics.Client.Common.Contracts
     public interface IEvidenceExportService
     {
         /// <summary>
-        /// Exports selected media items into a password-protected ZIP archive.
+        /// Exports one case's forensic reports and pinned evidence (media) into a ZIP archive.
+        /// The export is always scoped to <paramref name="caseId"/>; it never includes another case's items.
         ///
         /// Process:
-        /// 1. Verifies integrity of each selected item; excluded items that fail verification are flagged
-        /// 2. Builds manifest.json with export metadata and per-item integrity status
-        /// 3. Builds chain_of_custody.json from action log entries for each item
-        /// 4. Creates a ZIP archive with media files + manifest + chain-of-custody entries, optionally encrypted with AES-256
-        /// 5. Records the export in the database with per-item hashes at export time
+        /// 1. Resolves the case and its active (not soft-removed) pinned media items
+        /// 2. Verifies integrity of each item; items that fail verification are excluded and flagged
+        /// 3. Builds the case's reports (per scope device over the case time window) under reports/
+        /// 4. Builds manifest.json and chain_of_custody.json
+        /// 5. Creates the ZIP archive, optionally encrypted with AES-256, and records the export with per-item hashes
+        /// The case number is used as the case reference.
         /// </summary>
         Task<ExportResult> ExportEvidenceAsync(
-            IReadOnlyList<Guid> mediaItemIds,
+            Guid caseId,
             string outputDirectory,
-            string? caseReference,
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,

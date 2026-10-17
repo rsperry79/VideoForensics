@@ -126,6 +126,35 @@ namespace VideoForensics.Ui.Shared.Layout
         ];
 
         /// <summary>
+        /// Picks the top tab to highlight for the current location: the group owning the visible item whose <c>Path</c>
+        /// is the longest match (most specific), so <c>/analyze/chain-of-custody</c> selects Cases over Evidence's broader
+        /// <c>/analyze</c>. Ties keep the earlier group. Falls back to the first visible group, then the first group overall.
+        /// </summary>
+        /// <param name="visible">The groups visible to the operator, in display order.</param>
+        /// <param name="ctx">The operator's access context, used to skip hidden items.</param>
+        /// <param name="currentPath">The current URI's path only, e.g. <c>/analyze</c>.</param>
+        /// <param name="currentQuery">The current URI's query string, with or without a leading '?'. May be null/empty.</param>
+        public static NavGroup ActiveGroupFor(IReadOnlyList<NavGroup> visible, NavContext ctx, string currentPath, string? currentQuery)
+        {
+            NavGroup? best = null;
+            int bestLength = -1;
+
+            foreach (NavGroup group in visible)
+            {
+                foreach (NavItem item in group.Items)
+                {
+                    if (item.Path.Length > bestLength && item.IsVisible(ctx) && NavPathMatcher.Matches(currentPath, currentQuery, item.Path))
+                    {
+                        best = group;
+                        bestLength = item.Path.Length;
+                    }
+                }
+            }
+
+            return best ?? visible.FirstOrDefault() ?? All[0];
+        }
+
+        /// <summary>
         /// Groups a tab's visible items by <see cref="NavItem.Section"/>, in order of first appearance. Items that share a
         /// heading are merged even when other items sit between them, so each heading appears once. Hidden items are
         /// dropped, so a heading whose items are all hidden for this operator never appears.

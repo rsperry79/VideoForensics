@@ -48,8 +48,8 @@ namespace VideoForensics.Hosting.Tests
             string capturedMethod = "";
             var endpoints = new List<SelfTestEndpointDto>
             {
-                new("endpoint1", "Test 1", "Tests something", "Session", "GET", "/api/test1", "PerLocation", false, false),
-                new("endpoint2", "Test 2", "Tests another", "Session", "POST", "/api/test2", "PerDoorbot", true, false)
+                new("endpoint1", "Test 1", "Tests something", "Session", "GET", "/api/test1", "PerLocation", false, false, "Ring"),
+                new("endpoint2", "Test 2", "Tests another", "Session", "POST", "/api/test2", "PerDoorbot", true, false, "Ring")
             };
 
             HttpClient httpClient = CreateHttpClient(request =>
@@ -80,8 +80,8 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var endpoints = new List<SelfTestEndpointDto>
             {
-                new("endpoint1", "Test 1", "Desc 1", "Session", "GET", "/api/test1", "PerLocation", false, false),
-                new("endpoint2", "Test 2", "Desc 2", "Session", "POST", "/api/test2", "PerDoorbot", true, true)
+                new("endpoint1", "Test 1", "Desc 1", "Session", "GET", "/api/test1", "PerLocation", false, false, "Ring"),
+                new("endpoint2", "Test 2", "Desc 2", "Session", "POST", "/api/test2", "PerDoorbot", true, true, "Ring")
             };
 
             HttpClient httpClient = CreateHttpClient(_ =>

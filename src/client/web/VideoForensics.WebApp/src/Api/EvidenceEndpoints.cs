@@ -22,6 +22,43 @@ namespace VideoForensics.WebApp.Api
     /// </summary>
     public static class EvidenceEndpoints
     {
+        /// <summary>
+        /// Exports one case's reports and pinned evidence. The case id is required: an export is never unscoped.
+        /// Authorization and step-up are applied where the route is mapped.
+        /// </summary>
+        public static async Task<IResult> ExportAsync(
+            ExportEvidenceRequest request,
+            IEvidenceExportService exportService,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (request.CaseId == Guid.Empty)
+            {
+                return Results.BadRequest("A case id is required to export evidence.");
+            }
+
+            ExportResult result = await exportService.ExportEvidenceAsync(
+                request.CaseId,
+                request.OutputDirectory,
+                request.RecipientDescription,
+                request.Passphrase,
+                ct);
+
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            await auditLog.LogAsync(
+                SecurityAuditEventTypes.EvidenceExported,
+                Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
+                null,
+                tierResolver.ResolveClientIp(context),
+                $"Evidence export for case {request.CaseId}",
+                isUrgent: true,
+                ct);
+
+            return Results.Ok(result.ToDto());
+        }
+
         public static void MapEvidenceEndpoints(this WebApplication app)
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/evidence").RequireAuthorization();
@@ -55,40 +92,12 @@ namespace VideoForensics.WebApp.Api
             .WithSummary("Reconcile with provider")
             .WithDescription("Compares stored events against the provider's current records to detect changes, deletions, or new events that indicate potential tampering or service issues.");
 
-            _ = group.MapPost("/export", async (
-                ExportEvidenceRequest request,
-                IEvidenceExportService exportService,
-                ISecurityAuditLogger auditLog,
-                INetworkTierResolver tierResolver,
-                HttpContext context,
-                CancellationToken ct) =>
-            {
-                ExportResult result = await exportService.ExportEvidenceAsync(
-                    request.MediaItemIds,
-                    request.OutputDirectory,
-                    request.CaseReference,
-                    request.RecipientDescription,
-                    request.Passphrase,
-                    ct);
-
-                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-                string description = "Evidence export" + (request.CaseReference != null ? $" for case {request.CaseReference}" : "");
-                await auditLog.LogAsync(
-                    SecurityAuditEventTypes.EvidenceExported,
-                    Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
-                    null,
-                    tierResolver.ResolveClientIp(context),
-                    description,
-                    isUrgent: true,
-                    ct);
-
-                return Results.Ok(result.ToDto());
-            })
+            _ = group.MapPost("/export", ExportAsync)
             .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Export evidence to archive")
-            .WithDescription("Exports selected media items into a password-protected archive with manifest and chain-of-custody records. This operation requires step-up authentication as it exposes evidence data beyond normal access controls.");
+            .WithDescription("Exports one case's reports and pinned evidence into an archive with manifest and chain-of-custody records. This operation requires step-up authentication as it exposes evidence data beyond normal access controls.");
 
             _ = group.MapPost("/validate-all", async (
                 BulkValidateAllRequest request,
@@ -123,16 +132,14 @@ namespace VideoForensics.WebApp.Api
         DateTime ToUtc
     );
 
-    /// <summary>Request to export media items to an archive.</summary>
-    /// <param name="MediaItemIds">IDs of media items to export.</param>
+    /// <summary>Request to export one case's reports and evidence to an archive.</summary>
+    /// <param name="CaseId">The case to export. Required; <see cref="Guid.Empty"/> is rejected.</param>
     /// <param name="OutputDirectory">Output directory for the archive.</param>
-    /// <param name="CaseReference">Case reference number for the export metadata.</param>
     /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
     /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
     public record ExportEvidenceRequest(
-        IReadOnlyList<Guid> MediaItemIds,
+        Guid CaseId,
         string OutputDirectory,
-        string? CaseReference,
         string? RecipientDescription,
         string? Passphrase
     );

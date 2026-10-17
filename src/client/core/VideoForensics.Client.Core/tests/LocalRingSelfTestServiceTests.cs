@@ -71,6 +71,14 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task ListEndpointsAsync_EveryEndpoint_HasRingProvider()
+        {
+            IReadOnlyList<SelfTestEndpointDto> result = await _service.ListEndpointsAsync();
+
+            Assert.All(result, endpoint => Assert.Equal(VideoForensics.Client.Common.ProviderType.Ring.ToString(), endpoint.Provider));
+        }
+
+        [Fact]
         public async Task StartRunAsync_AcceptsRun_ReturnsSuccessResponse()
         {
             _ = _orchestratorMock.Setup(o => o.TryStartRun(It.IsAny<RunOptions>(), It.IsAny<string>()))

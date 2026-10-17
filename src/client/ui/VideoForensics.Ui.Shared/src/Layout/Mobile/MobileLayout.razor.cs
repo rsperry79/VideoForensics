@@ -36,16 +36,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
             }
         }
 
-        private NavGroup ActiveGroup
-        {
-            get
-            {
-                IReadOnlyList<NavGroup> visible = VisibleGroups;
-                NavContext ctx = BuildContext();
-                NavGroup? match = visible.FirstOrDefault(g => g.Items.Any(i => i.IsVisible(ctx) && PathMatches(i.Path)));
-                return match ?? visible.FirstOrDefault() ?? NavGroups.All[0];
-            }
-        }
+        private NavGroup ActiveGroup => NavGroups.ActiveGroupFor(VisibleGroups, BuildContext(), _currentPath, _currentQuery);
 
         private IReadOnlyList<NavItem> ActiveGroupItems
         {

@@ -43,6 +43,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         deviceRepo.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device>());
         Services.AddScoped(_ => deviceRepo.Object);
         Services.AddScoped(_ => Mock.Of<IEvidenceExportService>());
+        Services.AddScoped(_ => Mock.Of<VideoForensics.Data.Common.Contracts.ICaseRepository>());
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationService>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfiguration>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfigurationService>());
@@ -51,6 +52,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
             NullLogger<ConfigToolsOrchestrator>.Instance, sp.GetRequiredService<IForensicsConfigurationService>()));
         // The export page runs a passkey step-up before exporting; the gate test only checks the operator is signed in.
         Services.AddScoped(_ => new Mock<VideoForensics.Ui.Shared.Services.WebAuthnClient>(Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Mock.Of<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
         // The pages inject the interface; the host registers it over the concrete orchestrator.
         Services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
         Services.AddScoped<RightPanelContentService>();
