@@ -152,6 +152,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IEventPullService _eventPullService;
         private readonly IProviderAccountRepository _accounts;
         private readonly IProviderSyncRunRepository _syncRuns;
+        private readonly ISnapshotSyncService _snapshotSync;
         private readonly ILogger<AccountSyncRunner> _logger;
         private readonly ISyncRunTally? _syncRunTally;
         private readonly ISyncRunOptions? _syncRunOptions;
@@ -180,6 +181,7 @@ namespace VideoForensics.Hosting.Services
             _eventPullService = eventPullService;
             _accounts = accounts;
             _syncRuns = syncRuns;
+            _snapshotSync = snapshotSync;
             _logger = logger;
             _syncRunTally = syncRunTally;
             _syncRunOptions = syncRunOptions;
@@ -313,15 +315,18 @@ namespace VideoForensics.Hosting.Services
                 _syncRunOptions.Current = published;
             }
 
-            // Snapshots-only: there is no snapshot pull in this runner, so the event pull is skipped rather than
-            // run against the wrong data. The restore above still validates the session.
+            // Snapshots-only: fetch snapshots for the account's devices instead of pulling events.
             if (request?.Type == AccountSyncType.Snapshots)
             {
-                return null;
+                SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, request.FromUtc, request.ToUtc, cancellationToken);
+
+                // The run row has no snapshot column: DevicesSynced holds devices that returned a snapshot and FeedsFailed those that did not.
+                return new SyncOutcome(snapshots.ErrorMessage, new EventPullResult(DevicesSynced: snapshots.DevicesSucceeded, FeedsFailed: snapshots.DevicesFailed));
             }
 
-            // An explicit period wins; otherwise since the last successful auth. The pull has no end date yet, so ToUtc is not applied.
+            // An explicit period wins; otherwise since the last successful auth. A null end date means now.
             DateTime? from = fullHistory ? null : request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
             await eventPullService.PullAccountEventsAsync(accountId, from, cancellationToken);

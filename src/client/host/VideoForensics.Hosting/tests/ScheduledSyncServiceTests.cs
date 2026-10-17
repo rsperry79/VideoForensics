@@ -551,7 +551,7 @@ namespace VideoForensics.Hosting.Tests
 
             ProviderSyncRun run = Assert.Single(h.Runs);
             Assert.Equal(account.LastSuccessfulAuthUtc is null ? "Full" : "Incremental", run.SyncType);
-            Assert.Null(run.EventsSynced);
+            Assert.Equal(0, run.EventsSynced);
         }
 
         [Fact]

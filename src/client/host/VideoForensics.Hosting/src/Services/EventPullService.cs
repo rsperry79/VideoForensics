@@ -18,7 +18,8 @@ namespace VideoForensics.Hosting.Services
         /// <param name="accountId">The provider account ID.</param>
         /// <param name="fromTimestampUtc">Explicit start of the pull. Null means the account's watermark, or one year ago for the initial backfill.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        Task PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, CancellationToken cancellationToken);
+        /// <returns>What the pull synced. Failures are recorded on the account, not thrown; the counts cover what was reached.</returns>
+        Task<EventPullResult> PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, DateTime? toTimestampUtc, CancellationToken cancellationToken);
     }
 
     /// <summary>
@@ -75,15 +76,17 @@ namespace VideoForensics.Hosting.Services
             _mediaRoot = mediaRoot ?? new StorageLocationProvider().GetDefaultRoot(StorageCategory.Media);
         }
 
-        public async Task PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, CancellationToken cancellationToken)
+        public async Task<EventPullResult> PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, DateTime? toTimestampUtc, CancellationToken cancellationToken)
         {
+            // Counts live outside the try so a failure partway through still reports what was reached.
+            int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0;
             try
             {
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
                     _logger.LogWarning("Provider account not found");
-                    return;
+                    return default;
                 }
 
                 Inventory inventory = await DiscoverInventoryAsync(accountId, cancellationToken);
@@ -94,7 +97,7 @@ namespace VideoForensics.Hosting.Services
                     _logger.LogInformation("No locations found for account");
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
-                    return;
+                    return new EventPullResult(devicesSynced, locationsSynced);
                 }
 
                 SyncRunOptions runOptions = _syncRunOptions?.Current ?? new SyncRunOptions();
@@ -153,6 +156,8 @@ namespace VideoForensics.Hosting.Services
                     account.LastErrorUtc = DateTime.UtcNow;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                 }
+
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
             }
         }
 

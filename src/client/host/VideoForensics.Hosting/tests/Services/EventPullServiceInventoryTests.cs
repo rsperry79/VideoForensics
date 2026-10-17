@@ -59,7 +59,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 });
 
             // Act
-            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockLocationRepository.Verify(r => r.AddAsync(
@@ -166,7 +166,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ThrowsAsync(new InvalidOperationException("Ring session not restored"));
 
             // Act
-            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockProviderAccountRepository.Verify(r => r.UpdateAsync(
