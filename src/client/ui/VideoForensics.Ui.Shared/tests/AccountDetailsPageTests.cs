@@ -366,6 +366,27 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
+    public void AccountDetails_SyncTypeEvents_ShowsRangeSelector()
+    {
+        SetEmptyLists();
+
+        var cut = RenderPage();
+
+        cut.WaitForElement("#sync-range");
+    }
+
+    [Fact]
+    public void AccountDetails_SyncTypeConfig_HidesRangeSelector()
+    {
+        SetEmptyLists();
+
+        var cut = RenderPage();
+        cut.WaitForElement("#sync-type").Change("Config");
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#sync-range")));
+    }
+
+    [Fact]
     public void AccountDetails_RangeCustom_ShowsCustomDatePickers()
     {
         SetEmptyLists();
@@ -390,21 +411,51 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
+    public void AccountDetails_CustomRange_ShowsEndDateMediaOnlyHint()
+    {
+        SetEmptyLists();
+
+        var cut = RenderPage();
+        cut.WaitForElement("#sync-range").Change("Custom");
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-custom-end-hint")));
+        Assert.Equal(Strings["CustomEndHint"], cut.Find("#sync-custom-end-hint").TextContent);
+    }
+
+    [Fact]
     public void AccountDetails_SyncNowClicked_PostsChosenTypeAndRange()
     {
         SetEmptyLists();
         SetJson("/sync-now", new { });
 
         var cut = RenderPage();
-        cut.WaitForElement("#sync-type").Change("Snapshots");
+        cut.WaitForElement("#sync-type").Change("Events");
         cut.Find("#sync-range").Change("60");
         FindButtons(cut, Strings["SyncNow"]).Single().Click();
 
         cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
         var root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
-        Assert.Equal("Snapshots", root.GetProperty("syncType").GetString());
+        Assert.Equal("Events", root.GetProperty("syncType").GetString());
         Assert.Equal("Days", root.GetProperty("rangeKind").GetString());
         Assert.Equal(60, root.GetProperty("days").GetInt32());
+    }
+
+    [Fact]
+    public void AccountDetails_SyncTypeConfig_SendsSinceLastRange()
+    {
+        SetEmptyLists();
+        SetJson("/sync-now", new { });
+
+        var cut = RenderPage();
+        cut.WaitForElement("#sync-range").Change("60");
+        cut.WaitForElement("#sync-type").Change("Config");
+        FindButtons(cut, Strings["SyncNow"]).Single().Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Post && s.Path == ApiPath("/sync-now")));
+        var root = JsonDocument.Parse(Handler.Sent.Single(s => s.Method == HttpMethod.Post).Body!).RootElement;
+        Assert.Equal("Config", root.GetProperty("syncType").GetString());
+        Assert.Equal("SinceLast", root.GetProperty("rangeKind").GetString());
+        Assert.True(!root.TryGetProperty("days", out var days) || days.ValueKind == JsonValueKind.Null);
     }
 
     [Fact]

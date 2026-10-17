@@ -112,10 +112,10 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public void MapBannedIpsEndpoints_RequiresSuperAdminLocal()
+        public void MapBannedIpsEndpoints_RequiresSuperAdminLocalOrPasskey()
         {
             // Arrange: map the routes onto a real endpoint table; a non-admin is rejected by the
-            // SuperAdminLocal policy, so the route metadata must carry that policy name.
+            // SuperAdminLocalOrPasskey policy, so the route metadata must carry that policy name.
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
             builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
@@ -131,11 +131,11 @@ namespace VideoForensics.WebApp.Tests
                 .OfType<RouteEndpoint>()
                 .Single(e => e.RoutePattern.RawText?.TrimEnd('/') == "/api/v1/banned-ips");
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
         }
 
         [Fact]
-        public void MapBannedIpsEndpoints_DeleteRoute_RequiresSuperAdminLocalAndAcceptsDelete()
+        public void MapBannedIpsEndpoints_DeleteRoute_RequiresSuperAdminLocalOrPasskeyAndAcceptsDelete()
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
@@ -150,12 +150,12 @@ namespace VideoForensics.WebApp.Tests
                 .OfType<RouteEndpoint>()
                 .Single(e => e.RoutePattern.RawText == "/api/v1/banned-ips/{id:guid}");
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
             Assert.Contains("DELETE", endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods);
         }
 
         // Endpoint filters are not visible in route metadata, so the step-up requirement is proven through
-        // a real TestServer pipeline: real routing, the SuperAdminLocal policy and StepUpEndpointFilter.
+        // a real TestServer pipeline: real routing, the SuperAdminLocalOrPasskey policy and StepUpEndpointFilter.
         private const string PipelineScheme = "BannedIpsPipelineTest";
 
         private sealed class PipelineAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
@@ -192,6 +192,7 @@ namespace VideoForensics.WebApp.Tests
             _ = builder.Services.AddSingleton(stepUp.Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(PipelineScheme)
                 .AddScheme<AuthenticationSchemeOptions, PipelineAuthHandler>(PipelineScheme, _ => { });

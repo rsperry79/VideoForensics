@@ -72,7 +72,7 @@ public class McpToolAuthorization_Tests
     [Fact]
     public async Task SecurityEventTools_CrossAccountQuery_RemoteSuperAdmin_ReturnsErrorWithoutQuerying()
     {
-        // The caller is authenticated and is a SuperAdmin, but not on the Local tier, so SuperAdminLocal fails.
+        // The caller is authenticated and is a SuperAdmin, but neither on the Local tier nor a passkey session, so SuperAdminLocalOrPasskey fails.
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -84,12 +84,34 @@ public class McpToolAuthorization_Tests
         var accessor = new Mock<IHttpContextAccessor>();
         accessor.Setup(a => a.HttpContext).Returns(httpContext);
         var audit = new Mock<ISecurityAuditService>();
-        var tools = new SecurityEventTools(audit.Object, accessor.Object, Authorizer(false, VideoForensicsPolicies.SuperAdminLocal).Object, NullLogger<SecurityEventTools>.Instance);
+        var tools = new SecurityEventTools(audit.Object, accessor.Object, Authorizer(false, VideoForensicsPolicies.SuperAdminLocalOrPasskey).Object, NullLogger<SecurityEventTools>.Instance);
 
         var result = await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
 
         Assert.Contains("SuperAdminLocal", result.Error);
         Assert.Empty(result.Events);
         audit.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task SecurityEventTools_PasskeyOrLocalPolicy_IsCheckedWithSuperAdminLocalOrPasskey()
+    {
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString()),
+                new Claim(VideoForensicsClaimTypes.Role, OperatorRole.SuperAdmin.ToString()),
+            ], "test")),
+        };
+        var accessor = new Mock<IHttpContextAccessor>();
+        accessor.Setup(a => a.HttpContext).Returns(httpContext);
+        var audit = new Mock<ISecurityAuditService>();
+        var authorizer = Authorizer(false, VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+        var tools = new SecurityEventTools(audit.Object, accessor.Object, authorizer.Object, NullLogger<SecurityEventTools>.Instance);
+
+        await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
+
+        authorizer.Verify(a => a.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocalOrPasskey), Times.Once);
     }
 }

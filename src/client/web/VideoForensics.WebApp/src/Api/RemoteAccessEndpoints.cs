@@ -10,10 +10,10 @@ namespace VideoForensics.WebApp.Api
 {
     /// <summary>
     /// Cloudflare Tunnel management for the Remote Access screen (plan §5.3). Gated
-    /// SuperAdmin+Local like every other infrastructure-exposure screen (§5.10) - and, since
+    /// SuperAdmin (Local for password sign-in; passkey from any tier) like every other infrastructure-exposure screen (§5.10) - and, since
     /// starting a tunnel is functionally "widen the network tier to Internet", START additionally
     /// requires step-up re-authentication (§5.7's "widening the network tier" case) even within an
-    /// already-verified SuperAdminLocal session. Stopping a tunnel only reduces exposure, so it
+    /// already-verified SuperAdmin session. Stopping a tunnel only reduces exposure, so it
     /// does not.
     ///
     /// Also requires the configured network tier (§5.2, now enforced at the Kestrel-bind level in
@@ -27,7 +27,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapRemoteAccessEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/remote-access").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/remote-access").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/status", async (ICloudflaredTunnelService tunnels, CancellationToken ct) =>
             {

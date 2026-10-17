@@ -97,26 +97,30 @@ else
                             <option value="Events">@L["SyncTypeEvents"]</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="sync-range" class="form-label">@L["RangeLabel"]</label>
-                        <select id="sync-range" class="form-select" @bind="_syncRange" disabled="@_isSyncing">
-                            <option value="SinceLast">@L["RangeSinceLast"]</option>
-                            <option value="30">@L["RangeDays30"]</option>
-                            <option value="60">@L["RangeDays60"]</option>
-                            <option value="90">@L["RangeDays90"]</option>
-                            <option value="Custom">@L["RangeCustom"]</option>
-                        </select>
-                    </div>
-                    @if (_syncRange == CustomRange)
+                    @if (_syncType == "Events")
                     {
-                        <div class="sync-custom-range">
-                            <label for="sync-custom-start" class="form-label">@L["CustomStartLabel"]</label>
-                            <input id="sync-custom-start" type="date" class="form-control" value="@CustomStartText" disabled="@_isSyncing" @onchange="OnCustomStartChanged" />
+                        <div>
+                            <label for="sync-range" class="form-label">@L["RangeLabel"]</label>
+                            <select id="sync-range" class="form-select" @bind="_syncRange" disabled="@_isSyncing">
+                                <option value="SinceLast">@L["RangeSinceLast"]</option>
+                                <option value="30">@L["RangeDays30"]</option>
+                                <option value="60">@L["RangeDays60"]</option>
+                                <option value="90">@L["RangeDays90"]</option>
+                                <option value="Custom">@L["RangeCustom"]</option>
+                            </select>
                         </div>
-                        <div class="sync-custom-range">
-                            <label for="sync-custom-end" class="form-label">@L["CustomEndLabel"]</label>
-                            <input id="sync-custom-end" type="date" class="form-control" value="@CustomEndText" disabled="@_isSyncing" @onchange="OnCustomEndChanged" />
-                        </div>
+                        @if (_syncRange == CustomRange)
+                        {
+                            <div class="sync-custom-range">
+                                <label for="sync-custom-start" class="form-label">@L["CustomStartLabel"]</label>
+                                <input id="sync-custom-start" type="date" class="form-control" value="@CustomStartText" disabled="@_isSyncing" @onchange="OnCustomStartChanged" />
+                            </div>
+                            <div class="sync-custom-range">
+                                <label for="sync-custom-end" class="form-label">@L["CustomEndLabel"]</label>
+                                <input id="sync-custom-end" type="date" class="form-control" value="@CustomEndText" disabled="@_isSyncing" @onchange="OnCustomEndChanged" />
+                                <div id="sync-custom-end-hint" class="form-text">@L["CustomEndHint"]</div>
+                            </div>
+                        }
                     }
                     <div class="d-flex gap-2 align-items-center">
                         <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
@@ -570,6 +574,12 @@ else
     /// <summary>Builds the sync-now body from the panel: a custom range runs from the start day through the end day, local time.</summary>
     private VideoForensics.Core.Api.Contracts.SyncNowRequest BuildSyncNowRequest()
     {
+        // Config and Snapshots ignore the window on the server, and the range controls are hidden for them, so they send the default.
+        if (_syncType != "Events")
+        {
+            return new VideoForensics.Core.Api.Contracts.SyncNowRequest(_syncType, SinceLastRange, null, null, null);
+        }
+
         if (_syncRange == CustomRange)
         {
             return new VideoForensics.Core.Api.Contracts.SyncNowRequest(

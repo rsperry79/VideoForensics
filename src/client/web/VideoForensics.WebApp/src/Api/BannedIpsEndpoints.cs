@@ -13,13 +13,13 @@ namespace VideoForensics.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for active banned IP ranges (manual and system auto-bans): list and unban.
-    /// Create is not exposed here. Requires SuperAdmin+Local, same as the lockout policy routes.
+    /// Create is not exposed here. Requires SuperAdmin (Local for password sign-in; passkey from any tier), same as the lockout policy routes.
     /// </summary>
     public static class BannedIpsEndpoints
     {
         public static void MapBannedIpsEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/banned-ips").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/banned-ips").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", ListAsync).WithName("ListBannedIps");
             _ = group.MapDelete("/{id:guid}", UnbanAsync).WithName("UnbanBannedIp").AddEndpointFilter<StepUpEndpointFilter>();

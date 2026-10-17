@@ -11,7 +11,7 @@ namespace VideoForensics.WebApp.Api
     /// Admin endpoints for managing login method (auth method) settings: which authentication methods
     /// (password and passkey) are available. The public GET /api/v1/auth/methods endpoint (anonymous)
     /// returns only enabled flags. The admin endpoints (GET/PUT /api/v1/auth-methods/settings) require
-    /// SuperAdmin+Local authorization.
+    /// SuperAdmin (Local for password sign-in; passkey from any tier) authorization.
     /// </summary>
     public static class AuthMethodEndpoints
     {
@@ -24,7 +24,7 @@ namespace VideoForensics.WebApp.Api
 
             // Admin endpoints: get/update auth method settings
             RouteGroupBuilder group = app.MapGroup("/api/v1/auth-methods/settings")
-                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", GetSettingsAsync)
                 .WithName("GetAuthMethodSettings");

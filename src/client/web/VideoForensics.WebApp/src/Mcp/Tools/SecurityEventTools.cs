@@ -30,7 +30,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
         /// <summary>
         /// Retrieve security events (login attempts, breaches, account lockouts) for visibility and audit trails.
         /// When operator_id is omitted, returns the caller's own events (self-service).
-        /// When operator_id is present, requires SuperAdminLocal authorization and returns cross-account audit data.
+        /// When operator_id is present, requires SuperAdminLocalOrPasskey authorization and returns cross-account audit data.
         /// </summary>
         [McpServerTool]
         public async Task<SecurityEventsResult> GetSecurityEvents(
@@ -75,7 +75,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             }
             else
             {
-                // Cross-account query: verify SuperAdminLocal authorization
+                // Cross-account query: verify SuperAdminLocalOrPasskey authorization
                 if (!Guid.TryParse(operatorId, out Guid parsedId))
                 {
                     return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Invalid operatorId format" };
@@ -84,9 +84,9 @@ namespace VideoForensics.WebApp.Mcp.Tools
                 targetOperatorId = parsedId;
                 isSelfService = false;
 
-                // Cross-account access is SuperAdminLocal, the same policy as the HTTP endpoint. Checking the role
+                // Cross-account access is SuperAdminLocalOrPasskey, the same policy as the HTTP endpoint. Checking the role
                 // alone would let a remote SuperAdmin read other operators' security events.
-                if (!await _authorizer.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocal))
+                if (!await _authorizer.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocalOrPasskey))
                 {
                     Logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} lacks SuperAdminLocal", callerId);
                     return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdminLocal required for cross-account queries" };

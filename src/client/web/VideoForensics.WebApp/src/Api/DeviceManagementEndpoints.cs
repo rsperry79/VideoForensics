@@ -13,7 +13,7 @@ namespace VideoForensics.WebApp.Api
     /// <summary>
     /// Paired-device and Operator management (plan §5.4/§5.11): listing, revoking a single device,
     /// and deactivating an Operator (bulk-revoking every device they've paired). All gated
-    /// SuperAdmin+Local - revocation is exactly as sensitive as pairing itself.
+    /// SuperAdmin (Local for password sign-in; passkey from any tier) - revocation is exactly as sensitive as pairing itself.
     ///
     /// Revocation here does two things, matching the plan's explicit "not just the next HTTP
     /// request" requirement: it immediately blocks the device's next API request (enforced by
@@ -26,7 +26,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapDeviceManagementEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/paired-devices", async (IPairedDeviceRepository devices, CancellationToken ct) =>
                 Results.Ok(await devices.ListAsync(ct)));
@@ -145,7 +145,7 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("auth");
 
             // Separate route group for UI mode management. Base policy is ReadOnly (any authenticated user),
-            // but routes require Admin role (which includes SuperAdmin). Unlike the SuperAdminLocal group above,
+            // but routes require Admin role (which includes SuperAdmin). Unlike the SuperAdmin group above,
             // these routes do NOT require Local network tier, so Admin from Internet is allowed.
             RouteGroupBuilder uiModeGroup = app.MapGroup("/api/devices-management").RequireAuthorization(VideoForensicsPolicies.ReadOnly);
 
