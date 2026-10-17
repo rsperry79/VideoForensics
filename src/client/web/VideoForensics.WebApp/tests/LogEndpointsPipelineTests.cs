@@ -216,26 +216,15 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
         }
 
+        // Log reads are read-only, so they need no passkey step-up. Only destructive or system changes are challenged.
         [Theory]
         [InlineData("/api/v1/logs")]
         [InlineData("/api/v1/logs/stream")]
-        public async Task Logs_MissingStepUpToken_IsForbidden(string url)
+        public async Task Logs_NoStepUpToken_IsReadable(string url)
         {
             await using var host = await StartAsync();
             var resp = await host.Client.SendAsync(Get(url, stepUp: null), HttpCompletionOption.ResponseHeadersRead);
-            Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
-            host.Audit.VerifyNoOtherCalls();
-        }
-
-        [Theory]
-        [InlineData("/api/v1/logs")]
-        [InlineData("/api/v1/logs/stream")]
-        public async Task Logs_InvalidStepUpToken_IsForbidden(string url)
-        {
-            await using var host = await StartAsync(stepUpValid: false);
-            var resp = await host.Client.SendAsync(Get(url), HttpCompletionOption.ResponseHeadersRead);
-            Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
-            host.Audit.VerifyNoOtherCalls();
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         }
 
         // ---- audit ----------------------------------------------------------------------------------
