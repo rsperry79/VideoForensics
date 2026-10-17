@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace VideoForensics.Hosting
 {
@@ -41,6 +42,12 @@ namespace VideoForensics.Hosting
     {
         /// <summary>Name of the release asset CI publishes to carry the authoritative version string.</summary>
         private const string VersionAssetName = "version.json";
+
+        // Anchored at the start so unrelated assets that merely contain the pattern are ignored.
+        private static readonly Regex InstallerNameVersionRegex = new(
+            @"^videoforensics_(\d+(?:\.\d+)+)_",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(1));
 
         private readonly HttpClient _httpClient;
 
@@ -88,7 +95,7 @@ namespace VideoForensics.Hosting
                     ?? new List<GitHubReleaseAsset>();
 
                 // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
-                string? version = await TryFetchVersionAsync(assets, ct);
+                string? version = await TryFetchVersionAsync(assets, ct) ?? TryParseVersionFromAssetNames(assets);
 
                 return new GitHubReleaseInfo(
                     releaseDto.TagName,
@@ -104,6 +111,24 @@ namespace VideoForensics.Hosting
                 // Catch any exception (JSON parse errors, network errors, etc.) and return null rather than propagating.
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Fallback when version.json is missing or unreadable: derives the version from the Linux installer
+        /// asset name (e.g. <c>videoforensics_1.0.191_amd64.deb</c>). Returns null when nothing matches; never throws.
+        /// </summary>
+        private static string? TryParseVersionFromAssetNames(IReadOnlyList<GitHubReleaseAsset> assets)
+        {
+            foreach (GitHubReleaseAsset asset in assets)
+            {
+                Match match = InstallerNameVersionRegex.Match(asset.Name ?? string.Empty);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

@@ -37,6 +37,20 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             return localizer[key].Value;
         }
 
+        public Guid? OperatorId
+        {
+            get
+            {
+                if (!circuit.IsOpen)
+                {
+                    return null;
+                }
+
+                string? token = session.SessionToken;
+                return token is null ? null : tokens.Validate(token)?.OperatorId;
+            }
+        }
+
         public string StepUpDenial() => localizer["Denied_StepUp"].Value;
 
         public bool IsStepUpValid(string? stepUpToken)

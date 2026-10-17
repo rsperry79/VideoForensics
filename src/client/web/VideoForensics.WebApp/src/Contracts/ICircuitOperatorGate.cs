@@ -20,6 +20,12 @@ namespace VideoForensics.WebApp.Contracts
         /// </summary>
         bool IsStepUpValid(string? stepUpToken);
 
+        /// <summary>
+        /// The id of the operator behind this circuit, from the re-validated session token; null when the circuit is not
+        /// open or there is no valid session. For audit attribution only; the token itself is never exposed.
+        /// </summary>
+        Guid? OperatorId { get; }
+
         /// <summary>The localized message for an operator who does not satisfy <paramref name="policy"/>.</summary>
         string Denial(AccessPolicy policy);
 

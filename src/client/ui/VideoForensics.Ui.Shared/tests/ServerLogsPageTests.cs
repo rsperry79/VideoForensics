@@ -227,6 +227,11 @@ public abstract class ServerLogsPageTestBase : BunitContext
             .Returns(() =>
             {
                 int n = Interlocked.Increment(ref _stepUpCount);
+                if (PendingStepUp is not null)
+                {
+                    return PendingStepUp.Task;
+                }
+
                 return StepUpFailures.TryDequeue(out Exception? failure)
                     ? Task.FromException<string>(failure)
                     : Task.FromResult($"tok-{n}");
@@ -241,6 +246,9 @@ public abstract class ServerLogsPageTestBase : BunitContext
     protected Mock<WebAuthnClient> WebAuthn { get; }
     protected BunitJSModuleInterop Module { get; }
     protected Queue<Exception> StepUpFailures { get; } = new();
+
+    /// <summary>When set, the step-up stays pending until the test completes it, as while the passkey prompt is open.</summary>
+    protected TaskCompletionSource<string>? PendingStepUp { get; set; }
 
     protected async Task SignInSuperAdminAsync()
     {
@@ -353,7 +361,8 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         Assert.Contains("user cancelled", page.Find("[data-testid='logs-stepup-error']").TextContent);
         Assert.Empty(Logs.PageCalls);
         Assert.Empty(Logs.StreamCalls);
-        Assert.Equal("disconnected", Status(page));
+        // Unverified: the status badge stays hidden so no log state is shown without a passkey.
+        Assert.Empty(page.FindAll("[data-testid='logs-status']"));
     }
 
     [Fact]
@@ -369,6 +378,35 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         page.WaitForAssertion(() => Assert.Contains("after retry", page.Markup));
         Assert.Empty(page.FindAll("[data-testid='logs-stepup-error']"));
         Assert.Equal("tok-2", Assert.Single(Logs.PageCalls).Token);
+    }
+
+    [Fact]
+    public async Task ServerLogsPage_BeforeStepUpCompletes_HidesLogBodyAndStatus()
+    {
+        PendingStepUp = new TaskCompletionSource<string>();
+        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "secret entry"));
+
+        var page = await RenderSignedInAsync();
+
+        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-verifying']")));
+        Assert.Empty(page.FindAll("[data-testid='logs-viewport']"));
+        Assert.Empty(page.FindAll("[data-testid='logs-status']"));
+        Assert.DoesNotContain("secret entry", page.Markup);
+        Assert.Empty(Logs.PageCalls);
+    }
+
+    [Fact]
+    public async Task ServerLogsPage_AfterStepUpCompletes_ShowsLogBody()
+    {
+        PendingStepUp = new TaskCompletionSource<string>();
+        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "visible entry"));
+        var page = await RenderSignedInAsync();
+        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-verifying']")));
+
+        PendingStepUp.SetResult("tok-1");
+
+        page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-viewport']")));
+        Assert.Empty(page.FindAll("[data-testid='logs-verifying']"));
     }
 
     [Fact]

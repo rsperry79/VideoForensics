@@ -39,7 +39,7 @@ internal sealed class CircuitFixture
     }
 
     /// <summary>Signs the circuit in as an operator with the given role and kind, and records the tier.</summary>
-    public void SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
+    public SessionPrincipal SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
     {
         const string token = "circuit-token";
         Session.Setup(s => s.SessionToken).Returns(token);
@@ -47,6 +47,7 @@ internal sealed class CircuitFixture
             Guid.NewGuid(), null, kind, role, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
         Tokens.Setup(t => t.Validate(token)).Returns(principal);
         Network.SetTier(tier);
+        return principal;
     }
 }
 
@@ -124,6 +125,47 @@ public class CircuitOperatorGate_Tests
         fixture.SignIn(OperatorRole.Admin, tier: NetworkTier.Local);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_OpenCircuitValidToken_ReturnsPrincipalOperatorId()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        SessionPrincipal principal = fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.Equal(principal.OperatorId, fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_ClosedCircuit_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = false;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_NoToken_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_InvalidToken_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.Session.Setup(s => s.SessionToken).Returns("forged");
+        fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
     }
 }
 
@@ -253,6 +295,7 @@ public class CircuitGuardRegistration_Tests
         services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
         services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
+        services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
         services.AddScoped(_ => new Mock<ICaseRepository>().Object);
         services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);

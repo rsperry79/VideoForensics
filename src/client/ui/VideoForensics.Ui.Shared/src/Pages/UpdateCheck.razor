@@ -13,6 +13,52 @@
     <h4 class="mb-0">@L["Title"]</h4>
 </div>
 
+@if (IsAdminOrAbove)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">@L["ReleaseChannelTitle"]</h5>
+
+            @if (_channelLoadError is not null)
+            {
+                <div class="alert alert-danger mb-3">@_channelLoadError</div>
+            }
+
+            @if (_currentChannel is not null)
+            {
+                @if (IsSuperAdminViewer)
+                {
+                    <div class="d-flex flex-column gap-2">
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                            <SfDropDownList TValue="UpdateReleaseChannel" TItem="KeyValuePair<UpdateReleaseChannel, string>" Value="_selectedChannel" ValueChanged="OnChannelSelectedAsync" DataSource="@_channelOptions" Enabled="@(!_isSavingChannel)" Style="max-width: 320px;">
+                                <DropDownListFieldSettings Text="Value" Value="Key" />
+                            </SfDropDownList>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
+                        <p class="mb-1">@ChannelDisplayName(_currentChannel.Value)</p>
+                        <small class="text-muted">@L["ReadOnlyChannelNote"]</small>
+                    </div>
+                }
+            }
+
+            @if (_channelSaveError is not null)
+            {
+                <div class="alert alert-danger mt-3 mb-0">@_channelSaveError</div>
+            }
+            else if (_channelSavedMessage is not null)
+            {
+                <div class="alert alert-success mt-3 mb-0">@_channelSavedMessage</div>
+            }
+        </div>
+    </div>
+}
+
 @if (!SessionState.IsSignedIn)
 {
     <div class="alert alert-info mb-4">
@@ -23,6 +69,11 @@
 <div class="d-flex flex-row gap-2 mb-2">
     <SfButton Content="@(_isChecking ? L["CheckingButton"] : L["CheckNowButton"])" OnClick="CheckNowAsync" Disabled="@_isChecking" CssClass="e-primary" />
 </div>
+
+@if (_checkResultMessage is not null)
+{
+    <div class="alert alert-info mb-2">@_checkResultMessage</div>
+}
 
 @if (_isChecking)
 {
@@ -96,57 +147,11 @@ else if (_state is not null)
     }
 }
 
-@if (IsAdminOrAbove)
-{
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">@L["ReleaseChannelTitle"]</h5>
-
-            @if (_channelLoadError is not null)
-            {
-                <div class="alert alert-danger mb-3">@_channelLoadError</div>
-            }
-
-            @if (_currentChannel is not null)
-            {
-                @if (IsSuperAdminViewer)
-                {
-                    <div class="d-flex flex-column gap-2">
-                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
-                        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
-                            <SfDropDownList TValue="UpdateReleaseChannel" TItem="KeyValuePair<UpdateReleaseChannel, string>" @bind-Value="_selectedChannel" DataSource="@_channelOptions" Enabled="@(!_isSavingChannel)" Style="max-width: 320px;">
-                                <DropDownListFieldSettings Text="Value" Value="Key" />
-                            </SfDropDownList>
-                            <SfButton Content="@(_isSavingChannel ? L["SavingChannelButton"] : L["SaveChannelButton"])" OnClick="SaveReleaseChannelAsync" Disabled="@_isSavingChannel" CssClass="e-primary" />
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div>
-                        <small class="text-muted">@L["ReleaseChannelLabel"]</small>
-                        <p class="mb-1">@ChannelDisplayName(_currentChannel.Value)</p>
-                        <small class="text-muted">@L["ReadOnlyChannelNote"]</small>
-                    </div>
-                }
-            }
-
-            @if (_channelSaveError is not null)
-            {
-                <div class="alert alert-danger mt-3 mb-0">@_channelSaveError</div>
-            }
-            else if (_channelSavedMessage is not null)
-            {
-                <div class="alert alert-success mt-3 mb-0">@_channelSavedMessage</div>
-            }
-        </div>
-    </div>
-}
-
 @code {
     private bool _isChecking;
     private string? _loadError;
     private UpdateCheckState? _state;
+    private string? _checkResultMessage;
 
     private UpdateReleaseChannel? _currentChannel;
     private UpdateReleaseChannel _selectedChannel = UpdateReleaseChannel.Stable;
@@ -206,24 +211,26 @@ else if (_state is not null)
         }
     }
 
-    private async Task SaveReleaseChannelAsync()
+    private async Task OnChannelSelectedAsync(UpdateReleaseChannel channel)
     {
-        if (_isSavingChannel)
+        if (_isSavingChannel || channel == _currentChannel)
         {
             return;
         }
 
+        _selectedChannel = channel;
         _isSavingChannel = true;
         _channelSaveError = null;
         _channelSavedMessage = null;
         try
         {
-            _currentChannel = await ReleaseChannelService.SetReleaseChannelAsync(_selectedChannel, CancellationToken.None);
+            _currentChannel = await ReleaseChannelService.SetReleaseChannelAsync(channel, CancellationToken.None);
             _selectedChannel = _currentChannel.Value;
             _channelSavedMessage = L["ChannelSavedMessage"];
         }
         catch (Exception ex)
         {
+            _selectedChannel = _currentChannel ?? UpdateReleaseChannel.Stable;
             _channelSaveError = L["ChannelSaveFailed", ex.Message];
         }
         finally
@@ -261,10 +268,17 @@ else if (_state is not null)
 
         _isChecking = true;
         _loadError = null;
+        _checkResultMessage = null;
         try
         {
             await UpdateCheckService.TriggerCheckNowAsync(CancellationToken.None);
             LoadState();
+            if (_loadError is null && _state is not null && _state.ErrorMessage is null)
+            {
+                _checkResultMessage = _state.UpdateAvailable
+                    ? L["CheckResultUpdateAvailable", _state.LatestVersion ?? string.Empty]
+                    : L["CheckResultUpToDate", _state.CurrentVersion];
+            }
         }
         catch (Exception ex)
         {

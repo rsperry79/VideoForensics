@@ -101,6 +101,9 @@
   <data name="StepUpFailed" xml:space="preserve">
     <value>Passkey verification was cancelled or failed, so server logs cannot be loaded.</value>
   </data>
+  <data name="VerifyingPasskey" xml:space="preserve">
+    <value>Verify with your passkey to view server logs.</value>
+  </data>
   <data name="TryAgainButton" xml:space="preserve">
     <value>Try again</value>
   </data>

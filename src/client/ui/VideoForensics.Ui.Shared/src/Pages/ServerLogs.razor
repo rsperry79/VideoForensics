@@ -15,7 +15,10 @@
 
 <div class="d-flex align-items-center gap-2 mb-3">
     <h4 class="mb-0">@L["Title"]</h4>
-    <span class="badge @StatusCss" data-testid="logs-status" data-status="@StatusKey">@StatusText</span>
+    @if (_verified)
+    {
+        <span class="badge @StatusCss" data-testid="logs-status" data-status="@StatusKey">@StatusText</span>
+    }
 </div>
 
 @if (SessionState.IsSignedIn)
@@ -32,6 +35,8 @@
         <div class="alert alert-danger" data-testid="logs-denied">@L["AccessDenied"]</div>
     }
 
+    @if (_verified)
+    {
     <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div>
             <label class="form-label small mb-0" for="logs-level">@L["MinLevelLabel"]</label>
@@ -109,6 +114,11 @@
             </tbody>
         </table>
     </div>
+    }
+    else if (_stepUpError is null)
+    {
+        <p class="text-muted" data-testid="logs-verifying">@L["VerifyingPasskey"]</p>
+    }
 }
 else if (_sessionChecked)
 {
@@ -159,6 +169,9 @@ else if (_sessionChecked)
     private bool _autoScroll = true;
     private bool _scrollPending;
     private bool _denied;
+    // Set once the operator has passed the passkey step-up for this page. Until then the log body stays hidden,
+    // so no log structure or content is shown before verification.
+    private bool _verified;
     private string? _stepUpError;
     private string _minLevel = "Information";
     private string _searchText = string.Empty;
@@ -279,6 +292,7 @@ else if (_sessionChecked)
                 }
 
                 ct.ThrowIfCancellationRequested();
+                await PostAsync(run, () => _verified = true);
 
                 if (!filled)
                 {

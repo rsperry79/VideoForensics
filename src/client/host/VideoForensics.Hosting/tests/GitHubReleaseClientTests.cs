@@ -283,5 +283,100 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal("Release", result!.TagName);
             Assert.Null(result.Version);
         }
+
+        private static string GetReleaseJsonWithAssets(string tagName, params string[] assetNames)
+        {
+            var release = new
+            {
+                tag_name = tagName,
+                html_url = $"https://github.com/rsperry79/VideoForensics/releases/tag/{tagName}",
+                draft = false,
+                prerelease = false,
+                assets = assetNames.Select(n => new
+                {
+                    name = n,
+                    browser_download_url = n == "version.json"
+                        ? VersionJsonUrl
+                        : $"https://github.com/rsperry79/VideoForensics/releases/download/{tagName}/{n}",
+                    size = 1024L
+                }).ToArray()
+            };
+            return JsonSerializer.Serialize(release);
+        }
+
+        private static async Task<GitHubReleaseInfo?> FetchWithAssetsAsync(string versionJsonBody, int versionJsonStatus, params string[] assetNames)
+        {
+            HttpClient httpClient = new GitHubReleaseClientTests().CreateHttpClient(request =>
+            {
+                if (request.RequestUri?.ToString() == VersionJsonUrl)
+                {
+                    if (versionJsonStatus != 200)
+                    {
+                        return Task.FromResult(new HttpResponseMessage((HttpStatusCode)versionJsonStatus));
+                    }
+                    return Task.FromResult(JsonResponse(versionJsonBody));
+                }
+                return Task.FromResult(JsonResponse(GetReleaseJsonWithAssets("Testing", assetNames)));
+            });
+
+            return await new GitHubReleaseClient(httpClient).GetLatestTestingReleaseAsync(CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonAndDebBothPresent_PrefersVersionJson()
+        {
+            var result = await FetchWithAssetsAsync("{\"version\":\"9.9.9\"}", 200, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("9.9.9", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_NoVersionJsonThreePartDeb_DerivesVersionFromDebName()
+        {
+            var result = await FetchWithAssetsAsync("", 200, "VideoForensicsSetup.exe", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_NoVersionJsonFourPartDeb_DerivesVersionFromDebName()
+        {
+            HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(JsonResponse(
+                GetReleaseJsonWithAssets("Release", "videoforensics_1.0.33.20390_amd64.deb"))));
+
+            var result = await new GitHubReleaseClient(httpClient).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.33.20390", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_NoVersionJsonAndNoMatchingAsset_VersionIsNull()
+        {
+            var result = await FetchWithAssetsAsync("", 200, "VideoForensicsSetup.exe", "VideoForensics.deb", "notvideoforensics_1.0.1_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Null(result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonUnparseableAndDebPresent_FallsBackToDebName()
+        {
+            var result = await FetchWithAssetsAsync("{not valid json", 200, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonDownloadFailsAndDebPresent_FallsBackToDebName()
+        {
+            var result = await FetchWithAssetsAsync("", 404, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
     }
 }
