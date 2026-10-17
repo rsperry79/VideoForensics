@@ -115,8 +115,9 @@ namespace VideoForensics.Hosting.Tests.Services
             ProviderSyncRun run = Assert.Single(_recorded);
             Assert.True(run.Success);
             Assert.Equal("Snapshots", run.SyncType);
-            Assert.Equal(3, run.DevicesSynced);
-            Assert.Equal(0, run.FeedsFailed);
+            Assert.Equal(3, run.SnapshotsSynced);
+            Assert.Null(run.DevicesSynced);
+            Assert.Null(run.FeedsFailed);
         }
 
         [Fact]
@@ -130,8 +131,95 @@ namespace VideoForensics.Hosting.Tests.Services
             ProviderSyncRun run = Assert.Single(_recorded);
             Assert.False(run.Success);
             Assert.Equal("1 of 2 device(s) failed: no snapshot", run.ErrorMessage);
-            Assert.Equal(1, run.DevicesSynced);
+            Assert.Equal(1, run.SnapshotsSynced);
+            Assert.Null(run.DevicesSynced);
+            Assert.Null(run.FeedsFailed);
+        }
+
+        [Fact]
+        public async Task RunAsync_AllType_PullsEventsThenSnapshotsAndRecordsBothCounts()
+        {
+            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+            var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+            var order = new List<string>();
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, from, to, It.IsAny<CancellationToken>()))
+                .Callback(() => order.Add("events"))
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 3, LocationsSynced: 2, EventsSynced: 40, ConfigAreasSynced: 3, FeedsFailed: 1));
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
+                .Callback(() => order.Add("snapshots"))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 3, DevicesSucceeded: 3, SnapshotsSaved: 3, DevicesFailed: 0, ErrorMessage: null));
+
+            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, from, to, false), CancellationToken.None);
+
+            Assert.Equal(new[] { "events", "snapshots" }, order);
+            ProviderSyncRun run = Assert.Single(_recorded);
+            Assert.True(run.Success);
+            Assert.Equal("Incremental", run.SyncType);
+            Assert.Equal(3, run.DevicesSynced);
+            Assert.Equal(40, run.EventsSynced);
             Assert.Equal(1, run.FeedsFailed);
+            Assert.Equal(3, run.SnapshotsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_AllTypeAllHistory_RecordsFullWithBothCounts()
+        {
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, null, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2));
+
+            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, true), CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(_recorded);
+            Assert.Equal("Full", run.SyncType);
+            Assert.Equal(9, run.EventsSynced);
+            Assert.Equal(2, run.SnapshotsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_AllTypeSnapshotsFail_RecordsFailureAndKeepsEventCounts()
+        {
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 1, ErrorMessage: "1 of 2 device(s) failed: no snapshot"));
+
+            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, false), CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(_recorded);
+            Assert.False(run.Success);
+            Assert.Contains("no snapshot", run.ErrorMessage);
+            Assert.Equal(9, run.EventsSynced);
+            Assert.Equal(1, run.SnapshotsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_AllTypeEventPullFails_StillSyncsSnapshotsAndKeepsEventError()
+        {
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .Callback(() => _account.LastErrorMessage = "Device Back Yard: boom")
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 1, EventsSynced: 2, FeedsFailed: 1));
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1));
+
+            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, false), CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(_recorded);
+            Assert.False(run.Success);
+            Assert.Contains("Back Yard", run.ErrorMessage);
+            Assert.Equal(1, run.SnapshotsSynced);
+        }
+
+        [Fact]
+        public async Task RunAsync_EventsType_RecordsNoSnapshotCount()
+        {
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 1, EventsSynced: 2));
+
+            await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, false), CancellationToken.None);
+
+            Assert.Null(Assert.Single(_recorded).SnapshotsSynced);
         }
 
         [Fact]

@@ -199,6 +199,25 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     }
 
     [Fact]
+    public void AccountDetails_SnapshotsOnlyRun_ShowsSnapshotCount()
+    {
+        var started = new DateTime(2026, 10, 2, 9, 0, 0, DateTimeKind.Utc);
+        SetJson("/sync-runs", new[]
+        {
+            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true, SnapshotsSynced: 12),
+        });
+        SetJson("/cases", Array.Empty<AccountCaseDto>());
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
+        string row = cut.Find("#sync-history .sync-run-row").TextContent;
+        Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 12), row);
+        // The type column also reads "Unknown" for this run, so check the records cell only.
+        Assert.DoesNotContain(Strings["SyncRecordsUnknown"], cut.Find("#sync-history .sync-run-row td:nth-child(4)").TextContent);
+    }
+
+    [Fact]
     public void AccountDetails_OldSyncRunWithoutCounts_ShowsUnknownTypeAndRecords()
     {
         var started = new DateTime(2026, 9, 1, 9, 0, 0, DateTimeKind.Utc);

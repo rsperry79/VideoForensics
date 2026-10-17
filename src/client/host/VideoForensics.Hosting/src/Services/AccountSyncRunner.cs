@@ -320,8 +320,8 @@ namespace VideoForensics.Hosting.Services
             {
                 SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, request.FromUtc, request.ToUtc, cancellationToken);
 
-                // The run row has no snapshot column: DevicesSynced holds devices that returned a snapshot and FeedsFailed those that did not.
-                return new SyncOutcome(snapshots.ErrorMessage, new EventPullResult(DevicesSynced: snapshots.DevicesSucceeded, FeedsFailed: snapshots.DevicesFailed));
+                // Event counts stay null: a snapshots-only run pulled no events, so DevicesSynced/FeedsFailed would mislead.
+                return new SyncOutcome(snapshots.ErrorMessage, null, snapshots.DevicesSucceeded);
             }
 
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
