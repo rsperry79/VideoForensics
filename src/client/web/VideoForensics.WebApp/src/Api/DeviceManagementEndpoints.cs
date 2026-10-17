@@ -142,7 +142,8 @@ namespace VideoForensics.WebApp.Api
             .AddEndpointFilter<StepUpEndpointFilter>();
 
             _ = group.MapPost("/operators/{id:guid}/unlock", UnlockAsync)
-                .RequireRateLimiting("auth");
+                .RequireRateLimiting("auth")
+                .AddEndpointFilter<StepUpEndpointFilter>();
 
             // Separate route group for UI mode management. Base policy is ReadOnly (any authenticated user),
             // but routes require Admin role (which includes SuperAdmin). Unlike the SuperAdmin group above,
