@@ -56,5 +56,37 @@ namespace VideoForensics.Providers.Ring.Entities
         /// </summary>
         [JsonPropertyName("cv_properties")]
         public CvProperties CvProperties { get; set; }
+
+        /// <summary>Length of the event in seconds.</summary>
+        [JsonPropertyName("duration")]
+        public int? Duration { get; set; }
+
+        [JsonPropertyName("is_e2ee")]
+        public bool? IsE2ee { get; set; }
+
+        [JsonPropertyName("had_subscription")]
+        public bool? HadSubscription { get; set; }
+
+        /// <summary>Event owner/account id.</summary>
+        [JsonPropertyName("owner_id")]
+        public string OwnerId { get; set; }
+
+        [JsonPropertyName("riid")]
+        public string Riid { get; set; }
+
+        [JsonPropertyName("properties")]
+        public LocationEventProperties Properties { get; set; }
+
+        [JsonPropertyName("device_placement")]
+        public LocationEventDevicePlacement DevicePlacement { get; set; }
+
+        [JsonPropertyName("geolocation")]
+        public LocationEventGeolocation Geolocation { get; set; }
+
+        [JsonPropertyName("last_location")]
+        public LocationEventLocation LastLocation { get; set; }
+
+        [JsonPropertyName("siren")]
+        public LocationEventSirenInfo Siren { get; set; }
     }
 }
