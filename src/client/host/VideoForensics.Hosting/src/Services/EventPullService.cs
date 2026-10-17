@@ -257,6 +257,7 @@ namespace VideoForensics.Hosting.Services
         {
             IReadOnlyList<Location> remoteLocations = await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
             var devices = new List<InventoryDevice>();
+            int newDeviceCount = 0;
 
             foreach (Location remoteLocation in remoteLocations)
             {
@@ -264,13 +265,52 @@ namespace VideoForensics.Hosting.Services
                 IReadOnlyList<Device> remoteDevices = await _deviceDiscovery.GetDevicesAsync(accountId, remoteLocation.Id, cancellationToken);
                 foreach (Device remoteDevice in remoteDevices)
                 {
-                    DeviceEntity device = await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken);
+                    (DeviceEntity device, bool created) = await UpsertDeviceAsync(location.Id, remoteDevice, cancellationToken);
+                    if (created)
+                    {
+                        newDeviceCount++;
+                    }
+
                     devices.Add(new InventoryDevice(device, remoteLocation.Id));
                 }
             }
 
             _logger.LogInformation("Discovered {LocationCount} location(s) and {DeviceCount} device(s) for account", remoteLocations.Count, devices.Count);
+
+            if (newDeviceCount > 0)
+            {
+                // The provider's config step ran before these rows existed, so their settings were skipped (the provider keeps
+                // the config gate open for them). Asking for the locations again runs that step now that the rows are stored.
+                // Done once per run; the repeat's result is only logged, and the inventory above is kept. The repeat runs as a
+                // forced config pass with no event pulls, since the events were already pulled before this point in the run.
+                IReadOnlyList<Location> repeated = await RepeatDiscoveryAsForcedConfigAsync(accountId, cancellationToken);
+                _logger.LogInformation("Created {NewDeviceCount} device(s); repeated location discovery returned {LocationCount} location(s)", newDeviceCount, repeated.Count);
+            }
+
             return new Inventory(remoteLocations.Count, devices);
+        }
+
+        /// <summary>
+        /// Runs location discovery again with the sync kind set to Config, so the provider's config gate is forced open. The
+        /// caller's options are restored afterwards, even when the call fails.
+        /// </summary>
+        private async Task<IReadOnlyList<Location>> RepeatDiscoveryAsForcedConfigAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            if (_syncRunOptions is null)
+            {
+                return await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
+            }
+
+            SyncRunOptions saved = _syncRunOptions.Current;
+            _syncRunOptions.Current = saved with { Kind = SyncRunKind.Config };
+            try
+            {
+                return await _deviceDiscovery.GetLocationsAsync(accountId, cancellationToken);
+            }
+            finally
+            {
+                _syncRunOptions.Current = saved;
+            }
         }
 
         private async Task<LocationEntity> UpsertLocationAsync(Guid accountId, Location remote, CancellationToken cancellationToken)
@@ -295,9 +335,11 @@ namespace VideoForensics.Hosting.Services
             return existing;
         }
 
-        private async Task<DeviceEntity> UpsertDeviceAsync(Guid locationId, Device remote, CancellationToken cancellationToken)
+        /// <summary>Saves the device, creating its row when none exists. Returns the row and whether this call created it.</summary>
+        private async Task<(DeviceEntity Device, bool Created)> UpsertDeviceAsync(Guid locationId, Device remote, CancellationToken cancellationToken)
         {
             DeviceEntity? existing = await _deviceRepository.GetByProviderDeviceIdAsync(locationId, remote.Id, cancellationToken);
+            bool created = existing == null;
             if (existing == null)
             {
                 existing = new DeviceEntity
@@ -322,7 +364,7 @@ namespace VideoForensics.Hosting.Services
                 await _deviceRepository.UpdateAsync(existing, cancellationToken);
             }
 
-            return existing;
+            return (existing, created);
         }
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)

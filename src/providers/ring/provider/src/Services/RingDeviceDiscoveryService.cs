@@ -617,8 +617,9 @@ namespace VideoForensics.Providers.Ring.Services
 
             _syncRunTally?.MarkConfigRan();
             bool accountLevelSucceeded = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
-            await PersistDeviceSettingsAsync(session, ct);
-            if (accountLevelSucceeded)
+            bool allDeviceSettingsStored = await PersistDeviceSettingsAsync(session, ct);
+            // A device skipped because its row does not exist yet keeps the gate open, so the next sync retries it.
+            if (accountLevelSucceeded && allDeviceSettingsStored)
             {
                 await _syncState.MarkConfigSyncCompletedAsync(providerAccountId, utcNow, ct);
             }
@@ -629,28 +630,33 @@ namespace VideoForensics.Providers.Ring.Services
         /// result through <see cref="RingDeviceSettingsPersister"/>. Runs only inside the config gate. Chimes are not asked for
         /// settings. Each device is isolated: a failure is logged with the device name only and the next device still runs.
         /// The device list entry supplies owner, features and the other fields the settings endpoint does not carry.
+        /// Returns true only when every device's settings were stored. A device that was skipped or failed, or a device list
+        /// that could not be fetched, returns false so the config gate is not marked complete and the next sync retries.
         /// </summary>
-        private async Task PersistDeviceSettingsAsync(Session session, CancellationToken ct)
+        private async Task<bool> PersistDeviceSettingsAsync(Session session, CancellationToken ct)
         {
             RingDeviceSettingsPersister? persister = _deviceSettingsPersister;
             if (persister == null)
             {
-                return;
+                return true;
             }
 
             Entities.Devices? devices = await FetchForSyncAsync("device list", () => session.GetRingDevices(), ct);
             if (devices == null)
             {
-                return;
+                return false;
             }
 
+            // Every device is attempted even after one is skipped, so one missing row does not hold back the others.
+            bool allStored = true;
             foreach (Entities.Doorbot doorbot in (devices.Doorbots ?? []).Concat(devices.AuthorizedDoorbots ?? []).DistinctBy(d => d.Id))
             {
-                await PersistOneDeviceSettingsAsync(persister, session, devices, doorbot.Id, doorbot.Description, ct, root =>
+                bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, doorbot.Id, doorbot.Description, ct, root =>
                 {
                     doorbot.Settings = root.Deserialize<Entities.DoorbotSettings>() ?? new Entities.DoorbotSettings();
                     doorbot.ZoneSettings = ReadZoneSettings(root);
                 });
+                allStored = allStored && stored;
             }
 
             foreach (Entities.StickupCam cam in devices.StickupCams ?? [])
@@ -660,20 +666,24 @@ namespace VideoForensics.Providers.Ring.Services
                     continue;
                 }
 
-                await PersistOneDeviceSettingsAsync(persister, session, devices, cam.Id.Value, cam.Description, ct, root =>
+                bool stored = await PersistOneDeviceSettingsAsync(persister, session, devices, cam.Id.Value, cam.Description, ct, root =>
                 {
                     cam.Settings = root.Deserialize<Entities.StickupCamSettings>() ?? new Entities.StickupCamSettings();
                     cam.ZoneSettings = ReadZoneSettings(root);
                 });
+                allStored = allStored && stored;
             }
+
+            return allStored;
         }
 
         /// <summary>
         /// Runs one device's settings fetch, applies it to the device's list entry, and persists the mapped result. A 404 is
         /// logged at information level and skipped; any other failure is logged as a warning naming the device only.
         /// The error type is logged instead of the message, because Ring's messages can carry request URLs.
+        /// Returns true only when the device's settings were stored; a skipped (not stored yet) or failed device returns false.
         /// </summary>
-        private async Task PersistOneDeviceSettingsAsync(
+        private async Task<bool> PersistOneDeviceSettingsAsync(
             RingDeviceSettingsPersister persister,
             Session session,
             Entities.Devices devices,
@@ -690,10 +700,15 @@ namespace VideoForensics.Providers.Ring.Services
                 applySettings(root);
 
                 RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
-                if (details != null && await persister.PersistAsync(providerDeviceId, details, ct))
+                bool stored = details != null && await persister.PersistAsync(providerDeviceId, details, ct);
+                if (stored)
                 {
                     _syncRunTally?.AddConfigArea();
+                    return true;
                 }
+
+                _logger.LogInformation("Ring device settings not stored yet for {DeviceName}; the next config sync retries", deviceName);
+                return false;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -702,10 +717,12 @@ namespace VideoForensics.Providers.Ring.Services
             catch (DeviceUnknownException)
             {
                 _logger.LogInformation("Ring device settings not found for {DeviceName}; skipped", deviceName);
+                return false;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("Ring device settings failed for {DeviceName} ({ErrorType}); sync continues", deviceName, ex.GetType().Name);
+                return false;
             }
         }
 

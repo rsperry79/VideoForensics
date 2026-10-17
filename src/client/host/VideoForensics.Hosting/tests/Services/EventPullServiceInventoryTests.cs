@@ -16,13 +16,15 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<ILocationRepository> _mockLocationRepository = new();
         private readonly Mock<IProviderAccountRepository> _mockProviderAccountRepository = new();
         private readonly Mock<IDeviceDiscoveryService> _mockDeviceDiscovery = new();
+        private readonly SyncRunOptionsHolder _syncRunOptions = new();
 
         private EventPullService CreateSut() => new(
             _mockEventAndConfigService.Object,
             _mockDeviceRepository.Object,
             _mockLocationRepository.Object,
             _mockProviderAccountRepository.Object,
-            deviceDiscovery: _mockDeviceDiscovery.Object);
+            deviceDiscovery: _mockDeviceDiscovery.Object,
+            syncRunOptions: _syncRunOptions);
 
         [Fact]
         public async Task PullAccountEventsAsync_NoStoredInventory_DiscoversAndPersistsLocationsAndDevices()
@@ -67,6 +69,81 @@ namespace VideoForensics.Hosting.Tests.Services
                 It.Is<DeviceEntity>(d => d.ProviderDeviceId == "dev-1" && d.Name == "Front Door" && d.Type == "doorbell"), cancellationToken), Times.Once);
             _mockDeviceRepository.Verify(r => r.AddAsync(
                 It.Is<DeviceEntity>(d => d.ProviderDeviceId == "dev-2" && d.Type == "speaker"), cancellationToken), Times.Once);
+        }
+
+        [Fact]
+        public async Task EventPullService_NewDevice_RunsDiscoveryAgainOnce()
+        {
+            // Arrange: the device is not stored yet, so the first discovery pass creates it.
+            var accountId = Guid.NewGuid();
+            var cancellationToken = CancellationToken.None;
+            var account = new ProviderAccountEntity { Id = accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
+
+            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken)).ReturnsAsync(account);
+            _mockLocationRepository.Setup(r => r.GetByProviderLocationIdAsync(accountId, "loc-1", cancellationToken))
+                .ReturnsAsync((LocationEntity?)null);
+            _mockDeviceRepository.Setup(r => r.GetByProviderDeviceIdAsync(It.IsAny<Guid>(), "dev-1", cancellationToken))
+                .ReturnsAsync((DeviceEntity?)null);
+            _mockDeviceDiscovery.Setup(d => d.GetLocationsAsync(accountId, cancellationToken))
+                .ReturnsAsync(new List<Location> { new("loc-1", "Home", "1 Main St") });
+            _mockDeviceDiscovery.Setup(d => d.GetDevicesAsync(accountId, "loc-1", cancellationToken))
+                .ReturnsAsync(new List<Device> { new("dev-1", "Front Door", "doorbell", "loc-1", true) });
+
+            // Act
+            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+
+            // Assert: discovery runs a second time so the new device's settings are pulled in the same run.
+            _mockDeviceDiscovery.Verify(d => d.GetLocationsAsync(accountId, cancellationToken), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task EventPullService_NewDevice_RepeatPassForcesConfigKind()
+        {
+            // Arrange: a new device triggers the repeat discovery pass, which must run as a forced config pass.
+            var accountId = Guid.NewGuid();
+            var cancellationToken = CancellationToken.None;
+            var account = new ProviderAccountEntity { Id = accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
+            var originalOptions = new SyncRunOptions(SyncRunKind.Default, SyncRangeKind.Days, Days: 7);
+            _syncRunOptions.Current = originalOptions;
+            var kindsSeenByDiscovery = new List<SyncRunKind>();
+
+            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken)).ReturnsAsync(account);
+            _mockLocationRepository.Setup(r => r.GetByProviderLocationIdAsync(accountId, "loc-1", cancellationToken))
+                .ReturnsAsync((LocationEntity?)null);
+            _mockDeviceRepository.Setup(r => r.GetByProviderDeviceIdAsync(It.IsAny<Guid>(), "dev-1", cancellationToken))
+                .ReturnsAsync((DeviceEntity?)null);
+            _mockDeviceDiscovery.Setup(d => d.GetLocationsAsync(accountId, cancellationToken))
+                .Callback(() => kindsSeenByDiscovery.Add(_syncRunOptions.Current.Kind))
+                .ReturnsAsync(new List<Location> { new("loc-1", "Home", "1 Main St") });
+            _mockDeviceDiscovery.Setup(d => d.GetDevicesAsync(accountId, "loc-1", cancellationToken))
+                .ReturnsAsync(new List<Device> { new("dev-1", "Front Door", "doorbell", "loc-1", true) });
+
+            // Act
+            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+
+            // Assert: the first pass runs under the caller's kind, the repeat runs as config, and the caller's options come back.
+            Assert.Equal(new[] { SyncRunKind.Default, SyncRunKind.Config }, kindsSeenByDiscovery);
+            Assert.Equal(originalOptions, _syncRunOptions.Current);
+        }
+
+        [Fact]
+        public async Task EventPullService_NoNewDevice_RunsDiscoveryOnce()
+        {
+            // Arrange: the device is already stored, so no discovery pass creates one.
+            var accountId = Guid.NewGuid();
+            var cancellationToken = CancellationToken.None;
+            var account = new ProviderAccountEntity { Id = accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
+            var location = new LocationEntity { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
+            var device = new DeviceEntity { Id = Guid.NewGuid(), LocationId = location.Id, ProviderDeviceId = "dev-1", Name = "Front Door", Type = "doorbell", IsOnline = true };
+
+            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken)).ReturnsAsync(account);
+            DiscoveryStub.Wire(accountId, location, new List<DeviceEntity> { device }, _mockDeviceDiscovery, _mockLocationRepository, _mockDeviceRepository);
+
+            // Act
+            await CreateSut().PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+
+            // Assert
+            _mockDeviceDiscovery.Verify(d => d.GetLocationsAsync(accountId, cancellationToken), Times.Once);
         }
 
         [Fact]

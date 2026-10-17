@@ -182,6 +182,40 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(5, totals.ConfigAreasSynced);
         }
 
+        [Fact]
+        public async Task RingDeviceDiscoveryService_ConfigSync_SkippedDeviceSettings_DoesNotMarkConfigComplete()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            var data = CreateDataClient(writes);
+            var handler = CreateHandler();
+            var state = new InMemorySyncState();
+            var logger = new RecordingLogger();
+            var devices = CreateDeviceRepository(includeBackDoor: false);
+
+            _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), logger, devices: devices);
+
+            // The back door row does not exist yet, so its settings were skipped and the gate must stay open for a retry.
+            Assert.DoesNotContain(writes, w => w.DeviceId == BackDoorGuid);
+            Assert.Equal(0, state.MarkCount);
+            Assert.Null(state.LastConfigSyncUtc);
+            (LogLevel Level, string Message) skipped = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Information, skipped.Level);
+        }
+
+        [Fact]
+        public async Task RingDeviceDiscoveryService_ConfigSync_AllDeviceSettingsStored_MarksConfigComplete()
+        {
+            var writes = new ConcurrentBag<DeviceWrite>();
+            var data = CreateDataClient(writes);
+            var handler = CreateHandler();
+            var state = new InMemorySyncState();
+
+            _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), new RecordingLogger());
+
+            Assert.Equal(1, state.MarkCount);
+            Assert.Equal(StartUtc, state.LastConfigSyncUtc);
+        }
+
         private static async Task<IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Location>> SyncAsync(
             StubSessionHandler handler,
             Mock<IVideoForensicsDataClient> data,
@@ -280,12 +314,15 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public DateTime? LastConfigSyncUtc { get; private set; }
 
+            public int MarkCount { get; private set; }
+
             public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct) =>
                 Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
 
             public Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)
             {
                 LastConfigSyncUtc = utcNow;
+                MarkCount++;
                 return Task.CompletedTask;
             }
 
