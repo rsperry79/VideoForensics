@@ -88,7 +88,7 @@ public class McpToolAuthorization_Tests
 
         var result = await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
 
-        Assert.Contains("SuperAdminLocal", result.Error);
+        Assert.Contains("Unauthorized: SuperAdmin required for cross-account queries", result.Error);
         Assert.Empty(result.Events);
         audit.VerifyNoOtherCalls();
     }

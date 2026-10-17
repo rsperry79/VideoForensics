@@ -88,8 +88,8 @@ namespace VideoForensics.WebApp.Mcp.Tools
                 // alone would let a remote SuperAdmin read other operators' security events.
                 if (!await _authorizer.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocalOrPasskey))
                 {
-                    Logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} lacks SuperAdminLocal", callerId);
-                    return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdminLocal required for cross-account queries" };
+                    Logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} lacks SuperAdmin", callerId);
+                    return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdmin required for cross-account queries" };
                 }
 
                 Logger.LogInformation("GetSecurityEvents: cross-account query from caller {CallerId} for operator {TargetId}", callerId, targetOperatorId);
