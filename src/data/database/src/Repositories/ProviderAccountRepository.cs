@@ -91,7 +91,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        /// <summary>Deletes a provider account.</summary>
+        /// <summary>Deletes a provider account and its sync schedule in one atomic save.</summary>
         public async Task DeleteAsync(Guid accountId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
@@ -101,6 +101,14 @@ namespace VideoForensics.Data.Database.Repositories
                 account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId, ct);
                 if (account != null)
                 {
+                    // SyncSchedule has no FK to ProviderAccount, so nothing cascades. Remove it here or the
+                    // scheduler keeps ticking an orphan and logs "Account not found" every interval.
+                    SyncSchedule? schedule = await db.SyncSchedules.FirstOrDefaultAsync(s => s.ProviderAccountId == accountId, ct);
+                    if (schedule != null)
+                    {
+                        _ = db.SyncSchedules.Remove(schedule);
+                    }
+
                     _ = db.ProviderAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
                     _logger.LogInformation("Provider account deleted: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));

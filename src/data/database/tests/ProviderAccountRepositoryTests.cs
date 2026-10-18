@@ -102,6 +102,23 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task ProviderAccountRepository_DeleteAsync_RemovesSyncSchedule()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None); // AddAsync also creates the default SyncSchedule
+
+            await using (VideoForensicsDbContext before = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                Assert.True(await before.SyncSchedules.AnyAsync(s => s.ProviderAccountId == account.Id));
+            }
+
+            await _repository.DeleteAsync(account.Id, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Assert.False(await db.SyncSchedules.AnyAsync(s => s.ProviderAccountId == account.Id));
+        }
+
+        [Fact]
         public async Task ProviderAccountRepository_ListAsync_ReturnsAll()
         {
             ProviderAccount account1 = TestDataBuilder.BuildProviderAccount();
