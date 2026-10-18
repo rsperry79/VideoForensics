@@ -114,7 +114,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RingAccountSettingsSync_GetLocationsAsync_GroupsFetchFails_LogsWarningAndStillWritesOtherFetches()
+        public async Task RingAccountSettingsSync_GetLocationsAsync_GroupsFetchFails_LogsErrorAndStillWritesOtherFetches()
         {
             var handler = CreateHandler();
             handler.Routes[GroupsUrl] = (HttpStatusCode.InternalServerError, "{}");
@@ -231,7 +231,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>
-        /// Keeps each log entry's level and text so a test can assert a warning, an information entry, or no token text.
+        /// Keeps each log entry's level and text so a test can assert an error, an information entry, or no token text.
         /// Thread-safe and snapshot-based: the sync's fire-and-forget metadata task logs on this same instance.
         /// </summary>
         private sealed class RecordingLogger : ILogger

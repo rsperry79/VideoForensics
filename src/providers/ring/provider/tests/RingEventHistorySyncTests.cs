@@ -19,7 +19,7 @@ namespace VideoForensics.Providers.Ring.Tests
     /// Drives <see cref="RingDeviceDiscoveryService.GetLocationsAsync(Guid, CancellationToken)"/> through a real
     /// <see cref="Session"/> whose HTTP handler serves the sanitized captures (no network), into a mocked
     /// <see cref="IRingEventHistoryWriter"/>. Checks each event feed reaches the writer with the mapped data, that a
-    /// failing feed logs a warning naming only the feed, and that a 404 is logged at information level and skipped.
+    /// failing feed logs an error naming only the feed, and that a 404 is logged at information level and skipped.
     /// </summary>
     public class RingEventHistorySyncTests
     {
@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RingEventHistorySync_GetLocationsAsync_DoorbotHistoryFails_LogsWarningNamingFeedAndOtherFeedsStillWrite()
+        public async Task RingEventHistorySync_GetLocationsAsync_DoorbotHistoryFails_LogsErrorNamingFeedAndOtherFeedsStillWrite()
         {
             var handler = CreateHandler();
             handler.Routes[DoorbotHistoryUrl] = (HttpStatusCode.InternalServerError, "{}");
@@ -263,7 +263,7 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        /// <summary>Keeps each log entry's level and formatted text so a test can assert a warning, information entry, or no token text.</summary>
+        /// <summary>Keeps each log entry's level and formatted text so a test can assert an error, information entry, or no token text.</summary>
         private sealed class RecordingLogger : ILogger
         {
             private readonly ConcurrentQueue<(LogLevel Level, string Message)> _entries = new();
