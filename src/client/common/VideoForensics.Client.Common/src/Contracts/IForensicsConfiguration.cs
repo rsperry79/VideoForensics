@@ -13,6 +13,8 @@ namespace VideoForensics.Client.Common.Contracts
         string ReportOutputFormat { get; set; }
         string? DownloadLocation { get; set; }
         string? QueryExportLocation { get; set; }
+        /// <summary>Override for the account-export folder. Null/empty = default under the storage root.</summary>
+        string? ExportsLocation { get; set; }
         string? DatabaseLocation { get; set; }
         string? TempDownloadLocation { get; set; }
         string? LogsLocation { get; set; }
@@ -152,6 +154,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string ReportOutputFormat { get; set; } = "json";
         public string? DownloadLocation { get; set; }
         public string? QueryExportLocation { get; set; }
+        public string? ExportsLocation { get; set; }
         public string? DatabaseLocation { get; set; }
         public string? TempDownloadLocation { get; set; }
         public string? LogsLocation { get; set; }

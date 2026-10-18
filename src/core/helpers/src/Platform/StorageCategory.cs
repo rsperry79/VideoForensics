@@ -9,4 +9,5 @@ public enum StorageCategory
     Reports,
     Backup,
     Keys,
+    Exports,
 }
