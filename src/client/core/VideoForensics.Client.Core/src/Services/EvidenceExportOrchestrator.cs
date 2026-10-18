@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Core.Models;
 
 namespace VideoForensics.Client.Core.Services
@@ -23,6 +24,8 @@ namespace VideoForensics.Client.Core.Services
         private readonly IExportRecordService _exportRecordService;
         private readonly ICaseRepository? _caseRepository;
         private readonly IReportGenerationService? _reportService;
+        private readonly IForensicsConfigurationService? _configurationService;
+        private readonly IStorageLocationProvider? _storageLocationProvider;
 
         private static readonly JsonSerializerOptions ReportJsonOptions = new()
         {
@@ -30,6 +33,8 @@ namespace VideoForensics.Client.Core.Services
             ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
         };
 
+        /// <param name="configurationService">Source of the stored ExportsLocation setting. Required for case export.</param>
+        /// <param name="storageLocationProvider">Resolves the exports root from that setting, falling back to the platform default. Required for case export.</param>
         public EvidenceExportOrchestrator(
             ILogger<EvidenceExportOrchestrator> logger,
             IMediaItemRepository mediaItemRepository,
@@ -37,10 +42,14 @@ namespace VideoForensics.Client.Core.Services
             IActionLogRepository actionLogRepository,
             IExportRecordService exportRecordService,
             ICaseRepository? caseRepository = null,
-            IReportGenerationService? reportService = null)
+            IReportGenerationService? reportService = null,
+            IForensicsConfigurationService? configurationService = null,
+            IStorageLocationProvider? storageLocationProvider = null)
         {
             _caseRepository = caseRepository;
             _reportService = reportService;
+            _configurationService = configurationService;
+            _storageLocationProvider = storageLocationProvider;
             _logger = logger;
             _mediaItemRepository = mediaItemRepository;
             _integrityVerificationService = integrityVerificationService;
@@ -49,17 +58,17 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <inheritdoc />
+        /// <remarks>The archive is written under the exports location stored in the database, never a caller-supplied path.</remarks>
         public async Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string outputDirectory,
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null)
         {
-            if (_caseRepository is null || _reportService is null)
+            if (_caseRepository is null || _reportService is null || _configurationService is null || _storageLocationProvider is null)
             {
-                throw new InvalidOperationException("Case export requires the case repository and report generation service.");
+                throw new InvalidOperationException("Case export requires the case repository, report generation service, configuration service and storage location provider.");
             }
 
             ForensicCase? forensicCase = await _caseRepository.GetAsync(caseId, ct);
@@ -119,11 +128,12 @@ namespace VideoForensics.Client.Core.Services
                 _logger.LogInformation("Case {CaseId} defines no time window and has no pinned media; exporting no reports", caseId);
             }
 
-            return await ExportCoreAsync(mediaItemIds, outputDirectory, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
+            string exportsRoot = await ResolveExportsRootAsync(ct);
+            return await ExportCoreAsync(mediaItemIds, exportsRoot, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
         }
 
         /// <summary>Exports an explicit set of media items, not tied to a case. Not part of <see cref="IEvidenceExportService"/>.</summary>
-        public Task<ExportResult> ExportEvidenceAsync(
+        public async Task<ExportResult> ExportEvidenceAsync(
             IReadOnlyList<Guid> mediaItemIds,
             string outputDirectory,
             string? caseReference,
@@ -131,11 +141,19 @@ namespace VideoForensics.Client.Core.Services
             string? passphrase,
             CancellationToken ct,
             string? stepUpToken = null) =>
-            ExportCoreAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, [], ct);
+            await ExportCoreAsync(mediaItemIds, ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
 
+        /// <summary>Reads the stored ExportsLocation and resolves it to the effective exports root (default when unset).</summary>
+        private async Task<string> ResolveExportsRootAsync(CancellationToken ct)
+        {
+            IForensicsConfiguration config = await _configurationService!.LoadConfigurationAsync(string.Empty, ct);
+            return _storageLocationProvider!.GetEffectiveRoot(StorageCategory.Exports, config.ExportsLocation);
+        }
+
+        /// <param name="resolvedOutputDirectory">Absolute, already-validated directory the archive is written to.</param>
         private async Task<ExportResult> ExportCoreAsync(
             IReadOnlyList<Guid> mediaItemIds,
-            string outputDirectory,
+            string resolvedOutputDirectory,
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
@@ -144,7 +162,6 @@ namespace VideoForensics.Client.Core.Services
         {
             // The step-up token is checked by the host before this runs (the WebApp's circuit guard). The local
             // export does not re-check it, so it must only be reached through that guard.
-            string resolvedOutputDirectory = ResolveSafeOutputDirectory(outputDirectory);
             var result = new ExportResult();
 
             try
