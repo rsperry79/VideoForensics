@@ -90,6 +90,77 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
+        public void Resolve_ExplicitConfiguredPathAndBinDirectoryWithExe_ReturnsConfiguredPath()
+        {
+            var executableBaseName = "test-bindir-explicit-wins";
+            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(dir);
+            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            File.WriteAllText(Path.Combine(dir, exeName), "dummy");
+            try
+            {
+                var configuredPath = "/explicitly/configured/ffmpeg";
+
+                var result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName, dir);
+
+                Assert.Equal(configuredPath, result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void Resolve_BinDirectoryContainsExe_ReturnsFullPathInBinDirectory()
+        {
+            var executableBaseName = "test-bindir-exe-present";
+            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(dir);
+            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            var exePath = Path.Combine(dir, exeName);
+            File.WriteAllText(exePath, "dummy");
+            try
+            {
+                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
+
+                Assert.Equal(exePath, result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void Resolve_BinDirectoryWithoutExe_FallsThroughToBareName()
+        {
+            var executableBaseName = "test-bindir-exe-missing";
+            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(dir);
+            try
+            {
+                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
+
+                Assert.Equal(executableBaseName, result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void Resolve_TwoArgCall_BehavesAsBeforeWithNoBinDirectory()
+        {
+            var executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
+
+            var result = FfmpegPathResolver.Resolve(null, executableBaseName);
+
+            Assert.Equal(executableBaseName, result);
+        }
+
+        [Fact]
         public void Resolve_WithBundledBinaryPresentAndConfiguredPath_ReturnsConfiguredPath()
         {
             // Arrange

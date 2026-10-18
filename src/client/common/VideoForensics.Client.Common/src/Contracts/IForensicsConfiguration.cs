@@ -13,6 +13,8 @@ namespace VideoForensics.Client.Common.Contracts
         string ReportOutputFormat { get; set; }
         string? DownloadLocation { get; set; }
         string? QueryExportLocation { get; set; }
+        /// <summary>Override for the account-export folder. Null/empty = default under the storage root.</summary>
+        string? ExportsLocation { get; set; }
         string? DatabaseLocation { get; set; }
         string? TempDownloadLocation { get; set; }
         string? LogsLocation { get; set; }
@@ -80,6 +82,16 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         string? UniviewFfmpegPath { get; set; }
 
+        /// <summary>
+        /// Directory containing both ffmpeg and ffprobe executables. Used by every ffmpeg/ffprobe
+        /// consumer so the app does not depend on the process PATH (which can be stale). Null or empty
+        /// means "unset": on load it is auto-discovered from the app base directory, then PATH, and persisted.
+        /// </summary>
+        string? FfmpegBinDirectory { get; set; }
+
+        /// <summary>Explicit path to the cloudflared executable used for Remote Access tunnels. Null or empty means discover it (app directory, then PATH).</summary>
+        string? CloudflaredPath { get; set; }
+
         /// <summary>Toggles on-demand live view sessions for cameras. Default on.</summary>
         bool EnableLiveView { get; set; }
         /// <summary>Idle timeout for active (non-sustained) live view sessions in minutes. Default 5.</summary>
@@ -145,6 +157,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string ReportOutputFormat { get; set; } = "json";
         public string? DownloadLocation { get; set; }
         public string? QueryExportLocation { get; set; }
+        public string? ExportsLocation { get; set; }
         public string? DatabaseLocation { get; set; }
         public string? TempDownloadLocation { get; set; }
         public string? LogsLocation { get; set; }
@@ -173,6 +186,8 @@ namespace VideoForensics.Client.Common.Contracts
         public string? InternetServerUrl { get; set; }
         public string? UniviewNvrHost { get; set; }
         public string? UniviewFfmpegPath { get; set; }
+        public string? FfmpegBinDirectory { get; set; }
+        public string? CloudflaredPath { get; set; }
         public bool EnableLiveView { get; set; } = true;
         public int LiveViewIdleTimeoutMinutes { get; set; } = 5;
         public int LiveViewTelemetrySampleIntervalSeconds { get; set; } = 2;

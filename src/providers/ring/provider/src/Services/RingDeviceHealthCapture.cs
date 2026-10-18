@@ -44,26 +44,43 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
         {
+            // Hoisted above the try so the catch can log it; falls back to the id until the device list resolves.
+            string deviceName = providerDeviceId;
             try
             {
                 Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                deviceName = FindDeviceName(devices, providerDeviceId) ?? providerDeviceId;
                 DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
-                    _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No health telemetry available for device {DeviceName} in this run", deviceName);
                     return;
                 }
 
                 Data.Common.Entities.DeviceHealth deviceHealth = RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
 
                 _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
-                _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                    providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                _logger.LogDebug("Captured health metric for device {DeviceName}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                    deviceName, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health metric for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogError(ex, "Failed to capture device health metric for device {DeviceName} (non-critical)", deviceName);
             }
+        }
+
+        // Same lookup order as DeviceHealthMatcher.FindDeviceHealth, but returns the device's display name.
+        private static string? FindDeviceName(Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return null;
+            }
+
+            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
+                ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;
         }
 
         private async Task<Devices?> GetDevicesForHealthAsync(Session session, CancellationToken ct)

@@ -4,6 +4,7 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -501,6 +502,145 @@ namespace VideoForensics.Client.Core.Tests
             Assert.Equal("C:\\Temp", config.TempDownloadLocation);
             Assert.Equal("C:\\Logs", config.LogsLocation);
             Assert.Equal("C:\\Reports", config.ReportsLocation);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_CloudflaredPathStored_IsLoaded()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("CloudflaredPath", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\tools\\cloudflared.exe");
+
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () => "C:\\ffmpeg\\bin");
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("C:\\tools\\cloudflared.exe", config.CloudflaredPath);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_CloudflaredPathEmpty_DiscoversAndPersists()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () => null, () => "C:\\tools\\cloudflared.exe");
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("C:\\tools\\cloudflared.exe", config.CloudflaredPath);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("CloudflaredPath", "C:\\tools\\cloudflared.exe", It.IsAny<CancellationToken>()),
+                Times.Once);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("FfmpegBinDirectory", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_FfmpegBinDirectoryEmptyAndDiscoveryFinds_PersistsKeyAndSetsConfig()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            var toolLocation = new FfmpegToolLocation();
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, toolLocation, () => "C:\\ffmpeg\\bin");
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("C:\\ffmpeg\\bin", config.FfmpegBinDirectory);
+            Assert.Equal("C:\\ffmpeg\\bin", toolLocation.BinDirectory);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("FfmpegBinDirectory", "C:\\ffmpeg\\bin", It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_FfmpegBinDirectoryEmptyAndDiscoveryFindsNothing_LeavesNullWithoutThrowing()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () => null);
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.True(string.IsNullOrEmpty(config.FfmpegBinDirectory));
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("FfmpegBinDirectory", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_FfmpegBinDirectoryAlreadySet_DoesNotCallDiscovery()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("FfmpegBinDirectory", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("D:\\custom\\ffmpeg");
+
+            var discoveryCalls = 0;
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () =>
+            {
+                discoveryCalls++;
+                return "C:\\ffmpeg\\bin";
+            });
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("D:\\custom\\ffmpeg", config.FfmpegBinDirectory);
+            Assert.Equal(0, discoveryCalls);
+        }
+
+        [Fact]
+        public async Task SaveConfigurationAsync_FfmpegBinDirectorySet_PersistsAndUpdatesToolLocation()
+        {
+            var toolLocation = new FfmpegToolLocation();
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, toolLocation);
+
+            await service.SaveConfigurationAsync(new ForensicsConfiguration { FfmpegBinDirectory = "E:\\bin" });
+
+            Assert.Equal("E:\\bin", toolLocation.BinDirectory);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("FfmpegBinDirectory", "E:\\bin", It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_WithStoredExportsLocation_LoadsCorrectly()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("ExportsLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("D:\\Exports");
+
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("D:\\Exports", config.ExportsLocation);
+        }
+
+        [Fact]
+        public async Task SaveConfigurationAsync_SavesExportsLocation()
+        {
+            var config = new ForensicsConfiguration
+            {
+                ExportsLocation = "D:\\Exports"
+            };
+
+            await _service.SaveConfigurationAsync(config);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("ExportsLocation", "D:\\Exports", It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]

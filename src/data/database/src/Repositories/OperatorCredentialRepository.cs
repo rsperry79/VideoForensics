@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.OperatorCredentials.Add(credential);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator credential created: {CredentialId} for Operator {OperatorId}, label '{Label}'",
+            _logger.LogDebug("Operator credential created: {CredentialId} for Operator {OperatorId}, label '{Label}'",
                 credential.Id, credential.OperatorId, credential.Label);
         }
 
@@ -70,7 +70,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             credential.IsApproved = true;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator credential approved: {CredentialId}", credentialId);
+            _logger.LogDebug("Operator credential approved: {CredentialId}", credentialId);
         }
 
         public async Task RevokeAsync(Guid credentialId, string reason, CancellationToken ct)
@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Database.Repositories
             credential.RevokedAtUtc = DateTime.UtcNow;
             credential.RevokedReason = reason;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogWarning("Operator credential revoked: {CredentialId} - {Reason}", credentialId, SanitizeForLog(reason));
+            _logger.LogInformation("Operator credential revoked: {CredentialId} - {Reason}", credentialId, SanitizeForLog(reason));
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
@@ -117,7 +117,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             credential.FirstLoginNotifiedAtUtc = DateTime.UtcNow;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator credential first login marked as notified: {CredentialId}", credentialId);
+            _logger.LogDebug("Operator credential first login marked as notified: {CredentialId}", credentialId);
         }
     }
 }

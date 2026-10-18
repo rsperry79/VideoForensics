@@ -31,6 +31,9 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(e => e.DeviceId);
 
+            // Serves the per-device earliest-event lookup (MIN) and keyset paging by (OccurredAtUtc, Id) in account export.
+            _ = builder.HasIndex(e => new { e.DeviceId, e.OccurredAtUtc });
+
             _ = builder.HasIndex(e => e.EventDetectionId);
         }
     }

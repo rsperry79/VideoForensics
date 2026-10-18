@@ -17,6 +17,8 @@ namespace VideoForensics.Providers.Uniview.Services;
 /// </summary>
 public class UniviewEventAndConfigService : IEventAndConfigService
 {
+    private const string ProviderName = "Uniview";
+
     private readonly ILogger<UniviewEventAndConfigService> _logger;
     private readonly IUniviewSessionProvider _sessionProvider;
 
@@ -38,7 +40,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return new List<DeviceEvent>().AsReadOnly();
         }
 
@@ -52,7 +54,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         // is the only event type this device exposes
         if (eventType is not null && !eventType.Equals("motion", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
+            _logger.LogDebug("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
             return [];
         }
 
@@ -121,7 +123,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return null;
         }
 
@@ -164,7 +166,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse motion detection config for channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse motion detection config for channel {Channel} - " +
                         "field names may differ from documented defaults; using safe defaults",
                         channel);
                     motionDetectionEnabled = false;
@@ -189,7 +191,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse record schedule config for channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse record schedule config for channel {Channel} - " +
                         "field names may differ from documented defaults; using 'unknown'",
                         channel);
                     recordingMode = "unknown";
@@ -229,7 +231,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return false;
         }
 
@@ -277,7 +279,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to round-trip motion detection raw JSON for channel {Channel}; " +
+                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for channel {Channel}; " +
                         "falling back to reconstructed config", channel);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }
@@ -315,7 +317,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for {ProviderName} account: Session is null", ProviderName);
             return new List<DeviceEvent>().AsReadOnly();
         }
 
@@ -329,7 +331,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         // is the only event type this device exposes
         if (eventType is not null && !eventType.Equals("motion", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
+            _logger.LogDebug("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
             return [];
         }
 
@@ -384,8 +386,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to query segments for account {ProviderAccountId} channel {Channel} in month {Month}",
-                    providerAccountId, channel, monthStart.ToString("yyyy-MM"));
+                _logger.LogError(ex, "Failed to query segments for {ProviderName} account channel {Channel} in month {Month}",
+                    ProviderName, channel, monthStart.ToString("yyyy-MM"));
                 throw;
             }
         }
@@ -398,7 +400,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for {ProviderName} account: Session is null", ProviderName);
             return null;
         }
 
@@ -441,9 +443,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse motion detection config for account {ProviderAccountId} channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse motion detection config for {ProviderName} account channel {Channel} - " +
                         "field names may differ from documented defaults; using safe defaults",
-                        providerAccountId, channel);
+                        ProviderName, channel);
                     motionDetectionEnabled = false;
                     motionSensitivity = 0;
                 }
@@ -466,9 +468,9 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse record schedule config for account {ProviderAccountId} channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse record schedule config for {ProviderName} account channel {Channel} - " +
                         "field names may differ from documented defaults; using 'unknown'",
-                        providerAccountId, channel);
+                        ProviderName, channel);
                     recordingMode = "unknown";
                 }
             }
@@ -496,8 +498,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get device config for account {ProviderAccountId} channel {Channel}",
-                providerAccountId, channel);
+            _logger.LogError(ex, "Failed to get device config for {ProviderName} account channel {Channel}",
+                ProviderName, channel);
             throw;
         }
     }
@@ -507,7 +509,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for {ProviderName} account: Session is null", ProviderName);
             return false;
         }
 
@@ -555,8 +557,8 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to round-trip motion detection raw JSON for account {ProviderAccountId} channel {Channel}; " +
-                        "falling back to reconstructed config", providerAccountId, channel);
+                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for {ProviderName} account channel {Channel}; " +
+                        "falling back to reconstructed config", ProviderName, channel);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }
             }
@@ -569,16 +571,16 @@ public class UniviewEventAndConfigService : IEventAndConfigService
             // Send the motion detection update
             await client.SetMotionDetectionAsync(channel, motionDetectionData, cancellationToken);
 
-            _logger.LogInformation("Updated motion detection config for account {ProviderAccountId} channel {Channel}: " +
+            _logger.LogInformation("Updated motion detection config for {ProviderName} account channel {Channel}: " +
                 "enabled={Enabled}, sensitivity={Sensitivity}",
-                providerAccountId, channel, config.MotionDetectionEnabled, config.MotionSensitivity);
+                ProviderName, channel, config.MotionDetectionEnabled, config.MotionSensitivity);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update device config for account {ProviderAccountId} channel {Channel}",
-                providerAccountId, channel);
+            _logger.LogError(ex, "Failed to update device config for {ProviderName} account channel {Channel}",
+                ProviderName, channel);
             return false;
         }
     }

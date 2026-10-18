@@ -126,7 +126,7 @@ The installer will, for the Server component:
 
 ### Custom Data Directory
 
-By default, the database, media, temporary downloads, logs, reports, and backups all live under
+By default, the database, media, temporary downloads, logs, reports, backups, and exports all live under
 `%ProgramData%\VideoForensics\` (encryption keys always do too, and are not user-configurable here —
 see below). On a fresh install, the installer's "Data Directory" page shows one field per category,
 each pre-filled with its actual resolved default path — leave a field as-is to keep that default, or
@@ -139,7 +139,7 @@ physically moves the files.
 
 Under the hood, each edited field is stored as its own value under the registry key
 `HKLM\SOFTWARE\VideoForensics` (`DatabasePath`, `MediaPath`, `TempDownloadPath`, `LogsPath`,
-`ReportsPath`, `BackupPath` — all plain `REG_SZ` values, matching how the in-app Storage Settings
+`ReportsPath`, `BackupPath`, `ExportsPath` — all plain `REG_SZ` values, matching how the in-app Storage Settings
 feature already treats these as independently relocatable) — this is read by
 `StorageLocationProvider.GetDefaultRoot()` before the database opens, so it works for the Windows
 Service and any command-line tool alike, regardless of how each is launched (unlike an environment

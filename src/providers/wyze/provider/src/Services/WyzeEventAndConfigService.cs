@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Fetching Wyze events for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Fetching Wyze events for device {DeviceId} from {StartDate} to {EndDate}",
                     SanitizeForLog(deviceId), startDate, endDate);
 
                 // TODO: Implement event retrieval
@@ -68,7 +68,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Fetching Wyze configuration for device {DeviceId}", deviceId);
+                _logger.LogDebug("Fetching Wyze configuration for device {DeviceId}", deviceId);
 
                 // TODO: Implement config retrieval
                 // - Call Wyze API to get device settings
@@ -102,7 +102,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Updating Wyze configuration for device {DeviceId}", deviceId);
+                _logger.LogDebug("Updating Wyze configuration for device {DeviceId}", deviceId);
 
                 // TODO: Implement config update
                 // - Validate new settings

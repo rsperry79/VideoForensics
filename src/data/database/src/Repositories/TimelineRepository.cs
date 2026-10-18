@@ -206,7 +206,7 @@ namespace VideoForensics.Data.Database.Repositories
                 DeviceReports = deviceReports
             };
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Timeline integrity: {LocationId}, {DeviceCount} device(s), coverage {Coverages}",
                 locationId, deviceReports.Count,
                 string.Join(", ", deviceReports.Select(d => $"{d.DeviceName}={d.CoveragePercentage:F1}%")));

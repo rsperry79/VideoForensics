@@ -30,7 +30,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.Operators.Add(@operator);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator created: {OperatorId} ({DisplayName})", @operator.Id, SanitizeForLog(@operator.DisplayName));
+            _logger.LogDebug("Operator created: {DisplayName}", SanitizeForLog(@operator.DisplayName));
             return @operator;
         }
 
@@ -57,7 +57,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.Active = false;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator deactivated: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator deactivated: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task ReactivateAsync(Guid operatorId, CancellationToken ct)
@@ -71,7 +71,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.Active = true;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator reactivated: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator reactivated: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task ApproveAsync(Guid operatorId, CancellationToken ct)
@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.IsApproved = true;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator approved: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator approved: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task UpdateDisplayNameAsync(Guid operatorId, string displayName, CancellationToken ct)
@@ -99,7 +99,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.DisplayName = displayName;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator display name updated: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator display name updated: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task<Operator?> GetByUsernameAsync(string username, CancellationToken ct)
@@ -122,7 +122,7 @@ namespace VideoForensics.Data.Database.Repositories
             op.PasswordUpdatedAtUtc = DateTime.UtcNow;
             op.SecurityStamp = Guid.NewGuid();
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator password updated: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator password updated: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task SetRoleAsync(Guid operatorId, OperatorRole role, CancellationToken ct)
@@ -136,7 +136,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.Role = role;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator role updated: {OperatorId} - {Role}", operatorId, role);
+            _logger.LogDebug("Operator role updated: {DisplayName} - {Role}", SanitizeForLog(op.DisplayName), role);
         }
 
         public async Task SetApprovalFirstLoginNotifiedAsync(Guid operatorId, CancellationToken ct)
@@ -150,7 +150,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.ApprovalFirstLoginNotifiedAtUtc = DateTime.UtcNow;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator approval first login marked as notified: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator approval first login marked as notified: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task IncrementFailedLoginAttemptAsync(Guid operatorId, int maxFailedAttempts, int lockoutDurationMinutes, CancellationToken ct)
@@ -166,7 +166,7 @@ namespace VideoForensics.Data.Database.Repositories
             if (op.FailedLoginAttemptCount >= maxFailedAttempts)
             {
                 op.LockedOutUntilUtc = DateTime.UtcNow.AddMinutes(lockoutDurationMinutes);
-                _logger.LogWarning("Operator account locked due to failed login attempts: {OperatorId}", operatorId);
+                _logger.LogWarning("Operator account locked due to failed login attempts: {DisplayName}", SanitizeForLog(op.DisplayName));
             }
 
             _ = await db.SaveChangesAsync(ct);
@@ -198,7 +198,7 @@ namespace VideoForensics.Data.Database.Repositories
             op.FailedLoginAttemptCount = 0;
             op.LockedOutUntilUtc = null;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator account manually unlocked: {OperatorId}", operatorId);
+            _logger.LogDebug("Operator account manually unlocked: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
         public async Task SetTwoFactorRequirementOverrideAsync(Guid operatorId, TwoFactorRequirementOverride value, CancellationToken ct)
@@ -212,7 +212,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             op.TwoFactorRequirementOverride = value;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Operator two-factor requirement override updated: {OperatorId} - {Override}", operatorId, value);
+            _logger.LogDebug("Operator two-factor requirement override updated: {DisplayName} - {Override}", SanitizeForLog(op.DisplayName), value);
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>

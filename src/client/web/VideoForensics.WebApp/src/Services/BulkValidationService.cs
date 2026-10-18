@@ -64,14 +64,14 @@ namespace VideoForensics.WebApp.Services
                 IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
                 result.TotalDevicesScanned = devices.Count;
 
-                _logger.LogInformation("Found {DeviceCount} device(s) to validate", devices.Count);
+                _logger.LogDebug("Found {DeviceCount} device(s) to validate", devices.Count);
 
                 // Process each device
                 foreach (Device device in devices)
                 {
                     try
                     {
-                        _logger.LogInformation("Validating device {DeviceId} ({DeviceName})", device.Id, device.Name);
+                        _logger.LogDebug("Validating device {DeviceName}", device.Name);
 
                         // Step 1: Verify local integrity
                         IReadOnlyList<MediaVerificationResult> integrityResults =
@@ -82,9 +82,9 @@ namespace VideoForensics.WebApp.Services
                         result.TotalFilesFailed += integrityResults.Count(r => r.Status == "failed");
                         result.TotalFilesMissing += integrityResults.Count(r => r.Status == "missing");
 
-                        _logger.LogInformation(
-                            "Device {DeviceId}: {Verified} verified, {Failed} failed, {Missing} missing",
-                            device.Id,
+                        _logger.LogDebug(
+                            "Device {DeviceName}: {Verified} verified, {Failed} failed, {Missing} missing",
+                            device.Name,
                             integrityResults.Count(r => r.Status == "verified"),
                             integrityResults.Count(r => r.Status == "failed"),
                             integrityResults.Count(r => r.Status == "missing"));
@@ -110,26 +110,26 @@ namespace VideoForensics.WebApp.Services
                                 {
                                     result.TotalDiscrepanciesFixed += discrepancies.Count;
                                     _logger.LogInformation(
-                                        "Device {DeviceId}: {DiscrepancyCount} discrepancies found and auto-fixed",
-                                        device.Id, discrepancies.Count);
+                                        "Device {DeviceName}: {DiscrepancyCount} discrepancies found and auto-fixed",
+                                        device.Name, discrepancies.Count);
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex,
-                                    "Provider reconciliation failed for device {DeviceId} ({ProviderDeviceId})",
-                                    device.Id, device.ProviderDeviceId);
+                                _logger.LogError(ex,
+                                    "Provider reconciliation failed for device {DeviceName}",
+                                    device.Name);
                                 // Continue with next device rather than failing entire bulk operation
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("Device {DeviceId} has no provider device ID; skipping reconciliation", device.Id);
+                            _logger.LogWarning("Device {DeviceName} has no provider device ID; skipping reconciliation", device.Name);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Validation failed for device {DeviceId}", device.Id);
+                        _logger.LogError(ex, "Validation failed for device {DeviceName}", device.Name);
                         // Continue with next device rather than failing entire bulk operation
                     }
                 }

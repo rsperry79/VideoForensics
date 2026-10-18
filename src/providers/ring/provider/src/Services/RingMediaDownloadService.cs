@@ -167,9 +167,11 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
             DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
+            // Hoisted above the try so the catch can log it; assigned once history is read (events carry the camera name).
+            string deviceName = deviceId;
             try
             {
-                _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
                 Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
@@ -188,7 +190,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Track the latest successfully downloaded event's timestamp for watermark advancement
                 DateTime latestSuccessfulTime = startDate;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "History returned {TotalEvents} total event(s) for the account; {MatchCount} matched deviceId {DeviceId}. Sample doorbot ids in history: {Sample}",
                     events.Count, relevantEvents.Count, deviceId,
                     string.Join(", ", events.Select(e => e.Doorbot?.Id).Distinct().Take(5)));
@@ -212,13 +214,14 @@ namespace VideoForensics.Providers.Ring.Services
                 // This ensures all watermark updates within the batch operate on consistent device state.
                 (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
+                deviceName = relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId;
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceName, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
                 // this is purely so gap-analysis can later explain a gap as "battery was low" with
                 // real data instead of guessing.
-                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceGuid, cancellationToken);
+                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceName, deviceGuid, cancellationToken);
 
                 // Cancels the in-flight batch either on real caller cancellation or the moment any
                 // one file hits a rate limit — matching the previous sequential loop's "stop on
@@ -249,7 +252,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
-                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
 
                         // Use the device GUID resolved at batch start; all events are for this same device
@@ -301,7 +304,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -315,7 +318,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                 if (sha256Hash != null)
                                 {
-                                    _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                    _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                         @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
                                 }
 
@@ -360,7 +363,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to check existing download for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
                             return;
                         }
@@ -434,7 +437,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -490,24 +493,24 @@ namespace VideoForensics.Providers.Ring.Services
                                             persons,
                                             occurrences);
 
-                                        _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                        _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                             @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
 
                                         // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
                                         try
                                         {
                                             await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, downloadEvent.EventOccurredAtUtc, rateLimitCts.Token);
-                                            _logger.LogInformation("Watermark advanced to {Timestamp} after recording {EventId}",
+                                            _logger.LogDebug("Watermark advanced to {Timestamp} after recording {EventId}",
                                                 downloadEvent.EventOccurredAtUtc, downloadEvent.ProviderEventId);
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger.LogWarning(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
+                                            _logger.LogError(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -550,7 +553,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to download video for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗ {EscapeMarkup(Path.GetFileName(fileName))}: {EscapeMarkup(HumanizeExceptionTypeName(ex.GetType().Name))}[/]");
                             if (IsRateLimitError(ex))
                             {
@@ -590,7 +593,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception recordEx)
                                 {
-                                    _logger.LogWarning(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
+                                    _logger.LogError(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
                                 }
 
                                 // Persist the raw status code/body (when the exception carries one) against
@@ -616,7 +619,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception apiErrorRecordEx)
                                 {
-                                    _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
+                                    _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
                                 }
                             }
                         }
@@ -640,9 +643,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
-                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
-                    downloadedFiles, downloadedBytes, deviceId);
-                _logger.LogInformation("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
+                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceName}",
+                    downloadedFiles, downloadedBytes, deviceName);
+                _logger.LogDebug("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
                     _peakActiveDownloadsForBatch, _maxConcurrentFileDownloads, relevantEvents.Count);
                 // _logger has no provider registered in Program.cs (nothing sinks LogInformation
                 // anywhere right now), so also surface this via the activity log the UI already drains.
@@ -656,11 +659,11 @@ namespace VideoForensics.Providers.Ring.Services
                     try
                     {
                         await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, endDate, CancellationToken.None);
-                        _logger.LogInformation("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
+                        _logger.LogDebug("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
+                        _logger.LogError(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
                     }
                 }
 
@@ -715,7 +718,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -739,7 +742,7 @@ namespace VideoForensics.Providers.Ring.Services
             Guid? resolvedDeviceGuid = null;
             try
             {
-                _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
+                _logger.LogDebug("Downloading latest snapshot for device {DeviceId}", deviceId);
 
                 Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
                 if (session == null)
@@ -772,11 +775,12 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogInformation(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogError(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
-                // Get device name for consistent file naming (fallback to deviceId if unavailable)
-                string deviceNameForSnapshot = deviceId; // Snapshots don't have event data with device name, so use deviceId
+                // Snapshots carry no event data, so take the name from the device list (cached, so the
+                // state/details lookups below reuse it). Falls back to deviceId if unavailable.
+                string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
@@ -821,7 +825,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Resolve device identity and record snapshot download
                 (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceNameForSnapshot, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -835,7 +839,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
                     }
                 }
 
@@ -885,7 +889,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                     }
                 }
 
@@ -941,7 +945,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception apiErrorRecordEx)
                     {
-                        _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
+                        _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
                     }
                 }
 
@@ -973,7 +977,7 @@ namespace VideoForensics.Providers.Ring.Services
             return (json, hashHex);
         }
 
-        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
+        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
             object? apiResponse = null)
         {
@@ -1017,7 +1021,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
+                _logger.LogError(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
                 return Guid.Empty;
             }
         }
@@ -1152,7 +1156,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1160,7 +1164,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1212,6 +1216,37 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Looks up a device's display name (Description) from the cached device list. Returns null when the
+        /// list can't be fetched or the device isn't in it, so callers can fall back to the provider id.
+        /// </summary>
+        internal async Task<string?> ResolveDeviceNameAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                return FindDeviceName(devices, providerDeviceId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Could not fetch device list to resolve the name of device {DeviceId}", providerDeviceId);
+                return null;
+            }
+        }
+
+        private static string? FindDeviceName(Entities.Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return null;
+            }
+
+            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
+                ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;
+        }
+
+        /// <summary>
         /// Looks up a device's real kind and online state from the device list (the same source discovery
         /// uses). Returns (null, null) when the list can't be fetched, so the device is recorded as Unknown
         /// with an unknown online state rather than the download failing.
@@ -1225,7 +1260,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
                 return (null, null);
             }
 
@@ -1357,7 +1392,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
-        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
+        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, string deviceName, Guid deviceGuid, CancellationToken ct)
         {
             try
             {
@@ -1367,21 +1402,21 @@ namespace VideoForensics.Providers.Ring.Services
                 Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
-                    _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No health telemetry available for device {DeviceName} in this run", deviceName);
                 }
                 else
                 {
                     Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
                     _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                     healthId = deviceHealth.Id;
-                    _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                        providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                    _logger.LogDebug("Captured health metric for device {DeviceName}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                        deviceName, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
                 }
 
                 RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
                 if (details == null)
                 {
-                    _logger.LogDebug("No device details available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No device details available for device {DeviceName} in this run", deviceName);
                     return;
                 }
 
@@ -1397,7 +1432,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
             }
         }
 
@@ -1417,7 +1452,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
                 return null;
             }
         }
@@ -1470,7 +1505,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     if (startDate == _cachedHistoryStart.Value && endDate == _cachedHistoryEnd.Value)
                     {
-                        _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
+                        _logger.LogDebug("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
                             startDate, endDate, _cachedHistoryEvents.Count);
                         return _cachedHistoryEvents;
                     }
@@ -1478,7 +1513,7 @@ namespace VideoForensics.Providers.Ring.Services
                     var filtered = _cachedHistoryEvents
                         .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
                         .ToList();
-                    _logger.LogInformation("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
+                    _logger.LogDebug("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
                         startDate, endDate, filtered.Count, _cachedHistoryStart, _cachedHistoryEnd);
                     return filtered;
                 }
@@ -1486,7 +1521,7 @@ namespace VideoForensics.Providers.Ring.Services
                 DateTime fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
                 DateTime fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
 
-                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+                _logger.LogDebug("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
                 List<Entities.DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
                 _cachedHistoryEvents = events ?? [];
                 _cachedHistoryStart = fetchStart;
@@ -1547,7 +1582,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1555,7 +1590,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1638,7 +1673,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // If we can parse it and get the root element, it's valid JSON
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
+                    _logger.LogDebug("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
                         SanitizeForLog(metadataType), Path.GetFileName(SanitizeForLog(jsonPath)), fileInfo.Length);
                     return true;
                 }
@@ -1650,12 +1685,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
         }

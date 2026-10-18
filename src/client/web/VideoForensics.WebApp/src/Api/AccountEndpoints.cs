@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -124,6 +125,13 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("List active provider accounts")
                 .WithDescription("Retrieves all active provider accounts.");
 
+            // Declared before the "{id:guid}" routes; the guid constraint already keeps "removed" from colliding.
+            _ = group.MapGet("/provider-accounts/removed", async (IProviderAccountRepository accounts, CancellationToken ct) =>
+                Results.Ok((await accounts.ListRemovedAsync(ct)).Select(x => x.ToDto())))
+                .RequireRateLimiting("media")
+                .WithSummary("List removed provider accounts")
+                .WithDescription("Retrieves provider accounts that were retired (soft-removed) and still retain their data.");
+
             _ = group.MapGet("/provider-accounts/{id:guid}/cases", async (Guid id, ICaseRepository cases, CancellationToken ct) =>
                 Results.Ok((await cases.ListForProviderAccountAsync(id, ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
@@ -244,6 +252,76 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("media")
                 .WithSummary("Delete a provider account")
                 .WithDescription("Deletes a provider account link.");
+
+            _ = group.MapPost("/provider-accounts/{id:guid}/retire", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Idempotent: an already-removed account is returned unchanged rather than re-stamped.
+                if (account.RemovedUtc == null)
+                {
+                    await accounts.RetireAsync(id, DateTime.UtcNow, ct);
+                    account = await accounts.GetAsync(id, ct) ?? account;
+                }
+
+                return Results.Ok(account.ToDto());
+            })
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .RequireRateLimiting("media")
+                .WithSummary("Retire a provider account")
+                .WithDescription("Soft-removes the account: syncing stops but its data is kept. Idempotent.");
+
+            _ = group.MapPost("/provider-accounts/{id:guid}/exports", async (
+                Guid id,
+                QueueAccountExportRequest request,
+                IProviderAccountRepository accounts,
+                IAccountExportService exports,
+                CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Retire first so the scheduler stops pulling for the account before the export runs.
+                if (request.PurgeAfterExport && account.RemovedUtc == null)
+                {
+                    await accounts.RetireAsync(id, DateTime.UtcNow, ct);
+                }
+
+                Guid jobId = await exports.QueueExportAsync(id, request.PurgeAfterExport, ct);
+                ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);
+                ExportJobDto dto = status?.ToDto()
+                    ?? new ExportJobDto(jobId, id, ExportJobState.Queued.ToString(), null, null, request.PurgeAfterExport, DateTime.UtcNow, null);
+                return Results.Accepted($"/api/v1/accounts/exports/{jobId}", dto);
+            })
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .RequireRateLimiting("media")
+                .WithSummary("Export a provider account")
+                .WithDescription("Queues a background export of the account's data, optionally purging the account afterwards.");
+
+            _ = group.MapGet("/provider-accounts/{id:guid}/export-status", async (Guid id, IAccountExportService exports, CancellationToken ct) =>
+            {
+                ExportJobStatus? status = await exports.GetLatestStatusForAccountAsync(id, ct);
+                return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get the latest export job for an account")
+                .WithDescription("Returns the most recently queued export job for the account, or 404 when none is known (including after a server restart).");
+
+            _ = group.MapGet("/exports/{jobId:guid}", async (Guid jobId, IAccountExportService exports, CancellationToken ct) =>
+            {
+                ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);
+                return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get account export job status")
+                .WithDescription("Returns the status of a queued export job, or 404 when unknown (including after a server restart).");
 
             _ = group.MapPost("/provider-accounts/{id:guid}/initial-sync", async (
                 Guid id,

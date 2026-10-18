@@ -77,7 +77,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // If still no session, skip this account
                         if (session == null)
                         {
-                            _logger.LogDebug("No active or restorable Ring session for account {AccountId} ({ProviderName}); skipping", account.Id, account.ProviderName);
+                            _logger.LogDebug("No active or restorable Ring session for account {ProviderName}; skipping", account.ProviderName);
                             continue;
                         }
 
@@ -95,13 +95,13 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to fetch Ring health for account {AccountId} ({ProviderName}) (non-critical)", account.Id, account.ProviderName);
+                            _logger.LogError(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
                             // Continue with next account
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error processing Ring account {AccountId} ({ProviderName}) (non-critical)", account.Id, account.ProviderName);
+                        _logger.LogError(ex, "Error processing Ring account {ProviderName} (non-critical)", account.ProviderName);
                         // Continue with next account
                     }
                 }
@@ -110,7 +110,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry for multi-account scenario (non-critical)");
+                _logger.LogError(ex, "Failed to fetch Ring device health telemetry for multi-account scenario (non-critical)");
                 return Array.Empty<DeviceHealthReading>();
             }
         }
@@ -145,7 +145,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry (non-critical)");
+                _logger.LogError(ex, "Failed to fetch Ring device health telemetry (non-critical)");
                 return Array.Empty<DeviceHealthReading>();
             }
         }

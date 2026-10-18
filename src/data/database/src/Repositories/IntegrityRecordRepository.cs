@@ -28,7 +28,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.IntegrityRecords.Add(record);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Integrity record added for media item {MediaItemId}: passed={Passed}", record.MediaItemId, record.Passed);
+                _logger.LogDebug("Integrity record added for media item {MediaItemId}: passed={Passed}", record.MediaItemId, record.Passed);
             }
             catch (Exception ex)
             {

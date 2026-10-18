@@ -144,7 +144,7 @@ namespace VideoForensics.WebApp.Hubs
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, LiveHubMethods.LiveViewGroup(sessionId), Context.ConnectionAborted);
-            _logger.LogInformation("Connection {ConnectionId} subscribed to live-view session {SessionId}", Context.ConnectionId, sessionId);
+            _logger.LogDebug("Connection {ConnectionId} subscribed to live-view session {SessionId}", Context.ConnectionId, sessionId);
         }
 
         /// <summary>

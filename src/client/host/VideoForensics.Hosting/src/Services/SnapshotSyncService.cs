@@ -72,7 +72,7 @@ namespace VideoForensics.Hosting.Services
 
             if (targets.Count == 0)
             {
-                _logger.LogInformation("Snapshot sync for {AccountName}: no devices to snapshot", accountName);
+                _logger.LogDebug("Snapshot sync for {AccountName}: no devices to snapshot", accountName);
                 return default;
             }
 
@@ -81,7 +81,7 @@ namespace VideoForensics.Hosting.Services
             if (string.IsNullOrWhiteSpace(mediaRoot))
             {
                 const string message = "Media storage location is not configured";
-                _logger.LogError("Snapshot sync for {AccountName} failed: {Reason}", accountName, message);
+                _logger.LogWarning("Snapshot sync for {AccountName} failed: {Reason}", accountName, message);
                 return new SnapshotSyncResult(ErrorMessage: message);
             }
 
@@ -124,11 +124,11 @@ namespace VideoForensics.Hosting.Services
             string? error = failed > 0 ? $"{failed} of {targets.Count} device(s) failed: {firstError}" : null;
             if (error is null)
             {
-                _logger.LogInformation("Snapshot sync for {AccountName} saved {SnapshotCount} snapshot(s) from {DeviceCount} device(s)", accountName, saved, succeeded);
+                _logger.LogDebug("Snapshot sync for {AccountName} saved {SnapshotCount} snapshot(s) from {DeviceCount} device(s)", accountName, saved, succeeded);
             }
             else
             {
-                _logger.LogError("Snapshot sync for {AccountName} finished with failures: {Error}", accountName, error);
+                _logger.LogWarning("Snapshot sync for {AccountName} finished with failures", accountName);
             }
 
             return new SnapshotSyncResult(targets.Count, succeeded, saved, failed, error);

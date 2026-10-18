@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.RegularExpressions;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Hosting
@@ -72,6 +73,7 @@ namespace VideoForensics.Hosting
         private const int MaxLogLines = 100;
 
         private readonly ILogger<CloudflaredTunnelService> _logger;
+        private readonly IForensicsConfiguration _config;
         private readonly object _lock = new();
 
         private CancellationTokenSource? _cts;
@@ -81,18 +83,19 @@ namespace VideoForensics.Hosting
         private string? _errorMessage;
         private readonly LinkedList<string> _logLines = new();
 
-        public CloudflaredTunnelService(ILogger<CloudflaredTunnelService> logger)
+        public CloudflaredTunnelService(ILogger<CloudflaredTunnelService> logger, IForensicsConfiguration config)
         {
             _logger = logger;
+            _config = config;
         }
 
         /// <summary>
         /// Resolves the cloudflared executable the same way FfmpegPathResolver does for ffmpeg/ffprobe:
-        /// a copy bundled next to this app's own binary (AppContext.BaseDirectory) takes precedence
-        /// over a bare name resolved via the system PATH, so installing this app doesn't also require
-        /// a separate system-wide cloudflared install/PATH entry.
+        /// the configured CloudflaredPath wins (read live, so a change in the UI applies without a restart);
+        /// otherwise a copy bundled next to this app's own binary (AppContext.BaseDirectory), then a bare
+        /// name resolved via the system PATH.
         /// </summary>
-        internal static string ResolveExecutablePath() => FfmpegPathResolver.Resolve(configuredPath: null, "cloudflared");
+        internal string ResolveExecutablePath() => FfmpegPathResolver.Resolve(_config.CloudflaredPath, "cloudflared");
 
         public async Task<bool> IsInstalledAsync(CancellationToken ct)
         {
@@ -176,7 +179,7 @@ namespace VideoForensics.Hosting
             // callers observe progress, not awaiting this task.
             _ = RunAsync(kind, arguments, cts);
 
-            _logger.LogInformation("cloudflared tunnel starting ({Kind}): {Arguments}", kind, SanitizeForLog(arguments));
+            _logger.LogInformation("cloudflared tunnel starting ({Kind})", kind);
             return Task.CompletedTask;
         }
 

@@ -241,10 +241,10 @@ public class GuardedEvidenceExportService_Tests
         var guarded = new GuardedEvidenceExportService(inner.Object, gate.Object);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
-            Guid.NewGuid(), "out", null, null, CancellationToken.None));
+            Guid.NewGuid(), null, null, CancellationToken.None));
 
         inner.Verify(r => r.ExportEvidenceAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }
@@ -331,9 +331,11 @@ public class CircuitGuardRegistration_Tests
         public Task<ProviderAccount?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct) => Task.FromResult<ProviderAccount?>(null);
         public Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null) => Task.CompletedTask;
         public Task AddAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
-        public Task DeleteAsync(Guid accountId, CancellationToken ct) => Task.CompletedTask;
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null) => Task.CompletedTask;
         public Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
@@ -581,7 +583,7 @@ public class GuardedEvidenceExportStepUp_Tests
     {
         var inner = new Mock<IEvidenceExportService>();
         inner.Setup(e => e.ExportEvidenceAsync(
-                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(new ExportResult { Success = true });
         var gate = new Mock<ICircuitOperatorGate>();
@@ -596,10 +598,10 @@ public class GuardedEvidenceExportStepUp_Tests
         var (guarded, inner) = Create(localAdmin: true, stepUpValid: false);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
-            Guid.NewGuid(), "out", null, null, CancellationToken.None, null));
+            Guid.NewGuid(), null, null, CancellationToken.None, null));
 
         inner.Verify(e => e.ExportEvidenceAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -609,11 +611,11 @@ public class GuardedEvidenceExportStepUp_Tests
         var (guarded, inner) = Create(localAdmin: true, stepUpValid: true);
 
         var result = await guarded.ExportEvidenceAsync(
-            Guid.NewGuid(), "out", null, null, CancellationToken.None, "step");
+            Guid.NewGuid(), null, null, CancellationToken.None, "step");
 
         Assert.True(result.Success);
         inner.Verify(e => e.ExportEvidenceAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<CancellationToken>(), "step"), Times.Once);
     }
 }

@@ -47,7 +47,7 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
-        public async Task GetStatusAsync_ReturnsAllSevenCategories()
+        public async Task GetStatusAsync_ReturnsAllEightCategories()
         {
             // Act
             StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             Assert.NotNull(settings);
             Assert.NotNull(settings.Categories);
-            Assert.Equal(7, settings.Categories.Count);
+            Assert.Equal(8, settings.Categories.Count);
 
             // Verify all categories are present
             var categorySet = new HashSet<StorageCategory>(settings.Categories.Select(c => c.Category));
@@ -65,7 +65,55 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Contains(StorageCategory.Logs, categorySet);
             Assert.Contains(StorageCategory.Reports, categorySet);
             Assert.Contains(StorageCategory.Backup, categorySet);
+            Assert.Contains(StorageCategory.Exports, categorySet);
             Assert.Contains(StorageCategory.Keys, categorySet);
+        }
+
+        [Fact]
+        public async Task GetStatusAsync_IncludesExports_RelocatableWithoutRestart()
+        {
+            // Act
+            StorageSettings settings = await _service.GetStatusAsync(CancellationToken.None);
+
+            // Assert
+            StorageCategoryStatus? exportsStatus = settings.Categories.FirstOrDefault(c => c.Category == StorageCategory.Exports);
+            Assert.NotNull(exportsStatus);
+            Assert.True(exportsStatus.IsRelocatable);
+            Assert.False(exportsStatus.RequiresRestart);
+        }
+
+        [Fact]
+        public async Task RelocateAsync_ExportsCategory_PersistsExportsLocation()
+        {
+            // Arrange
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _ = Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var config = new ForensicsConfiguration();
+                _ = _mockConfigurationService
+                    .Setup(x => x.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(config);
+
+                var request = new RelocateStorageCategoryRequest(
+                    Category: StorageCategory.Exports,
+                    NewRootPath: tempDir);
+
+                // Act
+                RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.False(result.RestartRequired);
+                Assert.Equal(tempDir, config.ExportsLocation);
+            }
+            finally
+            {
+                try
+                { Directory.Delete(tempDir, recursive: true); }
+                catch { }
+            }
         }
 
         [Fact]
@@ -99,6 +147,7 @@ namespace VideoForensics.Data.Core.Tests
         [InlineData(StorageCategory.TempDownload)]
         [InlineData(StorageCategory.Reports)]
         [InlineData(StorageCategory.Backup)]
+        [InlineData(StorageCategory.Exports)]
         public async Task GetStatusAsync_OtherCategoriesDoNotRequireRestart(StorageCategory category)
         {
             // Act

@@ -165,7 +165,7 @@ namespace VideoForensics.Core.Providers.Core
                     KillProcessSafely(process, videoFilePath);
                 }
 
-                _logger.LogWarning(ex, "Exception extracting frame from {Path} at {OffsetMs}ms", videoFilePath, frameOffsetMs);
+                _logger.LogError(ex, "Exception extracting frame from {Path} at {OffsetMs}ms", videoFilePath, frameOffsetMs);
                 return new FrameExtractionResult { Success = false, ErrorMessage = ex.Message };
             }
             finally
@@ -208,7 +208,7 @@ namespace VideoForensics.Core.Providers.Core
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to kill ffmpeg process for {Path} after timeout/cancellation/output overflow", videoFilePath);
+                _logger.LogError(ex, "Failed to kill ffmpeg process for {Path} after timeout/cancellation/output overflow", videoFilePath);
             }
         }
 

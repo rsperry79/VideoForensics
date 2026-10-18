@@ -10,6 +10,7 @@ using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Inspector;
+using VideoForensics.Ui.Shared.Components.Scope;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Cases;
@@ -220,6 +221,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     {
         RegisterGridStub<ForensicCase>();
         Services.AddScoped<RightPanelContentService>();
+        Services.AddScoped<LeftPanelContentService>();
     }
 
     private IRenderedComponent<Cases> RenderPage() => Render<Cases>();
@@ -248,13 +250,32 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         var component = RenderPage();
 
-        // ScopeRail.razor:158 also calls ListAsync(Open), so expect exactly 2 calls: page + rail
-        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        // ScopeRail now lives in the left-panel slot, which the page render does not draw, so only the page loads.
+        CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Once);
 
         var cases = GridData(component).ToList();
         Assert.Equal(2, cases.Count);
         Assert.Contains(cases, c => c.CaseNumber == "CASE-001");
         Assert.Contains(cases, c => c.CaseNumber == "CASE-002");
+    }
+
+    [Fact]
+    public void Cases_RendersScopeFilter_InLeftPanelSlot_NotInPageBody()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { CreateTestCase(caseNumber: "CASE-001", status: CaseStatus.Open) });
+
+        var component = RenderPage();
+
+        // Page body has no ScopeRail; it was handed to the left-panel slot instead.
+        Assert.Empty(component.FindComponents<ScopeRail>());
+        var slot = Services.GetRequiredService<LeftPanelContentService>();
+        Assert.NotNull(slot.Content);
+
+        // Rendering the slot fragment (as MainLayout's left pane would) produces the scope rail.
+        var leftPanel = Render(slot.Content!);
+        Assert.NotEmpty(leftPanel.FindComponents<ScopeRail>());
     }
 
     [Fact]

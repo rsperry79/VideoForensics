@@ -141,7 +141,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Health sync tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Health sync tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -166,7 +166,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // silent absence that a viewer could mistake for "confirmed no incidents".
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -251,8 +251,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                                                 device.Id,
                                                 TimeSpan.FromMinutes(_config.ElevatedPollingWindowMinutes));
                                             _logger.LogInformation(
-                                                "Health sync tick: device {DeviceId} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
-                                                device.Id, degradation);
+                                                "Health sync tick: device {DeviceName} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
+                                                device.Name, degradation);
                                         }
                                     }
                                 }
@@ -261,11 +261,11 @@ namespace VideoForensics.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceId} failed (non-critical)", device.Id);
+                            _logger.LogError(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
                         }
                     }
 
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "Health sync tick: {SourceType} returned {ReadingCount} reading(s), persisted {PersistedCount} metric(s)",
                         healthSource.GetType().Name, readings.Count, persisted);
                 }
@@ -273,7 +273,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
-                    _logger.LogWarning(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogError(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
         }
@@ -308,7 +308,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Elevated polling tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Elevated polling tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -323,7 +323,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // Budget-guard the elevated tick's provider calls like the base tick does.
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -390,14 +390,14 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                     if (persisted > 0)
                     {
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Elevated polling tick: {SourceType} persisted {PersistedCount} metric(s) for elevated device(s)",
                             healthSource.GetType().Name, persisted);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogError(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
 
@@ -432,7 +432,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         {
                             // Active session exists: promote to sustained mode.
                             _ = await liveViewService.PromoteToSustainedAsync(activeSession.Id, "Jamming confirmed during elevated polling window", ct);
-                            _logger.LogInformation(
+                            _logger.LogDebug(
                                 "Elevated polling tick: jamming confirmed for device {DeviceId}; promoted session {SessionId} to sustained mode",
                                 deviceId, activeSession.Id);
                         }
@@ -444,7 +444,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
-                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceId} (non-critical)", deviceId);
+                    string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
+                    _logger.LogError(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
                 }
             }
         }

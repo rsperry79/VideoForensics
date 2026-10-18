@@ -19,6 +19,7 @@ namespace VideoForensics.Providers.Uniview.Services
         private readonly IUniviewSessionProvider _sessionProvider;
         private readonly IForensicsConfiguration _configuration;
         private readonly ICredentialRepository _credentialRepository;
+        private readonly IFfmpegToolLocation? _ffmpegToolLocation;
 
         /// <summary>
         /// Masks a sensitive string for logging (shows first and last character, hides the rest).
@@ -30,12 +31,14 @@ namespace VideoForensics.Providers.Uniview.Services
             ILogger<UniviewAuthService> logger,
             IUniviewSessionProvider sessionProvider,
             IForensicsConfiguration configuration,
-            ICredentialRepository credentialRepository)
+            ICredentialRepository credentialRepository,
+            IFfmpegToolLocation? ffmpegToolLocation = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
+            _ffmpegToolLocation = ffmpegToolLocation;
         }
 
         /// <summary>
@@ -45,10 +48,10 @@ namespace VideoForensics.Providers.Uniview.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
+                _logger.LogDebug("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
 
                 string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
-                string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg");
+                string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg", _ffmpegToolLocation?.BinDirectory);
 
                 var client = new UniviewClient(host, username, password, ffmpegPath);
 
@@ -81,7 +84,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Uniview authentication failed: {Message}", ex.Message);
+                _logger.LogError(ex, "Uniview authentication failed");
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -151,7 +154,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 }
 
                 await client.KeepAliveAsync(cancellationToken);
-                _logger.LogInformation("Uniview session refreshed");
+                _logger.LogDebug("Uniview session refreshed");
                 return true;
             }
             catch (Exception ex)
@@ -206,12 +209,12 @@ namespace VideoForensics.Providers.Uniview.Services
 
                         if (username != null && password != null)
                         {
-                            _logger.LogInformation("Restoring Uniview session from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                            _logger.LogDebug("Restoring Uniview session from database for {ProviderName} account", ProviderName);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                        _logger.LogError(ex, "Failed to restore credentials from database for {ProviderName} account", ProviderName);
                     }
                 }
 
@@ -226,12 +229,12 @@ namespace VideoForensics.Providers.Uniview.Services
                     }
                 }
 
-                _logger.LogInformation("No saved Uniview credentials found or restore failed");
+                _logger.LogDebug("No saved Uniview credentials found or restore failed");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to restore Uniview session from saved credentials");
+                _logger.LogError(ex, "Failed to restore Uniview session from saved credentials");
                 return false;
             }
         }
@@ -261,7 +264,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 await _credentialRepository.SetAsync(providerAccountId, "Username", username, cancellationToken);
                 await _credentialRepository.SetAsync(providerAccountId, "Password", password, cancellationToken);
 
-                _logger.LogInformation("Uniview credentials persisted to database");
+                _logger.LogDebug("Uniview credentials persisted to database");
                 return providerAccountId;
             }
             catch (Exception ex)

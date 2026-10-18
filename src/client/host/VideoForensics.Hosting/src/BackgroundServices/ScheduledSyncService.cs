@@ -122,9 +122,16 @@ namespace VideoForensics.Hosting.BackgroundServices
                     }
 
                     providerName = account.ProviderName;
+                    if (account.RemovedUtc != null)
+                    {
+                        // Defensive: retiring an account deletes its schedule, so this only fires on a leftover row.
+                        _logger.LogDebug("Scheduled sync skipped: {ProviderName} account was removed", providerName);
+                        continue;
+                    }
+
                     if (!account.IsActive)
                     {
-                        _logger.LogWarning("Scheduled sync skipped: {ProviderName} account is inactive", providerName);
+                        _logger.LogDebug("Scheduled sync skipped: {ProviderName} account is inactive", providerName);
                         continue;
                     }
 
@@ -182,7 +189,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
-                _logger.LogInformation("Scheduled sync deferred for {ProviderName} account: provider API budget exceeded for this window", providerName);
+                _logger.LogDebug("Scheduled sync deferred for {ProviderName} account: provider API budget exceeded for this window", providerName);
                 return;
             }
 

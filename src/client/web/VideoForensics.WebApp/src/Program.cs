@@ -283,6 +283,7 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
+builder.Services.AddVideoForensicsAccountExport();
 
 // Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
 builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
@@ -396,6 +397,7 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LeftPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
@@ -487,6 +489,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapSoftwarePathsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();

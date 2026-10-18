@@ -107,4 +107,22 @@
   <data name="ApplyFilter" xml:space="preserve">
     <value>Apply Filter</value>
   </data>
+  <data name="SignInLink" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="ConsoleLabel" xml:space="preserve">
+    <value>Console</value>
+  </data>
+  <data name="JobRunningStatus" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="JobFinishedStatus" xml:space="preserve">
+    <value>Finished</value>
+  </data>
+  <data name="JobFailedLabel" xml:space="preserve">
+    <value>Job failed:</value>
+  </data>
+  <data name="BreadcrumbAnalyze" xml:space="preserve">
+    <value>Analyze</value>
+  </data>
 </root>

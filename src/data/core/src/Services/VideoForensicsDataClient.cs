@@ -76,7 +76,7 @@ namespace VideoForensics.Data.Core.Services
             try
             {
                 await _deviceRepository.AddAsync(device, ct);
-                _logger.LogInformation("Device registered: {DeviceName} ({DeviceId})", device.Name, device.Id);
+                _logger.LogInformation("Device registered: {DeviceName}", device.Name);
                 _ = await _actionLogger.LogAsync("DeviceRegistered", nameof(Device), device.Id, ct: ct);
                 return device;
             }
@@ -160,7 +160,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+                _logger.LogError(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
             }
         }
 
@@ -223,9 +223,11 @@ namespace VideoForensics.Data.Core.Services
                         null,
                         ct);
 
-                    _logger.LogInformation(
-                        "Download event recorded for device {DeviceId}, provider event {ProviderEventId}, success={Success}",
-                        evt.DeviceId,
+                    Device? device = await context.Devices.GetAsync(evt.DeviceId, ct);
+
+                    _logger.LogDebug(
+                        "Download event recorded for device {DeviceName}, provider event {ProviderEventId}, success={Success}",
+                        device?.Name ?? "unknown device",
                         evt.ProviderEventId,
                         evt.Success);
 
@@ -365,12 +367,12 @@ namespace VideoForensics.Data.Core.Services
                             CreatedUtc = DateTime.UtcNow
                         };
                         await context.Users.AddAsync(user, ct);
-                        _logger.LogInformation("Created new user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Created new user: {DisplayName}", displayName);
                     }
                     else
                     {
                         user = existingUser;
-                        _logger.LogInformation("Found existing user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Found existing user: {DisplayName}", displayName);
                     }
 
                     // Try to find existing provider account
@@ -391,12 +393,12 @@ namespace VideoForensics.Data.Core.Services
                             IsActive = true
                         };
                         await context.ProviderAccounts.AddAsync(account, ct);
-                        _logger.LogInformation("Created new provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Created new provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
                     else
                     {
                         account = existingAccount;
-                        _logger.LogInformation("Found existing provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Found existing provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
 
                     _ = await context.ActionLog.AppendAsync(
@@ -413,8 +415,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user key {ProviderUserKey}",
-                    providerName, providerUserKey);
+                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user {DisplayName}",
+                    providerName, displayName);
                 throw;
             }
         }
@@ -448,13 +450,13 @@ namespace VideoForensics.Data.Core.Services
                             SyncStatus = SyncStatus.Synced
                         };
                         await context.Locations.AddAsync(location, ct);
-                        _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
+                        _logger.LogDebug("Created new location: {LocationName}", name);
                         await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
                         return location;
                     }
                     else
                     {
-                        _logger.LogInformation("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
+                        _logger.LogDebug("Found existing location: {LocationName}", existingLocation.Name);
                         // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
                         await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
                         return existingLocation;
@@ -588,7 +590,7 @@ namespace VideoForensics.Data.Core.Services
                         };
                         ApplyDetailFields(device, details);
                         await context.Devices.AddAsync(device, ct);
-                        _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
+                        _logger.LogInformation("Created new device: {DeviceName}", name);
                         return device;
                     }
                     else
@@ -635,7 +637,17 @@ namespace VideoForensics.Data.Core.Services
                         }
 
                         // Update device properties if it exists in the same location
-                        existingDevice.Name = name;
+                        // Callers fall back to the provider device ID as the name when a name lookup
+                        // fails; don't let that placeholder overwrite a real stored name.
+                        bool incomingNameIsId = name == providerDeviceId || name == existingDevice.Id.ToString();
+                        bool storedNameIsReal = !string.IsNullOrWhiteSpace(existingDevice.Name)
+                            && existingDevice.Name != providerDeviceId
+                            && existingDevice.Name != existingDevice.Id.ToString();
+                        if (!(incomingNameIsId && storedNameIsReal))
+                        {
+                            existingDevice.Name = name;
+                        }
+
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
                         // Only overwrite the stored time zone when this sync actually carries one, so a
@@ -647,7 +659,7 @@ namespace VideoForensics.Data.Core.Services
 
                         ApplyDetailFields(existingDevice, details);
                         await context.Devices.UpdateAsync(existingDevice, ct);
-                        _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
+                        _logger.LogDebug("Found and updated existing device: {DeviceName}", existingDevice.Name);
                         return existingDevice;
                     }
                 }, ct);
@@ -679,14 +691,14 @@ namespace VideoForensics.Data.Core.Services
                         {
                             device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
                             await context.Devices.UpdateAsync(device, ct);
-                            _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
-                                deviceId, latestSuccessfulPullTime);
+                            _logger.LogDebug("Advanced watermark for device {DeviceName} to {Timestamp}",
+                                device.Name, latestSuccessfulPullTime);
                         }
                         else
                         {
                             _logger.LogDebug(
-                                "Skipped watermark update for device {DeviceId}: {Timestamp} is not newer than current watermark {Current}",
-                                deviceId, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
+                                "Skipped watermark update for device {DeviceName}: {Timestamp} is not newer than current watermark {Current}",
+                                device.Name, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
                         }
                     }
                     else
@@ -711,12 +723,12 @@ namespace VideoForensics.Data.Core.Services
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
                 if (account?.LastDownloadTimeUtc.HasValue == true)
                 {
-                    _logger.LogInformation("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
+                    _logger.LogDebug("Account {AccountName} last download at {Timestamp}", account.ProviderName, account.LastDownloadTimeUtc.Value);
                     return account.LastDownloadTimeUtc.Value;
                 }
 
                 DateTime defaultStart = DateTime.UtcNow.AddDays(-181);
-                _logger.LogInformation("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
+                _logger.LogDebug("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
                 return defaultStart;
             }
             catch (Exception ex)
@@ -739,8 +751,8 @@ namespace VideoForensics.Data.Core.Services
                         {
                             account.LastDownloadTimeUtc = latestDownloadTime;
                             await context.ProviderAccounts.UpdateAsync(account, ct);
-                            _logger.LogInformation("Advanced account download watermark for account {AccountId} to {Timestamp}",
-                                providerAccountId, latestDownloadTime);
+                            _logger.LogDebug("Advanced account download watermark for account {AccountName} to {Timestamp}",
+                                account.ProviderName, latestDownloadTime);
                         }
                     }
                     else

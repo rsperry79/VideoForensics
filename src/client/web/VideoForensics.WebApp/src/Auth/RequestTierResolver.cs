@@ -75,7 +75,7 @@ namespace VideoForensics.WebApp.Auth
 
             if (connectionTier != NetworkTier.Local)
             {
-                logger.LogWarning(
+                logger.LogDebug(
                     "Session-tier header present on a non-loopback request (resolved tier {ConnectionTier}); ignoring it and resolving by IP.",
                     connectionTier);
                 return connectionTier;
@@ -87,7 +87,7 @@ namespace VideoForensics.WebApp.Auth
                 return headerTier;
             }
 
-            logger.LogWarning(
+            logger.LogDebug(
                 "Session-tier header present on a loopback request but failed validation (expired, tampered, operator mismatch, or pre-auth on an authenticated request); failing safe to Internet tier.");
             return NetworkTier.Internet;
         }

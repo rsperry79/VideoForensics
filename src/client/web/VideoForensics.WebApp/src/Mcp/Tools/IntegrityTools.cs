@@ -21,7 +21,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetIntegritySummary: location={LocationId}", locationId);
+            Logger.LogDebug("GetIntegritySummary: location={LocationId}", locationId);
             return await _integrityRepository.GetIntegritySummaryAsync(locationId, cancellationToken);
         }
 
@@ -33,7 +33,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetTamperingIndicatorsPaginated: location={LocationId}, page={PageNumber}", locationId, pageNumber);
+            Logger.LogDebug("GetTamperingIndicatorsPaginated: location={LocationId}, page={PageNumber}", locationId, pageNumber);
             return await _integrityRepository.GetTamperingIndicatorsPaginatedAsync(locationId, pageNumber, pageSize, cancellationToken);
         }
 
@@ -47,7 +47,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetDownloadHistoryCursor: device={DeviceId}, cursor={Cursor}", deviceId, cursor ?? "null");
+            Logger.LogDebug("GetDownloadHistoryCursor: device={DeviceId}, cursor={Cursor}", deviceId, cursor ?? "null");
             return await _integrityRepository.GetDownloadHistoryCursorAsync(deviceId, fromUtc, toUtc, cursor, pageSize, cancellationToken);
         }
 
@@ -57,7 +57,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("ComputeEventIntegrityScore: location={LocationId}", locationId);
+            Logger.LogDebug("ComputeEventIntegrityScore: location={LocationId}", locationId);
             return await _integrityRepository.ComputeEventIntegrityScoreAsync(locationId, cancellationToken);
         }
 
@@ -69,7 +69,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("VerifyDownloadCompleteness: location={LocationId}", locationId);
+            Logger.LogDebug("VerifyDownloadCompleteness: location={LocationId}", locationId);
             return await _integrityRepository.VerifyDownloadCompletenessAsync(locationId, fromUtc, toUtc, cancellationToken);
         }
 
@@ -79,7 +79,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetTamperingIndicators: location={LocationId}", locationId);
+            Logger.LogDebug("GetTamperingIndicators: location={LocationId}", locationId);
             return await _integrityRepository.GetTamperingIndicatorsAsync(locationId, cancellationToken);
         }
 
@@ -91,7 +91,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("VerifyEventHashes: device={DeviceId}", deviceId);
+            Logger.LogDebug("VerifyEventHashes: device={DeviceId}", deviceId);
             return await _integrityRepository.VerifyEventHashesAsync(deviceId, fromUtc, toUtc, cancellationToken);
         }
     }

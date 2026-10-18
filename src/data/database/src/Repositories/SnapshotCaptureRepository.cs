@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.SnapshotCaptures.Add(capture);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Snapshot capture recorded: {CaptureId} (device {DeviceId}, trigger: {Trigger}, status: {HttpStatus}, current: {IsCurrent})",
                     capture.Id, capture.DeviceId, capture.Trigger, capture.HttpStatus, capture.IsCurrent);
                 return capture;

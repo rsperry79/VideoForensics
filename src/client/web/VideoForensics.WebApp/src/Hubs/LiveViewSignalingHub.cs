@@ -54,7 +54,7 @@ namespace VideoForensics.WebApp.Hubs
         {
             try
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "RequestOffer from SignalR {ConnectionId} for session {SessionId}",
                     Context.ConnectionId, liveViewSessionId);
 
@@ -117,7 +117,7 @@ namespace VideoForensics.WebApp.Hubs
                 RTCSessionDescriptionInit offer = await offerTask;
                 await browserPc.setLocalDescription(offer);
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Sending offer for session {SessionId} to SignalR {ConnectionId}",
                     liveViewSessionId, Context.ConnectionId);
 
@@ -142,7 +142,7 @@ namespace VideoForensics.WebApp.Hubs
         {
             try
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "SubmitAnswer from SignalR {ConnectionId} for session {SessionId}",
                     Context.ConnectionId, liveViewSessionId);
 
@@ -167,7 +167,7 @@ namespace VideoForensics.WebApp.Hubs
                         $"Browser answer rejected for session {liveViewSessionId}: {result}.");
                 }
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Answer set for session {SessionId}, SignalR {ConnectionId}",
                     liveViewSessionId, Context.ConnectionId);
             }
@@ -234,7 +234,7 @@ namespace VideoForensics.WebApp.Hubs
         {
             try
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "SignalR {ConnectionId} disconnected. Cleaning up browser peer connections.",
                     Context.ConnectionId);
 

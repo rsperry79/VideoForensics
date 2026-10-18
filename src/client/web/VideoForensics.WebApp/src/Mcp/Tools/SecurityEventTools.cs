@@ -92,10 +92,10 @@ namespace VideoForensics.WebApp.Mcp.Tools
                     return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdmin required for cross-account queries" };
                 }
 
-                Logger.LogInformation("GetSecurityEvents: cross-account query from caller {CallerId} for operator {TargetId}", callerId, targetOperatorId);
+                Logger.LogDebug("GetSecurityEvents: cross-account query from caller {CallerId} for operator {TargetId}", callerId, targetOperatorId);
             }
 
-            Logger.LogInformation("GetSecurityEvents: limit={Limit}, offset={Offset}, operatorId={OperatorId}, self-service={IsSelfService}, caller={CallerId}",
+            Logger.LogDebug("GetSecurityEvents: limit={Limit}, offset={Offset}, operatorId={OperatorId}, self-service={IsSelfService}, caller={CallerId}",
                 limit, offset, targetOperatorId, isSelfService, callerId);
 
             try

@@ -58,6 +58,34 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task FfmpegMediaMetadataTagger_TagFails_LogsError()
+        {
+            string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".mp4");
+            File.WriteAllText(tempFile, "dummy");
+            var logger = new Mock<ILogger>();
+            try
+            {
+                var tagger = new FfmpegMediaMetadataTagger(logger.Object, ffmpegPath: "nonexistent-ffmpeg-binary-xyz");
+                bool result = await tagger.TagEventIdAsync(tempFile, Guid.NewGuid(), CancellationToken.None);
+
+                Assert.False(result);
+                logger.Verify(
+                    l => l.Log(LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+                logger.Verify(
+                    l => l.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Never);
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
+        }
+
+        [Fact]
         public void BuildTaggingProcessInfo_UsesArgumentList_NotArgumentsString()
         {
             var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg");

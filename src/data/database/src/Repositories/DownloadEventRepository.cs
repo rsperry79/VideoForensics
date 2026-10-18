@@ -76,7 +76,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DownloadEvents.Add(downloadEvent);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Download event added: {DownloadEventId} ({ProviderEventId})",
+                _logger.LogDebug("Download event added: {DownloadEventId} ({ProviderEventId})",
                     downloadEvent.Id, downloadEvent.ProviderEventId);
             }
             catch (Exception ex)
@@ -94,7 +94,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DownloadEvents.Update(downloadEvent);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Download event updated: {DownloadEventId}", downloadEvent.Id);
+                _logger.LogDebug("Download event updated: {DownloadEventId}", downloadEvent.Id);
             }
             catch (Exception ex)
             {
@@ -114,7 +114,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.DownloadEvents.Remove(downloadEvent);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Download event deleted: {DownloadEventId}", eventId);
+                    _logger.LogDebug("Download event deleted: {DownloadEventId}", eventId);
                 }
             }
             catch (Exception ex)

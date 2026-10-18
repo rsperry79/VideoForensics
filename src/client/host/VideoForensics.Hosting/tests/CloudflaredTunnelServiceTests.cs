@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 
 using Xunit;
@@ -19,9 +20,28 @@ namespace VideoForensics.Hosting.Tests
             var candidatePath = Path.Combine(AppContext.BaseDirectory, ExecutableFileName());
             Assert.False(File.Exists(candidatePath), "Test assumes no bundled cloudflared binary is present");
 
-            var result = CloudflaredTunnelService.ResolveExecutablePath();
+            var result = CreateService(null).ResolveExecutablePath();
 
             Assert.Equal("cloudflared", result);
+        }
+
+        [Fact]
+        public void ResolveExecutablePath_ConfiguredPath_UsesConfiguredPath()
+        {
+            // The configured CloudflaredPath must win over bare-name PATH lookup, and it is read
+            // live from IForensicsConfiguration so a path set in the UI takes effect without a restart.
+            var configuredPath = Path.Combine(Path.GetTempPath(), "vf-cloudflared-" + Guid.NewGuid().ToString("N") + ExecutableFileName());
+            File.WriteAllText(configuredPath, "dummy");
+            try
+            {
+                var result = CreateService(configuredPath).ResolveExecutablePath();
+
+                Assert.Equal(configuredPath, result);
+            }
+            finally
+            {
+                File.Delete(configuredPath);
+            }
         }
 
         [Fact]
@@ -36,7 +56,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 File.WriteAllText(candidatePath, "dummy");
 
-                var result = CloudflaredTunnelService.ResolveExecutablePath();
+                var result = CreateService(null).ResolveExecutablePath();
 
                 Assert.Equal(candidatePath, result);
             }
@@ -54,7 +74,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange: Create a mock logger
             var mockLogger = new Mock<ILogger<CloudflaredTunnelService>>();
-            var service = new CloudflaredTunnelService(mockLogger.Object);
+            var service = CreateService(null, mockLogger);
 
             // Act: StartQuickTunnelAsync would normally log the arguments, but this test
             // verifies that if arguments contain newlines, they are sanitized before logging
@@ -65,6 +85,13 @@ namespace VideoForensics.Hosting.Tests
 
             // Assert: The task should complete without error
             Assert.NotNull(task);
+        }
+
+        private static CloudflaredTunnelService CreateService(string? configuredPath, Mock<ILogger<CloudflaredTunnelService>>? logger = null)
+        {
+            var config = new Mock<IForensicsConfiguration>();
+            _ = config.SetupGet(c => c.CloudflaredPath).Returns(configuredPath);
+            return new CloudflaredTunnelService((logger ?? new Mock<ILogger<CloudflaredTunnelService>>()).Object, config.Object);
         }
 
         private static string ExecutableFileName() => OperatingSystem.IsWindows() ? "cloudflared.exe" : "cloudflared";

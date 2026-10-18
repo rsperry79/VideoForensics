@@ -400,5 +400,125 @@ namespace VideoForensics.Providers.Ring.Tests
             // Assert
             Assert.Empty(discrepancies);
         }
+
+        [Fact]
+        public async Task VerifyLocalIntegrityAsync_WithProgress_ReportsCheckingAndStatusForEachFileInOrder()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var okItem = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = "progress_ok.mp4",
+                FilePath = Path.Combine(Path.GetTempPath(), "progress_ok.mp4"),
+                MediaFormat = "video/mp4",
+                Sha256Hash = "abc123",
+                IsPurged = false
+            };
+            var badItem = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = "progress_bad.mp4",
+                FilePath = Path.Combine(Path.GetTempPath(), "progress_bad.mp4"),
+                MediaFormat = "video/mp4",
+                Sha256Hash = "def456",
+                IsPurged = false
+            };
+
+            File.WriteAllText(okItem.FilePath, "ok");
+            File.WriteAllText(badItem.FilePath, "bad");
+
+            try
+            {
+                _ = _mockMediaItemRepository.Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([okItem, badItem]);
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(okItem.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+                _ = _mockIntegrityService.Setup(s => s.VerifyAsync(badItem.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+                var orchestrator = new EvidenceValidationOrchestrator(
+                    _mockLogger.Object,
+                    _mockEventAndConfigService.Object,
+                    _mockEventRepository.Object,
+                    _mockDeviceRepository.Object,
+                    _mockIntegrityService.Object,
+                    _mockMediaItemRepository.Object,
+                    _mockReconciliationService.Object);
+                var progress = new ProgressCollector();
+
+                // Act
+                _ = await orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None, progress);
+
+                // Assert
+                Assert.Equal(
+                    new[]
+                    {
+                        "progress_ok.mp4: checking",
+                        "progress_ok.mp4: verified",
+                        "progress_bad.mp4: checking",
+                        "progress_bad.mp4: failed - SHA-256 mismatch against stored hash"
+                    },
+                    progress.Lines);
+            }
+            finally
+            {
+                File.Delete(okItem.FilePath);
+                File.Delete(badItem.FilePath);
+            }
+        }
+
+        [Fact]
+        public async Task ReconcileWithProviderAsync_WithProgress_ReportsOneLinePerDiscrepancy()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            string providerDeviceId = "ring-device-123";
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
+
+            var storedEvent = new Event
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ProviderEventId = "evt-gone",
+                EventType = "motion",
+                OccurredAtUtc = DateTime.UtcNow.AddHours(-2),
+                SnapshotUrl = "https://example.com/snapshot.jpg"
+            };
+
+            _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([storedEvent]);
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DeviceEvent>());
+            _ = _mockReconciliationService.Setup(s => s.AutoFixDiscrepanciesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<Func<string, DateTime, DateTime, CancellationToken, Task<IReadOnlyList<Event>>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AutoFixResult { NewEventsInserted = 0, MetadataUpdated = 0, Failed = 0, ErrorDetails = [] });
+            _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var orchestrator = new EvidenceValidationOrchestrator(
+                _mockLogger.Object,
+                _mockEventAndConfigService.Object,
+                _mockEventRepository.Object,
+                _mockDeviceRepository.Object,
+                _mockIntegrityService.Object,
+                _mockMediaItemRepository.Object,
+                _mockReconciliationService.Object);
+            var progress = new ProgressCollector();
+
+            // Act
+            _ = await orchestrator.ReconcileWithProviderAsync(deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None, progress);
+
+            // Assert
+            Assert.Equal(new[] { "MissingFromProvider evt-gone" }, progress.Lines);
+        }
+
+        /// <summary>Synchronous progress sink that records every reported line in order.</summary>
+        private sealed class ProgressCollector : IProgress<string>
+        {
+            public List<string> Lines { get; } = new();
+
+            public void Report(string value) => Lines.Add(value);
+        }
     }
 }

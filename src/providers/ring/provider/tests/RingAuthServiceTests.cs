@@ -317,7 +317,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 Times.Never);
             mockLogger.Verify(
                 l => l.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("No Ring account linked")),
                     It.IsAny<Exception>(),

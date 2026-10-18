@@ -220,7 +220,7 @@ namespace VideoForensics.Client.Core.Services
                 {
                     // The still itself was already captured and persisted; a failed pin shouldn't
                     // undo that. Surface it via logging so an operator can retry pinning separately.
-                    _logger.LogWarning(ex, "Still {StillId} captured but failed to pin to case {CaseId}", stillId, caseId);
+                    _logger.LogError(ex, "Still {StillId} captured but failed to pin to case {CaseId}", stillId, caseId);
                 }
             }
 

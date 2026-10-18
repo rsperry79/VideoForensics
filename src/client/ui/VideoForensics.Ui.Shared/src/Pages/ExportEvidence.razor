@@ -28,8 +28,8 @@ else
 {
     <span>@L["ExportScopeMessage"]</span>
 
-    <div>
-        <label for="export-case-picker">@L["CasePickerLabel"]</label>
+    <div class="mb-3">
+        <label for="export-case-picker" class="form-label">@L["CasePickerLabel"]</label>
         <select id="export-case-picker" class="form-select" data-testid="case-picker" value="@_selectedCaseId" @onchange="OnCaseChanged" disabled="@_isExporting">
             <option value="">@L["CasePickerPlaceholder"]</option>
             @foreach (ForensicCase c in _cases)
@@ -40,26 +40,23 @@ else
     </div>
     @if (_loadError is not null)
     {
-        <div class="alert alert-danger">@_loadError</div>
+        <div class="alert alert-danger mb-3">@_loadError</div>
     }
     else if (_cases.Count == 0)
     {
-        <span>@L["NoCases"]</span>
+        <div class="mb-3"><span>@L["NoCases"]</span></div>
     }
     else if (_selectedCaseId is null)
     {
-        <span>@L["SelectCaseMessage"]</span>
+        <div class="mb-3"><span>@L["SelectCaseMessage"]</span></div>
     }
-    <div>
+    <div class="mb-3">
         <SfTextBox @bind-Value="_recipientDescription" Placeholder="@L["RecipientDescriptionPlaceholder"]" Enabled="@(!_isExporting)" />
     </div>
-    <div>
+    <div class="mb-3">
         <SfTextBox @bind-Value="_passphrase" Type="Syncfusion.Blazor.Inputs.InputType.Password" Placeholder="@L["PassphrasePlaceholder"].Value" Enabled="@(!_isExporting)" />
     </div>
-    <div>
-        <SfTextBox @bind-Value="_outputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Enabled="@(!_isExporting)" />
-    </div>
-    <div>
+    <div class="mb-3">
         <button type="button" class="btn btn-primary" data-testid="export-button" @onclick="ExportAsync" disabled="@(_isExporting || _selectedCaseId is null)">
             @(_isExporting ? L["ExportingButton"] : L["ExportButton"])
         </button>
@@ -103,10 +100,6 @@ else
 
     private string? _recipientDescription;
     private string? _passphrase;
-    private string _outputDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-        "VideoForensics",
-        "Exports");
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,7 +164,6 @@ else
 
             _result = await EvidenceExportService.ExportEvidenceAsync(
                 caseId,
-                _outputDirectory,
                 string.IsNullOrWhiteSpace(_recipientDescription) ? null : _recipientDescription,
                 string.IsNullOrWhiteSpace(_passphrase) ? null : _passphrase,
                 CancellationToken.None,

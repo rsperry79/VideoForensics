@@ -141,7 +141,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ILogger<UniviewAuthService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>(),
                 provider.GetRequiredService<IForensicsConfiguration>(),
-                provider.GetRequiredService<ICredentialRepository>()
+                provider.GetRequiredService<ICredentialRepository>(),
+                provider.GetRequiredService<IFfmpegToolLocation>()
             );
         }
 
@@ -388,6 +389,7 @@ namespace VideoForensics.Hosting
                 IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
                 return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
             });
+            _ = services.AddSingleton<IEvidenceValidationJobs, EvidenceValidationJobService>();
 
             _ = services.AddScoped<IEvidenceExportService>(serviceProvider =>
             {
@@ -398,7 +400,9 @@ namespace VideoForensics.Hosting
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
                 ICaseRepository caseRepository = serviceProvider.GetRequiredService<ICaseRepository>();
                 IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService);
+                IForensicsConfigurationService configurationService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
+                IStorageLocationProvider storageLocationProvider = serviceProvider.GetRequiredService<IStorageLocationProvider>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService, configurationService, storageLocationProvider);
             });
 
             // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a
@@ -406,7 +410,9 @@ namespace VideoForensics.Hosting
             // imports the whole database as portable JSON+zip, so evidence can be reconstituted into
             // a fresh database on another machine.
             _ = services.AddScoped<IMediaMetadataTagger>(serviceProvider =>
-                new FfmpegMediaMetadataTagger(serviceProvider.GetRequiredService<ILogger<FfmpegMediaMetadataTagger>>())
+                new FfmpegMediaMetadataTagger(
+                    serviceProvider.GetRequiredService<ILogger<FfmpegMediaMetadataTagger>>(),
+                    binDirectory: serviceProvider.GetRequiredService<IFfmpegToolLocation>().BinDirectory)
             );
 
             _ = services.AddScoped<IBackupExportService>(serviceProvider =>
@@ -433,7 +439,8 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
-                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                    serviceProvider.GetRequiredService<IAppSettingRepository>(),
+                    serviceProvider.GetRequiredService<IFfmpegToolLocation>()
                 )
             );
 
@@ -492,7 +499,9 @@ namespace VideoForensics.Hosting
             // optional case pin.
             _ = services.AddScoped<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(serviceProvider =>
                 new VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor(
-                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor>>()));
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor>>(),
+                    ffmpegPath: VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(
+                        null, "ffmpeg", serviceProvider.GetRequiredService<IFfmpegToolLocation>().BinDirectory)));
 
             _ = services.AddScoped<IMediaStillCaptureService>(serviceProvider =>
                 new MediaStillCaptureOrchestrator(
@@ -661,6 +670,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IReportGenerationService, RemoteReportGenerationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceValidationService, RemoteEvidenceValidationService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEvidenceValidationJobs, RemoteEvidenceValidationJobs>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceExportService, RemoteEvidenceExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
@@ -671,6 +681,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IUserRepository, RemoteUserRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IProviderAccountRepository, RemoteProviderAccountRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<Client.Common.Contracts.IAccountExportService, Remote.RemoteAccountExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
@@ -787,8 +798,8 @@ namespace VideoForensics.Hosting
                 defaultAdmin.PasswordHash = passwordHasher.HashPassword(defaultAdmin, DefaultSuperAdminPassword);
                 _ = await operatorRepo.AddAsync(defaultAdmin, ct);
                 logger.LogWarning(
-                    "No operators existed - seeded a default SuperAdmin account. Username: '{Username}', password: the fixed default documented in CLAUDE.md (DefaultSuperAdminPassword constant). You MUST sign in and change this password immediately.",
-                    defaultAdmin.Username);
+                    "No operators existed - seeded a default SuperAdmin account. Password: the fixed default documented in CLAUDE.md (DefaultSuperAdminPassword constant). You MUST sign in and change this password immediately."
+                    );
             }
         }
     }

@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Core.Services
                             if (File.Exists(item.FilePath))
                             {
                                 File.Delete(item.FilePath);
-                                _logger.LogInformation("Deleted file during retention purge: {FilePath}", item.FilePath);
+                                _logger.LogDebug("Deleted file during retention purge: {FilePath}", item.FilePath);
                             }
 
                             item.IsPurged = true;
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Core.Services
                                 $"Purge reason: {item.PurgeReason}",
                                 ct);
 
-                            _logger.LogInformation("Purged media item {MediaItemId}: {FileName}", item.Id, item.FileName);
+                            _logger.LogDebug("Purged media item {MediaItemId}: {FileName}", item.Id, item.FileName);
                             purgedCount++;
 
                             return true;

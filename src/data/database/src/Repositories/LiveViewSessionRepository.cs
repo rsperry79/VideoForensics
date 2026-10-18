@@ -40,7 +40,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     _ = db.LiveViewSessions.Add(session);
-                    _logger.LogInformation("Live-view session inserted: {SessionId}", session.Id);
+                    _logger.LogDebug("Live-view session inserted: {SessionId}", session.Id);
                 }
                 else
                 {
@@ -57,7 +57,7 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.StopReason = session.StopReason;
                     existing.ProviderSessionRef = session.ProviderSessionRef;
                     _ = db.LiveViewSessions.Update(existing);
-                    _logger.LogInformation("Live-view session upserted (updated): {SessionId}", session.Id);
+                    _logger.LogDebug("Live-view session upserted (updated): {SessionId}", session.Id);
                 }
 
                 _ = await db.SaveChangesAsync(ct);

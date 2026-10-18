@@ -139,7 +139,7 @@ namespace VideoForensics.Ui.Shared.Layout
             catch (Exception ex) when (IsSplitterNotReady(ex))
             {
                 // Deliberately no exception detail in the log: keep tokens and URLs out of the log output.
-                Logger.LogWarning("Left-nav collapse restore deferred: splitter not ready. Will retry on next render.");
+                Logger.LogDebug("Left-nav collapse restore deferred: splitter not ready. Will retry on next render.");
             }
         }
 

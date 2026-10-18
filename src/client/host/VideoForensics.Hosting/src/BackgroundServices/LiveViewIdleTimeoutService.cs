@@ -68,7 +68,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Live view idle timeout tick: failed to list active sessions; skipping this tick");
+                _logger.LogError(ex, "Live view idle timeout tick: failed to list active sessions; skipping this tick");
                 return;
             }
 
@@ -125,7 +125,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                                 catch (Exception ex)
                                 {
                                     // One notification failure must not stop processing other sessions.
-                                    _logger.LogWarning(ex, "Live view safety valve tick: failed to dispatch notification for session {SessionId} (non-critical)", session.Id);
+                                    _logger.LogError(ex, "Live view safety valve tick: failed to dispatch notification for session {SessionId} (non-critical)", session.Id);
                                 }
                             }
                         }
@@ -134,7 +134,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One session's failure must not stop the next session's processing.
-                    _logger.LogWarning(ex, "Live view idle timeout tick: failed to process session {SessionId} (non-critical)", session.Id);
+                    _logger.LogError(ex, "Live view idle timeout tick: failed to process session {SessionId} (non-critical)", session.Id);
                 }
             }
         }

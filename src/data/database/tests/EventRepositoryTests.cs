@@ -193,5 +193,80 @@ namespace VideoForensics.Data.Database.Tests
             _ = await Assert.ThrowsAsync<DbUpdateException>(async () =>
                 await ctx.SaveChangesAsync());
         }
+
+        [Fact]
+        public async Task EventRepository_GetEarliestOccurredAtUtcAsync_ReturnsMinimumForDevice()
+        {
+            var deviceId = Guid.NewGuid();
+            var t0 = new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc);
+            foreach (int offset in new[] { 5, 0, 9 })
+            {
+                Event e = TestDataBuilder.BuildEvent(deviceId);
+                e.OccurredAtUtc = t0.AddHours(offset);
+                _ = await _repository.CreateAsync(e, CancellationToken.None);
+            }
+
+            Event other = TestDataBuilder.BuildEvent(Guid.NewGuid());
+            other.OccurredAtUtc = t0.AddYears(-5);
+            _ = await _repository.CreateAsync(other, CancellationToken.None);
+
+            DateTime? earliest = await _repository.GetEarliestOccurredAtUtcAsync(deviceId, CancellationToken.None);
+
+            Assert.Equal(t0, earliest);
+        }
+
+        [Fact]
+        public async Task EventRepository_GetEarliestOccurredAtUtcAsync_NoEvents_ReturnsNull()
+        {
+            DateTime? earliest = await _repository.GetEarliestOccurredAtUtcAsync(Guid.NewGuid(), CancellationToken.None);
+
+            Assert.Null(earliest);
+        }
+
+        [Fact]
+        public async Task EventRepository_ListByDevicePageAsync_PagesWithoutDuplicatesOrGaps()
+        {
+            var deviceId = Guid.NewGuid();
+            var t0 = new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc);
+            var created = new List<Event>();
+            foreach (int minutes in new[] { 3, 1, 1, 0, 2, 4 })
+            {
+                Event e = TestDataBuilder.BuildEvent(deviceId);
+                e.OccurredAtUtc = t0.AddMinutes(minutes);
+                created.Add(await _repository.CreateAsync(e, CancellationToken.None));
+            }
+
+            List<Guid> expected = created.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Select(e => e.Id).ToList();
+            var actual = new List<Guid>();
+            DateTime? afterTime = null;
+            Guid? afterId = null;
+            while (true)
+            {
+                IReadOnlyList<Event> page = await _repository.ListByDevicePageAsync(deviceId, afterTime, afterId, 2, CancellationToken.None);
+                if (page.Count == 0)
+                {
+                    break;
+                }
+
+                Assert.True(page.Count <= 2);
+                actual.AddRange(page.Select(e => e.Id));
+                afterTime = page[^1].OccurredAtUtc;
+                afterId = page[^1].Id;
+            }
+
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public async Task EventRepository_ListByDevicePageAsync_OtherDevicesExcluded()
+        {
+            var deviceId = Guid.NewGuid();
+            Event mine = await _repository.CreateAsync(TestDataBuilder.BuildEvent(deviceId), CancellationToken.None);
+            _ = await _repository.CreateAsync(TestDataBuilder.BuildEvent(Guid.NewGuid()), CancellationToken.None);
+
+            IReadOnlyList<Event> page = await _repository.ListByDevicePageAsync(deviceId, null, null, 10, CancellationToken.None);
+
+            Assert.Equal(mine.Id, Assert.Single(page).Id);
+        }
     }
 }

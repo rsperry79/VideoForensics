@@ -104,4 +104,28 @@
   <data name="RestartRequiredMessage" xml:space="preserve">
     <value>A restart is required for this change to take effect.</value>
   </data>
+  <data name="CategoryDatabase" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="CategoryMedia" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="CategoryTempDownloads" xml:space="preserve">
+    <value>Temp Downloads</value>
+  </data>
+  <data name="CategoryLogs" xml:space="preserve">
+    <value>Logs</value>
+  </data>
+  <data name="CategoryReports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="CategoryBackups" xml:space="preserve">
+    <value>Backups</value>
+  </data>
+  <data name="CategoryExports" xml:space="preserve">
+    <value>Exports</value>
+  </data>
+  <data name="CategoryKeys" xml:space="preserve">
+    <value>Keys</value>
+  </data>
 </root>

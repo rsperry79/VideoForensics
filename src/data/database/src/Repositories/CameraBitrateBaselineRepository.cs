@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 if (samples.Count == 0)
                 {
-                    _logger.LogInformation("No samples found for recomputing bucket: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}",
+                    _logger.LogDebug("No samples found for recomputing bucket: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}",
                         deviceId, hourOfDay, isWeekend);
                     return;
                 }
@@ -123,7 +123,7 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Recomputed bitrate baseline: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}, SampleCount {SampleCount}",
+                _logger.LogDebug("Recomputed bitrate baseline: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}, SampleCount {SampleCount}",
                     deviceId, hourOfDay, isWeekend, samples.Count);
             }
             catch (Exception ex)

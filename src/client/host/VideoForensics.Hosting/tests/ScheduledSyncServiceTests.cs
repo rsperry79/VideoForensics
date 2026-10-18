@@ -311,7 +311,22 @@ namespace VideoForensics.Hosting.Tests
 
             h.VerifyNotPulled("Ring");
             h.VerifyNothingRecorded();
-            Assert.Contains(h.Logs.Lines, l => l.StartsWith("Warning"));
+            Assert.Contains(h.Logs.Lines, l => l.StartsWith("Debug"));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RemovedAccountStillFlaggedActive_IsSkipped()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            account.RemovedUtc = Now.AddDays(-1);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.VerifyNotPulled("Ring");
+            h.VerifyNothingRecorded();
+            Assert.Contains(h.Logs.Lines, l => l.Contains("account was removed"));
         }
 
         [Fact]
@@ -456,7 +471,7 @@ namespace VideoForensics.Hosting.Tests
             h.VerifyNotPulled("Ring");
             h.VerifyNothingRecorded();
             h.Auth["Ring"].Verify(a => a.RestoreFromSavedCredentialsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
-            Assert.Contains(h.Logs.Lines, l => l.StartsWith("Information") && l.Contains("budget"));
+            Assert.Contains(h.Logs.Lines, l => l.StartsWith("Debug") && l.Contains("budget"));
         }
 
         [Fact]

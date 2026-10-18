@@ -91,7 +91,7 @@ namespace VideoForensics.Hosting.Services
 
                 if (inventory.LocationCount == 0)
                 {
-                    _logger.LogInformation("No locations found for account");
+                    _logger.LogDebug("No locations found for account");
                     account.LastSuccessfulAuthUtc = DateTime.UtcNow;
                     account.LastErrorMessage = null;
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
@@ -231,7 +231,7 @@ namespace VideoForensics.Hosting.Services
                 }
             }
 
-            _logger.LogInformation("Discovered {LocationCount} location(s) and {DeviceCount} device(s) for account", remoteLocations.Count, devices.Count);
+            _logger.LogDebug("Discovered {LocationCount} location(s) and {DeviceCount} device(s) for account", remoteLocations.Count, devices.Count);
             return new Inventory(remoteLocations.Count, devices);
         }
 

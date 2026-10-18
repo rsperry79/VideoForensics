@@ -111,19 +111,17 @@ namespace VideoForensics.WebApp.Hubs
                         // Send the notification
                         await client.SendNotificationAsync(webPushSubscription, jsonPayload, vapidDetails);
 
-                        _logger.LogInformation(
-                            "Web push sent successfully - EventType={EventType}, OperatorId={OperatorId}, Endpoint={Endpoint}",
+                        _logger.LogDebug(
+                            "Web push sent successfully - EventType={EventType}, OperatorId={OperatorId}",
                             notificationEvent.EventType,
-                            subscription.OperatorId,
-                            TruncateEndpoint(subscription.Endpoint));
+                            subscription.OperatorId);
                     }
                     catch (WebPushException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
                     {
                         // Subscription is no longer valid - remove it
                         _logger.LogInformation(
-                            "Push subscription expired ({StatusCode}) - removing - Endpoint={Endpoint}",
-                            ex.StatusCode,
-                            TruncateEndpoint(subscription.Endpoint));
+                            "Push subscription expired ({StatusCode}) - removing",
+                            ex.StatusCode);
 
                         try
                         {
@@ -131,18 +129,16 @@ namespace VideoForensics.WebApp.Hubs
                         }
                         catch (Exception removeEx)
                         {
-                            _logger.LogWarning(removeEx,
-                                "Failed to remove expired subscription - Endpoint={Endpoint}",
-                                TruncateEndpoint(subscription.Endpoint));
+                            _logger.LogError(removeEx,
+                                "Failed to remove expired subscription");
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex,
-                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}, Endpoint={Endpoint}",
+                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}",
                             notificationEvent.EventType,
-                            subscription.OperatorId,
-                            TruncateEndpoint(subscription.Endpoint));
+                            subscription.OperatorId);
                     }
                 }
             }
@@ -170,12 +166,6 @@ namespace VideoForensics.WebApp.Hubs
                 NotificationAudience.All => await _pushSubscriptionRepository.ListAllAsync(ct),
                 _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "Unsupported notification audience."),
             };
-        }
-
-        private static string TruncateEndpoint(string endpoint)
-        {
-            // Truncate long endpoint URLs for safe logging
-            return endpoint.Length > 50 ? endpoint[..47] + "..." : endpoint;
         }
     }
 }

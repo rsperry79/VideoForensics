@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Repositories
                 if (existing == null)
                 {
                     _ = db.Events.Add(@event);
-                    _logger.LogInformation("Event inserted: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
+                    _logger.LogDebug("Event inserted: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 }
                 else
                 {
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     _ = db.Events.Update(existing);
-                    _logger.LogInformation("Event upserted (updated): {EventId}", @event.Id);
+                    _logger.LogDebug("Event upserted (updated): {EventId}", @event.Id);
                 }
 
                 _ = await db.SaveChangesAsync(ct);
@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = await db.Events.AddAsync(@event, ct);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Event created: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
+                _logger.LogDebug("Event created: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 return @event;
             }
             catch (Exception ex)
@@ -124,7 +124,7 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.SnapshotUrl = @event.SnapshotUrl;
                     _ = db.Events.Update(existing);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event updated: {EventId}", @event.Id);
+                    _logger.LogDebug("Event updated: {EventId}", @event.Id);
                 }
             }
             catch (Exception ex)
@@ -142,6 +142,31 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .ToListAsync(ct);
+        }
+
+        /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when it has none.</summary>
+        public async Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId)
+                .MinAsync(e => (DateTime?)e.OccurredAtUtc, ct);
+        }
+
+        /// <summary>Keyset-paged read of a device's events ordered by OccurredAtUtc then Id.</summary>
+        public async Task<IReadOnlyList<Event>> ListByDevicePageAsync(
+            Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<Event> query = db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId);
+            if (afterOccurredAtUtc.HasValue)
+            {
+                DateTime at = afterOccurredAtUtc.Value;
+                Guid id = afterId ?? Guid.Empty;
+                query = query.Where(e => e.OccurredAtUtc > at || (e.OccurredAtUtc == at && e.Id.CompareTo(id) > 0));
+            }
+
+            return await query.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Take(take).ToListAsync(ct);
         }
 
         /// <summary>Lists events for all devices in a location within a date range.</summary>
@@ -251,7 +276,7 @@ namespace VideoForensics.Data.Database.Repositories
                     @event.DownloadFailedAtUtc = failureTime;
                     _ = db.Events.Update(@event);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event download failure recorded: {EventId} at {FailureTime}", eventId, failureTime);
+                    _logger.LogDebug("Event download failure recorded: {EventId} at {FailureTime}", eventId, failureTime);
                 }
             }
             catch (Exception ex)
@@ -272,7 +297,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Events.Remove(@event);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event deleted: {EventId}", eventId);
+                    _logger.LogDebug("Event deleted: {EventId}", eventId);
                 }
             }
             catch (Exception ex)

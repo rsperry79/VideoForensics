@@ -20,11 +20,11 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly string _ffprobePath;
         private readonly ILogger _logger;
 
-        public FfmpegMediaMetadataTagger(ILogger logger, string? ffmpegPath = null, string? ffprobePath = null)
+        public FfmpegMediaMetadataTagger(ILogger logger, string? ffmpegPath = null, string? ffprobePath = null, string? binDirectory = null)
         {
             _logger = logger;
-            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
-            _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe");
+            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg", binDirectory);
+            _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe", binDirectory);
         }
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
@@ -60,7 +60,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Exception tagging media file {Path}", mediaFilePath);
+                _logger.LogError(ex, "Exception tagging media file {Path}", mediaFilePath);
                 if (File.Exists(tmpPath))
                 {
                     try
@@ -119,7 +119,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
+                _logger.LogError(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
                 return null;
             }
         }

@@ -41,7 +41,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                     _ = await db.NoticeDismissals.AddAsync(dismissal, ct);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Notice dismissed: {NoticeId} by Operator {OperatorId}", noticeId, operatorId);
+                    _logger.LogDebug("Notice dismissed: {NoticeId} by Operator {OperatorId}", noticeId, operatorId);
                 }
             }
             catch (Exception ex)
@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     await db.NoticeDismissals.AddRangeAsync(newDismissals, ct);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Dismissed {Count} notices for Operator {OperatorId}", newDismissals.Count, operatorId);
+                    _logger.LogDebug("Dismissed {Count} notices for Operator {OperatorId}", newDismissals.Count, operatorId);
                 }
             }
             catch (Exception ex)

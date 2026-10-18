@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
-                _logger.LogInformation("Unit of work committed successfully");
+                _logger.LogDebug("Unit of work committed successfully");
                 return result;
             }
             catch (Exception ex)
@@ -153,7 +153,27 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive).ToList());
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive && pa.RemovedUtc == null).ToList());
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.RemovedUtc != null).AsEnumerable().OrderByDescending(pa => pa.RemovedUtc).ToList());
+        }
+
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
+        {
+            ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
+            if (account == null || account.RemovedUtc != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            account.RemovedUtc = removedUtc;
+            account.IsActive = false;
+            _db.SyncSchedules.RemoveRange(_db.SyncSchedules.Where(s => s.ProviderAccountId == accountId));
+            _db.Credentials.RemoveRange(_db.Credentials.Where(c => c.ProviderAccountId == accountId));
+            return Task.CompletedTask;
         }
 
         public Task AddAsync(ProviderAccount account, CancellationToken ct)
@@ -168,7 +188,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.CompletedTask;
         }
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Update(account); return Task.CompletedTask; }
-        public Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
             if (account != null)
@@ -658,6 +678,24 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking()
                 .Where(e => e.DeviceId == deviceId && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
                 .ToList());
+        }
+
+        public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).Min(e => (DateTime?)e.OccurredAtUtc));
+        }
+
+        public Task<IReadOnlyList<Event>> ListByDevicePageAsync(Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            IQueryable<Event> query = _db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId);
+            if (afterOccurredAtUtc.HasValue)
+            {
+                DateTime at = afterOccurredAtUtc.Value;
+                Guid id = afterId ?? Guid.Empty;
+                query = query.Where(e => e.OccurredAtUtc > at || (e.OccurredAtUtc == at && e.Id.CompareTo(id) > 0));
+            }
+
+            return Task.FromResult((IReadOnlyList<Event>)query.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Take(take).ToList());
         }
 
         public Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)

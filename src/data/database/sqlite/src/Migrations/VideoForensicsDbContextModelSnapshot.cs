@@ -1434,6 +1434,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventDetectionId");
 
+                    b.HasIndex("DeviceId", "OccurredAtUtc");
+
                     b.HasIndex("DeviceId", "ProviderEventId")
                         .IsUnique();
 
@@ -2846,6 +2848,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("ProviderName")
                         .IsRequired()
                         .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RemovedUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("UserId")

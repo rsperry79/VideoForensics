@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DeviceCapabilities.Add(capabilities);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device capabilities added for device {DeviceId}", capabilities.DeviceId);
+                _logger.LogDebug("Device capabilities added for device {DeviceId}", capabilities.DeviceId);
             }
             catch (Exception ex)
             {
@@ -60,7 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DeviceCapabilities.Update(capabilities);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device capabilities updated for device {DeviceId}", capabilities.DeviceId);
+                _logger.LogDebug("Device capabilities updated for device {DeviceId}", capabilities.DeviceId);
             }
             catch (Exception ex)
             {
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.DeviceCapabilities.Remove(cap);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Device capabilities deleted: {CapabilitiesId}", id);
+                    _logger.LogDebug("Device capabilities deleted: {CapabilitiesId}", id);
                 }
             }
             catch (Exception ex)

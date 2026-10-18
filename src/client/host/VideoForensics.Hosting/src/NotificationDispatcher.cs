@@ -44,7 +44,7 @@ namespace VideoForensics.Hosting
                     ProviderAccountId = null  // will be added in a future task
                 };
                 await _noticeRepository.AddAsync(notice, ct);
-                _logger.LogInformation("Persisted notification event {EventType} to notice repository", notificationEvent.EventType);
+                _logger.LogDebug("Persisted notification event {EventType} to notice repository", notificationEvent.EventType);
             }
             catch (Exception ex)
             {

@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Fetching Wyze locations");
+                _logger.LogDebug("Fetching Wyze locations");
 
                 // TODO: Implement location discovery
                 // - Call Wyze API to get all homes/properties
@@ -63,7 +63,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Fetching Wyze devices for location: {LocationId}", locationId);
+                _logger.LogDebug("Fetching Wyze devices for location: {LocationId}", locationId);
 
                 // TODO: Implement device discovery for a location
                 // - Call Wyze API with locationId
@@ -95,7 +95,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Fetching Wyze device: {DeviceId}", deviceId);
+                _logger.LogDebug("Fetching Wyze device: {DeviceId}", deviceId);
 
                 // TODO: Implement single device lookup
                 // - Call Wyze API to get device details
