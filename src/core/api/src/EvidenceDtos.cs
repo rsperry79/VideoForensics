@@ -64,6 +64,47 @@ namespace VideoForensics.Core.Api.Contracts
     }
 
     /// <summary>
+    /// Snapshot of an evidence validation job. Kind and State travel as strings
+    /// (<c>Integrity</c>/<c>Reconcile</c> and <c>Running</c>/<c>Succeeded</c>/<c>Failed</c>).
+    /// </summary>
+    /// <param name="Id">Unique job identifier.</param>
+    /// <param name="Kind">Validation run kind.</param>
+    /// <param name="State">Lifecycle state.</param>
+    /// <param name="StartedUtc">When the job started (UTC).</param>
+    /// <param name="CompletedUtc">When the job finished (UTC); null while running.</param>
+    /// <param name="Log">Log lines, oldest first.</param>
+    /// <param name="IntegrityResults">Integrity results; null unless a completed integrity job.</param>
+    /// <param name="Discrepancies">Reconciliation discrepancies; null unless a completed reconcile job.</param>
+    /// <param name="ErrorMessage">Failure message when State is Failed.</param>
+    public record EvidenceValidationJobDto(
+        Guid Id,
+        string Kind,
+        string State,
+        DateTime StartedUtc,
+        DateTime? CompletedUtc,
+        IReadOnlyList<string> Log,
+        IReadOnlyList<MediaVerificationResultDto>? IntegrityResults,
+        IReadOnlyList<ReconciliationDiscrepancyDto>? Discrepancies,
+        string? ErrorMessage
+    );
+
+    /// <summary>Request to start a local integrity job.</summary>
+    /// <param name="DeviceId">Device to verify, or null to verify all.</param>
+    public record StartIntegrityJobRequest(Guid? DeviceId);
+
+    /// <summary>Request to start a provider reconciliation job.</summary>
+    /// <param name="DeviceId">Database device ID.</param>
+    /// <param name="ProviderDeviceId">Provider's device identifier.</param>
+    /// <param name="FromUtc">Start of reconciliation date range.</param>
+    /// <param name="ToUtc">End of reconciliation date range.</param>
+    public record StartReconcileJobRequest(
+        Guid DeviceId,
+        string ProviderDeviceId,
+        DateTime FromUtc,
+        DateTime ToUtc
+    );
+
+    /// <summary>
     /// Result of exporting evidence media items to an archive.
     /// </summary>
     /// <param name="Success">True if export completed successfully or partially with some items excluded.</param>

@@ -45,6 +45,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         Services.AddScoped(_ => Mock.Of<IEvidenceExportService>());
         Services.AddScoped(_ => Mock.Of<VideoForensics.Data.Common.Contracts.ICaseRepository>());
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationService>());
+        Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfiguration>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfigurationService>());
         Services.AddScoped(_ => Mock.Of<IServerLocationInformationService>());

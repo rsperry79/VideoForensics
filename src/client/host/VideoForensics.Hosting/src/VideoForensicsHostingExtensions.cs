@@ -389,6 +389,7 @@ namespace VideoForensics.Hosting
                 IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
                 return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
             });
+            _ = services.AddSingleton<IEvidenceValidationJobs, EvidenceValidationJobService>();
 
             _ = services.AddScoped<IEvidenceExportService>(serviceProvider =>
             {
@@ -667,6 +668,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IMultiProviderAuthService, RemoteMultiProviderAuthService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IReportGenerationService, RemoteReportGenerationService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceValidationService, RemoteEvidenceValidationService>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEvidenceValidationJobs, RemoteEvidenceValidationJobs>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEvidenceExportService, RemoteEvidenceExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
