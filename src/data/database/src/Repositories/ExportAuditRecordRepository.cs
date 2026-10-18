@@ -47,8 +47,8 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await db.SaveChangesAsync(ct);
 
                 _logger.LogDebug(
-                    "Recorded export audit: LocationId={LocationId}, ExportedBy={ExportedBy}, EventsExported={EventsExported}, Format={ExportFormat}",
-                    locationId, exportedBy, eventsExported, exportFormat);
+                    "Recorded export audit: LocationId={LocationId}, EventsExported={EventsExported}, Format={ExportFormat}",
+                    locationId, eventsExported, exportFormat);
 
                 return record;
             }

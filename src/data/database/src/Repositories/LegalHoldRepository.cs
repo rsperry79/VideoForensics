@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Repositories
                     $"Legal hold reason: {reason}",
                     ct);
 
-                _logger.LogInformation("Legal hold placed on media item {MediaItemId} by {CreatedBy}", mediaItemId, createdBy);
+                _logger.LogInformation("Legal hold placed on media item {MediaItemId}", mediaItemId);
 
                 return hold;
             }
@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
                     $"Legal hold release reason: {releaseReason}",
                     ct);
 
-                _logger.LogInformation("Legal hold {LegalHoldId} released on media item {MediaItemId} by {ReleasedBy}", legalHoldId, hold.MediaItemId, releasedBy);
+                _logger.LogInformation("Legal hold {LegalHoldId} released on media item {MediaItemId}", legalHoldId, hold.MediaItemId);
             }
             catch (InvalidOperationException)
             {

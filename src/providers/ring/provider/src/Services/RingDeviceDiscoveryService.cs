@@ -165,7 +165,7 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Found {LocationCount} locations after filtering", result.Count);
                 foreach (Location loc in result)
                 {
-                    _logger.LogDebug("Location: {LocationId} - {LocationName}", loc.Id, loc.Name);
+                    _logger.LogDebug("Location: {LocationName}", loc.Name);
                 }
 
                 _cachedLocations = result;
@@ -178,7 +178,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations from Ring API: {Message}", ex.Message);
+                _logger.LogError(ex, "Error fetching locations from Ring API");
                 throw;
             }
             finally
@@ -399,8 +399,8 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogInformation("Found {DeviceCount} devices on the account", allAccountDevices.Count);
                 foreach (Device device in allAccountDevices)
                 {
-                    _logger.LogDebug("  Device: {DeviceId} - {DeviceName} ({DeviceType}), Location: {LocationId}, Online: {IsOnline}",
-                        device.Id, device.Name, device.Type, device.LocationId, device.IsOnline);
+                    _logger.LogDebug("  Device: {DeviceName} ({DeviceType}), Location: {LocationId}, Online: {IsOnline}",
+                        device.Name, device.Type, device.LocationId, device.IsOnline);
                 }
 
                 ReadOnlyCollection<Device> readOnlyDevices = allAccountDevices.AsReadOnly();
@@ -506,7 +506,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations for account {AccountId}: {Message}", providerAccountId, ex.Message);
+                _logger.LogError(ex, "Error fetching locations for account {AccountId}", providerAccountId);
                 throw;
             }
             finally
@@ -1180,7 +1180,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device list for account {AccountId}: {Message}", providerAccountId, ex.Message);
+                _logger.LogError(ex, "Error fetching device list for account {AccountId}", providerAccountId);
                 throw;
             }
             finally
@@ -1250,7 +1250,7 @@ namespace VideoForensics.Providers.Ring.Services
                         : await _locationRepository.GetByProviderLocationIdAsync(location.Id, ct);
                     if (dbLocation == null)
                     {
-                        _logger.LogDebug("Location row not stored yet for location {LocationId}; metadata capture deferred", location.Id);
+                        _logger.LogDebug("Location row not stored yet for location {LocationName}; metadata capture deferred", location.Name);
                         continue;
                     }
 
@@ -1259,7 +1259,7 @@ namespace VideoForensics.Providers.Ring.Services
                     LocationMetadata? existing = await _metadataRepository.GetByLocationIdAsync(locationGuid, ct);
                     if (existing?.LastSyncedUtc > DateTime.UtcNow.AddMinutes(-5))
                     {
-                        _logger.LogDebug("Location metadata recently captured for location {LocationId}", location.Id);
+                        _logger.LogDebug("Location metadata recently captured for location {LocationName}", location.Name);
                         continue;
                     }
 
@@ -1282,7 +1282,7 @@ namespace VideoForensics.Providers.Ring.Services
                         await _metadataRepository.UpdateAsync(metadata, ct);
                     }
 
-                    _logger.LogDebug("Captured metadata for location {LocationId}", location.Id);
+                    _logger.LogDebug("Captured metadata for location {LocationName}", location.Name);
                 }
 
                 _logger.LogDebug("Location metadata capture completed for {LocationCount} location(s)", locations.Count);

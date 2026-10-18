@@ -251,8 +251,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                                                 device.Id,
                                                 TimeSpan.FromMinutes(_config.ElevatedPollingWindowMinutes));
                                             _logger.LogInformation(
-                                                "Health sync tick: device {DeviceId} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
-                                                device.Id, degradation);
+                                                "Health sync tick: device {DeviceName} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
+                                                device.Name, degradation);
                                         }
                                     }
                                 }
@@ -261,7 +261,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogError(ex, "Health sync tick: degradation check for device {DeviceId} failed (non-critical)", device.Id);
+                            _logger.LogError(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
                         }
                     }
 

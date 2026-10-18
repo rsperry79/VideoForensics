@@ -287,11 +287,11 @@ namespace VideoForensics.Client.Core.Services
                     _knownLocationAddresses[location.Id] = location.Address;
                 }
 
-                _logger.LogDebug("Checking location: {LocationId}", location.Id);
+                _logger.LogDebug("Checking location: {LocationName}", location.Name);
                 IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                 if (devices == null || devices.Count == 0)
                 {
-                    _logger.LogWarning("No devices found in location {LocationId}", location.Id);
+                    _logger.LogWarning("No devices found in location {LocationName}", location.Name);
                     continue;
                 }
 
@@ -516,8 +516,8 @@ namespace VideoForensics.Client.Core.Services
                         continue;
                     }
 
-                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
-                        _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
+                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName}",
+                        _currentDeviceIndex, uniqueDevices.Count, device.Name);
 
                     // Effective start date was already resolved during the pre-scan above.
                     DateTime effectiveStartDate = effectiveStartDates.TryGetValue(device.Id, out DateTime resolvedStart) ? resolvedStart : startDate;
@@ -570,8 +570,8 @@ namespace VideoForensics.Client.Core.Services
                     {
                         string reason = result?.ErrorMessage ?? "unknown error";
                         deviceErrors.Add($"{device.Id}: {reason}");
-                        _logger.LogWarning("✗ Failed to download from {DeviceName}: {Reason}",
-                            device.Name, reason);
+                        _logger.LogWarning("✗ Failed to download from {DeviceName}",
+                            device.Name);
                     }
 
                     // Rate limit safety: only delay after a device we actually contacted — a
@@ -723,11 +723,11 @@ namespace VideoForensics.Client.Core.Services
                 var uniqueDevices = new List<VideoForensics.Core.Providers.Common.Contracts.Device>();
                 foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
                 {
-                    _logger.LogDebug("Checking location: {LocationId}", location.Id);
+                    _logger.LogDebug("Checking location: {LocationName}", location.Name);
                     IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                     if (devices == null || devices.Count == 0)
                     {
-                        _logger.LogWarning("No devices found in location {LocationId}", location.Id);
+                        _logger.LogWarning("No devices found in location {LocationName}", location.Name);
                         continue;
                     }
 
@@ -756,8 +756,8 @@ namespace VideoForensics.Client.Core.Services
                     _currentDeviceIndex = i + 1;
                     _currentDeviceName = device.Name;
 
-                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
-                        _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
+                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName}",
+                        _currentDeviceIndex, uniqueDevices.Count, device.Name);
 
                     // Build device-specific path with location and camera name structure
                     string locationName = "Unknown";
@@ -793,8 +793,8 @@ namespace VideoForensics.Client.Core.Services
                     {
                         string reason = result?.ErrorMessage ?? "unknown error";
                         deviceErrors.Add($"{device.Id}: {reason}");
-                        _logger.LogWarning("✗ Failed to download from {DeviceName}: {Reason}",
-                            device.Name, reason);
+                        _logger.LogWarning("✗ Failed to download from {DeviceName}",
+                            device.Name);
                     }
 
                     // Rate limit safety: sequential processing with inter-device delay

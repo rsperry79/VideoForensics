@@ -128,7 +128,7 @@ namespace VideoForensics.Hosting.Services
             }
             else
             {
-                _logger.LogWarning("Snapshot sync for {AccountName} finished with failures: {Error}", accountName, error);
+                _logger.LogWarning("Snapshot sync for {AccountName} finished with failures", accountName);
             }
 
             return new SnapshotSyncResult(targets.Count, succeeded, saved, failed, error);

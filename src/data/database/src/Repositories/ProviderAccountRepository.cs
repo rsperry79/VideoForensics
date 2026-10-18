@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.ProviderAccounts.Add(account);
                 await AddDefaultScheduleIfMissingAsync(db, account.Id, ct);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
+                _logger.LogDebug("Provider account added: {ProviderName}", SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
@@ -82,11 +82,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.ProviderAccounts.Update(account);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Provider account updated: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
+                _logger.LogDebug("Provider account updated: {ProviderName}", SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider account: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
+                _logger.LogError(ex, "Error updating provider account: {ProviderName}", SanitizeForLog(account.ProviderName));
                 throw;
             }
         }
@@ -111,12 +111,12 @@ namespace VideoForensics.Data.Database.Repositories
 
                     _ = db.ProviderAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Provider account deleted: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));
+                    _logger.LogDebug("Provider account deleted: {ProviderName}", SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider account: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError(ex, "Error deleting provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }
@@ -135,12 +135,12 @@ namespace VideoForensics.Data.Database.Repositories
                     account.LastErrorMessage = errorMessage;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogWarning("Provider account error recorded: {ProviderAccountId} ({ProviderName}), Message: {ErrorMessage}", providerAccountId, SanitizeForLog(account.ProviderName), errorMessage);
+                    _logger.LogWarning("Provider account error recorded: {ProviderName}", SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording error for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError(ex, "Error recording error for provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }
@@ -160,12 +160,12 @@ namespace VideoForensics.Data.Database.Repositories
                     account.LastErrorMessage = null;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogDebug("Provider account success recorded, error state cleared: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account.ProviderName));
+                    _logger.LogDebug("Provider account success recorded, error state cleared: {ProviderName}", SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording success for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
+                _logger.LogError(ex, "Error recording success for provider account: {ProviderName}", SanitizeForLog(account?.ProviderName ?? "unknown"));
                 throw;
             }
         }

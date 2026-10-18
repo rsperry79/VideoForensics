@@ -1214,7 +1214,7 @@ namespace VideoForensics.Providers.Ring
 
                 newFailures.Add(failure);
                 _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
-                log.LogDebug($"Recorded failed download for EventId {eventId}: {errorDesc}");
+                log.LogDebug($"Recorded failed download for EventId {eventId}");
             }
             catch (Exception exe)
             {

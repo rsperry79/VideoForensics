@@ -71,7 +71,7 @@ namespace VideoForensics.WebApp.Services
                 {
                     try
                     {
-                        _logger.LogDebug("Validating device {DeviceId} ({DeviceName})", device.Id, device.Name);
+                        _logger.LogDebug("Validating device {DeviceName}", device.Name);
 
                         // Step 1: Verify local integrity
                         IReadOnlyList<MediaVerificationResult> integrityResults =
@@ -83,8 +83,8 @@ namespace VideoForensics.WebApp.Services
                         result.TotalFilesMissing += integrityResults.Count(r => r.Status == "missing");
 
                         _logger.LogDebug(
-                            "Device {DeviceId}: {Verified} verified, {Failed} failed, {Missing} missing",
-                            device.Id,
+                            "Device {DeviceName}: {Verified} verified, {Failed} failed, {Missing} missing",
+                            device.Name,
                             integrityResults.Count(r => r.Status == "verified"),
                             integrityResults.Count(r => r.Status == "failed"),
                             integrityResults.Count(r => r.Status == "missing"));
@@ -110,26 +110,26 @@ namespace VideoForensics.WebApp.Services
                                 {
                                     result.TotalDiscrepanciesFixed += discrepancies.Count;
                                     _logger.LogInformation(
-                                        "Device {DeviceId}: {DiscrepancyCount} discrepancies found and auto-fixed",
-                                        device.Id, discrepancies.Count);
+                                        "Device {DeviceName}: {DiscrepancyCount} discrepancies found and auto-fixed",
+                                        device.Name, discrepancies.Count);
                                 }
                             }
                             catch (Exception ex)
                             {
                                 _logger.LogError(ex,
-                                    "Provider reconciliation failed for device {DeviceId} ({ProviderDeviceId})",
-                                    device.Id, device.ProviderDeviceId);
+                                    "Provider reconciliation failed for device {DeviceName}",
+                                    device.Name);
                                 // Continue with next device rather than failing entire bulk operation
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("Device {DeviceId} has no provider device ID; skipping reconciliation", device.Id);
+                            _logger.LogWarning("Device {DeviceName} has no provider device ID; skipping reconciliation", device.Name);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Validation failed for device {DeviceId}", device.Id);
+                        _logger.LogError(ex, "Validation failed for device {DeviceName}", device.Name);
                         // Continue with next device rather than failing entire bulk operation
                     }
                 }

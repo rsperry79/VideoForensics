@@ -126,12 +126,12 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = await db.SaveChangesAsync(ct);
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogDebug("Sync schedule upserted for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogDebug("Sync schedule upserted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
             }
             catch (Exception ex)
             {
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -148,13 +148,13 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.SyncSchedules.Remove(schedule);
                     _ = await db.SaveChangesAsync(ct);
                     var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogDebug("Sync schedule deleted for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
+                    _logger.LogDebug("Sync schedule deleted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)
             {
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
         }

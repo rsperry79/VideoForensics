@@ -27,8 +27,8 @@ namespace VideoForensics.Data.Database.Repositories
 
             if (entry.IsUrgent)
             {
-                _logger.LogWarning("URGENT security event: {EventType} (Operator={OperatorId}, Device={PairedDeviceId}, Ip={SourceIp})",
-                    entry.EventType, entry.OperatorId, entry.PairedDeviceId, entry.SourceIp);
+                _logger.LogWarning("URGENT security event: {EventType} (Operator={OperatorId}, Device={PairedDeviceId})",
+                    entry.EventType, entry.OperatorId, entry.PairedDeviceId);
             }
             else
             {

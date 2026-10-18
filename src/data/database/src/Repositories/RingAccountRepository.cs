@@ -61,13 +61,13 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.RingAccounts.Update(account);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Ring account updated: {AccountId} (email: {AccountEmail}, subscription: {SubscriptionLevel})",
-                    account.Id, account.AccountEmail ?? "unknown", account.SubscriptionLevel);
+                _logger.LogDebug("Ring account updated: {AccountId} (subscription: {SubscriptionLevel})",
+                    account.Id, account.SubscriptionLevel);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating Ring account: {AccountId} (email: {AccountEmail}, subscription: {SubscriptionLevel})",
-                    account.Id, account.AccountEmail ?? "unknown", account.SubscriptionLevel);
+                _logger.LogError(ex, "Error updating Ring account: {AccountId} (subscription: {SubscriptionLevel})",
+                    account.Id, account.SubscriptionLevel);
                 throw;
             }
         }
@@ -82,7 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.RingAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Ring account deleted: {AccountId} (email: {AccountEmail})", id, account.AccountEmail ?? "unknown");
+                    _logger.LogDebug("Ring account deleted: {AccountId}", id);
                 }
             }
             catch (Exception ex)

@@ -55,7 +55,7 @@ namespace VideoForensics.WebApp.Services
 
             if (!TryNormalizeBannableAddress(clientIp, out IPAddress? address, out string skipReason))
             {
-                _logger.LogDebug("Auto-ban skipped for {ClientIp}: {Reason}", clientIp, skipReason);
+                _logger.LogDebug("Auto-ban skipped: {Reason}", skipReason);
                 return false;
             }
 
@@ -145,7 +145,7 @@ namespace VideoForensics.WebApp.Services
                 IReadOnlyList<BannedIpRange> active = await bannedRanges.GetActiveAsync(ct);
                 if (active.Any(range => string.Equals(range.CidrRange, cidr, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _logger.LogDebug("Auto-ban skipped for {ClientIp}: an active ban already covers it", key);
+                    _logger.LogDebug("Auto-ban skipped: an active ban already covers it");
                     return false;
                 }
 

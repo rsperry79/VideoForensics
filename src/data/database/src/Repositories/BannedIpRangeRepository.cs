@@ -34,7 +34,7 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.BannedIpRanges.Add(range);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogDebug("IP range banned: {CidrRange} (expires: {ExpiresAtUtc})", range.CidrRange, range.ExpiresAtUtc);
+            _logger.LogDebug("IP range banned (expires: {ExpiresAtUtc})", range.ExpiresAtUtc);
         }
 
         public async Task RemoveAsync(Guid id, CancellationToken ct)
@@ -48,7 +48,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             _ = db.BannedIpRanges.Remove(ban);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogDebug("IP range ban removed: {CidrRange}", ban.CidrRange);
+            _logger.LogDebug("IP range ban removed");
         }
     }
 }

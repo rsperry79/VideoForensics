@@ -94,7 +94,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Add(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Location added: {LocationId} ({LocationName})", location.Id, location.Name);
+                _logger.LogDebug("Location added: {LocationName}", location.Name);
             }
             catch (Exception ex)
             {
@@ -111,11 +111,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Update(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Location updated: {LocationId}", location.Id);
+                _logger.LogDebug("Location updated: {LocationName}", location.Name);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating location: {LocationId}", location.Id);
+                _logger.LogError(ex, "Error updating location: {LocationName}", location.Name);
                 throw;
             }
         }

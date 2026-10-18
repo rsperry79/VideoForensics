@@ -176,7 +176,7 @@ namespace VideoForensics.Hosting
             // callers observe progress, not awaiting this task.
             _ = RunAsync(kind, arguments, cts);
 
-            _logger.LogInformation("cloudflared tunnel starting ({Kind}): {Arguments}", kind, SanitizeForLog(arguments));
+            _logger.LogInformation("cloudflared tunnel starting ({Kind})", kind);
             return Task.CompletedTask;
         }
 

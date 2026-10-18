@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Add(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Device added: {DeviceId} ({DeviceName})", device.Id, device.Name);
+                _logger.LogDebug("Device added: {DeviceName}", device.Name);
             }
             catch (Exception ex)
             {
@@ -81,11 +81,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Update(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Device updated: {DeviceId}", device.Id);
+                _logger.LogDebug("Device updated: {DeviceName}", device.Name);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device: {DeviceId}", device.Id);
+                _logger.LogError(ex, "Error updating device: {DeviceName}", device.Name);
                 throw;
             }
         }

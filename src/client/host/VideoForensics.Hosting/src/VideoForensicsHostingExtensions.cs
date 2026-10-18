@@ -793,8 +793,8 @@ namespace VideoForensics.Hosting
                 defaultAdmin.PasswordHash = passwordHasher.HashPassword(defaultAdmin, DefaultSuperAdminPassword);
                 _ = await operatorRepo.AddAsync(defaultAdmin, ct);
                 logger.LogWarning(
-                    "No operators existed - seeded a default SuperAdmin account. Username: '{Username}', password: the fixed default documented in CLAUDE.md (DefaultSuperAdminPassword constant). You MUST sign in and change this password immediately.",
-                    defaultAdmin.Username);
+                    "No operators existed - seeded a default SuperAdmin account. Password: the fixed default documented in CLAUDE.md (DefaultSuperAdminPassword constant). You MUST sign in and change this password immediately."
+                    );
             }
         }
     }

@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Logs evidence access for chain of custody.</summary>
         public async Task LogAccessAsync(Guid evidenceId, string userId, string action, DateTime accessAtUtc, CancellationToken ct)
         {
-            _logger.LogDebug("LogAccessAsync entry: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}", evidenceId, userId, action);
+            _logger.LogDebug("LogAccessAsync entry: EvidenceId={EvidenceId}, Action={Action}", evidenceId, action);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -58,7 +58,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Logs export record for forensic audit trail.</summary>
         public async Task LogExportAsync(Guid exportId, Guid locationId, string exportedBy, int eventCount, CancellationToken ct)
         {
-            _logger.LogDebug("LogExportAsync entry: ExportId={ExportId}, LocationId={LocationId}, ExportedBy={ExportedBy}", exportId, locationId, exportedBy);
+            _logger.LogDebug("LogExportAsync entry: ExportId={ExportId}, LocationId={LocationId}", exportId, locationId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try

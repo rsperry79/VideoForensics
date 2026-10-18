@@ -48,8 +48,8 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await db.SaveChangesAsync(ct);
 
                 _logger.LogDebug(
-                    "Recorded evidence access: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}, IpAddress={IpAddress}",
-                    evidenceId, userId, action, ipAddress);
+                    "Recorded evidence access: EvidenceId={EvidenceId}, Action={Action}",
+                    evidenceId, action);
 
                 return entry;
             }

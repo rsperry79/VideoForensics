@@ -84,7 +84,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Uniview authentication failed: {Message}", ex.Message);
+                _logger.LogError(ex, "Uniview authentication failed");
                 return new AuthResult(
                     Success: false,
                     ErrorMessage: ex.Message
@@ -209,12 +209,12 @@ namespace VideoForensics.Providers.Uniview.Services
 
                         if (username != null && password != null)
                         {
-                            _logger.LogDebug("Restoring Uniview session from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                            _logger.LogDebug("Restoring Uniview session from database for {ProviderName} account", ProviderName);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                        _logger.LogError(ex, "Failed to restore credentials from database for {ProviderName} account", ProviderName);
                     }
                 }
 

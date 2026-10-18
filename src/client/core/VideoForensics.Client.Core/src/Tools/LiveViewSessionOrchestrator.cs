@@ -402,7 +402,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Start the provider connection
-            _logger.LogDebug("Starting live view connection for device {DeviceId} ({ProviderDeviceId})", deviceId, device.ProviderDeviceId);
+            _logger.LogDebug("Starting live view connection for device {DeviceName}", device.Name);
             var connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, ct);
 
             // Create and persist the session in Starting state
@@ -419,7 +419,7 @@ namespace VideoForensics.Client.Core.Tools
             };
 
             session = await sessionRepository.UpsertSessionAsync(session, ct);
-            _logger.LogDebug("Persisted live view session {SessionId} in Starting state for device {DeviceId}", session.Id, deviceId);
+            _logger.LogDebug("Persisted live view session {SessionId} in Starting state for device {DeviceName}", session.Id, device.Name);
             await PublishSessionChangedSafelyAsync(session, ct);
 
             // Start the telemetry sampler before storing the handle, so every handle in the map has a live consumer

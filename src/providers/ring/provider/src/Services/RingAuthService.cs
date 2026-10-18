@@ -100,11 +100,11 @@ namespace VideoForensics.Providers.Ring.Services
                                         "RefreshToken",
                                         session.OAuthToken.RefreshToken,
                                         cancellationToken);
-                                    _logger.LogInformation("Refresh token saved to database for account {AccountId}", resolvedAccountId);
+                                    _logger.LogInformation("Refresh token saved to database for account {ProviderName}", ProviderName);
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to save refresh token to database for account {AccountId}", resolvedAccountId);
+                                    _logger.LogError(ex, "Failed to save refresh token to database for account {ProviderName}", ProviderName);
                                     dbPersistenceSucceeded = false;
                                 }
                             }
@@ -119,13 +119,13 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception recordEx)
                                 {
-                                    _logger.LogError(recordEx, "Failed to record authentication success for account {AccountId}", resolvedAccountId);
+                                    _logger.LogError(recordEx, "Failed to record authentication success for account {ProviderName}", ProviderName);
                                     // Non-fatal — auth itself succeeded
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to persist Ring account metadata for account {AccountId}", resolvedAccountId);
+                                _logger.LogError(ex, "Failed to persist Ring account metadata for account {ProviderName}", ProviderName);
                                 dbPersistenceSucceeded = false;
                             }
 
@@ -136,7 +136,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             else
                             {
-                                _logger.LogError("Database persistence failed for account {AccountId} — credentials must be in database", resolvedAccountId);
+                                _logger.LogError("Database persistence failed for account {ProviderName} — credentials must be in database", ProviderName);
                                 return new AuthResult(
                                     Success: false,
                                     ErrorMessage: "Failed to persist credentials to database"
@@ -319,13 +319,13 @@ namespace VideoForensics.Providers.Ring.Services
 
                         if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                         {
-                            _logger.LogDebug("Restoring Ring session from database for account {AccountId}", providerAccountId);
+                            _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", ProviderName);
                             credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId}", providerAccountId);
+                        _logger.LogError(ex, "Failed to restore credentials from database for account {ProviderName}", ProviderName);
                         if (_providerAccountRepository != null && providerAccountId.HasValue)
                         {
                             try
@@ -337,7 +337,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             catch (Exception recordEx)
                             {
-                                _logger.LogError(recordEx, "Failed to record error for account {AccountId}", providerAccountId);
+                                _logger.LogError(recordEx, "Failed to record error for account {ProviderName}", ProviderName);
                             }
                         }
 
@@ -359,7 +359,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             catch (Exception notifEx)
                             {
-                                _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId}", providerAccountId.Value);
+                                _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", ProviderName);
                             }
                         }
                     }
@@ -392,7 +392,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                                     {
-                                        _logger.LogDebug("Restoring Ring session from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
+                                        _logger.LogDebug("Restoring Ring session from database for account {ProviderName}", account.ProviderName);
                                         credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                                         resolvedAccountId = account.Id;
                                         break;
@@ -400,7 +400,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
+                                    _logger.LogError(ex, "Failed to restore credentials from database for account {ProviderName}", account.ProviderName);
                                     if (_providerAccountRepository != null)
                                     {
                                         try
@@ -412,7 +412,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception recordEx)
                                         {
-                                            _logger.LogError(recordEx, "Failed to record error for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
+                                            _logger.LogError(recordEx, "Failed to record error for account {ProviderName}", account.ProviderName);
                                         }
                                     }
 
@@ -434,7 +434,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception notifEx)
                                         {
-                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
+                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", account.ProviderName);
                                         }
                                     }
                                 }

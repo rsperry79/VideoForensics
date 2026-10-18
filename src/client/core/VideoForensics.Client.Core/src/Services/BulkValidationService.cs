@@ -60,15 +60,15 @@ namespace VideoForensics.Client.Core.Services
                 {
                     if (string.IsNullOrWhiteSpace(device.ProviderDeviceId))
                     {
-                        _logger.LogDebug("Skipping device {DeviceId} ({DeviceName}) - no ProviderDeviceId", device.Id, device.Name);
+                        _logger.LogDebug("Skipping device {DeviceName} - no ProviderDeviceId", device.Name);
                         continue;
                     }
 
                     try
                     {
                         _logger.LogDebug(
-                            "Validating device {DeviceId} ({DeviceName}) with provider ID {ProviderDeviceId}",
-                            device.Id, device.Name, device.ProviderDeviceId);
+                            "Validating device {DeviceName}",
+                            device.Name);
 
                         IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
                             device.Id,
@@ -90,8 +90,8 @@ namespace VideoForensics.Client.Core.Services
                         result.MetadataUpdated += metadataChangedCount;
 
                         _logger.LogDebug(
-                            "Device {DeviceId} ({DeviceName}): validated with {DiscrepancyCount} discrepancy(ies)",
-                            device.Id, device.Name, discrepancies.Count);
+                            "Device {DeviceName}: validated with {DiscrepancyCount} discrepancy(ies)",
+                            device.Name, discrepancies.Count);
                     }
                     catch (Exception ex)
                     {

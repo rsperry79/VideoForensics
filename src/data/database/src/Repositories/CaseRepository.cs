@@ -96,7 +96,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ForensicCase? existingCase = await GetAsync(linkedCaseId.Value, ct);
                 if (existingCase is not null)
                 {
-                    _logger.LogDebug("Jamming incident {IncidentId} already has case {CaseId}; returning existing case", jammingEvent.Id, jammingEvent.CaseId);
+                    _logger.LogDebug("Jamming incident {IncidentId} already has case {CaseTitle}; returning existing case", jammingEvent.Id, existingCase.Title);
                     return existingCase;
                 }
             }
@@ -287,7 +287,7 @@ namespace VideoForensics.Data.Database.Repositories
                         $"Case number: {finalCaseNumber}, Title: {title}, Devices: {deviceIds.Count}",
                         ct);
 
-                    _logger.LogInformation("Case {CaseNumber} created by {CreatedBy}", finalCaseNumber, createdBy);
+                    _logger.LogInformation("Case {CaseNumber} created", finalCaseNumber);
 
                     return forensicCase;
                 }
@@ -404,7 +404,7 @@ namespace VideoForensics.Data.Database.Repositories
                     $"Title: {title}",
                     ct);
 
-                _logger.LogDebug("Case {CaseId} updated by {UpdatedBy}", id, updatedBy);
+                _logger.LogDebug("Case {CaseTitle} updated", forensicCase.Title);
             }
             catch (InvalidOperationException)
             {
@@ -474,7 +474,7 @@ namespace VideoForensics.Data.Database.Repositories
                     details,
                     ct);
 
-                _logger.LogDebug("Case {CaseId} scope updated by {UpdatedBy}", id, updatedBy);
+                _logger.LogDebug("Case {CaseTitle} scope updated", forensicCase.Title);
             }
             catch (InvalidOperationException)
             {
@@ -523,7 +523,7 @@ namespace VideoForensics.Data.Database.Repositories
                     string.Empty,
                     ct);
 
-                _logger.LogInformation("Case {CaseId} closed by {ClosedBy}", id, closedBy);
+                _logger.LogInformation("Case {CaseTitle} closed", forensicCase.Title);
             }
             catch (InvalidOperationException)
             {
@@ -563,7 +563,7 @@ namespace VideoForensics.Data.Database.Repositories
                     string.Empty,
                     ct);
 
-                _logger.LogInformation("Case {CaseId} reopened by {ReopenedBy}", id, reopenedBy);
+                _logger.LogInformation("Case {CaseTitle} reopened", forensicCase.Title);
             }
             catch (InvalidOperationException)
             {
@@ -652,8 +652,8 @@ namespace VideoForensics.Data.Database.Repositories
                     ct);
 
                 _logger.LogDebug(
-                    "Case {CaseId} item added: {Kind} {TargetId} by {AddedBy}",
-                    caseId, kind, targetId, addedBy);
+                    "Case {CaseTitle} item added: {Kind} {TargetId}",
+                    forensicCase.Title, kind, targetId);
 
                 return caseItem;
             }
@@ -694,7 +694,7 @@ namespace VideoForensics.Data.Database.Repositories
                     $"Item: {caseItemId}, Reason: {reason}",
                     ct);
 
-                _logger.LogDebug("Case item {CaseItemId} removed by {RemovedBy}", caseItemId, removedBy);
+                _logger.LogDebug("Case item {CaseItemId} removed", caseItemId);
             }
             catch (InvalidOperationException)
             {

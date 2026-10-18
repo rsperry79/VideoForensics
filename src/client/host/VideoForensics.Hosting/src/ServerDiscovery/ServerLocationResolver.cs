@@ -42,7 +42,7 @@ namespace VideoForensics.Hosting.ServerDiscovery
             Uri? discoveredUri = await DiscoverLocalServerAsync(cancellationToken);
             if (discoveredUri != null)
             {
-                _logger.LogDebug("Server discovered via mDNS at {Uri}", discoveredUri);
+                _logger.LogDebug("Server discovered via mDNS");
                 return discoveredUri;
             }
 

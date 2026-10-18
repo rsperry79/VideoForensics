@@ -35,21 +35,21 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.AuthKey = subscription.AuthKey;
                     existing.LastUsedUtc = DateTime.UtcNow;
                     _ = db.PushSubscriptions.Update(existing);
-                    _logger.LogDebug("Push subscription updated: {Endpoint}", SanitizeForLog(subscription.Endpoint));
+                    _logger.LogDebug("Push subscription updated");
                 }
                 else
                 {
                     subscription.Id = subscription.Id == Guid.Empty ? Guid.NewGuid() : subscription.Id;
                     subscription.CreatedUtc = DateTime.UtcNow;
                     _ = await db.PushSubscriptions.AddAsync(subscription, ct);
-                    _logger.LogDebug("Push subscription added: {Endpoint}", SanitizeForLog(subscription.Endpoint));
+                    _logger.LogDebug("Push subscription added");
                 }
 
                 _ = await db.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding or updating push subscription: {Endpoint}", SanitizeForLog(subscription.Endpoint));
+                _logger.LogError(ex, "Error adding or updating push subscription");
                 throw;
             }
         }
@@ -123,12 +123,12 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.PushSubscriptions.Remove(subscription);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Push subscription removed: {Endpoint}", SanitizeForLog(endpoint));
+                    _logger.LogDebug("Push subscription removed");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing push subscription: {Endpoint}", SanitizeForLog(endpoint));
+                _logger.LogError(ex, "Error removing push subscription");
                 throw;
             }
         }
