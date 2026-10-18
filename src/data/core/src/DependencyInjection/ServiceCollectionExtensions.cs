@@ -33,6 +33,11 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddTransient<VideoForensics.Core.Providers.Core.IAudioClipAnalyzer>(sp =>
                 new VideoForensics.Core.Providers.Core.FfmpegAudioAnalyzer(
                     VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
+            // Transient for the same reason: ffmpeg path reads the bin directory per resolve.
+            services.TryAddTransient<VideoForensics.Core.Providers.Common.Contracts.ITimelineVideoBuilder>(sp =>
+                new VideoForensics.Core.Providers.Core.FfmpegTimelineVideoBuilder(
+                    sp.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegTimelineVideoBuilder>>(),
+                    VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
