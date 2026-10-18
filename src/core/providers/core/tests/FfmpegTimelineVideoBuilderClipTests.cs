@@ -176,6 +176,50 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
+        public async Task BuildAsync_TrimmedClipOffsetPastEnd_AddsNoClipSegment()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            string still = Path.Combine(_workDir, "still.png");
+            string clip = Path.Combine(_workDir, "clip.mp4");
+            CreatePng(still, "red", 320, 240);
+            CreateVideo(clip, 320, 240, seconds: 2);
+
+            // A single clip always starts at its StartedAt (offset 0), so an offset only arises when an earlier clip
+            // ends after this clip starts: the later clip is trimmed to start at that earlier end.
+            // Clip A: [T0-3, T0+1), real 2 s, declared 4 s. Usable = min(declared 4, real 2) = 2 frames.
+            // Clip B: StartedAt T0-2, Duration 7 s, so its declared window is [T0+1, T0+5) with 4 s.
+            //   Start is trimmed to A's end (T0+1), so offset = (T0+1) - (T0-2) = 3 s, past B's real end of 2 s.
+            //   Real seconds left = 2 - 3 = -1, so B's usable seconds are 0 and B adds no segment.
+            // Still: [T0, T0+6) red, 6 s. A covers [T0, T0+1) and B's window covers [T0+1, T0+5), so only the tail
+            //   [T0+5, T0+6) remains: 1 s, 1 frame.
+            // Expected: 2 (A) + 1 (still tail) = 3 frames. Frames 0-1 are clip A, frame 2 is the red tail.
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
+            var clips = new[]
+            {
+                new TimelineClip(clip, T0.AddSeconds(-3), TimeSpan.FromSeconds(4)),
+                new TimelineClip(clip, T0.AddSeconds(-2), TimeSpan.FromSeconds(7)),
+            };
+            string output = Path.Combine(_workDir, "timeline.mp4");
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output, clips), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Equal(3, result.FrameCount);
+            Assert.Equal("3", ProbeStreamField(output, "nb_read_frames"));
+
+            List<(byte R, byte G, byte B)> frames = ReadFrameAverages(output);
+            Assert.Equal(3, frames.Count);
+            Assert.False(IsRed(frames[0]), $"frame 0 should be clip A, not the still, was {frames[0]}");
+            Assert.False(IsRed(frames[1]), $"frame 1 should be clip A, not the still, was {frames[1]}");
+            Assert.True(IsRed(frames[2]), $"frame 2 should be the still tail, was {frames[2]}");
+        }
+
+        [Fact]
         public async Task BuildAsync_ClipWithoutVideoStream_ReturnsFailureWithoutThrowing()
         {
             if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
