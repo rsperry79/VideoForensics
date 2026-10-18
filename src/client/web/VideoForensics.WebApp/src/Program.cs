@@ -397,6 +397,7 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LeftPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
