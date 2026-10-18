@@ -36,6 +36,14 @@ namespace VideoForensics.Core.Providers.Core
                 throw new TimeoutException($"{startInfo.FileName} did not finish within {timeout.TotalSeconds:0} s and was stopped.");
             }
 
+            // Why: the kill can make the process exit before WaitAsync observes the cancellation, so the wait
+            // may return normally even though the limit fired. Treat that as a timeout (or caller cancel), not success.
+            if (limit.IsCancellationRequested)
+            {
+                ct.ThrowIfCancellationRequested();
+                throw new TimeoutException($"{startInfo.FileName} did not finish within {timeout.TotalSeconds:0} s and was stopped.");
+            }
+
             return new ProcessResult(process.ExitCode, await stdout, await stderr);
         }
 
