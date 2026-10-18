@@ -101,7 +101,7 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, true), CancellationToken.None);
 
-            _pull.Verify(p => p.PullAccountEventsAsync(_id, null, null, It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -168,7 +168,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeAllHistory_RecordsFullWithBothCounts()
         {
-            _pull.Setup(p => p.PullAccountEventsAsync(_id, null, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
             _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2));

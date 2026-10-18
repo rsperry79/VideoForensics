@@ -54,11 +54,17 @@ namespace VideoForensics.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task RunAsync_AllHistory_PullsFromBeginningAndRecordsFull()
+        public async Task RunAsync_AllHistory_PullsBackOneYearAndRecordsFull()
         {
+            DateTime before = DateTime.UtcNow;
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, true), CancellationToken.None);
+            DateTime after = DateTime.UtcNow;
 
-            _pull.Verify(p => p.PullAccountEventsAsync(_id, null, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(
+                _id,
+                It.Is<DateTime?>(from => from.HasValue && from.Value >= before.AddYears(-1) && from.Value <= after.AddYears(-1)),
+                It.IsAny<DateTime?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal("Full", Assert.Single(_recorded).SyncType);
         }
 

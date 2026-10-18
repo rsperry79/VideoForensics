@@ -109,8 +109,8 @@ namespace VideoForensics.Hosting.Tests.Services
 
             await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
 
-            // A null start asks the pull for everything the provider has, not just since the last auth.
-            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, null, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
+            // The initial backfill starts one year back, not at the last auth.
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

@@ -244,17 +244,21 @@ namespace VideoForensics.Hosting.Services
                 return ProviderSyncRunRecorder.AccountNotFoundMessage;
             }
 
+            // Full history (the initial backfill, or "All" with no range) is capped at one year back.
+            DateTime? snapshotStart = request is { AllHistory: true } ? DateTime.UtcNow.AddYears(-1) : request?.FromUtc;
+
             // Snapshots-only: fetch snapshots for the account's devices instead of pulling events.
             if (request?.Type == AccountSyncType.Snapshots)
             {
-                SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, request.FromUtc, request.ToUtc, cancellationToken);
+                SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, snapshotStart, request.ToUtc, cancellationToken);
 
                 // Event counts stay null: a snapshots-only run pulled no events, so DevicesSynced/FeedsFailed would mislead.
                 return new SyncOutcome(snapshots.ErrorMessage, null, snapshots.DevicesSucceeded);
             }
 
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
-            DateTime? from = fullHistory ? null : request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            DateTime? historyStart = fullHistory ? DateTime.UtcNow.AddYears(-1) : null;
+            DateTime? from = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
             DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
@@ -270,7 +274,7 @@ namespace VideoForensics.Hosting.Services
 
             // "All" covers events and snapshots in one run row. Snapshots run even when the event pull failed, so one
             // failure never hides the other; errors are joined. Note Ring fetches a fresh snapshot per device here.
-            SnapshotSyncResult allSnapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, request.FromUtc, request.ToUtc, cancellationToken);
+            SnapshotSyncResult allSnapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, snapshotStart, request.ToUtc, cancellationToken);
             string? error = eventError is null ? allSnapshots.ErrorMessage
                 : allSnapshots.ErrorMessage is null ? eventError
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
