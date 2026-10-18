@@ -1,71 +1,34 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
-using VideoForensics.Core.Api.Contracts;
+using System.Text.Json;
 using VideoForensics.Ui.Shared.Services;
 using Xunit;
 
 public class SyncRequestBuilderTests
 {
-    private static readonly DateOnly Start = new(2026, 1, 2);
-    private static readonly DateOnly End = new(2026, 2, 3);
+    private static JsonElement Json(object o) => JsonSerializer.SerializeToElement(o, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
     [Fact]
-    public void Build_NumericRange_UsesDays()
+    public void Build_NumericRange_UsesDaysKind()
     {
-        SyncNowRequest r = SyncRequestBuilder.Build("Events", "60", Start, End);
-
-        Assert.Equal("Events", r.SyncType);
-        Assert.Equal("Days", r.RangeKind);
-        Assert.Equal(60, r.Days);
+        var r = Json(SyncRequestBuilder.Build("Events", "60", null, null));
+        Assert.Equal("Days", r.GetProperty("rangeKind").GetString());
+        Assert.Equal(60, r.GetProperty("days").GetInt32());
     }
 
     [Fact]
-    public void Build_AllHistoryRange_SendsAllRange()
+    public void Build_AllRange_UsesAllKind()
     {
-        SyncNowRequest r = SyncRequestBuilder.Build("All", "All", Start, End);
-
-        Assert.Equal("All", r.SyncType);
-        Assert.Equal("All", r.RangeKind);
-        Assert.Null(r.Days);
+        Assert.Equal("All", Json(SyncRequestBuilder.Build("All", "All", null, null)).GetProperty("rangeKind").GetString());
     }
 
     [Fact]
-    public void Build_CustomRange_RunsFromStartDayThroughEndDayLocalTime()
+    public void Build_CustomRange_IncludesParsedDates()
     {
-        SyncNowRequest r = SyncRequestBuilder.Build("All", "Custom", Start, End);
-
-        Assert.Equal("Custom", r.RangeKind);
-        Assert.Equal(DateTime.SpecifyKind(new DateTime(2026, 1, 2), DateTimeKind.Local).ToUniversalTime(), r.StartUtc);
-        Assert.Equal(DateTime.SpecifyKind(new DateTime(2026, 2, 4), DateTimeKind.Local).ToUniversalTime(), r.EndUtc);
-    }
-
-    [Theory]
-    [InlineData("Config")]
-    [InlineData("Snapshots")]
-    public void Build_TypeThatIgnoresTheWindow_SendsSinceLast(string syncType)
-    {
-        SyncNowRequest r = SyncRequestBuilder.Build(syncType, "60", Start, End);
-
-        Assert.Equal(syncType, r.SyncType);
-        Assert.Equal("SinceLast", r.RangeKind);
-        Assert.Null(r.Days);
-        Assert.Null(r.StartUtc);
-    }
-
-    [Fact]
-    public void Build_UnrecognizedRange_FallsBackToSinceLast()
-    {
-        Assert.Equal("SinceLast", SyncRequestBuilder.Build("Events", "SinceLast", Start, End).RangeKind);
-    }
-
-    [Theory]
-    [InlineData("All", true)]
-    [InlineData("Events", true)]
-    [InlineData("Config", false)]
-    [InlineData("Snapshots", false)]
-    public void UsesRange_ByType(string syncType, bool expected)
-    {
-        Assert.Equal(expected, SyncRequestBuilder.UsesRange(syncType));
+        var r = Json(SyncRequestBuilder.Build("All", "Custom", "2026-01-02", "2026-02-03"));
+        Assert.Equal("Custom", r.GetProperty("rangeKind").GetString());
+        Assert.StartsWith("2026-01-02", r.GetProperty("from").GetString());
+        Assert.StartsWith("2026-02-03", r.GetProperty("to").GetString());
     }
 
     [Fact]
@@ -91,7 +54,7 @@ public class SyncRequestBuilderTests
     }
 
     [Fact]
-    public void FormatRecords_AllNullWithSnapshotFormat_ReturnsNull()
+    public void FormatRecords_AllSixNull_ReturnsNull()
     {
         Assert.Null(SyncRequestBuilder.FormatRecords("{0}", null, null, null, null, null, null, "{0} snapshots"));
     }
@@ -100,5 +63,13 @@ public class SyncRequestBuilderTests
     public void FormatRecords_Counts_FormatsInOrder()
     {
         Assert.Equal("3/1/42/6/0", SyncRequestBuilder.FormatRecords("{0}/{1}/{2}/{3}/{4}", 3, 1, 42, 6, 0));
+    }
+
+    [Fact]
+    public void DefaultCustomRange_Is30DaysBack()
+    {
+        var (s, e) = SyncRequestBuilder.DefaultCustomRange(new DateTime(2026, 10, 17));
+        Assert.Equal("2026-09-17", s);
+        Assert.Equal("2026-10-17", e);
     }
 }

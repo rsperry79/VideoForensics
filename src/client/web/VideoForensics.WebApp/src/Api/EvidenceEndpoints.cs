@@ -15,7 +15,7 @@ namespace VideoForensics.WebApp.Api
     /// (VerifyLocalIntegrity, ReconcileWithProvider) additionally do NOT require step-up
     /// re-authentication or audit logging, since they only surface discrepancies without moving
     /// data. Export IS exposure-widening (data leaving the system) and therefore additionally
-    /// requires RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey) (a stricter role than
+    /// requires RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal) (a stricter role than
     /// the group default), StepUpEndpointFilter, and audit logging - matching the asymmetry
     /// documented in NetworkSettingsEndpoints: narrowing reduces exposure (allowed without
     /// step-up), widening increases exposure (requires step-up).
@@ -93,7 +93,7 @@ namespace VideoForensics.WebApp.Api
             .WithDescription("Compares stored events against the provider's current records to detect changes, deletions, or new events that indicate potential tampering or service issues.");
 
             _ = group.MapPost("/export", ExportAsync)
-            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
+            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Export evidence to archive")

@@ -11,9 +11,8 @@ namespace VideoForensics.WebApp.Api
 {
     /// <summary>
     /// User and provider account management (plan §5): listing users and provider accounts,
-    /// creating new accounts, and managing account lifecycle. Most endpoints require SuperAdmin (Local tier for
-    /// password sign-in, any tier with a passkey); sync-now and config sync require Admin. Create and delete
-    /// operations require step-up authentication for security.
+    /// creating new accounts, and managing account lifecycle. All endpoints require SuperAdmin+Local
+    /// authorization. Create and delete operations require step-up authentication for security.
     /// </summary>
     public static class AccountEndpoints
     {
@@ -23,11 +22,7 @@ namespace VideoForensics.WebApp.Api
             // Resolving it here from the root provider would throw under scope validation.
             IServiceScopeFactory scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
-            // Accounts routes need SuperAdmin with the Local tier for password sign-in, or any tier with a passkey.
-            RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
-
-            // Admin and above: sync-now and the config sync schedule.
-            RouteGroupBuilder adminGroup = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.Admin);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/accounts").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
 
             // User endpoints
             _ = group.MapGet("/users", async (IUserRepository users, CancellationToken ct) =>
@@ -273,13 +268,15 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Start the first full sync of a newly added account")
                 .WithDescription("Restores the account's session, discovers its locations and devices, and pulls its full event history in the background.");
 
-            _ = adminGroup.MapPost("/provider-accounts/{id:guid}/sync-now", async (
+            _ = group.MapPost("/provider-accounts/{id:guid}/sync-now", async (
                 Guid id,
-                SyncNowRequest? request,
+                SyncNowRequest? body,
                 IProviderAccountRepository accounts,
                 CancellationToken ct) =>
             {
-                if (!TryBuildSyncRunOptions(request, DateTime.UtcNow, out SyncRunOptions? runOptions, out string? error))
+                // The body is optional: no body keeps the default incremental sync.
+                AccountSyncRequest? request = null;
+                if (body != null && !TryBuildSyncRequest(body, out request, out string? error))
                 {
                     return Results.BadRequest(error);
                 }
@@ -303,7 +300,14 @@ namespace VideoForensics.WebApp.Api
                         using IServiceScope scope = scopeFactory.CreateScope();
 
                         IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
-                        await syncRunner.RunAsync(id, runOptions!, CancellationToken.None);
+                        if (request == null)
+                        {
+                            await syncRunner.RunAsync(id, CancellationToken.None);
+                        }
+                        else
+                        {
+                            await syncRunner.RunAsync(id, request, CancellationToken.None);
+                        }
                     }
                     catch
                     {
@@ -322,9 +326,9 @@ namespace VideoForensics.WebApp.Api
             })
                 .RequireRateLimiting("media")
                 .WithSummary("Queue manual sync of events and device configuration")
-                .WithDescription("Initiates background sync. A body picks the sync type (All, Config, Snapshots, Events) and the range (SinceLast, Days, Custom, All); no body runs the legacy sync.");
+                .WithDescription("Initiates background pull of events and config for all devices in the account");
 
-            _ = adminGroup.MapGet("/provider-accounts/{id:guid}/config-sync-interval", async (
+            _ = group.MapGet("/provider-accounts/{id:guid}/config-sync-interval", async (
                 Guid id,
                 IRingAccountSyncState syncState,
                 CancellationToken ct) =>
@@ -333,7 +337,7 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Get the config sync interval")
                 .WithDescription("Returns the hours between config syncs for the account. 24 when the account has none saved.");
 
-            _ = adminGroup.MapPut("/provider-accounts/{id:guid}/config-sync-interval", async (
+            _ = group.MapPut("/provider-accounts/{id:guid}/config-sync-interval", async (
                 Guid id,
                 ConfigSyncIntervalDto request,
                 IRingAccountSyncState syncState,
@@ -362,90 +366,69 @@ namespace VideoForensics.WebApp.Api
         /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
         private const int MaxSyncDays = 3650;
 
-        /// <summary>
-        /// Turns a sync-now body into the runner's options. A missing body is the legacy sync. Unknown names, out-of-range days
-        /// and a custom range whose start is not before its end are rejected with the reason in <paramref name="error"/>.
-        /// </summary>
-        internal static bool TryBuildSyncRunOptions(SyncNowRequest? request, DateTime nowUtc, out SyncRunOptions? options, out string? error)
+    /// <summary>Validates the sync-now body and turns it into a runner request. Dates are treated as UTC.</summary>
+    private static bool TryBuildSyncRequest(SyncNowRequest body, out AccountSyncRequest? request, out string? error)
+    {
+        request = null;
+        error = null;
+
+        AccountSyncType type = AccountSyncType.All;
+        if (body.SyncType != null && !Enum.TryParse(body.SyncType, ignoreCase: true, out type))
         {
-            options = null;
-            error = null;
-            if (request is null)
-            {
-                options = new SyncRunOptions();
-                return true;
-            }
-
-            SyncRunKind kind;
-            bool includeSnapshots = false;
-            string syncType = request.SyncType ?? "Events";
-            if (string.Equals(syncType, "Events", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Events;
-            else if (string.Equals(syncType, "All", StringComparison.OrdinalIgnoreCase))
-            {
-                // "All" is the Default kind (config under its gate, then events) plus a snapshot pass.
-                kind = SyncRunKind.Default;
-                includeSnapshots = true;
-            }
-            else if (string.Equals(syncType, "Config", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Config;
-            else if (string.Equals(syncType, "Snapshots", StringComparison.OrdinalIgnoreCase)) kind = SyncRunKind.Snapshots;
-            else
-            {
-                error = "SyncType must be All, Config, Snapshots or Events.";
-                return false;
-            }
-
-            string rangeName = request.RangeKind ?? "SinceLast";
-            if (string.Equals(rangeName, "SinceLast", StringComparison.OrdinalIgnoreCase))
-            {
-                options = new SyncRunOptions(kind, SyncRangeKind.SinceLast, IncludeSnapshots: includeSnapshots);
-                return true;
-            }
-
-            if (string.Equals(rangeName, "All", StringComparison.OrdinalIgnoreCase))
-            {
-                options = new SyncRunOptions(kind, SyncRangeKind.All, IncludeSnapshots: includeSnapshots);
-                return true;
-            }
-
-            if (string.Equals(rangeName, "Days", StringComparison.OrdinalIgnoreCase))
-            {
-                if (request.Days is null or < 1 or > MaxSyncDays)
-                {
-                    error = $"Days must be between 1 and {MaxSyncDays}.";
-                    return false;
-                }
-
-                options = new SyncRunOptions(kind, SyncRangeKind.Days, Days: request.Days.Value, IncludeSnapshots: includeSnapshots);
-                return true;
-            }
-
-            if (string.Equals(rangeName, "Custom", StringComparison.OrdinalIgnoreCase))
-            {
-                if (request.StartUtc is null || request.EndUtc is null)
-                {
-                    error = "A Custom range needs StartUtc and EndUtc.";
-                    return false;
-                }
-
-                DateTime start = ToUtcKind(request.StartUtc.Value);
-                DateTime end = ToUtcKind(request.EndUtc.Value);
-                if (start >= end)
-                {
-                    error = "StartUtc must be before EndUtc.";
-                    return false;
-                }
-
-                options = new SyncRunOptions(kind, SyncRangeKind.Custom, StartUtc: start, EndUtc: end, IncludeSnapshots: includeSnapshots);
-                return true;
-            }
-
-            error = "RangeKind must be SinceLast, Days, Custom or All.";
+            error = "syncType must be All, Events or Snapshots";
             return false;
         }
 
-        /// <summary>Puts a request timestamp on UTC; an unspecified kind is taken as UTC rather than shifted.</summary>
-        private static DateTime ToUtcKind(DateTime value) =>
-            value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime();
+        if (!Enum.IsDefined(type))
+        {
+            error = "syncType must be All, Events or Snapshots";
+            return false;
+        }
+
+        DateTime? from = null;
+        DateTime? to = null;
+        bool allHistory = false;
+
+        switch (body.RangeKind?.ToLowerInvariant())
+        {
+            case null:
+                break;
+            case "all":
+                allHistory = true;
+                break;
+            case "days":
+                if (body.Days is not > 0 or > MaxSyncDays)
+                {
+                    error = $"days must be between 1 and {MaxSyncDays}";
+                    return false;
+                }
+
+                from = DateTime.UtcNow.AddDays(-body.Days.Value);
+                break;
+            case "custom":
+                if (body.StartUtc is null)
+                {
+                    error = "from is required for a custom range";
+                    return false;
+                }
+
+                from = DateTime.SpecifyKind(body.StartUtc.Value, DateTimeKind.Utc);
+                to = body.EndUtc is null ? null : DateTime.SpecifyKind(body.EndUtc.Value, DateTimeKind.Utc);
+                if (to <= from)
+                {
+                    error = "to must be after from";
+                    return false;
+                }
+
+                break;
+            default:
+                error = "rangeKind must be Days, All or Custom";
+                return false;
+        }
+
+        request = new AccountSyncRequest(type, from, to, allHistory);
+        return true;
+    }
 
     /// <summary>
     /// Background first sync for an account. Errors are recorded on the account by <see cref="IAccountSyncRunner"/>;

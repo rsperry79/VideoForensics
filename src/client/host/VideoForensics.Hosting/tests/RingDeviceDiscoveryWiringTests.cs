@@ -60,7 +60,6 @@ namespace VideoForensics.Hosting.Tests
                 IEventPullService pull = provider.GetRequiredKeyedService<IEventPullService>(name);
                 Assert.Same(provider.GetRequiredKeyedService<IEventAndConfigService>(name), GetPrivateField(pull, "_eventAndConfigService"));
                 Assert.Same(provider.GetRequiredKeyedService<IDeviceDiscoveryService>(name), GetPrivateField(pull, "_deviceDiscovery"));
-                Assert.NotNull(GetPrivateField(pull, "_mediaDownloadService"));
             }
         }
 

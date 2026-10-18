@@ -41,7 +41,8 @@ namespace VideoForensics.WebApp.Tests.Api
         private readonly Mock<IAccountSyncRunner> _runner = new();
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IRingAccountSyncState> _syncState = new();
-        private readonly TaskCompletionSource<SyncRunOptions> _ranWith = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<AccountSyncRequest> _ranWith = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _ranLegacy = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private WebApplication _app = null!;
         private HttpClient _client = null!;
@@ -61,8 +62,13 @@ namespace VideoForensics.WebApp.Tests.Api
                     IsActive = true
                 });
 
-            _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<SyncRunOptions>(), It.IsAny<CancellationToken>()))
-                .Callback<Guid, SyncRunOptions, CancellationToken>((_, options, _) => _ranWith.TrySetResult(options))
+            _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<Guid, AccountSyncRequest, CancellationToken>((_, request, _) => _ranWith.TrySetResult(request))
+                .Returns(Task.CompletedTask);
+
+            // No body takes the legacy overload, which has no request to inspect.
+            _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<CancellationToken>()))
+                .Callback<Guid, CancellationToken>((_, _) => _ranLegacy.TrySetResult())
                 .Returns(Task.CompletedTask);
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
@@ -138,38 +144,31 @@ namespace VideoForensics.WebApp.Tests.Api
             HttpResponseMessage response = await _client.PostAsync(SyncNowUrl, Json(json));
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            _runner.Verify(r => r.RunAsync(It.IsAny<Guid>(), It.IsAny<SyncRunOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+            _runner.Verify(r => r.RunAsync(It.IsAny<Guid>(), It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task SyncNow_NoBody_RunsDefaultKindSinceLast()
+        public async Task SyncNow_NoBody_RunsLegacySync()
         {
             HttpResponseMessage response = await _client.PostAsync(SyncNowUrl, null);
 
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Default, options.Kind);
-            Assert.Equal(SyncRangeKind.SinceLast, options.RangeKind);
-        }
-
-        [Fact]
-        public async Task SyncNow_ConfigBody_RunsConfigKind()
-        {
-            _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"Config\"}"));
-
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Config, options.Kind);
+            await _ranLegacy.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            _runner.Verify(r => r.RunAsync(It.IsAny<Guid>(), It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task SyncNow_EventsDaysBody_PassesDaysRange()
         {
+            DateTime before = DateTime.UtcNow;
             _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"Events\",\"rangeKind\":\"Days\",\"days\":7}"));
+            DateTime after = DateTime.UtcNow;
 
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Events, options.Kind);
-            Assert.Equal(SyncRangeKind.Days, options.RangeKind);
-            Assert.Equal(7, options.Days);
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(AccountSyncType.Events, request.Type);
+            Assert.False(request.AllHistory);
+            Assert.Null(request.ToUtc);
+            Assert.InRange(request.FromUtc!.Value, before.AddDays(-7), after.AddDays(-7));
         }
 
         [Fact]
@@ -178,54 +177,46 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = await _client.PostAsync(SyncNowUrl, Json(
                 "{\"syncType\":\"Snapshots\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T00:00:00Z\",\"endUtc\":\"2026-10-02T00:00:00Z\"}"));
 
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Snapshots, options.Kind);
-            Assert.Equal(SyncRangeKind.Custom, options.RangeKind);
-            Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), options.StartUtc);
-            Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), options.EndUtc);
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(AccountSyncType.Snapshots, request.Type);
+            Assert.False(request.AllHistory);
+            Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), request.FromUtc);
+            Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), request.ToUtc);
         }
 
         [Fact]
-        public async Task SyncNow_AllTypeAllHistory_RunsDefaultKindWithSnapshotsOverAllRange()
+        public async Task SyncNow_AllTypeAllHistory_RunsAllTypeOverFullHistory()
         {
             _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"All\",\"rangeKind\":\"All\"}"));
 
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Default, options.Kind);
-            Assert.Equal(SyncRangeKind.All, options.RangeKind);
-            Assert.True(options.IncludeSnapshots);
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(AccountSyncType.All, request.Type);
+            Assert.True(request.AllHistory);
+            Assert.Null(request.FromUtc);
+            Assert.Null(request.ToUtc);
         }
 
         [Fact]
-        public async Task SyncNow_AllTypeDays_KeepsDaysAndSnapshots()
+        public async Task SyncNow_AllTypeDays_KeepsAllTypeAndDaysRange()
         {
+            DateTime before = DateTime.UtcNow;
             _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"all\",\"rangeKind\":\"Days\",\"days\":30}"));
+            DateTime after = DateTime.UtcNow;
 
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Default, options.Kind);
-            Assert.Equal(SyncRangeKind.Days, options.RangeKind);
-            Assert.Equal(30, options.Days);
-            Assert.True(options.IncludeSnapshots);
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(AccountSyncType.All, request.Type);
+            Assert.False(request.AllHistory);
+            Assert.InRange(request.FromUtc!.Value, before.AddDays(-30), after.AddDays(-30));
         }
 
         [Fact]
-        public async Task SyncNow_EventsAllHistory_RunsEventsKindWithoutSnapshots()
+        public async Task SyncNow_EventsAllHistory_RunsEventsOverFullHistory()
         {
             _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"Events\",\"rangeKind\":\"All\"}"));
 
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(SyncRunKind.Events, options.Kind);
-            Assert.Equal(SyncRangeKind.All, options.RangeKind);
-            Assert.False(options.IncludeSnapshots);
-        }
-
-        [Fact]
-        public async Task SyncNow_NoBody_DoesNotAskForSnapshots()
-        {
-            _ = await _client.PostAsync(SyncNowUrl, null);
-
-            SyncRunOptions options = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.False(options.IncludeSnapshots);
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(AccountSyncType.Events, request.Type);
+            Assert.True(request.AllHistory);
         }
 
         [Fact]

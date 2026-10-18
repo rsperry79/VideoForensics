@@ -83,19 +83,32 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task AddAsync_RunWithSnapshotsSynced_PersistsIt()
+        public async Task AddAsync_RunWithSyncTypeAndCounts_PersistsThem()
         {
             ProviderSyncRun run = Build(Guid.NewGuid(), new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc));
+            run.SyncType = "Incremental";
+            run.DevicesSynced = 3;
+            run.LocationsSynced = 1;
+            run.EventsSynced = 42;
+            run.ConfigAreasSynced = 6;
+            run.FeedsFailed = 2;
             run.SnapshotsSynced = 4;
             await _repository.AddAsync(run, CancellationToken.None);
 
             ProviderSyncRun? stored = await _repository.GetAsync(run.Id, CancellationToken.None);
 
-            Assert.Equal(4, stored?.SnapshotsSynced);
+            Assert.NotNull(stored);
+            Assert.Equal("Incremental", stored.SyncType);
+            Assert.Equal(3, stored.DevicesSynced);
+            Assert.Equal(1, stored.LocationsSynced);
+            Assert.Equal(42, stored.EventsSynced);
+            Assert.Equal(6, stored.ConfigAreasSynced);
+            Assert.Equal(2, stored.FeedsFailed);
+            Assert.Equal(4, stored.SnapshotsSynced);
         }
 
         [Fact]
-        public async Task AddAsync_RunWithoutSnapshotsSynced_StoresNull()
+        public async Task AddAsync_RunWithoutSyncType_StoresNulls()
         {
             ProviderSyncRun run = Build(Guid.NewGuid(), new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc));
             await _repository.AddAsync(run, CancellationToken.None);
@@ -103,7 +116,8 @@ namespace VideoForensics.Data.Database.Tests
             ProviderSyncRun? stored = await _repository.GetAsync(run.Id, CancellationToken.None);
 
             Assert.NotNull(stored);
-            Assert.Null(stored.SnapshotsSynced);
+            Assert.Null(stored.SyncType);
+            Assert.Null(stored.EventsSynced);
         }
 
         [Fact]

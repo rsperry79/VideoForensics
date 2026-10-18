@@ -3013,12 +3013,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("EventsAlreadyPresent")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("EventsNotPulled")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("EventsSynced")
                         .HasColumnType("INTEGER");
 
@@ -3041,11 +3035,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SyncType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("Unknown");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

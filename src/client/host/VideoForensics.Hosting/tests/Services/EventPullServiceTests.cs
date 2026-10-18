@@ -7,24 +7,6 @@ namespace VideoForensics.Hosting.Tests.Services
 
     public class EventPullServiceTests
     {
-        /// <summary>A pull service wired to a media download mock, so events are pulled and counted.</summary>
-        private EventPullService CreateMediaSut(IMediaDownloadService media) => new(
-            _mockEventAndConfigService.Object,
-            _mockDeviceRepository.Object,
-            _mockLocationRepository.Object,
-            _mockProviderAccountRepository.Object,
-            _mockDiscovery.Object,
-            mediaDownloadService: media,
-            mediaRoot: @"C:\media-root",
-            minRequestInterval: TimeSpan.Zero);
-
-        private static Mock<IMediaDownloadService> MediaReturning(DownloadResult result)
-        {
-            var media = new Mock<IMediaDownloadService>();
-            media.Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(result);
-            return media;
-        }
         private readonly Mock<IEventAndConfigService> _mockEventAndConfigService;
         private readonly Mock<IDeviceRepository> _mockDeviceRepository;
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -121,6 +103,14 @@ namespace VideoForensics.Hosting.Tests.Services
             await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
+            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
+                accountId,
+                "device-123",
+                DateTime.MinValue,
+                It.IsAny<DateTime>(),
+                null,
+                cancellationToken
+            ), Times.Once);
 
             _mockEventAndConfigService.Verify(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken), Times.Once);
         }
@@ -182,6 +172,14 @@ namespace VideoForensics.Hosting.Tests.Services
             await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: lastAuthTime, toTimestampUtc: null, cancellationToken);
 
             // Assert
+            _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
+                accountId,
+                "device-123",
+                lastAuthTime,
+                It.IsAny<DateTime>(),
+                null,
+                cancellationToken
+            ), Times.Once);
         }
 
         [Fact]
@@ -236,7 +234,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await CreateMediaSut(MediaReturning(new DownloadResult(Success: true, FilesDownloaded: 1, FilesMatched: 1)).Object).PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockProviderAccountRepository.Verify(r => r.UpdateAsync(
@@ -246,7 +244,7 @@ namespace VideoForensics.Hosting.Tests.Services
                     a.LastErrorMessage == null
                 ),
                 cancellationToken
-            ), Times.AtLeastOnce);
+            ), Times.Once);
         }
 
         [Fact]
@@ -301,7 +299,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await CreateMediaSut(MediaReturning(new DownloadResult(Success: true, FilesDownloaded: 1, FilesMatched: 1)).Object).PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockDeviceRepository.Verify(r => r.UpdateAsync(
@@ -369,14 +367,14 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Returns(Task.CompletedTask);
 
             // Act
-            await CreateMediaSut(MediaReturning(new DownloadResult(Success: false, ErrorMessage: errorMessage)).Object).PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             Assert.NotNull(capturedAccount);
             Assert.Equal(accountId, capturedAccount.Id);
             Assert.NotNull(capturedAccount.LastErrorMessage);
             Assert.NotNull(capturedAccount.LastErrorUtc);
-            Assert.Contains("media pull", capturedAccount.LastErrorMessage);
+            Assert.True(capturedAccount.LastErrorMessage.Contains(errorMessage));
         }
 
         [Fact]

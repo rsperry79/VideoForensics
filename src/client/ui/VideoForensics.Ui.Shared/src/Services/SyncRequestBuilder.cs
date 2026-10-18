@@ -1,63 +1,54 @@
 namespace VideoForensics.Ui.Shared.Services;
 
 using System.Globalization;
-using VideoForensics.Core.Api.Contracts;
 
-/// <summary>Pure logic for the account sync panel: the sync-now body, which types take a range, and the record counts text.</summary>
+/// <summary>Pure logic for the account sync panel: request body shape and range parsing.</summary>
 public static class SyncRequestBuilder
 {
-    /// <summary>Range choice that sends the custom start and end days.</summary>
     public const string CustomRange = "Custom";
 
-    /// <summary>Range choice for the provider's retained history.</summary>
     public const string AllRange = "All";
 
-    /// <summary>Range choice for the window since the last successful sync.</summary>
+    public const string ConfigSyncType = "Config";
+
     public const string SinceLastRange = "SinceLast";
 
-    /// <summary>Sync type that pulls events and fetches snapshots in one run.</summary>
-    public const string AllType = "All";
+    public static readonly string[] SyncTypes = { "All", "Events", "Snapshots", ConfigSyncType };
 
-    /// <summary>Sync type that pulls events only.</summary>
-    public const string EventsType = "Events";
+    public static readonly string[] RangeOptions = { "30", "60", "90", "365", AllRange, CustomRange };
 
-    /// <summary>True when the sync type reads event history, so the range controls apply. Config and Snapshots ignore the window.</summary>
-    public static bool UsesRange(string syncType) =>
-        syncType is EventsType or AllType;
+    public const string DateFormat = "yyyy-MM-dd";
 
     /// <summary>
-    /// Builds the body for POST sync-now. A custom range runs from the start day through the end day inclusive, local time.
-    /// Types that ignore the window send the default range.
+    /// Builds the camelCase-serialisable body for POST sync-now.
+    /// Config syncs have no range: the range arguments are ignored and the body is always SinceLast.
     /// </summary>
-    public static SyncNowRequest Build(string syncType, string range, DateOnly customStart, DateOnly customEnd)
+    public static object Build(string syncType, string range, string? customStart, string? customEnd)
     {
-        if (!UsesRange(syncType))
+        if (syncType == ConfigSyncType)
         {
-            return new SyncNowRequest(syncType, SinceLastRange, null, null, null);
+            return new { syncType, rangeKind = SinceLastRange };
         }
 
         if (range == CustomRange)
         {
-            return new SyncNowRequest(syncType, CustomRange, null, LocalDayStartUtc(customStart), LocalDayStartUtc(customEnd.AddDays(1)));
+            return new { syncType, rangeKind = "Custom", @from = ParseDate(customStart), to = ParseDate(customEnd) };
         }
 
         if (range == AllRange)
         {
-            return new SyncNowRequest(syncType, AllRange, null, null, null);
+            return new { syncType, rangeKind = "All" };
         }
 
-        if (int.TryParse(range, NumberStyles.None, CultureInfo.InvariantCulture, out int days))
-        {
-            return new SyncNowRequest(syncType, "Days", days, null, null);
-        }
-
-        return new SyncNowRequest(syncType, SinceLastRange, null, null, null);
+        int days = int.TryParse(range, NumberStyles.None, CultureInfo.InvariantCulture, out int d) ? d : 30;
+        return new { syncType, rangeKind = "Days", days };
     }
 
-    /// <summary>
-    /// Returns the run's record counts in the given format, with the snapshot count appended when the run fetched snapshots.
-    /// Null counts and a null snapshot count mean nothing was recorded (old runs): the result is null.
-    /// </summary>
+    /// <summary>Last-30-days default for the custom range pickers.</summary>
+    public static (string Start, string End) DefaultCustomRange(DateTime today) =>
+        (today.AddDays(-30).ToString(DateFormat, CultureInfo.InvariantCulture), today.ToString(DateFormat, CultureInfo.InvariantCulture));
+
+    /// <summary>Returns the run's record counts in the given format, or null when the counts are unknown (old runs).</summary>
     public static string? FormatRecords(string format, int? devices, int? locations, int? events, int? configAreas, int? feedsFailed, int? snapshotsSynced = null, string? snapshotsFormat = null)
     {
         string? snapshotsPart = snapshotsSynced is { } s && snapshotsFormat is not null
@@ -73,6 +64,6 @@ public static class SyncRequestBuilder
         return snapshotsPart is null ? counts : counts + ", " + snapshotsPart;
     }
 
-    private static DateTime LocalDayStartUtc(DateOnly day) =>
-        DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
+    private static DateTime? ParseDate(string? value) =>
+        DateTime.TryParseExact(value, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt) ? dt : null;
 }

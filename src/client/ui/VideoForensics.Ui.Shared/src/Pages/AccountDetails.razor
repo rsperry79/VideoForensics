@@ -11,6 +11,7 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject StepUpService StepUp
+@inject IProviderAuthService AuthService
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountDetails> L
 
@@ -76,7 +77,47 @@ else
         </div>
 
         <div class="mb-4">
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+                <div>
+                    <label class="form-label" for="sync-type">@L["SyncTypeLabel"]</label>
+                    <select id="sync-type" class="form-select" @bind="_syncType">
+                        @foreach (var t in SyncRequestBuilder.SyncTypes)
+                        {
+                            <option value="@t">@SyncTypeChoiceLabel(t)</option>
+                        }
+                    </select>
+                </div>
+                @if (!IsConfigSync)
+                {
+                    <div>
+                        <label class="form-label" for="sync-range">@L["SyncRangeLabel"]</label>
+                        <select id="sync-range" class="form-select" @onchange="OnRangeChanged">
+                            @foreach (var r in SyncRequestBuilder.RangeOptions)
+                            {
+                                <option value="@r" selected="@(r == _syncRange)">@RangeLabel(r)</option>
+                            }
+                        </select>
+                    </div>
+                    @if (_syncRange == SyncRequestBuilder.CustomRange)
+                    {
+                        <div>
+                            <label class="form-label" for="sync-custom-start">@L["SyncCustomStart"]</label>
+                            <input id="sync-custom-start" type="date" class="form-control" value="@_customStart" @onchange="e => _customStart = e.Value?.ToString() ?? string.Empty" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="sync-custom-end">@L["SyncCustomEnd"]</label>
+                            <input id="sync-custom-end" type="date" class="form-control" value="@_customEnd" @onchange="e => _customEnd = e.Value?.ToString() ?? string.Empty" />
+                            <div id="sync-custom-end-hint" class="form-text">@L["CustomEndHint"]</div>
+                        </div>
+                    }
+                }
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
+                @if (_isSyncing)
+                {
+                    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
+                }
                 <SfButton CssClass="e-primary" Content="@L["SyncSchedule"]" OnClick="GoToSyncSchedule" />
                 @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
                 {
@@ -85,69 +126,16 @@ else
             </div>
         </div>
 
-        <div id="sync-panel" class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">@L["SyncPanelTitle"]</h5>
-                <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
-                    <div>
-                        <label for="sync-type" class="form-label">@L["SyncTypeDropdownLabel"]</label>
-                        <select id="sync-type" class="form-select" @bind="_syncType" disabled="@_isSyncing">
-                            <option value="All">@L["SyncTypeAll"]</option>
-                            <option value="Config">@L["SyncTypeConfig"]</option>
-                            <option value="Snapshots">@L["SyncTypeSnapshots"]</option>
-                            <option value="Events">@L["SyncTypeEvents"]</option>
-                        </select>
-                    </div>
-                    @if (SyncRequestBuilder.UsesRange(_syncType))
-                    {
-                        <div>
-                            <label for="sync-range" class="form-label">@L["RangeLabel"]</label>
-                            <select id="sync-range" class="form-select" @bind="_syncRange" disabled="@_isSyncing">
-                                <option value="SinceLast">@L["RangeSinceLast"]</option>
-                                <option value="30">@L["RangeDays30"]</option>
-                                <option value="60">@L["RangeDays60"]</option>
-                                <option value="90">@L["RangeDays90"]</option>
-                                <option value="365">@L["RangeDays365"]</option>
-                                <option value="All">@L["RangeAllHistory"]</option>
-                                <option value="Custom">@L["RangeCustom"]</option>
-                            </select>
-                        </div>
-                        @if (_syncRange == CustomRange)
-                        {
-                            <div class="sync-custom-range">
-                                <label for="sync-custom-start" class="form-label">@L["CustomStartLabel"]</label>
-                                <input id="sync-custom-start" type="date" class="form-control" value="@CustomStartText" disabled="@_isSyncing" @onchange="OnCustomStartChanged" />
-                            </div>
-                            <div class="sync-custom-range">
-                                <label for="sync-custom-end" class="form-label">@L["CustomEndLabel"]</label>
-                                <input id="sync-custom-end" type="date" class="form-control" value="@CustomEndText" disabled="@_isSyncing" @onchange="OnCustomEndChanged" />
-                                <div id="sync-custom-end-hint" class="form-text">@L["CustomEndHint"]</div>
-                            </div>
-                        }
-                    }
-                    <div class="d-flex gap-2 align-items-center">
-                        <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
-                        @if (_isSyncing)
-                        {
-                            <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
-                        }
-                    </div>
-                </div>
-
-                <div id="sync-output">
-                    @if (LatestSyncRun is { } latest)
-                    {
-                        <p class="mb-1">
-                            <strong>@L["LatestSyncRunLabel"]</strong>
-                            @latest.StartedUtc.ToLocalTime().ToString("g")
-                            @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
-                            @SyncTypeLabel(latest.SyncType)
-                        </p>
-                        <button type="button" class="btn btn-sm btn-outline-primary mb-2" @onclick="ShowLatestRunInHistoryAsync">@L["ShowLatestSyncRun"]</button>
-                    }
-                    <DownloadProgressPanel IsActive="_isSyncing" />
-                </div>
-            </div>
+        <div id="sync-output" class="mb-4">
+            <h5>@L["SyncOutputTitle"]</h5>
+            @if (LatestRun is { } latest)
+            {
+                <p class="mb-1">
+                    <strong>@L["LatestSyncRunLabel"]</strong>
+                    @latest.StartedUtc.ToLocalTime().ToString("g") - @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
+                </p>
+            }
+            <DownloadProgressPanel IsActive="@_isSyncing" />
         </div>
 
         <div>
@@ -195,7 +183,7 @@ else
                                 <td>@run.StartedUtc.ToLocalTime().ToString("g")</td>
                                 <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
                                 <td>@SyncTypeLabel(run.SyncType)</td>
-                                <td>@RecordsText(run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced)</td>
+                                <td>@(SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced, L["SyncRecordsSnapshots"].Value) ?? L["SyncRecordsUnknown"].Value)</td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ToggleRunDetailsAsync(run.Id)">@L["ColDetails"]</button>
                                 </td>
@@ -214,8 +202,6 @@ else
                                             <p class="mb-1"><strong>@L["SyncDetailsStarted"]</strong> @_runDetail.StartedUtc.ToLocalTime().ToString("g")</p>
                                             <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> @(_runDetail.CompletedUtc?.ToLocalTime().ToString("g") ?? L["SyncNotCompleted"])</p>
                                             <p class="mb-1"><strong>@L["ColSyncStatus"]</strong> @(_runDetail.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</p>
-                                            <p class="mb-1"><strong>@L["ColSyncType"]</strong> @SyncTypeLabel(_runDetail.SyncType)</p>
-                                            <p class="mb-1"><strong>@L["ColSyncRecords"]</strong> @RecordsText(_runDetail.DevicesSynced, _runDetail.LocationsSynced, _runDetail.EventsSynced, _runDetail.ConfigAreasSynced, _runDetail.FeedsFailed, _runDetail.SnapshotsSynced)</p>
                                             @if (!string.IsNullOrEmpty(_runDetail.ErrorMessage))
                                             {
                                                 <p class="mb-0"><strong>@L["SyncDetailsMessage"]</strong> @_runDetail.ErrorMessage</p>
@@ -288,12 +274,12 @@ else
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private VideoForensics.Data.Common.Entities.ProviderAccount? _account;
     private string? _accountEmail;
-    private const string SinceLastRange = "SinceLast";
-    private const string CustomRange = "Custom";
-    private const int CustomRangeDefaultDays = 30;
-
     private bool _isLoading = true;
     private bool _isBusy;
+    private string _syncType = "All";
+    private string _syncRange = "30";
+    private string _customStart = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).Start;
+    private string _customEnd = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).End;
     private bool _confirmingRemove;
     private bool _reAuthDialogVisible;
     private bool _isSyncing;
@@ -306,18 +292,6 @@ else
     private Guid? _expandedRunId;
     private VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto? _runDetail;
     private bool _runDetailError;
-    private string _syncType = "Events";
-    private string _syncRange = SinceLastRange;
-    private DateOnly _customStart = DateOnly.FromDateTime(DateTime.Today.AddDays(-CustomRangeDefaultDays));
-    private DateOnly _customEnd = DateOnly.FromDateTime(DateTime.Today);
-
-    /// <summary>The most recent sync run by start time, or null when there are none or the list failed to load.</summary>
-    private VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto? LatestSyncRun =>
-        _syncRuns?.OrderByDescending(r => r.StartedUtc).FirstOrDefault();
-
-    private string CustomStartText => _customStart.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-
-    private string CustomEndText => _customEnd.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     private VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto? LatestRun =>
         _syncRuns?.OrderByDescending(r => r.StartedUtc).FirstOrDefault();
@@ -335,8 +309,11 @@ else
     {
         "Events" => L["SyncChoiceEvents"],
         "Snapshots" => L["SyncChoiceSnapshots"],
+        "Config" => L["SyncChoiceConfig"],
         _ => L["SyncChoiceAll"],
     };
+
+    private bool IsConfigSync => _syncType == SyncRequestBuilder.ConfigSyncType;
 
     private string RangeLabel(string range) => range switch
     {
@@ -352,6 +329,8 @@ else
     {
         "Full" => L["SyncTypeFull"],
         "Incremental" => L["SyncTypeIncremental"],
+        "Snapshots" => L["SyncTypeSnapshots"],
+        "Config" => L["SyncTypeConfig"],
         _ => L["SyncTypeUnknown"],
     };
 
@@ -371,24 +350,6 @@ else
     {
         await LoadSyncRunsAsync();
         await LoadCasesAsync();
-    }
-
-    private void OnCustomStartChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _customStart = ParseDate(e.Value, _customStart);
-
-    private void OnCustomEndChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _customEnd = ParseDate(e.Value, _customEnd);
-
-    private static DateOnly ParseDate(object? value, DateOnly fallback) =>
-        DateOnly.TryParseExact(value?.ToString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None, out DateOnly parsed)
-            ? parsed
-            : fallback;
-
-    private async Task ShowLatestRunInHistoryAsync()
-    {
-        if (LatestSyncRun is { } latest && _expandedRunId != latest.Id)
-        {
-            await ToggleRunDetailsAsync(latest.Id);
-        }
     }
 
     private async Task LoadSyncRunsAsync()
@@ -462,45 +423,18 @@ else
         NavigationManager.NavigateTo($"/cases/{caseId}");
     }
 
-    /// <summary>Localized label for a sync run's type. Unrecognized or old values show as Unknown.</summary>
-    private string SyncTypeLabel(string? syncType) => syncType switch
-    {
-        "Full" => L["SyncTypeFull"].Value,
-        "Events" => L["SyncTypeEvents"].Value,
-        "Snapshots" => L["SyncTypeSnapshots"].Value,
-        _ => L["SyncTypeUnknown"].Value,
-    };
-
-    /// <summary>Localized record counts for a sync run; "Not recorded" when the run has no counts (rows older than the counts).</summary>
-    private string RecordsText(int? devices, int? locations, int? events, int? configAreas, int? feedsFailed, int? snapshots = null) =>
-        SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, devices, locations, events, configAreas, feedsFailed, snapshots, L["SyncRecordsSnapshots"].Value)
-            ?? L["SyncRecordsUnknown"].Value;
-
     /// <summary>
-    /// GET against the account API with the paired-device bearer token.
+    /// GET against the account API with the paired-device bearer token. The injected HttpClient has
+    /// no base address or auth header in production, so the absolute URI and header are set per request.
     /// </summary>
     private async Task<T?> GetApiAsync<T>(string relativePath)
     {
-        using HttpResponseMessage response = await SendApiAsync(HttpMethod.Get, relativePath);
+        await SessionState.EnsureLoadedAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(new Uri(NavigationManager.BaseUri), relativePath));
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        using HttpResponseMessage response = await HttpClient.SendAsync(request, CancellationToken.None);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(CancellationToken.None);
-    }
-
-    /// <summary>
-    /// Sends a request to the account API with the paired-device bearer token and an optional JSON body.
-    /// The injected HttpClient has no base address or auth header in production, so the absolute URI and
-    /// header are set per request. The caller disposes the response.
-    /// </summary>
-    private async Task<HttpResponseMessage> SendApiAsync(HttpMethod method, string relativePath, object? body = null)
-    {
-        await SessionState.EnsureLoadedAsync();
-        using var request = new HttpRequestMessage(method, new Uri(new Uri(NavigationManager.BaseUri), relativePath));
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body, options: System.Text.Json.JsonSerializerOptions.Web);
-        }
-        return await HttpClient.SendAsync(request, CancellationToken.None);
     }
 
     private async Task LoadAccountAsync()
@@ -523,7 +457,6 @@ else
                 {
                     // Fall back to ProviderName if user lookup fails
                 }
-
             }
         }
         catch (Exception ex)
@@ -569,7 +502,7 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             // Session state loads lazily; the token is only populated after this.
-            // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
+            // Removing an account is protected by StepUpEndpointFilter: a fresh step-up confirmation (passkey or password) must accompany the call.
             var stepUpToken = await StepUp.GetStepUpTokenAsync();
             using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
@@ -612,17 +545,21 @@ else
         }
     }
 
-    /// <summary>Builds the sync-now body from the panel: a custom range runs from the start day through the end day, local time.</summary>
-    private VideoForensics.Core.Api.Contracts.SyncNowRequest BuildSyncNowRequest() =>
-        SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd);
-
     private async Task SyncNowAsync()
     {
         _isSyncing = true;
         try
         {
-            using HttpResponseMessage response = await SendApiAsync(
-                HttpMethod.Post, $"api/v1/accounts/provider-accounts/{Id}/sync-now", BuildSyncNowRequest());
+            await SessionState.EnsureLoadedAsync();
+            // Session state loads lazily; the token is only populated after this.
+            // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
+            // Build the client the same way the other authenticated calls on this page do.
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{Id}/sync-now"))
+            {
+                Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
+            };
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            using HttpResponseMessage response = await HttpClient.SendAsync(request, CancellationToken.None);
 
             if (response.IsSuccessStatusCode)
             {
