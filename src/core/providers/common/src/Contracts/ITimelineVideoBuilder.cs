@@ -9,10 +9,27 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="Hold">How long the still is shown. Must be positive.</param>
     public sealed record TimelineStill(string ImagePath, DateTimeOffset CapturedAt, TimeSpan Hold);
 
+    /// <summary>
+    /// A video file that covers a real time window on the timeline. The clip covers the half-open interval
+    /// [StartedAt, StartedAt + Duration) and replaces any still frames in that window.
+    /// </summary>
+    /// <param name="VideoPath">Path to an existing video file that ffprobe can read and that has a video stream.</param>
+    /// <param name="StartedAt">Wall-clock time of the clip's first frame.</param>
+    /// <param name="Duration">How much of the clip is used, from its first frame. Must be positive.</param>
+    public sealed record TimelineClip(string VideoPath, DateTimeOffset StartedAt, TimeSpan Duration);
+
     /// <summary>Input to <see cref="ITimelineVideoBuilder.BuildAsync"/>.</summary>
     /// <param name="Stills">Stills to place on the timeline. Must not be empty.</param>
     /// <param name="OutputPath">Destination MP4 path. An existing file is overwritten.</param>
-    public sealed record TimelineVideoRequest(IReadOnlyList<TimelineStill> Stills, string OutputPath);
+    /// <param name="Clips">
+    /// Optional event clips. Each clip replaces the stills in its window. The timeline spans from the earliest
+    /// start to the latest end across stills and clips. Stills are cut around clip windows: a still's effective
+    /// interval is its [CapturedAt, CapturedAt + Hold) minus the clip windows, and a remaining piece shorter than
+    /// one whole second is dropped. Clips that overlap are resolved in favour of the one that starts first; the
+    /// later clip is trimmed to start where the earlier one ends. Each segment is rounded to whole seconds
+    /// (away from zero, minimum 1 s), and a clip whose window rounds to 0 s is dropped.
+    /// </param>
+    public sealed record TimelineVideoRequest(IReadOnlyList<TimelineStill> Stills, string OutputPath, IReadOnlyList<TimelineClip>? Clips = null);
 
     /// <summary>Outcome of a timeline build. ffmpeg failures are reported here, not thrown.</summary>
     /// <param name="Success">True if the MP4 was written.</param>
