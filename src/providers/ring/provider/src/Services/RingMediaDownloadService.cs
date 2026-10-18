@@ -778,8 +778,9 @@ namespace VideoForensics.Providers.Ring.Services
                     _logger.LogError(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
-                // Get device name for consistent file naming (fallback to deviceId if unavailable)
-                string deviceNameForSnapshot = deviceId; // Snapshots don't have event data with device name, so use deviceId
+                // Snapshots carry no event data, so take the name from the device list (cached, so the
+                // state/details lookups below reuse it). Falls back to deviceId if unavailable.
+                string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
@@ -824,7 +825,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Resolve device identity and record snapshot download
                 (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceNameForSnapshot, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -1212,6 +1213,37 @@ namespace VideoForensics.Providers.Ring.Services
         public void SetActiveProviderAccountId(Guid accountId)
         {
             _cachedProviderAccountId = accountId;
+        }
+
+        /// <summary>
+        /// Looks up a device's display name (Description) from the cached device list. Returns null when the
+        /// list can't be fetched or the device isn't in it, so callers can fall back to the provider id.
+        /// </summary>
+        internal async Task<string?> ResolveDeviceNameAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                return FindDeviceName(devices, providerDeviceId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Could not fetch device list to resolve the name of device {DeviceId}", providerDeviceId);
+                return null;
+            }
+        }
+
+        private static string? FindDeviceName(Entities.Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return null;
+            }
+
+            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
+                ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;
         }
 
         /// <summary>

@@ -685,6 +685,23 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task RingMediaDownloadService_Snapshot_UsesDeviceNameNotId()
+        {
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, new Mock<IVideoForensicsDataClient>().Object);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot { Id = 123, Description = "Front Door" }]
+            });
+
+            string? known = await service.ResolveDeviceNameAsync(session.Object, "123", CancellationToken.None);
+            string? unknown = await service.ResolveDeviceNameAsync(session.Object, "999", CancellationToken.None);
+
+            Assert.Equal("Front Door", known);
+            Assert.Null(unknown);
+        }
+
+        [Fact]
         public async Task CaptureDeviceHealthSnapshotAsync_WritesHealthTelemetryAndDeviceDetails()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();

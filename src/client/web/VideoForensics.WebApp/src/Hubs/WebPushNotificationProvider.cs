@@ -167,11 +167,5 @@ namespace VideoForensics.WebApp.Hubs
                 _ => throw new ArgumentOutOfRangeException(nameof(audience), audience, "Unsupported notification audience."),
             };
         }
-
-        private static string TruncateEndpoint(string endpoint)
-        {
-            // Truncate long endpoint URLs for safe logging
-            return endpoint.Length > 50 ? endpoint[..47] + "..." : endpoint;
-        }
     }
 }

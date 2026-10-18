@@ -637,7 +637,17 @@ namespace VideoForensics.Data.Core.Services
                         }
 
                         // Update device properties if it exists in the same location
-                        existingDevice.Name = name;
+                        // Callers fall back to the provider device ID as the name when a name lookup
+                        // fails; don't let that placeholder overwrite a real stored name.
+                        bool incomingNameIsId = name == providerDeviceId || name == existingDevice.Id.ToString();
+                        bool storedNameIsReal = !string.IsNullOrWhiteSpace(existingDevice.Name)
+                            && existingDevice.Name != providerDeviceId
+                            && existingDevice.Name != existingDevice.Id.ToString();
+                        if (!(incomingNameIsId && storedNameIsReal))
+                        {
+                            existingDevice.Name = name;
+                        }
+
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
                         // Only overwrite the stored time zone when this sync actually carries one, so a

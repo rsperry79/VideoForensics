@@ -1134,6 +1134,41 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task VideoForensicsDataClient_EnsureDevice_KeepsNameWhenIncomingNameIsId()
+        {
+            var locationId = Guid.NewGuid();
+            string providerDeviceId = "device-keepname";
+            var existingDevice = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = locationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = "Front Camera",
+                Type = "camera",
+                IsOnline = true
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([existingDevice]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act: caller falls back to the provider ID as the name after a failed name lookup.
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, providerDeviceId, providerDeviceId, "camera", true, ct: CancellationToken.None);
+
+            Assert.Equal("Front Camera", result.Name);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_UpdatesExistingDevice()
         {
             // Arrange
