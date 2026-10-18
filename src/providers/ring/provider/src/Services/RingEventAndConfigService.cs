@@ -7,6 +7,7 @@ namespace VideoForensics.Providers.Ring.Services
 {
     public class RingEventAndConfigService : IEventAndConfigService
     {
+        private const string ProviderName = "Ring";
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
 
@@ -133,13 +134,13 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogDebug("Fetching events for device {DeviceId} from {StartDate} to {EndDate} for account {AccountId}",
-                    SanitizeForLog(deviceId), startDate, endDate, providerAccountId);
+                _logger.LogDebug("Fetching events for device {DeviceId} from {StartDate} to {EndDate} for {ProviderName} account",
+                    SanitizeForLog(deviceId), startDate, endDate, ProviderName);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for {ProviderName} account: Session is null", ProviderName);
                     return new List<DeviceEvent>().AsReadOnly();
                 }
 
@@ -157,12 +158,12 @@ namespace VideoForensics.Providers.Ring.Services
                     ))
                     .ToList() ?? [];
 
-                _logger.LogDebug("Found {EventCount} events for device {DeviceId} for account {AccountId}", deviceEvents.Count, SanitizeForLog(deviceId), providerAccountId);
+                _logger.LogDebug("Found {EventCount} events for device {DeviceId} for {ProviderName} account", deviceEvents.Count, SanitizeForLog(deviceId), ProviderName);
                 return deviceEvents.AsReadOnly();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching events for device {DeviceId} for account {AccountId}", SanitizeForLog(deviceId), providerAccountId);
+                _logger.LogError(ex, "Error fetching events for device {DeviceId} for {ProviderName} account", SanitizeForLog(deviceId), ProviderName);
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -174,12 +175,12 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogDebug("Fetching configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogDebug("Fetching configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for {ProviderName} account: Session is null", ProviderName);
                     return null;
                 }
 
@@ -201,7 +202,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogError(ex, "Error fetching configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
                 return null;
             }
         }
@@ -213,14 +214,14 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogDebug("Updating configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogDebug("Updating configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
 
                 _logger.LogDebug("Device configuration update not fully implemented for Ring provider");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogError(ex, "Error updating configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
                 return false;
             }
         }

@@ -13,6 +13,8 @@ namespace VideoForensics.Providers.Uniview.Services;
 /// </summary>
 public class UniviewMediaDownloadService : IMediaDownloadService
 {
+    private const string ProviderName = "Uniview";
+
     private readonly ILogger<UniviewMediaDownloadService> _logger;
     private readonly IUniviewSessionProvider _sessionProvider;
     private readonly Func<UniviewClient, int, string, CancellationToken, Task> _liveSnapshotCapture;
@@ -59,13 +61,13 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogDebug("Downloading videos for account {AccountId}, device {DeviceId} from {StartDate} to {EndDate}",
-                providerAccountId, deviceId, startDate, endDate);
+            _logger.LogDebug("Downloading videos for {ProviderName} account, device {DeviceId} from {StartDate} to {EndDate}",
+                ProviderName, deviceId, startDate, endDate);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client is null)
             {
-                _logger.LogWarning("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                _logger.LogWarning("Not authenticated: Client is null for {ProviderName} account", ProviderName);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -251,7 +253,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading videos for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogError(ex, "Error downloading videos for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -498,12 +500,12 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogDebug("Requesting live snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogDebug("Requesting live snapshot for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client is null)
             {
-                _logger.LogWarning("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                _logger.LogWarning("Not authenticated: Client is null for {ProviderName} account", ProviderName);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -581,8 +583,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                           "Live snapshot only (Uniview device has no historical snapshot API)";
                 _activityLog.Enqueue(msg);
 
-                _logger.LogDebug("Downloaded live snapshot ({Bytes} bytes) for account {AccountId}, device {DeviceId}",
-                    fileSize, providerAccountId, deviceId);
+                _logger.LogDebug("Downloaded live snapshot ({Bytes} bytes) for {ProviderName} account, device {DeviceId}",
+                    fileSize, ProviderName, deviceId);
 
                 return new DownloadResult(
                     Success: true,
@@ -598,7 +600,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error capturing snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+                _logger.LogError(ex, "Error capturing snapshot for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
                 lock (_statusLock)
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
@@ -612,7 +614,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };

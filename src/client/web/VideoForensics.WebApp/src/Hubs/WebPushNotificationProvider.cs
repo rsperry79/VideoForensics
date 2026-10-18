@@ -112,18 +112,16 @@ namespace VideoForensics.WebApp.Hubs
                         await client.SendNotificationAsync(webPushSubscription, jsonPayload, vapidDetails);
 
                         _logger.LogDebug(
-                            "Web push sent successfully - EventType={EventType}, OperatorId={OperatorId}, Endpoint={Endpoint}",
+                            "Web push sent successfully - EventType={EventType}, OperatorId={OperatorId}",
                             notificationEvent.EventType,
-                            subscription.OperatorId,
-                            TruncateEndpoint(subscription.Endpoint));
+                            subscription.OperatorId);
                     }
                     catch (WebPushException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
                     {
                         // Subscription is no longer valid - remove it
                         _logger.LogInformation(
-                            "Push subscription expired ({StatusCode}) - removing - Endpoint={Endpoint}",
-                            ex.StatusCode,
-                            TruncateEndpoint(subscription.Endpoint));
+                            "Push subscription expired ({StatusCode}) - removing",
+                            ex.StatusCode);
 
                         try
                         {
@@ -132,17 +130,15 @@ namespace VideoForensics.WebApp.Hubs
                         catch (Exception removeEx)
                         {
                             _logger.LogError(removeEx,
-                                "Failed to remove expired subscription - Endpoint={Endpoint}",
-                                TruncateEndpoint(subscription.Endpoint));
+                                "Failed to remove expired subscription");
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex,
-                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}, Endpoint={Endpoint}",
+                            "Web push notification failed - EventType={EventType}, OperatorId={OperatorId}",
                             notificationEvent.EventType,
-                            subscription.OperatorId,
-                            TruncateEndpoint(subscription.Endpoint));
+                            subscription.OperatorId);
                     }
                 }
             }

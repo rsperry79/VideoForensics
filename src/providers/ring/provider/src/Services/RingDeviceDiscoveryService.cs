@@ -15,6 +15,7 @@ namespace VideoForensics.Providers.Ring.Services
 {
     public class RingDeviceDiscoveryService : IDeviceDiscoveryService, ILocationMetadataPersister
     {
+        private const string ProviderName = "Ring";
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
         private readonly ILocationMetadataRepository? _metadataRepository;
@@ -506,7 +507,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations for account {AccountId}", providerAccountId);
+                _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
                 throw;
             }
             finally
@@ -546,17 +547,17 @@ namespace VideoForensics.Providers.Ring.Services
             await EnsureSessionValidAsync(session);
 
             List<Entities.Location>? locations = await session.GetLocations();
-            _logger.LogDebug("GetLocations() completed for account {AccountId}, returned collection type: {Type}",
-                providerAccountId, locations?.GetType().Name ?? "null");
+            _logger.LogDebug("GetLocations() completed for {ProviderName} account, returned collection type: {Type}",
+                ProviderName, locations?.GetType().Name ?? "null");
 
             if (locations == null)
             {
-                _logger.LogError("GetLocations returned null for account {AccountId}", providerAccountId);
+                _logger.LogError("GetLocations returned null for {ProviderName} account", ProviderName);
                 return null;
             }
 
-            _logger.LogDebug("GetLocations returned {RawLocationCount} location(s) for account {AccountId}",
-                locations.Count, providerAccountId);
+            _logger.LogDebug("GetLocations returned {RawLocationCount} location(s) for {ProviderName} account",
+                locations.Count, ProviderName);
 
             IReadOnlyList<Location> result = locations
                 .Where(l => l.Id.HasValue)
@@ -566,7 +567,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             if (result.Count == 0)
             {
-                _logger.LogWarning("GetLocations returned zero locations for account {AccountId}; deriving from device list", providerAccountId);
+                _logger.LogWarning("GetLocations returned zero locations for {ProviderName} account; deriving from device list", ProviderName);
                 result = await DeriveLocationsFromDevicesAsync(providerAccountId, cancellationToken);
             }
             else
@@ -576,12 +577,12 @@ namespace VideoForensics.Providers.Ring.Services
                 var orphaned = derived.Where(l => !knownIds.Contains(l.Id)).ToList();
                 if (orphaned.Count > 0)
                 {
-                    _logger.LogWarning("Found {Count} orphaned device location_id(s) for account {AccountId}", orphaned.Count, providerAccountId);
+                    _logger.LogWarning("Found {Count} orphaned device location_id(s) for {ProviderName} account", orphaned.Count, ProviderName);
                     result = result.Concat(orphaned).ToList().AsReadOnly();
                 }
             }
 
-            _logger.LogDebug("Found {LocationCount} locations for account {AccountId}", result.Count, providerAccountId);
+            _logger.LogDebug("Found {LocationCount} locations for {ProviderName} account", result.Count, ProviderName);
             _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
             return result;
         }
@@ -1056,12 +1057,12 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 if (_cachedAllDevices.HasValue && DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt < CacheTtl)
                 {
-                    _logger.LogDebug("Reusing cached device list ({Count}) for account {AccountId}, fetched {Age:F0}s ago",
-                        _cachedAllDevices.Value.Devices.Count, providerAccountId, (DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt).TotalSeconds);
+                    _logger.LogDebug("Reusing cached device list ({Count}) for {ProviderName} account, fetched {Age:F0}s ago",
+                        _cachedAllDevices.Value.Devices.Count, ProviderName, (DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt).TotalSeconds);
                     return _cachedAllDevices.Value.Devices;
                 }
 
-                _logger.LogDebug("Fetching device list for account {AccountId}", providerAccountId);
+                _logger.LogDebug("Fetching device list for {ProviderName} account", ProviderName);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
@@ -1172,7 +1173,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 IReadOnlyList<Device> result = deviceMap.Values.ToList().AsReadOnly();
-                _logger.LogInformation("Found {DeviceCount} devices for account {AccountId}", result.Count, providerAccountId);
+                _logger.LogInformation("Found {DeviceCount} devices for {ProviderName} account", result.Count, ProviderName);
 
                 _cachedAllDevices = (result, DateTime.UtcNow);
 
@@ -1180,7 +1181,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device list for account {AccountId}", providerAccountId);
+                _logger.LogError(ex, "Error fetching device list for {ProviderName} account", ProviderName);
                 throw;
             }
             finally
@@ -1196,7 +1197,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogDebug("Fetching device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogDebug("Fetching device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
 
                 IReadOnlyList<Location> locations = await GetLocationsAsync(providerAccountId, cancellationToken);
 
@@ -1214,7 +1215,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogError(ex, "Error fetching device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
                 return null;
             }
         }
