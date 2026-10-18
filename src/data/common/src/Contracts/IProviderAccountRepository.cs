@@ -30,7 +30,8 @@ namespace VideoForensics.Data.Common.Contracts
         /// <param name="accountId">The provider account ID.</param>
         /// <param name="removedUtc">When the account was removed.</param>
         /// <param name="ct">Cancellation token.</param>
-        Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct);
+        /// <param name="stepUpToken">Step-up token the server requires; used only by the remote implementation (sent as X-StepUp-Token), ignored locally.</param>
+        Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null);
 
         /// <summary>Adds a new provider account.</summary>
         Task AddAsync(ProviderAccount account, CancellationToken ct);
@@ -39,7 +40,10 @@ namespace VideoForensics.Data.Common.Contracts
         Task UpdateAsync(ProviderAccount account, CancellationToken ct);
 
         /// <summary>Deletes a provider account.</summary>
-        Task DeleteAsync(Guid accountId, CancellationToken ct);
+        /// <param name="accountId">The provider account ID.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <param name="stepUpToken">Step-up token the server requires; used only by the remote implementation (sent as X-StepUp-Token), ignored locally.</param>
+        Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null);
 
         /// <summary>Records an error condition for a provider account.</summary>
         /// <param name="providerAccountId">The provider account ID.</param>

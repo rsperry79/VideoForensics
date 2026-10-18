@@ -134,7 +134,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = _accounts.SetupSequence(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateAccount(true))
                 .ReturnsAsync(CreateAccount(false, removed));
-            _ = _accounts.Setup(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _ = _accounts.Setup(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>())).Returns(Task.CompletedTask);
 
             HttpResponseMessage response = await _client.SendAsync(StepUpPost($"/api/v1/accounts/provider-accounts/{_accountId}/retire"));
 
@@ -142,7 +142,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ProviderAccountDto? dto = await response.Content.ReadFromJsonAsync<ProviderAccountDto>(WebJson);
             Assert.NotNull(dto);
             Assert.Equal(removed, dto!.RemovedUtc);
-            _accounts.Verify(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+            _accounts.Verify(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
         }
 
         [Fact]
@@ -153,7 +153,7 @@ namespace VideoForensics.WebApp.Tests.Api
             HttpResponseMessage response = await _client.SendAsync(StepUpPost($"/api/v1/accounts/provider-accounts/{_accountId}/retire"));
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-            _accounts.Verify(a => a.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            _accounts.Verify(a => a.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]
@@ -178,9 +178,9 @@ namespace VideoForensics.WebApp.Tests.Api
             var order = new List<string>();
             var jobId = Guid.NewGuid();
             _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateAccount(true));
-            _ = _accounts.Setup(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            _ = _accounts.Setup(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
                 .Callback(() => order.Add("retire")).Returns(Task.CompletedTask);
-            _ = _exports.Setup(e => e.QueueExportAsync(_accountId, true, It.IsAny<CancellationToken>()))
+            _ = _exports.Setup(e => e.QueueExportAsync(_accountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
                 .Callback(() => order.Add("queue")).ReturnsAsync(jobId);
             _ = _exports.Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ExportJobStatus(jobId, _accountId, ExportJobState.Queued, null, null, true, DateTime.UtcNow, null));
@@ -196,7 +196,7 @@ namespace VideoForensics.WebApp.Tests.Api
         {
             var jobId = Guid.NewGuid();
             _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateAccount(false, DateTime.UtcNow));
-            _ = _exports.Setup(e => e.QueueExportAsync(_accountId, false, It.IsAny<CancellationToken>())).ReturnsAsync(jobId);
+            _ = _exports.Setup(e => e.QueueExportAsync(_accountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>())).ReturnsAsync(jobId);
             _ = _exports.Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ExportJobStatus(jobId, _accountId, ExportJobState.Queued, null, null, false, DateTime.UtcNow, null));
 
@@ -206,7 +206,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(WebJson);
             Assert.Equal(jobId, dto!.JobId);
             Assert.Equal("Queued", dto.State);
-            _accounts.Verify(a => a.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            _accounts.Verify(a => a.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]

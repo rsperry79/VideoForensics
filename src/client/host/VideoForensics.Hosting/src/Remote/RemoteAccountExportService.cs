@@ -23,13 +23,18 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct)
+        public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct, string? stepUpToken = null)
         {
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                $"/api/v1/accounts/provider-accounts/{accountId}/exports",
-                new QueueAccountExportRequest(purgeAfterExport),
-                JsonOptions,
-                ct);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/accounts/provider-accounts/{accountId}/exports")
+            {
+                Content = JsonContent.Create(new QueueAccountExportRequest(purgeAfterExport), options: JsonOptions)
+            };
+            if (stepUpToken is not null)
+            {
+                httpRequest.Headers.Add("X-StepUp-Token", stepUpToken);
+            }
+
+            HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, ct);
             _ = response.EnsureSuccessStatusCode();
             ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(JsonOptions, ct);
             return dto?.JobId ?? throw new InvalidOperationException("The server returned no export job.");

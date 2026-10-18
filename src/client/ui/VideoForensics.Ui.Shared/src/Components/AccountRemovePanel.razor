@@ -1,7 +1,9 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services
 @inject IProviderAccountRepository AccountRepository
 @inject IAccountExportService ExportService
+@inject StepUpService StepUp
 @inject IStringLocalizer<SharedResources> L
 
 <div class="p-3 border border-danger rounded mb-3" data-testid="account-remove-panel" role="group" aria-label="@L["AccountRemove_Title"]">
@@ -65,30 +67,65 @@
 
     private Task RetainAsync() => RunAsync(async ct =>
     {
-        await AccountRepository.RetireAsync(AccountId, DateTime.UtcNow, ct);
+        string? token = await TryGetStepUpTokenAsync();
+        if (token is null)
+        {
+            return null;
+        }
+
+        await AccountRepository.RetireAsync(AccountId, DateTime.UtcNow, ct, token);
         return new RemoveResult(AccountId, RemoveOutcome.Retained, null);
     });
 
     private Task DeleteWithoutExportAsync() => RunAsync(async ct =>
     {
-        await AccountRepository.DeleteAsync(AccountId, ct);
+        string? token = await TryGetStepUpTokenAsync();
+        if (token is null)
+        {
+            return null;
+        }
+
+        await AccountRepository.DeleteAsync(AccountId, ct, token);
         return new RemoveResult(AccountId, RemoveOutcome.Deleted, null);
     });
 
     private Task ExportFirstAsync() => RunAsync(async ct =>
     {
-        Guid jobId = await ExportService.QueueExportAsync(AccountId, true, ct);
+        string? token = await TryGetStepUpTokenAsync();
+        if (token is null)
+        {
+            return null;
+        }
+
+        Guid jobId = await ExportService.QueueExportAsync(AccountId, true, ct, token);
         return new RemoveResult(AccountId, RemoveOutcome.ExportQueued, jobId);
     });
 
-    private async Task RunAsync(Func<CancellationToken, Task<RemoveResult>> action)
+    /// <summary>Fetches a step-up token; on failure or cancel shows the localized message and returns null so the action is skipped.</summary>
+    private async Task<string?> TryGetStepUpTokenAsync()
+    {
+        try
+        {
+            return await StepUp.GetStepUpTokenAsync();
+        }
+        catch (Exception)
+        {
+            _errorMessage = L["AccountRemove_StepUpFailed"];
+            return null;
+        }
+    }
+
+    private async Task RunAsync(Func<CancellationToken, Task<RemoveResult?>> action)
     {
         _isBusy = true;
         _errorMessage = null;
         try
         {
-            RemoveResult result = await action(CancellationToken.None);
-            await OnCompleted.InvokeAsync(result);
+            RemoveResult? result = await action(CancellationToken.None);
+            if (result is not null)
+            {
+                await OnCompleted.InvokeAsync(result);
+            }
         }
         catch (Exception ex)
         {

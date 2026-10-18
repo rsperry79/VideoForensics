@@ -26,6 +26,7 @@ public abstract class AccountsPageTestBase : BunitContext
     protected Mock<IProviderAccountRepository> AccountRepositoryMock { get; } = new();
     protected Mock<IUserRepository> UserRepositoryMock { get; } = new();
     protected Mock<IAccountExportService> ExportServiceMock { get; } = new();
+    protected Mock<WebAuthnClient> WebAuthnMock { get; } = new(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
 
     protected static readonly Guid RingAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     protected static readonly Guid WyzeAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
@@ -76,8 +77,17 @@ public abstract class AccountsPageTestBase : BunitContext
         Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));
+        // Signed-in passkey session so StepUpService can fetch a step-up token for remove/retire/export.
+        Services.AddScoped(sp =>
+        {
+            var session = new PairedSessionState(sp.GetRequiredService<IJSRuntime>());
+            session.SetAsync("session-token", Guid.NewGuid(), "SuperAdmin").GetAwaiter().GetResult();
+            session.SetServerSessionKind(localTier: true, passkeySession: true, passwordSession: false);
+            return session;
+        });
+        WebAuthnMock.Setup(w => w.StepUpAsync(It.IsAny<string>())).ReturnsAsync("step-token");
+        Services.AddScoped(_ => WebAuthnMock.Object);
+        Services.AddScoped<StepUpService>();
         Services.AddScoped<RightPanelContentService>();
     }
 
@@ -247,8 +257,34 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         ClickButton(cut, "Retain data");
 
         cut.WaitForAssertion(() =>
-            AccountRepositoryMock.Verify(r => r.RetireAsync(RingAccountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once));
-        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            AccountRepositoryMock.Verify(r => r.RetireAsync(RingAccountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once));
+        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public void AccountsPage_RemoveRetain_PassesStepUpTokenToRetire()
+    {
+        var cut = RenderPage();
+
+        ClickButton(cut, "Remove", "#active-accounts");
+        ClickButton(cut, "Retain data");
+
+        cut.WaitForAssertion(() =>
+            AccountRepositoryMock.Verify(r => r.RetireAsync(RingAccountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), "step-token"), Times.Once));
+    }
+
+    [Fact]
+    public void AccountsPage_RemoveRetain_StepUpCancelled_DoesNotCallRetire()
+    {
+        WebAuthnMock.Setup(w => w.StepUpAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("cancelled"));
+        var cut = RenderPage();
+
+        ClickButton(cut, "Remove", "#active-accounts");
+        ClickButton(cut, "Retain data");
+
+        cut.WaitForAssertion(() => WebAuthnMock.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Once));
+        cut.WaitForAssertion(() => Assert.Contains("text-danger", cut.Markup));
+        AccountRepositoryMock.Verify(r => r.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -261,8 +297,8 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         ClickButton(cut, "Delete without export");
 
         cut.WaitForAssertion(() =>
-            AccountRepositoryMock.Verify(r => r.DeleteAsync(RingAccountId, It.IsAny<CancellationToken>()), Times.Once));
-        ExportServiceMock.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+            AccountRepositoryMock.Verify(r => r.DeleteAsync(RingAccountId, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once));
+        ExportServiceMock.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -271,7 +307,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RingAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>()))
+            .Setup(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
@@ -284,10 +320,10 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
 
         cut.WaitForAssertion(() =>
         {
-            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>()), Times.Once);
+            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
             Assert.Contains("Running", cut.Find("#removed-accounts").TextContent);
         });
-        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -296,7 +332,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RemovedAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RemovedAccountId, true, It.IsAny<CancellationToken>()))
+            .Setup(e => e.QueueExportAsync(RemovedAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
@@ -312,6 +348,6 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
             Assert.Contains("Retired Owner", removed);
             Assert.Contains("disk full", removed);
         });
-        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 }

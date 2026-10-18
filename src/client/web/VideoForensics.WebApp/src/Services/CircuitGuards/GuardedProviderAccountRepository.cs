@@ -25,10 +25,10 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
 
         public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) => inner.ListRemovedAsync(ct);
 
-        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
         {
             Require(AccessPolicy.SuperAdminLocal);
-            return inner.RetireAsync(accountId, removedUtc, ct);
+            return inner.RetireAsync(accountId, removedUtc, ct, stepUpToken);
         }
 
         public Task AddAsync(ProviderAccount account, CancellationToken ct)
@@ -43,10 +43,10 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             return inner.UpdateAsync(account, ct);
         }
 
-        public Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             Require(AccessPolicy.SuperAdminLocal);
-            return inner.DeleteAsync(accountId, ct);
+            return inner.DeleteAsync(accountId, ct, stepUpToken);
         }
 
         public Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken) =>

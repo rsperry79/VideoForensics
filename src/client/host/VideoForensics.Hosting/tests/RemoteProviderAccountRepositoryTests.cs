@@ -71,6 +71,35 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal($"/api/v1/accounts/provider-accounts/{accountId}/retire", handler.CapturedRequest.RequestUri!.AbsolutePath);
         }
         [Fact]
+        public async Task RemoteProviderAccountRepository_RetireAsync_SendsStepUpTokenHeader()
+        {
+            var accountId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK); });
+            var repo = new RemoteProviderAccountRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+            await repo.RetireAsync(accountId, DateTime.UtcNow, CancellationToken.None, "step-token");
+            Assert.True(handler.CapturedRequest.Headers.TryGetValues("X-StepUp-Token", out IEnumerable<string>? values));
+            Assert.Equal("step-token", Assert.Single(values!));
+        }
+        [Fact]
+        public async Task RemoteProviderAccountRepository_RetireAsync_NoToken_OmitsHeader()
+        {
+            var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK); });
+            var repo = new RemoteProviderAccountRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+            await repo.RetireAsync(Guid.NewGuid(), DateTime.UtcNow, CancellationToken.None);
+            Assert.False(handler.CapturedRequest.Headers.Contains("X-StepUp-Token"));
+        }
+        [Fact]
+        public async Task RemoteProviderAccountRepository_DeleteAsync_SendsStepUpTokenHeader()
+        {
+            var accountId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.NoContent); });
+            var repo = new RemoteProviderAccountRepository(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+            await repo.DeleteAsync(accountId, CancellationToken.None, "step-token");
+            Assert.Equal(HttpMethod.Delete, handler.CapturedRequest.Method);
+            Assert.True(handler.CapturedRequest.Headers.TryGetValues("X-StepUp-Token", out IEnumerable<string>? values));
+            Assert.Equal("step-token", Assert.Single(values!));
+        }
+        [Fact]
         public async Task AddAsync_WithProviderAccount_PostsToEndpoint()
         {
             var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };

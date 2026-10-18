@@ -23,6 +23,14 @@ namespace VideoForensics.Hosting.Remote
             _httpClient = httpClient;
         }
 
+        private static void AddStepUpHeader(HttpRequestMessage request, string? stepUpToken)
+        {
+            if (stepUpToken is not null)
+            {
+                request.Headers.Add("X-StepUp-Token", stepUpToken);
+            }
+        }
+
         /// <inheritdoc />
         public async Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
         {
@@ -89,9 +97,11 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         /// <remarks>The server stamps the removal time itself, so <paramref name="removedUtc"/> is not sent.</remarks>
-        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
         {
-            HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/accounts/provider-accounts/{accountId}/retire", null, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/accounts/provider-accounts/{accountId}/retire");
+            AddStepUpHeader(request, stepUpToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
             _ = response.EnsureSuccessStatusCode();
         }
 
@@ -123,9 +133,11 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public async Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
-            HttpResponseMessage response = await _httpClient.DeleteAsync($"/api/v1/accounts/provider-accounts/{accountId}", ct);
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/accounts/provider-accounts/{accountId}");
+            AddStepUpHeader(request, stepUpToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
             _ = response.EnsureSuccessStatusCode();
         }
 

@@ -11,7 +11,11 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="accountId">The provider account to export.</param>
         /// <param name="purgeAfterExport">When true, hard-deletes the account after the export file is written.</param>
         /// <param name="ct">Cancellation token.</param>
-        Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct);
+        /// <param name="stepUpToken">
+        /// Step-up token the server requires for this action. Used only by the remote implementation, which sends it as
+        /// the X-StepUp-Token header; the local implementation ignores it.
+        /// </param>
+        Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct, string? stepUpToken = null);
 
         /// <summary>Gets the current status of a job, or null if unknown (including after a restart).</summary>
         /// <param name="jobId">The job id returned by <see cref="QueueExportAsync"/>.</param>

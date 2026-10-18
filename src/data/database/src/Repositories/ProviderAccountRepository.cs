@@ -65,8 +65,8 @@ namespace VideoForensics.Data.Database.Repositories
             return removed.OrderByDescending(pa => pa.RemovedUtc).ToList();
         }
 
-        /// <summary>Retires a provider account, keeping its row and data.</summary>
-        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        /// <summary>Retires a provider account, keeping its row and data. The step-up token is used only by the remote implementation and ignored here.</summary>
+        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             ProviderAccount? account = null;
@@ -138,7 +138,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Deletes a provider account and its sync schedule in one atomic save.</summary>
-        public async Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public async Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             ProviderAccount? account = null;

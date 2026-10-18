@@ -151,7 +151,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AccountExportService_RunJob_PurgeAfterExport_DeletesAccountOnlyAfterSuccess()
         {
             bool fileExistedAtDelete = false;
-            _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>()))
+            _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
                 .Callback(() => fileExistedAtDelete = Directory.GetFiles(_exportsFolder, "*.json").Length == 1)
                 .Returns(Task.CompletedTask);
             AccountExportService sut = CreateSut();
@@ -160,7 +160,7 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(ExportJobState.Succeeded, status.State);
             Assert.True(fileExistedAtDelete);
-            _accounts.Verify(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>()), Times.Once);
+            _accounts.Verify(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
         }
 
         [Fact]
@@ -171,7 +171,7 @@ namespace VideoForensics.Hosting.Tests
             ExportJobStatus status = await RunAsync(sut, _account.Id, false);
 
             Assert.Equal(ExportJobState.Succeeded, status.State);
-            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]
@@ -187,7 +187,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(ExportJobState.Failed, status.State);
             Assert.False(string.IsNullOrWhiteSpace(status.ErrorMessage));
             Assert.Null(status.FilePath);
-            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]
@@ -199,13 +199,13 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(ExportJobState.Failed, status.State);
             Assert.Equal("Account not found", status.ErrorMessage);
-            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]
         public async Task AccountExportService_RunJob_PurgeDeleteThrows_JobFailsExportFileKept()
         {
-            _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("delete boom"));
+            _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>())).ThrowsAsync(new InvalidOperationException("delete boom"));
             AccountExportService sut = CreateSut();
 
             ExportJobStatus status = await RunAsync(sut, _account.Id, true);

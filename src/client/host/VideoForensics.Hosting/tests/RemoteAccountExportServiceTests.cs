@@ -56,6 +56,21 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RemoteAccountExportService_QueueExportAsync_SendsStepUpTokenHeader()
+        {
+            var accountId = Guid.NewGuid();
+            var dto = new ExportJobDto(Guid.NewGuid(), accountId, "Queued", null, null, true, DateTime.UtcNow, null);
+            var handler = new CapturingHandler(_ => Json(HttpStatusCode.Accepted, dto));
+            var sut = new RemoteAccountExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await sut.QueueExportAsync(accountId, true, CancellationToken.None, "step-token");
+
+            Assert.True(handler.Captured!.Headers.TryGetValues("X-StepUp-Token", out IEnumerable<string>? values));
+            Assert.Equal("step-token", Assert.Single(values!));
+            Assert.Contains("\"purgeAfterExport\":true", handler.CapturedBody);
+        }
+
+        [Fact]
         public async Task RemoteAccountExportService_GetStatusAsync_NotFound_ReturnsNull()
         {
             var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));

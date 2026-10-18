@@ -161,7 +161,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.RemovedUtc != null).AsEnumerable().OrderByDescending(pa => pa.RemovedUtc).ToList());
         }
 
-        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
         {
             ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
             if (account == null || account.RemovedUtc != null)
@@ -188,7 +188,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.CompletedTask;
         }
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Update(account); return Task.CompletedTask; }
-        public Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
             if (account != null)

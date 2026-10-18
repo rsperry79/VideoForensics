@@ -39,7 +39,7 @@ namespace VideoForensics.Hosting.Services
         internal ChannelReader<Guid> Reader => _queue.Reader;
 
         /// <inheritdoc />
-        public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct)
+        public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct, string? stepUpToken = null)
         {
             Guid jobId = Guid.NewGuid();
             _jobs[jobId] = new ExportJobStatus(jobId, accountId, ExportJobState.Queued, null, null, purgeAfterExport, _time.GetUtcNow().UtcDateTime, null);
