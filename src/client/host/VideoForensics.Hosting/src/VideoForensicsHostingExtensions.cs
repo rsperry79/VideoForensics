@@ -558,6 +558,12 @@ namespace VideoForensics.Hosting
         {
             foreach (string providerName in enabledProviders ?? Enumerable.Empty<string>())
             {
+                // Wyze sign-in, device discovery and media download are not implemented yet; fail at startup, not on the first sync.
+                if (string.Equals(providerName, "Wyze", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Wyze is not available yet: sign-in, device discovery and media download are not implemented. Remove it from ScheduledTasks:EnabledProviders.");
+                }
+
                 if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))
                 {
                     _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildRingAuthService(provider));
