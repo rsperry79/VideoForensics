@@ -20,6 +20,8 @@ namespace VideoForensics.Hosting.Services
     /// </summary>
     internal sealed class AccountExportService : IAccountExportService
     {
+        private const int EventPageSize = 500;
+
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
         private readonly IServiceScopeFactory _scopeFactory;
@@ -90,15 +92,13 @@ namespace VideoForensics.Hosting.Services
                 providerName = account.ProviderName;
                 _logger.LogInformation("Account export job {JobId} started for {ProviderName} account", jobId, providerName);
 
-                object document = await BuildDocumentAsync(sp, account, ct);
-
                 string stamp = _time.GetUtcNow().UtcDateTime.ToString("yyyyMMdd-HHmmss");
                 string finalPath = Path.Combine(folder, $"{stamp}_{SanitizeFileName(providerName)}_{account.Id.ToString("D")[..8]}.json");
                 tempPath = finalPath + ".tmp";
 
                 await using (FileStream stream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    await JsonSerializer.SerializeAsync(stream, document, JsonOptions, ct);
+                    await WriteDocumentAsync(stream, sp, account, ct);
                 }
 
                 // Move last so a partial file never looks complete.
@@ -173,7 +173,13 @@ namespace VideoForensics.Hosting.Services
             return string.IsNullOrWhiteSpace(cleaned) ? "account" : cleaned;
         }
 
-        private async Task<object> BuildDocumentAsync(IServiceProvider sp, ProviderAccount account, CancellationToken ct)
+        /// <summary>
+        /// Streams the export document to <paramref name="stream"/> with a Utf8JsonWriter instead of building it in memory.
+        /// Events are read per device in keyset pages starting at the device's earliest event; downloads and media are
+        /// still read per device in bulk (no paged read exists for them yet) but are written out per device, not accumulated.
+        /// The document shape (property names and order) is unchanged from the previous in-memory build.
+        /// </summary>
+        private async Task WriteDocumentAsync(Stream stream, IServiceProvider sp, ProviderAccount account, CancellationToken ct)
         {
             // Credentials are deliberately never read: the export contains no secrets or tokens.
             IReadOnlyList<Location> locations = await sp.GetRequiredService<ILocationRepository>().ListByProviderAccountIdAsync(account.Id, ct);
@@ -184,15 +190,10 @@ namespace VideoForensics.Hosting.Services
             IMediaItemRepository mediaRepository = sp.GetRequiredService<IMediaItemRepository>();
             IDownloadEventRepository downloadRepository = sp.GetRequiredService<IDownloadEventRepository>();
 
-            DateTime from = DateTime.UnixEpoch;
-            DateTime to = _time.GetUtcNow().UtcDateTime.AddYears(1);
-
+            // Devices are few; only the per-device event/media/download rows are large.
+            var deviceIds = new List<Guid>();
             var devices = new List<object>();
-            var events = new List<Event>();
-            var mediaItems = new List<MediaItem>();
-            var downloadEvents = new List<DownloadEvent>();
             var seen = new HashSet<Guid>();
-
             foreach (Location location in locations)
             {
                 foreach (Device device in await deviceRepository.GetByLocationIdAsync(location.Id, ct))
@@ -202,6 +203,7 @@ namespace VideoForensics.Hosting.Services
                         continue;
                     }
 
+                    deviceIds.Add(device.Id);
                     devices.Add(new
                     {
                         device.Id,
@@ -214,32 +216,98 @@ namespace VideoForensics.Hosting.Services
                         device.FirmwareVersion,
                         device.LastSyncedUtc
                     });
-                    events.AddRange(await eventRepository.ListByDeviceAndDateRangeAsync(device.Id, from, to, ct));
-                    mediaItems.AddRange(await mediaRepository.GetByDeviceIdAsync(device.Id, ct));
-                    downloadEvents.AddRange(await downloadRepository.GetByDeviceIdAsync(device.Id, ct));
                 }
             }
 
-            return new
+            await using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+            writer.WriteStartObject();
+            writer.WritePropertyName("exportedUtc");
+            JsonSerializer.Serialize(writer, _time.GetUtcNow().UtcDateTime, JsonOptions);
+            writer.WritePropertyName("account");
+            JsonSerializer.Serialize(writer, new
             {
-                exportedUtc = _time.GetUtcNow().UtcDateTime,
-                account = new
+                id = account.Id,
+                providerName = account.ProviderName,
+                linkedUtc = account.LinkedUtc,
+                removedUtc = account.RemovedUtc,
+                lastSuccessfulAuthUtc = account.LastSuccessfulAuthUtc,
+                isActive = account.IsActive,
+                lastErrorMessage = account.LastErrorMessage
+            }, JsonOptions);
+            writer.WritePropertyName("locations");
+            JsonSerializer.Serialize(writer, locations, JsonOptions);
+            writer.WritePropertyName("syncRuns");
+            JsonSerializer.Serialize(writer, syncRuns, JsonOptions);
+            writer.WritePropertyName("devices");
+            JsonSerializer.Serialize(writer, devices, JsonOptions);
+
+            writer.WritePropertyName("events");
+            writer.WriteStartArray();
+            foreach (Guid deviceId in deviceIds)
+            {
+                ct.ThrowIfCancellationRequested();
+                DateTime? earliest = await eventRepository.GetEarliestOccurredAtUtcAsync(deviceId, ct);
+                if (earliest == null)
                 {
-                    id = account.Id,
-                    providerName = account.ProviderName,
-                    linkedUtc = account.LinkedUtc,
-                    removedUtc = account.RemovedUtc,
-                    lastSuccessfulAuthUtc = account.LastSuccessfulAuthUtc,
-                    isActive = account.IsActive,
-                    lastErrorMessage = account.LastErrorMessage
-                },
-                locations,
-                syncRuns,
-                devices,
-                events,
-                downloadEvents,
-                mediaItems
-            };
+                    continue;
+                }
+
+                // Cursor starts at the earliest event with Guid.Empty so every event at that instant is included.
+                DateTime? afterAt = earliest;
+                Guid? afterId = Guid.Empty;
+                while (true)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    IReadOnlyList<Event> page = await eventRepository.ListByDevicePageAsync(deviceId, afterAt, afterId, EventPageSize, ct);
+                    if (page.Count == 0)
+                    {
+                        break;
+                    }
+
+                    foreach (Event @event in page)
+                    {
+                        JsonSerializer.Serialize(writer, @event, JsonOptions);
+                    }
+
+                    afterAt = page[^1].OccurredAtUtc;
+                    afterId = page[^1].Id;
+                    await writer.FlushAsync(ct);
+                }
+            }
+
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("downloadEvents");
+            writer.WriteStartArray();
+            foreach (Guid deviceId in deviceIds)
+            {
+                ct.ThrowIfCancellationRequested();
+                foreach (DownloadEvent downloadEvent in await downloadRepository.GetByDeviceIdAsync(deviceId, ct))
+                {
+                    JsonSerializer.Serialize(writer, downloadEvent, JsonOptions);
+                }
+
+                await writer.FlushAsync(ct);
+            }
+
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("mediaItems");
+            writer.WriteStartArray();
+            foreach (Guid deviceId in deviceIds)
+            {
+                ct.ThrowIfCancellationRequested();
+                foreach (MediaItem mediaItem in await mediaRepository.GetByDeviceIdAsync(deviceId, ct))
+                {
+                    JsonSerializer.Serialize(writer, mediaItem, JsonOptions);
+                }
+
+                await writer.FlushAsync(ct);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+            await writer.FlushAsync(ct);
         }
     }
 }

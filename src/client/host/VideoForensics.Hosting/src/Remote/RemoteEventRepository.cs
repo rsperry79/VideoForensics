@@ -130,6 +130,20 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Account export runs server-side against local repositories; there is no /api/v1 route for this, so a remote client cannot use it.</remarks>
+        public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            throw new NotSupportedException("Earliest-event lookup is only available on the server tier.");
+        }
+
+        /// <inheritdoc />
+        /// <remarks>Account export runs server-side against local repositories; there is no /api/v1 route for this, so a remote client cannot use it.</remarks>
+        public Task<IReadOnlyList<Event>> ListByDevicePageAsync(Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            throw new NotSupportedException("Paged event reads are only available on the server tier.");
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/events/unanswered/{deviceId}", ct);

@@ -680,6 +680,24 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).Min(e => (DateTime?)e.OccurredAtUtc));
+        }
+
+        public Task<IReadOnlyList<Event>> ListByDevicePageAsync(Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            IQueryable<Event> query = _db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId);
+            if (afterOccurredAtUtc.HasValue)
+            {
+                DateTime at = afterOccurredAtUtc.Value;
+                Guid id = afterId ?? Guid.Empty;
+                query = query.Where(e => e.OccurredAtUtc > at || (e.OccurredAtUtc == at && e.Id.CompareTo(id) > 0));
+            }
+
+            return Task.FromResult((IReadOnlyList<Event>)query.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Take(take).ToList());
+        }
+
         public Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).ToList());
