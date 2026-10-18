@@ -3035,7 +3035,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SyncType")
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Unknown");
 
                     b.HasKey("Id");
 

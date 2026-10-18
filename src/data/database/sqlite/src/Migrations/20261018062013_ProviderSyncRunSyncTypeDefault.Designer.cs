@@ -11,8 +11,8 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    [Migration("20261017181136_AddProviderSyncRunTypeAndCounts")]
-    partial class AddProviderSyncRunTypeAndCounts
+    [Migration("20261018062013_ProviderSyncRunSyncTypeDefault")]
+    partial class ProviderSyncRunSyncTypeDefault
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -3028,6 +3028,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("SnapshotsSynced")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("StartedUtc")
                         .HasColumnType("TEXT");
 
@@ -3035,7 +3038,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SyncType")
-                        .HasColumnType("TEXT");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Unknown");
 
                     b.HasKey("Id");
 

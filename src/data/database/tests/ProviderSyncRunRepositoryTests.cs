@@ -108,7 +108,7 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
-        public async Task AddAsync_RunWithoutSyncType_StoresNulls()
+        public async Task AddAsync_RunWithoutSyncType_StoresUnknownAndNullCounts()
         {
             ProviderSyncRun run = Build(Guid.NewGuid(), new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc));
             await _repository.AddAsync(run, CancellationToken.None);
@@ -116,7 +116,8 @@ namespace VideoForensics.Data.Database.Tests
             ProviderSyncRun? stored = await _repository.GetAsync(run.Id, CancellationToken.None);
 
             Assert.NotNull(stored);
-            Assert.Null(stored.SyncType);
+            // The column default fills in "Unknown" for runs recorded without a type.
+            Assert.Equal("Unknown", stored.SyncType);
             Assert.Null(stored.EventsSynced);
         }
 
