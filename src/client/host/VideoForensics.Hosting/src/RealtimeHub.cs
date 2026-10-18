@@ -204,7 +204,7 @@ namespace VideoForensics.Hosting
                     Publish(ConnectionState.Reconnecting);
                 }
 
-                _logger.LogWarning(ex, "Live hub initial connection failed; retrying with backoff");
+                _logger.LogError(ex, "Live hub initial connection failed; retrying with backoff");
                 _ = ReconnectLoopAsync(lifetimeToken);
                 return;
             }
@@ -283,7 +283,7 @@ namespace VideoForensics.Hosting
                 return;
             }
 
-            _logger.LogWarning(error, "Live hub connection closed unexpectedly; reconnecting with backoff");
+            _logger.LogError(error, "Live hub connection closed unexpectedly; reconnecting with backoff");
             Publish(ConnectionState.Reconnecting);
             _ = ReconnectLoopAsync(_lifetime.Token);
         }
@@ -378,7 +378,7 @@ namespace VideoForensics.Hosting
                 catch (Exception ex)
                 {
                     attempt++;
-                    _logger.LogWarning(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
+                    _logger.LogError(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
                 }
             }
         }
@@ -418,7 +418,7 @@ namespace VideoForensics.Hosting
 
             connection.Reconnecting += error =>
             {
-                _logger.LogWarning(error, "Live hub connection lost; reconnecting");
+                _logger.LogError(error, "Live hub connection lost; reconnecting");
                 Publish(ConnectionState.Reconnecting);
                 return Task.CompletedTask;
             };
@@ -539,7 +539,7 @@ namespace VideoForensics.Hosting
                 }
 
                 // The session id is not logged: it is a GUID, and only the failure matters here.
-                _logger.LogWarning(ex, "Live hub rejected a live-view subscription; it will not be replayed");
+                _logger.LogError(ex, "Live hub rejected a live-view subscription; it will not be replayed");
             }
         }
 

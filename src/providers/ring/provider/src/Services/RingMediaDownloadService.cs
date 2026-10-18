@@ -301,7 +301,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -360,7 +360,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to check existing download for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
                             return;
                         }
@@ -434,7 +434,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -502,12 +502,12 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger.LogWarning(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
+                                            _logger.LogError(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -550,7 +550,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to download video for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗ {EscapeMarkup(Path.GetFileName(fileName))}: {EscapeMarkup(HumanizeExceptionTypeName(ex.GetType().Name))}[/]");
                             if (IsRateLimitError(ex))
                             {
@@ -590,7 +590,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception recordEx)
                                 {
-                                    _logger.LogWarning(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
+                                    _logger.LogError(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
                                 }
 
                                 // Persist the raw status code/body (when the exception carries one) against
@@ -616,7 +616,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception apiErrorRecordEx)
                                 {
-                                    _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
+                                    _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
                                 }
                             }
                         }
@@ -660,7 +660,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
+                        _logger.LogError(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
                     }
                 }
 
@@ -835,7 +835,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
                     }
                 }
 
@@ -885,7 +885,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                     }
                 }
 
@@ -941,7 +941,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception apiErrorRecordEx)
                     {
-                        _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
+                        _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
                     }
                 }
 
@@ -1017,7 +1017,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
+                _logger.LogError(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
                 return Guid.Empty;
             }
         }
@@ -1160,7 +1160,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1225,7 +1225,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
                 return (null, null);
             }
 
@@ -1397,7 +1397,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
             }
         }
 
@@ -1417,7 +1417,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
                 return null;
             }
         }
@@ -1555,7 +1555,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1650,12 +1650,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
         }

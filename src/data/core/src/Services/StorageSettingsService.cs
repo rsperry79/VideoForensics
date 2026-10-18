@@ -203,7 +203,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to compute directory size for {Path}", path);
+                _logger.LogError(ex, "Failed to compute directory size for {Path}", path);
                 return 0;
             }
         }
@@ -223,7 +223,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to compute free space for {Path}", path);
+                _logger.LogError(ex, "Failed to compute free space for {Path}", path);
                 return 0;
             }
         }
@@ -269,7 +269,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete empty directory {Path}", dir.FullName);
+                    _logger.LogError(ex, "Failed to delete empty directory {Path}", dir.FullName);
                 }
             }
         }

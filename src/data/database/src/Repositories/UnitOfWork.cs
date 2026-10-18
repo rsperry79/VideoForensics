@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
-                _logger.LogInformation("Unit of work committed successfully");
+                _logger.LogDebug("Unit of work committed successfully");
                 return result;
             }
             catch (Exception ex)

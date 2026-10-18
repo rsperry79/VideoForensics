@@ -191,7 +191,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error processing media item {MediaItemId} for export, skipping", mediaItemId);
+                        _logger.LogError(ex, "Error processing media item {MediaItemId} for export, skipping", mediaItemId);
                         excludedItems.Add(mediaItemId);
                     }
                 }
@@ -246,7 +246,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to retrieve action log for media item {MediaItemId}, skipping history", item.Id);
+                        _logger.LogError(ex, "Failed to retrieve action log for media item {MediaItemId}, skipping history", item.Id);
                     }
                 }
 
@@ -287,7 +287,7 @@ namespace VideoForensics.Client.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to add media file {FileName} to archive", item.FileName);
+                            _logger.LogError(ex, "Failed to add media file {FileName} to archive", item.FileName);
                         }
                     }
 

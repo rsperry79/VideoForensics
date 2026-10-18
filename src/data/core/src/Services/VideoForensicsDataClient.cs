@@ -160,7 +160,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+                _logger.LogError(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
             }
         }
 
@@ -223,9 +223,11 @@ namespace VideoForensics.Data.Core.Services
                         null,
                         ct);
 
+                    Device? device = await context.Devices.GetAsync(evt.DeviceId, ct);
+
                     _logger.LogInformation(
-                        "Download event recorded for device {DeviceId}, provider event {ProviderEventId}, success={Success}",
-                        evt.DeviceId,
+                        "Download event recorded for device {DeviceName}, provider event {ProviderEventId}, success={Success}",
+                        device?.Name ?? "unknown device",
                         evt.ProviderEventId,
                         evt.Success);
 

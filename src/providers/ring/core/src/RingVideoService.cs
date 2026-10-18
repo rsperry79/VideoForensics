@@ -173,7 +173,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write raw API response log entry");
+                log.LogError(exe, "Failed to write raw API response log entry");
             }
         }
 
@@ -205,7 +205,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write session debug log entry");
+                log.LogError(exe, "Failed to write session debug log entry");
             }
         }
 
@@ -236,7 +236,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write ring events batch log file");
+                log.LogError(exe, "Failed to write ring events batch log file");
             }
         }
 
@@ -607,7 +607,7 @@ namespace VideoForensics.Providers.Ring
                     catch (Exception ex)
                     {
                         reporter.Warning($"Failed to fetch locations from API: {ex.Message}");
-                        log.LogWarning(ex, "Failed to fetch location list from API");
+                        log.LogError(ex, "Failed to fetch location list from API");
                     }
 
                     // Fall back to config-supplied names for any location the API didn't cover
@@ -1020,7 +1020,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception ex)
             {
-                log.LogWarning(ex, "Failed to write metadata sidecar for {filename}", filename);
+                log.LogError(ex, "Failed to write metadata sidecar for {filename}", filename);
                 // Don't throw - metadata failure shouldn't block the download process
             }
         }
@@ -1179,7 +1179,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write per-event JSON log file");
+                log.LogError(exe, "Failed to write per-event JSON log file");
             }
         }
 

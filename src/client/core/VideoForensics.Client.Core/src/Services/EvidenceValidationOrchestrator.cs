@@ -310,7 +310,7 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex) when (IsRateLimitError(ex) && attempt < MaxRetries)
                 {
-                    _logger.LogWarning(ex, "Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
+                    _logger.LogError(ex, "Rate limit on {Operation} (attempt {Attempt}/{Max}). Waiting {DelayMs}ms before retry.",
                         SanitizeForLog(operationName), attempt, MaxRetries, delayMs);
 
                     await Task.Delay(delayMs, cancellationToken);

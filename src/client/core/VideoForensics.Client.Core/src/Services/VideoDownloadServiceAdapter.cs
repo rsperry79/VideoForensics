@@ -358,7 +358,7 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to resolve watermark for {DeviceName} during pre-scan; using requested date range", device.Name);
+                    _logger.LogError(ex, "Failed to resolve watermark for {DeviceName} during pre-scan; using requested date range", device.Name);
                 }
 
                 effectiveStartDates[device.Id] = deviceEffectiveStart;
@@ -391,7 +391,7 @@ namespace VideoForensics.Client.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to pre-count matched events for {DeviceName}", device.Name);
+                    _logger.LogError(ex, "Failed to pre-count matched events for {DeviceName}", device.Name);
                 }
 
                 grandTotalMatched += deviceCount;
@@ -662,7 +662,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to update account download watermark; next download may re-process some events");
+                        _logger.LogError(ex, "Failed to update account download watermark; next download may re-process some events");
                     }
                 }
 

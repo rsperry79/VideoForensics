@@ -211,7 +211,7 @@ namespace VideoForensics.Providers.Uniview.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to restore credentials from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                        _logger.LogError(ex, "Failed to restore credentials from database for account {AccountId} (provider: Uniview)", providerAccountId);
                     }
                 }
 
@@ -231,7 +231,7 @@ namespace VideoForensics.Providers.Uniview.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to restore Uniview session from saved credentials");
+                _logger.LogError(ex, "Failed to restore Uniview session from saved credentials");
                 return false;
             }
         }

@@ -116,7 +116,7 @@ namespace VideoForensics.WebApp.Services
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex,
+                                _logger.LogError(ex,
                                     "Provider reconciliation failed for device {DeviceId} ({ProviderDeviceId})",
                                     device.Id, device.ProviderDeviceId);
                                 // Continue with next device rather than failing entire bulk operation
@@ -129,7 +129,7 @@ namespace VideoForensics.WebApp.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Validation failed for device {DeviceId}", device.Id);
+                        _logger.LogError(ex, "Validation failed for device {DeviceId}", device.Id);
                         // Continue with next device rather than failing entire bulk operation
                     }
                 }

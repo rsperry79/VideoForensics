@@ -62,7 +62,7 @@ namespace VideoForensics.WebApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking CIDR range: {CidrRange}", cidrRange);
+                _logger.LogError(ex, "Error checking CIDR range: {CidrRange}", cidrRange);
                 return false;
             }
         }

@@ -281,7 +281,7 @@ namespace VideoForensics.WebApp.Chat
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogWarning(ex, "ChatOrchestrator: Request cancelled");
+                _logger.LogError(ex, "ChatOrchestrator: Request cancelled");
                 return new ChatTurnResult
                 {
                     Reply = "The request was cancelled.",

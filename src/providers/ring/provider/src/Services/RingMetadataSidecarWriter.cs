@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
                 return false;
             }
         }
@@ -126,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
                 return false;
             }
         }
@@ -169,12 +169,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
+                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
+                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
                 return false;
             }
         }

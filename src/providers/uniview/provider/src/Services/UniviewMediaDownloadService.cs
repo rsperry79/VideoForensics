@@ -113,7 +113,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}",
+                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
                         monthStart.ToString("yyyy-MM"), channel);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
@@ -228,7 +228,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to download segment {Begin:O} for channel {Channel}",
+                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
                         segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
@@ -331,7 +331,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}",
+                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
                         monthStart.ToString("yyyy-MM"), channel);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
@@ -446,7 +446,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to download segment {Begin:O} for channel {Channel}",
+                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
                         segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
@@ -817,7 +817,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
+                _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
                 _activityLog.Enqueue($"✗ Failed to query {from:yyyy-MM}: {ex.Message}");
             }
         }
@@ -896,7 +896,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
+                    _logger.LogError(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(jpg)}: {ex.GetType().Name}");
                 }
                 finally

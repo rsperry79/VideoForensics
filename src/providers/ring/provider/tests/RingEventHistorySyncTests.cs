@@ -151,7 +151,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("doorbot history", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("doorbot history", StringComparison.OrdinalIgnoreCase));
             Assert.DoesNotContain(logger.Entries, e => e.Message.Contains("api.ring.com", StringComparison.OrdinalIgnoreCase)
                 || e.Message.Contains("prd-api-us", StringComparison.OrdinalIgnoreCase)
                 || e.Message.Contains(AccessToken, StringComparison.Ordinal));

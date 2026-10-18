@@ -164,7 +164,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse motion detection config for channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse motion detection config for channel {Channel} - " +
                         "field names may differ from documented defaults; using safe defaults",
                         channel);
                     motionDetectionEnabled = false;
@@ -189,7 +189,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse record schedule config for channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse record schedule config for channel {Channel} - " +
                         "field names may differ from documented defaults; using 'unknown'",
                         channel);
                     recordingMode = "unknown";
@@ -277,7 +277,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to round-trip motion detection raw JSON for channel {Channel}; " +
+                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for channel {Channel}; " +
                         "falling back to reconstructed config", channel);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }
@@ -441,7 +441,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse motion detection config for account {ProviderAccountId} channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse motion detection config for account {ProviderAccountId} channel {Channel} - " +
                         "field names may differ from documented defaults; using safe defaults",
                         providerAccountId, channel);
                     motionDetectionEnabled = false;
@@ -466,7 +466,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse record schedule config for account {ProviderAccountId} channel {Channel} - " +
+                    _logger.LogError(ex, "Failed to parse record schedule config for account {ProviderAccountId} channel {Channel} - " +
                         "field names may differ from documented defaults; using 'unknown'",
                         providerAccountId, channel);
                     recordingMode = "unknown";
@@ -555,7 +555,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to round-trip motion detection raw JSON for account {ProviderAccountId} channel {Channel}; " +
+                    _logger.LogError(ex, "Failed to round-trip motion detection raw JSON for account {ProviderAccountId} channel {Channel}; " +
                         "falling back to reconstructed config", providerAccountId, channel);
                     motionDetectionData = BuildMotionDetectionJson(config);
                 }

@@ -65,7 +65,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch device info for friendly name; using default");
+                _logger.LogError(ex, "Failed to fetch device info for friendly name; using default");
             }
 
             var location = new Location(
@@ -236,7 +236,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch device info for provider account {ProviderAccountId}; using default", providerAccountId);
+                _logger.LogError(ex, "Failed to fetch device info for provider account {ProviderAccountId}; using default", providerAccountId);
             }
 
             var location = new Location(

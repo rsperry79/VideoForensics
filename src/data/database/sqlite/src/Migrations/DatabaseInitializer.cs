@@ -113,7 +113,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             {
                 // Log backup failure but don't fail initialization if backup fails
                 // The user should be aware, but we proceed with caution
-                logger.LogWarning(ex, "Failed to create pre-migration backup. Proceeding with migration anyway.");
+                logger.LogError(ex, "Failed to create pre-migration backup. Proceeding with migration anyway.");
             }
 
             await Task.CompletedTask;

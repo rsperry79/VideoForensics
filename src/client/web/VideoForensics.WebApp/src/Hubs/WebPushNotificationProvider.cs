@@ -131,7 +131,7 @@ namespace VideoForensics.WebApp.Hubs
                         }
                         catch (Exception removeEx)
                         {
-                            _logger.LogWarning(removeEx,
+                            _logger.LogError(removeEx,
                                 "Failed to remove expired subscription - Endpoint={Endpoint}",
                                 TruncateEndpoint(subscription.Endpoint));
                         }

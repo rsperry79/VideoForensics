@@ -146,7 +146,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await new RingAccountSettingsPersister(writer.Object, logger).PersistLocationModeAsync(mode, LocationId);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error);
         }
 
         private static RingAccountSettingsPersister CreatePersister(Mock<IRingAccountSettingsWriter> writer) =>

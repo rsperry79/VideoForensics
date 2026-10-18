@@ -53,7 +53,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to cleanly release database connections before file operation.");
+                _logger.LogError(ex, "Failed to cleanly release database connections before file operation.");
                 // Still clear pools even if the checkpoint failed - a partial release is better
                 // than none for the caller's subsequent file operation.
                 SqliteConnection.ClearAllPools();

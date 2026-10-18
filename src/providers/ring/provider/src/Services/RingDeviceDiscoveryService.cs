@@ -828,7 +828,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Ring {Area} fetch failed; sync continues", area);
+                _logger.LogError(ex, "Ring {Area} fetch failed; sync continues", area);
                 return null;
             }
         }
@@ -1014,7 +1014,7 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _syncRunTally?.AddFeedFailure();
-                _logger.LogWarning(ex, "Ring {Feed} sync failed; sync continues", feed);
+                _logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
             }
         }
 

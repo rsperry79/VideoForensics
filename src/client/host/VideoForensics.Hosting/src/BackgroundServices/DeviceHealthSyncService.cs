@@ -141,7 +141,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Health sync tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Health sync tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -261,7 +261,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceId} failed (non-critical)", device.Id);
+                            _logger.LogError(ex, "Health sync tick: degradation check for device {DeviceId} failed (non-critical)", device.Id);
                         }
                     }
 
@@ -273,7 +273,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
-                    _logger.LogWarning(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogError(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
         }
@@ -308,7 +308,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Elevated polling tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Elevated polling tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -397,7 +397,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogError(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
 
@@ -444,7 +444,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
-                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceId} (non-critical)", deviceId);
+                    _logger.LogError(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceId} (non-critical)", deviceId);
                 }
             }
         }

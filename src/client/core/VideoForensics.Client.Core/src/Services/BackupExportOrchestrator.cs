@@ -91,7 +91,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to backfill sidecar for event {EventId}", evt.Id);
+                        _logger.LogError(ex, "Failed to backfill sidecar for event {EventId}", evt.Id);
                         result.MissingSidecarUnrecoverable++;
                         result.Details.Add($"Could not reconcile sidecar for event {evt.Id}: {mediaItem.FilePath}");
                     }

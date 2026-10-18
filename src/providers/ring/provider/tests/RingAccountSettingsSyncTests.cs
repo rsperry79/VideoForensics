@@ -123,7 +123,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error);
             writer.Verify(w => w.ReplaceLightGroupSetAsync(It.IsAny<LightGroupSet>(), It.IsAny<CancellationToken>()), Times.Never);
             writer.Verify(w => w.ReplaceProfileAsync(It.IsAny<RingAccountProfile>(), It.IsAny<CancellationToken>()), Times.Once);
             writer.Verify(w => w.ReplaceRingtonesAsync(AccountId, It.IsAny<IReadOnlyList<RingAccountRingtone>>(), It.IsAny<RingAccountRingtoneDefaults>(), It.IsAny<CancellationToken>()), Times.Once);

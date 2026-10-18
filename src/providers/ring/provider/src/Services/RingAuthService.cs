@@ -510,7 +510,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to restore session from saved credentials");
+                _logger.LogError(ex, "Failed to restore session from saved credentials");
                 return false;
             }
         }

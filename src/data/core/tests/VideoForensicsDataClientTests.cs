@@ -201,6 +201,11 @@ namespace VideoForensics.Data.Core.Tests
             _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
             _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
             _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -280,6 +285,11 @@ namespace VideoForensics.Data.Core.Tests
             _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
             _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
             _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
 
             var expectedLogEntry = new ActionLogEntry
             {
@@ -323,6 +333,55 @@ namespace VideoForensics.Data.Core.Tests
             mockMediaItemRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task RecordDownloadEventAsync_LogsDeviceName_NotDeviceId()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var downloadEvent = new DownloadEvent
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ProviderEventId = "event-name",
+                AppVersion = "1.0",
+                Success = true,
+                DownloadStartedUtc = DateTime.UtcNow,
+                EventOccurredAtUtc = DateTime.UtcNow
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDownloadEventRepoInContext = new Mock<IDownloadEventRepository>();
+            var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+
+            _ = mockContext.Setup(x => x.DownloadEvents).Returns(mockDownloadEventRepoInContext.Object);
+            _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-1", Name = "Front Door", Type = "doorbell" });
+            _ = mockActionLogRepoInContext
+                .Setup(x => x.AppendAsync(It.IsAny<string>(), It.IsAny<ActorType>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ActionLogEntry { Id = Guid.NewGuid(), Actor = Environment.UserName, ActorType = ActorType.Human, Action = "MediaDownloaded", EntityType = "DownloadEvent", EntityId = downloadEvent.Id, TimestampUtc = DateTime.UtcNow, EntryHash = "test_hash" });
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            _ = await _dataClient.RecordDownloadEventAsync(downloadEvent, null, CancellationToken.None);
+
+            // Assert: the info log must name the device, not expose its GUID
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Front Door") && !v.ToString()!.Contains(deviceId.ToString())),
+                    It.IsAny<Exception?>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
 
         [Fact]
