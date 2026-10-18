@@ -94,5 +94,34 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(ExportJobState.Succeeded, status!.State);
             Assert.Equal($"/api/v1/accounts/exports/{jobId}", handler.Captured!.RequestUri!.AbsolutePath);
         }
+
+        [Fact]
+        public async Task RemoteAccountExportService_GetLatestStatusForAccountAsync_NotFound_ReturnsNull()
+        {
+            var accountId = Guid.NewGuid();
+            var handler = new CapturingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            var sut = new RemoteAccountExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            ExportJobStatus? status = await sut.GetLatestStatusForAccountAsync(accountId, CancellationToken.None);
+
+            Assert.Null(status);
+            Assert.Equal(HttpMethod.Get, handler.Captured!.Method);
+            Assert.Equal($"/api/v1/accounts/provider-accounts/{accountId}/export-status", handler.Captured.RequestUri!.AbsolutePath);
+        }
+
+        [Fact]
+        public async Task RemoteAccountExportService_GetLatestStatusForAccountAsync_Found_MapsDto()
+        {
+            var accountId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            var dto = new ExportJobDto(jobId, accountId, "Running", null, null, true, DateTime.UtcNow, null);
+            var handler = new CapturingHandler(_ => Json(HttpStatusCode.OK, dto));
+            var sut = new RemoteAccountExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            ExportJobStatus? status = await sut.GetLatestStatusForAccountAsync(accountId, CancellationToken.None);
+
+            Assert.Equal(jobId, status!.JobId);
+            Assert.Equal(ExportJobState.Running, status.State);
+        }
     }
 }

@@ -53,5 +53,19 @@ namespace VideoForensics.Hosting.Remote
             ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(JsonOptions, ct);
             return dto?.ToDomain();
         }
+
+        /// <inheritdoc />
+        public async Task<ExportJobStatus?> GetLatestStatusForAccountAsync(Guid accountId, CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{accountId}/export-status", ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            _ = response.EnsureSuccessStatusCode();
+            ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(JsonOptions, ct);
+            return dto?.ToDomain();
+        }
     }
 }

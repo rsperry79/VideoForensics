@@ -29,6 +29,7 @@ namespace VideoForensics.Hosting.Services
         private readonly TimeProvider _time;
         private readonly Channel<Guid> _queue = Channel.CreateUnbounded<Guid>(new UnboundedChannelOptions { SingleReader = true });
         private readonly ConcurrentDictionary<Guid, ExportJobStatus> _jobs = new();
+        private readonly ConcurrentDictionary<Guid, Guid> _latestJobByAccount = new();
 
         public AccountExportService(IServiceScopeFactory scopeFactory, ILogger<AccountExportService> logger, TimeProvider time)
         {
@@ -45,6 +46,7 @@ namespace VideoForensics.Hosting.Services
         {
             Guid jobId = Guid.NewGuid();
             _jobs[jobId] = new ExportJobStatus(jobId, accountId, ExportJobState.Queued, null, null, purgeAfterExport, _time.GetUtcNow().UtcDateTime, null);
+            _latestJobByAccount[accountId] = jobId;
             await _queue.Writer.WriteAsync(jobId, ct);
             return jobId;
         }
@@ -53,6 +55,12 @@ namespace VideoForensics.Hosting.Services
         public Task<ExportJobStatus?> GetStatusAsync(Guid jobId, CancellationToken ct)
         {
             return Task.FromResult(_jobs.TryGetValue(jobId, out ExportJobStatus? status) ? status : null);
+        }
+
+        /// <inheritdoc />
+        public Task<ExportJobStatus?> GetLatestStatusForAccountAsync(Guid accountId, CancellationToken ct)
+        {
+            return Task.FromResult(_latestJobByAccount.TryGetValue(accountId, out Guid jobId) && _jobs.TryGetValue(jobId, out ExportJobStatus? status) ? status : null);
         }
 
         private ExportJobStatus Update(Guid jobId, Func<ExportJobStatus, ExportJobStatus> change)

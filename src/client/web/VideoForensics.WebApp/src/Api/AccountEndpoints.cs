@@ -305,6 +305,15 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Export a provider account")
                 .WithDescription("Queues a background export of the account's data, optionally purging the account afterwards.");
 
+            _ = group.MapGet("/provider-accounts/{id:guid}/export-status", async (Guid id, IAccountExportService exports, CancellationToken ct) =>
+            {
+                ExportJobStatus? status = await exports.GetLatestStatusForAccountAsync(id, ct);
+                return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get the latest export job for an account")
+                .WithDescription("Returns the most recently queued export job for the account, or 404 when none is known (including after a server restart).");
+
             _ = group.MapGet("/exports/{jobId:guid}", async (Guid jobId, IAccountExportService exports, CancellationToken ct) =>
             {
                 ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);

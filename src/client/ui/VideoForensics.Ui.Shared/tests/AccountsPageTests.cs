@@ -350,4 +350,21 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         });
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
+
+    [Fact]
+    public void AccountsPage_OnLoad_ShowsServerExportStatusForRemovedAccount()
+    {
+        var jobId = Guid.NewGuid();
+        SetRemovedAccount(RemovedAccountId);
+        ExportServiceMock
+            .Setup(e => e.GetLatestStatusForAccountAsync(RemovedAccountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExportJobStatus(jobId, RemovedAccountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
+        ExportServiceMock
+            .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExportJobStatus(jobId, RemovedAccountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains("Running", cut.Find("#removed-accounts").TextContent));
+    }
 }

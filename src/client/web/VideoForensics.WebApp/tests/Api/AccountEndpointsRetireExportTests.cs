@@ -219,5 +219,30 @@ namespace VideoForensics.WebApp.Tests.Api
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task AccountEndpoints_GetExportStatus_ForAccount_ReturnsLatestJob()
+        {
+            var jobId = Guid.NewGuid();
+            _ = _exports.Setup(e => e.GetLatestStatusForAccountAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ExportJobStatus(jobId, _accountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
+
+            HttpResponseMessage response = await _client.GetAsync($"/api/v1/accounts/provider-accounts/{_accountId}/export-status");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(WebJson);
+            Assert.Equal(jobId, dto!.JobId);
+            Assert.Equal("Running", dto.State);
+        }
+
+        [Fact]
+        public async Task AccountEndpoints_GetExportStatus_ForAccount_NoJob_Returns404()
+        {
+            _ = _exports.Setup(e => e.GetLatestStatusForAccountAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ExportJobStatus?)null);
+
+            HttpResponseMessage response = await _client.GetAsync($"/api/v1/accounts/provider-accounts/{_accountId}/export-status");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 }
