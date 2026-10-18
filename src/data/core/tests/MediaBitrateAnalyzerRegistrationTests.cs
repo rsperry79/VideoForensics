@@ -61,5 +61,22 @@ namespace VideoForensics.Data.Core.Tests
 
             Assert.NotSame(first, second);
         }
+
+        [Fact]
+        public void ITimelineVideoBuilder_ResolvedBeforeAndAfterBinDirectorySet_IsNewInstanceEachTime()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddLogging();
+            _ = services.AddVideoForensicsDataCore();
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            IFfmpegToolLocation location = provider.GetRequiredService<IFfmpegToolLocation>();
+            ITimelineVideoBuilder first = provider.GetRequiredService<ITimelineVideoBuilder>();
+
+            location.BinDirectory = Path.GetTempPath();
+            ITimelineVideoBuilder second = provider.GetRequiredService<ITimelineVideoBuilder>();
+
+            Assert.NotSame(first, second);
+        }
     }
 }
