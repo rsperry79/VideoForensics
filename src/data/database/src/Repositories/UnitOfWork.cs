@@ -153,7 +153,27 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive).ToList());
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive && pa.RemovedUtc == null).ToList());
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.RemovedUtc != null).AsEnumerable().OrderByDescending(pa => pa.RemovedUtc).ToList());
+        }
+
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        {
+            ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
+            if (account == null || account.RemovedUtc != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            account.RemovedUtc = removedUtc;
+            account.IsActive = false;
+            _db.SyncSchedules.RemoveRange(_db.SyncSchedules.Where(s => s.ProviderAccountId == accountId));
+            _db.Credentials.RemoveRange(_db.Credentials.Where(c => c.ProviderAccountId == accountId));
+            return Task.CompletedTask;
         }
 
         public Task AddAsync(ProviderAccount account, CancellationToken ct)

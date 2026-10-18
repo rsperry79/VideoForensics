@@ -79,6 +79,14 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) =>
+            throw new NotSupportedException("Listing removed provider accounts is not yet available over the remote API.");
+
+        /// <inheritdoc />
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct) =>
+            throw new NotSupportedException("Retiring a provider account is not yet available over the remote API.");
+
+        /// <inheritdoc />
         public async Task AddAsync(ProviderAccount account, CancellationToken ct)
         {
             var request = new

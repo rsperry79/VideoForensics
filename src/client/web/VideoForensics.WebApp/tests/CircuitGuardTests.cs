@@ -331,6 +331,8 @@ public class CircuitGuardRegistration_Tests
         public Task<ProviderAccount?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct) => Task.FromResult<ProviderAccount?>(null);
         public Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct) => Task.CompletedTask;
         public Task AddAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
         public Task DeleteAsync(Guid accountId, CancellationToken ct) => Task.CompletedTask;

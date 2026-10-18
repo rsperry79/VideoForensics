@@ -23,6 +23,14 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
 
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct) => inner.ListActiveAsync(ct);
 
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) => inner.ListRemovedAsync(ct);
+
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        {
+            Require(AccessPolicy.SuperAdminLocal);
+            return inner.RetireAsync(accountId, removedUtc, ct);
+        }
+
         public Task AddAsync(ProviderAccount account, CancellationToken ct)
         {
             Require(AccessPolicy.SuperAdminLocal);

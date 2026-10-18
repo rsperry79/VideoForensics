@@ -315,6 +315,21 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_RemovedAccountStillFlaggedActive_IsSkipped()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            account.RemovedUtc = Now.AddDays(-1);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.VerifyNotPulled("Ring");
+            h.VerifyNothingRecorded();
+            Assert.Contains(h.Logs.Lines, l => l.Contains("account was removed"));
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_MissingAccount_IsSkipped()
         {
             var h = new Harness();
