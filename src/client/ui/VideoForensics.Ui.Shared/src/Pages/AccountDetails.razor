@@ -141,11 +141,7 @@ else
         <div>
             @if (_confirmingRemove)
             {
-                <div class="d-flex gap-2 align-items-center p-3 border border-danger rounded">
-                    <p class="mb-0">@L["ConfirmRemovePrompt"]</p>
-                    <SfButton CssClass="e-danger" Content="@L["YesRemove"]" OnClick="ConfirmRemoveAsync" Disabled="@_isBusy" />
-                    <SfButton CssClass="e-outline" Content="@L["Cancel"]" OnClick="CancelRemove" Disabled="@_isBusy" />
-                </div>
+                <AccountRemovePanel AccountId="@Id" OnCompleted="OnRemoveCompletedAsync" OnCancelled="CancelRemove" />
             }
             else
             {
@@ -493,23 +489,13 @@ else
         _confirmingRemove = false;
     }
 
-    private async Task ConfirmRemoveAsync()
+    private async Task OnRemoveCompletedAsync(AccountRemovePanel.RemoveResult result)
     {
         _isBusy = true;
         _confirmingRemove = false;
         _statusMessage = null;
         try
         {
-            await SessionState.EnsureLoadedAsync();
-            // Session state loads lazily; the token is only populated after this.
-            // Removing an account is protected by StepUpEndpointFilter: a fresh step-up confirmation (passkey or password) must accompany the call.
-            var stepUpToken = await StepUp.GetStepUpTokenAsync();
-            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
-            using HttpResponseMessage response = await client.DeleteAsync($"api/v1/accounts/provider-accounts/{Id}", CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-
             if (ForensicsConfig.ActiveProviderAccountId == Id)
             {
                 ForensicsConfig.ActiveProviderAccountId = null;
@@ -520,7 +506,6 @@ else
                 catch (NotSupportedException)
                 {
                     _statusMessage = L["SettingServerOnly"];
-                    _isBusy = false;
                     return;
                 }
             }

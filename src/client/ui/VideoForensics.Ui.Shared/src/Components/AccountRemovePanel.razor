@@ -1,0 +1,102 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Resources
+@inject IProviderAccountRepository AccountRepository
+@inject IAccountExportService ExportService
+@inject IStringLocalizer<SharedResources> L
+
+<div class="p-3 border border-danger rounded mb-3" data-testid="account-remove-panel" role="group" aria-label="@L["AccountRemove_Title"]">
+    <h5>@L["AccountRemove_Title"]</h5>
+    @if (_errorMessage is not null)
+    {
+        <p class="text-danger">@_errorMessage</p>
+    }
+    @if (!_deleteStep)
+    {
+        <p>@L["AccountRemove_Prompt"]</p>
+        <div class="d-flex gap-2 align-items-center">
+            <SfButton CssClass="e-primary" Content="@L["AccountRemove_Retain"]" OnClick="RetainAsync" Disabled="@_isBusy" />
+            <SfButton CssClass="e-danger" Content="@L["AccountRemove_DeletePermanently"]" OnClick="GoToDeleteStep" Disabled="@_isBusy" />
+            <SfButton CssClass="e-outline" Content="@L["AccountRemove_Cancel"]" OnClick="CancelAsync" Disabled="@_isBusy" />
+        </div>
+        <small class="text-muted">@L["AccountRemove_RetainHint"]</small>
+    }
+    else
+    {
+        <p>@L["AccountRemove_ExportPrompt"]</p>
+        <div class="d-flex gap-2 align-items-center">
+            <SfButton CssClass="e-primary" Content="@L["AccountRemove_ExportFirst"]" OnClick="ExportFirstAsync" Disabled="@_isBusy" />
+            <SfButton CssClass="e-danger" Content="@L["AccountRemove_DeleteWithoutExport"]" OnClick="DeleteWithoutExportAsync" Disabled="@_isBusy" />
+            <SfButton CssClass="e-outline" Content="@L["AccountRemove_Cancel"]" OnClick="CancelAsync" Disabled="@_isBusy" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>What happened when the operator finished the flow.</summary>
+    public enum RemoveOutcome { Retained, Deleted, ExportQueued }
+
+    /// <summary>Result of the remove flow; <paramref name="ExportJobId"/> is set only for <see cref="RemoveOutcome.ExportQueued"/>.</summary>
+    public sealed record RemoveResult(Guid AccountId, RemoveOutcome Outcome, Guid? ExportJobId);
+
+    private bool _deleteStep;
+    private bool _isBusy;
+    private string? _errorMessage;
+
+    [Parameter, EditorRequired] public Guid AccountId { get; set; }
+
+    /// <summary>Skips the retain/delete choice (used for accounts that are already retired).</summary>
+    [Parameter] public bool StartAtDeleteStep { get; set; }
+
+    [Parameter] public EventCallback<RemoveResult> OnCompleted { get; set; }
+
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _deleteStep = StartAtDeleteStep;
+    }
+
+    private void GoToDeleteStep()
+    {
+        _deleteStep = true;
+    }
+
+    private Task CancelAsync() => OnCancelled.InvokeAsync();
+
+    private Task RetainAsync() => RunAsync(async ct =>
+    {
+        await AccountRepository.RetireAsync(AccountId, DateTime.UtcNow, ct);
+        return new RemoveResult(AccountId, RemoveOutcome.Retained, null);
+    });
+
+    private Task DeleteWithoutExportAsync() => RunAsync(async ct =>
+    {
+        await AccountRepository.DeleteAsync(AccountId, ct);
+        return new RemoveResult(AccountId, RemoveOutcome.Deleted, null);
+    });
+
+    private Task ExportFirstAsync() => RunAsync(async ct =>
+    {
+        Guid jobId = await ExportService.QueueExportAsync(AccountId, true, ct);
+        return new RemoveResult(AccountId, RemoveOutcome.ExportQueued, jobId);
+    });
+
+    private async Task RunAsync(Func<CancellationToken, Task<RemoveResult>> action)
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        try
+        {
+            RemoveResult result = await action(CancellationToken.None);
+            await OnCompleted.InvokeAsync(result);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = L["AccountRemove_Error", ex.Message];
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+}
