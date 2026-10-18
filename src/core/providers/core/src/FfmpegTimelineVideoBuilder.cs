@@ -15,11 +15,19 @@ namespace VideoForensics.Core.Providers.Core
     /// the bounding box of all inputs (largest width by largest height), rounded up to even dimensions because
     /// libx264 with yuv420p rejects odd sizes.
     /// <para>
-    /// Segment rules: a still shows for its hold, rounded to whole seconds with a minimum of one second. A clip replaces
-    /// the stills inside its window, so a still is cut around clip windows and any cut-off remainder shorter than one
-    /// second is dropped. Overlapping clips resolve to the one that starts first; the later clip is trimmed to start
-    /// where the earlier one ends. A clip is rounded to whole seconds with no minimum, so a clip window that rounds to
-    /// zero is dropped. Gaps between segments are not filled.
+    /// Segment rules, all rounding by <c>WholeSecondHold</c> (away from zero, minimum 1 s):
+    /// <list type="bullet">
+    /// <item>An uncut still shows for its hold, rounded.</item>
+    /// <item>A clip replaces the stills inside its window, so a still is cut around clip windows. A cut-off remainder
+    /// under 1 s before rounding is dropped; a remainder of 1 s or more is rounded like a hold.</item>
+    /// <item>A clip window is rounded like a hold, so a sub-second window still gets 1 frame.</item>
+    /// <item>A clip's usable seconds are capped at the real video left after its offset: the smaller of the window
+    /// seconds and the rounded real duration minus the offset. The encoded frame count therefore matches the video
+    /// actually read. A clip with no real video left after its offset contributes no segment.</item>
+    /// </list>
+    /// Overlapping clips resolve to the one that starts first; the later clip is trimmed to start where the earlier
+    /// one ends. Declared windows are used for placement, so a part of a declared window past the clip's real end is a
+    /// gap: it still cuts stills, but nothing fills it. Gaps between segments are not filled.
     /// </para>
     /// </summary>
     public sealed class FfmpegTimelineVideoBuilder : ITimelineVideoBuilder
@@ -59,6 +67,13 @@ namespace VideoForensics.Core.Providers.Core
 
             ct.ThrowIfCancellationRequested();
 
+            (bool durationsOk, IReadOnlyList<ProbedClip> probedClips, string? durationError) = await TryProbeClipDurationsAsync(clips, ct);
+            if (!durationsOk)
+            {
+                _logger.LogError("Timeline video build could not read clip durations for {ClipCount} clips: {Error}", clips.Count, durationError);
+                return new TimelineVideoResult(false, null, durationError, 0);
+            }
+
             var mediaPaths = stills.Select(s => s.ImagePath).Concat(clips.Select(c => c.VideoPath)).ToList();
             (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(mediaPaths, ct);
             if (!sized)
@@ -67,7 +82,7 @@ namespace VideoForensics.Core.Providers.Core
                 return new TimelineVideoResult(false, null, sizeError, 0);
             }
 
-            IReadOnlyList<Segment> segments = PlanSegments(stills, clips);
+            IReadOnlyList<Segment> segments = PlanSegments(stills, probedClips);
             if (segments.Count == 0)
             {
                 _logger.LogError("Timeline video build has no segments left after applying {ClipCount} clips", clips.Count);
@@ -179,9 +194,10 @@ namespace VideoForensics.Core.Providers.Core
 
         /// <summary>
         /// Turns stills and clips into the ordered list of segments to encode. Clip windows are resolved first (earlier
-        /// start wins, later clip trimmed), then each still is cut around them.
+        /// start wins, later clip trimmed), then each still is cut around them. Windows with no usable seconds still cut
+        /// stills but produce no segment, which leaves that span as a gap.
         /// </summary>
-        private static IReadOnlyList<Segment> PlanSegments(IReadOnlyList<TimelineStill> stills, IReadOnlyList<TimelineClip> clips)
+        private static IReadOnlyList<Segment> PlanSegments(IReadOnlyList<TimelineStill> stills, IReadOnlyList<ProbedClip> clips)
         {
             List<ClipWindow> windows = ResolveClipWindows(clips);
             var items = new List<(DateTimeOffset Start, Segment Segment)>();
@@ -202,7 +218,7 @@ namespace VideoForensics.Core.Providers.Core
 
                 foreach ((DateTimeOffset pieceStart, TimeSpan length) in SubtractClips(still.CapturedAt, stillEnd, overlapping))
                 {
-                    // A cut-off remainder shorter than one whole second is dropped rather than rounded up.
+                    // A cut-off remainder under 1 s before rounding is dropped; 1 s or more is rounded like a hold.
                     if (length < TimeSpan.FromSeconds(1))
                     {
                         continue;
@@ -214,7 +230,10 @@ namespace VideoForensics.Core.Providers.Core
 
             foreach (ClipWindow window in windows)
             {
-                items.Add((window.Start, new Segment(true, window.VideoPath, window.Offset, window.Seconds)));
+                if (window.Seconds > 0)
+                {
+                    items.Add((window.Start, new Segment(true, window.VideoPath, window.Offset, window.Seconds)));
+                }
             }
 
             // OrderBy is stable, so equal start times keep their insertion order.
@@ -224,16 +243,18 @@ namespace VideoForensics.Core.Providers.Core
         /// <summary>
         /// Resolves clip windows so they do not overlap: clips are taken in start order, and a clip that starts before
         /// the previous accepted clip ends is trimmed to start where that clip ends. A clip fully covered by an earlier
-        /// one is dropped, as is a clip whose window rounds to zero seconds. Returned windows are sorted and disjoint.
+        /// one is dropped. Returned windows are sorted and disjoint. Placement uses the declared window; the usable
+        /// seconds are capped at the real video left after the window's offset (see <see cref="ClipWindow.Seconds"/>).
         /// </summary>
-        private static List<ClipWindow> ResolveClipWindows(IReadOnlyList<TimelineClip> clips)
+        private static List<ClipWindow> ResolveClipWindows(IReadOnlyList<ProbedClip> clips)
         {
             var windows = new List<ClipWindow>();
             DateTimeOffset cursor = DateTimeOffset.MinValue;
             bool hasCursor = false;
 
-            foreach (TimelineClip clip in clips.OrderBy(c => c.StartedAt))
+            foreach (ProbedClip probed in clips.OrderBy(c => c.Clip.StartedAt))
             {
+                TimelineClip clip = probed.Clip;
                 DateTimeOffset end = clip.StartedAt + clip.Duration;
                 DateTimeOffset start = hasCursor && cursor > clip.StartedAt ? cursor : clip.StartedAt;
                 if (end <= start)
@@ -241,13 +262,17 @@ namespace VideoForensics.Core.Providers.Core
                     continue;
                 }
 
-                int seconds = (int)Math.Round((end - start).TotalSeconds, MidpointRounding.AwayFromZero);
-                if (seconds <= 0)
-                {
-                    continue;
-                }
+                TimeSpan offset = start - clip.StartedAt;
+                // The declared window is rounded like a hold. Real video is only read up to its end, so a window
+                // past the real end gets fewer seconds, or none when no real video is left after the offset.
+                int declaredSeconds = WholeSecondHold(end - start);
+                double realSecondsLeft = probed.RealSeconds - offset.TotalSeconds;
+                int seconds = realSecondsLeft > 0
+                    ? Math.Min(declaredSeconds, WholeSecondHold(TimeSpan.FromSeconds(realSecondsLeft)))
+                    : 0;
 
-                windows.Add(new ClipWindow(clip.VideoPath, start, start - clip.StartedAt, seconds, end));
+                // The window keeps its declared span even when it yields no seconds, so it still cuts stills.
+                windows.Add(new ClipWindow(clip.VideoPath, start, offset, seconds, end));
                 cursor = end;
                 hasCursor = true;
             }
@@ -287,13 +312,71 @@ namespace VideoForensics.Core.Providers.Core
         }
 
         /// <summary>
-        /// Rounds a hold to whole seconds, with a minimum of one second. Half-seconds round away from zero,
-        /// so 1.5 s becomes 2 s and 1.4 s becomes 1 s.
+        /// The one rounding rule for stills, cut remainders and clip windows: round to whole seconds with a minimum of
+        /// one second. Half-seconds round away from zero, so 1.5 s becomes 2 s, 1.4 s becomes 1 s, and 0.4 s becomes 1 s.
         /// </summary>
         private static int WholeSecondHold(TimeSpan hold)
         {
             int seconds = (int)Math.Round(hold.TotalSeconds, MidpointRounding.AwayFromZero);
             return Math.Max(1, seconds);
+        }
+
+        /// <summary>
+        /// Reads each clip's real duration with ffprobe (one run per clip) so segments never ask for more video than
+        /// the file holds. Failures are returned, not thrown, except cancellation; each message names the clip.
+        /// </summary>
+        private async Task<(bool Ok, IReadOnlyList<ProbedClip> Clips, string? Error)> TryProbeClipDurationsAsync(
+            IReadOnlyList<TimelineClip> clips, CancellationToken ct)
+        {
+            var probed = new List<ProbedClip>(clips.Count);
+            foreach (TimelineClip clip in clips)
+            {
+                string name = Path.GetFileName(clip.VideoPath);
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = _ffprobePath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                foreach (string arg in new[] { "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0" })
+                {
+                    startInfo.ArgumentList.Add(arg);
+                }
+                startInfo.ArgumentList.Add(Path.GetFullPath(clip.VideoPath));
+
+                ProcessResult run;
+                try
+                {
+                    run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    return (false, Array.Empty<ProbedClip>(), $"Could not read the duration of clip '{name}': {ex.Message}");
+                }
+
+                if (run.ExitCode != 0)
+                {
+                    return (false, Array.Empty<ProbedClip>(), $"ffprobe could not read the duration of clip '{name}' (exit code {run.ExitCode}).");
+                }
+
+                // Output is the duration in decimal seconds, e.g. "2.000000".
+                if (!double.TryParse(run.StandardOutput.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds)
+                    || !double.IsFinite(seconds)
+                    || seconds <= 0)
+                {
+                    return (false, Array.Empty<ProbedClip>(), $"ffprobe returned an unreadable duration for clip '{name}'.");
+                }
+
+                probed.Add(new ProbedClip(clip, seconds));
+            }
+
+            return (true, probed, null);
         }
 
         /// <summary>
@@ -490,12 +573,18 @@ namespace VideoForensics.Core.Providers.Core
         /// <param name="Seconds">Whole-second frame count of the segment.</param>
         private sealed record Segment(bool IsClip, string SourcePath, TimeSpan Offset, int Seconds);
 
+        /// <summary>A clip with its ffprobe-measured real duration in seconds.</summary>
+        private sealed record ProbedClip(TimelineClip Clip, double RealSeconds);
+
         /// <summary>A resolved, non-overlapping clip window on the timeline: [Start, End).</summary>
         /// <param name="VideoPath">The clip video file.</param>
         /// <param name="Start">Timeline start of the window, after any trimming.</param>
         /// <param name="Offset">How far into the clip the window starts (Start minus the clip's StartedAt).</param>
-        /// <param name="Seconds">Whole-second frame count of the window.</param>
-        /// <param name="End">Timeline end of the window.</param>
+        /// <param name="Seconds">
+        /// Usable whole-second frame count: the window's rounded seconds, capped at the rounded real video left after
+        /// <paramref name="Offset"/>. Zero means no real video is left, so the window cuts stills but adds no segment.
+        /// </param>
+        /// <param name="End">Timeline end of the declared window.</param>
         private sealed record ClipWindow(string VideoPath, DateTimeOffset Start, TimeSpan Offset, int Seconds, DateTimeOffset End);
     }
 }

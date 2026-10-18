@@ -15,7 +15,10 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// </summary>
     /// <param name="VideoPath">Path to an existing video file that ffprobe can read and that has a video stream.</param>
     /// <param name="StartedAt">Wall-clock time of the clip's first frame.</param>
-    /// <param name="Duration">How much of the clip is used, from its first frame. Must be positive.</param>
+    /// <param name="Duration">
+    /// The declared window, from the clip's first frame. Must be positive. The real file can be shorter: the usable
+    /// length is capped at the real video, and any declared window past the real end is a gap that stays unfilled.
+    /// </param>
     public sealed record TimelineClip(string VideoPath, DateTimeOffset StartedAt, TimeSpan Duration);
 
     /// <summary>Input to <see cref="ITimelineVideoBuilder.BuildAsync"/>.</summary>
@@ -24,10 +27,12 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// <param name="Clips">
     /// Optional event clips. Each clip replaces the stills in its window. The timeline spans from the earliest
     /// start to the latest end across stills and clips. Stills are cut around clip windows: a still's effective
-    /// interval is its [CapturedAt, CapturedAt + Hold) minus the clip windows, and a remaining piece shorter than
-    /// one whole second is dropped. Clips that overlap are resolved in favour of the one that starts first; the
-    /// later clip is trimmed to start where the earlier one ends. Each segment is rounded to whole seconds
-    /// (away from zero, minimum 1 s), and a clip whose window rounds to 0 s is dropped.
+    /// interval is its [CapturedAt, CapturedAt + Hold) minus the clip windows. A remaining piece under 1 s before
+    /// rounding is dropped; a piece of 1 s or more is rounded like a hold. Clips that overlap are resolved in favour
+    /// of the one that starts first; the later clip is trimmed to start where the earlier one ends. Every segment
+    /// is rounded to whole seconds (away from zero, minimum 1 s), including a clip window, so a sub-second clip
+    /// window still gets one frame. A clip's usable seconds are capped at its real video length after the offset,
+    /// so the frame count matches the frames written. Declared time past a clip's real end is a gap and is not filled.
     /// </param>
     public sealed record TimelineVideoRequest(IReadOnlyList<TimelineStill> Stills, string OutputPath, IReadOnlyList<TimelineClip>? Clips = null);
 

@@ -112,6 +112,70 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
+        public async Task BuildAsync_ClipShorterThanOneSecondWindow_StillGetsOneFrame()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            string red = Path.Combine(_workDir, "red.png");
+            string clip = Path.Combine(_workDir, "clip.mp4");
+            CreatePng(red, "red", 320, 240);
+            CreateVideo(clip, 320, 240, seconds: 2);
+
+            // Still [T0, T0+3) red. A 0.4 s clip window at T0+1 rounds to 0 s, but clip windows use the same
+            // rounding as stills (minimum 1 s), so it contributes 1 frame. The cut-off still remainder
+            // [T0+1.4, T0+3) is 1.6 s raw and rounds to 2 s. Expected: 1 red + 1 clip + 2 red = 4 frames.
+            var stills = new[] { new TimelineStill(red, T0, TimeSpan.FromSeconds(3)) };
+            var clips = new[] { new TimelineClip(clip, T0.AddSeconds(1), TimeSpan.FromSeconds(0.4)) };
+            string output = Path.Combine(_workDir, "timeline.mp4");
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output, clips), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Equal(4, result.FrameCount);
+            Assert.Equal("4", ProbeStreamField(output, "nb_read_frames"));
+
+            List<(byte R, byte G, byte B)> frames = ReadFrameAverages(output);
+            Assert.Equal(4, frames.Count);
+            Assert.True(IsRed(frames[0]), $"frame 0 should be the red still, was {frames[0]}");
+            Assert.False(IsRed(frames[1]), $"frame 1 should be the 1-frame clip, not the still, was {frames[1]}");
+            Assert.True(IsRed(frames[2]), $"frame 2 should be the still remainder, was {frames[2]}");
+            Assert.True(IsRed(frames[3]), $"frame 3 should be the still remainder, was {frames[3]}");
+        }
+
+        [Fact]
+        public async Task BuildAsync_ClipDeclaredLongerThanRealVideo_FrameCountMatchesWrittenFrames()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            string still = Path.Combine(_workDir, "still.png");
+            string clip = Path.Combine(_workDir, "clip.mp4");
+            CreatePng(still, "red", 320, 240);
+            CreateVideo(clip, 320, 240, seconds: 2);
+
+            // A 2 s real clip declared with Duration 5 s, over a 5 s still starting at the same time.
+            // Usable clip seconds = min(declared 5, real 2) = 2, so the clip contributes 2 frames. The declared
+            // window covers the whole still, so the still has no remainder. Real video ends at 2 s and the rest of
+            // the declared window is a gap, which stays unfilled. Expected: 2 frames, equal to the frames written.
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(5)) };
+            var clips = new[] { new TimelineClip(clip, T0, TimeSpan.FromSeconds(5)) };
+            string output = Path.Combine(_workDir, "timeline.mp4");
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output, clips), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Equal(2, result.FrameCount);
+            Assert.Equal(result.FrameCount.ToString(System.Globalization.CultureInfo.InvariantCulture), ProbeStreamField(output, "nb_read_frames"));
+        }
+
+        [Fact]
         public async Task BuildAsync_ClipWithoutVideoStream_ReturnsFailureWithoutThrowing()
         {
             if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
