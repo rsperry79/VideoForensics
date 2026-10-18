@@ -50,6 +50,10 @@ namespace VideoForensics.Providers.Ring.Services
         private const string CacheKey = "ring_doorbot_history";
         private const int CacheTtlHours = 24;
 
+        // Serializes the cache-miss path (decide range, fetch, store) so each fetch widens from the
+        // entry the previous fetch stored; otherwise a slower, narrower fetch could overwrite a wider one.
+        private readonly SemaphoreSlim _fetchGate = new(1, 1);
+
         public RingHistoryEventCache(IMemoryCache cache, ILogger logger)
         {
             _cache = cache;
@@ -71,10 +75,9 @@ namespace VideoForensics.Providers.Ring.Services
             return false;
         }
 
-        public async Task<List<DoorbotHistoryEvent>> GetEventsAsync(Session session, DateTime startDate, DateTime endDate, CancellationToken ct)
+        private List<DoorbotHistoryEvent>? TryServeFromCache(DateTime startDate, DateTime endDate, out CachedHistoryRange? cachedRange)
         {
-            // Try to get cached range with metadata
-            if (_cache.TryGetValue(CacheKey, out CachedHistoryRange? cachedRange))
+            if (_cache.TryGetValue(CacheKey, out cachedRange))
             {
                 if (cachedRange != null &&
                     startDate >= cachedRange.Start &&
@@ -100,52 +103,78 @@ namespace VideoForensics.Providers.Ring.Services
                 }
             }
 
-            // Determine the range to fetch: expand if we need to widen cache
-            DateTime fetchStart = startDate;
-            DateTime fetchEnd = endDate;
+            return null;
+        }
 
-            if (cachedRange != null)
+        public async Task<List<DoorbotHistoryEvent>> GetEventsAsync(Session session, DateTime startDate, DateTime endDate, CancellationToken ct)
+        {
+            var served = TryServeFromCache(startDate, endDate, out _);
+            if (served != null)
             {
-                // Widen boundaries if needed
-                if (cachedRange.Start < startDate)
-                {
-                    fetchStart = cachedRange.Start;
-                }
-
-                if (cachedRange.End > endDate)
-                {
-                    fetchEnd = cachedRange.End;
-                }
+                return served;
             }
 
-            _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
-            List<DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
-
-            // Store composite entry (events + metadata) with long TTL
-            var cacheEntry = new CachedHistoryRange
+            await _fetchGate.WaitAsync(ct);
+            try
             {
-                Events = events ?? [],
-                Start = fetchStart,
-                End = fetchEnd,
-                CachedAt = DateTime.UtcNow
-            };
+                // Re-read inside the gate: another caller may have stored a range that now covers this request.
+                served = TryServeFromCache(startDate, endDate, out var cachedRange);
+                if (served != null)
+                {
+                    return served;
+                }
 
-            _cache.Set(CacheKey, cacheEntry, new MemoryCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(CacheTtlHours)
-            });
+                // Determine the range to fetch: expand if we need to widen cache
+                DateTime fetchStart = startDate;
+                DateTime fetchEnd = endDate;
 
-            // Return only the slice matching what was actually requested
-            if (fetchStart == startDate && fetchEnd == endDate)
-            {
-                return cacheEntry.Events;
+                if (cachedRange != null)
+                {
+                    // Widen boundaries if needed
+                    if (cachedRange.Start < startDate)
+                    {
+                        fetchStart = cachedRange.Start;
+                    }
+
+                    if (cachedRange.End > endDate)
+                    {
+                        fetchEnd = cachedRange.End;
+                    }
+                }
+
+                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+                List<DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
+
+                // Store composite entry (events + metadata) with long TTL
+                var cacheEntry = new CachedHistoryRange
+                {
+                    Events = events ?? [],
+                    Start = fetchStart,
+                    End = fetchEnd,
+                    CachedAt = DateTime.UtcNow
+                };
+
+                _cache.Set(CacheKey, cacheEntry, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(CacheTtlHours)
+                });
+
+                // Return only the slice matching what was actually requested
+                if (fetchStart == startDate && fetchEnd == endDate)
+                {
+                    return cacheEntry.Events;
+                }
+
+                return cacheEntry.Events
+                    .Where(e => e.CreatedAtDateTime.HasValue &&
+                               e.CreatedAtDateTime.Value >= startDate &&
+                               e.CreatedAtDateTime.Value <= endDate)
+                    .ToList();
             }
-
-            return cacheEntry.Events
-                .Where(e => e.CreatedAtDateTime.HasValue &&
-                           e.CreatedAtDateTime.Value >= startDate &&
-                           e.CreatedAtDateTime.Value <= endDate)
-                .ToList();
+            finally
+            {
+                _fetchGate.Release();
+            }
         }
     }
 }
