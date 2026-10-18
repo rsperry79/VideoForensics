@@ -21,5 +21,10 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="jobId">The job id returned by <see cref="QueueExportAsync"/>.</param>
         /// <param name="ct">Cancellation token.</param>
         Task<ExportJobStatus?> GetStatusAsync(Guid jobId, CancellationToken ct);
+
+        /// <summary>Gets the most recently queued export job for an account, or null if none is known (including after a restart).</summary>
+        /// <param name="accountId">The provider account.</param>
+        /// <param name="ct">Cancellation token.</param>
+        Task<ExportJobStatus?> GetLatestStatusForAccountAsync(Guid accountId, CancellationToken ct);
     }
 }

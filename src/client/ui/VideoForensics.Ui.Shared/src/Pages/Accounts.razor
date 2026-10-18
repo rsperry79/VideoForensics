@@ -87,7 +87,7 @@ else
 
     <h5 class="mt-4">@L["RemovedAccountsTitle"]</h5>
     <div id="removed-accounts">
-        @foreach (var done in _exports.Values.Where(e => e.State == ExportJobState.Succeeded))
+        @foreach (var done in _exports.Values.Where(e => e.State == ExportJobState.Succeeded && !e.FromServer))
         {
             <p class="text-success">@L["ExportSucceededNotice", done.DisplayName, done.FilePath ?? "-"]</p>
         }
@@ -143,10 +143,14 @@ else
 
     private sealed class ExportTrack
     {
-        public ExportTrack(string displayName)
+        public ExportTrack(string displayName, bool fromServer = false)
         {
             DisplayName = displayName;
+            FromServer = fromServer;
         }
+
+        /// <summary>True when the track came from the server lookup on load rather than an export started in this session.</summary>
+        public bool FromServer { get; }
 
         public string DisplayName { get; }
         public ExportJobState State { get; set; } = ExportJobState.Queued;
@@ -158,6 +162,7 @@ else
 
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly Dictionary<Guid, ExportTrack> _exports = new();
+    private readonly HashSet<Guid> _pollingJobs = new();
 
     private List<AccountRow> _rows = new();
     private List<AccountRow> _removedRows = new();
@@ -190,6 +195,7 @@ else
             var removed = await ProviderAccountRepository.ListRemovedAsync(CancellationToken.None);
             _rows = await BuildRowsAsync(active);
             _removedRows = await BuildRowsAsync(removed);
+            await RefreshExportStatusesAsync();
             var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
             _providerNames = _rows.Concat(_removedRows).Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
             // Every provider is selected by default so the grids start with all accounts visible; providers that appear later are selected too.
@@ -207,6 +213,44 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    /// <summary>Reads the server's latest export job per removed account and resumes polling for any still queued or running.</summary>
+    private async Task RefreshExportStatusesAsync()
+    {
+        foreach (AccountRow row in _removedRows)
+        {
+            try
+            {
+                ExportJobStatus? latest = await ExportService.GetLatestStatusForAccountAsync(row.Account.Id, _disposeCts.Token);
+                if (latest is null)
+                {
+                    continue;
+                }
+
+                if (!_exports.TryGetValue(row.Account.Id, out ExportTrack? track))
+                {
+                    track = new ExportTrack(row.DisplayName, fromServer: true);
+                    _exports[row.Account.Id] = track;
+                }
+
+                track.State = latest.State;
+                track.FilePath = latest.FilePath;
+                track.ErrorMessage = latest.ErrorMessage;
+                if (latest.State is ExportJobState.Queued or ExportJobState.Running && _pollingJobs.Add(latest.JobId))
+                {
+                    _ = PollExportAsync(row.Account.Id, latest.JobId, _disposeCts.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Page disposed.
+            }
+            catch
+            {
+                // A failed lookup leaves the row without a status rather than failing the whole page.
+            }
         }
     }
 
@@ -266,7 +310,10 @@ else
             string name = _rows.Concat(_removedRows).FirstOrDefault(r => r.Account.Id == result.AccountId)?.DisplayName ?? result.AccountId.ToString();
             _exports[result.AccountId] = new ExportTrack(name);
             // Fire-and-forget by design: the UI must not block while the server exports; the loop ends on a terminal state or dispose.
-            _ = PollExportAsync(result.AccountId, jobId, _disposeCts.Token);
+            if (_pollingJobs.Add(jobId))
+            {
+                _ = PollExportAsync(result.AccountId, jobId, _disposeCts.Token);
+            }
         }
 
         await LoadAccountsAsync();
@@ -274,6 +321,7 @@ else
 
     private async Task PollExportAsync(Guid accountId, Guid jobId, CancellationToken ct)
     {
+        _ = _pollingJobs.Add(jobId);
         try
         {
             using var timer = new PeriodicTimer(PollInterval);
@@ -313,6 +361,10 @@ else
                 track.ErrorMessage = ex.Message;
                 await InvokeAsync(StateHasChanged);
             }
+        }
+        finally
+        {
+            _ = _pollingJobs.Remove(jobId);
         }
     }
 

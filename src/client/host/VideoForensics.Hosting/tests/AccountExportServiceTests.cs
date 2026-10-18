@@ -272,5 +272,43 @@ namespace VideoForensics.Hosting.Tests
             _events.Verify(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()), Times.Once);
             _events.Verify(r => r.ListByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        [Fact]
+        public async Task AccountExportService_GetLatestStatusForAccount_ReturnsLatestQueuedJob()
+        {
+            AccountExportService sut = CreateSut();
+            _ = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
+            Guid second = await sut.QueueExportAsync(_account.Id, true, CancellationToken.None);
+
+            ExportJobStatus? status = await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None);
+
+            Assert.NotNull(status);
+            Assert.Equal(second, status.JobId);
+        }
+
+        [Fact]
+        public async Task AccountExportService_GetLatestStatusForAccount_NoJobs_ReturnsNull()
+        {
+            AccountExportService sut = CreateSut();
+
+            ExportJobStatus? status = await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None);
+
+            Assert.Null(status);
+        }
+
+        [Fact]
+        public async Task AccountExportService_GetLatestStatusForAccount_OtherAccountUnaffected()
+        {
+            AccountExportService sut = CreateSut();
+            Guid otherAccount = Guid.NewGuid();
+            Guid mine = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
+            Guid theirs = await sut.QueueExportAsync(otherAccount, false, CancellationToken.None);
+
+            ExportJobStatus? mineStatus = await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None);
+            ExportJobStatus? theirStatus = await sut.GetLatestStatusForAccountAsync(otherAccount, CancellationToken.None);
+
+            Assert.Equal(mine, mineStatus!.JobId);
+            Assert.Equal(theirs, theirStatus!.JobId);
+        }
     }
 }
