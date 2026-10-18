@@ -96,7 +96,7 @@ namespace VideoForensics.Hosting.Tests
         {
             Guid jobId = await sut.QueueExportAsync(accountId, purge, CancellationToken.None);
             await sut.RunJobAsync(jobId, CancellationToken.None);
-            return sut.GetStatus(jobId)!;
+            return (await sut.GetStatusAsync(jobId, CancellationToken.None))!;
         }
 
         [Fact]
@@ -107,7 +107,7 @@ namespace VideoForensics.Hosting.Tests
             Guid jobId = await sut.QueueExportAsync(_account.Id, true, CancellationToken.None);
 
             Assert.NotEqual(Guid.Empty, jobId);
-            ExportJobStatus? status = sut.GetStatus(jobId);
+            ExportJobStatus? status = await sut.GetStatusAsync(jobId, CancellationToken.None);
             Assert.NotNull(status);
             Assert.Equal(ExportJobState.Queued, status.State);
             Assert.Equal(_account.Id, status.AccountId);

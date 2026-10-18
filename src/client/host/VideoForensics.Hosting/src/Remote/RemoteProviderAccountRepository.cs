@@ -79,12 +79,21 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) =>
-            throw new NotSupportedException("Listing removed provider accounts is not yet available over the remote API.");
+        public async Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/accounts/provider-accounts/removed", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+        }
 
         /// <inheritdoc />
-        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct) =>
-            throw new NotSupportedException("Retiring a provider account is not yet available over the remote API.");
+        /// <remarks>The server stamps the removal time itself, so <paramref name="removedUtc"/> is not sent.</remarks>
+        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.PostAsync($"/api/v1/accounts/provider-accounts/{accountId}/retire", null, ct);
+            _ = response.EnsureSuccessStatusCode();
+        }
 
         /// <inheritdoc />
         public async Task AddAsync(ProviderAccount account, CancellationToken ct)

@@ -60,6 +60,17 @@ namespace VideoForensics.Hosting.Tests
             _ = Assert.Single(result);
         }
         [Fact]
+        public async Task RemoteProviderAccountRepository_RetireAsync_PostsToRetireRoute()
+        {
+            var accountId = Guid.NewGuid();
+            var handler = new FakeHttpMessageHandler(async _ => { await Task.Yield(); return new HttpResponseMessage(HttpStatusCode.OK); });
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+            var repo = new RemoteProviderAccountRepository(httpClient);
+            await repo.RetireAsync(accountId, DateTime.UtcNow, CancellationToken.None);
+            Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
+            Assert.Equal($"/api/v1/accounts/provider-accounts/{accountId}/retire", handler.CapturedRequest.RequestUri!.AbsolutePath);
+        }
+        [Fact]
         public async Task AddAsync_WithProviderAccount_PostsToEndpoint()
         {
             var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };

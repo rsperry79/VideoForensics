@@ -48,9 +48,9 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public ExportJobStatus? GetStatus(Guid jobId)
+        public Task<ExportJobStatus?> GetStatusAsync(Guid jobId, CancellationToken ct)
         {
-            return _jobs.TryGetValue(jobId, out ExportJobStatus? status) ? status : null;
+            return Task.FromResult(_jobs.TryGetValue(jobId, out ExportJobStatus? status) ? status : null);
         }
 
         private ExportJobStatus Update(Guid jobId, Func<ExportJobStatus, ExportJobStatus> change)

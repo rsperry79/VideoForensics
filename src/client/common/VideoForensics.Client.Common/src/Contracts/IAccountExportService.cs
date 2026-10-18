@@ -15,6 +15,7 @@ namespace VideoForensics.Client.Common.Contracts
 
         /// <summary>Gets the current status of a job, or null if unknown (including after a restart).</summary>
         /// <param name="jobId">The job id returned by <see cref="QueueExportAsync"/>.</param>
-        ExportJobStatus? GetStatus(Guid jobId);
+        /// <param name="ct">Cancellation token.</param>
+        Task<ExportJobStatus?> GetStatusAsync(Guid jobId, CancellationToken ct);
     }
 }
