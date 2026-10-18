@@ -29,7 +29,7 @@ namespace VideoForensics.Hosting.Tests
             Append(buffer, Rec("Error", "Cat", "network down"));       // 5: no search match
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery("Warning", "disk", null), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery("Warning", "disk", null), CancellationToken.None);
 
             Assert.Equal(new long[] { 2, 3 }, page.Entries.Select(e => e.Sequence));
             Assert.False(page.Truncated);
@@ -45,7 +45,7 @@ namespace VideoForensics.Hosting.Tests
             Append(buffer, Rec("Information", "Cat", "three"));
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery(null, null, 1), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery(null, null, 1), CancellationToken.None);
 
             Assert.Equal(new long[] { 2, 3 }, page.Entries.Select(e => e.Sequence));
         }
@@ -60,7 +60,7 @@ namespace VideoForensics.Hosting.Tests
             }
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), CancellationToken.None);
 
             Assert.True(page.Truncated);
             Assert.Equal(2, page.Entries.Count);
@@ -77,7 +77,7 @@ namespace VideoForensics.Hosting.Tests
             }
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), CancellationToken.None);
 
             Assert.True(page.Truncated);
             Assert.Equal(new long[] { 4, 5 }, page.Entries.Select(e => e.Sequence));
@@ -93,7 +93,7 @@ namespace VideoForensics.Hosting.Tests
             }
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 0), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 0), CancellationToken.None);
 
             Assert.True(page.Truncated);
             Assert.Equal(500, page.Entries.Count);
@@ -109,7 +109,7 @@ namespace VideoForensics.Hosting.Tests
             }
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 5000), Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 5000), CancellationToken.None);
 
             Assert.True(page.Truncated);
             Assert.Equal(2000, page.Entries.Count);
@@ -121,15 +121,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new LocalLogViewerService(new InMemoryLogBuffer());
 
             _ = await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.GetPageAsync(new LogQuery("Loud", null, null), Token, CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task GetPageAsync_EmptyStepUpToken_ThrowsArgumentException()
-        {
-            var service = new LocalLogViewerService(new InMemoryLogBuffer());
-
-            _ = await Assert.ThrowsAsync<ArgumentException>(() => service.GetPageAsync(EmptyQuery, "", CancellationToken.None));
+                service.GetPageAsync(new LogQuery("Loud", null, null), CancellationToken.None));
         }
 
         [Fact]
@@ -137,7 +129,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var service = new LocalLogViewerService(new InMemoryLogBuffer());
 
-            _ = await Assert.ThrowsAsync<ArgumentNullException>(() => service.GetPageAsync(null!, Token, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(() => service.GetPageAsync(null!, CancellationToken.None));
         }
 
         [Fact]
@@ -149,7 +141,7 @@ namespace VideoForensics.Hosting.Tests
             Append(buffer, record);
             var service = new LocalLogViewerService(buffer);
 
-            LogPage page = await service.GetPageAsync(EmptyQuery, Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(EmptyQuery, CancellationToken.None);
 
             LogEntry entry = Assert.Single(page.Entries);
             Assert.Equal(new LogEntry(1, when, "Error", "Cat.Name", "boom", "stack text"), entry);
@@ -167,7 +159,7 @@ namespace VideoForensics.Hosting.Tests
             var backlogSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             Task consume = Task.Run(async () =>
             {
-                await foreach (LogEntry entry in service.StreamAsync(EmptyQuery, Token, cts.Token))
+                await foreach (LogEntry entry in service.StreamAsync(EmptyQuery, cts.Token))
                 {
                     received.Add(entry);
                     if (received.Count == 1)
@@ -201,7 +193,7 @@ namespace VideoForensics.Hosting.Tests
             // Matches the Remote implementation: a cancelled token surfaces as OperationCanceledException, nothing else.
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             {
-                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, Token, cts.Token)) { }
+                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, cts.Token)) { }
             });
         }
 

@@ -64,6 +64,10 @@ else
                 </div>
             </div>
 
+            <div class="mt-3">
+                <button class="btn btn-outline-primary" @onclick="ExportCase" data-testid="export-case">@L["ExportCase"]</button>
+            </div>
+
             @if (_case.Status == CaseStatus.Open)
             {
                 <div class="mt-3">
@@ -355,6 +359,11 @@ else
         {
             _error = L["FailedToActivateCase", ex.Message].Value;
         }
+    }
+
+    private void ExportCase()
+    {
+        NavigationManager.NavigateTo($"/review/export?caseId={CaseId}");
     }
 
     private async Task CloseCase()

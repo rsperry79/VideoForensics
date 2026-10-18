@@ -1,9 +1,16 @@
 @page "/review/export"
+@using VideoForensics.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
-@inject IProviderAuthService AuthService
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject PairedSessionState SessionState
 @inject IEvidenceExportService EvidenceExportService
+@inject ICaseRepository CaseRepository
+@inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
+@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -17,17 +24,32 @@ else if (!_isAuthenticated)
 {
     <span>@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToExport"]</span>
 }
-else if (_mediaItemIds.Count == 0)
-{
-    <span>@L["NoItemsSelectedPrefix"] <a href="/events">@L["EventsLink"]</a> @L["NoItemsSelectedSuffix"]</span>
-}
 else
 {
-    <span>@L["ItemsSelectedMessage", _mediaItemIds.Count]</span>
+    <span>@L["ExportScopeMessage"]</span>
 
     <div>
-        <SfTextBox @bind-Value="_caseReference" Placeholder="@L["CaseReferencePlaceholder"]" Enabled="@(!_isExporting)" />
+        <label for="export-case-picker">@L["CasePickerLabel"]</label>
+        <select id="export-case-picker" class="form-select" data-testid="case-picker" value="@_selectedCaseId" @onchange="OnCaseChanged" disabled="@_isExporting">
+            <option value="">@L["CasePickerPlaceholder"]</option>
+            @foreach (ForensicCase c in _cases)
+            {
+                <option value="@c.Id" selected="@(c.Id == _selectedCaseId)">@c.CaseNumber · @c.Title</option>
+            }
+        </select>
     </div>
+    @if (_loadError is not null)
+    {
+        <div class="alert alert-danger">@_loadError</div>
+    }
+    else if (_cases.Count == 0)
+    {
+        <span>@L["NoCases"]</span>
+    }
+    else if (_selectedCaseId is null)
+    {
+        <span>@L["SelectCaseMessage"]</span>
+    }
     <div>
         <SfTextBox @bind-Value="_recipientDescription" Placeholder="@L["RecipientDescriptionPlaceholder"]" Enabled="@(!_isExporting)" />
     </div>
@@ -38,9 +60,9 @@ else
         <SfTextBox @bind-Value="_outputDirectory" Placeholder="@L["OutputDirectoryPlaceholder"]" Enabled="@(!_isExporting)" />
     </div>
     <div>
-        <SfButton OnClick="ExportAsync" Disabled="@_isExporting" CssClass="e-primary">
+        <button type="button" class="btn btn-primary" data-testid="export-button" @onclick="ExportAsync" disabled="@(_isExporting || _selectedCaseId is null)">
             @(_isExporting ? L["ExportingButton"] : L["ExportButton"])
-        </SfButton>
+        </button>
     </div>
 
     @if (_result is not null)
@@ -66,17 +88,19 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "ids")]
-    public string? Ids { get; set; }
+    /// <summary>The case to export, from the <c>?caseId=</c> query parameter; the operator can change it with the picker.</summary>
+    [SupplyParameterFromQuery(Name = "caseId")]
+    public Guid? CaseId { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new() { ("Events", "/events"), ("Export Evidence", null) };
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private bool _isExporting;
-    private List<Guid> _mediaItemIds = new();
+    private List<ForensicCase> _cases = new();
+    private Guid? _selectedCaseId;
+    private string? _loadError;
     private ExportResult? _result;
 
-    private string? _caseReference;
     private string? _recipientDescription;
     private string? _passphrase;
     private string _outputDirectory = Path.Combine(
@@ -86,10 +110,15 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbItems = new() { (SharedL["Events"], "/events"), (SharedL["Export Evidence"], null) };
         try
         {
-            _mediaItemIds = ParseIds(Ids);
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
+            if (_isAuthenticated)
+            {
+                await LoadCasesAsync();
+            }
         }
         finally
         {
@@ -97,38 +126,61 @@ else
         }
     }
 
-    private static List<Guid> ParseIds(string? ids)
+    private async Task LoadCasesAsync()
     {
-        if (string.IsNullOrWhiteSpace(ids))
+        try
         {
-            return new List<Guid>();
+            _cases = (await CaseRepository.ListAsync(null, CancellationToken.None)).ToList();
+            // Only preselect a case that exists; a stale or foreign id leaves the picker empty and export disabled.
+            _selectedCaseId = CaseId.HasValue && _cases.Any(c => c.Id == CaseId.Value) ? CaseId : null;
         }
-
-        var result = new List<Guid>();
-        foreach (var part in ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        catch (Exception ex)
         {
-            if (Guid.TryParse(part, out var id))
-            {
-                result.Add(id);
-            }
+            _loadError = L["FailedToLoadCases", ex.Message].Value;
         }
+    }
 
-        return result;
+    private void OnCaseChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        _selectedCaseId = Guid.TryParse(args.Value?.ToString(), out Guid id) ? id : null;
+        _result = null;
     }
 
     private async Task ExportAsync()
     {
+        if (_selectedCaseId is not Guid caseId)
+        {
+            return;
+        }
+
         _isExporting = true;
         _result = null;
         try
         {
+            // Exporting evidence needs a fresh passkey step-up, the same as the HTTP export.
+            string stepUpToken;
+            try
+            {
+                stepUpToken = await StepUp.GetStepUpTokenAsync();
+            }
+            catch (Exception)
+            {
+                _result = new ExportResult { Success = false, ErrorMessage = L["StepUpFailed"].Value };
+                return;
+            }
+
             _result = await EvidenceExportService.ExportEvidenceAsync(
-                _mediaItemIds,
+                caseId,
                 _outputDirectory,
-                string.IsNullOrWhiteSpace(_caseReference) ? null : _caseReference,
                 string.IsNullOrWhiteSpace(_recipientDescription) ? null : _recipientDescription,
                 string.IsNullOrWhiteSpace(_passphrase) ? null : _passphrase,
-                CancellationToken.None);
+                CancellationToken.None,
+                stepUpToken);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // The guard's message is already localized to the operator's culture.
+            _result = new ExportResult { Success = false, ErrorMessage = ex.Message };
         }
         catch (Exception ex)
         {

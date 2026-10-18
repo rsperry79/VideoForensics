@@ -219,9 +219,18 @@ public class CasesPage_Tests : CasesPagesTestBase
     public CasesPage_Tests()
     {
         RegisterGridStub<ForensicCase>();
+        Services.AddScoped<RightPanelContentService>();
     }
 
     private IRenderedComponent<Cases> RenderPage() => Render<Cases>();
+
+    /// <summary>The fragment the page pushed into the right-panel slot; render it with Render(...) to drive its controls.</summary>
+    private RenderFragment RightPanelFragment()
+    {
+        var slot = Services.GetRequiredService<RightPanelContentService>();
+        Assert.NotNull(slot.Content);
+        return slot.Content!;
+    }
 
     private static IEnumerable<ForensicCase> GridData(IRenderedComponent<Cases> component) =>
         Assert.IsAssignableFrom<IEnumerable<ForensicCase>>(
@@ -249,7 +258,35 @@ public class CasesPage_Tests : CasesPagesTestBase
     }
 
     [Fact]
-    public void StatusFilterChangedToAll_CallsListAsyncWithNull_AndReRenders()
+    public void StatusFilter_RendersInRightPanel_NotInPageBody()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ForensicCase>());
+
+        var component = RenderPage();
+
+        Assert.Empty(component.FindAll("[data-testid='case-status-filter']"));
+
+        var panel = Render(RightPanelFragment());
+        Assert.Single(panel.FindAll("[data-testid='case-status-filter']"));
+    }
+
+    [Fact]
+    public void StatusFilter_InRightPanel_HasLocalizedLabel()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ForensicCase>());
+
+        RenderPage();
+        var panel = Render(RightPanelFragment());
+
+        Assert.Contains("Status", panel.Markup);
+    }
+
+    [Fact]
+    public void StatusFilterChangedToAll_InRightPanel_CallsListAsyncWithNull_AndReRendersList()
     {
         var openCase = CreateTestCase(caseNumber: "CASE-OPEN", status: CaseStatus.Open);
         var closedCase = CreateTestCase(caseNumber: "CASE-CLOSED", status: CaseStatus.Closed);
@@ -263,7 +300,8 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         var component = RenderPage();
 
-        var filter = (IHtmlSelectElement)component.Find("[data-testid='case-status-filter']");
+        var panel = Render(RightPanelFragment());
+        var filter = (IHtmlSelectElement)panel.Find("[data-testid='case-status-filter']");
         filter.Change("");
 
         CaseRepositoryMock.Verify(r => r.ListAsync(null, It.IsAny<CancellationToken>()), Times.Once);

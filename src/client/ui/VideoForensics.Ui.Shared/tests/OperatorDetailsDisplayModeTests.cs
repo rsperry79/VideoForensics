@@ -33,6 +33,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
 
         Services.AddScoped(_ => _admin.Object);
         Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
         _session = new PairedSessionState(JSInterop.JSRuntime);
         Services.AddScoped(_ => _session);
 

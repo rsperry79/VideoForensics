@@ -139,5 +139,41 @@ namespace VideoForensics.Data.Database.Tests
             _ = await Assert.ThrowsAsync<DbUpdateException>(async () =>
                 await _repository.AddAsync(dev2, CancellationToken.None));
         }
+
+        [Fact]
+        public async Task DeviceRepository_AddAndGet_RoundTripsDeviceDetailFields()
+        {
+            var locationId = Guid.NewGuid();
+            Device device = TestDataBuilder.BuildDevice(locationId, "dev_detail", "Front Camera");
+            device.RingDeviceId = "aabbcc";
+            device.RingKind = "doorbell_v4";
+            device.FirmwareVersion = "2.0.1";
+            device.Latitude = 41.5;
+            device.Longitude = -87.6;
+            device.Address = "1 Main St";
+            device.Subscribed = true;
+            device.SubscribedMotions = false;
+            device.BatteryLife = "87";
+            device.ExternalConnection = true;
+            device.Owned = true;
+            device.Stolen = false;
+
+            await _repository.AddAsync(device, CancellationToken.None);
+            Device? retrieved = await _repository.GetAsync(device.Id, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("aabbcc", retrieved.RingDeviceId);
+            Assert.Equal("doorbell_v4", retrieved.RingKind);
+            Assert.Equal("2.0.1", retrieved.FirmwareVersion);
+            Assert.Equal(41.5, retrieved.Latitude);
+            Assert.Equal(-87.6, retrieved.Longitude);
+            Assert.Equal("1 Main St", retrieved.Address);
+            Assert.True(retrieved.Subscribed);
+            Assert.False(retrieved.SubscribedMotions);
+            Assert.Equal("87", retrieved.BatteryLife);
+            Assert.True(retrieved.ExternalConnection);
+            Assert.True(retrieved.Owned);
+            Assert.False(retrieved.Stolen);
+        }
     }
 }

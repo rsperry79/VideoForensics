@@ -49,6 +49,12 @@ namespace VideoForensics.Providers.Ring
         public Func<EndpointTarget, RestorePlan?>? PrepareRestore { get; init; }
         /// <summary>Why a destructive endpoint has no PrepareRestore - shown in index.json instead of leaving it unexplained.</summary>
         public string? NoRestoreReason { get; init; }
+        /// <summary>Alarm-hub-only endpoint: on a camera-only account its 404 means "not applicable", not a failure (see CallStatusClassifier).</summary>
+        public bool NotApplicableWithoutAlarmHub { get; init; }
+        /// <summary>Endpoint that Ring only accepts once a push client device is registered; a 422 "Client Device required" is "not-applicable" (see CallStatusClassifier).</summary>
+        public bool RequiresPushRegistration { get; init; }
+        /// <summary>Runs only when named explicitly in --endpoints (never as part of --all or the default set), e.g. because it sounds a real alarm.</summary>
+        public bool ManualOnly { get; init; }
     }
 
     /// <summary>
@@ -70,6 +76,15 @@ namespace VideoForensics.Providers.Ring
         // assigned when it's referenced before its own declaration in source order.
         public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = [];
         public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = [];
+
+        // The form-encoded doorbots PUT needs doorbot[description] (the device name); take it from the
+        // same devices-listing snapshot the restore values come from rather than inventing one.
+        private static string RequireDeviceName(EndpointTarget target)
+        {
+            return OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && !string.IsNullOrEmpty(snap.Description)
+                ? snap.Description
+                : throw new InvalidOperationException($"No device name (description) found in the devices listing for doorbot {target.DoorbotId}");
+        }
 
         public static readonly IReadOnlyList<EndpointDescriptor> All =
         [
@@ -113,7 +128,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Current home/away/disarmed mode for a location (camera-only locations without an Alarm hub).",
                 SessionMethod = "Session.GetLocationMode(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationMode(target.LocationId!.Value)
             },
@@ -207,12 +222,24 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "signalling-ticket",
+                DisplayName = "Signalling ticket",
+                Description = "Requests a live-view signalling ticket for the location (read-only).",
+                SessionMethod = "Session.GetSignallingTicketAsync(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/clap/tickets?locationID={locationId}&enableExtendedEmergencyCellUsage=true&requestedTransport=ws",
+                Scope = EndpointScope.PerLocation,
+                NotApplicableWithoutAlarmHub = true,
+                Invoke = (session, target) => session.GetSignallingTicketAsync(target.LocationId!.Value)
+            },
+            new()
+            {
                 Key = "location-mode-settings",
                 DisplayName = "Location mode settings",
                 Description = "Location Mode configuration (e.g. per-mode alert settings) for a location.",
                 SessionMethod = "Session.GetLocationModeSettings(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationModeSettings(target.LocationId!.Value)
             },
@@ -223,7 +250,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Location Mode sharing configuration for a location.",
                 SessionMethod = "Session.GetLocationModeSharing(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/sharing",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationModeSharing(target.LocationId!.Value)
             },
@@ -234,7 +261,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Alarm monitoring account status for a location.",
                 SessionMethod = "Session.GetAccountMonitoringStatus(locationId)",
                 HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetAccountMonitoringStatus(target.LocationId!.Value)
             },
@@ -248,6 +275,67 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://api.ring.com/evm/v2/history/locations/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Invoke = (session, target) => session.GetLocationHistory(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "app-location-history",
+                DisplayName = "App location history",
+                Description = "Location history from the app API (rs/history), distinct from the evm/v2 location-history.",
+                SessionMethod = "Session.GetAppLocationHistoryAsync(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/history?accountId={locationId}",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetAppLocationHistoryAsync(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "light-groups",
+                DisplayName = "Light groups",
+                Description = "Ring Smart Lighting groups configured at a location (groups host; override with --groups-api-base-url).",
+                SessionMethod = "Session.GetGroups(locationId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/groups/v1/locations/{locationId}/groups",
+                Scope = EndpointScope.PerLocation,
+                Invoke = (session, target) => session.GetGroups(target.LocationId!.Value)
+            },
+            new()
+            {
+                Key = "recording-url",
+                DisplayName = "Recording URL",
+                Description = "Download info for a footage clip from the recordings host (override with --recordings-api-base-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetPeriodicalFootage(footageId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/recordings/public/footages/{dingId}",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetPeriodicalFootage(DingId!)
+                    : throw new InvalidOperationException("recording-url requires --ding-id <id>")
+            },
+            new()
+            {
+                Key = "ding-recording",
+                DisplayName = "Ding recording (clients API)",
+                Description = "Raw recording response for a ding from the clients API path used by python-ring-doorbell (compare with recording-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingRecordingAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/recording",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingRecordingAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-recording requires --ding-id <id>")
+            },
+            new()
+            {
+                Key = "ding-share-play",
+                DisplayName = "Event share play URL",
+                Description = "Raw share/play response for a ding from the clients API path used by ring-client-api (returns a playable video URL). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingSharePlayAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingSharePlayAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-share-play requires --ding-id <id>")
             },
             new()
             {
@@ -292,17 +380,6 @@ namespace VideoForensics.Providers.Ring
                 ApiPath = "https://api.ring.com/clients_api/dings/active",
                 Scope = EndpointScope.None,
                 Invoke = (session, _) => session.GetActiveDings()
-            },
-            new()
-            {
-                Key = "location-details",
-                DisplayName = "Location details",
-                Description = "Single-location detail lookup under clients_api, distinct from the locations endpoint's devices/v1 listing.",
-                SessionMethod = "Session.GetLocation(locationId)",
-                HttpMethod = "GET",
-                ApiPath = "https://api.ring.com/clients_api/locations/{locationId}",
-                Scope = EndpointScope.PerLocation,
-                Invoke = (session, target) => session.GetLocation(target.LocationId!.Value)
             },
             new()
             {
@@ -387,16 +464,16 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-volume",
                 DisplayName = "Set doorbell/camera volume",
                 Description = "Sets the ringtone/notification volume to test it, then restores the value captured from the devices listing beforehand. Requires --volume-level (0-11); skipped if not provided.",
-                SessionMethod = "Session.SetVolume(doorbotId, volume)",
+                SessionMethod = "Session.SetVolume(doorbotId, volume, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => VolumeLevel.HasValue
-                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value)
+                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-volume requires --volume-level <0-11>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume }
-                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume))
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume, Description: { } volumeDeviceName }
+                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume, volumeDeviceName))
                     : null
             },
             new()
@@ -425,19 +502,19 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-chime-type",
                 DisplayName = "Set existing chime type",
                 Description = "Sets the wired chime type (0=Mechanical, 1=Digital, 2=Not Present) to test it, then restores the values captured from the devices listing beforehand. Requires --chime-type-value; skipped if not provided.",
-                SessionMethod = "Session.SetChimeType(doorbotId, type)",
+                SessionMethod = "Session.SetChimeType(doorbotId, type, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => ChimeTypeValue.HasValue
-                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value)
+                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-chime-type requires --chime-type-value <0|1|2>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType }
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType, Description: { } chimeDeviceName }
                     ? new RestorePlan(
                         $"chime_settings.type={chimeType}, enable={snap.ChimeEnabled}, duration={snap.ChimeDuration}",
                         WasCaptured: true,
-                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, snap.ChimeEnabled, snap.ChimeDuration))
+                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, chimeDeviceName, snap.ChimeEnabled, snap.ChimeDuration))
                     : null
             },
             new()
@@ -446,7 +523,7 @@ namespace VideoForensics.Providers.Ring
                 DisplayName = "Snooze chime notifications",
                 Description = "Snoozes a chime's notifications for --dnd-seconds (default 60). Self-reverts after that duration.",
                 SessionMethod = "Session.SetDoNotDisturb(chimeId, seconds)",
-                HttpMethod = "PUT",
+                HttpMethod = "POST",
                 ApiPath = "https://api.ring.com/clients_api/chimes/{chimeId}/do_not_disturb",
                 Scope = EndpointScope.PerChime,
                 Destructive = true,
@@ -455,33 +532,12 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "set-night-mode",
-                DisplayName = "Toggle forced night mode",
-                Description = "Forces night mode on to test it, then restores the value captured from the devices listing beforehand.",
-                SessionMethod = "Session.SetNightMode(doorbotId, enabled)",
-                HttpMethod = "PUT",
-                ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
-                Scope = EndpointScope.PerDoorbot,
-                Destructive = true,
-                Invoke = (session, target) => session.SetNightMode(target.DoorbotId!.Value, true),
-                PrepareRestore = target =>
-                {
-                    bool captured = OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap.NightModeEnabled.HasValue;
-                    bool original = captured && snap!.NightModeEnabled!.Value;
-                    string description = captured
-                        ? $"night_mode={original}"
-                        : "unknown (not present in the devices listing for this doorbot) - restoring to disabled as a safe default";
-                    return new RestorePlan(description, captured, session => session.SetNightMode(target.DoorbotId!.Value, original));
-                }
-            },
-            new()
-            {
                 Key = "set-location-mode",
                 DisplayName = "Set location mode (arm/disarm)",
                 Description = "Reads the location's current mode, sets it to --location-mode-value to test it, then restores the mode that was read beforehand. Requires --location-mode-value; skipped if not provided. Briefly changes real security/arming state.",
                 SessionMethod = "Session.GetLocationMode(locationId) + Session.SetLocationMode(locationId, mode)",
                 HttpMethod = "GET, then POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 Invoke = async (session, target) =>
@@ -535,6 +591,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to ding push events",
                 Description = "Subscribes this account to ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToDingEvents(doorbotId)",
@@ -548,6 +605,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-ding-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from ding push events",
                 Description = "Unsubscribes this account from ding push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromDingEvents(doorbotId)",
@@ -561,6 +619,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "subscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Subscribe to motion push events",
                 Description = "Subscribes this account to motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.SubscribeToMotionEvents(doorbotId)",
@@ -574,6 +633,7 @@ namespace VideoForensics.Providers.Ring
             new()
             {
                 Key = "unsubscribe-motion-events",
+                RequiresPushRegistration = true,
                 DisplayName = "Unsubscribe from motion push events",
                 Description = "Unsubscribes this account from motion push notifications for a doorbot. Idempotent toggle.",
                 SessionMethod = "Session.UnsubscribeFromMotionEvents(doorbotId)",
@@ -591,7 +651,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Enables Location Modes for a location that doesn't have them set up yet. Requires --destructive.",
                 SessionMethod = "Session.EnableLocationModes(locationId)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings/setup",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings/setup",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: one-time account setup action, not a toggle to revert - use disable-location-modes deliberately if you need to undo it.",
@@ -604,7 +664,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would disable Location Modes for a location, discarding its per-mode configuration. Always refuses to run - no safe way to auto-restore what was disabled. Included for completeness/discoverability only.",
                 SessionMethod = "Session.DisableLocationModes(locationId)",
                 HttpMethod = "DELETE",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -618,7 +678,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would overwrite a location's Location Mode settings. Requires a full settings payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
                 SessionMethod = "Session.SetLocationModeSettings(locationId, settingsJson)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/settings",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/settings",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -632,7 +692,7 @@ namespace VideoForensics.Providers.Ring
                 Description = "Would overwrite a location's Location Mode sharing configuration. Requires a full payload this CLI cannot safely generate - always refuses to run. Included for completeness/discoverability only.",
                 SessionMethod = "Session.SetLocationModeSharing(locationId, sharingJson)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/mode/location/{locationId}/sharing",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId}/sharing",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 NoRestoreReason = "not applicable: this endpoint always refuses to run (see its own error), so nothing is ever changed to restore.",
@@ -660,10 +720,12 @@ namespace VideoForensics.Providers.Ring
                 Description = "Sounds a REAL panic/user alarm for a monitored asset. Requires --asset-uuid (discover via account-monitoring-status); skipped if not provided. Audibly/visibly triggers real security response.",
                 SessionMethod = "Session.TriggerAlarm(locationId, assetUuid)",
                 HttpMethod = "POST",
-                ApiPath = "https://api.ring.com/rs/monitoring/accounts/{locationId}/assets/{assetUuid}/userAlarm",
+                ApiPath = "https://prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId}/assets/{assetUuid}/userAlarm",
                 Scope = EndpointScope.PerLocation,
                 Destructive = true,
                 Physical = true,
+                NotApplicableWithoutAlarmHub = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: triggers a momentary alarm event, doesn't change a persisted setting.",
                 Invoke = (session, target) => !string.IsNullOrWhiteSpace(AssetUuid)
                     ? session.TriggerAlarm(target.LocationId!.Value, AssetUuid!)
@@ -686,17 +748,21 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "unlock-intercom",
-                DisplayName = "Unlock Intercom",
-                Description = "Unlocks a Ring Intercom device. Triggers a REAL, physical door unlock. Requires --doorbot-id (the Intercom's device id).",
+                Key = "intercom-unlock",
+                DisplayName = "Intercom unlock (manual only)",
+                Description = "Unlocks a Ring Intercom door. NEVER TESTED against a live device. Requires a Ring Intercom device. Triggers a REAL, physical door unlock - only run with --endpoints intercom-unlock --destructive --doorbot-id <intercom id>. Never part of --all or default runs.",
                 SessionMethod = "Session.Unlock(deviceId)",
+                // Session.Unlock sends PUT (the commands/v1 device_rpc path confirmed in a live run); this descriptor documents what is actually sent.
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/commands/v1/devices/{deviceId}/device_rpc",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Physical = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: Ring Intercom auto re-locks after its own timeout; this client exposes no immediate re-lock command to call.",
-                Invoke = (session, target) => session.Unlock(target.DoorbotId!.Value)
+                Invoke = (session, target) => target.DoorbotId is { } deviceId
+                    ? session.Unlock(deviceId)
+                    : throw new InvalidOperationException("intercom-unlock requires --doorbot-id <intercom device id>")
             },
         ];
 

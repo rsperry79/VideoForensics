@@ -1,0 +1,288 @@
+{
+  "events": [
+    {
+      "source_id": "86401464",
+      "event_id": "7697349643908571576",
+      "event_type": "motion",
+      "state": "timed_out",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "ready",
+      "is_e2ee": false,
+      "created_at": "2026-10-16T19:27:46Z",
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178874177
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "00000000",
+      "riid": "fb723166c1cc92617a7201c3bd9218a5",
+      "doorbot_id": 86401464,
+      "ding_id": 7697349643908571000,
+      "ding_id_str": "7697349643908571576",
+      "kind": "motion"
+    },
+    {
+      "source_id": "86401464",
+      "event_id": "7697348832159752632",
+      "event_type": "motion",
+      "state": "timed_out",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "ready",
+      "is_e2ee": false,
+      "created_at": "2026-10-16T19:24:36Z",
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178685190
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "00000000",
+      "riid": "c84423b1a380db6d4694b63a883156ee",
+      "doorbot_id": 86401464,
+      "ding_id": 7697348832159752000,
+      "ding_id_str": "7697348832159752632",
+      "kind": "motion"
+    },
+    {
+      "source_id": "86401464",
+      "event_id": "7697348535807009208",
+      "event_type": "motion",
+      "state": "timed_out",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "ready",
+      "is_e2ee": false,
+      "created_at": "2026-10-16T19:23:27Z",
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178616249
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "00000000",
+      "riid": "33035d6be37a8d403d0a340360287291",
+      "doorbot_id": 86401464,
+      "ding_id": 7697348535807009000,
+      "ding_id_str": "7697348535807009208",
+      "kind": "motion"
+    },
+    {
+      "source_id": "86401464",
+      "event_id": "7697348076245508536",
+      "event_type": "motion",
+      "state": "timed_out",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "ready",
+      "is_e2ee": false,
+      "created_at": "2026-10-16T19:21:40Z",
+      "cv_properties": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178508871
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "00000000",
+      "riid": "792178552576174aeddddcd759ca2909",
+      "doorbot_id": 86401464,
+      "ding_id": 7697348076245508000,
+      "ding_id_str": "7697348076245508536",
+      "kind": "motion"
+    },
+    {
+      "source_id": "86401464",
+      "event_id": "7697347474950087096",
+      "event_type": "motion",
+      "state": "timed_out",
+      "favorite": false,
+      "recorded": true,
+      "recording_status": "ready",
+      "is_e2ee": false,
+      "created_at": "2026-10-16T19:19:22Z",
+      "cv_properties": {
+        "person_detected": null,
+        "stream_broken": false,
+        "detection_type": "package_delivery",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178369396
+            ]
+          },
+          {
+            "detection_type": "package_delivery",
+            "verified_timestamps": [
+              1792178396663
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": null,
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "doorbot": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "device_placement": null,
+      "geolocation": null,
+      "last_location": null,
+      "siren": null,
+      "had_subscription": true,
+      "owner_id": "00000000",
+      "riid": "436dc39bdb2e918a71051360c1776926",
+      "doorbot_id": 86401464,
+      "ding_id": 7697347474950087000,
+      "ding_id_str": "7697347474950087096",
+      "kind": "motion"
+    }
+  ],
+  "meta": {
+    "pagination_key": "sanitized-pagination-key"
+  }
+}

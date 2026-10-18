@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Utils.SelfTest;
 
 using Xunit;
 
@@ -205,6 +206,182 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Equal("devices", result.Key);
             Assert.Equal("List devices", result.DisplayName);
             Assert.Equal(EndpointScope.None, result.Scope);
+        }
+
+        [Fact]
+        public void EndpointRegistry_SignallingTicket_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+        }
+
+        [Fact]
+        public void EndpointRegistry_AppLocationHistory_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("app-location-history");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+        }
+
+        [Fact]
+        public void EndpointRegistry_LightGroups_IsReadOnlyLocationScoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("light-groups");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.PerLocation, result.Scope);
+            Assert.Equal("https://api.ring.com/groups/v1/locations/{locationId}/groups", result.ApiPath);
+        }
+
+        [Fact]
+        public void EndpointRegistry_DingRecording_IsReadOnlyUnscopedClientsApi()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("ding-recording");
+            Assert.NotNull(result);
+            Assert.Equal("GET", result.HttpMethod);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/clients_api/dings/{dingId}/recording", result.ApiPath);
+        }
+
+        [Fact]
+        public async Task EndpointRegistry_DingRecording_WithoutDingId_Throws()
+        {
+            string? previous = EndpointRegistry.DingId;
+            try
+            {
+                EndpointRegistry.DingId = null;
+                EndpointDescriptor descriptor = EndpointRegistry.Find("ding-recording")!;
+                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+            }
+            finally
+            {
+                EndpointRegistry.DingId = previous;
+            }
+        }
+
+        [Fact]
+        public void EndpointRegistry_DingSharePlay_IsReadOnlyUnscopedClientsApi()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("ding-share-play");
+            Assert.NotNull(result);
+            Assert.Equal("GET", result.HttpMethod);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true", result.ApiPath);
+        }
+
+        [Fact]
+        public async Task EndpointRegistry_DingSharePlay_WithoutDingId_Throws()
+        {
+            string? previous = EndpointRegistry.DingId;
+            try
+            {
+                EndpointRegistry.DingId = null;
+                EndpointDescriptor descriptor = EndpointRegistry.Find("ding-share-play")!;
+                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+            }
+            finally
+            {
+                EndpointRegistry.DingId = previous;
+            }
+        }
+
+        [Fact]
+        public void EndpointRegistry_RecordingUrl_IsReadOnlyUnscoped()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("recording-url");
+            Assert.NotNull(result);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/recordings/public/footages/{dingId}", result.ApiPath);
+        }
+
+        [Fact]
+        public void EndpointRegistry_SignallingTicket_IsNotApplicableWithoutAlarmHub()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("signalling-ticket");
+            Assert.NotNull(result);
+            Assert.True(result.NotApplicableWithoutAlarmHub);
+        }
+
+        [Fact]
+        public void EndpointRegistry_TriggerAlarm_IsManualOnlyAndAlarmHubOnly()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("trigger-alarm");
+            Assert.NotNull(result);
+            Assert.True(result.ManualOnly);
+            Assert.True(result.NotApplicableWithoutAlarmHub);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Runner_ResolveSelection_AllExcludesTriggerAlarm(bool destructive)
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["all"], destructive, noPhysical: false);
+            Assert.DoesNotContain(selected, e => e.Key == "trigger-alarm");
+            Assert.DoesNotContain(selected, e => e.ManualOnly);
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitTriggerAlarm_IsSelected()
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["trigger-alarm"], destructive: true, noPhysical: false);
+            Assert.Single(selected);
+            Assert.Equal("trigger-alarm", selected[0].Key);
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitTriggerAlarmWithoutDestructive_Throws()
+        {
+            Assert.Throws<ArgumentException>(() => Runner.ResolveSelection(["trigger-alarm"], destructive: false, noPhysical: false));
+        }
+
+        [Fact]
+        public void EndpointRegistry_IntercomUnlock_IsDestructivePhysicalManualOnly()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("intercom-unlock");
+            Assert.NotNull(result);
+            Assert.True(result.Destructive);
+            Assert.True(result.Physical);
+            Assert.True(result.ManualOnly);
+            Assert.Equal(EndpointScope.PerDoorbot, result.Scope);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Runner_ResolveSelection_AllExcludesIntercomUnlock(bool destructive)
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["all"], destructive, noPhysical: false);
+            Assert.DoesNotContain(selected, e => e.Key == "intercom-unlock");
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitIntercomUnlock_IsSelected()
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["intercom-unlock"], destructive: true, noPhysical: false);
+            Assert.Single(selected);
+            Assert.Equal("intercom-unlock", selected[0].Key);
+        }
+
+        [Fact]
+        public void EndpointRegistry_IntercomUnlock_WithoutDoorbotId_Throws()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("intercom-unlock");
+            Assert.NotNull(result);
+            // The id check runs before the session is touched, so a null session is safe here.
+            Assert.Throws<InvalidOperationException>(() => result.Invoke(null!, EndpointTarget.None).GetAwaiter().GetResult());
         }
 
         [Fact]
@@ -573,6 +750,27 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             _ = Assert.Single(result);
             Assert.True(result.TryGetValue(999, out DoorbotSettingsSnapshot? snapshot));
             Assert.True(snapshot.NightModeEnabled);
+        }
+
+        [Fact]
+        public void DeviceSettingsSnapshot_NestedVolumeAndMotionOnly_ReadsFromVolumeAndMotionSettings()
+        {
+            // Shape of a real capture: no root doorbell_volume or motion_detection_enabled.
+            string json = @"{
+                ""doorbots"": [{
+                    ""id"": 123,
+                    ""settings"": {
+                        ""volume_settings"": { ""doorbell_volume"": 11 },
+                        ""motion_settings"": { ""motion_detection_enabled"": false }
+                    }
+                }]
+            }";
+
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
+            Assert.Equal(11, snapshot.Volume);
+            Assert.False(snapshot.MotionDetectionEnabled);
         }
 
         [Fact]
@@ -1515,6 +1713,156 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             bool found = EndpointSchemaMap.TryGetExpectedType("unknown", out Type? type);
             Assert.False(found);
             Assert.Null(type);
+        }
+    }
+    public class CliHostOverrideTests
+    {
+        public static TheoryData<string> Flags => new()
+        {
+            "--clients-api-base-url",
+            "--app-api-base-url",
+            "--mode-api-base-url",
+            "--monitoring-api-base-url",
+            "--devices-api-base-url",
+            "--commands-api-base-url",
+            "--groups-api-base-url",
+            "--evm-api-base-url",
+            "--integrations-api-base-url",
+            "--recordings-api-base-url",
+            "--app-snaps-api-base-url",
+        };
+
+        private static Uri? Read(CliOptions o, string flag) => flag switch
+        {
+            "--clients-api-base-url" => o.ClientsApiBaseUrl,
+            "--app-api-base-url" => o.AppApiBaseUrl,
+            "--mode-api-base-url" => o.ModeApiBaseUrl,
+            "--monitoring-api-base-url" => o.MonitoringApiBaseUrl,
+            "--devices-api-base-url" => o.DevicesApiBaseUrl,
+            "--commands-api-base-url" => o.CommandsApiBaseUrl,
+            "--groups-api-base-url" => o.GroupsApiBaseUrl,
+            "--evm-api-base-url" => o.EvmApiBaseUrl,
+            "--integrations-api-base-url" => o.IntegrationsApiBaseUrl,
+            "--recordings-api-base-url" => o.RecordingsApiBaseUrl,
+            "--app-snaps-api-base-url" => o.AppSnapsApiBaseUrl,
+            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+        };
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideValidUrl_StoresUri(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "https://example.test/base/"]);
+            Assert.Null(error);
+            Assert.Equal(new Uri("https://example.test/base/"), Read(options!, flag));
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideHttpUrl_StoresUri(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "http://localhost:8080/"]);
+            Assert.Null(error);
+            Assert.NotNull(Read(options!, flag));
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideInvalidUrl_ReturnsError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "not a url"]);
+            Assert.Null(options);
+            Assert.Equal($"{flag} value 'not a url' is not a valid absolute URL", error);
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideNonHttpScheme_ReturnsError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag, "ftp://example.test/"]);
+            Assert.Null(options);
+            Assert.Equal($"{flag} value 'ftp://example.test/' is not a valid absolute URL", error);
+        }
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_HostOverrideMissingValue_ReturnsMissingValueError(string flag)
+        {
+            (CliOptions? options, string? error) = CliOptions.Parse([flag]);
+            Assert.Null(options);
+            Assert.Equal($"Missing value for {flag}", error);
+        }
+
+        [Fact]
+        public void CliOptions_HelpText_MentionsHostOverridesAndEveryFlag()
+        {
+            Assert.Contains("HOST OVERRIDES", CliOptions.HelpText);
+            foreach (string flag in new[] { "--clients-api-base-url", "--app-api-base-url", "--mode-api-base-url", "--monitoring-api-base-url", "--devices-api-base-url", "--commands-api-base-url", "--groups-api-base-url", "--evm-api-base-url", "--integrations-api-base-url", "--recordings-api-base-url", "--app-snaps-api-base-url" })
+            {
+                Assert.Contains(flag, CliOptions.HelpText);
+            }
+        }
+
+        [Fact]
+        public void CliOptions_ToEndpointOptions_NoOverrides_ReturnsNull()
+        {
+            (CliOptions? options, _) = CliOptions.Parse([]);
+            Assert.Null(options!.ToEndpointOptions());
+        }
+
+        private static Uri MappedUri(Ring.RingEndpointOptions e, string flag) => flag switch
+        {
+            "--clients-api-base-url" => e.ClientsApiBaseUrl,
+            "--app-api-base-url" => e.AppApiBaseUrl,
+            "--mode-api-base-url" => e.ModeApiBaseUrl,
+            "--monitoring-api-base-url" => e.MonitoringApiBaseUrl,
+            "--devices-api-base-url" => e.DevicesApiBaseUrl,
+            "--commands-api-base-url" => e.CommandsApiBaseUrl,
+            "--groups-api-base-url" => e.GroupsApiBaseUrl,
+            "--evm-api-base-url" => e.EvmApiBaseUrl,
+            "--integrations-api-base-url" => e.IntegrationsApiBaseUrl,
+            "--recordings-api-base-url" => e.RecordingsApiBaseUrl,
+            "--app-snaps-api-base-url" => e.AppSnapsApiBaseUrl,
+            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+        };
+
+        [Theory]
+        [MemberData(nameof(Flags))]
+        public void CliOptions_ToEndpointOptions_MapsFlagToMatchingProperty(string flag)
+        {
+            (CliOptions? options, _) = CliOptions.Parse([flag, "https://probe.test/x/"]);
+            Ring.RingEndpointOptions mapped = options!.ToEndpointOptions()!;
+            Assert.Equal(new Uri("https://probe.test/x/"), MappedUri(mapped, flag));
+        }
+
+        [Fact]
+        public void CliOptions_ToEndpointOptions_OnlyOverriddenPropertiesChange()
+        {
+            (CliOptions? options, _) = CliOptions.Parse(["--app-api-base-url", "https://probe.test/api/v1/"]);
+            Ring.RingEndpointOptions mapped = options!.ToEndpointOptions()!;
+            var defaults = new Ring.RingEndpointOptions();
+
+            Assert.Equal(new Uri("https://probe.test/api/v1/"), mapped.AppApiBaseUrl);
+            Assert.Equal(defaults.ClientsApiBaseUrl, mapped.ClientsApiBaseUrl);
+            Assert.Equal(defaults.ModeApiBaseUrl, mapped.ModeApiBaseUrl);
+            Assert.Equal(defaults.MonitoringApiBaseUrl, mapped.MonitoringApiBaseUrl);
+            Assert.Equal(defaults.DevicesApiBaseUrl, mapped.DevicesApiBaseUrl);
+        }
+    }
+    public class SelfTestDefaultDatabasePathTests
+    {
+        [Fact]
+        public void DefaultDatabasePath_NoOverride_MatchesAppDatabaseRoot()
+        {
+            string expected = Path.Combine(
+                new VideoForensics.Core.Helpers.Platform.StorageLocationProvider()
+                    .GetDefaultRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Database),
+                "videoforensics.db");
+
+            string actual = CliOptions.DefaultDatabasePath();
+
+            Assert.Equal(expected, actual);
+            Assert.EndsWith(Path.Combine("Database", "videoforensics.db"), actual);
         }
     }
 }

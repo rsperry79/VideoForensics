@@ -455,7 +455,7 @@ namespace VideoForensics.Ui.Shared.Services
             return (true, null, newSessionToken);
         }
 
-        public async Task<string> StepUpWithPasswordAsync(string sessionToken, string password)
+        public virtual async Task<string> StepUpWithPasswordAsync(string sessionToken, string password)
         {
             using HttpClient client = CreateClient(sessionToken);
 

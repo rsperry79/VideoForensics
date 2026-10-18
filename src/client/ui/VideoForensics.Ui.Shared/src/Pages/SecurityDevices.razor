@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SecurityDevices> L
 
@@ -209,7 +210,7 @@ else
         {
             // Revocation is high-risk (plan §5.7) - a fresh passkey assertion is required at the
             // moment of the action, not just an already-open session.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);

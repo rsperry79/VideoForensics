@@ -1,4 +1,7 @@
 @page "/tools/ring-selftest"
+@page "/query/api-tester"
+@using VideoForensics.Ui.Shared.Layout
+@using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Core.Api.Contracts
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Components
@@ -9,11 +12,17 @@
 @using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Contracts
 @using Microsoft.Extensions.Logging
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Resources
 @implements IAsyncDisposable
 @inject IRingSelfTestService SelfTestService
+@inject PairedSessionState SessionState
 @inject ISelfTestStatusSource StatusSource
 @inject ILogger<RingSelfTest> Logger
 @inject IStringLocalizer<RingSelfTest> L
+@inject IStringLocalizer<SharedResources> SharedL
+
+<Breadcrumb Items="@BreadcrumbItems" />
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <h4 style="margin: 0;">@L["Title"]</h4>
@@ -30,16 +39,51 @@
     }
     else
     {
+        <!-- Filters: each dropdown lists only options that still have endpoints under the other filter -->
+        <div class="right-panel-section" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 0;">
+            <div>
+                <label for="selftest-provider-filter" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["ProviderFilter"]</label>
+                <select id="selftest-provider-filter" data-testid="provider-filter" style="width: 100%; max-width: 100%;"
+                    value="@(_providerFilter ?? "")" @onchange="OnProviderFilterChanged">
+                    <option value="">@L["AllProviders"]</option>
+                    @foreach (var option in ProviderOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Value == _providerFilter)">@option.Label</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label for="selftest-category-filter" style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">@L["CategoryFilter"]</label>
+                <select id="selftest-category-filter" data-testid="category-filter" style="width: 100%; max-width: 100%;"
+                    value="@(_categoryFilter?.ToString() ?? "")" @onchange="OnCategoryFilterChanged">
+                    <option value="">@L["AllCategories"]</option>
+                    @foreach (var option in CategoryOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Value == _categoryFilter?.ToString())">@option.Label</option>
+                    }
+                </select>
+            </div>
+        </div>
+
         <!-- Endpoint Selection -->
         <div class="right-panel-section">
             <small style="font-weight: bold;">@L["Endpoints"]</small>
 
+            @if (_visibleReadOnly.Count == 0 && _visibleDestructive.Count == 0)
+            {
+                <div style="margin-top: 0.5rem; color: #666;">@L["NoEndpointsMatch"]</div>
+            }
+
             <!-- Read-only endpoints -->
-            @if (_readOnlyEndpoints.Count > 0)
+            @if (_visibleReadOnly.Count > 0)
             {
                 <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
                     <small style="color: #666;">@L["ReadOnlyEndpoints"]</small>
-                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_readOnlyEndpoints"
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.25rem 0;">
+                        <button type="button" class="e-btn e-small e-flat" data-testid="readonly-select-all" @onclick="SelectAllReadOnly">@L["SelectAll"]</button>
+                        <button type="button" class="e-btn e-small e-flat" data-testid="readonly-unselect-all" @onclick="UnselectAllReadOnly">@L["UnselectAll"]</button>
+                    </div>
+                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_visibleReadOnly"
                         @bind-Value="_selectedReadOnlyKeys"
                         Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["SelectEndpoints"]">
                         <MultiSelectFieldSettings Text="DisplayName" Value="Key"></MultiSelectFieldSettings>
@@ -49,11 +93,15 @@
             }
 
             <!-- Destructive/Physical endpoints -->
-            @if (_destructiveEndpoints.Count > 0)
+            @if (_visibleDestructive.Count > 0)
             {
                 <div style="border: 1px solid #dc3545; background-color: #fff5f5; padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem;">
                     <small style="color: #dc3545; font-weight: bold;">@L["DestructivePhysicalEndpoints"]</small>
-                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_destructiveEndpoints"
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.25rem 0;">
+                        <button type="button" class="e-btn e-small e-flat" data-testid="destructive-select-all" @onclick="SelectAllDestructive">@L["SelectAll"]</button>
+                        <button type="button" class="e-btn e-small e-flat" data-testid="destructive-unselect-all" @onclick="UnselectAllDestructive">@L["UnselectAll"]</button>
+                    </div>
+                    <SfMultiSelect TValue="string[]" TItem="SelfTestEndpointDto" DataSource="@_visibleDestructive"
                         @bind-Value="_selectedDestructiveKeys"
                         Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["SelectEndpoints"]">
                         <MultiSelectFieldSettings Text="DisplayName" Value="Key"></MultiSelectFieldSettings>
@@ -335,11 +383,24 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
 }
 
 @code {
+    /// <summary>Sources &gt; Query API &gt; API Tester. The API Tester is the current page, so it has no link.</summary>
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], "/query"),
+        (SharedL["API Tester"], null)
+    ];
+
     private bool _isLoading = true;
     private bool _isRunning;
     private List<SelfTestEndpointDto> _allEndpoints = new();
     private List<SelfTestEndpointDto> _readOnlyEndpoints = new();
     private List<SelfTestEndpointDto> _destructiveEndpoints = new();
+    private List<SelfTestEndpointDto> _available = new();
+    private IReadOnlyList<SelfTestEndpointDto> _visibleReadOnly = [];
+    private IReadOnlyList<SelfTestEndpointDto> _visibleDestructive = [];
+    private string? _providerFilter;
+    private SelfTestCategory? _categoryFilter;
     private HashSet<string> _selectedEndpoints = new();
     private string[] _selectedReadOnlyKeys = Array.Empty<string>();
     private string[] _selectedDestructiveKeys = Array.Empty<string>();
@@ -389,7 +450,15 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
             _allEndpoints = endpoints.ToList();
 
             _readOnlyEndpoints = _allEndpoints.Where(e => !e.Destructive && !e.Physical).ToList();
-            _destructiveEndpoints = _allEndpoints.Where(e => e.Destructive || e.Physical).ToList();
+            // Destructive and physical endpoints are offered only to SuperAdmin on the Local tier, the same rule
+            // POST /api/v1/selftest/run enforces when Destructive is set. Off-Local the list is empty, not disabled.
+            bool canRunDestructive = PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
+            _destructiveEndpoints = canRunDestructive
+                ? _allEndpoints.Where(e => e.Destructive || e.Physical).ToList()
+                : [];
+
+            _available = _readOnlyEndpoints.Concat(_destructiveEndpoints).ToList();
+            RefreshVisible();
 
             // Initialize selected keys from current selections
             _selectedReadOnlyKeys = _selectedEndpoints
@@ -415,6 +484,61 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         {
             _isLoading = false;
         }
+    }
+
+    private IReadOnlyList<SelfTestFilterOption> ProviderOptions =>
+        SelfTestEndpointFilter.ProviderOptions(_available, _categoryFilter, key => L[key].Value);
+
+    private IReadOnlyList<SelfTestFilterOption> CategoryOptions =>
+        SelfTestEndpointFilter.CategoryOptions(_available, _providerFilter, key => L[key].Value);
+
+    /// <summary>Recomputes the visible groups from the active filters and drops selections that are no longer visible.</summary>
+    private void RefreshVisible()
+    {
+        _visibleReadOnly = SelfTestEndpointFilter.Filter(_readOnlyEndpoints, _providerFilter, _categoryFilter);
+        _visibleDestructive = SelfTestEndpointFilter.Filter(_destructiveEndpoints, _providerFilter, _categoryFilter);
+        var visibleReadOnlyKeys = _visibleReadOnly.Select(e => e.Key).ToHashSet();
+        var visibleDestructiveKeys = _visibleDestructive.Select(e => e.Key).ToHashSet();
+        _selectedReadOnlyKeys = _selectedReadOnlyKeys.Where(visibleReadOnlyKeys.Contains).ToArray();
+        _selectedDestructiveKeys = _selectedDestructiveKeys.Where(visibleDestructiveKeys.Contains).ToArray();
+        SyncSelectedEndpoints();
+    }
+
+    private void OnProviderFilterChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        string? value = e.Value?.ToString();
+        _providerFilter = string.IsNullOrEmpty(value) ? null : value;
+        RefreshVisible();
+    }
+
+    private void OnCategoryFilterChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _categoryFilter = Enum.TryParse<SelfTestCategory>(e.Value?.ToString(), out var category) ? category : null;
+        RefreshVisible();
+    }
+
+    private void SelectAllReadOnly()
+    {
+        _selectedReadOnlyKeys = SelfTestEndpointFilter.SelectAll(_selectedReadOnlyKeys, _visibleReadOnly);
+        SyncSelectedEndpoints();
+    }
+
+    private void UnselectAllReadOnly()
+    {
+        _selectedReadOnlyKeys = SelfTestEndpointFilter.UnselectAll(_selectedReadOnlyKeys, _visibleReadOnly);
+        SyncSelectedEndpoints();
+    }
+
+    private void SelectAllDestructive()
+    {
+        _selectedDestructiveKeys = SelfTestEndpointFilter.SelectAll(_selectedDestructiveKeys, _visibleDestructive);
+        SyncSelectedEndpoints();
+    }
+
+    private void UnselectAllDestructive()
+    {
+        _selectedDestructiveKeys = SelfTestEndpointFilter.UnselectAll(_selectedDestructiveKeys, _visibleDestructive);
+        SyncSelectedEndpoints();
     }
 
     private void ToggleEndpoint(string key, bool isChecked)

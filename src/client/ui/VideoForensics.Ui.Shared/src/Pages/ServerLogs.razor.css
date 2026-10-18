@@ -21,6 +21,15 @@
 .log-message {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    width: 100%;
+}
+
+/* Cap the Category column and truncate it so Message takes the remaining width. */
+.log-table .col-category, .log-table td:nth-child(3) {
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .log-exception-row pre {

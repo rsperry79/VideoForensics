@@ -8,16 +8,17 @@ namespace VideoForensics.Providers.Ring
     /// call runs, so the endpoint that changes one of them can restore it afterward instead of
     /// leaving the account in a different state than it found it in.
     /// </summary>
-    public sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled);
+    public sealed record DoorbotSettingsSnapshot(int? Volume, int? ChimeType, bool? ChimeEnabled, int? ChimeDuration, bool? NightModeEnabled, bool? MotionDetectionEnabled, string? Description = null);
 
     /// <summary>
     /// Parses the raw JSON body of GET ring_devices to pull out the settings values the tester's
-    /// destructive endpoints can mutate (volume, chime type, night mode, motion detection), keyed
+    /// destructive endpoints can mutate (volume, chime type, night mode, motion detection) plus the device
+    /// description (name, needed by the form-encoded volume/chime-type calls), keyed
     /// by doorbot id. The Ring.Ring.Api <see cref="Entities.Doorbot"/> class doesn't
     /// model these fields at all, so this reads the raw payload directly rather than the
-    /// deserialized entity. Field paths below are confirmed against a live capture (not inferred):
-    /// settings.doorbell_volume, settings.chime_settings.{type,enable,duration},
-    /// settings.night_mode_on, settings.motion_detection_enabled. Never throws - a doorbot/field
+    /// deserialized entity. Field paths: settings.volume_settings.doorbell_volume (root settings.doorbell_volume
+    /// as fallback), settings.chime_settings.{type,enable,duration}, settings.night_mode_on,
+    /// settings.motion_settings.motion_detection_enabled (root settings.motion_detection_enabled as fallback). Never throws - a doorbot/field
     /// that can't be found just means restore is skipped for it later, not a failed run.
     /// </summary>
     public static class DeviceSettingsSnapshot
@@ -53,9 +54,11 @@ namespace VideoForensics.Providers.Ring
                             continue;
                         }
 
-                        int? volume = settings.TryGetProperty("doorbell_volume", out JsonElement v) && v.TryGetInt32(out int vi) ? vi : null;
+                        // Real captures carry doorbell_volume and motion_detection_enabled under volume_settings and
+                        // motion_settings, not at the settings root. The root read stays as a fallback.
+                        int? volume = TryGetInt(settings, "doorbell_volume") ?? TryGetInt(NestedObject(settings, "volume_settings"), "doorbell_volume");
                         bool? nightMode = TryGetBool(settings, "night_mode_on");
-                        bool? motionDetection = TryGetBool(settings, "motion_detection_enabled");
+                        bool? motionDetection = TryGetBool(settings, "motion_detection_enabled") ?? TryGetBool(NestedObject(settings, "motion_settings"), "motion_detection_enabled");
 
                         int? chimeType = null;
                         bool? chimeEnabled = null;
@@ -67,7 +70,9 @@ namespace VideoForensics.Providers.Ring
                             chimeDuration = chime.TryGetProperty("duration", out JsonElement cd) && cd.TryGetInt32(out int cdi) ? cdi : null;
                         }
 
-                        result[id] = new DoorbotSettingsSnapshot(volume, chimeType, chimeEnabled, chimeDuration, nightMode, motionDetection);
+                        string? description = device.TryGetProperty("description", out JsonElement desc) && desc.ValueKind == JsonValueKind.String ? desc.GetString() : null;
+
+                        result[id] = new DoorbotSettingsSnapshot(volume, chimeType, chimeEnabled, chimeDuration, nightMode, motionDetection, description);
                     }
                 }
             }
@@ -80,9 +85,24 @@ namespace VideoForensics.Providers.Ring
             return result;
         }
 
+        /// <summary>Returns the named child object, or a default element when it is absent or not an object.</summary>
+        private static JsonElement NestedObject(JsonElement obj, string propertyName)
+        {
+            return obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(propertyName, out JsonElement child) && child.ValueKind == JsonValueKind.Object
+                ? child
+                : default;
+        }
+
+        private static int? TryGetInt(JsonElement obj, string propertyName)
+        {
+            return obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(propertyName, out JsonElement prop) && prop.TryGetInt32(out int i)
+                ? i
+                : null;
+        }
+
         private static bool? TryGetBool(JsonElement obj, string propertyName)
         {
-            return obj.TryGetProperty(propertyName, out JsonElement prop)
+            return obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(propertyName, out JsonElement prop)
                 ? prop.ValueKind switch
                 {
                     JsonValueKind.True => true,

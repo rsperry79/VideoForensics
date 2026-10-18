@@ -1,0 +1,56 @@
+{
+  "default_alarm_user_id": "sanitized-user-id",
+  "default_appstore_user_id": "sanitized-user-id",
+  "default_chirp_user_id": "sanitized-user-id",
+  "default_ding_id": "00053e86-c08f-4aad-a500-84a51355433d",
+  "default_ding_user_id": "sanitized-user-id",
+  "default_motion_id": "00053e86-f43b-738f-7287-5693688ec52b",
+  "default_motion_user_id": "sanitized-user-id",
+  "audios": [
+    {
+      "available": true,
+      "category": "ringtones",
+      "checksum": 46679635,
+      "description": "Spooky Organs",
+      "id": "00053fa0-72fe-9d56-7287-5693688ec52b",
+      "kind": "motion",
+      "sample_rate_khz": 22,
+      "supported_device_kinds": [
+        "legacy"
+      ],
+      "url": "https://ringtones.ring.com/ring/motion/00053fa0-72fe-9d56-7287-5693688ec52b.wav",
+      "url_amz": "https://ringtones-amz.ring.com/ring/motion/00053fa0-72fe-9d56-7287-5693688ec52b.wav",
+      "user_id": "sanitized-user-id"
+    },
+    {
+      "available": true,
+      "category": "ringtones",
+      "checksum": 5066376,
+      "description": "Navi",
+      "id": "00062484-1d22-da78-86fb-f3ad0ea5a475",
+      "kind": "ding",
+      "sample_rate_khz": 22,
+      "supported_device_kinds": [
+        "legacy"
+      ],
+      "url": "https://ringtones.ring.com/ring/ding/00062484-1d22-da78-86fb-f3ad0ea5a475.wav",
+      "url_amz": "https://ringtones-amz.ring.com/ring/ding/00062484-1d22-da78-86fb-f3ad0ea5a475.wav",
+      "user_id": "sanitized-user-id"
+    },
+    {
+      "available": true,
+      "category": "ringtones",
+      "checksum": 16205164,
+      "description": "Screeching Cat",
+      "id": "0005eaf6-6096-f425-6ff7-cf6334472e36",
+      "kind": "motion",
+      "sample_rate_khz": 22,
+      "supported_device_kinds": [
+        "legacy"
+      ],
+      "url": "https://ringtones.ring.com/ring/motion/0005eaf6-6096-f425-6ff7-cf6334472e36.wav",
+      "url_amz": "https://ringtones-amz.ring.com/ring/motion/0005eaf6-6096-f425-6ff7-cf6334472e36.wav",
+      "user_id": "sanitized-user-id"
+    }
+  ]
+}

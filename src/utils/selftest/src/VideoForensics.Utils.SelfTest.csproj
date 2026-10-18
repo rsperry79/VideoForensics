@@ -22,6 +22,7 @@
     <ProjectReference Include="../../../providers/ring/auth/src/VideoForensics.Providers.Ring.Auth.csproj" />
     <ProjectReference Include="../../../providers/ring/provider/src/VideoForensics.Providers.Ring.csproj" />
     <ProjectReference Include="../../../providers/ring/video/src/VideoForensics.Providers.Ring.Video.csproj" />
+    <ProjectReference Include="../../../core/helpers/src/VideoForensics.Core.Helpers.csproj" />
     <ProjectReference Include="../../../core/providers/common/src/VideoForensics.Core.Providers.Common.csproj" />
     <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
     <ProjectReference Include="../../../data/database/src/VideoForensics.Data.Database.csproj" />

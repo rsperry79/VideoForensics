@@ -5,6 +5,7 @@
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Layout
 @using VideoForensics.Ui.Shared.Layout.Mobile
 @inject PairedSessionState SessionState
 @inject IAppLockPreferencesStore AppLockPreferences
@@ -123,15 +124,10 @@
                             @L[group.Text]
                         </div>
                         <div class="nav-group-items">
-                            @foreach (var item in group.Items)
-                            {
-                                if (item.IsVisible(BuildContext()))
-                                {
-                                    <SfButton Content="@L[item.Text]"
-                                              OnClick="@(async () => { await CloseNavDrawerAsync(); Nav.NavigateTo(item.Path); })"
-                                              CssClass="@("nav-drawer-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
-                                }
-                            }
+                            <NavSectionList Sections="@NavGroups.SectionsFor(group, BuildContext())"
+                                            CurrentPath="@_currentPath" CurrentQuery="@_currentQuery"
+                                            ItemCssClass="nav-drawer-item"
+                                            OnItemSelected="@(async (NavItem item) => { await CloseNavDrawerAsync(); Nav.NavigateTo(item.Path); })" />
                         </div>
                     </div>
                 }

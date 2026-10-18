@@ -1,13 +1,18 @@
 @page "/settings/infrastructure"
 @using VideoForensics.Client.Core.Tools
 @using Microsoft.Extensions.Localization
-@inject IProviderAuthService AuthService
+@inject VideoForensics.Ui.Shared.Services.PairedSessionState SessionState
 @inject IForensicsConfiguration Config
-@inject ConfigToolsOrchestrator ConfigTools
+@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<SettingsInfrastructure> L
 
 <h4 class="mb-4">@L["Title"]</h4>
+
+@if (!CanLocalAdmin)
+{
+    <div class="alert alert-info">@L["AdminOnlySettingsNote"]</div>
+}
 
 @if (_isLoading)
 {
@@ -30,8 +35,8 @@ else
     <div class="card mb-4">
         <div class="card-body p-4">
             <div class="d-flex flex-row gap-2">
-                <SfDropDownList TValue="KeyStorageProvider" TItem="KeyStorageProvider" @bind-Value="_keyStorageProvider" DataSource="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveKeyStorageProviderAsync" CssClass="e-primary" />
+                <SfDropDownList TValue="KeyStorageProvider" TItem="KeyStorageProvider" @bind-Value="_keyStorageProvider" Enabled="@CanLocalAdmin" DataSource="@(Enum.GetValues<KeyStorageProvider>())" Style="max-width: 260px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveKeyStorageProviderAsync" Disabled="@(!CanLocalAdmin)" CssClass="e-primary" />
                 @if (_keyStorageProviderMessage is not null)
                 {
                     <span style="@(_keyStorageProviderSuccess ? "color: green;" : "color: red;")">@_keyStorageProviderMessage</span>
@@ -45,7 +50,7 @@ else
         <div class="card-body p-4">
             @if (!_showFactoryResetConfirm)
             {
-                <SfButton Content="@L["FactoryResetButton"]" OnClick="() => _showFactoryResetConfirm = true" CssClass="e-danger" />
+                <SfButton Content="@L["FactoryResetButton"]" OnClick="() => _showFactoryResetConfirm = true" Disabled="@(!CanLocalAdmin)" CssClass="e-danger" />
             }
             else
             {
@@ -67,6 +72,10 @@ else
 }
 
 @code {
+    private bool CanLocalAdmin => VideoForensics.Ui.Shared.Layout.PageAccessRules.Allows(
+        VideoForensics.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal,
+        VideoForensics.Ui.Shared.Layout.NavContext.FromSession(SessionState, appLockSupported: false));
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
 
@@ -83,7 +92,8 @@ else
     {
         try
         {
-            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await SessionState.EnsureLoadedAsync();
+            _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
                 _keyStorageProvider = Config.KeyStorageProvider;

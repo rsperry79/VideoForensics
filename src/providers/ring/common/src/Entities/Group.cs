@@ -10,6 +10,10 @@ namespace VideoForensics.Providers.Ring.Entities
     {
         [JsonPropertyName("device_groups")]
         public List<Group> DeviceGroups { get; set; }
+
+        /// <summary>Whether the signed-in account owns the location. Captured alongside device_groups.</summary>
+        [JsonPropertyName("is_owner")]
+        public bool? IsOwner { get; set; }
     }
 
     /// <summary>

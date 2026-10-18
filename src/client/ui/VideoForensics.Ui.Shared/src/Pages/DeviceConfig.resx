@@ -89,4 +89,7 @@
   <data name="AddProviderAccount" xml:space="preserve">
     <value>Link a provider account</value>
   </data>
+  <data name="AskAdministratorToLinkAccount" xml:space="preserve">
+    <value>Ask an administrator to link a provider account.</value>
+  </data>
 </root>

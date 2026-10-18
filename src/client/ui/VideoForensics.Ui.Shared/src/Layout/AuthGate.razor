@@ -40,6 +40,7 @@ else
 
     private bool _loading = true;
     private bool _redirecting = false;
+    private bool _sessionConfirmed = false;
 
     // Routes that do not require authentication
     private static readonly HashSet<string> AllowListedRoutes = new(StringComparer.OrdinalIgnoreCase)
@@ -101,8 +102,17 @@ else
                 _loading = false;
                 _redirecting = false;
             }
+            else if (SessionState.IsSignedIn && !_sessionConfirmed && ResolveStaleSessionRedirectTarget(await SessionState.ConfirmSessionAsync()) is { } staleTarget)
+            {
+                // The stored token is no longer valid server-side (e.g. database reset): clear it and sign in again.
+                _loading = false;
+                _redirecting = true;
+                await SessionState.ClearAsync();
+                NavigationManager.NavigateTo(staleTarget, replace: true);
+            }
             else if (SessionState.IsSignedIn)
             {
+                _sessionConfirmed = true;
                 // User is signed in - check if they must change password
                 if (SessionState.MustChangePassword && path != "/change-password")
                 {
@@ -134,8 +144,17 @@ else
         {
             // Log error but don't let it crash the component
             System.Diagnostics.Debug.WriteLine($"Authorization check failed: {ex}");
+            // Fail closed: never render protected content after an error; send the visitor to sign-in.
             _loading = false;
-            _redirecting = false;
+            _redirecting = true;
+            try
+            {
+                NavigationManager.NavigateTo(ResolveFailureRedirectTarget(), replace: true);
+            }
+            catch (Exception navEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fail-closed redirect failed: {navEx}");
+            }
             StateHasChanged();
         }
     }
@@ -152,6 +171,9 @@ else
     {
         NavigationManager.LocationChanged -= HandleLocationChanged;
     }
+
+    /// <summary>True when a route template is reachable while signed out. Shared with PageAccessRouteView so the page guard does not blank these pages.</summary>
+    public static bool IsAllowListedRoute(string path) => AllowListedRoutes.Contains(path);
 
     /// <summary>
     /// Where an unauthenticated visitor on a non-allow-listed route should land, given the current
@@ -170,4 +192,13 @@ else
              : isEmpty ? "/awaiting-setup"
              : "/signin";
     }
+
+    /// <summary>
+    /// Redirect target when the authorization check itself throws: always sign-in (fail closed), never a
+    /// protected route. Does not consult setup status because that call may be what failed.
+    /// </summary>
+    public static string ResolveFailureRedirectTarget() => "/signin";
+
+    /// <summary>Sign-in redirect when the server rejected the stored session token; null when it was accepted.</summary>
+    public static string? ResolveStaleSessionRedirectTarget(bool sessionConfirmed) => sessionConfirmed ? null : "/signin";
 }

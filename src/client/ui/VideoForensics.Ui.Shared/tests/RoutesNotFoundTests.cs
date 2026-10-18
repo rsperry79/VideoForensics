@@ -17,6 +17,9 @@ public class Routes_NotFound_Tests : SimpleModeLayoutTestBase
     {
         RegisterViewportService();
         RegisterUiModeService("Standard");
+        // The layout hosts StepUpPasswordDialog, which injects StepUpService (and through it WebAuthnClient).
+        Services.AddScoped(_ => new Moq.Mock<VideoForensics.Ui.Shared.Services.WebAuthnClient>(Moq.Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Moq.Mock.Of<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
         var expected = TestLocalizer.Create()["NotFoundMessage"].Value;
 
         // Navigate before rendering so the Router's initial match is the unknown path (NotFound),

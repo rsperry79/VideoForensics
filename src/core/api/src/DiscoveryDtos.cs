@@ -21,14 +21,14 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Name">User-friendly name of the device.</param>
     /// <param name="Type">Device type (e.g., "camera", "doorbell", "base_station").</param>
     /// <param name="LocationId">Identifier of the location this device belongs to.</param>
-    /// <param name="IsOnline">True if the device is currently online and reachable.</param>
+    /// <param name="IsOnline">True if online, False if offline, Null if the provider gave no state.</param>
     /// <param name="Metadata">Additional device metadata in key-value format, provider-specific.</param>
     public record DiscoveryDeviceDto(
         string Id,
         string Name,
         string Type,
         string LocationId,
-        bool IsOnline,
+        bool? IsOnline,
         Dictionary<string, string>? Metadata
     );
 

@@ -417,4 +417,42 @@ public class QueryApiDrillDownHelpers_Tests
         // Assert
         Assert.Empty(result);
     }
+
+    [Fact]
+    public void QueryApiDrillDownHelpers_LocationDisplayLabel_WithName_ReturnsName()
+    {
+        var location = new Location(Id: "loc-123", Name: "Home", Address: null);
+
+        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
+
+        Assert.Equal("Home", result);
+    }
+
+    [Fact]
+    public void QueryApiDrillDownHelpers_LocationDisplayLabel_WithEmptyName_ReturnsId()
+    {
+        var location = new Location(Id: "loc-123", Name: "  ", Address: null);
+
+        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
+
+        Assert.Equal("loc-123", result);
+    }
+
+    [Fact]
+    public void QueryApiDrillDownHelpers_DeviceDisplayLabel_WithEmptyName_ReturnsId()
+    {
+        var device = new Device(Id: "dev-456", Name: "", Type: "camera", LocationId: "loc-123", IsOnline: true);
+
+        var result = QueryApiDrillDownHelpers.DeviceDisplayLabel(device);
+
+        Assert.Equal("dev-456", result);
+    }
+
+    [Fact]
+    public void QueryApiDrillDownHelpers_LocationDisplayLabel_WithNull_ReturnsEmpty()
+    {
+        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(null);
+
+        Assert.Empty(result);
+    }
 }

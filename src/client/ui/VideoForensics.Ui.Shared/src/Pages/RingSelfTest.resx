@@ -200,4 +200,37 @@
   <data name="SelectEndpoints" xml:space="preserve">
     <value>Select endpoints</value>
   </data>
+  <data name="ProviderFilter" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="CategoryFilter" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="AllProviders" xml:space="preserve">
+    <value>All providers</value>
+  </data>
+  <data name="AllCategories" xml:space="preserve">
+    <value>All types</value>
+  </data>
+  <data name="Category_ReadOnly" xml:space="preserve">
+    <value>Read-only</value>
+  </data>
+  <data name="Category_Destructive" xml:space="preserve">
+    <value>Destructive / physical</value>
+  </data>
+  <data name="Provider_Ring" xml:space="preserve">
+    <value>Ring</value>
+  </data>
+  <data name="Provider_Wyze" xml:space="preserve">
+    <value>Wyze</value>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>Select all</value>
+  </data>
+  <data name="UnselectAll" xml:space="preserve">
+    <value>Unselect all</value>
+  </data>
+  <data name="NoEndpointsMatch" xml:space="preserve">
+    <value>No endpoints match the current filters.</value>
+  </data>
 </root>

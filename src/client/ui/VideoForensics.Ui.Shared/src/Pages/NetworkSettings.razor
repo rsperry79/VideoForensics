@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject IStringLocalizer<NetworkSettings> L
 
 <div class="d-flex align-items-center gap-2 mb-4">
@@ -306,7 +307,7 @@ else
         _isSaving = true;
         try
         {
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
             await SaveAsync(_pendingTier.Value, stepUpToken);
             _pendingTier = null;
         }
@@ -443,7 +444,7 @@ else
         {
             // Starting a tunnel exposes this server to the internet - a fresh passkey assertion is
             // required at the moment of the action, not just an already-open session (plan §5.7).
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken);
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
 
             var client = CreateClient();
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);

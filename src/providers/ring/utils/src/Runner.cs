@@ -198,19 +198,21 @@ namespace VideoForensics.Providers.Ring
 
             index.Summary.TotalCalls = index.Calls.Count;
             index.Summary.Succeeded = index.Calls.Count(c => c.Success);
-            index.Summary.Failed = index.Calls.Count(c => !c.Success);
+            index.Summary.NotApplicable = index.Calls.Count(c => c.Status == CallStatusClassifier.NotApplicable);
+            index.Summary.Failed = index.Calls.Count(c => c.Status == CallStatusClassifier.Failed);
 
             return index;
         }
 
-        private static List<EndpointDescriptor> ResolveSelection(IReadOnlyList<string> requestedKeys, bool destructive, bool noPhysical)
+        /// <summary>Builds the endpoint list for a run; "all" skips <see cref="EndpointDescriptor.ManualOnly"/> endpoints, which must be named explicitly.</summary>
+        public static List<EndpointDescriptor> ResolveSelection(IReadOnlyList<string> requestedKeys, bool destructive, bool noPhysical)
         {
             bool wantsAll = requestedKeys.Any(k => string.Equals(k, "all", StringComparison.OrdinalIgnoreCase));
 
             List<EndpointDescriptor> result;
             if (wantsAll)
             {
-                result = EndpointRegistry.All.Where(e => destructive || !e.Destructive).ToList();
+                result = EndpointRegistry.All.Where(e => !e.ManualOnly && (destructive || !e.Destructive)).ToList();
             }
             else
             {
@@ -376,6 +378,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             record.ResultFile = primaryResultFile;
+            record.Status = CallStatusClassifier.Classify(descriptor, record.Success, raw.Select(r => (StatusCode: r.StatusCode, Body: (string?)r.Body)));
 
             return (record, invokeResult);
         }

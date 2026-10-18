@@ -12,6 +12,8 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
 
+using VideoForensics.Hosting.Tests.Services;
+
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -70,8 +72,13 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IDeviceRepository> Devices { get; } = new();
             public Mock<ILocationRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
+            public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
+            public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = new();
+            public Dictionary<string, Mock<IMediaDownloadService>> Media { get; } = new();
+
+            public Dictionary<string, Mock<IDeviceDiscoveryService>> Discovery { get; } = new();
             public CapturingLoggerProvider Logs { get; } = new();
             public string[] EnabledProviders { get; set; } = ["Ring"];
 
@@ -82,6 +89,9 @@ namespace VideoForensics.Hosting.Tests
             {
                 _ = Budget.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
                 _ = Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => _schedules);
+                _ = SyncRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
+                    .Callback<ProviderSyncRun, CancellationToken>((run, _) => Runs.Add(run))
+                    .Returns(Task.CompletedTask);
             }
 
             public (SyncSchedule Schedule, ProviderAccount Account) AddAccount(
@@ -126,10 +136,42 @@ namespace VideoForensics.Hosting.Tests
                         Auth[provider] = new Mock<IProviderAuthService>();
                     }
 
+                    if (!Media.ContainsKey(provider))
+                    {
+                        Media[provider] = NewMedia();
+                    }
+
+                    if (!Discovery.ContainsKey(provider))
+                    {
+                        Discovery[provider] = new Mock<IDeviceDiscoveryService>();
+                    }
+
+                    // Provider discovery returns the same location and device the test seeds, so the pull has work to do.
+                    DiscoveryStub.Wire(account.Id, location, [device], Discovery[provider], Locations, Devices);
+
                     _ = Auth[provider].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(authResult);
                 }
 
                 return (schedule, account);
+            }
+
+            // The scheduled pull reads events through the provider's media download service; a clean empty result keeps the run successful.
+            private static Mock<IMediaDownloadService> NewMedia()
+            {
+                var media = new Mock<IMediaDownloadService>();
+                _ = media
+                    .Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new DownloadResult(true));
+                return media;
+            }
+
+            // The pull walks its window in 30-day batches, so each pull is identified by its first batch, which starts exactly at the window start.
+            // A first run starts at the account's LastSuccessfulAuthUtc, which AddAccount sets to one day before Now.
+            public static System.Linq.Expressions.Expression<Func<IMediaDownloadService, Task<DownloadResult>>> Pulled(Guid accountId, DateTime? from = null)
+            {
+                string deviceId = "dev-" + accountId;
+                DateTime start = from ?? Now.AddDays(-1);
+                return m => m.DownloadVideosAsync(deviceId, It.IsAny<string>(), start, It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>());
             }
 
             public ScheduledSyncService Build()
@@ -139,11 +181,24 @@ namespace VideoForensics.Hosting.Tests
                 _ = _services.AddSingleton(Devices.Object);
                 _ = _services.AddSingleton(Locations.Object);
                 _ = _services.AddSingleton(Budget.Object);
+                _ = _services.AddSingleton(SyncRuns.Object);
                 _ = _services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).AddProvider(Logs));
                 foreach ((string provider, Mock<IEventAndConfigService> events) in Events)
                 {
                     _ = _services.AddKeyedSingleton(provider, events.Object);
                     _ = _services.AddKeyedSingleton(provider, Auth[provider].Object);
+                    if (!Media.ContainsKey(provider))
+                    {
+                        Media[provider] = NewMedia();
+                    }
+
+                    _ = _services.AddKeyedSingleton(provider, Media[provider].Object);
+                    if (!Discovery.ContainsKey(provider))
+                    {
+                        Discovery[provider] = new Mock<IDeviceDiscoveryService>();
+                    }
+
+                    _ = _services.AddKeyedSingleton(provider, Discovery[provider].Object);
                 }
 
                 ServiceProvider sp = _services.BuildServiceProvider();
@@ -158,7 +213,7 @@ namespace VideoForensics.Hosting.Tests
 
             public void VerifyNotPulled(string provider)
             {
-                Events[provider].Verify(e => e.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+                Media[provider].Verify(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
             }
 
             public void VerifyNothingRecorded()
@@ -176,7 +231,7 @@ namespace VideoForensics.Hosting.Tests
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Events["Ring"].Verify(e => e.GetEventsAsync(account.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Once);
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
             h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -217,7 +272,7 @@ namespace VideoForensics.Hosting.Tests
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Events["Ring"].Verify(e => e.GetEventsAsync(account.Id, It.IsAny<string>(), Now.AddDays(-1), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id, Now.AddDays(-1)), Times.Once);
         }
 
         [Fact]
@@ -230,7 +285,7 @@ namespace VideoForensics.Hosting.Tests
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Events["Ring"].Verify(e => e.GetEventsAsync(account.Id, It.IsAny<string>(), last.AddMinutes(-10), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id, last.AddMinutes(-10)), Times.Once);
         }
 
         [Fact]
@@ -270,7 +325,6 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.VerifyNotPulled("Ring");
-            h.VerifyNothingRecorded();
             Assert.Contains(h.Logs.Lines, l => l.StartsWith("Warning"));
         }
 
@@ -295,13 +349,17 @@ namespace VideoForensics.Hosting.Tests
             // Keyed services are registered under the configured spelling ("ring").
             h.Events["ring"] = h.Events["Ring"];
             h.Auth["ring"] = h.Auth["Ring"];
+            h.Discovery["ring"] = h.Discovery["Ring"];
+            h.Media["ring"] = h.Media["Ring"];
+            _ = h.Media.Remove("Ring");
             _ = h.Events.Remove("Ring");
             _ = h.Auth.Remove("Ring");
+            _ = h.Discovery.Remove("Ring");
             ScheduledSyncService service = h.Build();
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Events["ring"].Verify(e => e.GetEventsAsync(account.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["ring"].Verify(Harness.Pulled(account.Id), Times.Once);
         }
 
         [Fact]
@@ -327,10 +385,10 @@ namespace VideoForensics.Hosting.Tests
 
             await service.RunOneTickAsync(CancellationToken.None);
 
-            h.Events["Ring"].Verify(e => e.GetEventsAsync(ring.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
-            h.Events["Ring"].Verify(e => e.GetEventsAsync(wyze.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Never);
-            h.Events["Wyze"].Verify(e => e.GetEventsAsync(wyze.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
-            h.Events["Wyze"].Verify(e => e.GetEventsAsync(ring.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Never);
+            h.Media["Ring"].Verify(Harness.Pulled(ring.Id), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(wyze.Id), Times.Never);
+            h.Media["Wyze"].Verify(Harness.Pulled(wyze.Id), Times.Once);
+            h.Media["Wyze"].Verify(Harness.Pulled(ring.Id), Times.Never);
             h.Budget.Verify(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
             h.Budget.Verify(b => b.TryConsumeAsync("Wyze", It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -340,16 +398,16 @@ namespace VideoForensics.Hosting.Tests
         {
             var h = new Harness { EnabledProviders = ["Ring", "Wyze"] };
             _ = h.AddAccount("Ring");
-            _ = h.AddAccount("Wyze");
+            (_, ProviderAccount wyze) = h.AddAccount("Wyze");
             var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            _ = h.Events["Ring"]
-                .Setup(e => e.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = h.Media["Ring"]
+                .Setup(m => m.DownloadVideosAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
-                    firstStarted.SetResult();
+                    firstStarted.TrySetResult();
                     await releaseFirst.Task;
-                    return (IReadOnlyList<DeviceEvent>)[];
+                    return new DownloadResult(true);
                 });
             ScheduledSyncService service = h.Build();
 
@@ -364,7 +422,7 @@ namespace VideoForensics.Hosting.Tests
             releaseFirst.SetResult();
             await tick.WaitAsync(TimeSpan.FromSeconds(10));
 
-            h.Events["Wyze"].Verify(e => e.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Wyze"].Verify(Harness.Pulled(wyze.Id), Times.Once);
         }
 
         [Fact]
@@ -382,7 +440,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(ring.Id.ToString()) || l.Contains(wyze.Id.ToString()));
             h.Schedules.Verify(r => r.RecordEventRunAsync(ring.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
             h.Schedules.Verify(r => r.RecordEventRunAsync(wyze.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
-            h.Events["Wyze"].Verify(e => e.GetEventsAsync(wyze.Id, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Wyze"].Verify(Harness.Pulled(wyze.Id), Times.Once);
         }
 
         [Fact]
@@ -448,6 +506,7 @@ namespace VideoForensics.Hosting.Tests
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.RunOneTickAsync(cts.Token));
 
             h.VerifyNothingRecorded();
+            Assert.Empty(h.Runs);
             h.VerifyNotPulled("Wyze");
         }
 
@@ -463,6 +522,132 @@ namespace VideoForensics.Hosting.Tests
             Assert.NotEmpty(h.Logs.Lines);
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
             Assert.Contains(h.Logs.Lines, l => l.StartsWith("Information") && l.Contains("Ring"));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ScheduledPullSucceeds_WritesSuccessRun()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.Equal(account.Id, run.ProviderAccountId);
+            Assert.True(run.Success);
+            Assert.Null(run.ErrorMessage);
+            Assert.NotNull(run.CompletedUtc);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ScheduledPullSucceeds_RecordsSyncTypeFromPullStartDate()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.Equal(account.LastSuccessfulAuthUtc is null ? "Full" : "Incremental", run.SyncType);
+            Assert.Equal(0, run.EventsSynced);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_AuthRestoreReturnsFalse_LeavesSyncTypeNull()
+        {
+            var h = new Harness();
+            _ = h.AddAccount("Ring", authResult: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Null(Assert.Single(h.Runs).SyncType);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_PullRecordsAccountError_WritesFailureRunWithAccountMessage()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            // The pull catches discovery failures and records them on the account instead of throwing.
+            _ = h.Discovery["Ring"].Setup(d => d.GetLocationsAsync(account.Id, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("discovery boom"));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.False(run.Success);
+            Assert.Equal("discovery boom", run.ErrorMessage);
+            Assert.NotNull(run.CompletedUtc);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_AttemptThrows_WritesFailureRunWithExceptionMessage()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            _ = h.Budget.Setup(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("budget store down"));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.Equal(account.Id, run.ProviderAccountId);
+            Assert.False(run.Success);
+            Assert.Equal("budget store down", run.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_AuthRestoreReturnsFalse_WritesFailureRunWithRestoreMessage()
+        {
+            var h = new Harness();
+            _ = h.AddAccount("Ring", authResult: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.False(run.Success);
+            Assert.Equal("Saved credentials could not be restored. Sign in to this account again.", run.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_MissingAccount_WritesFailureRunAccountNotFoundAndBacksOff()
+        {
+            var h = new Harness();
+            (SyncSchedule schedule, ProviderAccount account) = h.AddAccount("Ring");
+            _ = h.Accounts.Setup(r => r.GetAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(h.Runs);
+            Assert.Equal(schedule.ProviderAccountId, run.ProviderAccountId);
+            Assert.False(run.Success);
+            Assert.Equal("Account not found", run.ErrorMessage);
+            // The schedule stays enabled, so it must back off a full interval instead of recording a failure every tick.
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RunWriteFails_LogsErrorWithoutGuidAndStillRecordsSchedule()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            _ = h.SyncRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("database unavailable"));
+            ScheduledSyncService service = h.Build();
+
+            // Recording is best-effort: a failed write must not fail the tick or the schedule update.
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Contains(h.Logs.Lines, l => l.StartsWith("Error") && l.Contains("sync run"));
+            Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]

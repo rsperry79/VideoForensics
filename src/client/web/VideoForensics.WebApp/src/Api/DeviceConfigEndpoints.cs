@@ -15,14 +15,14 @@ namespace VideoForensics.WebApp.Api
     /// widen network exposure or breach privileged boundaries the way pairing revocation or network
     /// tier changes do - they record settings that have already been fetched from or applied to
     /// devices by provider services running server-side. No step-up re-authentication is required
-    /// for these operations: they are audited and the same authorization (SuperAdmin+Local)
+    /// for these operations: they are audited and the same authorization (SuperAdmin (Local for password sign-in; passkey from any tier))
     /// applies equally to all endpoints in this group.
     /// </summary>
     public static class DeviceConfigEndpoints
     {
         public static void MapDeviceConfigEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/device-config").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/device-config").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", async (IDeviceConfigRepository configs, CancellationToken ct) =>
                 Results.Ok((await configs.ListAsync(ct)).Select(x => x.ToDto())))

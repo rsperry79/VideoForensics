@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace VideoForensics.Providers.Ring.Entities
@@ -14,6 +16,34 @@ namespace VideoForensics.Providers.Ring.Entities
         /// Current mode: "home", "away" or "disarmed"
         /// </summary>
         [JsonPropertyName("mode")]
+        public string Mode { get; set; }
+
+        [JsonPropertyName("lastUpdateTimeMS")]
+        public long? LastUpdateTimeMs { get; set; }
+
+        [JsonPropertyName("securityStatus")]
+        public LocationModeSecurityStatus SecurityStatus { get; set; }
+
+        [JsonPropertyName("readOnly")]
+        public bool? ReadOnly { get; set; }
+
+        /// <summary>Element shape is not captured yet (empty in every capture), so each element is kept as raw JSON.</summary>
+        [JsonPropertyName("notYetParticipatingInMode")]
+        public List<JsonElement> NotYetParticipatingInMode { get; set; }
+
+        [JsonPropertyName("modePanelType")]
+        public string ModePanelType { get; set; }
+    }
+
+    /// <summary>Security status block of a location mode response.</summary>
+    public class LocationModeSecurityStatus
+    {
+        /// <summary>Last update time in milliseconds since the epoch.</summary>
+        [JsonPropertyName("lu")]
+        public long? LastUpdateTimeMs { get; set; }
+
+        /// <summary>Mode the security status was last set to.</summary>
+        [JsonPropertyName("md")]
         public string Mode { get; set; }
     }
 }

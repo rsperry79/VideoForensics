@@ -1,18 +1,25 @@
 using ModelContextProtocol.Server;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Contracts;
 
 namespace VideoForensics.WebApp.Mcp.Tools
 {
-    /// <summary>Phase 4 forensics tools: Access & Export Audit & Chain of Custody</summary>
+    /// <summary>
+    /// Phase 4 forensics tools: access and export audit, chain of custody. Every tool needs Admin, the same as the HTTP
+    /// security audit log, because these records show who accessed or exported evidence.
+    /// </summary>
     [McpServerToolType]
     public class AuditTrailTools : ForensicsToolBase
     {
         private readonly IAuditTrailRepository _auditTrailRepository;
+        private readonly IMcpCallerAuthorizer _authorizer;
 
-        public AuditTrailTools(IAuditTrailRepository auditTrailRepository, ILogger<AuditTrailTools> logger) : base(logger)
+        public AuditTrailTools(IAuditTrailRepository auditTrailRepository, IMcpCallerAuthorizer authorizer, ILogger<AuditTrailTools> logger) : base(logger)
         {
             _auditTrailRepository = auditTrailRepository;
+            _authorizer = authorizer;
         }
 
         /// <summary>Get quick audit trail summary for compliance review. Use this first to assess chain of custody integrity.</summary>
@@ -22,6 +29,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("GetAuditTrailSummary: location={LocationId}", locationId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetAuditTrailSummaryAsync(locationId, cancellationToken);
         }
 
@@ -35,6 +43,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
         {
             Logger.LogInformation("GetAccessHistoryPaginated: evidence={EvidenceId}, page={PageNumber}/{PageSize}",
                 evidenceId, pageNumber, pageSize);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetAccessHistoryPaginatedAsync(evidenceId, pageNumber, pageSize, cancellationToken);
         }
 
@@ -48,6 +57,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
         {
             Logger.LogInformation("GetExportHistoryCursor: location={LocationId}, cursor={Cursor}, pageSize={PageSize}",
                 locationId, cursor ?? "null", pageSize);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetExportHistoryCursorAsync(locationId, cursor, pageSize, cancellationToken);
         }
 
@@ -58,6 +68,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("VerifyChainOfCustody: location={LocationId}", locationId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.VerifyChainOfCustodyAsync(locationId, cancellationToken);
         }
 
@@ -68,6 +79,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("FlagUnauthorizedAccess: location={LocationId}", locationId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.FlagUnauthorizedAccessAsync(locationId, cancellationToken);
         }
 
@@ -78,6 +90,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("GetExportHistory: location={LocationId}", locationId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetExportHistoryAsync(locationId, cancellationToken);
         }
 
@@ -88,6 +101,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("VerifyExportIntegrity: exportId={ExportId}", exportId);
+            await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.VerifyExportIntegrityAsync(exportId, cancellationToken);
         }
     }

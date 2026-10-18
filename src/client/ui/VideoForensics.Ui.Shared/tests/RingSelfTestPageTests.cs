@@ -116,6 +116,12 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         Services.AddScoped(_ => InspectorState);
         Services.AddLocalization();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        // The page checks the operator's tier before offering destructive endpoints. These tests exercise those
+        // endpoints, so they run as a SuperAdmin on the Local tier.
+        Services.AddScoped(sp => new VideoForensics.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
+        var session = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+        session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin").GetAwaiter().GetResult();
+        session.SetServerSessionKind(localTier: true, passkeySession: false);
 
         ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<SelfTestCallDto>, TestSfGrid>();
         ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
@@ -126,7 +132,7 @@ public abstract class RingSelfTestPageTestBase : BunitContext
             .Setup(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<SelfTestEndpointDto>
             {
-                new("call_a", "Call A", "desc", "oauth2", "GET", "/a", "None", false, false)
+                new("call_a", "Call A", "desc", "oauth2", "GET", "/a", "None", false, false, "Ring")
             });
     }
 
@@ -378,5 +384,143 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
         await Task.Delay(1500);
 
         SelfTestServiceMock.Verify(m => m.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+}
+
+public class RingSelfTestPage_Routing_Tests : RingSelfTestPageTestBase
+{
+    [Fact]
+    public void RingSelfTest_Routes_IncludesLegacyAndQueryApiSubpage()
+    {
+        var templates = typeof(RingSelfTest)
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), inherit: false)
+            .Cast<Microsoft.AspNetCore.Components.RouteAttribute>()
+            .Select(r => r.Template)
+            .ToList();
+
+        Assert.Contains("/tools/ring-selftest", templates);
+        Assert.Contains("/query/api-tester", templates);
+    }
+
+    [Fact]
+    public void RingSelfTestPage_Breadcrumb_LinksBackToQueryApi()
+    {
+        SelfTestServiceMock
+            .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+
+        var component = RenderPage();
+
+        var queryLink = component.FindAll("nav a").Single(a => a.GetAttribute("href") == "/query");
+        Assert.Equal("Query API", queryLink.TextContent.Trim());
+    }
+}
+
+public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
+{
+    private static SelfTestEndpointDto Ep(string key, string provider, bool destructive = false) =>
+        new(key, key, "d", "oauth2", "GET", "/p", "None", destructive, false, provider);
+
+    public RingSelfTestPage_Filter_Tests()
+    {
+        SelfTestServiceMock
+            .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        SelfTestServiceMock
+            .Setup(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SelfTestEndpointDto>
+            {
+                Ep("ring_a", "Ring"), Ep("ring_b", "Ring"), Ep("wyze_a", "Wyze"),
+                Ep("ring_d", "Ring", destructive: true),
+            });
+    }
+
+    /// <summary>
+    /// The controls live in the right-panel slot, which is a separate render root. Rendering the slot afresh
+    /// reflects the page's current state, so each assertion calls this after the interaction it checks.
+    /// </summary>
+    private IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> Panel(IRenderedComponent<RingSelfTest> page)
+    {
+        var slot = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        Assert.NotNull(slot.Content);
+        return Render(slot.Content!);
+    }
+
+    private static List<string> Keys(IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>> c) =>
+        c.Instance.DataSource!.Select(e => e.Key).ToList();
+
+    private IReadOnlyList<IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>> Groups(IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> page) =>
+        page.FindComponents<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>();
+
+    [Fact]
+    public void RingSelfTestPage_ProviderFilter_NarrowsEndpoints()
+    {
+        var page = RenderPage();
+
+        Panel(page).Find("[data-testid='provider-filter']").Change("Wyze");
+
+        var readOnly = Groups(Panel(page)).Single();
+        Assert.Equal(["wyze_a"], Keys(readOnly));
+    }
+
+    [Fact]
+    public void RingSelfTestPage_ProviderFilter_ShowsHumanReadableLabelsOnly()
+    {
+        var page = RenderPage();
+
+        var options = Panel(page).FindAll("[data-testid='provider-filter'] option");
+
+        Assert.Contains(options, o => o.TextContent.Trim() == "Wyze");
+        Assert.Contains(options, o => o.TextContent.Trim() == "Ring");
+        Assert.DoesNotContain(options, o => o.TextContent.Contains("Provider_"));
+    }
+
+    [Fact]
+    public void RingSelfTestPage_CategoryFilter_OffersHumanReadableLabels()
+    {
+        var page = RenderPage();
+
+        var texts = Panel(page).FindAll("[data-testid='category-filter'] option").Select(o => o.TextContent.Trim()).ToList();
+
+        Assert.Contains("Read-only", texts);
+        Assert.Contains("Destructive / physical", texts);
+        Assert.DoesNotContain("ReadOnly", texts);
+    }
+
+    [Fact]
+    public void RingSelfTestPage_CategoryFilter_ExcludesCategoryWithNoEndpointsForProvider()
+    {
+        var page = RenderPage();
+
+        Panel(page).Find("[data-testid='provider-filter']").Change("Wyze");
+
+        var texts = Panel(page).FindAll("[data-testid='category-filter'] option").Select(o => o.TextContent.Trim()).ToList();
+        Assert.DoesNotContain("Destructive / physical", texts);
+    }
+
+    [Fact]
+    public void RingSelfTestPage_ReadOnlySelectAll_SelectsOnlyReadOnlyGroup()
+    {
+        var page = RenderPage();
+
+        Panel(page).Find("[data-testid='readonly-select-all']").Click();
+
+        var groups = Groups(Panel(page));
+        Assert.Equal(["ring_a", "ring_b", "wyze_a"], groups[0].Instance.Value!.OrderBy(k => k, StringComparer.Ordinal));
+        Assert.Empty(groups[1].Instance.Value ?? []);
+    }
+
+    [Fact]
+    public void RingSelfTestPage_ReadOnlyUnselectAll_ClearsOnlyReadOnlyGroup()
+    {
+        var page = RenderPage();
+        Panel(page).Find("[data-testid='destructive-select-all']").Click();
+        Panel(page).Find("[data-testid='readonly-select-all']").Click();
+
+        Panel(page).Find("[data-testid='readonly-unselect-all']").Click();
+
+        var groups = Groups(Panel(page));
+        Assert.Empty(groups[0].Instance.Value ?? []);
+        Assert.Equal(["ring_d"], groups[1].Instance.Value);
     }
 }

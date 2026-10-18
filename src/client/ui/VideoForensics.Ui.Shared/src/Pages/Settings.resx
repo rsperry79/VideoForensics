@@ -113,4 +113,7 @@
   <data name="MdnsError" xml:space="preserve">
     <value>Failed to update mDNS advertisement: {0}</value>
   </data>
+  <data name="AdminOnlySettingsNote" xml:space="preserve">
+    <value>Only an administrator can change these settings. Ask an administrator to make the change.</value>
+  </data>
 </root>

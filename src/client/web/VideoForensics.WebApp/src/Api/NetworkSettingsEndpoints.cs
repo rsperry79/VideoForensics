@@ -11,7 +11,7 @@ namespace VideoForensics.WebApp.Api
 {
     /// <summary>
     /// The configured network access tier (plan §5.2) - Local by default, each wider tier an
-    /// explicit opt-in. Gated SuperAdmin+Local like every other infrastructure-exposure screen
+    /// explicit opt-in. Gated SuperAdmin (Local for password sign-in; passkey from any tier) like every other infrastructure-exposure screen
     /// (§5.10). Only WIDENING (Local→Network, Local→Internet, Network→Internet) requires step-up
     /// re-authentication (§5.7's own "widening the network tier" example) - narrowing back toward
     /// Local only reduces exposure, so it's allowed without a fresh passkey assertion, the same
@@ -23,7 +23,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapNetworkSettingsEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/network-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/network-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", (IForensicsConfiguration config) => Results.Ok(new
             {
@@ -56,7 +56,7 @@ namespace VideoForensics.WebApp.Api
                 // Setting InternetServerUrl is not a "widening" network-tier change in the sense that
                 // it does not change what Kestrel binds to - it only affects where paired clients know
                 // to find the server over the Internet. Therefore, it does not require step-up re-authentication,
-                // only SuperAdminLocal authorization inherited from the group.
+                // only SuperAdmin authorization inherited from the group.
                 config.InternetServerUrl = request.InternetServerUrl;
                 await configService.SaveConfigurationAsync(config, ct);
 

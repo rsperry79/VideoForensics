@@ -62,6 +62,60 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public void CaptureFromInitialConnection_HttpContext_RecordsClientIpFromResolver()
+        {
+            var context = new SessionNetworkContext();
+            var httpContext = new DefaultHttpContext();
+            var resolver = new Mock<INetworkTierResolver>();
+            _ = resolver.Setup(r => r.ResolveClientIp(httpContext)).Returns("203.0.113.7");
+
+            context.CaptureFromInitialConnection(httpContext, resolver.Object);
+
+            Assert.Equal("203.0.113.7", context.ClientIp);
+        }
+
+        [Fact]
+        public void CaptureFromInitialConnection_NullHttpContext_LeavesClientIpNull()
+        {
+            var context = new SessionNetworkContext();
+            var resolver = new Mock<INetworkTierResolver>();
+
+            context.CaptureFromInitialConnection(null, resolver.Object);
+
+            Assert.Null(context.ClientIp);
+        }
+
+        [Fact]
+        public void CaptureFromInitialConnection_SecondCapture_KeepsFirstClientIp()
+        {
+            var context = new SessionNetworkContext();
+            var first = new DefaultHttpContext();
+            var second = new DefaultHttpContext();
+            var resolver = new Mock<INetworkTierResolver>();
+            _ = resolver.Setup(r => r.ResolveClientIp(first)).Returns("203.0.113.7");
+            _ = resolver.Setup(r => r.ResolveClientIp(second)).Returns("198.51.100.9");
+
+            context.CaptureFromInitialConnection(first, resolver.Object);
+            context.CaptureFromInitialConnection(second, resolver.Object);
+
+            Assert.Equal("203.0.113.7", context.ClientIp);
+        }
+
+        [Fact]
+        public void SetTier_AfterCapture_DoesNotChangeClientIp()
+        {
+            var context = new SessionNetworkContext();
+            var httpContext = new DefaultHttpContext();
+            var resolver = new Mock<INetworkTierResolver>();
+            _ = resolver.Setup(r => r.ResolveClientIp(httpContext)).Returns("203.0.113.7");
+            context.CaptureFromInitialConnection(httpContext, resolver.Object);
+
+            context.SetTier(NetworkTier.Internet);
+
+            Assert.Equal("203.0.113.7", context.ClientIp);
+        }
+
+        [Fact]
         public void SetTier_MoreRestrictiveThanCurrent_Updates()
         {
             // Arrange

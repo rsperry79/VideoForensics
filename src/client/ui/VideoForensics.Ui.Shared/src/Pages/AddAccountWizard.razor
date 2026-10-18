@@ -8,6 +8,7 @@
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<AddAccountWizard> L
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -184,6 +185,25 @@ else
         }
     }
 
+    /// <summary>
+    /// Starts the first full sync of a newly added account. Best-effort: the account is already linked, and the server
+    /// records any sync failure on the account, so a failed start request does not fail the add.
+    /// </summary>
+    private async Task StartInitialSyncAsync(Guid accountId)
+    {
+        await SessionState.EnsureLoadedAsync();
+        using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        try
+        {
+            using HttpResponseMessage _ = await client.PostAsync($"api/v1/accounts/provider-accounts/{accountId}/initial-sync", null);
+        }
+        catch (HttpRequestException)
+        {
+            // Covered by the comment above: the account stays linked and can be synced from its details page.
+        }
+    }
+
     private async Task HandleAuthenticationAsync(AuthResult result)
     {
         if (result.Success)
@@ -191,6 +211,11 @@ else
             _authSuccess = true;
             _errorMessage = null;
             _currentStep = 3;
+
+            if (result.ProviderAccountId is { } accountId)
+            {
+                await StartInitialSyncAsync(accountId);
+            }
         }
         else
         {

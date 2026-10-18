@@ -45,6 +45,10 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <summary>Analysis runs server-side only; a client host has no recent-clip query.</summary>
+        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct) =>
+            throw new NotSupportedException("Media analysis runs on the server, not on a client host.");
+
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/media-items?deviceId={deviceId}", ct);

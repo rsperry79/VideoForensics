@@ -156,7 +156,17 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive).ToList());
         }
 
-        public Task AddAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Add(account); return Task.CompletedTask; }
+        public Task AddAsync(ProviderAccount account, CancellationToken ct)
+        {
+            _ = _db.ProviderAccounts.Add(account);
+            // Same default as ProviderAccountRepository.AddAsync; this path is synchronous, so the check is too.
+            if (!_db.SyncSchedules.Any(s => s.ProviderAccountId == account.Id))
+            {
+                _ = _db.SyncSchedules.Add(SyncSchedule.CreateDefault(account.Id));
+            }
+
+            return Task.CompletedTask;
+        }
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Update(account); return Task.CompletedTask; }
         public Task DeleteAsync(Guid accountId, CancellationToken ct)
         {
@@ -338,6 +348,10 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).ToList());
+        }
+        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAtUtc).Take(limit).ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
@@ -1095,6 +1109,54 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             return Task.CompletedTask;
+        }
+
+        public async Task<Guid> UpsertEventDetectionAsync(EventDetection detection, CancellationToken ct)
+        {
+            // One detection row per event: key on EventId. Check unsaved rows first so two upserts in
+            // the same transaction don't both insert.
+            EventDetection? existing = _db.EventDetections.Local.FirstOrDefault(d => d.EventId == detection.EventId)
+                ?? await _db.EventDetections.FirstOrDefaultAsync(d => d.EventId == detection.EventId, ct);
+
+            if (existing == null)
+            {
+                _ = _db.EventDetections.Add(detection);
+                return detection.Id;
+            }
+
+            if (!ReferenceEquals(existing, detection))
+            {
+                existing.PersonDetected = detection.PersonDetected;
+                existing.StreamBroken = detection.StreamBroken;
+                existing.DetectionType = detection.DetectionType;
+                existing.FullDescription = detection.FullDescription;
+                existing.ShortDescription = detection.ShortDescription;
+                existing.Similarity = detection.Similarity;
+                existing.Anomaly = detection.Anomaly;
+                existing.Confidence = detection.Confidence;
+                existing.ModelVersion = detection.ModelVersion;
+            }
+
+            // Children are re-added by the caller from the latest data, so drop the previous set.
+            Guid detectionId = existing.Id;
+            _db.EventDetectionZones.RemoveRange(await _db.EventDetectionZones.Where(z => z.EventDetectionId == detectionId).ToListAsync(ct));
+            _db.EventDetectionTypeOccurrences.RemoveRange(await _db.EventDetectionTypeOccurrences.Where(o => o.EventDetectionId == detectionId).ToListAsync(ct));
+
+            detection.Id = detectionId;
+            return detectionId;
+        }
+
+        public async Task ClearEventAlertsAndPersonsAsync(Guid eventId, bool clearAlerts, bool clearPersons, CancellationToken ct)
+        {
+            if (clearAlerts)
+            {
+                _db.EventSecurityAlerts.RemoveRange(await _db.EventSecurityAlerts.Where(a => a.EventId == eventId).ToListAsync(ct));
+            }
+
+            if (clearPersons)
+            {
+                _db.EventDetectedPersons.RemoveRange(await _db.EventDetectedPersons.Where(p => p.EventId == eventId).ToListAsync(ct));
+            }
         }
 
         public Task AddEventDetectionZonesAsync(List<EventDetectionZone> zones, CancellationToken ct)

@@ -16,7 +16,7 @@ using VideoForensics.Ui.Shared.Services;
 
 /// <summary>
 /// Tests for the release channel card on the update page. The card is shown only to Admin and above; only a
-/// SuperAdmin viewer gets the dropdown and Save button, and Admin sees the current channel as read-only text.
+/// SuperAdmin viewer gets the dropdown, and Admin sees the current channel as read-only text.
 /// Viewers below Admin get no card and no channel request. The server enforces the rules; these tests cover
 /// presentation only. Also covers the localized relative timestamp for the last-checked time.
 /// </summary>
@@ -60,12 +60,6 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         return all.Count == 0 ? null : all[0];
     }
 
-    private AngleSharp.Dom.IElement? FindSaveButton(IRenderedComponent<UpdateCheck> cut)
-    {
-        var text = Localizer["SaveChannelButton"].Value;
-        return cut.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == text);
-    }
-
     private void SetupChannel(UpdateReleaseChannel current)
     {
         _releaseChannel.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
@@ -73,7 +67,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     }
 
     [Fact]
-    public async Task UpdateCheck_SuperAdminViewer_ShowsChannelDropdownAndSaveButton()
+    public async Task UpdateCheck_SuperAdminViewer_ShowsChannelDropdown()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
@@ -81,11 +75,10 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
-        Assert.NotNull(FindSaveButton(cut));
     }
 
     [Fact]
-    public async Task UpdateCheck_AdminViewer_HidesChannelDropdownAndSaveButton()
+    public async Task UpdateCheck_AdminViewer_HidesChannelDropdown()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.Admin);
@@ -94,7 +87,6 @@ public class UpdateCheckReleaseChannelTests : BunitContext
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
         Assert.Null(FindDropDown(cut));
-        Assert.Null(FindSaveButton(cut));
     }
 
     [Fact]
@@ -110,7 +102,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     }
 
     [Fact]
-    public async Task UpdateCheck_SuperAdminSave_CallsSetReleaseChannelWithSelectedChannel()
+    public async Task UpdateCheck_SuperAdminSelectsDifferentChannel_SavesOnceWithoutButtonClick()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
         _releaseChannel.Setup(s => s.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, It.IsAny<CancellationToken>()))
@@ -123,12 +115,42 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         var dropDown = FindDropDown(cut)!;
         await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Testing));
 
-        FindSaveButton(cut)!.Click();
-
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelSavedMessage"], cut.Markup));
         _releaseChannel.Verify(
             s => s.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCheck_SuperAdminSelectsCurrentChannel_DoesNotCallServer()
+    {
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.SuperAdmin);
+
+        var cut = RenderPage();
+        cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
+
+        var dropDown = FindDropDown(cut)!;
+        await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Stable));
+
+        _releaseChannel.Verify(
+            s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCheck_ChannelCard_RendersBeforeCheckNowButton()
+    {
+        SetupChannel(UpdateReleaseChannel.Stable);
+        await SignInAsync(OperatorRole.SuperAdmin);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
+        var cardIndex = cut.Markup.IndexOf(Localizer["ReleaseChannelTitle"].Value, StringComparison.Ordinal);
+        var buttonIndex = cut.Markup.IndexOf(Localizer["CheckNowButton"].Value, StringComparison.Ordinal);
+        Assert.True(buttonIndex >= 0);
+        Assert.True(cardIndex < buttonIndex, "Release channel card must render before the check-now button.");
     }
 
     [Fact]
@@ -208,7 +230,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     }
 
     [Fact]
-    public async Task UpdateCheck_ChannelSaveFails_ShowsLocalizedSaveFailedMessage()
+    public async Task UpdateCheck_ChannelSaveFails_ShowsSaveFailedAndRevertsSelection()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
         _releaseChannel.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
@@ -216,10 +238,12 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         await SignInAsync(OperatorRole.SuperAdmin);
 
         var cut = RenderPage();
-        cut.WaitForAssertion(() => Assert.NotNull(FindSaveButton(cut)));
+        cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
 
-        FindSaveButton(cut)!.Click();
+        var dropDown = FindDropDown(cut)!;
+        await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Testing));
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelSaveFailed", "denied"], cut.Markup));
+        Assert.Equal(UpdateReleaseChannel.Stable, FindDropDown(cut)!.Instance.Value);
     }
 }

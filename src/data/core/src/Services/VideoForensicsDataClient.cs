@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -18,11 +19,13 @@ namespace VideoForensics.Data.Core.Services
         private readonly IEventRepository _eventRepository;
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
+        private readonly IDeviceDetailsRepository _deviceDetailsRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
+        private readonly IMediaAnalysisService _mediaAnalysis;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -37,6 +40,7 @@ namespace VideoForensics.Data.Core.Services
             IEventRepository eventRepository,
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
+            IDeviceDetailsRepository deviceDetailsRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -44,7 +48,8 @@ namespace VideoForensics.Data.Core.Services
             ICredentialRepository credentialRepository,
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
-            ILogger<VideoForensicsDataClient> logger)
+            ILogger<VideoForensicsDataClient> logger,
+            IMediaAnalysisService mediaAnalysis)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -54,6 +59,7 @@ namespace VideoForensics.Data.Core.Services
             _eventRepository = eventRepository;
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthRepository = deviceHealthRepository;
+            _deviceDetailsRepository = deviceDetailsRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -62,6 +68,7 @@ namespace VideoForensics.Data.Core.Services
             IntegrityVerification = integrityVerification;
             ActionLog = actionLogRepository;
             _logger = logger;
+            _mediaAnalysis = mediaAnalysis;
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -93,6 +100,26 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public async Task RecordDeviceDetailsAsync(
+            Guid deviceId,
+            Guid? healthId,
+            DeviceCapabilities? capabilities,
+            DeviceFeatures? features,
+            IReadOnlyList<DeviceAlerts>? alerts,
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null)
+        {
+            try
+            {
+                await _deviceDetailsRepository.UpsertAsync(deviceId, healthId, capabilities, features, alerts, ct, settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
+                throw;
+            }
+        }
+
         public async Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct)
         {
             try
@@ -117,6 +144,26 @@ namespace VideoForensics.Data.Core.Services
             return await _downloadEventRepository.GetByProviderEventIdAsync(deviceId, providerEventId, ct);
         }
 
+        /// <summary>
+        /// Analyses a saved media item and waits for the result, so the next provider call is spaced by local analysis time.
+        /// Best-effort: an analysis failure is logged and never fails the recording.
+        /// </summary>
+        private async Task AnalyzeSavedMediaAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            try
+            {
+                await _mediaAnalysis.AnalyzeAsync(mediaItemId, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+            }
+        }
+
         public async Task<DownloadEvent> RecordDownloadEventAsync(
             DownloadEvent evt,
             MediaItem? media,
@@ -127,7 +174,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async context =>
+                DownloadEvent saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert by (DeviceId, ProviderEventId) rather than blind-inserting - repeated
                     // attempts at the same event (retries after a transient failure, or a permanent
@@ -184,6 +231,13 @@ namespace VideoForensics.Data.Core.Services
 
                     return evt;
                 }, ct);
+
+                if (media != null)
+                {
+                    await AnalyzeSavedMediaAsync(media.Id, ct);
+                }
+
+                return saved;
             }
             catch (Exception ex)
             {
@@ -210,11 +264,20 @@ namespace VideoForensics.Data.Core.Services
                     Event upserted = await context.Events.UpsertAsync(evt, ct);
 
                     // Persist detection-related entities if provided
+                    // Idempotent: this runs several times per event, so detection and its child rows are
+                    // upserted/replaced rather than appended.
                     if (detection != null)
                     {
                         detection.EventId = upserted.Id;
-                        await context.DetectionEntities.AddEventDetectionAsync(detection, ct);
+                        _ = await context.DetectionEntities.UpsertEventDetectionAsync(detection, ct);
                         upserted.EventDetectionId = detection.Id;
+                    }
+
+                    bool hasAlerts = alerts != null && alerts.Count > 0;
+                    bool hasPersons = persons != null && persons.Count > 0;
+                    if (hasAlerts || hasPersons)
+                    {
+                        await context.DetectionEntities.ClearEventAlertsAndPersonsAsync(upserted.Id, hasAlerts, hasPersons, ct);
                     }
 
                     if (zones != null && zones.Count > 0)
@@ -406,15 +469,87 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        /// <summary>
+        /// Copies provider detail fields onto a device row. A null <paramref name="details"/> is a no-op so a
+        /// sync that carries no detail fields never blanks values already on record; a non-null one overwrites
+        /// every column, so a field the provider no longer reports is stored as null.
+        /// </summary>
+        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details)
+        {
+            if (details == null)
+            {
+                return;
+            }
+
+            device.RingDeviceId = details.RingDeviceId;
+            device.RingKind = details.RingKind;
+            device.FirmwareVersion = details.FirmwareVersion;
+            device.Latitude = details.Latitude;
+            device.Longitude = details.Longitude;
+            device.Address = details.Address;
+            device.Subscribed = details.Subscribed;
+            device.SubscribedMotions = details.SubscribedMotions;
+            device.BatteryLife = details.BatteryLife;
+            device.ExternalConnection = details.ExternalConnection;
+            device.Owned = details.Owned;
+            device.Stolen = details.Stolen;
+            device.EnableVod = details.EnableVod;
+            device.ExposureControl = details.ExposureControl;
+            device.MotionSnoozePresetProfile = details.MotionSnoozePresetProfile;
+            device.LiveViewPresetProfile = details.LiveViewPresetProfile;
+            device.PirSensitivity1 = details.PirSensitivity1;
+            device.VodSuspended = details.VodSuspended;
+            device.DoorbellVolume = details.DoorbellVolume;
+            device.VodStatus = details.VodStatus;
+            device.AdvancedMotionDetectionEnabled = details.AdvancedMotionDetectionEnabled;
+            device.AdvancedMotionDetectionHumanOnlyMode = details.AdvancedMotionDetectionHumanOnlyMode;
+            device.EnableAudioRecording = details.EnableAudioRecording;
+            device.EnableWhiteLeds = details.EnableWhiteLeds;
+            device.ChimeVolume = details.ChimeVolume;
+            device.DingAudioUserId = details.DingAudioUserId;
+            device.DingAudioId = details.DingAudioId;
+            device.MotionAudioUserId = details.MotionAudioUserId;
+            device.MotionAudioId = details.MotionAudioId;
+            device.DoNotDisturbSecondsLeft = details.DoNotDisturbSecondsLeft;
+            device.LightBrightness = details.LightBrightness;
+            device.OwnerId = details.OwnerId;
+            device.OwnerFirstName = details.OwnerFirstName;
+            device.OwnerLastName = details.OwnerLastName;
+            device.OwnerEmail = details.OwnerEmail;
+            device.RingType = details.RingType;
+            device.RingRingId = details.RingRingId;
+            device.BatteryLife2 = details.BatteryLife2;
+            device.BatteryVoltage = details.BatteryVoltage;
+            device.BatteryVoltage2 = details.BatteryVoltage2;
+            device.LedStatus = details.LedStatus;
+            device.SirenSecondsRemaining = details.SirenSecondsRemaining;
+            device.NightMode = details.NightMode;
+            device.MotionSnoozeJson = details.MotionSnoozeJson;
+            device.SettingsMetadataJson = details.SettingsMetadataJson;
+            device.LightSettingsMetadataJson = details.LightSettingsMetadataJson;
+            device.PirSettingsSensitivity1 = details.PirSettingsSensitivity1;
+            device.PirSettingsSensitivity2 = details.PirSettingsSensitivity2;
+            device.PirSettingsSensitivity3 = details.PirSettingsSensitivity3;
+            device.PirSettingsZoneEnable = details.PirSettingsZoneEnable;
+            device.PirSettingsZoneMask = details.PirSettingsZoneMask;
+            device.NightModeOn = details.NightModeOn;
+            device.MotionDetectionEnabled = details.MotionDetectionEnabled;
+            device.SettingsChimeType = details.SettingsChimeType;
+            device.SettingsChimeEnabled = details.SettingsChimeEnabled;
+            device.SettingsChimeDuration = details.SettingsChimeDuration;
+        }
+
         public async Task<Device> EnsureDeviceAsync(
             Guid locationId,
             string providerDeviceId,
             string name,
             string type,
-            bool isOnline,
+            bool? isOnline,
             string? metadataJson = null,
             string? apiResponseHash = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string? timeZoneId = null,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null)
         {
             try
             {
@@ -447,9 +582,11 @@ namespace VideoForensics.Data.Core.Services
                             IsOnline = isOnline,
                             MetadataJson = metadataJson,
                             ApiResponseHash = apiResponseHash,
+                            TimeZoneId = timeZoneId,
                             LastSyncedUtc = DateTime.UtcNow,
                             SyncStatus = SyncStatus.Synced
                         };
+                        ApplyDetailFields(device, details);
                         await context.Devices.AddAsync(device, ct);
                         _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
                         return device;
@@ -482,9 +619,11 @@ namespace VideoForensics.Data.Core.Services
                                 IsOnline = isOnline,
                                 MetadataJson = metadataJson,
                                 ApiResponseHash = apiResponseHash,
+                                TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced
                             };
+                            ApplyDetailFields(newDevice, details);
 
                             await context.Devices.AddAsync(newDevice, ct);
                             _logger.LogInformation(
@@ -499,6 +638,14 @@ namespace VideoForensics.Data.Core.Services
                         existingDevice.Name = name;
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
+                        // Only overwrite the stored time zone when this sync actually carries one, so a
+                        // later response without time_zone never blanks a value already on record.
+                        if (!string.IsNullOrWhiteSpace(timeZoneId))
+                        {
+                            existingDevice.TimeZoneId = timeZoneId;
+                        }
+
+                        ApplyDetailFields(existingDevice, details);
                         await context.Devices.UpdateAsync(existingDevice, ct);
                         _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;

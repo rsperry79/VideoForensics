@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.Layouts;
@@ -20,6 +21,9 @@ namespace VideoForensics.Ui.Shared.Layout
         // Mirrors SessionState.PasskeySetupOnly (limited create-passkey session): hides all navigation and the settings panel.
         private bool _passkeySetupOnly;
         private DotNetObjectReference<MainLayout>? _selfRef;
+        // Set when the saved left-nav collapse could not be applied yet (splitter JS not ready, e.g. after a
+        // circuit reconnect). Cleared on success or by a user toggle; retried on each later render.
+        private bool _leftNavRestorePending;
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
@@ -51,18 +55,9 @@ namespace VideoForensics.Ui.Shared.Layout
             }
         }
 
-        private NavGroup ActiveGroup
-        {
-            get
-            {
-                IReadOnlyList<NavGroup> visible = VisibleGroups;
-                NavContext ctx = BuildContext();
-                NavGroup? match = visible.FirstOrDefault(g => g.Items.Any(i => i.IsVisible(ctx) && PathMatches(i.Path)));
-                return match ?? visible.FirstOrDefault() ?? NavGroups.All[0];
-            }
-        }
+        private NavGroup ActiveGroup => NavGroups.ActiveGroupFor(VisibleGroups, BuildContext(), _currentPath, _currentQuery);
 
-        private IReadOnlyList<NavItem> ActiveGroupItems
+        private IReadOnlyList<NavSection> ActiveGroupSections
         {
             get
             {
@@ -71,8 +66,7 @@ namespace VideoForensics.Ui.Shared.Layout
                     return [];
                 }
 
-                NavContext ctx = BuildContext();
-                return ActiveGroup.Items.Where(i => i.IsVisible(ctx)).ToList();
+                return NavGroups.SectionsFor(ActiveGroup, BuildContext());
             }
         }
 
@@ -120,14 +114,41 @@ namespace VideoForensics.Ui.Shared.Layout
                 // SplitterPane.Size is an initial-only value (per Syncfusion docs); once the
                 // splitter's JS widget has initialized, collapse state must be driven imperatively
                 // via CollapseAsync/ExpandAsync rather than by re-binding Size or a CssClass.
-                if (LayoutPrefs.LeftNavCollapsed && _outerSplitter is not null)
-                {
-                    await _outerSplitter.CollapseAsync(LeftPaneIndex);
-                }
+                _leftNavRestorePending = LayoutPrefs.LeftNavCollapsed;
+            }
+
+            if (_leftNavRestorePending && _outerSplitter is not null)
+            {
+                await TryRestoreLeftNavCollapseAsync(_outerSplitter);
             }
 
             await AttachRightPanelHandleIfNeededAsync();
         }
+
+        /// <summary>
+        /// Applies the saved left-nav collapse. A JS failure means the splitter's JS widget is not ready yet;
+        /// that is logged and left pending for the next render. Other exceptions propagate.
+        /// </summary>
+        private async Task TryRestoreLeftNavCollapseAsync(SfSplitter splitter)
+        {
+            try
+            {
+                await splitter.CollapseAsync(LeftPaneIndex);
+                _leftNavRestorePending = false;
+            }
+            catch (Exception ex) when (IsSplitterNotReady(ex))
+            {
+                // Deliberately no exception detail in the log: keep tokens and URLs out of the log output.
+                Logger.LogWarning("Left-nav collapse restore deferred: splitter not ready. Will retry on next render.");
+            }
+        }
+
+        /// <summary>
+        /// Syncfusion's SfBaseUtils.InvokeMethod wraps a JSException from a synchronous splitter call in
+        /// InvalidOperationException, so the JSException is matched both directly and as that wrapper's inner exception.
+        /// </summary>
+        private static bool IsSplitterNotReady(Exception ex) =>
+            ex is JSException || (ex is InvalidOperationException && ex.InnerException is JSException);
 
         private async Task AttachRightPanelHandleIfNeededAsync()
         {
@@ -185,11 +206,14 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private NavContext BuildContext()
         {
-            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported);
+            return new(SessionState.IsSignedIn, _role, AppLockPreferences.IsSupported,
+                IsLocalTier: SessionState.IsLocalTier, IsPasskeySession: SessionState.IsPasskeySession);
         }
 
         private async Task ToggleLeftNavAsync()
         {
+            // An explicit user toggle supersedes any restore still waiting on the splitter.
+            _leftNavRestorePending = false;
             bool collapsed = !LayoutPrefs.LeftNavCollapsed;
             await LayoutPrefs.SetLeftNavCollapsedAsync(collapsed);
 
@@ -340,7 +364,32 @@ namespace VideoForensics.Ui.Shared.Layout
             Nav.LocationChanged -= OnLocationChanged;
             ThemeService.OnChange -= StateHasChanged;
             SessionState.AuthenticationExpired -= OnAuthenticationExpired;
-            _selfRef?.Dispose();
+            _ = ReleaseRightPanelHandleAsync();
+        }
+
+        /// <summary>
+        /// Detaches the JS listener before releasing the reference it calls back through. Disposing the reference first
+        /// would leave the listener calling a dead object ("no tracked object with id").
+        /// </summary>
+        private async Task ReleaseRightPanelHandleAsync()
+        {
+            try
+            {
+                if (_rightPanelHandleAttached)
+                {
+                    await JS.InvokeVoidAsync("vfPanelResize.detach", _rightPanelHandleId);
+                }
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or ObjectDisposedException)
+            {
+                // Circuit already gone or script missing - nothing left to detach.
+            }
+            finally
+            {
+                _rightPanelHandleAttached = false;
+                _selfRef?.Dispose();
+                _selfRef = null;
+            }
         }
     }
 }

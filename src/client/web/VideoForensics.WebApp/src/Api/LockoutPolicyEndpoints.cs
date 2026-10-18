@@ -10,13 +10,13 @@ namespace VideoForensics.WebApp.Api
     /// <summary>
     /// Admin endpoints for managing account lockout policy settings: maximum failed login attempts,
     /// lockout duration, GeoIP-based country blocking, and lookup failure behavior.
-    /// All routes require SuperAdmin+Local authorization (plan §5.10/§5.12).
+    /// All routes require SuperAdmin, Local for password sign-in or passkey from any tier (plan §5.10/§5.12).
     /// </summary>
     public static class LockoutPolicyEndpoints
     {
         public static void MapLockoutPolicyEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/lockout-policy").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/lockout-policy").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", GetAsync).WithName("GetLockoutPolicy");
             _ = group.MapPut("/", UpdateAsync).WithName("UpdateLockoutPolicy").AddEndpointFilter<StepUpEndpointFilter>();

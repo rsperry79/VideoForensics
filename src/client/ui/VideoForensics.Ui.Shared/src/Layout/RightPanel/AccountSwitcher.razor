@@ -8,6 +8,7 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IStringLocalizer<SharedResources> L
 @inject PairedSessionState SessionState
+@inject AccountSelectionState AccountSelectionState
 
 @if (SessionState.IsSignedIn)
 {
@@ -23,7 +24,7 @@
         }
         else
         {
-            <SfDropDownList TValue="Guid?" TItem="AccountRow" Value="@ForensicsConfig.ActiveProviderAccountId" ValueChanged="@(async (Guid? v) => await SelectAccountAsync(v))"
+            <SfDropDownList TValue="Guid?" TItem="AccountRow" Value="@_selectedAccountId" ValueChanged="@(async (Guid? v) => await SelectAccountAsync(v))"
                              DataSource="@_rows" Enabled="@(!_isBusy)" CssClass="w-100">
                 <DropDownListFieldSettings Text="DisplayName" Value="Id"></DropDownListFieldSettings>
             </SfDropDownList>
@@ -42,6 +43,7 @@
     private bool _isLoading = true;
     private bool _isBusy;
     private string? _statusMessage;
+    private Guid? _selectedAccountId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -98,6 +100,7 @@
             }
 
             _rows = rows;
+            _selectedAccountId = await AccountSelectionState.GetSelectedAccountIdAsync(rows.Select(r => r.Id).ToList());
         }
         finally
         {
@@ -116,6 +119,10 @@
         _statusMessage = null;
         try
         {
+            _selectedAccountId = accountId;
+            await AccountSelectionState.SetSelectedAccountIdAsync(accountId.Value);
+
+            // The server-side active account still drives downloads, so keep it in step with this browser's choice.
             ForensicsConfig.ActiveProviderAccountId = accountId;
             await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
 

@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
 @using Syncfusion.Blazor.Layouts
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -20,6 +21,7 @@
 @inject INoticeRepository NoticeRepository
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject InspectorState InspectorState
+@inject ILogger<MainLayout> Logger
 
 <div class="app-layout">
     @if (ConnectivityState.IsUnreachable)
@@ -126,11 +128,8 @@
                 <SplitterPane Size="@($"{_leftNavWidth}px")" Min="48px" Max="400px" Resizable="false" CssClass="splitter-left-nav">
                     <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                         <div class="left-nav-items">
-                            @foreach (var item in ActiveGroupItems)
-                            {
-                                <SfButton Content="@L[item.Text]" OnClick="@(() => Nav.NavigateTo(item.Path))"
-                                          CssClass="@("left-nav-item " + (PathMatches(item.Path) ? "e-primary" : "e-flat"))" />
-                            }
+                            <NavSectionList Sections="@ActiveGroupSections" CurrentPath="@_currentPath" CurrentQuery="@_currentQuery"
+                                            OnItemSelected="@((NavItem item) => Nav.NavigateTo(item.Path))" />
                         </div>
                     </div>
                 </SplitterPane>

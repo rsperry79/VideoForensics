@@ -1,0 +1,191 @@
+namespace VideoForensics.Hosting.Tests.Services
+{
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
+    using VideoForensics.Client.Common.Contracts;
+    using VideoForensics.Core.Helpers.Platform;
+    using VideoForensics.Core.Providers.Common.Contracts;
+    using VideoForensics.Hosting.Contracts;
+    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
+    /// <summary>Snapshot sync fetches snapshots for every device of an account through the provider-neutral download contract.</summary>
+    public class SnapshotSyncServiceTests
+    {
+        private const string MediaRoot = "C:\\media-root";
+
+        private readonly Mock<IMediaDownloadService> _download = new();
+        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<ILocationRepository> _locations = new();
+        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IStorageSettingsService> _storage = new();
+        private readonly Guid _accountId = Guid.NewGuid();
+        private readonly LocationEntity _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "loc-1", Name = "Home" };
+
+        public SnapshotSyncServiceTests()
+        {
+            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true });
+            _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { _location });
+            _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new StorageSettings(new[] { new StorageCategoryStatus(StorageCategory.Media, MediaRoot, true, 0, 0, true, false) }));
+        }
+
+        private ISnapshotSyncService Sut() => Sut(new ServiceCollection().AddScoped(_ => _download.Object));
+
+        private ISnapshotSyncService Sut(IServiceCollection services) => new SnapshotSyncService(
+            services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
+
+        private void AddDevices(params string[] providerIds) => _devices
+            .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(providerIds.Select(id => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = id, Name = $"Cam {id}", Type = "doorbell" }).ToList());
+
+        private void DownloadReturns(string deviceId, DownloadResult result) => _download
+            .Setup(d => d.DownloadSnapshotsAsync(deviceId, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_TwoDevices_DownloadsEachAndSumsFiles()
+        {
+            AddDevices("1", "2");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2, DevicesFailed: 0, ErrorMessage: null), result);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_DeviceDownloadFails_CountsFailureAndContinues()
+        {
+            AddDevices("1", "2");
+            DownloadReturns("1", new DownloadResult(false, ErrorMessage: "No snapshot available for this device"));
+            DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(2, result.DevicesAttempted);
+            Assert.Equal(1, result.DevicesSucceeded);
+            Assert.Equal(1, result.SnapshotsSaved);
+            Assert.Equal(1, result.DevicesFailed);
+            Assert.Contains("No snapshot available", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_DownloadThrows_CountsFailureAndContinues()
+        {
+            AddDevices("1", "2");
+            _download.Setup(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+            DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesFailed);
+            Assert.Equal(1, result.DevicesSucceeded);
+            Assert.Contains("boom", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_NoDevices_ReturnsZeroWithoutDownloading()
+        {
+            AddDevices();
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(default, result);
+            _download.Verify(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_Window_PassesWindowLocationAndMediaPathToProvider()
+        {
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+            var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+
+            await Sut().SyncAccountSnapshotsAsync(_accountId, from, to, CancellationToken.None);
+
+            _download.Verify(d => d.DownloadSnapshotsAsync(
+                "1",
+                It.Is<string>(p => p.StartsWith(MediaRoot, StringComparison.OrdinalIgnoreCase) && p.Contains("Home") && p.Contains("Cam 1")),
+                from,
+                to,
+                "loc-1",
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_Always_AttributesDownloadsToTheAccount()
+        {
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+
+            await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.SetActiveProviderAccountId(_accountId), Times.Once);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_NoMediaStorageConfigured_ReturnsErrorWithoutDownloading()
+        {
+            AddDevices("1");
+            _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new StorageSettings(Array.Empty<StorageCategoryStatus>()));
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.NotNull(result.ErrorMessage);
+            _download.Verify(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_AccountMissing_ReturnsError()
+        {
+            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccountEntity?)null);
+
+            SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal("Account not found", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_TwoProvidersRegistered_UsesTheProviderOwningTheAccount()
+        {
+            var ring = new Mock<IMediaDownloadService>();
+            var wyze = new Mock<IMediaDownloadService>();
+            foreach (var m in new[] { ring, wyze })
+            {
+                m.Setup(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new DownloadResult(true, FilesDownloaded: 1));
+            }
+
+            // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever was registered last.
+            var services = new ServiceCollection();
+            services.AddKeyedScoped<IMediaDownloadService>("Ring", (_, _) => ring.Object);
+            services.AddKeyedScoped<IMediaDownloadService>("Wyze", (_, _) => wyze.Object);
+            services.AddScoped(_ => ring.Object);
+            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Wyze", LinkedUtc = DateTime.UtcNow, IsActive = true });
+            AddDevices("1");
+
+            await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            wyze.Verify(d => d.SetActiveProviderAccountId(_accountId), Times.Once);
+            wyze.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+            ring.Verify(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_NoKeyedServiceForProvider_FallsBackToUnkeyedService()
+        {
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            AddDevices("1");
+
+            SnapshotSyncResult result = await Sut(new ServiceCollection().AddScoped(_ => _download.Object))
+                .SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Equal(1, result.DevicesSucceeded);
+        }
+    }
+}

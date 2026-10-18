@@ -500,6 +500,9 @@
   <data name="BreadcrumbBack" xml:space="preserve">
     <value>Go back to previous page</value>
   </data>
+  <data name="BreadcrumbNavLabel" xml:space="preserve">
+    <value>Breadcrumb</value>
+  </data>
   <data name="ChatThinking" xml:space="preserve">
     <value>Thinking...</value>
   </data>
@@ -619,5 +622,71 @@
   </data>
   <data name="NotFoundMessage" xml:space="preserve">
     <value>Sorry, there's nothing at this address.</value>
+  </data>
+  <data name="StepUpPasswordTitle" xml:space="preserve">
+    <value>Confirm with your password</value>
+  </data>
+  <data name="StepUpPasswordDescription" xml:space="preserve">
+    <value>This change needs your password to continue.</value>
+  </data>
+  <data name="StepUpPasswordLabel" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="StepUpConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="StepUpCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Diagnostics &amp; Updates" xml:space="preserve">
+    <value>Diagnostics &amp; Updates</value>
+  </data>
+  <data name="Devices &amp; Network" xml:space="preserve">
+    <value>Devices &amp; Network</value>
+  </data>
+  <data name="Storage &amp; Data" xml:space="preserve">
+    <value>Storage &amp; Data</value>
+  </data>
+  <data name="Integrations" xml:space="preserve">
+    <value>Integrations</value>
+  </data>
+  <data name="PageNotAuthorized" xml:space="preserve">
+    <value>You do not have access to this page.</value>
+  </data>
+  <data name="Security Events" xml:space="preserve">
+    <value>Security Events</value>
+  </data>
+  <data name="Pending Approvals" xml:space="preserve">
+    <value>Pending Approvals</value>
+  </data>
+  <data name="Login Methods" xml:space="preserve">
+    <value>Login Methods</value>
+  </data>
+  <data name="Server Logs" xml:space="preserve">
+    <value>Server Logs</value>
+  </data>
+  <data name="LLM API" xml:space="preserve">
+    <value>LLM API</value>
+  </data>
+  <data name="Denied_Review" xml:space="preserve">
+    <value>You need Review access to do this.</value>
+  </data>
+  <data name="Denied_Admin" xml:space="preserve">
+    <value>Only an administrator can do this.</value>
+  </data>
+  <data name="Denied_SuperAdmin" xml:space="preserve">
+    <value>Only a SuperAdmin can do this.</value>
+  </data>
+  <data name="Denied_LocalSuperAdmin" xml:space="preserve">
+    <value>Only a SuperAdmin on this computer can do this.</value>
+  </data>
+  <data name="Denied_StepUp" xml:space="preserve">
+    <value>Confirm with your passkey before doing this.</value>
+  </data>
+  <data name="Denied_ReadOnly" xml:space="preserve">
+    <value>You need to be signed in to do this.</value>
   </data>
 </root>

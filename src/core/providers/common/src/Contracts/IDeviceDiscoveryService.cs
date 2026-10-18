@@ -22,6 +22,17 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         Task<Device?> GetDeviceAsync(Guid providerAccountId, string deviceId, CancellationToken cancellationToken = default);
     }
 
+    /// <summary>
+    /// Optional capability for discovery services that capture location metadata. Callers must
+    /// invoke it only after the Location row exists in the database, because the metadata row is
+    /// keyed by the stored Location id; calling it earlier silently skips capture.
+    /// </summary>
+    public interface ILocationMetadataPersister
+    {
+        /// <summary>Persists metadata for the given discovered locations (subject to provider-side throttling).</summary>
+        Task PersistLocationMetadataAsync(IReadOnlyList<Location> locations, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>Represents a location/site (home, office, etc.)</summary>
     public record Location(
         string Id,
@@ -36,7 +47,98 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         string Name,
         string Type, // "camera", "doorbell", "base_station", etc.
         string LocationId,
-        bool IsOnline,
-        Dictionary<string, string>? Metadata = null
+        bool? IsOnline,
+        Dictionary<string, string>? Metadata = null,
+        DeviceDetailFields? Details = null
     );
+
+    /// <summary>
+    /// Provider-supplied scalar device fields stored on the device row. Every property is optional:
+    /// null means the provider did not supply that value, and it is stored as null (never inferred).
+    /// </summary>
+    public sealed record DeviceDetailFields(
+        string? RingDeviceId = null,
+        string? RingKind = null,
+        string? FirmwareVersion = null,
+        double? Latitude = null,
+        double? Longitude = null,
+        string? Address = null,
+        bool? Subscribed = null,
+        bool? SubscribedMotions = null,
+        string? BatteryLife = null,
+        bool? ExternalConnection = null,
+        bool? Owned = null,
+        bool? Stolen = null,
+        bool? EnableVod = null,
+        int? ExposureControl = null,
+        string? MotionSnoozePresetProfile = null,
+        string? LiveViewPresetProfile = null,
+        int? PirSensitivity1 = null,
+        bool? VodSuspended = null,
+        int? DoorbellVolume = null,
+        string? VodStatus = null,
+        bool? AdvancedMotionDetectionEnabled = null,
+        bool? AdvancedMotionDetectionHumanOnlyMode = null,
+        bool? EnableAudioRecording = null,
+        bool? EnableWhiteLeds = null,
+        int? ChimeVolume = null,
+        string? DingAudioUserId = null,
+        string? DingAudioId = null,
+        string? MotionAudioUserId = null,
+        string? MotionAudioId = null,
+        int? DoNotDisturbSecondsLeft = null,
+        int? LightBrightness = null,
+        string? OwnerId = null,
+        string? OwnerFirstName = null,
+        string? OwnerLastName = null,
+        string? OwnerEmail = null,
+        IReadOnlyList<string>? MotionSnoozePresets = null,
+        IReadOnlyList<string>? LiveViewPresets = null,
+        IReadOnlyList<AdvancedMotionZoneDetail>? AdvancedMotionZones = null,
+        string? RingType = null,
+        string? RingRingId = null,
+        string? BatteryLife2 = null,
+        decimal? BatteryVoltage = null,
+        decimal? BatteryVoltage2 = null,
+        string? LedStatus = null,
+        int? SirenSecondsRemaining = null,
+        int? NightMode = null,
+        string? MotionSnoozeJson = null,
+        string? SettingsMetadataJson = null,
+        string? LightSettingsMetadataJson = null,
+        int? PirSettingsSensitivity1 = null,
+        int? PirSettingsSensitivity2 = null,
+        int? PirSettingsSensitivity3 = null,
+        int? PirSettingsZoneEnable = null,
+        int? PirSettingsZoneMask = null,
+        bool? NightModeOn = null,
+        bool? MotionDetectionEnabled = null,
+        int? SettingsChimeType = null,
+        bool? SettingsChimeEnabled = null,
+        int? SettingsChimeDuration = null,
+        IReadOnlyList<DeviceZoneDetail>? Zones = null,
+        IReadOnlyList<AdvancedObjectSettingDetail>? AdvancedObjectSettings = null
+    );
+
+    /// <summary>
+    /// One motion or package zone from zone_settings. Source is "motion" or "package". Detection types keep Ring order;
+    /// vertices use the 1-based list position as Position.
+    /// </summary>
+    public sealed record DeviceZoneDetail(
+        string Source,
+        string? ZoneId,
+        string? Name,
+        int? State,
+        string? Style,
+        IReadOnlyList<string> DetectionTypes,
+        IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);
+
+    /// <summary>One advanced object setting (e.g. human_detection_confidence) with its day and night values.</summary>
+    public sealed record AdvancedObjectSettingDetail(string SettingKey, double? Day, double? Night);
+
+    /// <summary>An advanced motion zone (zone1..zone3) as Ring reports it. Vertices are listed in Ring order.</summary>
+    public sealed record AdvancedMotionZoneDetail(string ZoneKey, string? Name, int? State, IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);
+
+    /// <summary>One zone vertex. Position is Ring's 1-based vertex number (vertex1..vertex8).</summary>
+    public sealed record AdvancedMotionZoneVertexDetail(int Position, double? X, double? Y);
 }

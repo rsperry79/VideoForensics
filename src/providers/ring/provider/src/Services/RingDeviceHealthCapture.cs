@@ -54,17 +54,7 @@ namespace VideoForensics.Providers.Ring.Services
                     return;
                 }
 
-                var deviceHealth = new Data.Common.Entities.DeviceHealth
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceGuid,
-                    IsOnline = health.Connected,
-                    BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                    WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
-                    WifiName = health.WifiName,
-                    FirmwareVersion = health.FirmwareVersion,
-                    CapturedAtUtc = DateTime.UtcNow
-                };
+                Data.Common.Entities.DeviceHealth deviceHealth = RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
 
                 _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                 _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",

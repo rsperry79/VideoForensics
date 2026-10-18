@@ -14,7 +14,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapUpdateCheckEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/update-check").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/update-check").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", GetUpdateCheckState)
                 .WithSummary("Get update check state")

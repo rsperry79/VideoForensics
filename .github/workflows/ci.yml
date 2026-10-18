@@ -24,6 +24,7 @@ jobs:
 
   build-windows:
     uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
 
   test-windows:
     needs: [build-windows]
@@ -53,5 +54,6 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     permissions:
       contents: write
+      actions: read
     uses: ./.github/workflows/release-installers.yml
     secrets: inherit

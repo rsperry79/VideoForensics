@@ -3,6 +3,7 @@ using ModelContextProtocol.Server;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Contracts;
 
 namespace VideoForensics.WebApp.Mcp.Tools
 {
@@ -12,18 +13,24 @@ namespace VideoForensics.WebApp.Mcp.Tools
     {
         private readonly ISecurityAuditService _auditService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IMcpCallerAuthorizer _authorizer;
 
-        public SecurityEventTools(ISecurityAuditService auditService, IHttpContextAccessor httpContextAccessor, ILogger<SecurityEventTools> logger)
+        public SecurityEventTools(
+            ISecurityAuditService auditService,
+            IHttpContextAccessor httpContextAccessor,
+            IMcpCallerAuthorizer authorizer,
+            ILogger<SecurityEventTools> logger)
             : base(logger)
         {
             _auditService = auditService;
             _httpContextAccessor = httpContextAccessor;
+            _authorizer = authorizer;
         }
 
         /// <summary>
         /// Retrieve security events (login attempts, breaches, account lockouts) for visibility and audit trails.
         /// When operator_id is omitted, returns the caller's own events (self-service).
-        /// When operator_id is present, requires SuperAdminLocal authorization and returns cross-account audit data.
+        /// When operator_id is present, requires SuperAdminLocalOrPasskey authorization and returns cross-account audit data.
         /// </summary>
         [McpServerTool]
         public async Task<SecurityEventsResult> GetSecurityEvents(
@@ -68,7 +75,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             }
             else
             {
-                // Cross-account query: verify SuperAdminLocal authorization
+                // Cross-account query: verify SuperAdminLocalOrPasskey authorization
                 if (!Guid.TryParse(operatorId, out Guid parsedId))
                 {
                     return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Invalid operatorId format" };
@@ -77,18 +84,14 @@ namespace VideoForensics.WebApp.Mcp.Tools
                 targetOperatorId = parsedId;
                 isSelfService = false;
 
-                // Check SuperAdmin role
-                string? roleClaim = context.User.FindFirst(VideoForensicsClaimTypes.Role)?.Value;
-                if (!Enum.TryParse<OperatorRole>(roleClaim, out OperatorRole callerRole) || callerRole != OperatorRole.SuperAdmin)
+                // Cross-account access is SuperAdminLocalOrPasskey, the same policy as the HTTP endpoint. Checking the role
+                // alone would let a remote SuperAdmin read other operators' security events.
+                if (!await _authorizer.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocalOrPasskey))
                 {
-                    Logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} is not SuperAdmin", callerId);
-                    return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdmin role required for cross-account queries" };
+                    Logger.LogWarning("GetSecurityEvents: cross-account query denied; caller {CallerId} lacks SuperAdmin", callerId);
+                    return new SecurityEventsResult { Events = [], TotalCount = 0, Error = "Unauthorized: SuperAdmin required for cross-account queries" };
                 }
 
-                // Check Local tier (SuperAdmin must be on Local network tier for cross-account access)
-                // Note: Network tier resolution would require INetworkTierResolver, which is not directly available in MCP context.
-                // For MCP (which typically runs over HTTP from remote clients), we enforce Local tier check via endpoint instead.
-                // This tool supports cross-account queries; the HTTP endpoint applies the tier check.
                 Logger.LogInformation("GetSecurityEvents: cross-account query from caller {CallerId} for operator {TargetId}", callerId, targetOperatorId);
             }
 

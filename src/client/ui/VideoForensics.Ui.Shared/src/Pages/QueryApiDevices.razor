@@ -1,0 +1,177 @@
+@page "/query/devices"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Contracts
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.QueryApi
+@using VideoForensics.Ui.Shared.Services.Inspector
+@using VideoForensics.Ui.Shared.Components.Inspector
+@using VideoForensics.Ui.Shared.Components.Dump
+@using VideoForensics.Core.Providers.Common.Contracts
+@implements IDisposable
+@inject IDeviceDiscoveryService DeviceDiscoveryService
+@inject IStringLocalizer<QueryApiDevices> L
+@inject IStringLocalizer<SharedResources> SharedL
+@inject IQueryApiFilterState FilterState
+
+<Breadcrumb Items="@BreadcrumbItems" />
+
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small>@L["Title"]</small>
+        <div class="d-flex flex-column gap-2 mb-2">
+            <div>
+                <label>@L["LabelLocationId"]</label>
+                <SfDropDownList ID="query-api-location-filter" TValue="string" TItem="QueryApiSelectOption" @bind-Value="LocationIdValue" DataSource="@LocationOptions" Placeholder="@L["SelectLocation"]" CssClass="w-100">
+                    <DropDownListFieldSettings Text="Label" Value="Value" />
+                </SfDropDownList>
+            </div>
+        </div>
+    </div>
+</PageRightPanelContent>
+
+@if (!string.IsNullOrEmpty(_locationsError))
+{
+    <div class="alert alert-danger mt-2">@_locationsError</div>
+}
+
+<div class="card border rounded p-4 mb-4">
+    <h5 class="mt-4 mb-2">@L["Title"]</h5>
+    <SfButton Content="@L["GetDevices"]" OnClick="RunDevicesAsync" CssClass="e-primary" Disabled="@(_devicesLoading || string.IsNullOrWhiteSpace(FilterState.LocationId))" />
+    @if (!string.IsNullOrEmpty(_devicesError))
+    {
+        <div class="alert alert-danger mt-2">@_devicesError</div>
+    }
+    @if (_devices is not null)
+    {
+        @if (_devices.Count == 0)
+        {
+            <p class="mt-2">@L["NoDevicesFound"]</p>
+        }
+        else
+        {
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <ForensicGrid TItem="Device"
+                    DataSource="@_devices"
+                    ToInspector="@ToDeviceInspector"
+                    OnRowSelected="@OnDeviceRowSelected"
+                    Columns="@DeviceGridColumns"
+                    ExportFileName="devices.csv"
+                    PageSize="20" />
+            </div>
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_devices" InitialExpandDepth="1" />
+            </details>
+        }
+    }
+</div>
+
+@code {
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], "/query"),
+        (L["Title"], null)
+    ];
+
+    // The shared location selection is read and written through the filter state, so it survives navigation.
+    private string LocationIdValue
+    {
+        get => FilterState.LocationId ?? string.Empty;
+        set => FilterState.SetLocationId(string.IsNullOrEmpty(value) ? null : value);
+    }
+
+    private void OnFilterChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        FilterState.OnChange += OnFilterChanged;
+        await LoadLocationsAsync();
+    }
+
+    // Locations (feeds the location dropdown)
+    private List<Location>? _locations;
+    private string? _locationsError;
+
+    private async Task LoadLocationsAsync()
+    {
+        _locationsError = null;
+        try
+        {
+            _locations = (await DeviceDiscoveryService.GetLocationsAsync(CancellationToken.None)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _locationsError = L["FailedToGetLocations", ex.Message];
+        }
+    }
+
+    // Devices
+    private bool _devicesLoading;
+    private string? _devicesError;
+    private List<Device>? _devices;
+    private DateTime _devicesRetrievedAt;
+
+    private async Task RunDevicesAsync()
+    {
+        _devicesLoading = true;
+        _devicesError = null;
+        try
+        {
+            _devicesRetrievedAt = DateTime.UtcNow;
+            var devices = await DeviceDiscoveryService.GetDevicesAsync(FilterState.LocationId ?? string.Empty, CancellationToken.None);
+            _devices = devices.ToList();
+        }
+        catch (Exception ex)
+        {
+            _devicesError = L["FailedToGetDevices", ex.Message];
+        }
+        finally
+        {
+            _devicesLoading = false;
+        }
+    }
+
+    // Dropdown options (built from the loaded locations)
+    private IReadOnlyList<QueryApiSelectOption> LocationOptions =>
+        (_locations ?? []).Select(l => new QueryApiSelectOption(l.Id, QueryApiDrillDownHelpers.LocationDisplayLabel(l))).ToList();
+
+    // Row selection: selecting a device sets the shared device selection used by the Events subpage
+    private Task OnDeviceRowSelected(Device device)
+    {
+        FilterState.SetDeviceId(QueryApiDrillDownHelpers.DrillDownDeviceId(device));
+        return Task.CompletedTask;
+    }
+
+    private InspectorModel ToDeviceInspector(Device device)
+    {
+        return DeviceInspectorMapper.ToInspector(device, FilterState.LocationId ?? string.Empty, _devicesRetrievedAt);
+    }
+
+    private RenderFragment DeviceGridColumns => __builder =>
+    {
+        <GridColumn Field="@nameof(Device.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.Name)" HeaderText="@L["ColName"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.Type)" HeaderText="@L["ColType"]" MinWidth="100" />
+        <GridColumn Field="@nameof(Device.LocationId)" HeaderText="@L["ColLocationId"]" MinWidth="100" />
+        <GridColumn HeaderText="@L["ColOnline"]" MinWidth="100">
+            <Template>
+                @{
+                    var device = (Device)context;
+                    @(device.IsOnline == null ? L["Unknown"] : device.IsOnline == true ? L["Yes"] : L["No"])
+                }
+            </Template>
+        </GridColumn>
+    };
+
+    void IDisposable.Dispose()
+    {
+        FilterState.OnChange -= OnFilterChanged;
+    }
+}

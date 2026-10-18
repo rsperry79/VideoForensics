@@ -17,7 +17,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// Ensures a device exists in the database with the correct account/location identity,
         /// and caches the result per device ID so redundant EnsureDeviceAsync calls are avoided.
         /// </summary>
-        Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct);
+        Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct);
 
         /// <summary>
         /// Sets the active provider account ID for this resolution session.
@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Services
             _cachedProviderAccountId = accountId;
         }
 
-        public async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
+        public async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
@@ -118,13 +118,51 @@ namespace VideoForensics.Providers.Ring.Services
                 locationGuid,
                 providerDeviceId,
                 deviceName,
-                "camera",
-                true,
+                RingDeviceTypeMapper.MapDeviceType(providerDeviceKind),
+                isOnline,
                 ct: ct);
 
             // Cache in the per-device dictionary
             _ = _deviceIdCache.TryAdd(providerDeviceId, device.Id);
             return device.Id;
+        }
+    }
+
+    /// <summary>
+    /// Maps a Ring device kind (doorbell_*, doorbot, stickup_cam_*, chime_*, ...) to the stored device type.
+    /// Same mapping as VideoDownloadServiceAdapter.MapDeviceType (which is internal to the client assembly,
+    /// so it is duplicated here): unrecognised or missing kinds are "Unknown", never silently "camera".
+    /// </summary>
+    internal static class RingDeviceTypeMapper
+    {
+        internal static string MapDeviceType(string? providerKind)
+        {
+            if (string.IsNullOrWhiteSpace(providerKind))
+            {
+                return "Unknown";
+            }
+
+            string kind = providerKind.Trim().ToLowerInvariant();
+            if (kind.StartsWith("doorbell", StringComparison.Ordinal)
+                || kind.StartsWith("doorbot", StringComparison.Ordinal)
+                || kind.StartsWith("authorized_doorbot", StringComparison.Ordinal)
+                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal))
+            {
+                return "doorbell";
+            }
+
+            if (kind.StartsWith("chime", StringComparison.Ordinal))
+            {
+                return "chime";
+            }
+
+            if (kind.StartsWith("stickup_cam", StringComparison.Ordinal)
+                || kind.StartsWith("camera", StringComparison.Ordinal))
+            {
+                return "camera";
+            }
+
+            return "Unknown";
         }
     }
 }

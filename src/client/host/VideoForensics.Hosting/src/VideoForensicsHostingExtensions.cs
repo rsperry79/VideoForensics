@@ -1,8 +1,6 @@
 using System.Linq;
-using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -11,6 +9,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
+using VideoForensics.Client.Core.Licensing;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Telemetry.Configuration;
@@ -56,106 +55,12 @@ namespace VideoForensics.Hosting
         public const string DefaultSuperAdminPassword = "ChangeMe123!";
 
         /// <summary>
-        /// Registers the Syncfusion Blazor license key if present. Priority order:
-        /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
-        /// 2. SYNCFUSION_LICENSE_KEY environment variable (lets Visual Studio debug sessions pick up the key without a ProgramData file)
-        /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
-        /// Falls back to unlicensed/dev-mode behavior if no source provides a key.
+        /// Registers the Syncfusion Blazor license key if present. Delegates to <see cref="SyncfusionLicenseRegistrar"/>,
+        /// the single home for license resolution; see its docs for the priority order.
         /// </summary>
         public static void RegisterSyncfusionLicenseIfPresent()
         {
-            RegisterSyncfusionLicense(GetSyncfusionLicenseKeyFromEnvironment());
-        }
-
-        /// <summary>
-        /// Registers the Syncfusion Blazor license key using the same priority order as the parameterless
-        /// overload, but reads the env-var source from <paramref name="configuration"/> instead. Use this
-        /// once the host's configuration is built (e.g. WebApplicationBuilder.Configuration), so user
-        /// secrets (dev) and Azure App Settings / Key Vault references (prod) are honored. Configuration
-        /// already includes environment variables, so SYNCFUSION_LICENSE_KEY set in the environment still works.
-        /// </summary>
-        /// <param name="configuration">Configuration to read SYNCFUSION_LICENSE_KEY from.</param>
-        public static void RegisterSyncfusionLicenseIfPresent(IConfiguration configuration)
-        {
-            ArgumentNullException.ThrowIfNull(configuration);
-            RegisterSyncfusionLicense(GetSyncfusionLicenseKeyFromConfiguration(configuration));
-        }
-
-        /// <summary>
-        /// Resolves the key from the three sources in priority order and registers it. Logs nothing about the key value.
-        /// </summary>
-        private static void RegisterSyncfusionLicense(string? configuredKey)
-        {
-            string? key = ResolveSyncfusionLicenseKey(
-                ReadSyncfusionLicenseKeyFile(),
-                configuredKey,
-                GetBakedInSyncfusionLicenseKey());
-            if (key != null)
-            {
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(key);
-            }
-        }
-
-        /// <summary>
-        /// Picks the Syncfusion license key from the candidate sources, in priority order: the external key file
-        /// (admin/IT override, always wins), then the configured key (SYNCFUSION_LICENSE_KEY from config/env), then the
-        /// key baked into the assembly at CI build time. Blank or whitespace candidates count as absent so the next
-        /// source is tried. Every returned key is trimmed. Returns null when no source has a key (unlicensed dev mode).
-        /// Pure function so the priority rules can be unit tested without touching the process-wide license provider.
-        /// </summary>
-        /// <remarks>
-        /// The file is first so an IT admin can override a baked-in key without rebuilding; the configured key sits
-        /// above the baked-in key so a deployment can supply its own key without a rebuild.
-        /// </remarks>
-        internal static string? ResolveSyncfusionLicenseKey(string? fileKey, string? configuredKey, string? bakedInKey)
-        {
-            return NormalizeLicenseKey(fileKey) ?? NormalizeLicenseKey(configuredKey) ?? NormalizeLicenseKey(bakedInKey);
-        }
-
-        /// <summary>
-        /// Reads the SYNCFUSION_LICENSE_KEY environment variable, trimmed. Returns null when unset or blank
-        /// so the caller falls through to the baked-in key. Internal so tests can exercise it without
-        /// touching the process-wide Syncfusion license provider.
-        /// </summary>
-        internal static string? GetSyncfusionLicenseKeyFromEnvironment()
-        {
-            return NormalizeLicenseKey(Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY"));
-        }
-
-        /// <summary>
-        /// Reads SYNCFUSION_LICENSE_KEY from configuration, trimmed. Returns null when missing or blank.
-        /// Internal so tests can exercise it with in-memory configuration.
-        /// </summary>
-        internal static string? GetSyncfusionLicenseKeyFromConfiguration(IConfiguration configuration)
-        {
-            return NormalizeLicenseKey(configuration["SYNCFUSION_LICENSE_KEY"]);
-        }
-
-        /// <summary>
-        /// Reads %ProgramData%\VideoForensics\syncfusion-license.key, trimmed. Returns null when the file is missing or blank.
-        /// </summary>
-        private static string? ReadSyncfusionLicenseKeyFile()
-        {
-            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
-            return File.Exists(syncfusionLicenseKeyPath) ? NormalizeLicenseKey(File.ReadAllText(syncfusionLicenseKeyPath)) : null;
-        }
-
-        /// <summary>
-        /// Reads the license key baked into this assembly's metadata at CI build time, trimmed. Returns null when absent.
-        /// </summary>
-        private static string? GetBakedInSyncfusionLicenseKey()
-        {
-            return NormalizeLicenseKey(Assembly.GetExecutingAssembly()
-                .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .FirstOrDefault(a => a.Key == "SyncfusionLicenseKey")?.Value);
-        }
-
-        /// <summary>
-        /// Trims a candidate key and maps blank to null, so "absent" is one concept everywhere.
-        /// </summary>
-        private static string? NormalizeLicenseKey(string? value)
-        {
-            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            new SyncfusionLicenseRegistrar().RegisterIfPresent();
         }
 
         /// <summary>
@@ -173,7 +78,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<IRingAccountRepository>(),
                 provider.GetRequiredService<IProviderAccountRepository>(),
                 provider.GetRequiredService<IUserRepository>(),
-                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
+                provider.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
+                endpoints: provider.GetService<VideoForensics.Providers.Ring.RingEndpointOptions>()
             );
         }
 
@@ -184,8 +90,23 @@ namespace VideoForensics.Hosting
         {
             return new RingDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                provider.GetRequiredService<ISessionProvider>()
+                provider.GetRequiredService<ISessionProvider>(),
+                metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
+                locationRepository: provider.GetRequiredService<ILocationRepository>(),
+                settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>(),
+                eventHistoryWriter: provider.GetService<IRingEventHistoryWriter>(),
+                syncState: provider.GetService<IRingAccountSyncState>()
             );
+        }
+
+        /// <summary>
+        /// Builds the Ring account-settings persister (profile, ringtones, light groups, location mode) over the data-layer writer.
+        /// </summary>
+        private static RingAccountSettingsPersister BuildRingAccountSettingsPersister(IServiceProvider provider)
+        {
+            return new RingAccountSettingsPersister(
+                provider.GetRequiredService<IRingAccountSettingsWriter>(),
+                provider.GetRequiredService<ILogger<RingAccountSettingsPersister>>());
         }
 
         /// <summary>
@@ -379,6 +300,7 @@ namespace VideoForensics.Hosting
             {
                 _ = services.AddScoped<IProviderAuthService>(BuildRingAuthService);
                 _ = services.AddScoped<IDeviceDiscoveryService>(BuildRingDeviceDiscoveryService);
+                services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                 _ = services.AddScoped<IMediaDownloadService>(BuildRingMediaDownloadService);
                 _ = services.AddScoped<IEventAndConfigService>(BuildRingEventAndConfigService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
@@ -474,7 +396,9 @@ namespace VideoForensics.Hosting
                 IIntegrityVerificationService integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IActionLogRepository actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
+                ICaseRepository caseRepository = serviceProvider.GetRequiredService<ICaseRepository>();
+                IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService);
             });
 
             // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a
@@ -513,9 +437,13 @@ namespace VideoForensics.Hosting
                 )
             );
 
+            // Server-tier release channel: reads/persists IForensicsConfiguration directly (client hosts get RemoteReleaseChannelService).
+            _ = services.AddScoped<IReleaseChannelService, VideoForensics.Hosting.Local.LocalReleaseChannelService>();
+
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
             _ = services.AddScoped<ConfigToolsOrchestrator>();
+            _ = services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
 
             // RSSI/device-health background sync (plan §3). IProviderHealthSource is a per-provider
             // optional capability - Ring's is registered here the same way its other four services
@@ -610,6 +538,8 @@ namespace VideoForensics.Hosting
 
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
+            _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
             return services;
         }
@@ -628,10 +558,17 @@ namespace VideoForensics.Hosting
         {
             foreach (string providerName in enabledProviders ?? Enumerable.Empty<string>())
             {
+                // Wyze sign-in, device discovery and media download are not implemented yet; fail at startup, not on the first sync.
+                if (string.Equals(providerName, "Wyze", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Wyze is not available yet: sign-in, device discovery and media download are not implemented. Remove it from ScheduledTasks:EnabledProviders.");
+                }
+
                 if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))
                 {
                     _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildRingAuthService(provider));
                     _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildRingDeviceDiscoveryService(provider));
+                    services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                     _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildRingMediaDownloadService(provider));
                     _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildRingEventAndConfigService(provider));
                     _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(
@@ -666,6 +603,17 @@ namespace VideoForensics.Hosting
                 {
                     throw new InvalidOperationException($"Unknown provider '{providerName}' in AddVideoForensicsMultiProviderServices - expected 'Ring', 'Uniview', or 'Wyze'.");
                 }
+
+                // The pull is built from this provider's own keyed event and discovery services, so a manual sync of one
+                // provider's account never pulls through whichever provider registered last.
+                _ = services.AddKeyedScoped<IEventPullService>(providerName, (provider, key) => new EventPullService(
+                    provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
+                    provider.GetRequiredService<IDeviceRepository>(),
+                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
+                    provider.GetService<ILogger<EventPullService>>(),
+                    provider.GetKeyedService<IMediaDownloadService>(providerName)));
             }
 
             return services;
@@ -828,6 +776,8 @@ namespace VideoForensics.Hosting
                     Email = "admin@localhost.invalid",
                     Role = VideoForensics.Data.Common.Entities.OperatorRole.SuperAdmin,
                     IsApproved = true,
+                    // Seeded only when the operator table is empty, so this is the first SuperAdmin and the primary one.
+                    IsPrimarySuperAdmin = true,
                     Active = true,
                     MustChangePassword = true,
                     CreatedAtUtc = DateTime.UtcNow,

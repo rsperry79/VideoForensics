@@ -170,7 +170,8 @@ namespace VideoForensics.WebApp.Auth
                     {
                         new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
                         new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
-                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString()),
+                        new Claim(VideoForensicsClaimTypes.CredentialKind, CredentialKind.Password.ToString())
                     };
                 }
                 else if (principal.Kind == CredentialKind.OperatorPasskey)
@@ -195,7 +196,8 @@ namespace VideoForensics.WebApp.Auth
                         new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
                         new Claim(VideoForensicsClaimTypes.PairedDeviceId, principal.CredentialId.Value.ToString()),
                         new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
-                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString()),
+                        new Claim(VideoForensicsClaimTypes.CredentialKind, CredentialKind.OperatorPasskey.ToString())
                     };
                 }
                 else
@@ -280,6 +282,9 @@ namespace VideoForensics.WebApp.Auth
         public const string PairedDeviceId = "vf:paired_device_id";
         public const string Role = "vf:role";
         public const string NetworkTier = "vf:network_tier";
+
+        /// <summary>Credential kind of the session (e.g. "OperatorPasskey"); emitted only for passkey sessions.</summary>
+        public const string CredentialKind = "vf:credential_kind";
 
         /// <summary>Present ("true") only on a limited passkey-setup session; set from the validated token, read by GET /api/v1/auth/session-kind.</summary>
         public const string PasskeySetupOnly = "vf:passkey_setup_only";

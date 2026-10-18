@@ -128,4 +128,10 @@
   <data name="NotSuperAdminLocal" xml:space="preserve">
     <value>Only a SuperAdmin on the local network can approve credentials.</value>
   </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="UnknownOperatorName" xml:space="preserve">
+    <value>Unknown (ID: {0})</value>
+  </data>
 </root>

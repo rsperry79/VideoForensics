@@ -46,7 +46,7 @@ namespace VideoForensics.Hosting.Tests
                 LatestSequence: 9, Truncated: true);
             var (service, _) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(dto) });
 
-            LogPage page = await service.GetPageAsync(EmptyQuery, Token, CancellationToken.None);
+            LogPage page = await service.GetPageAsync(EmptyQuery, CancellationToken.None);
 
             Assert.Equal(9, page.LatestSequence);
             Assert.True(page.Truncated);
@@ -63,7 +63,7 @@ namespace VideoForensics.Hosting.Tests
             });
             const string search = "a b&c#d=Ã©â‚¬ %20";
 
-            _ = await service.GetPageAsync(new LogQuery("Warning", search, 42, 100), Token, CancellationToken.None);
+            _ = await service.GetPageAsync(new LogQuery("Warning", search, 42, 100), CancellationToken.None);
 
             HttpRequestMessage req = Assert.Single(seen);
             Assert.Equal(HttpMethod.Get, req.Method);
@@ -85,64 +85,23 @@ namespace VideoForensics.Hosting.Tests
                 Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
             });
 
-            _ = await service.GetPageAsync(EmptyQuery, Token, CancellationToken.None);
+            _ = await service.GetPageAsync(EmptyQuery, CancellationToken.None);
 
             Assert.Equal(string.Empty, seen[0].RequestUri!.Query);
         }
 
         [Fact]
-        public async Task GetPageAsync_SendsStepUpHeaderPerRequest()
+        public async Task GetPageAsync_SendsNoStepUpHeader()
         {
+            // Reads are not step-up gated, so the client never attaches a step-up token.
             var (service, seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
             });
 
-            _ = await service.GetPageAsync(EmptyQuery, "first-token", CancellationToken.None);
-            _ = await service.GetPageAsync(EmptyQuery, "second-token", CancellationToken.None);
+            _ = await service.GetPageAsync(EmptyQuery, CancellationToken.None);
 
-            Assert.Equal("first-token", Assert.Single(seen[0].Headers.GetValues("X-StepUp-Token")));
-            Assert.Equal("second-token", Assert.Single(seen[1].Headers.GetValues("X-StepUp-Token")));
-        }
-
-        [Fact]
-        public async Task GetPageAsync_DoesNotTouchDefaultRequestHeaders()
-        {
-            var handler = new FakeHandler((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
-            });
-            var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
-            var service = new RemoteLogViewerService(http);
-
-            _ = await service.GetPageAsync(EmptyQuery, "leaky", CancellationToken.None);
-
-            Assert.False(http.DefaultRequestHeaders.Contains("X-StepUp-Token"));
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        public async Task GetPageAsync_EmptyToken_Throws(string? token)
-        {
-            var (service, seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK));
-
-            _ = await Assert.ThrowsAnyAsync<ArgumentException>(() => service.GetPageAsync(EmptyQuery, token!, CancellationToken.None));
-            Assert.Empty(seen);
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        public async Task StreamAsync_EmptyToken_Throws(string? token)
-        {
-            var (service, seen) = Create((_, _) => Sse(""));
-
-            _ = await Assert.ThrowsAnyAsync<ArgumentException>(async () =>
-            {
-                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, token!, CancellationToken.None)) { }
-            });
-            Assert.Empty(seen);
+            Assert.False(Assert.Single(seen).Headers.Contains("X-StepUp-Token"));
         }
 
         [Fact]
@@ -160,7 +119,7 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            try { _ = await service.GetPageAsync(EmptyQuery, Token, cts.Token); }
+            try { _ = await service.GetPageAsync(EmptyQuery, cts.Token); }
             catch (OperationCanceledException) { }
 
             Assert.True(cancelledAtHandler);
@@ -173,7 +132,7 @@ namespace VideoForensics.Hosting.Tests
             cts.Cancel();
             var (service, _) = Create((_, ct) => { ct.ThrowIfCancellationRequested(); return new HttpResponseMessage(HttpStatusCode.OK); });
 
-            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.GetPageAsync(EmptyQuery, Token, cts.Token));
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.GetPageAsync(EmptyQuery, cts.Token));
         }
 
         [Theory]
@@ -184,7 +143,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var (service, _) = Create((_, _) => new HttpResponseMessage(status));
 
-            var ex = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetPageAsync(EmptyQuery, Token, CancellationToken.None));
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetPageAsync(EmptyQuery, CancellationToken.None));
             Assert.Equal(status, ex.StatusCode);
         }
 
@@ -198,7 +157,7 @@ namespace VideoForensics.Hosting.Tests
 
             var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
-                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, Token, CancellationToken.None)) { }
+                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, CancellationToken.None)) { }
             });
             Assert.Equal(status, ex.StatusCode);
         }
@@ -210,7 +169,7 @@ namespace VideoForensics.Hosting.Tests
             var (service, seen) = Create((_, _) => Sse(body));
 
             var entries = new List<LogEntry>();
-            await foreach (LogEntry e in service.StreamAsync(EmptyQuery, Token, CancellationToken.None))
+            await foreach (LogEntry e in service.StreamAsync(EmptyQuery, CancellationToken.None))
             {
                 entries.Add(e);
             }
@@ -222,14 +181,14 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
-        public async Task StreamAsync_SendsStepUpHeaderAndResumeParam()
+        public async Task StreamAsync_SendsResumeParamWithoutStepUpHeader()
         {
             var (service, seen) = Create((_, _) => Sse(""));
 
-            await foreach (LogEntry _ in service.StreamAsync(new LogQuery("Error", "x y&z", 55, 0), "stream-token", CancellationToken.None)) { }
+            await foreach (LogEntry _ in service.StreamAsync(new LogQuery("Error", "x y&z", 55, 0), CancellationToken.None)) { }
 
             HttpRequestMessage req = Assert.Single(seen);
-            Assert.Equal("stream-token", Assert.Single(req.Headers.GetValues("X-StepUp-Token")));
+            Assert.False(req.Headers.Contains("X-StepUp-Token"));
             var parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri!.Query);
             Assert.Equal("55", parsed["afterSequence"]);
             Assert.Equal("x y&z", parsed["search"]);
@@ -252,7 +211,7 @@ namespace VideoForensics.Hosting.Tests
             var received = new List<long>();
             Task consume = Task.Run(async () =>
             {
-                await foreach (LogEntry e in service.StreamAsync(EmptyQuery, Token, cts.Token))
+                await foreach (LogEntry e in service.StreamAsync(EmptyQuery, cts.Token))
                 {
                     received.Add(e.Sequence);
                     cts.Cancel();

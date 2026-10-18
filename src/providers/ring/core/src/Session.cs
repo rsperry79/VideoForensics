@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring
         /// <summary>
         /// Base Uri with which all Ring API requests start
         /// </summary>
-        public Uri BaseUrl => new("https://api.ring.com/clients_api/");
+        public Uri BaseUrl => _endpoints.ClientsApiBaseUrl;
 
         /// <summary>
         /// Boolean indicating if the current session is authenticated
@@ -105,6 +105,11 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         private readonly IVideoDownloader _videoDownloader;
 
+        /// <summary>
+        /// Base URIs for the Ring APIs; defaults to the production hosts.
+        /// </summary>
+        private readonly RingEndpointOptions _endpoints = new();
+
         #endregion
 
         #region Constructors
@@ -116,8 +121,10 @@ namespace VideoForensics.Providers.Ring
         /// <param name="password">Password for the Ring account</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
         /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
-        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
+        public Session(string username, string password, System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null, RingEndpointOptions endpoints = null)
         {
+            _endpoints = endpoints ?? new RingEndpointOptions();
             Username = username;
             Password = password;
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
@@ -129,8 +136,10 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
         /// <param name="videoDownloader">Optional custom IVideoDownloader for testing purposes</param>
-        private Session(System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null)
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
+        private Session(System.Net.Http.HttpMessageHandler messageHandler = null, IVideoDownloader videoDownloader = null, RingEndpointOptions endpoints = null)
         {
+            _endpoints = endpoints ?? new RingEndpointOptions();
             _httpUtility = new HttpUtility(messageHandler: messageHandler);
             _videoDownloader = videoDownloader ?? new VideoDownloader();
         }
@@ -144,14 +153,15 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         /// <param name="refreshToken">RefreshToken received from the prior authentication</param>
         /// <param name="messageHandler">Optional custom HttpMessageHandler for testing purposes</param>
+        /// <param name="endpoints">Optional Ring API base URIs; defaults to the production hosts</param>
         /// <returns>Authenticated session based on the RefreshToken or NULL if the session could not be authenticated</returns>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationIncorrectException">Thrown when the web server indicates the two-factor code was incorrect (HTTP 400).</exception>
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
-        public static async Task<Session> GetSessionByRefreshToken(string refreshToken, System.Net.Http.HttpMessageHandler messageHandler = null)
+        public static async Task<Session> GetSessionByRefreshToken(string refreshToken, System.Net.Http.HttpMessageHandler messageHandler = null, RingEndpointOptions endpoints = null)
         {
-            var session = new Session(messageHandler);
+            var session = new Session(messageHandler, null, endpoints);
             await session.RefreshSession(refreshToken);
             return session;
         }
@@ -434,7 +444,7 @@ namespace VideoForensics.Providers.Ring
         /// Base Uri for the newer Ring devices API, which (unlike the legacy clients_api) exposes
         /// a working locations endpoint.
         /// </summary>
-        public Uri RingDevicesApiBaseUrl => new("https://api.ring.com/devices/v1/");
+        public Uri RingDevicesApiBaseUrl => _endpoints.DevicesApiBaseUrl;
 
         /// <summary>
         /// Returns the locations (with friendly names) visible to the current account.
@@ -504,6 +514,29 @@ namespace VideoForensics.Providers.Ring
             while (doorbotHistory.Count > 0 && remainingItems > 0);
 
             return allHistory;
+        }
+
+        /// <summary>
+        /// Returns one page of history for a single doorbot, newest first. Pass the id of the oldest item on the previous
+        /// page as <paramref name="olderThan"/> to get the next page. Unlike <see cref="GetDoorbotsHistory(long?, int?)"/>
+        /// this makes exactly one request and does not follow the cursor itself.
+        /// </summary>
+        /// <param name="doorbotId">Id of the doorbot to retrieve the history for</param>
+        /// <param name="limit">Maximum number of items to request in this page</param>
+        /// <param name="olderThan">Only return items older than this history id. Null for the first (newest) page.</param>
+        /// <param name="cancellationToken">Cancels the request</param>
+        /// <returns>The items in this page, or an empty list when Ring returns none</returns>
+        /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
+        public virtual async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistoryPageAsync(long doorbotId, int limit, long? olderThan, CancellationToken cancellationToken = default)
+        {
+            await EnsureSessionValid();
+
+            string olderThanQuery = olderThan.HasValue ? $"&older_than={olderThan.Value}" : string.Empty;
+            var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}/history?limit={limit}{olderThanQuery}");
+
+            string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
+
+            return JsonSerializer.Deserialize<List<DoorbotHistoryEvent>>(response) ?? [];
         }
 
         /// <summary>

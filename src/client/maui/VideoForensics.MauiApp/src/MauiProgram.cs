@@ -155,6 +155,7 @@ namespace VideoForensics.MauiApp
             // individual Security*/Pair/NetworkSettings/DeviceSignIn pages that share this UI project.
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.PairedSessionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
 
             // Pages/Security*.razor's self-API calls (plan §5.10/§5.12) - MAUI has no self-call
             // network-tier concern (it always talks to a remote/LAN server, never itself), so it gets
@@ -166,10 +167,12 @@ namespace VideoForensics.MauiApp
             // (device-local), right-panel page-context slot, and per-operator theme/culture, all
             // circuit-scoped like PairedSessionState above.
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LayoutPreferencesState>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.AccountSelectionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ThemePreferenceService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.IUiModeService, VideoForensics.Ui.Shared.Services.UiModeService>();

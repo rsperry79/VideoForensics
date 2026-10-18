@@ -27,6 +27,7 @@ public class MyPasskeysSetupTests : BunitContext
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
         Services.AddScoped(_ => WebAuthn.Object);
+        Services.AddScoped<StepUpService>();
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
     }

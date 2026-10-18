@@ -1,0 +1,184 @@
+[
+  {
+    "msg": "DataUpdate",
+    "datatype": "DeviceInfoDocType",
+    "src": "aps",
+    "context": {
+      "eventId": "6df9455c-543f-4ee3-bdf5-3b8e2f3b71d1",
+      "eventPublishedTsMs": 1792177910381,
+      "requestSeq": 0,
+      "affectedEntityId": "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7",
+      "deviceFamily": "alarm",
+      "initiatingEntityType": "user",
+      "affectedEntityType": "device",
+      "forwarderTopic": "location:11111111-2222-3333-4444-555555555555/aps",
+      "accountId": "00000000",
+      "requestSessionId": 0,
+      "eventLevel": 10,
+      "initiatingEntityId": "00000000",
+      "eventOccurredTsMs": 1792177910381,
+      "affectedEntityName": "Alarm",
+      "programId": "a551631c-0e88-4097-8e1a-9595202c2ba9"
+    },
+    "body": [
+      {
+        "general": {
+          "v2": {
+            "deviceType": "security-panel",
+            "catalogId": "69cd7da3-0309-48e9-b075-704c5f3cae8e",
+            "zid": "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7",
+            "lastUpdate": 1792177910381,
+            "adapterType": "none"
+          }
+        },
+        "context": {
+          "v1": {
+            "adapter": null,
+            "batteryStatus": "none",
+            "subCategoryId": 0,
+            "device": {
+              "v1": {
+                "mode": "some",
+                "modes": {
+                  "all": {
+                    "transitionDelay": 120,
+                    "editable": true,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 30
+                  },
+                  "some": {
+                    "transitionDelay": 0,
+                    "editable": true,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 30
+                  },
+                  "none": {
+                    "transitionDelay": 0,
+                    "editable": false,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 0
+                  }
+                },
+                "siren": {
+                  "state": "off"
+                }
+              }
+            },
+            "deviceName": "Sanitized deviceName",
+            "categoryId": 22,
+            "roomName": "Sanitized roomName"
+          }
+        },
+        "impulse": {
+          "v1": [
+            {
+              "data": {
+                "commandType": "security-panel.switch-mode",
+                "data": {
+                  "mode": "some"
+                }
+              },
+              "impulseType": "command.complete"
+            }
+          ]
+        },
+        "device": {}
+      }
+    ],
+    "seq": 0
+  },
+  {
+    "msg": "DataUpdate",
+    "datatype": "DeviceInfoDocType",
+    "src": "aps",
+    "context": {
+      "eventId": "8c6b6409-0385-4608-b34a-90a2afea62b3",
+      "eventPublishedTsMs": 1792177910282,
+      "requestSeq": 0,
+      "affectedEntityId": "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7",
+      "deviceFamily": "alarm",
+      "initiatingEntityType": "user",
+      "affectedEntityType": "device",
+      "forwarderTopic": "location:11111111-2222-3333-4444-555555555555/aps",
+      "accountId": "00000000",
+      "requestSessionId": 0,
+      "eventLevel": 10,
+      "initiatingEntityId": "00000000",
+      "eventOccurredTsMs": 1792177910282,
+      "affectedEntityName": "Alarm",
+      "programId": "a551631c-0e88-4097-8e1a-9595202c2ba9"
+    },
+    "body": [
+      {
+        "general": {
+          "v2": {
+            "deviceType": "security-panel",
+            "catalogId": "69cd7da3-0309-48e9-b075-704c5f3cae8e",
+            "zid": "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7",
+            "lastUpdate": 1792177910282,
+            "adapterType": "none"
+          }
+        },
+        "context": {
+          "v1": {
+            "adapter": null,
+            "batteryStatus": "none",
+            "subCategoryId": 0,
+            "device": {
+              "v1": {
+                "mode": "some",
+                "modes": {
+                  "all": {
+                    "transitionDelay": 120,
+                    "editable": true,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 30
+                  },
+                  "some": {
+                    "transitionDelay": 0,
+                    "editable": true,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 30
+                  },
+                  "none": {
+                    "transitionDelay": 0,
+                    "editable": false,
+                    "removable": false,
+                    "chirpsEnabled": false,
+                    "entryDelay": 0
+                  }
+                },
+                "siren": {
+                  "state": "off"
+                }
+              }
+            },
+            "deviceName": "Sanitized deviceName",
+            "categoryId": 22,
+            "roomName": "Sanitized roomName"
+          }
+        },
+        "impulse": {
+          "v1": [
+            {
+              "data": {
+                "commandType": "security-panel.switch-mode",
+                "data": {
+                  "mode": "some"
+                }
+              },
+              "impulseType": "command.complete"
+            }
+          ]
+        },
+        "device": {}
+      }
+    ],
+    "seq": 0
+  }
+]

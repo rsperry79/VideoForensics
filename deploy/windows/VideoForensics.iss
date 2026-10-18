@@ -12,7 +12,7 @@
 ;   - desktop: VideoForensics.MauiApp, a plain unpackaged desktop client (no service, no MSIX)
 ;   - tools:   Optional Tools - VideoForensics.DbSetup, VideoForensics.DbDiagnostics, and
 ;              VideoForensics.DbRepair CLI utilities (advanced/opt-in, unchecked by default)
-;   - mcp:     MCP Bridge (VideoForensics.Mcp) for AI-assistant hosts like Claude Desktop
+;   - mcp:     MCP Bridge (VideoForensics.Client.MCP) for AI-assistant hosts like Claude Desktop
 ;              (advanced/opt-in, unchecked by default)
 ;
 ; Data safety: %ProgramData%\VideoForensics is NEVER referenced in [Files] or an uninstall
@@ -60,7 +60,7 @@
 #define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.DbSetup.exe")
 #define DbDiagnosticsExeExists FileExists(DbDiagnosticsPublishDir + "\VideoForensics.DbDiagnostics.exe")
 #define DbRepairExeExists FileExists(DbRepairPublishDir + "\VideoForensics.DbRepair.exe")
-#define McpExeExists FileExists(McpPublishDir + "\VideoForensics.Mcp.exe")
+#define McpExeExists FileExists(McpPublishDir + "\VideoForensics.Client.MCP.exe")
 
 [Setup]
 AppId={{6B1D9F0E-6A3C-4E9D-9F0B-2C7B2C2E9A11}
@@ -183,7 +183,7 @@ Source: "{#DbDiagnosticsPublishDir}\*"; DestDir: "{app}\Tools\DbDiagnostics"; Co
 Source: "{#DbRepairPublishDir}\*"; DestDir: "{app}\Tools\DbRepair"; Components: tools; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
 
-; MCP Bridge: stdio MCP server (VideoForensics.Mcp) that AI-assistant hosts like Claude Desktop
+; MCP Bridge: stdio MCP server (VideoForensics.Client.MCP) that AI-assistant hosts like Claude Desktop
 ; launch as a subprocess and talk to over stdio, translating to HTTP calls against a VideoForensics
 ; server (local or remote) using a paired-device credential - it is not itself a running service and
 ; needs no [Run]/[UninstallRun] entries, just files at a known path the user points their MCP host's

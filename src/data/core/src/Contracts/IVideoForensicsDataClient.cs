@@ -62,16 +62,21 @@ namespace VideoForensics.Data.Core.Contracts
             string? apiResponseHash = null,
             CancellationToken ct = default);
 
-        /// <summary>Ensures a device exists for a location, creating or updating it as necessary.</summary>
+        /// <summary>
+        /// Ensures a device exists for a location, creating or updating it as necessary. When <paramref name="details"/>
+        /// is supplied, every detail column is written (a null field stores null); when null, existing detail columns are left as they are.
+        /// </summary>
         Task<Device> EnsureDeviceAsync(
             Guid locationId,
             string providerDeviceId,
             string name,
             string type,
-            bool isOnline,
+            bool? isOnline,
             string? metadataJson = null,
             string? apiResponseHash = null,
-            CancellationToken ct = default);
+            CancellationToken ct = default,
+            string? timeZoneId = null,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details = null);
 
         /// <summary>Updates the device watermark to mark a successful download completion point for resumable batch downloads.</summary>
         Task UpdateDeviceWatermarkAsync(Guid deviceId, DateTime latestSuccessfulPullTime, CancellationToken ct);
@@ -84,6 +89,19 @@ namespace VideoForensics.Data.Core.Contracts
 
         /// <summary>Records a time-series device health metric.</summary>
         Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
+
+        /// <summary>
+        /// Upserts a device's capability, feature and alert rows and links Devices.DeviceHealthId /
+        /// DeviceFeaturesId. Null capabilities/features and an empty or null alert list leave existing rows untouched.
+        /// </summary>
+        Task RecordDeviceDetailsAsync(
+            Guid deviceId,
+            Guid? healthId,
+            DeviceCapabilities? capabilities,
+            DeviceFeatures? features,
+            IReadOnlyList<DeviceAlerts>? alerts,
+            CancellationToken ct,
+            DeviceSettingsChildren? settings = null);
 
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);

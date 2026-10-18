@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Providers.Ring.Converters;
@@ -71,13 +72,21 @@ namespace VideoForensics.Providers.Ring.Entities
         public DoorbotAlerts Alerts { get; set; }
 
         [JsonPropertyName("motion_snooze")]
-        public object MotionSnooze { get; set; }
+        public JsonElement? MotionSnooze { get; set; }
 
         [JsonPropertyName("stolen")]
         public bool? Stolen { get; set; }
 
         [JsonPropertyName("owner")]
         public Owner Owner { get; set; }
+
+        [JsonPropertyName("settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public DoorbotSettings Settings { get; set; }
+
+        [JsonPropertyName("zone_settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ZoneSettings ZoneSettings { get; set; }
 
         [JsonPropertyName("health")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

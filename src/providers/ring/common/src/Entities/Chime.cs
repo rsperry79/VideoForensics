@@ -31,10 +31,10 @@ namespace VideoForensics.Providers.Ring.Entities
         public string Kind { get; set; }
 
         [JsonPropertyName("latitude")]
-        public double Latitude { get; set; }
+        public double? Latitude { get; set; }
 
         [JsonPropertyName("longitude")]
-        public double Longitude { get; set; }
+        public double? Longitude { get; set; }
 
         [JsonPropertyName("address")]
         public string Address { get; set; }
@@ -46,7 +46,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public ChimeFeatures Features { get; set; }
 
         [JsonPropertyName("owned")]
-        public bool Owned { get; set; }
+        public bool? Owned { get; set; }
 
         [JsonPropertyName("alerts")]
         public ChimeAlerts Alerts { get; set; }
@@ -55,7 +55,7 @@ namespace VideoForensics.Providers.Ring.Entities
         public DoNotDisturb DoNotDisturb { get; set; }
 
         [JsonPropertyName("stolen")]
-        public bool Stolen { get; set; }
+        public bool? Stolen { get; set; }
 
         [JsonPropertyName("owner")]
         public Owner Owner { get; set; }

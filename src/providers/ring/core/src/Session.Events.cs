@@ -21,13 +21,23 @@ namespace VideoForensics.Providers.Ring
         /// <param name="locationId">ID of the location to retrieve events for</param>
         public async Task<List<LocationEvent>> GetLocationEvents(Guid locationId)
         {
+            LocationEventsResponse? parsed = await GetLocationEventsResponse(locationId);
+            return parsed?.Events ?? [];
+        }
+
+        /// <summary>
+        /// Returns the full location events response, including the paging cursor in <c>meta</c> that
+        /// <see cref="GetLocationEvents"/> discards. Same read-only request as <see cref="GetLocationEvents"/>.
+        /// </summary>
+        /// <param name="locationId">ID of the location to retrieve events for</param>
+        public async Task<LocationEventsResponse?> GetLocationEventsResponse(Guid locationId)
+        {
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, $"locations/{locationId:D}/events");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            LocationEventsResponse? parsed = JsonSerializer.Deserialize<LocationEventsResponse>(response);
-            return parsed?.Events ?? [];
+            return JsonSerializer.Deserialize<LocationEventsResponse>(response);
         }
 
         /// <summary>

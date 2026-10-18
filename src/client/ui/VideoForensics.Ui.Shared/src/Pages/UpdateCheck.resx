@@ -92,12 +92,6 @@
   <data name="ChannelTesting" xml:space="preserve">
     <value>Testing</value>
   </data>
-  <data name="SaveChannelButton" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="SavingChannelButton" xml:space="preserve">
-    <value>Saving...</value>
-  </data>
   <data name="ChannelSavedMessage" xml:space="preserve">
     <value>Release channel saved.</value>
   </data>
@@ -130,5 +124,11 @@
   </data>
   <data name="DaysAgo" xml:space="preserve">
     <value>{0} days ago</value>
+  </data>
+  <data name="CheckResultUpdateAvailable" xml:space="preserve">
+    <value>Update available: version {0}.</value>
+  </data>
+  <data name="CheckResultUpToDate" xml:space="preserve">
+    <value>You're on the latest version ({0}).</value>
   </data>
 </root>
