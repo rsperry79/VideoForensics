@@ -166,7 +166,7 @@ namespace VideoForensics.Data.Core.Services
             media.BaselineVersion = snapshot.Version;
 
             await _items.UpdateAsync(media, ct);
-            _logger.LogInformation("Analysed media {MediaItemId}: {FlagCount} red flag(s), jamming suspected: {Jamming}",
+            _logger.LogDebug("Analysed media {MediaItemId}: {FlagCount} red flag(s), jamming suspected: {Jamming}",
                 media.Id, report.Flags.Count, report.JammingSuspected);
         }
 

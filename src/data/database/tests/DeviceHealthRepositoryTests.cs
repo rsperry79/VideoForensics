@@ -48,7 +48,7 @@ namespace VideoForensics.Data.Database.Tests
             _ = await repository.AddAsync(health, CancellationToken.None);
 
             mockLogger.Verify(l => l.Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((state, t) => state.ToString()!.Contains("Front Door Camera") && state.ToString()!.Contains("123 Main St")),
                 null,

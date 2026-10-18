@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
             else
             {
-                _logger.LogInformation("Security event: {EventType}", entry.EventType);
+                _logger.LogDebug("Security event: {EventType}", entry.EventType);
             }
 
             return entry;

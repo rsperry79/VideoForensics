@@ -33,7 +33,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = db.LiveViewTelemetrySamples.Add(sample);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Telemetry sample added: {SampleId}", sample.Id);
+                _logger.LogDebug("Telemetry sample added: {SampleId}", sample.Id);
             }
             catch (Exception ex)
             {
@@ -63,7 +63,10 @@ namespace VideoForensics.Data.Database.Repositories
                     .Where(s => s.CapturedAtUtc < cutoff)
                     .ExecuteDeleteAsync(ct);
 
-                _logger.LogInformation("Pruned {DeletedCount} telemetry samples older than {Cutoff}", deletedCount, cutoff);
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("Pruned {DeletedCount} telemetry samples older than {Cutoff}", deletedCount, cutoff);
+                }
                 return deletedCount;
             }
             catch (Exception ex)

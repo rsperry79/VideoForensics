@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.ProviderAccounts.Add(account);
                 await AddDefaultScheduleIfMissingAsync(db, account.Id, ct);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
+                _logger.LogDebug("Provider account added: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
@@ -82,7 +82,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.ProviderAccounts.Update(account);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Provider account updated: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
+                _logger.LogDebug("Provider account updated: {ProviderAccountId} ({ProviderName})", account.Id, SanitizeForLog(account.ProviderName));
             }
             catch (Exception ex)
             {
@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                     _ = db.ProviderAccounts.Remove(account);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Provider account deleted: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));
+                    _logger.LogDebug("Provider account deleted: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)
@@ -135,7 +135,7 @@ namespace VideoForensics.Data.Database.Repositories
                     account.LastErrorMessage = errorMessage;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Provider account error recorded: {ProviderAccountId} ({ProviderName}), Message: {ErrorMessage}", providerAccountId, SanitizeForLog(account.ProviderName), errorMessage);
+                    _logger.LogWarning("Provider account error recorded: {ProviderAccountId} ({ProviderName}), Message: {ErrorMessage}", providerAccountId, SanitizeForLog(account.ProviderName), errorMessage);
                 }
             }
             catch (Exception ex)
@@ -160,7 +160,7 @@ namespace VideoForensics.Data.Database.Repositories
                     account.LastErrorMessage = null;
                     _ = db.ProviderAccounts.Update(account);
                     _ = await db.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Provider account success recorded, error state cleared: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account.ProviderName));
+                    _logger.LogDebug("Provider account success recorded, error state cleared: {ProviderAccountId} ({ProviderName})", providerAccountId, SanitizeForLog(account.ProviderName));
                 }
             }
             catch (Exception ex)

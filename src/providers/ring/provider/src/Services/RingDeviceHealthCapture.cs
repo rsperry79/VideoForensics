@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Data.Common.Entities.DeviceHealth deviceHealth = RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
 
                 _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
-                _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                _logger.LogDebug("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
                     providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
             }
             catch (Exception ex)

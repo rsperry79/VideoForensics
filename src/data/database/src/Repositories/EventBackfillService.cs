@@ -25,7 +25,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyList<DownloadEvent> downloadEvents = await downloadEventRepository.ListAsync(ct);
             if (downloadEvents.Count == 0)
             {
-                logger.LogInformation("Events backfill: no DownloadEvents found, nothing to backfill.");
+                logger.LogDebug("Events backfill: no DownloadEvents found, nothing to backfill.");
                 return 0;
             }
 

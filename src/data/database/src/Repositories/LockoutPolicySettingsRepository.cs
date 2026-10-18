@@ -63,7 +63,7 @@ namespace VideoForensics.Data.Database.Repositories
                 settings.UpdatedAtUtc = DateTime.UtcNow;
 
                 _ = db.LockoutPolicySettings.Add(settings);
-                _logger.LogInformation("Lockout policy settings created");
+                _logger.LogDebug("Lockout policy settings created");
             }
             else
             {
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 existing.UpdatedByOperatorId = settings.UpdatedByOperatorId;
 
-                _logger.LogInformation("Lockout policy settings updated");
+                _logger.LogDebug("Lockout policy settings updated");
             }
 
             _ = await db.SaveChangesAsync(ct);

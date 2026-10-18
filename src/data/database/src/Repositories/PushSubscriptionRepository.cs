@@ -35,14 +35,14 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.AuthKey = subscription.AuthKey;
                     existing.LastUsedUtc = DateTime.UtcNow;
                     _ = db.PushSubscriptions.Update(existing);
-                    _logger.LogInformation("Push subscription updated: {Endpoint}", SanitizeForLog(subscription.Endpoint));
+                    _logger.LogDebug("Push subscription updated: {Endpoint}", SanitizeForLog(subscription.Endpoint));
                 }
                 else
                 {
                     subscription.Id = subscription.Id == Guid.Empty ? Guid.NewGuid() : subscription.Id;
                     subscription.CreatedUtc = DateTime.UtcNow;
                     _ = await db.PushSubscriptions.AddAsync(subscription, ct);
-                    _logger.LogInformation("Push subscription added: {Endpoint}", SanitizeForLog(subscription.Endpoint));
+                    _logger.LogDebug("Push subscription added: {Endpoint}", SanitizeForLog(subscription.Endpoint));
                 }
 
                 _ = await db.SaveChangesAsync(ct);
@@ -123,7 +123,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.PushSubscriptions.Remove(subscription);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Push subscription removed: {Endpoint}", SanitizeForLog(endpoint));
+                    _logger.LogDebug("Push subscription removed: {Endpoint}", SanitizeForLog(endpoint));
                 }
             }
             catch (Exception ex)

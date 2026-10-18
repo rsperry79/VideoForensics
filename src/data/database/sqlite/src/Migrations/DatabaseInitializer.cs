@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 string? result = await command.ExecuteScalarAsync(cancellationToken) as string;
                 if (result == "ok")
                 {
-                    logger.LogInformation("Database integrity check passed.");
+                    logger.LogDebug("Database integrity check passed.");
                 }
                 else
                 {

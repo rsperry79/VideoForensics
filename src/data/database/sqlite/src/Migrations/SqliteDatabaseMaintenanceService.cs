@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // connection's underlying file handle for every SqliteConnection in this process.
                 SqliteConnection.ClearAllPools();
 
-                _logger.LogInformation("Released all pooled database connections.");
+                _logger.LogDebug("Released all pooled database connections.");
             }
             catch (Exception ex)
             {

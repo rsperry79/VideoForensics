@@ -134,7 +134,7 @@ namespace VideoForensics.Providers.Ring
             string config = jsonSerializer.Serialize(conf, Pretty);
 
             System.IO.File.WriteAllText(SavedSettingsFile, config);
-            log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
+            log.LogDebug("Settings saved to {settingsFile}", SavedSettingsFile);
         }
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring
                 lock (rawApiLogLock)
                 {
                     System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
-                    log.LogInformation("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
+                    log.LogDebug("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
                 }
             }
             catch (Exception exe)
@@ -232,7 +232,7 @@ namespace VideoForensics.Providers.Ring
                 string pretty = jsonSerializer.Serialize(doc, Pretty);
 
                 System.IO.File.WriteAllText(filePath, pretty, Utf8NoBom);
-                log.LogInformation("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
+                log.LogDebug("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
             }
             catch (Exception exe)
             {
@@ -326,7 +326,7 @@ namespace VideoForensics.Providers.Ring
                             string token = await reporter.PromptTwoFactorCodeAsync();
                             if (!string.IsNullOrEmpty(token))
                             {
-                                log.LogInformation("2FA token received");
+                                log.LogDebug("2FA token received");
                             }
 
                             return token;
@@ -1127,7 +1127,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
+                log.LogDebug($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
             }
             catch (Exception exe)
             {
@@ -1175,7 +1175,7 @@ namespace VideoForensics.Providers.Ring
                 string json = jsonSerializer.Serialize(ding, Pretty);
 
                 System.IO.File.WriteAllText(filePath, json, Utf8NoBom);
-                log.LogInformation("PerEventJson {fileName} written", Path.GetFileName(filePath));
+                log.LogDebug("PerEventJson {fileName} written", Path.GetFileName(filePath));
             }
             catch (Exception exe)
             {
@@ -1192,7 +1192,7 @@ namespace VideoForensics.Providers.Ring
                 // Skip if already recorded
                 if (loadedEventIds.Contains(eventId))
                 {
-                    log.LogInformation($"Skipping duplicate failure record for EventId {eventId}");
+                    log.LogDebug($"Skipping duplicate failure record for EventId {eventId}");
                     return;
                 }
 
@@ -1214,7 +1214,7 @@ namespace VideoForensics.Providers.Ring
 
                 newFailures.Add(failure);
                 _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
-                log.LogInformation($"Recorded failed download for EventId {eventId}: {errorDesc}");
+                log.LogDebug($"Recorded failed download for EventId {eventId}: {errorDesc}");
             }
             catch (Exception exe)
             {
@@ -1338,7 +1338,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Appended {rows.Count} camera health entries to {tsvPath}");
+                log.LogDebug($"Appended {rows.Count} camera health entries to {tsvPath}");
             }
             catch (Exception exe)
             {
@@ -1407,7 +1407,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
+                log.LogDebug($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
             }
             catch (Exception exe)
             {

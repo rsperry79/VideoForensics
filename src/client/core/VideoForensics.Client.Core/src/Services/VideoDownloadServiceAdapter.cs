@@ -96,7 +96,7 @@ namespace VideoForensics.Client.Core.Services
         public void SetDeviceLocationMapping(Dictionary<string, string> deviceIdToLocationName)
         {
             _deviceToLocationMapping = deviceIdToLocationName;
-            _logger.LogInformation("Device location mapping set with {Count} entries", deviceIdToLocationName?.Count ?? 0);
+            _logger.LogDebug("Device location mapping set with {Count} entries", deviceIdToLocationName?.Count ?? 0);
         }
 
         /// <summary>Serializes an API response object to JSON and computes its SHA256 hash for audit/change tracking.</summary>
@@ -274,7 +274,7 @@ namespace VideoForensics.Client.Core.Services
                 return [];
             }
 
-            _logger.LogInformation("Found {LocationCount} location(s)", locations.Count);
+            _logger.LogDebug("Found {LocationCount} location(s)", locations.Count);
 
             var seenDeviceIds = new HashSet<string>();
             var uniqueDevices = new List<VideoForensics.Core.Providers.Common.Contracts.Device>();
@@ -287,7 +287,7 @@ namespace VideoForensics.Client.Core.Services
                     _knownLocationAddresses[location.Id] = location.Address;
                 }
 
-                _logger.LogInformation("Checking location: {LocationId}", location.Id);
+                _logger.LogDebug("Checking location: {LocationId}", location.Id);
                 IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                 if (devices == null || devices.Count == 0)
                 {
@@ -304,7 +304,7 @@ namespace VideoForensics.Client.Core.Services
                 }
             }
 
-            _logger.LogInformation("Found {DeviceCount} unique device(s) across all locations", uniqueDevices.Count);
+            _logger.LogDebug("Found {DeviceCount} unique device(s) across all locations", uniqueDevices.Count);
             return uniqueDevices;
         }
 
@@ -451,7 +451,7 @@ namespace VideoForensics.Client.Core.Services
 
             try
             {
-                _logger.LogInformation("Starting video download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
+                _logger.LogDebug("Starting video download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
 
                 _downloadService.SetMaxConcurrentDownloads(_forensicsConfig.MaxConcurrentDownloads);
 
@@ -512,18 +512,18 @@ namespace VideoForensics.Client.Core.Services
                         totalFilesMatched += cached.FilesMatched;
                         _totalFilesCompleted = totalFilesDownloaded;
                         _totalBytesDownloaded += cached.BytesDownloaded;
-                        _logger.LogInformation("⏭ Skipping {DeviceName} — already fully downloaded for this range", device.Name);
+                        _logger.LogDebug("⏭ Skipping {DeviceName} — already fully downloaded for this range", device.Name);
                         continue;
                     }
 
-                    _logger.LogInformation("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
+                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Effective start date was already resolved during the pre-scan above.
                     DateTime effectiveStartDate = effectiveStartDates.TryGetValue(device.Id, out DateTime resolvedStart) ? resolvedStart : startDate;
                     if (effectiveStartDate != startDate)
                     {
-                        _logger.LogInformation("Using watermark-narrowed start date {StartDate} for {DeviceName} (requested {RequestedStartDate})",
+                        _logger.LogDebug("Using watermark-narrowed start date {StartDate} for {DeviceName} (requested {RequestedStartDate})",
                             effectiveStartDate, device.Name, startDate);
                     }
 
@@ -554,7 +554,7 @@ namespace VideoForensics.Client.Core.Services
                         totalFilesMatched += result.FilesMatched;
                         _totalFilesCompleted = totalFilesDownloaded;
                         _totalBytesDownloaded += result.BytesDownloaded;
-                        _logger.LogInformation("✓ Downloaded {FileCount} video(s) from {DeviceName}",
+                        _logger.LogDebug("✓ Downloaded {FileCount} video(s) from {DeviceName}",
                             result.FilesDownloaded, device.Name);
 
                         if (result.FilesDownloaded >= result.FilesMatched)
@@ -578,7 +578,7 @@ namespace VideoForensics.Client.Core.Services
                     // cache-skipped device above already `continue`d past this.
                     if (i < uniqueDevices.Count - 1)
                     {
-                        _logger.LogInformation("Waiting {DelayMs}ms before next device to avoid rate limiting",
+                        _logger.LogDebug("Waiting {DelayMs}ms before next device to avoid rate limiting",
                             InterDeviceDelayMs);
                         await Task.Delay(InterDeviceDelayMs);
                     }
@@ -692,7 +692,7 @@ namespace VideoForensics.Client.Core.Services
 
             try
             {
-                _logger.LogInformation("Starting snapshot download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
+                _logger.LogDebug("Starting snapshot download to {OutputPath} from {StartDate} to {EndDate}", SanitizeForLog(outputPath), startDate, endDate);
 
                 if (!await _authService.IsAuthenticatedAsync())
                 {
@@ -716,14 +716,14 @@ namespace VideoForensics.Client.Core.Services
                     return false;
                 }
 
-                _logger.LogInformation("Found {LocationCount} location(s)", locations.Count);
+                _logger.LogDebug("Found {LocationCount} location(s)", locations.Count);
 
                 // Dedupe devices shared across multiple locations (see DownloadVideosAsync).
                 var seenDeviceIds = new HashSet<string>();
                 var uniqueDevices = new List<VideoForensics.Core.Providers.Common.Contracts.Device>();
                 foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
                 {
-                    _logger.LogInformation("Checking location: {LocationId}", location.Id);
+                    _logger.LogDebug("Checking location: {LocationId}", location.Id);
                     IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                     if (devices == null || devices.Count == 0)
                     {
@@ -740,7 +740,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                 }
 
-                _logger.LogInformation("Found {DeviceCount} unique device(s) across all locations", uniqueDevices.Count);
+                _logger.LogDebug("Found {DeviceCount} unique device(s) across all locations", uniqueDevices.Count);
 
                 // Download snapshots from all devices
                 int totalDevices = uniqueDevices.Count;
@@ -756,7 +756,7 @@ namespace VideoForensics.Client.Core.Services
                     _currentDeviceIndex = i + 1;
                     _currentDeviceName = device.Name;
 
-                    _logger.LogInformation("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
+                    _logger.LogDebug("Downloading from device {DeviceNumber}/{TotalDevices}: {DeviceName} ({DeviceId})",
                         _currentDeviceIndex, uniqueDevices.Count, device.Name, device.Id);
 
                     // Build device-specific path with location and camera name structure
@@ -786,7 +786,7 @@ namespace VideoForensics.Client.Core.Services
                         _totalFilesCompleted = totalFilesDownloaded;
                         _totalFilesMatched += 1;
                         _totalBytesDownloaded += result.BytesDownloaded;
-                        _logger.LogInformation("✓ Downloaded {FileCount} snapshot(s) from {DeviceName}",
+                        _logger.LogDebug("✓ Downloaded {FileCount} snapshot(s) from {DeviceName}",
                             result.FilesDownloaded, device.Name);
                     }
                     else
@@ -800,7 +800,7 @@ namespace VideoForensics.Client.Core.Services
                     // Rate limit safety: sequential processing with inter-device delay
                     if (i < uniqueDevices.Count - 1)
                     {
-                        _logger.LogInformation("Waiting {DelayMs}ms before next device to avoid rate limiting",
+                        _logger.LogDebug("Waiting {DelayMs}ms before next device to avoid rate limiting",
                             InterDeviceDelayMs);
                         await Task.Delay(InterDeviceDelayMs);
                     }

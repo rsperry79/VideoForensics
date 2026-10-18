@@ -87,7 +87,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
 
-                _logger.LogInformation("Action log entry appended: {EntryId} (action: {Action}, entity: {EntityType}:{EntityId})",
+                _logger.LogDebug("Action log entry appended: {EntryId} (action: {Action}, entity: {EntityType}:{EntityId})",
                     entry.Id, action, entityType, entityId);
 
                 return entry;

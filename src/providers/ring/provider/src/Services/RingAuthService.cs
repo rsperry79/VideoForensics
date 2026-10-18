@@ -59,7 +59,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Ring API for user: {Username}", MaskForLog(username));
+                _logger.LogDebug("Authenticating with Ring API for user: {Username}", MaskForLog(username));
 
                 var credentials = new RingCredentials { UserName = username, Password = password };
 
@@ -262,7 +262,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Refreshing Ring API token");
+                _logger.LogDebug("Refreshing Ring API token");
 
 #pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
@@ -319,7 +319,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                         if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                         {
-                            _logger.LogInformation("Restoring Ring session from database for account {AccountId}", providerAccountId);
+                            _logger.LogDebug("Restoring Ring session from database for account {AccountId}", providerAccountId);
                             credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                         }
                     }
@@ -392,7 +392,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                     if (credentialEntity.HasValue && !string.IsNullOrWhiteSpace(credentialEntity.Value.DecryptedValue))
                                     {
-                                        _logger.LogInformation("Restoring Ring session from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
+                                        _logger.LogDebug("Restoring Ring session from database for account {AccountId} ({ProviderName})", account.Id, account.ProviderName);
                                         credentials = new RingCredentials { RefreshToken = credentialEntity.Value.DecryptedValue };
                                         resolvedAccountId = account.Id;
                                         break;
@@ -452,7 +452,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     if (linkedAccountId == null)
                     {
-                        _logger.LogInformation("No Ring account linked");
+                        _logger.LogDebug("No Ring account linked");
                     }
                     else
                     {
@@ -462,11 +462,11 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (credentials?.RefreshToken == null)
                 {
-                    _logger.LogInformation("No saved refresh token found");
+                    _logger.LogDebug("No saved refresh token found");
                     return false;
                 }
 
-                _logger.LogInformation("Restoring Ring session from refresh token");
+                _logger.LogDebug("Restoring Ring session from refresh token");
 
                 if (credentials.RefreshToken == null)
                 {

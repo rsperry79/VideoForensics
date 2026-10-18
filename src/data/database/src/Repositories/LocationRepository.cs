@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ProviderAccountId = providerAccountId
             });
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Location {LocationId} linked to provider account {ProviderAccountId}", locationId, providerAccountId);
+            _logger.LogDebug("Location {LocationId} linked to provider account {ProviderAccountId}", locationId, providerAccountId);
         }
 
         /// <summary>Gets a location by provider location ID (globally unique).</summary>
@@ -94,7 +94,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Add(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location added: {LocationId} ({LocationName})", location.Id, location.Name);
+                _logger.LogDebug("Location added: {LocationId} ({LocationName})", location.Id, location.Name);
             }
             catch (Exception ex)
             {
@@ -111,7 +111,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Update(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location updated: {LocationId}", location.Id);
+                _logger.LogDebug("Location updated: {LocationId}", location.Id);
             }
             catch (Exception ex)
             {
@@ -131,7 +131,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Locations.Remove(location);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Location deleted: {LocationId}", locationId);
+                    _logger.LogDebug("Location deleted: {LocationId}", locationId);
                 }
             }
             catch (Exception ex)

@@ -62,7 +62,7 @@ namespace VideoForensics.WebApp.Services
             // v1 is IPv4-only: an IPv6 edge peer could otherwise be banned, and no IPv6 edge ranges are known yet.
             if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
             {
-                _logger.LogInformation("Auto-ban skipped for IPv6 address");
+                _logger.LogDebug("Auto-ban skipped for IPv6 address");
                 return false;
             }
 
@@ -145,7 +145,7 @@ namespace VideoForensics.WebApp.Services
                 IReadOnlyList<BannedIpRange> active = await bannedRanges.GetActiveAsync(ct);
                 if (active.Any(range => string.Equals(range.CidrRange, cidr, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _logger.LogInformation("Auto-ban skipped for {ClientIp}: an active ban already covers it", key);
+                    _logger.LogDebug("Auto-ban skipped for {ClientIp}: an active ban already covers it", key);
                     return false;
                 }
 

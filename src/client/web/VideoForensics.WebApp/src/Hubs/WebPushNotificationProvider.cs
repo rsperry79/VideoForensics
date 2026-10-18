@@ -111,7 +111,7 @@ namespace VideoForensics.WebApp.Hubs
                         // Send the notification
                         await client.SendNotificationAsync(webPushSubscription, jsonPayload, vapidDetails);
 
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Web push sent successfully - EventType={EventType}, OperatorId={OperatorId}, Endpoint={Endpoint}",
                             notificationEvent.EventType,
                             subscription.OperatorId,

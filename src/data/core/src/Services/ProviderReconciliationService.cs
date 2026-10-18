@@ -108,7 +108,7 @@ namespace VideoForensics.Data.Core.Services
             try
             {
                 IReadOnlyList<ProviderReconciliationRecord> history = await _reconciliationRepository.GetHistoryForDeviceAsync(deviceId, ct);
-                _logger.LogInformation("Retrieved {RecordCount} reconciliation records for device {DeviceId}",
+                _logger.LogDebug("Retrieved {RecordCount} reconciliation records for device {DeviceId}",
                     history.Count, deviceId);
                 return history;
             }
@@ -174,7 +174,7 @@ namespace VideoForensics.Data.Core.Services
                             _ = await _eventRepository.CreateAsync(newEvent, ct);
                             result.NewEventsInserted++;
 
-                            _logger.LogInformation("Auto-fixed new event {ProviderEventId} for device {DeviceId}",
+                            _logger.LogDebug("Auto-fixed new event {ProviderEventId} for device {DeviceId}",
                                 SanitizeForLog(discrepancy.ProviderEventId), deviceId);
 
                             // Log to action log
@@ -238,7 +238,7 @@ namespace VideoForensics.Data.Core.Services
                             await _eventRepository.UpdateAsync(storedEvent, ct);
                             result.MetadataUpdated++;
 
-                            _logger.LogInformation("Auto-fixed metadata for event {ProviderEventId} field {FieldName} for device {DeviceId}",
+                            _logger.LogDebug("Auto-fixed metadata for event {ProviderEventId} field {FieldName} for device {DeviceId}",
                                 SanitizeForLog(discrepancy.ProviderEventId), SanitizeForLog(fieldName), deviceId);
 
                             // Log to action log

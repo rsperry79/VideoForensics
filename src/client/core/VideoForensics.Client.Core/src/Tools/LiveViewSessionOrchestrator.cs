@@ -225,7 +225,7 @@ namespace VideoForensics.Client.Core.Tools
             try
             {
                 await pipeline.Consumer.WaitAsync(TelemetryDrainTimeout, CancellationToken.None);
-                _logger.LogInformation("Telemetry sampler drained for live view session {SessionId}", sessionId);
+                _logger.LogDebug("Telemetry sampler drained for live view session {SessionId}", sessionId);
             }
             catch (TimeoutException)
             {
@@ -375,7 +375,7 @@ namespace VideoForensics.Client.Core.Tools
             var existingSession = await sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
             if (existingSession != null)
             {
-                _logger.LogInformation("Returning existing active live view session {SessionId} for device {DeviceId}", existingSession.Id, deviceId);
+                _logger.LogDebug("Returning existing active live view session {SessionId} for device {DeviceId}", existingSession.Id, deviceId);
                 return existingSession;
             }
 
@@ -402,7 +402,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Start the provider connection
-            _logger.LogInformation("Starting live view connection for device {DeviceId} ({ProviderDeviceId})", deviceId, device.ProviderDeviceId);
+            _logger.LogDebug("Starting live view connection for device {DeviceId} ({ProviderDeviceId})", deviceId, device.ProviderDeviceId);
             var connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, ct);
 
             // Create and persist the session in Starting state
@@ -419,7 +419,7 @@ namespace VideoForensics.Client.Core.Tools
             };
 
             session = await sessionRepository.UpsertSessionAsync(session, ct);
-            _logger.LogInformation("Persisted live view session {SessionId} in Starting state for device {DeviceId}", session.Id, deviceId);
+            _logger.LogDebug("Persisted live view session {SessionId} in Starting state for device {DeviceId}", session.Id, deviceId);
             await PublishSessionChangedSafelyAsync(session, ct);
 
             // Start the telemetry sampler before storing the handle, so every handle in the map has a live consumer
@@ -481,7 +481,7 @@ namespace VideoForensics.Client.Core.Tools
 
             session.LastExtendedAtUtc = DateTime.UtcNow;
             await sessionRepository.UpsertSessionAsync(session, ct);
-            _logger.LogInformation("Extended live view session {SessionId} timeout", sessionId);
+            _logger.LogDebug("Extended live view session {SessionId} timeout", sessionId);
         }
 
         public async Task<LiveViewSession> PromoteToSustainedAsync(Guid sessionId, string reason, CancellationToken ct)
@@ -495,7 +495,7 @@ namespace VideoForensics.Client.Core.Tools
             // Idempotent: if already sustained, return as-is
             if (session.IsSustained)
             {
-                _logger.LogInformation("Session {SessionId} already in sustained mode", sessionId);
+                _logger.LogDebug("Session {SessionId} already in sustained mode", sessionId);
                 return session;
             }
 
@@ -549,7 +549,7 @@ namespace VideoForensics.Client.Core.Tools
             session.State = LiveViewSessionState.Active;
 
             await sessionRepository.UpsertSessionAsync(session, ct);
-            _logger.LogInformation("Demoted live view session {SessionId} from sustained mode", sessionId);
+            _logger.LogDebug("Demoted live view session {SessionId} from sustained mode", sessionId);
             await PublishSessionChangedSafelyAsync(session, ct);
 
             return session;
@@ -569,7 +569,7 @@ namespace VideoForensics.Client.Core.Tools
             // Idempotent: if already stopped, no-op
             if (session.State == LiveViewSessionState.Stopped)
             {
-                _logger.LogInformation("Session {SessionId} already stopped", sessionId);
+                _logger.LogDebug("Session {SessionId} already stopped", sessionId);
                 return;
             }
 
@@ -585,7 +585,7 @@ namespace VideoForensics.Client.Core.Tools
                 try
                 {
                     await handle.Connection.CloseAsync(ct);
-                    _logger.LogInformation("Closed live view connection for session {SessionId}", sessionId);
+                    _logger.LogDebug("Closed live view connection for session {SessionId}", sessionId);
                 }
                 catch (Exception ex)
                 {

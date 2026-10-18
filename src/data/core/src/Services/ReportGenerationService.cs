@@ -80,7 +80,7 @@ namespace VideoForensics.Data.Core.Services
                 report.VerifiedItemCount = items.Count(m => m.IntegrityVerified);
                 report.FailedVerificationCount = integrityRecords.Count(r => !r.Passed);
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Built evidence review report: {TotalCount} items, {VerifiedCount} verified",
                     report.TotalItemCount,
                     report.VerifiedItemCount);
@@ -122,7 +122,7 @@ namespace VideoForensics.Data.Core.Services
                 report.EvidenceItems = items;
                 report.Summary = $"Forensic analysis report covering {items.Count} media items from {fromUtc:O} to {toUtc:O}";
 
-                _logger.LogInformation("Built forensic analysis report: {ItemCount} items", items.Count);
+                _logger.LogDebug("Built forensic analysis report: {ItemCount} items", items.Count);
             }
             catch (Exception ex)
             {
@@ -190,7 +190,7 @@ namespace VideoForensics.Data.Core.Services
 
                 report.AnomaliesByDevice = anomaliesList;
                 report.JammingByDevice = jammingList;
-                _logger.LogInformation("Built signal anomaly report for {DeviceCount} devices", devices.Count);
+                _logger.LogDebug("Built signal anomaly report for {DeviceCount} devices", devices.Count);
             }
             catch (Exception ex)
             {
@@ -233,7 +233,7 @@ namespace VideoForensics.Data.Core.Services
                     .ToList();
 
                 report.AccessEvents = accessEvents;
-                _logger.LogInformation("Built access control report: {ActionCount} actions", accessEvents.Count);
+                _logger.LogDebug("Built access control report: {ActionCount} actions", accessEvents.Count);
             }
             catch (Exception ex)
             {
@@ -270,7 +270,7 @@ namespace VideoForensics.Data.Core.Services
                 report.ChainIntegrityVerified = chainIsValid;
                 report.ChainVerificationStatus = chainIsValid ? "Valid hash chain" : "Chain integrity check failed";
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Built chain of custody report: {ActionCount} actions, chain valid={ChainValid}",
                     filteredActions.Count,
                     chainIsValid);

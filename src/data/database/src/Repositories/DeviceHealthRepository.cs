@@ -29,7 +29,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = await db.SaveChangesAsync(ct);
 
                 (string? DeviceName, string? LocationName) = await GetDeviceAndLocationNamesAsync(db, health.DeviceId, ct);
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Device health metric recorded: {HealthId} (device: {DeviceName} @ {LocationName} [{DeviceId}], online: {IsOnline})",
                     health.Id, DeviceName ?? "unknown", LocationName ?? "unknown", health.DeviceId, health.IsOnline);
                 return health;

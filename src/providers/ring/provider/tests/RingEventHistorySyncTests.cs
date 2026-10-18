@@ -174,7 +174,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("location history", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Debug && e.Message.Contains("location history", StringComparison.OrdinalIgnoreCase));
             Assert.DoesNotContain(logger.Entries, e => e.Level == LogLevel.Warning);
             writer.Verify(w => w.ReplaceLocationHistoryPageAsync(It.IsAny<RingLocationHistoryPage>(), It.IsAny<CancellationToken>()), Times.Never);
             writer.Verify(w => w.ReplaceLocationHistoryEventAsync(It.IsAny<RingLocationHistoryEvent>(), It.IsAny<RingEventDetails>(), It.IsAny<CancellationToken>()), Times.Never);

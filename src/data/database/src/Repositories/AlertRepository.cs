@@ -41,7 +41,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.Alerts.Add(newAlert);
                 _ = await db.SaveChangesAsync(ct);
 
-                _logger.LogInformation("Alert {AlertId} created with type {AlertType} and status {Status}",
+                _logger.LogDebug("Alert {AlertId} created with type {AlertType} and status {Status}",
                     newAlert.Id, newAlert.AlertType, newAlert.Status);
 
                 return newAlert;

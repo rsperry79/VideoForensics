@@ -41,14 +41,14 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
-                _logger.LogError("Not authenticated: Uniview client is null");
+                _logger.LogWarning("Not authenticated: Uniview client is null");
                 return new List<Location>().AsReadOnly();
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured");
+                _logger.LogWarning("Uniview NVR host not configured");
                 return new List<Location>().AsReadOnly();
             }
 
@@ -73,7 +73,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
                 Name: locationName
             );
 
-            _logger.LogInformation("Uniview location: {LocationId} - {LocationName}", location.Id, location.Name);
+            _logger.LogDebug("Uniview location: {LocationId} - {LocationName}", location.Id, location.Name);
 
             return new List<Location> { location }.AsReadOnly();
         }
@@ -95,21 +95,21 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
             UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
-                _logger.LogError("Not authenticated: Uniview client is null");
+                _logger.LogWarning("Not authenticated: Uniview client is null");
                 return new List<Device>().AsReadOnly();
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured");
+                _logger.LogWarning("Uniview NVR host not configured");
                 return new List<Device>().AsReadOnly();
             }
 
             // Only return devices if the location ID matches the configured NVR host
             if (locationId != nvrHost)
             {
-                _logger.LogInformation("Location {LocationId} does not match configured NVR host {NvrHost}; returning empty device list",
+                _logger.LogDebug("Location {LocationId} does not match configured NVR host {NvrHost}; returning empty device list",
                     locationId, nvrHost);
                 return new List<Device>().AsReadOnly();
             }
@@ -129,10 +129,10 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
                 devices.Add(device);
             }
 
-            _logger.LogInformation("Found {DeviceCount} channels at Uniview NVR {NvrHost}", devices.Count, nvrHost);
+            _logger.LogDebug("Found {DeviceCount} channels at Uniview NVR {NvrHost}", devices.Count, nvrHost);
             foreach (Device device in devices)
             {
-                _logger.LogInformation("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
+                _logger.LogDebug("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
                     device.Id, device.Name, device.IsOnline);
             }
 
@@ -153,26 +153,26 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            _logger.LogInformation("Fetching device: {DeviceId}", deviceId);
+            _logger.LogDebug("Fetching device: {DeviceId}", deviceId);
 
             UniviewClient? client = _sessionProvider.GetClient();
             if (client == null)
             {
-                _logger.LogError("Not authenticated: Uniview client is null");
+                _logger.LogWarning("Not authenticated: Uniview client is null");
                 return null;
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured");
+                _logger.LogWarning("Uniview NVR host not configured");
                 return null;
             }
 
             // Parse deviceId as channel number
             if (!int.TryParse(deviceId, out int channelNumber))
             {
-                _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
+                _logger.LogDebug("Invalid device ID format: {DeviceId}", deviceId);
                 return null;
             }
 
@@ -182,11 +182,11 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
 
             if (device != null)
             {
-                _logger.LogInformation("Found device: {DeviceId} - {DeviceName}", device.Id, device.Name);
+                _logger.LogDebug("Found device: {DeviceId} - {DeviceName}", device.Id, device.Name);
             }
             else
             {
-                _logger.LogInformation("Device not found: {DeviceId}", deviceId);
+                _logger.LogDebug("Device not found: {DeviceId}", deviceId);
             }
 
             return device;
@@ -207,19 +207,19 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            _logger.LogInformation("Fetching locations for provider account: {ProviderAccountId}", providerAccountId);
+            _logger.LogDebug("Fetching locations for provider account: {ProviderAccountId}", providerAccountId);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client == null)
             {
-                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                _logger.LogWarning("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
                 return new List<Location>().AsReadOnly();
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                _logger.LogWarning("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
                 return new List<Location>().AsReadOnly();
             }
 
@@ -244,7 +244,7 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
                 Name: locationName
             );
 
-            _logger.LogInformation("Uniview location for account {ProviderAccountId}: {LocationId} - {LocationName}",
+            _logger.LogDebug("Uniview location for account {ProviderAccountId}: {LocationId} - {LocationName}",
                 providerAccountId, location.Id, location.Name);
 
             return new List<Location> { location }.AsReadOnly();
@@ -264,27 +264,27 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            _logger.LogInformation("Fetching devices for provider account {ProviderAccountId} at location {LocationId}",
+            _logger.LogDebug("Fetching devices for provider account {ProviderAccountId} at location {LocationId}",
                 providerAccountId, locationId);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client == null)
             {
-                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                _logger.LogWarning("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
                 return new List<Device>().AsReadOnly();
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                _logger.LogWarning("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
                 return new List<Device>().AsReadOnly();
             }
 
             // Only return devices if the location ID matches the configured NVR host
             if (locationId != nvrHost)
             {
-                _logger.LogInformation("Location {LocationId} does not match configured NVR host {NvrHost} for account {ProviderAccountId}; returning empty device list",
+                _logger.LogDebug("Location {LocationId} does not match configured NVR host {NvrHost} for account {ProviderAccountId}; returning empty device list",
                     locationId, nvrHost, providerAccountId);
                 return new List<Device>().AsReadOnly();
             }
@@ -304,11 +304,11 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
                 devices.Add(device);
             }
 
-            _logger.LogInformation("Found {DeviceCount} channels at Uniview NVR {NvrHost} for account {ProviderAccountId}",
+            _logger.LogDebug("Found {DeviceCount} channels at Uniview NVR {NvrHost} for account {ProviderAccountId}",
                 devices.Count, nvrHost, providerAccountId);
             foreach (Device device in devices)
             {
-                _logger.LogInformation("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
+                _logger.LogDebug("  Device: {DeviceId} - {DeviceName}, Online: {IsOnline}",
                     device.Id, device.Name, device.IsOnline);
             }
 
@@ -330,27 +330,27 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
     {
         try
         {
-            _logger.LogInformation("Fetching device {DeviceId} for provider account {ProviderAccountId}",
+            _logger.LogDebug("Fetching device {DeviceId} for provider account {ProviderAccountId}",
                 deviceId, providerAccountId);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client == null)
             {
-                _logger.LogError("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
+                _logger.LogWarning("Not authenticated for provider account {ProviderAccountId}: Uniview client is null", providerAccountId);
                 return null;
             }
 
             string? nvrHost = _config.UniviewNvrHost;
             if (string.IsNullOrEmpty(nvrHost))
             {
-                _logger.LogError("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
+                _logger.LogWarning("Uniview NVR host not configured for provider account {ProviderAccountId}", providerAccountId);
                 return null;
             }
 
             // Parse deviceId as channel number
             if (!int.TryParse(deviceId, out int channelNumber))
             {
-                _logger.LogWarning("Invalid device ID format for account {ProviderAccountId}: {DeviceId}",
+                _logger.LogDebug("Invalid device ID format for account {ProviderAccountId}: {DeviceId}",
                     providerAccountId, deviceId);
                 return null;
             }
@@ -361,12 +361,12 @@ public class UniviewDeviceDiscoveryService : IDeviceDiscoveryService
 
             if (device != null)
             {
-                _logger.LogInformation("Found device {DeviceId} for account {ProviderAccountId}: {DeviceName}",
+                _logger.LogDebug("Found device {DeviceId} for account {ProviderAccountId}: {DeviceName}",
                     device.Id, providerAccountId, device.Name);
             }
             else
             {
-                _logger.LogInformation("Device {DeviceId} not found for account {ProviderAccountId}",
+                _logger.LogDebug("Device {DeviceId} not found for account {ProviderAccountId}",
                     deviceId, providerAccountId);
             }
 

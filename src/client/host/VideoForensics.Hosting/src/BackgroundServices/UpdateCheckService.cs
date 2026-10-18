@@ -130,7 +130,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         _updateAvailable = false;
                     }
 
-                    _logger.LogWarning("Update check tick: GitHub API returned null");
+                    _logger.LogDebug("Update check tick: GitHub API returned null");
                     return;
                 }
 
@@ -199,7 +199,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                 if (isNewer)
                 {
-                    _logger.LogInformation("Update check tick: Newer version available: v{LatestVersion}", tagVersion);
+                    _logger.LogDebug("Update check tick: Newer version available: v{LatestVersion}", tagVersion);
                 }
                 else
                 {

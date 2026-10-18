@@ -59,7 +59,7 @@ namespace VideoForensics.WebApp.Api
                 var result = await chatService.SendMessageAsync(history, request.Message, ct);
 
                 // Log the interaction (Info on success, tools invoked)
-                logger.LogInformation(
+                logger.LogDebug(
                     "Chat: message from operator, tools_invoked={ToolsInvoked}",
                     string.Join(",", result.ToolsInvoked));
 
@@ -68,7 +68,7 @@ namespace VideoForensics.WebApp.Api
             }
             catch (OperationCanceledException)
             {
-                logger.LogWarning("Chat: request cancelled");
+                logger.LogDebug("Chat: request cancelled");
                 return Results.StatusCode(StatusCodes.Status408RequestTimeout);
             }
             catch (Exception ex)
@@ -120,7 +120,7 @@ namespace VideoForensics.WebApp.Api
 
                     if (evt is ChatTurnCompleted completed)
                     {
-                        logger.LogInformation(
+                        logger.LogDebug(
                             "Chat: streamed message from operator, tools_invoked={ToolsInvoked}",
                             string.Join(",", completed.Result.ToolsInvoked));
                     }
@@ -129,7 +129,7 @@ namespace VideoForensics.WebApp.Api
             catch (OperationCanceledException)
             {
                 // Client disconnected mid-stream. Nothing to send; the response is already committed.
-                logger.LogWarning("Chat: streamed request cancelled");
+                logger.LogDebug("Chat: streamed request cancelled");
             }
             catch (Exception ex)
             {

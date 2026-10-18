@@ -24,7 +24,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Logs evidence access for chain of custody.</summary>
         public async Task LogAccessAsync(Guid evidenceId, string userId, string action, DateTime accessAtUtc, CancellationToken ct)
         {
-            _logger.LogInformation("LogAccessAsync entry: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}", evidenceId, userId, action);
+            _logger.LogDebug("LogAccessAsync entry: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}", evidenceId, userId, action);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = context.ActionLogEntries.Add(entry);
                 _ = await context.SaveChangesAsync(ct);
 
-                _logger.LogInformation("LogAccessAsync exit: successfully logged access for EvidenceId={EvidenceId}", evidenceId);
+                _logger.LogDebug("LogAccessAsync exit: successfully logged access for EvidenceId={EvidenceId}", evidenceId);
             }
             catch (Exception ex)
             {
@@ -58,7 +58,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Logs export record for forensic audit trail.</summary>
         public async Task LogExportAsync(Guid exportId, Guid locationId, string exportedBy, int eventCount, CancellationToken ct)
         {
-            _logger.LogInformation("LogExportAsync entry: ExportId={ExportId}, LocationId={LocationId}, ExportedBy={ExportedBy}", exportId, locationId, exportedBy);
+            _logger.LogDebug("LogExportAsync entry: ExportId={ExportId}, LocationId={LocationId}, ExportedBy={ExportedBy}", exportId, locationId, exportedBy);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -80,7 +80,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = context.ActionLogEntries.Add(entry);
                 _ = await context.SaveChangesAsync(ct);
 
-                _logger.LogInformation("LogExportAsync exit: successfully logged export for ExportId={ExportId}", exportId);
+                _logger.LogDebug("LogExportAsync exit: successfully logged export for ExportId={ExportId}", exportId);
             }
             catch (Exception ex)
             {
@@ -92,7 +92,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets full access history for evidence.</summary>
         public async Task<IReadOnlyList<AccessAuditLog>> GetAccessHistoryAsync(Guid evidenceId, CancellationToken ct)
         {
-            _logger.LogInformation("GetAccessHistoryAsync entry: EvidenceId={EvidenceId}", evidenceId);
+            _logger.LogDebug("GetAccessHistoryAsync entry: EvidenceId={EvidenceId}", evidenceId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -113,7 +113,7 @@ namespace VideoForensics.Data.Database.Repositories
                     Purpose = string.Empty
                 }).ToList();
 
-                _logger.LogInformation("GetAccessHistoryAsync exit: found {Count} access logs for EvidenceId={EvidenceId}", logs.Count, evidenceId);
+                _logger.LogDebug("GetAccessHistoryAsync exit: found {Count} access logs for EvidenceId={EvidenceId}", logs.Count, evidenceId);
                 return logs;
             }
             catch (Exception ex)
@@ -126,7 +126,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets access history for location (joins with Devices and Events).</summary>
         public async Task<IReadOnlyList<AccessAuditLog>> GetLocationAccessHistoryAsync(Guid locationId, CancellationToken ct)
         {
-            _logger.LogInformation("GetLocationAccessHistoryAsync entry: LocationId={LocationId}", locationId);
+            _logger.LogDebug("GetLocationAccessHistoryAsync entry: LocationId={LocationId}", locationId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -139,7 +139,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 if (deviceIds.Count == 0)
                 {
-                    _logger.LogInformation("GetLocationAccessHistoryAsync exit: no devices found for LocationId={LocationId}", locationId);
+                    _logger.LogDebug("GetLocationAccessHistoryAsync exit: no devices found for LocationId={LocationId}", locationId);
                     return [];
                 }
 
@@ -166,7 +166,7 @@ namespace VideoForensics.Data.Database.Repositories
                     Purpose = string.Empty
                 }).ToList();
 
-                _logger.LogInformation("GetLocationAccessHistoryAsync exit: found {Count} access logs for LocationId={LocationId}", logs.Count, locationId);
+                _logger.LogDebug("GetLocationAccessHistoryAsync exit: found {Count} access logs for LocationId={LocationId}", logs.Count, locationId);
                 return logs;
             }
             catch (Exception ex)
@@ -180,7 +180,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<PaginatedResult<AccessAuditLog>> GetAccessHistoryPaginatedAsync(
             Guid evidenceId, int pageNumber, int pageSize, CancellationToken ct)
         {
-            _logger.LogInformation("GetAccessHistoryPaginatedAsync entry: EvidenceId={EvidenceId}, Page={PageNumber}, Size={PageSize}", evidenceId, pageNumber, pageSize);
+            _logger.LogDebug("GetAccessHistoryPaginatedAsync entry: EvidenceId={EvidenceId}, Page={PageNumber}, Size={PageSize}", evidenceId, pageNumber, pageSize);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -215,7 +215,7 @@ namespace VideoForensics.Data.Database.Repositories
                     PageSize = pageSize
                 };
 
-                _logger.LogInformation("GetAccessHistoryPaginatedAsync exit: returned {Count} of {Total} logs for EvidenceId={EvidenceId}", logs.Count, totalCount, evidenceId);
+                _logger.LogDebug("GetAccessHistoryPaginatedAsync exit: returned {Count} of {Total} logs for EvidenceId={EvidenceId}", logs.Count, totalCount, evidenceId);
                 return result;
             }
             catch (Exception ex)
@@ -229,7 +229,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<CursorPaginatedResult<ExportAuditRecord>> GetExportHistoryCursorAsync(
             Guid locationId, string? cursor, int pageSize, CancellationToken ct)
         {
-            _logger.LogInformation("GetExportHistoryCursorAsync entry: LocationId={LocationId}, Cursor={Cursor}, PageSize={PageSize}", locationId, cursor ?? "null", pageSize);
+            _logger.LogDebug("GetExportHistoryCursorAsync entry: LocationId={LocationId}, Cursor={Cursor}, PageSize={PageSize}", locationId, cursor ?? "null", pageSize);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -261,7 +261,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 if (deviceIds.Count == 0)
                 {
-                    _logger.LogInformation("GetExportHistoryCursorAsync exit: no devices found for LocationId={LocationId}", locationId);
+                    _logger.LogDebug("GetExportHistoryCursorAsync exit: no devices found for LocationId={LocationId}", locationId);
                     return new CursorPaginatedResult<ExportAuditRecord> { Items = [] };
                 }
 
@@ -311,7 +311,7 @@ namespace VideoForensics.Data.Database.Repositories
                     HasMore = nextCursor != null
                 };
 
-                _logger.LogInformation("GetExportHistoryCursorAsync exit: returned {Count} exports for LocationId={LocationId}", records.Count, locationId);
+                _logger.LogDebug("GetExportHistoryCursorAsync exit: returned {Count} exports for LocationId={LocationId}", records.Count, locationId);
                 return result;
             }
             catch (Exception ex)
@@ -324,7 +324,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Verifies chain of custody (all accesses logged and continuous).</summary>
         public async Task<AccessAuditReport> VerifyChainOfCustodyAsync(Guid locationId, CancellationToken ct)
         {
-            _logger.LogInformation("VerifyChainOfCustodyAsync entry: LocationId={LocationId}", locationId);
+            _logger.LogDebug("VerifyChainOfCustodyAsync entry: LocationId={LocationId}", locationId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -387,7 +387,7 @@ namespace VideoForensics.Data.Database.Repositories
                     CustodyStatus = (isComplete && totalEventsTracked > 0) ? "Intact" : "Questionable"
                 };
 
-                _logger.LogInformation("VerifyChainOfCustodyAsync exit: LocationId={LocationId}, Status={Status}, Events={TotalEvents}, Records={AccessRecords}", locationId, report.CustodyStatus, totalEventsTracked, accessRecordsCount);
+                _logger.LogDebug("VerifyChainOfCustodyAsync exit: LocationId={LocationId}, Status={Status}, Events={TotalEvents}, Records={AccessRecords}", locationId, report.CustodyStatus, totalEventsTracked, accessRecordsCount);
                 return report;
             }
             catch (Exception ex)
@@ -400,7 +400,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Flags unauthorized access patterns (off-hours, excessive, anomalous).</summary>
         public async Task<IReadOnlyList<UnauthorizedAccessFlag>> FlagUnauthorizedAccessAsync(Guid locationId, CancellationToken ct)
         {
-            _logger.LogInformation("FlagUnauthorizedAccessAsync entry: LocationId={LocationId}", locationId);
+            _logger.LogDebug("FlagUnauthorizedAccessAsync entry: LocationId={LocationId}", locationId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -470,7 +470,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
                 }
 
-                _logger.LogInformation("FlagUnauthorizedAccessAsync exit: found {FlagCount} unauthorized access flags for LocationId={LocationId}", flags.Count, locationId);
+                _logger.LogDebug("FlagUnauthorizedAccessAsync exit: found {FlagCount} unauthorized access flags for LocationId={LocationId}", flags.Count, locationId);
                 return flags;
             }
             catch (Exception ex)
@@ -483,7 +483,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets export records for a location.</summary>
         public async Task<IReadOnlyList<ExportAuditRecord>> GetExportHistoryAsync(Guid locationId, CancellationToken ct)
         {
-            _logger.LogInformation("GetExportHistoryAsync entry: LocationId={LocationId}", locationId);
+            _logger.LogDebug("GetExportHistoryAsync entry: LocationId={LocationId}", locationId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -526,7 +526,7 @@ namespace VideoForensics.Data.Database.Repositories
                     Purpose = er.CaseReference ?? "Forensic Analysis"
                 }).ToList();
 
-                _logger.LogInformation("GetExportHistoryAsync exit: found {Count} export records for LocationId={LocationId}", records.Count, locationId);
+                _logger.LogDebug("GetExportHistoryAsync exit: found {Count} export records for LocationId={LocationId}", records.Count, locationId);
                 return records;
             }
             catch (Exception ex)
@@ -539,7 +539,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Verifies export integrity (export count matches actual events, no tampering).</summary>
         public async Task<ExportIntegrityReport> VerifyExportIntegrityAsync(Guid exportId, CancellationToken ct)
         {
-            _logger.LogInformation("VerifyExportIntegrityAsync entry: ExportId={ExportId}", exportId);
+            _logger.LogDebug("VerifyExportIntegrityAsync entry: ExportId={ExportId}", exportId);
 
             await using VideoForensicsDbContext context = await _factory.CreateDbContextAsync(ct);
             try
@@ -585,7 +585,7 @@ namespace VideoForensics.Data.Database.Repositories
                     IntegrityStatus = (intactCount == exportItems.Count) ? "Intact" : "Modified"
                 };
 
-                _logger.LogInformation("VerifyExportIntegrityAsync exit: ExportId={ExportId}, Status={Status}, Intact={IntactCount}/{TotalCount}", exportId, report.IntegrityStatus, intactCount, exportItems.Count);
+                _logger.LogDebug("VerifyExportIntegrityAsync exit: ExportId={ExportId}, Status={Status}, Intact={IntactCount}/{TotalCount}", exportId, report.IntegrityStatus, intactCount, exportItems.Count);
                 return report;
             }
             catch (Exception ex)
@@ -598,7 +598,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets quick audit summary for compliance review.</summary>
         public async Task<AuditTrailSummary> GetAuditTrailSummaryAsync(Guid locationId, CancellationToken ct)
         {
-            _logger.LogInformation("GetAuditTrailSummaryAsync entry: LocationId={LocationId}", locationId);
+            _logger.LogDebug("GetAuditTrailSummaryAsync entry: LocationId={LocationId}", locationId);
 
             try
             {
@@ -632,7 +632,7 @@ namespace VideoForensics.Data.Database.Repositories
                     summary.TopIssues["UnauthorizedAccess"] = unauthorized.Count;
                 }
 
-                _logger.LogInformation("GetAuditTrailSummaryAsync exit: LocationId={LocationId}, Status={Status}, AccessCount={AccessCount}, ExportCount={ExportCount}", locationId, summary.Status, summary.AccessCount, summary.ExportCount);
+                _logger.LogDebug("GetAuditTrailSummaryAsync exit: LocationId={LocationId}, Status={Status}, AccessCount={AccessCount}, ExportCount={ExportCount}", locationId, summary.Status, summary.AccessCount, summary.ExportCount);
                 return summary;
             }
             catch (Exception ex)

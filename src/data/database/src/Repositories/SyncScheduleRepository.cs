@@ -126,7 +126,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = await db.SaveChangesAsync(ct);
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogInformation("Sync schedule upserted for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogDebug("Sync schedule upserted for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
             }
             catch (Exception ex)
             {
@@ -148,7 +148,7 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.SyncSchedules.Remove(schedule);
                     _ = await db.SaveChangesAsync(ct);
                     var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogInformation("Sync schedule deleted for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
+                    _logger.LogDebug("Sync schedule deleted for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)

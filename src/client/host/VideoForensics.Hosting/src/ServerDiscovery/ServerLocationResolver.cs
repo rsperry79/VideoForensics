@@ -42,7 +42,7 @@ namespace VideoForensics.Hosting.ServerDiscovery
             Uri? discoveredUri = await DiscoverLocalServerAsync(cancellationToken);
             if (discoveredUri != null)
             {
-                _logger.LogInformation("Server discovered via mDNS at {Uri}", discoveredUri);
+                _logger.LogDebug("Server discovered via mDNS at {Uri}", discoveredUri);
                 return discoveredUri;
             }
 
@@ -50,7 +50,7 @@ namespace VideoForensics.Hosting.ServerDiscovery
             string? cachedUrl = _settingsStore.GetCachedInternetServerUrl();
             if (!string.IsNullOrEmpty(cachedUrl))
             {
-                _logger.LogInformation("Using cached Internet server URL: {Url}", cachedUrl);
+                _logger.LogDebug("Using cached Internet server URL: {Url}", cachedUrl);
                 return new Uri(cachedUrl);
             }
 

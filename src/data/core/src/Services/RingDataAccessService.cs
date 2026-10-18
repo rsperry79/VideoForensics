@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Core.Services
 
             if (_cacheFreshnessService.IsStale(cached, DeviceTtlMinutes))
             {
-                _logger.LogInformation("Device cache stale for {DeviceId}, will refetch from API", deviceId);
+                _logger.LogDebug("Device cache stale for {DeviceId}, will refetch from API", deviceId);
                 return (cached, true); // Cache stale, need API
             }
 
@@ -67,7 +67,7 @@ namespace VideoForensics.Data.Core.Services
 
             if (_cacheFreshnessService.IsStale(cached, LocationTtlMinutes))
             {
-                _logger.LogInformation("Location cache stale for {LocationId}, will refetch from API", locationId);
+                _logger.LogDebug("Location cache stale for {LocationId}, will refetch from API", locationId);
                 return (cached, true); // Cache stale, need API
             }
 
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Core.Services
         {
             _ = _cacheFreshnessService.MarkSynced(device);
             await _deviceRepository.UpdateAsync(device, ct);
-            _logger.LogInformation("Persisted device {DeviceId} to cache", device.Id);
+            _logger.LogDebug("Persisted device {DeviceId} to cache", device.Id);
             return device;
         }
 
@@ -90,14 +90,14 @@ namespace VideoForensics.Data.Core.Services
         {
             _ = _cacheFreshnessService.MarkSynced(location);
             await _locationRepository.UpdateAsync(location, ct);
-            _logger.LogInformation("Persisted location {LocationId} to cache", location.Id);
+            _logger.LogDebug("Persisted location {LocationId} to cache", location.Id);
             return location;
         }
 
         /// <summary>Events are always fresh - never cached. This logs the fetch intent.</summary>
         public void LogEventFetch(Guid deviceId, DateTime fromUtc, DateTime toUtc)
         {
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Fetching fresh events for device {DeviceId} from {FromUtc} to {ToUtc} (never cached)",
                 deviceId, fromUtc, toUtc);
         }
@@ -105,14 +105,14 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>Logs when cache prevents an API call.</summary>
         public void LogCacheHit<T>(Guid id, int ageMinutes)
         {
-            _logger.LogInformation("Cache hit for {Type} {Id}, saved API call (age {AgeMinutes}min)",
+            _logger.LogDebug("Cache hit for {Type} {Id}, saved API call (age {AgeMinutes}min)",
                 typeof(T).Name, id, ageMinutes);
         }
 
         /// <summary>Logs when cache miss forces an API call.</summary>
         public void LogCacheMiss<T>(Guid id)
         {
-            _logger.LogInformation("Cache miss for {Type} {Id}, fetching from API", typeof(T).Name, id);
+            _logger.LogDebug("Cache miss for {Type} {Id}, fetching from API", typeof(T).Name, id);
         }
     }
 }

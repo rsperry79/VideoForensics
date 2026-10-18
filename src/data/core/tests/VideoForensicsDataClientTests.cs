@@ -376,7 +376,7 @@ namespace VideoForensics.Data.Core.Tests
             // Assert: the info log must name the device, not expose its GUID
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Front Door") && !v.ToString()!.Contains(deviceId.ToString())),
                     It.IsAny<Exception?>(),

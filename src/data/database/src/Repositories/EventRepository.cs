@@ -54,7 +54,7 @@ namespace VideoForensics.Data.Database.Repositories
                 if (existing == null)
                 {
                     _ = db.Events.Add(@event);
-                    _logger.LogInformation("Event inserted: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
+                    _logger.LogDebug("Event inserted: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 }
                 else
                 {
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     _ = db.Events.Update(existing);
-                    _logger.LogInformation("Event upserted (updated): {EventId}", @event.Id);
+                    _logger.LogDebug("Event upserted (updated): {EventId}", @event.Id);
                 }
 
                 _ = await db.SaveChangesAsync(ct);
@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = await db.Events.AddAsync(@event, ct);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Event created: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
+                _logger.LogDebug("Event created: {EventId} ({ProviderEventId})", @event.Id, SanitizeForLog(@event.ProviderEventId));
                 return @event;
             }
             catch (Exception ex)
@@ -124,7 +124,7 @@ namespace VideoForensics.Data.Database.Repositories
                     existing.SnapshotUrl = @event.SnapshotUrl;
                     _ = db.Events.Update(existing);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event updated: {EventId}", @event.Id);
+                    _logger.LogDebug("Event updated: {EventId}", @event.Id);
                 }
             }
             catch (Exception ex)
@@ -251,7 +251,7 @@ namespace VideoForensics.Data.Database.Repositories
                     @event.DownloadFailedAtUtc = failureTime;
                     _ = db.Events.Update(@event);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event download failure recorded: {EventId} at {FailureTime}", eventId, failureTime);
+                    _logger.LogDebug("Event download failure recorded: {EventId} at {FailureTime}", eventId, failureTime);
                 }
             }
             catch (Exception ex)
@@ -272,7 +272,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Events.Remove(@event);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Event deleted: {EventId}", eventId);
+                    _logger.LogDebug("Event deleted: {EventId}", eventId);
                 }
             }
             catch (Exception ex)

@@ -283,7 +283,7 @@ namespace VideoForensics.Client.Core.Services
                             }
 
                             zipStream.CloseEntry();
-                            _logger.LogInformation("Added {FileName} to archive", item.FileName);
+                            _logger.LogDebug("Added {FileName} to archive", item.FileName);
                         }
                         catch (Exception ex)
                         {

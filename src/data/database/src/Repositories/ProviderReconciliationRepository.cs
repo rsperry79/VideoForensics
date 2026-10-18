@@ -38,7 +38,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.ProviderReconciliationRecords.Add(record);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Provider reconciliation record appended: {RecordId} (device: {DeviceId})",
+                _logger.LogDebug("Provider reconciliation record appended: {RecordId} (device: {DeviceId})",
                     record.Id, record.DeviceId);
                 return record;
             }

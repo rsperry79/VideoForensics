@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Information);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Debug);
             Assert.DoesNotContain(logger.Entries, e => e.Level == LogLevel.Warning);
             writer.Verify(w => w.ReplaceLocationModeAsync(It.IsAny<RingLocationMode>(), It.IsAny<CancellationToken>()), Times.Never);
             writer.Verify(w => w.ReplaceLightGroupSetAsync(It.IsAny<LightGroupSet>(), It.IsAny<CancellationToken>()), Times.Once);

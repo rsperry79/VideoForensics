@@ -92,7 +92,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.MediaItems.Add(mediaItem);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Media item added: {MediaItemId} ({FileName})", mediaItem.Id, SanitizeForLog(mediaItem.FileName));
+                _logger.LogDebug("Media item added: {MediaItemId} ({FileName})", mediaItem.Id, SanitizeForLog(mediaItem.FileName));
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.MediaItems.Update(mediaItem);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Media item updated: {MediaItemId}", mediaItem.Id);
+                _logger.LogDebug("Media item updated: {MediaItemId}", mediaItem.Id);
             }
             catch (Exception ex)
             {
@@ -129,7 +129,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.MediaItems.Remove(mediaItem);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Media item deleted: {MediaItemId}", mediaItemId);
+                    _logger.LogDebug("Media item deleted: {MediaItemId}", mediaItemId);
                 }
             }
             catch (Exception ex)

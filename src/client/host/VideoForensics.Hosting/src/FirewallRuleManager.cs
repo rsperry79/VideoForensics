@@ -52,7 +52,7 @@ namespace VideoForensics.Hosting
                 if (checkResult.ExitCode == 0)
                 {
                     // Rule already exists, nothing to do.
-                    _logger.LogInformation("Windows Firewall rule '{RuleName}' already exists", ruleName);
+                    _logger.LogDebug("Windows Firewall rule '{RuleName}' already exists", ruleName);
                     return;
                 }
 

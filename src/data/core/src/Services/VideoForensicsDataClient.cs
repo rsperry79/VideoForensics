@@ -225,7 +225,7 @@ namespace VideoForensics.Data.Core.Services
 
                     Device? device = await context.Devices.GetAsync(evt.DeviceId, ct);
 
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "Download event recorded for device {DeviceName}, provider event {ProviderEventId}, success={Success}",
                         device?.Name ?? "unknown device",
                         evt.ProviderEventId,
@@ -367,12 +367,12 @@ namespace VideoForensics.Data.Core.Services
                             CreatedUtc = DateTime.UtcNow
                         };
                         await context.Users.AddAsync(user, ct);
-                        _logger.LogInformation("Created new user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Created new user: {DisplayName} ({UserId})", displayName, user.Id);
                     }
                     else
                     {
                         user = existingUser;
-                        _logger.LogInformation("Found existing user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Found existing user: {DisplayName} ({UserId})", displayName, user.Id);
                     }
 
                     // Try to find existing provider account
@@ -393,12 +393,12 @@ namespace VideoForensics.Data.Core.Services
                             IsActive = true
                         };
                         await context.ProviderAccounts.AddAsync(account, ct);
-                        _logger.LogInformation("Created new provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Created new provider account: {Provider} for user {UserId}", providerName, user.Id);
                     }
                     else
                     {
                         account = existingAccount;
-                        _logger.LogInformation("Found existing provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Found existing provider account: {Provider} for user {UserId}", providerName, user.Id);
                     }
 
                     _ = await context.ActionLog.AppendAsync(
@@ -450,13 +450,13 @@ namespace VideoForensics.Data.Core.Services
                             SyncStatus = SyncStatus.Synced
                         };
                         await context.Locations.AddAsync(location, ct);
-                        _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
+                        _logger.LogDebug("Created new location: {LocationName} ({LocationId})", name, location.Id);
                         await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
                         return location;
                     }
                     else
                     {
-                        _logger.LogInformation("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
+                        _logger.LogDebug("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
                         // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
                         await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
                         return existingLocation;
@@ -649,7 +649,7 @@ namespace VideoForensics.Data.Core.Services
 
                         ApplyDetailFields(existingDevice, details);
                         await context.Devices.UpdateAsync(existingDevice, ct);
-                        _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
+                        _logger.LogDebug("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
                         return existingDevice;
                     }
                 }, ct);
@@ -681,7 +681,7 @@ namespace VideoForensics.Data.Core.Services
                         {
                             device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
                             await context.Devices.UpdateAsync(device, ct);
-                            _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
+                            _logger.LogDebug("Advanced watermark for device {DeviceId} to {Timestamp}",
                                 deviceId, latestSuccessfulPullTime);
                         }
                         else
@@ -713,12 +713,12 @@ namespace VideoForensics.Data.Core.Services
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
                 if (account?.LastDownloadTimeUtc.HasValue == true)
                 {
-                    _logger.LogInformation("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
+                    _logger.LogDebug("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
                     return account.LastDownloadTimeUtc.Value;
                 }
 
                 DateTime defaultStart = DateTime.UtcNow.AddDays(-181);
-                _logger.LogInformation("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
+                _logger.LogDebug("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
                 return defaultStart;
             }
             catch (Exception ex)
@@ -741,7 +741,7 @@ namespace VideoForensics.Data.Core.Services
                         {
                             account.LastDownloadTimeUtc = latestDownloadTime;
                             await context.ProviderAccounts.UpdateAsync(account, ct);
-                            _logger.LogInformation("Advanced account download watermark for account {AccountId} to {Timestamp}",
+                            _logger.LogDebug("Advanced account download watermark for account {AccountId} to {Timestamp}",
                                 providerAccountId, latestDownloadTime);
                         }
                     }

@@ -234,7 +234,7 @@ namespace VideoForensics.WebApp.Chat
                             };
                         }
 
-                        _logger.LogInformation("ChatOrchestrator: Invoking tool {ToolName}", completion.ToolName);
+                        _logger.LogDebug("ChatOrchestrator: Invoking tool {ToolName}", completion.ToolName);
                         toolsInvoked.Add(completion.ToolName);
                         _ = events.TryWrite(new ChatToolInvoked(completion.ToolName));
 

@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
                     }
 
                     _ = db.JammingIncidentRecords.Add(incident);
-                    _logger.LogInformation("Jamming incident inserted: {IncidentId}", incident.Id);
+                    _logger.LogDebug("Jamming incident inserted: {IncidentId}", incident.Id);
                 }
                 else
                 {
@@ -62,7 +62,7 @@ namespace VideoForensics.Data.Database.Repositories
                         existing.CaseId = incident.CaseId;
                     }
                     _ = db.JammingIncidentRecords.Update(existing);
-                    _logger.LogInformation("Jamming incident upserted (updated): {IncidentId}", incident.Id);
+                    _logger.LogDebug("Jamming incident upserted (updated): {IncidentId}", incident.Id);
                 }
 
                 bool isInsert = existing == null;
@@ -161,7 +161,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = existing == null ? db.JammingStatsSummaries.Add(summary) : db.JammingStatsSummaries.Update(summary);
 
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Recomputed jamming stats for device {DeviceId}: {IncidentCount} incidents", deviceId, summary.IncidentCount);
+                _logger.LogDebug("Recomputed jamming stats for device {DeviceId}: {IncidentCount} incidents", deviceId, summary.IncidentCount);
                 return summary;
             }
             catch (Exception ex)

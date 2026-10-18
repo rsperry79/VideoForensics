@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.LocationMetadata.Add(metadata);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location metadata added for location {LocationId}", metadata.LocationId);
+                _logger.LogDebug("Location metadata added for location {LocationId}", metadata.LocationId);
             }
             catch (Exception ex)
             {
@@ -60,7 +60,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.LocationMetadata.Update(metadata);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location metadata updated for location {LocationId}", metadata.LocationId);
+                _logger.LogDebug("Location metadata updated for location {LocationId}", metadata.LocationId);
             }
             catch (Exception ex)
             {
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.LocationMetadata.Remove(metadata);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Location metadata deleted: {MetadataId}", id);
+                    _logger.LogDebug("Location metadata deleted: {MetadataId}", id);
                 }
             }
             catch (Exception ex)

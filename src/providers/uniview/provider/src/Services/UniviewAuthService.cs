@@ -48,7 +48,7 @@ namespace VideoForensics.Providers.Uniview.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
+                _logger.LogDebug("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
 
                 string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
                 string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg", _ffmpegToolLocation?.BinDirectory);
@@ -154,7 +154,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 }
 
                 await client.KeepAliveAsync(cancellationToken);
-                _logger.LogInformation("Uniview session refreshed");
+                _logger.LogDebug("Uniview session refreshed");
                 return true;
             }
             catch (Exception ex)
@@ -209,7 +209,7 @@ namespace VideoForensics.Providers.Uniview.Services
 
                         if (username != null && password != null)
                         {
-                            _logger.LogInformation("Restoring Uniview session from database for account {AccountId} (provider: Uniview)", providerAccountId);
+                            _logger.LogDebug("Restoring Uniview session from database for account {AccountId} (provider: Uniview)", providerAccountId);
                         }
                     }
                     catch (Exception ex)
@@ -229,7 +229,7 @@ namespace VideoForensics.Providers.Uniview.Services
                     }
                 }
 
-                _logger.LogInformation("No saved Uniview credentials found or restore failed");
+                _logger.LogDebug("No saved Uniview credentials found or restore failed");
                 return false;
             }
             catch (Exception ex)
@@ -264,7 +264,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 await _credentialRepository.SetAsync(providerAccountId, "Username", username, cancellationToken);
                 await _credentialRepository.SetAsync(providerAccountId, "Password", password, cancellationToken);
 
-                _logger.LogInformation("Uniview credentials persisted to database");
+                _logger.LogDebug("Uniview credentials persisted to database");
                 return providerAccountId;
             }
             catch (Exception ex)

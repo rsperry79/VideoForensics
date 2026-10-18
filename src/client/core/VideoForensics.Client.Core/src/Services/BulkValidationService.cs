@@ -47,13 +47,13 @@ namespace VideoForensics.Client.Core.Services
                 DateTime fromUtc = fromUtcOverride ?? DateTime.Today.AddDays(-90);
                 DateTime toUtc = toUtcOverride ?? DateTime.Today;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Starting bulk validation run: {FromUtc} to {ToUtc}",
                     fromUtc, toUtc);
 
                 // Fetch all devices
                 IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
-                _logger.LogInformation("Found {DeviceCount} device(s) to validate", devices.Count);
+                _logger.LogDebug("Found {DeviceCount} device(s) to validate", devices.Count);
 
                 // Validate each device
                 foreach (Device device in devices)
@@ -66,7 +66,7 @@ namespace VideoForensics.Client.Core.Services
 
                     try
                     {
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Validating device {DeviceId} ({DeviceName}) with provider ID {ProviderDeviceId}",
                             device.Id, device.Name, device.ProviderDeviceId);
 
@@ -89,7 +89,7 @@ namespace VideoForensics.Client.Core.Services
                         result.NewEventsInserted += newEventCount;
                         result.MetadataUpdated += metadataChangedCount;
 
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Device {DeviceId} ({DeviceName}): validated with {DiscrepancyCount} discrepancy(ies)",
                             device.Id, device.Name, discrepancies.Count);
                     }

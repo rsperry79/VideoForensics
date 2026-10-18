@@ -60,7 +60,7 @@ namespace VideoForensics.Client.Core.Services
                 {
                     IReadOnlyList<Data.Common.Entities.Device> devices = await _deviceRepository.ListAsync(ct);
                     deviceIds = devices.Select(d => d.Id).ToList();
-                    _logger.LogInformation("Starting integrity verification across {DeviceCount} device(s)", deviceIds.Count);
+                    _logger.LogDebug("Starting integrity verification across {DeviceCount} device(s)", deviceIds.Count);
                 }
 
                 foreach (Guid id in deviceIds)
@@ -94,7 +94,7 @@ namespace VideoForensics.Client.Core.Services
                         });
                     }
 
-                    _logger.LogInformation("Verified {Count} media item(s) for device {DeviceId}", mediaItems.Count, id);
+                    _logger.LogDebug("Verified {Count} media item(s) for device {DeviceId}", mediaItems.Count, id);
                 }
 
                 _logger.LogInformation("Local integrity verification completed: {Verified} verified, {Failed} failed, {Missing} missing",
@@ -120,7 +120,7 @@ namespace VideoForensics.Client.Core.Services
         {
             try
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Starting provider reconciliation for device {DeviceId} ({ProviderDeviceId}) from {FromUtc} to {ToUtc}",
                     deviceId, SanitizeForLog(providerDeviceId), fromUtc, toUtc);
 
@@ -139,12 +139,12 @@ namespace VideoForensics.Client.Core.Services
                     throw;
                 }
 
-                _logger.LogInformation("Provider returned {EventCount} live event(s) for device {ProviderDeviceId}",
+                _logger.LogDebug("Provider returned {EventCount} live event(s) for device {ProviderDeviceId}",
                     liveEvents?.Count ?? 0, SanitizeForLog(providerDeviceId));
 
                 // Fetch stored events from database
                 IReadOnlyList<Event> storedEvents = await _eventRepository.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
-                _logger.LogInformation("Database has {EventCount} stored event(s) for device {DeviceId}", storedEvents.Count, deviceId);
+                _logger.LogDebug("Database has {EventCount} stored event(s) for device {DeviceId}", storedEvents.Count, deviceId);
 
                 // Diff: build discrepancies
                 var discrepancies = new List<ReconciliationDiscrepancy>();
@@ -161,7 +161,7 @@ namespace VideoForensics.Client.Core.Services
                         });
                     }
 
-                    _logger.LogInformation("Found {Count} stored events with no provider equivalent (MissingFromProvider)",
+                    _logger.LogDebug("Found {Count} stored events with no provider equivalent (MissingFromProvider)",
                         discrepancies.Count);
                 }
                 else
@@ -238,7 +238,7 @@ namespace VideoForensics.Client.Core.Services
                         }
                     }
 
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "Reconciliation found {TotalDiscrepancies} discrepancies: " +
                         "{MissingCount} missing, {ChangedCount} changed, {NewCount} new",
                         discrepancies.Count,
@@ -250,7 +250,7 @@ namespace VideoForensics.Client.Core.Services
                 // Auto-fix discrepancies: backfill missing events and update changed metadata
                 if (discrepancies.Count > 0)
                 {
-                    _logger.LogInformation("Starting auto-fix of {Count} discrepancies", discrepancies.Count);
+                    _logger.LogDebug("Starting auto-fix of {Count} discrepancies", discrepancies.Count);
 
                     AutoFixResult fixResult = await _reconciliationService.AutoFixDiscrepanciesAsync(
                         deviceId,

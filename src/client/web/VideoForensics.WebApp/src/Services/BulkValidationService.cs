@@ -64,14 +64,14 @@ namespace VideoForensics.WebApp.Services
                 IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
                 result.TotalDevicesScanned = devices.Count;
 
-                _logger.LogInformation("Found {DeviceCount} device(s) to validate", devices.Count);
+                _logger.LogDebug("Found {DeviceCount} device(s) to validate", devices.Count);
 
                 // Process each device
                 foreach (Device device in devices)
                 {
                     try
                     {
-                        _logger.LogInformation("Validating device {DeviceId} ({DeviceName})", device.Id, device.Name);
+                        _logger.LogDebug("Validating device {DeviceId} ({DeviceName})", device.Id, device.Name);
 
                         // Step 1: Verify local integrity
                         IReadOnlyList<MediaVerificationResult> integrityResults =
@@ -82,7 +82,7 @@ namespace VideoForensics.WebApp.Services
                         result.TotalFilesFailed += integrityResults.Count(r => r.Status == "failed");
                         result.TotalFilesMissing += integrityResults.Count(r => r.Status == "missing");
 
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Device {DeviceId}: {Verified} verified, {Failed} failed, {Missing} missing",
                             device.Id,
                             integrityResults.Count(r => r.Status == "verified"),

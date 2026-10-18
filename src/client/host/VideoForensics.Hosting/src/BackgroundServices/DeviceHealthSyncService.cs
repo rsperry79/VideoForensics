@@ -166,7 +166,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // silent absence that a viewer could mistake for "confirmed no incidents".
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -265,7 +265,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         }
                     }
 
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "Health sync tick: {SourceType} returned {ReadingCount} reading(s), persisted {PersistedCount} metric(s)",
                         healthSource.GetType().Name, readings.Count, persisted);
                 }
@@ -323,7 +323,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // Budget-guard the elevated tick's provider calls like the base tick does.
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -390,7 +390,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                     if (persisted > 0)
                     {
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Elevated polling tick: {SourceType} persisted {PersistedCount} metric(s) for elevated device(s)",
                             healthSource.GetType().Name, persisted);
                     }
@@ -432,7 +432,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         {
                             // Active session exists: promote to sustained mode.
                             _ = await liveViewService.PromoteToSustainedAsync(activeSession.Id, "Jamming confirmed during elevated polling window", ct);
-                            _logger.LogInformation(
+                            _logger.LogDebug(
                                 "Elevated polling tick: jamming confirmed for device {DeviceId}; promoted session {SessionId} to sustained mode",
                                 deviceId, activeSession.Id);
                         }

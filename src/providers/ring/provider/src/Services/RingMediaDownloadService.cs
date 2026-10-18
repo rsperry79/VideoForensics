@@ -169,7 +169,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
                 Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
@@ -188,7 +188,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Track the latest successfully downloaded event's timestamp for watermark advancement
                 DateTime latestSuccessfulTime = startDate;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "History returned {TotalEvents} total event(s) for the account; {MatchCount} matched deviceId {DeviceId}. Sample doorbot ids in history: {Sample}",
                     events.Count, relevantEvents.Count, deviceId,
                     string.Join(", ", events.Select(e => e.Doorbot?.Id).Distinct().Take(5)));
@@ -497,7 +497,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         try
                                         {
                                             await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, downloadEvent.EventOccurredAtUtc, rateLimitCts.Token);
-                                            _logger.LogInformation("Watermark advanced to {Timestamp} after recording {EventId}",
+                                            _logger.LogDebug("Watermark advanced to {Timestamp} after recording {EventId}",
                                                 downloadEvent.EventOccurredAtUtc, downloadEvent.ProviderEventId);
                                         }
                                         catch (Exception ex)
@@ -642,7 +642,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
                     downloadedFiles, downloadedBytes, deviceId);
-                _logger.LogInformation("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
+                _logger.LogDebug("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
                     _peakActiveDownloadsForBatch, _maxConcurrentFileDownloads, relevantEvents.Count);
                 // _logger has no provider registered in Program.cs (nothing sinks LogInformation
                 // anywhere right now), so also surface this via the activity log the UI already drains.
@@ -656,7 +656,7 @@ namespace VideoForensics.Providers.Ring.Services
                     try
                     {
                         await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, endDate, CancellationToken.None);
-                        _logger.LogInformation("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
+                        _logger.LogDebug("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
                     }
                     catch (Exception ex)
                     {
@@ -739,7 +739,7 @@ namespace VideoForensics.Providers.Ring.Services
             Guid? resolvedDeviceGuid = null;
             try
             {
-                _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
+                _logger.LogDebug("Downloading latest snapshot for device {DeviceId}", deviceId);
 
                 Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
                 if (session == null)
@@ -772,7 +772,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogInformation(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogError(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
                 // Get device name for consistent file naming (fallback to deviceId if unavailable)
@@ -1152,7 +1152,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1374,7 +1374,7 @@ namespace VideoForensics.Providers.Ring.Services
                     Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
                     _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                     healthId = deviceHealth.Id;
-                    _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                    _logger.LogDebug("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
                         providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
                 }
 
@@ -1470,7 +1470,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     if (startDate == _cachedHistoryStart.Value && endDate == _cachedHistoryEnd.Value)
                     {
-                        _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
+                        _logger.LogDebug("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
                             startDate, endDate, _cachedHistoryEvents.Count);
                         return _cachedHistoryEvents;
                     }
@@ -1478,7 +1478,7 @@ namespace VideoForensics.Providers.Ring.Services
                     var filtered = _cachedHistoryEvents
                         .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
                         .ToList();
-                    _logger.LogInformation("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
+                    _logger.LogDebug("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
                         startDate, endDate, filtered.Count, _cachedHistoryStart, _cachedHistoryEnd);
                     return filtered;
                 }
@@ -1486,7 +1486,7 @@ namespace VideoForensics.Providers.Ring.Services
                 DateTime fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
                 DateTime fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
 
-                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+                _logger.LogDebug("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
                 List<Entities.DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
                 _cachedHistoryEvents = events ?? [];
                 _cachedHistoryStart = fetchStart;
@@ -1547,7 +1547,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1638,7 +1638,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // If we can parse it and get the root element, it's valid JSON
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
+                    _logger.LogDebug("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
                         SanitizeForLog(metadataType), Path.GetFileName(SanitizeForLog(jsonPath)), fileInfo.Length);
                     return true;
                 }

@@ -43,7 +43,7 @@ namespace VideoForensics.Providers.Ring.Services
                 throw new ArgumentException($"Invalid Ring doorbot ID '{providerDeviceId}'. Expected a numeric ID.", nameof(providerDeviceId));
             }
 
-            _logger.LogInformation("Starting Ring live view for doorbot {DoorbotId} with account {AccountId}", doorbotId, accountId);
+            _logger.LogDebug("Starting Ring live view for doorbot {DoorbotId} with account {AccountId}", doorbotId, accountId);
 
             try
             {

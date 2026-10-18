@@ -38,7 +38,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return new List<DeviceEvent>().AsReadOnly();
         }
 
@@ -52,7 +52,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         // is the only event type this device exposes
         if (eventType is not null && !eventType.Equals("motion", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
+            _logger.LogDebug("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
             return [];
         }
 
@@ -121,7 +121,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return null;
         }
 
@@ -229,7 +229,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient();
         if (client is null)
         {
-            _logger.LogError("Not authenticated: Session is null");
+            _logger.LogWarning("Not authenticated: Session is null");
             return false;
         }
 
@@ -315,7 +315,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
             return new List<DeviceEvent>().AsReadOnly();
         }
 
@@ -329,7 +329,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         // is the only event type this device exposes
         if (eventType is not null && !eventType.Equals("motion", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
+            _logger.LogDebug("Event type '{EventType}' not supported by Uniview (only 'motion' available)", eventType);
             return [];
         }
 
@@ -398,7 +398,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
             return null;
         }
 
@@ -507,7 +507,7 @@ public class UniviewEventAndConfigService : IEventAndConfigService
         UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
         if (client is null)
         {
-            _logger.LogError("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
+            _logger.LogWarning("Not authenticated for account {ProviderAccountId}: Session is null", providerAccountId);
             return false;
         }
 

@@ -118,7 +118,7 @@ namespace VideoForensics.Data.Database.Tests
             // Assert: Verify that the raw email is NOT in any logged message
             mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(emailAddress)),
                     It.IsAny<Exception>(),

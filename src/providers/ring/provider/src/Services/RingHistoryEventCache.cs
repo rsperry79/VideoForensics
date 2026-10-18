@@ -83,7 +83,7 @@ namespace VideoForensics.Providers.Ring.Services
                     // Request is entirely within cached range
                     if (startDate == cachedRange.Start && endDate == cachedRange.End)
                     {
-                        _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
+                        _logger.LogDebug("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
                             startDate, endDate, cachedRange.Events.Count);
                         return cachedRange.Events;
                     }
@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Services
                                    e.CreatedAtDateTime.Value >= startDate &&
                                    e.CreatedAtDateTime.Value <= endDate)
                         .ToList();
-                    _logger.LogInformation("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
+                    _logger.LogDebug("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
                         startDate, endDate, filtered.Count, cachedRange.Start, cachedRange.End);
                     return filtered;
                 }
@@ -118,7 +118,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
             }
 
-            _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+            _logger.LogDebug("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
             List<DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
 
             // Store composite entry (events + metadata) with long TTL

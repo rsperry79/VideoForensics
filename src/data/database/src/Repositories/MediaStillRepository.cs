@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.Repositories
             _ = db.MediaStillCaptures.Add(capture);
             _ = await db.SaveChangesAsync(ct);
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Derived still {MediaItemId} captured from source {SourceMediaItemId} at offset {FrameOffsetMs}ms by {CapturedBy}",
                 capture.MediaItemId, capture.SourceMediaItemId, capture.FrameOffsetMs, capture.CapturedByOperator);
 

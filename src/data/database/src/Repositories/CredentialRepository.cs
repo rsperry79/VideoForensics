@@ -93,7 +93,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = await db.SaveChangesAsync(ct);
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogInformation("Credential set for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
+                _logger.LogDebug("Credential set for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
                     providerAccountId, account?.ProviderName ?? "unknown", credentialType);
             }
             catch (Exception ex)
@@ -118,7 +118,7 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.Credentials.Remove(credential);
                     _ = await db.SaveChangesAsync(ct);
                     var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogInformation("Credential deleted for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
+                    _logger.LogDebug("Credential deleted for account {ProviderAccountId} ({ProviderName}, type: {CredentialType})",
                         providerAccountId, account?.ProviderName ?? "unknown", credentialType);
                 }
             }
@@ -145,7 +145,7 @@ namespace VideoForensics.Data.Database.Repositories
                     db.Credentials.RemoveRange(credentials);
                     _ = await db.SaveChangesAsync(ct);
                     var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogInformation("All credentials deleted for account {ProviderAccountId} ({ProviderName})",
+                    _logger.LogDebug("All credentials deleted for account {ProviderAccountId} ({ProviderName})",
                         providerAccountId, account?.ProviderName ?? "unknown");
                 }
             }

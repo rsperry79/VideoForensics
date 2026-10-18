@@ -64,7 +64,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Add(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device added: {DeviceId} ({DeviceName})", device.Id, device.Name);
+                _logger.LogDebug("Device added: {DeviceId} ({DeviceName})", device.Id, device.Name);
             }
             catch (Exception ex)
             {
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Update(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device updated: {DeviceId}", device.Id);
+                _logger.LogDebug("Device updated: {DeviceId}", device.Id);
             }
             catch (Exception ex)
             {
@@ -101,7 +101,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     device.LastSuccessfulPullAtUtc = pulledAtUtc;
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Device watermark updated: {DeviceId} ({PulledAtUtc})", deviceId, pulledAtUtc);
+                    _logger.LogDebug("Device watermark updated: {DeviceId} ({PulledAtUtc})", deviceId, pulledAtUtc);
                 }
             }
             catch (Exception ex)
@@ -122,7 +122,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Devices.Remove(device);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Device deleted: {DeviceId}", deviceId);
+                    _logger.LogDebug("Device deleted: {DeviceId}", deviceId);
                 }
             }
             catch (Exception ex)
