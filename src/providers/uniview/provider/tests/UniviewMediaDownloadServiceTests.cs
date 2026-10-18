@@ -400,5 +400,50 @@ namespace VideoForensics.Providers.Uniview.Tests
             Assert.Contains("not authenticated", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
             mockSessionProvider.Verify(s => s.GetClient(accountId), Times.Once);
         }
+        [Fact]
+        public async Task UniviewMediaDownloadService_DownloadSnapshotsAsync_NoWindow_CapturesLiveFrameAndReturnsSuccess()
+        {
+            // Arrange - the client is never contacted: the capture seam stands in for the live RTSP grab.
+            string outputPath = Path.Combine(Path.GetTempPath(), "uniview-live-" + Guid.NewGuid().ToString("N"));
+            var client = new UniviewClient("192.0.2.1", "user", "pass");
+            var sessionProvider = new Mock<IUniviewSessionProvider>();
+            _ = sessionProvider.Setup(s => s.GetClient()).Returns(client);
+
+            int capturedChannel = -1;
+            string? capturedPath = null;
+            Func<UniviewClient, int, string, CancellationToken, Task> capture = (_, channel, path, _) =>
+            {
+                capturedChannel = channel;
+                capturedPath = path;
+                File.WriteAllBytes(path, [0xFF, 0xD8, 0xFF, 0xD9]);
+                return Task.CompletedTask;
+            };
+
+            var service = new UniviewMediaDownloadService(
+                new Mock<ILogger<UniviewMediaDownloadService>>().Object,
+                sessionProvider.Object,
+                capture);
+
+            try
+            {
+                // Act - default dates mean no window was requested, so the live fallback runs.
+                DownloadResult result = await service.DownloadSnapshotsAsync("3", outputPath, default, default, cancellationToken: CancellationToken.None);
+
+                // Assert
+                Assert.True(result.Success);
+                Assert.Equal(1, result.FilesDownloaded);
+                Assert.Equal(3, capturedChannel);
+                Assert.NotNull(capturedPath);
+                Assert.True(File.Exists(capturedPath));
+            }
+            finally
+            {
+                if (Directory.Exists(outputPath))
+                {
+                    Directory.Delete(outputPath, recursive: true);
+                }
+            }
+        }
+
     }
 }

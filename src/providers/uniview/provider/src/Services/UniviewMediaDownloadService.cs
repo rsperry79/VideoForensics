@@ -15,6 +15,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 {
     private readonly ILogger<UniviewMediaDownloadService> _logger;
     private readonly IUniviewSessionProvider _sessionProvider;
+    private readonly Func<UniviewClient, int, string, CancellationToken, Task> _liveSnapshotCapture;
 
     // Mutable state tracking — accessed from download thread and status-query threads
     private DownloadStatus _currentStatus = new(IsDownloading: false, FilesCompleted: 0, FilesTotal: 0, BytesDownloaded: 0);
@@ -28,12 +29,18 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     private DateTime? _capacityBanUntilUtc;
     private const int CapacityBanMinutes = 5;
 
+    /// <param name="liveSnapshotCapture">
+    /// Grabs one live frame to a JPEG path. Defaults to the client's RTSP grab; tests pass a fake so the fallback
+    /// runs without a camera or ffmpeg.
+    /// </param>
     public UniviewMediaDownloadService(
         ILogger<UniviewMediaDownloadService> logger,
-        IUniviewSessionProvider sessionProvider)
+        IUniviewSessionProvider sessionProvider,
+        Func<UniviewClient, int, string, CancellationToken, Task>? liveSnapshotCapture = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
+        _liveSnapshotCapture = liveSnapshotCapture ?? ((client, channel, path, ct) => client.CaptureLiveSnapshotAsync(channel, path, ct));
     }
 
     /// <summary>
@@ -529,7 +536,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             try
             {
-                await client.CaptureLiveSnapshotAsync(channel, fileName, cancellationToken);
+                await _liveSnapshotCapture(client, channel, fileName, cancellationToken);
 
                 if (!File.Exists(fileName))
                 {
@@ -670,7 +677,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             try
             {
-                await client.CaptureLiveSnapshotAsync(channel, fileName, cancellationToken);
+                await _liveSnapshotCapture(client, channel, fileName, cancellationToken);
 
                 if (!File.Exists(fileName))
                 {
