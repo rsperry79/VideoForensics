@@ -13,6 +13,8 @@
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ValidateEvidence> L
 
+<Breadcrumb Items="@BreadcrumbItems" />
+
 <h4 class="mb-4">@L["Title"]</h4>
 
 @if (_isLoading)
@@ -142,6 +144,10 @@ else
     private readonly Dictionary<EvidenceValidationJobKind, EvidenceValidationJob?> _jobs = new();
     private readonly HashSet<EvidenceValidationJobKind> _polling = new();
     private readonly CancellationTokenSource _disposeCts = new();
+
+    // Breadcrumb back control: the page sits under the Analyze hub, so its parent is /analyze.
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+        [(L["BreadcrumbAnalyze"], "/analyze"), (L["Title"], null)];
 
     private EvidenceValidationJobKind ActiveKind =>
         _activeTab == "reconcile" ? EvidenceValidationJobKind.Reconcile : EvidenceValidationJobKind.Integrity;

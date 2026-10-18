@@ -92,18 +92,12 @@ namespace VideoForensics.Hosting.Services
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
-                IReadOnlyList<MediaVerificationResult> results = await validation.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+                IReadOnlyList<MediaVerificationResult> results = await validation.VerifyLocalIntegrityAsync(
+                    deviceId, CancellationToken.None, new DelegateProgress(line => AppendLog(job, line)));
 
                 lock (_gate)
                 {
                     job.IntegrityResults = results.ToArray();
-                    foreach (MediaVerificationResult result in results)
-                    {
-                        job.Append(string.IsNullOrWhiteSpace(result.FailureReason)
-                            ? $"{result.FileName}: {result.Status}"
-                            : $"{result.FileName}: {result.Status} - {result.FailureReason}");
-                    }
-
                     job.Append($"Finished: {results.Count} results");
                     Complete(job, EvidenceValidationJobState.Succeeded, errorMessage: null);
                 }
@@ -123,16 +117,12 @@ namespace VideoForensics.Hosting.Services
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
                 IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await validation.ReconcileWithProviderAsync(
-                    deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None);
+                    deviceId, providerDeviceId, fromUtc, toUtc, CancellationToken.None,
+                    new DelegateProgress(line => AppendLog(job, line)));
 
                 lock (_gate)
                 {
                     job.Discrepancies = discrepancies.ToArray();
-                    foreach (ReconciliationDiscrepancy discrepancy in discrepancies)
-                    {
-                        job.Append($"{discrepancy.Type} {discrepancy.ProviderEventId} {discrepancy.FieldName}");
-                    }
-
                     job.Append($"Finished: {discrepancies.Count} discrepancies");
                     Complete(job, EvidenceValidationJobState.Succeeded, errorMessage: null);
                 }
@@ -142,6 +132,15 @@ namespace VideoForensics.Hosting.Services
             catch (Exception ex)
             {
                 Fail(job, ex);
+            }
+        }
+
+        /// <summary>Appends a live progress line while the run is still in progress.</summary>
+        private void AppendLog(JobRecord job, string line)
+        {
+            lock (_gate)
+            {
+                job.Append(line);
             }
         }
 
@@ -186,6 +185,22 @@ namespace VideoForensics.Hosting.Services
             State = EvidenceValidationJobState.Running,
             StartedUtc = DateTime.UtcNow
         };
+
+        /// <summary>
+        /// Synchronous <see cref="IProgress{T}"/> that runs its action inline. <see cref="System.Progress{T}"/> is
+        /// not used because it posts to the captured SynchronizationContext, which would defer log lines.
+        /// </summary>
+        private sealed class DelegateProgress : IProgress<string>
+        {
+            private readonly Action<string> _report;
+
+            public DelegateProgress(Action<string> report)
+            {
+                _report = report;
+            }
+
+            public void Report(string value) => _report(value);
+        }
 
         /// <summary>Mutable job state. Only touched while holding <see cref="_gate"/>.</summary>
         private sealed class JobRecord

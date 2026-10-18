@@ -1,10 +1,13 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Moq;
 using Xunit;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Ui.Shared.Resources;
 using ValidateEvidencePage = VideoForensics.Ui.Shared.Pages.ValidateEvidence;
 
 /// <summary>
@@ -17,6 +20,7 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
     public ValidateEvidencePageTests()
     {
         Services.AddScoped(_ => _jobs.Object);
+        Services.AddSingleton<IStringLocalizer<SharedResources>>(TestLocalizer.Create());
     }
 
     [Fact]
@@ -49,6 +53,31 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
             Assert.Contains("Hash store unavailable", component.Markup);
             Assert.Contains("alert-danger", component.Markup);
         });
+    }
+
+    [Fact]
+    public void ValidateEvidence_WhenRendered_ShowsBackControlWithLocalizedLabel()
+    {
+        var component = Render<ValidateEvidencePage>();
+
+        var analyzeLabel = Services.GetRequiredService<IStringLocalizer<ValidateEvidencePage>>()["BreadcrumbAnalyze"].Value;
+        var backTitle = TestLocalizer.Create()["BreadcrumbBack"].Value;
+
+        var link = Assert.Single(component.FindAll("nav a"));
+        Assert.Equal("/analyze", link.GetAttribute("href"));
+        Assert.Equal(analyzeLabel, link.TextContent.Trim());
+        Assert.NotNull(component.Find($"button[title='{backTitle}']"));
+    }
+
+    [Fact]
+    public void ValidateEvidence_WhenBackClicked_NavigatesToAnalyze()
+    {
+        var component = Render<ValidateEvidencePage>();
+        var backTitle = TestLocalizer.Create()["BreadcrumbBack"].Value;
+
+        component.Find($"button[title='{backTitle}']").Click();
+
+        Assert.EndsWith("/analyze", Services.GetRequiredService<NavigationManager>().Uri);
     }
 
     private static EvidenceValidationJob Job(

@@ -45,7 +45,10 @@ namespace VideoForensics.Client.Core.Services
             _reconciliationService = reconciliationService;
         }
 
-        public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(
+            Guid? deviceId,
+            CancellationToken ct,
+            IProgress<string>? progress = null)
         {
             try
             {
@@ -68,30 +71,38 @@ namespace VideoForensics.Client.Core.Services
                     IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceIdAsync(id, ct);
                     foreach (MediaItem? item in mediaItems.Where(m => !m.IsPurged))
                     {
+                        // Reported before hashing so a long file shows as "checking" in the job log while it runs.
+                        progress?.Report($"{item.FileName}: checking");
+
                         // VerifyAsync itself swallows a missing file as a plain `false` (no
                         // exception, see IntegrityVerificationService.VerifyAsync) - check
                         // existence here first so "file gone" and "hash mismatch" aren't
                         // reported identically to the caller.
+                        MediaVerificationResult result;
                         if (!File.Exists(item.FilePath))
                         {
-                            results.Add(new MediaVerificationResult
+                            result = new MediaVerificationResult
                             {
                                 MediaItemId = item.Id,
                                 FileName = item.FileName,
                                 Status = "missing",
                                 FailureReason = $"File not found at {item.FilePath}"
-                            });
-                            continue;
+                            };
+                        }
+                        else
+                        {
+                            bool passed = await _integrityService.VerifyAsync(item.Id, ct);
+                            result = new MediaVerificationResult
+                            {
+                                MediaItemId = item.Id,
+                                FileName = item.FileName,
+                                Status = passed ? "verified" : "failed",
+                                FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
+                            };
                         }
 
-                        bool passed = await _integrityService.VerifyAsync(item.Id, ct);
-                        results.Add(new MediaVerificationResult
-                        {
-                            MediaItemId = item.Id,
-                            FileName = item.FileName,
-                            Status = passed ? "verified" : "failed",
-                            FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
-                        });
+                        results.Add(result);
+                        progress?.Report(FormatResultLine(result));
                     }
 
                     _logger.LogDebug("Verified {Count} media item(s) for device {DeviceId}", mediaItems.Count, id);
@@ -116,7 +127,8 @@ namespace VideoForensics.Client.Core.Services
             string providerDeviceId,
             DateTime fromUtc,
             DateTime toUtc,
-            CancellationToken ct)
+            CancellationToken ct,
+            IProgress<string>? progress = null)
         {
             try
             {
@@ -247,6 +259,11 @@ namespace VideoForensics.Client.Core.Services
                         discrepancies.Count(d => d.Type == DiscrepancyType.NewEventFoundOnProvider));
                 }
 
+                foreach (ReconciliationDiscrepancy discrepancy in discrepancies)
+                {
+                    progress?.Report(FormatDiscrepancyLine(discrepancy));
+                }
+
                 // Auto-fix discrepancies: backfill missing events and update changed metadata
                 if (discrepancies.Count > 0)
                 {
@@ -332,6 +349,18 @@ namespace VideoForensics.Client.Core.Services
                    message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
                    message.Contains("denied by Ring", StringComparison.OrdinalIgnoreCase);
         }
+
+        /// <summary>Progress line for a finished file check, e.g. "clip.mp4: failed - SHA-256 mismatch against stored hash".</summary>
+        private static string FormatResultLine(MediaVerificationResult result) =>
+            string.IsNullOrWhiteSpace(result.FailureReason)
+                ? $"{result.FileName}: {result.Status}"
+                : $"{result.FileName}: {result.Status} - {result.FailureReason}";
+
+        /// <summary>Progress line for one reconciliation discrepancy, e.g. "MissingFromProvider evt-1".</summary>
+        private static string FormatDiscrepancyLine(ReconciliationDiscrepancy discrepancy) =>
+            string.IsNullOrWhiteSpace(discrepancy.FieldName)
+                ? $"{discrepancy.Type} {discrepancy.ProviderEventId}"
+                : $"{discrepancy.Type} {discrepancy.ProviderEventId} {discrepancy.FieldName}";
 
         /// <summary>Case-insensitive string equality check, treating null and empty as different.</summary>
         private static bool StringEquals(string? a, string? b)

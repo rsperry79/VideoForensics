@@ -122,4 +122,7 @@
   <data name="JobFailedLabel" xml:space="preserve">
     <value>Job failed:</value>
   </data>
+  <data name="BreadcrumbAnalyze" xml:space="preserve">
+    <value>Analyze</value>
+  </data>
 </root>
