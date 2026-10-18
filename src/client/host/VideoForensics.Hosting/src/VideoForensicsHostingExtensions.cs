@@ -141,7 +141,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ILogger<UniviewAuthService>>(),
                 provider.GetRequiredService<IUniviewSessionProvider>(),
                 provider.GetRequiredService<IForensicsConfiguration>(),
-                provider.GetRequiredService<ICredentialRepository>()
+                provider.GetRequiredService<ICredentialRepository>(),
+                provider.GetRequiredService<IFfmpegToolLocation>()
             );
         }
 
@@ -495,7 +496,9 @@ namespace VideoForensics.Hosting
             // optional case pin.
             _ = services.AddScoped<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>(serviceProvider =>
                 new VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor(
-                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor>>()));
+                    serviceProvider.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegMediaFrameExtractor>>(),
+                    ffmpegPath: VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(
+                        null, "ffmpeg", serviceProvider.GetRequiredService<IFfmpegToolLocation>().BinDirectory)));
 
             _ = services.AddScoped<IMediaStillCaptureService>(serviceProvider =>
                 new MediaStillCaptureOrchestrator(

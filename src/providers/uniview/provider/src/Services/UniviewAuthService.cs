@@ -19,6 +19,7 @@ namespace VideoForensics.Providers.Uniview.Services
         private readonly IUniviewSessionProvider _sessionProvider;
         private readonly IForensicsConfiguration _configuration;
         private readonly ICredentialRepository _credentialRepository;
+        private readonly IFfmpegToolLocation? _ffmpegToolLocation;
 
         /// <summary>
         /// Masks a sensitive string for logging (shows first and last character, hides the rest).
@@ -30,12 +31,14 @@ namespace VideoForensics.Providers.Uniview.Services
             ILogger<UniviewAuthService> logger,
             IUniviewSessionProvider sessionProvider,
             IForensicsConfiguration configuration,
-            ICredentialRepository credentialRepository)
+            ICredentialRepository credentialRepository,
+            IFfmpegToolLocation? ffmpegToolLocation = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
+            _ffmpegToolLocation = ffmpegToolLocation;
         }
 
         /// <summary>
@@ -48,7 +51,7 @@ namespace VideoForensics.Providers.Uniview.Services
                 _logger.LogInformation("Authenticating with Uniview NVR for user: {Username}", MaskForLog(username));
 
                 string host = _configuration.UniviewNvrHost ?? throw new InvalidOperationException("Uniview NVR host is not configured");
-                string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg");
+                string ffmpegPath = FfmpegPathResolver.Resolve(_configuration.UniviewFfmpegPath, "ffmpeg", _ffmpegToolLocation?.BinDirectory);
 
                 var client = new UniviewClient(host, username, password, ffmpegPath);
 

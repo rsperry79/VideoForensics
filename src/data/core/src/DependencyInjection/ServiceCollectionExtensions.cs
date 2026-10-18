@@ -26,8 +26,13 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddTransient<VideoForensics.Core.Providers.Core.IMediaBitrateAnalyzer>(sp =>
                 new VideoForensics.Core.Providers.Core.FfprobeMediaBitrateAnalyzer(
                     VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffprobe", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
-            services.TryAddSingleton<VideoForensics.Core.Providers.Core.IClipColorAnalyzer, VideoForensics.Core.Providers.Core.FfmpegClipColorAnalyzer>();
-            services.TryAddSingleton<VideoForensics.Core.Providers.Core.IAudioClipAnalyzer, VideoForensics.Core.Providers.Core.FfmpegAudioAnalyzer>();
+            // Transient for the same reason as IMediaBitrateAnalyzer: ffmpeg path reads the bin directory per resolve.
+            services.TryAddTransient<VideoForensics.Core.Providers.Core.IClipColorAnalyzer>(sp =>
+                new VideoForensics.Core.Providers.Core.FfmpegClipColorAnalyzer(
+                    VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
+            services.TryAddTransient<VideoForensics.Core.Providers.Core.IAudioClipAnalyzer>(sp =>
+                new VideoForensics.Core.Providers.Core.FfmpegAudioAnalyzer(
+                    VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();

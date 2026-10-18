@@ -29,5 +29,37 @@ namespace VideoForensics.Data.Core.Tests
 
             Assert.NotSame(first, second);
         }
+
+        [Fact]
+        public void IClipColorAnalyzer_ResolvedBeforeAndAfterBinDirectorySet_IsNewInstanceEachTime()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddVideoForensicsDataCore();
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            IFfmpegToolLocation location = provider.GetRequiredService<IFfmpegToolLocation>();
+            IClipColorAnalyzer first = provider.GetRequiredService<IClipColorAnalyzer>();
+
+            location.BinDirectory = Path.GetTempPath();
+            IClipColorAnalyzer second = provider.GetRequiredService<IClipColorAnalyzer>();
+
+            Assert.NotSame(first, second);
+        }
+
+        [Fact]
+        public void IAudioClipAnalyzer_ResolvedBeforeAndAfterBinDirectorySet_IsNewInstanceEachTime()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddVideoForensicsDataCore();
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            IFfmpegToolLocation location = provider.GetRequiredService<IFfmpegToolLocation>();
+            IAudioClipAnalyzer first = provider.GetRequiredService<IAudioClipAnalyzer>();
+
+            location.BinDirectory = Path.GetTempPath();
+            IAudioClipAnalyzer second = provider.GetRequiredService<IAudioClipAnalyzer>();
+
+            Assert.NotSame(first, second);
+        }
     }
 }
