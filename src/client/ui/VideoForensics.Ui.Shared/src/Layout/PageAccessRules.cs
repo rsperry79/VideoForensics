@@ -66,6 +66,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
+                ["/settings/software-paths"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/update-check"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/logs"] = AccessPolicy.SuperAdminLocal,
