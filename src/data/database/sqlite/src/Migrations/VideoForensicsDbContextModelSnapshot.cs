@@ -5068,6 +5068,45 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("SecurityEvents");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.SnapshotCapture", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CapturedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DeviceHealthId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HttpStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MediaFilePath")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceHealthId");
+
+                    b.HasIndex("DeviceId", "CapturedAtUtc");
+
+                    b.ToTable("SnapshotCaptures");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.SyncSchedule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5550,6 +5589,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .WithMany("SupportedActionGroups")
                         .HasForeignKey("RingLocationModeSettingsId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.SnapshotCapture", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceHealthId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("VideoForensics.Data.Common.Entities.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -377,6 +377,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the derived-still capture provenance rows (Evidence "grab still with hash").</summary>
         public DbSet<MediaStillCapture> MediaStillCaptures { get; set; }
 
+        /// <summary>Gets or sets one row per snapshot capture attempt (current or not).</summary>
+        public DbSet<SnapshotCapture> SnapshotCaptures { get; set; }
+
         /// <summary>Gets or sets the alerts triggered by jamming detection.</summary>
         public DbSet<Alert> Alerts { get; set; }
 
