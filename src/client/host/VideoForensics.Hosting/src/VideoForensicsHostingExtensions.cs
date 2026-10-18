@@ -606,7 +606,8 @@ namespace VideoForensics.Hosting
                     provider.GetRequiredService<ILocationRepository>(),
                     provider.GetRequiredService<IProviderAccountRepository>(),
                     provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
-                    provider.GetService<ILogger<EventPullService>>()));
+                    provider.GetService<ILogger<EventPullService>>(),
+                    provider.GetKeyedService<IMediaDownloadService>(providerName)));
             }
 
             return services;
