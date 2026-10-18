@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Software Paths</value>
+  </data>
+  <data name="WarningText" xml:space="preserve">
+    <value>Changing these paths requires re-authentication. A wrong path stops media processing (ffmpeg) or remote-access tunnels (cloudflared) until it is corrected. Leave a field empty to clear it.</value>
+  </data>
+  <data name="SignInPrompt" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToManage" xml:space="preserve">
+    <value>to manage software paths.</value>
+  </data>
+  <data name="AuthUnauthorized" xml:space="preserve">
+    <value>Not authorized to view software paths.</value>
+  </data>
+  <data name="FfmpegBinDirectoryLabel" xml:space="preserve">
+    <value>ffmpeg bin directory</value>
+  </data>
+  <data name="FfmpegBinDirectoryHelp" xml:space="preserve">
+    <value>Folder that contains ffmpeg. Leave empty to use the default lookup.</value>
+  </data>
+  <data name="CloudflaredPathLabel" xml:space="preserve">
+    <value>cloudflared path</value>
+  </data>
+  <data name="CloudflaredPathHelp" xml:space="preserve">
+    <value>Full path to the cloudflared executable. Leave empty to use the default lookup.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SavingButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="StepUpCancelled" xml:space="preserve">
+    <value>Confirmation was cancelled or failed. Nothing was changed.</value>
+  </data>
+  <data name="SavedMessage" xml:space="preserve">
+    <value>Software paths saved.</value>
+  </data>
+  <data name="LoadFailed" xml:space="preserve">
+    <value>Failed to load software paths: {0}</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Failed to save software paths: {0}</value>
+  </data>
+</root>

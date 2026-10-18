@@ -505,6 +505,44 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task LoadConfigurationAsync_CloudflaredPathStored_IsLoaded()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("CloudflaredPath", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("C:\\tools\\cloudflared.exe");
+
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () => "C:\\ffmpeg\\bin");
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("C:\\tools\\cloudflared.exe", config.CloudflaredPath);
+        }
+
+        [Fact]
+        public async Task LoadConfigurationAsync_CloudflaredPathEmpty_DiscoversAndPersists()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string?)null);
+
+            var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () => null, () => "C:\\tools\\cloudflared.exe");
+
+            IForensicsConfiguration config = await service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("C:\\tools\\cloudflared.exe", config.CloudflaredPath);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("CloudflaredPath", "C:\\tools\\cloudflared.exe", It.IsAny<CancellationToken>()),
+                Times.Once);
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("FfmpegBinDirectory", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task LoadConfigurationAsync_FfmpegBinDirectoryEmptyAndDiscoveryFinds_PersistsKeyAndSetsConfig()
         {
             _ = _settingRepositoryMock
