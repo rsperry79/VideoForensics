@@ -1,5 +1,6 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
+using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,11 +112,20 @@ public abstract class AccountsPageTestBase : BunitContext
             .ReturnsAsync(new User { ProviderUserKey = "retired-key", DisplayName = "Retired Owner" });
     }
 
-    /// <summary>Clicks the first button with exactly this text inside the CSS scope (whole page when null).</summary>
+    /// <summary>
+    /// Clicks the first button with exactly this text inside the CSS scope (whole page when null). Waits for the
+    /// button to render first: dialogs such as the retire confirmation render after the click that opens them, and
+    /// on slower runners the button can appear after the first lookup.
+    /// </summary>
     protected static void ClickButton(IRenderedComponent<Accounts> cut, string text, string? scope = null)
     {
-        var buttons = scope is null ? cut.FindAll("button") : cut.FindAll(scope + " button");
-        buttons.First(b => b.TextContent.Trim() == text).Click();
+        IElement? target = null;
+        cut.WaitForAssertion(() =>
+        {
+            var buttons = scope is null ? cut.FindAll("button") : cut.FindAll(scope + " button");
+            target = buttons.First(b => b.TextContent.Trim() == text);
+        });
+        target!.Click();
     }
 
     /// <summary>The fragment the page pushed into the right-panel slot; render it with Render(...) to drive its controls.</summary>
