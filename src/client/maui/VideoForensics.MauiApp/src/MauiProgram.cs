@@ -169,6 +169,7 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LayoutPreferencesState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.AccountSelectionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LeftPanelContentService>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
