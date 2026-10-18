@@ -26,6 +26,16 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists events for a device within a date range.</summary>
         Task<IReadOnlyList<Event>> ListByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when the device has no events.</summary>
+        Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>
+        /// Keyset-paged read of a device's events ordered by OccurredAtUtc then Id (ascending). Returns up to
+        /// <paramref name="take"/> rows strictly after the (<paramref name="afterOccurredAtUtc"/>, <paramref name="afterId"/>)
+        /// cursor; a null cursor starts from the first event. An empty result means the end was reached.
+        /// </summary>
+        Task<IReadOnlyList<Event>> ListByDevicePageAsync(Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct);
+
         /// <summary>Lists events for all devices in a location within a date range.</summary>
         Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 

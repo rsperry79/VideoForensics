@@ -1434,6 +1434,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.HasIndex("EventDetectionId");
 
+                    b.HasIndex("DeviceId", "OccurredAtUtc");
+
                     b.HasIndex("DeviceId", "ProviderEventId")
                         .IsUnique();
 

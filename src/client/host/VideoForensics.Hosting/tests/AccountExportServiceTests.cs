@@ -31,6 +31,20 @@ namespace VideoForensics.Hosting.Tests
         private readonly Mock<IProviderSyncRunRepository> _syncRuns = new();
         private readonly ProviderAccount _account;
         private readonly string _exportsFolder;
+        private readonly Guid _deviceId;
+
+        /// <summary>Serves the events through the keyset API in pages of <paramref name="pageSize"/>, like the real repository.</summary>
+        private void SetupEventPages(IReadOnlyList<Event> all, int pageSize = int.MaxValue)
+        {
+            List<Event> ordered = all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).ToList();
+            _ = _events.Setup(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ordered.Count == 0 ? (DateTime?)null : ordered[0].OccurredAtUtc);
+            _ = _events.Setup(r => r.ListByDevicePageAsync(_deviceId, It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid _, DateTime? at, Guid? id, int take, CancellationToken _) =>
+                    (IReadOnlyList<Event>)ordered
+                        .Where(e => at == null || e.OccurredAtUtc > at || (e.OccurredAtUtc == at && id != null && e.Id.CompareTo(id.Value) > 0))
+                        .Take(Math.Min(take, pageSize)).ToList());
+        }
 
         public AccountExportServiceTests()
         {
@@ -51,8 +65,8 @@ namespace VideoForensics.Hosting.Tests
             var device = new Device { Id = Guid.NewGuid(), LocationId = location.Id, ProviderDeviceId = "dev-1", Name = "Front Door", Type = "doorbell" };
             _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([location]);
             _ = _devices.Setup(r => r.GetByLocationIdAsync(location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([device]);
-            _ = _events.Setup(r => r.ListByDeviceAndDateRangeAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = "evt-marker-1", EventType = "motion" }]);
+            _deviceId = device.Id;
+            SetupEventPages([new Event { Id = Guid.NewGuid(), DeviceId = device.Id, ProviderEventId = "evt-marker-1", EventType = "motion", OccurredAtUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }]);
             _ = _media.Setup(r => r.GetByDeviceIdAsync(device.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new MediaItem { Id = Guid.NewGuid(), DeviceId = device.Id, FileName = "clip.mp4", FilePath = "x/clip.mp4", MediaFormat = "mp4", Sha256Hash = "abc" }]);
             _ = _downloads.Setup(r => r.GetByDeviceIdAsync(device.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
@@ -213,6 +227,50 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(ExportJobState.Failed, status.State);
             Assert.Equal("delete boom", status.ErrorMessage);
             _ = Assert.Single(Directory.GetFiles(_exportsFolder, "*.json"));
+        }
+
+        [Fact]
+        public async Task AccountExportService_RunJob_StreamsEventsAcrossPages_WritesAllEvents()
+        {
+            var t0 = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            List<Event> seven = [.. Enumerable.Range(0, 7).Select(i => new Event { Id = Guid.NewGuid(), DeviceId = _deviceId, ProviderEventId = $"paged-{i}", EventType = "motion", OccurredAtUtc = t0.AddMinutes(i) })];
+            SetupEventPages(seven, pageSize: 3);
+            AccountExportService sut = CreateSut();
+
+            ExportJobStatus status = await RunAsync(sut, _account.Id, false);
+
+            Assert.Equal(ExportJobState.Succeeded, status.State);
+            using var doc = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(status.FilePath!));
+            string[] ids = [.. doc.RootElement.GetProperty("events").EnumerateArray().Select(e => e.GetProperty("providerEventId").GetString()!)];
+            Assert.Equal(Enumerable.Range(0, 7).Select(i => $"paged-{i}"), ids);
+            _events.Verify(r => r.ListByDevicePageAsync(_deviceId, It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
+        }
+
+        [Fact]
+        public async Task AccountExportService_RunJob_NoEvents_WritesEmptyEventsArray()
+        {
+            SetupEventPages([]);
+            AccountExportService sut = CreateSut();
+
+            ExportJobStatus status = await RunAsync(sut, _account.Id, false);
+
+            Assert.Equal(ExportJobState.Succeeded, status.State);
+            using var doc = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(status.FilePath!));
+            Assert.Equal(System.Text.Json.JsonValueKind.Array, doc.RootElement.GetProperty("events").ValueKind);
+            Assert.Equal(0, doc.RootElement.GetProperty("events").GetArrayLength());
+            Assert.Equal(1, doc.RootElement.GetProperty("mediaItems").GetArrayLength());
+        }
+
+        [Fact]
+        public async Task AccountExportService_RunJob_DoesNotQueryFromEpoch()
+        {
+            AccountExportService sut = CreateSut();
+
+            ExportJobStatus status = await RunAsync(sut, _account.Id, false);
+
+            Assert.Equal(ExportJobState.Succeeded, status.State);
+            _events.Verify(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()), Times.Once);
+            _events.Verify(r => r.ListByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

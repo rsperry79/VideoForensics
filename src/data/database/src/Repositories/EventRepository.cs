@@ -144,6 +144,31 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Gets the earliest OccurredAtUtc among a device's events, or null when it has none.</summary>
+        public async Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Events.AsNoTracking()
+                .Where(e => e.DeviceId == deviceId)
+                .MinAsync(e => (DateTime?)e.OccurredAtUtc, ct);
+        }
+
+        /// <summary>Keyset-paged read of a device's events ordered by OccurredAtUtc then Id.</summary>
+        public async Task<IReadOnlyList<Event>> ListByDevicePageAsync(
+            Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            IQueryable<Event> query = db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId);
+            if (afterOccurredAtUtc.HasValue)
+            {
+                DateTime at = afterOccurredAtUtc.Value;
+                Guid id = afterId ?? Guid.Empty;
+                query = query.Where(e => e.OccurredAtUtc > at || (e.OccurredAtUtc == at && e.Id.CompareTo(id) > 0));
+            }
+
+            return await query.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Take(take).ToListAsync(ct);
+        }
+
         /// <summary>Lists events for all devices in a location within a date range.</summary>
         public async Task<IReadOnlyList<Event>> ListByLocationAndDateRangeAsync(
             Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
