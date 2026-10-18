@@ -400,7 +400,9 @@ namespace VideoForensics.Hosting
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
                 ICaseRepository caseRepository = serviceProvider.GetRequiredService<ICaseRepository>();
                 IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService);
+                IForensicsConfigurationService configurationService = serviceProvider.GetRequiredService<IForensicsConfigurationService>();
+                IStorageLocationProvider storageLocationProvider = serviceProvider.GetRequiredService<IStorageLocationProvider>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService, configurationService, storageLocationProvider);
             });
 
             // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a

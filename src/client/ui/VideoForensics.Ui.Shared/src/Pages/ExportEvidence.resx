@@ -68,9 +68,6 @@
   <data name="PassphrasePlaceholder" xml:space="preserve">
     <value>Passphrase</value>
   </data>
-  <data name="OutputDirectoryPlaceholder" xml:space="preserve">
-    <value>Output directory</value>
-  </data>
   <data name="ExportButton" xml:space="preserve">
     <value>Export</value>
   </data>

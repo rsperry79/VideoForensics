@@ -41,7 +41,6 @@ namespace VideoForensics.WebApp.Api
 
             ExportResult result = await exportService.ExportEvidenceAsync(
                 request.CaseId,
-                request.OutputDirectory,
                 request.RecipientDescription,
                 request.Passphrase,
                 ct);
@@ -201,12 +200,10 @@ namespace VideoForensics.WebApp.Api
 
     /// <summary>Request to export one case's reports and evidence to an archive.</summary>
     /// <param name="CaseId">The case to export. Required; <see cref="Guid.Empty"/> is rejected.</param>
-    /// <param name="OutputDirectory">Output directory for the archive.</param>
     /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
     /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
     public record ExportEvidenceRequest(
         Guid CaseId,
-        string OutputDirectory,
         string? RecipientDescription,
         string? Passphrase
     );

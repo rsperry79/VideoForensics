@@ -9,6 +9,7 @@ using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Core.Models;
 
 using Xunit;
@@ -24,12 +25,16 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IExportRecordService> _exportRecords = new();
         private readonly Mock<ICaseRepository> _cases = new();
         private readonly Mock<IReportGenerationService> _reports = new();
+        private readonly Mock<IForensicsConfigurationService> _configuration = new();
+        private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly string _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        private readonly string _defaultExportsRoot;
         private readonly EvidenceExportOrchestrator _orchestrator;
 
         public CaseEvidenceExportTests()
         {
             _ = Directory.CreateDirectory(_tempDir);
+            _defaultExportsRoot = Path.Combine(_tempDir, "default-exports");
             _orchestrator = new EvidenceExportOrchestrator(
                 new Mock<ILogger<EvidenceExportOrchestrator>>().Object,
                 _media.Object,
@@ -37,7 +42,14 @@ namespace VideoForensics.Client.Core.Tests
                 _actionLog.Object,
                 _exportRecords.Object,
                 _cases.Object,
-                _reports.Object);
+                _reports.Object,
+                _configuration.Object,
+                _storage.Object);
+
+            // The exports folder comes from the database setting; the default root stands in when none is stored.
+            _ = _configuration.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ForensicsConfiguration());
+            _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Exports, It.IsAny<string?>())).Returns(_defaultExportsRoot);
 
             _ = _integrity.Setup(s => s.VerifyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = _actionLog
@@ -119,6 +131,26 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task ExportEvidenceAsync_CaseScoped_WritesArchiveToConfiguredExportsLocation()
+        {
+            // Arrange: the stored ExportsLocation setting must be the root the archive is written under.
+            string configuredRoot = Path.Combine(_tempDir, "configured-exports");
+            _ = _configuration.Setup(c => c.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ForensicsConfiguration { ExportsLocation = configuredRoot });
+            _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Exports, configuredRoot)).Returns(configuredRoot);
+            MediaItem pinned = AddMedia("configured-root.mp4");
+            Guid caseId = SetUpCase([Pin(Guid.NewGuid(), pinned)]);
+
+            // Act
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
+
+            // Assert
+            Assert.True(result.Success);
+            Assert.NotNull(result.ArchivePath);
+            Assert.Equal(Path.GetFullPath(configuredRoot), Path.GetDirectoryName(Path.GetFullPath(result.ArchivePath!)));
+        }
+
+        [Fact]
         public async Task ExportEvidenceAsync_CaseScoped_IncludesOnlyThatCasesPinnedMedia()
         {
             MediaItem pinned = AddMedia("pinned.mp4");
@@ -126,7 +158,7 @@ namespace VideoForensics.Client.Core.Tests
             Guid caseId = Guid.NewGuid();
             caseId = SetUpCase([Pin(caseId, pinned)]);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-media", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             Assert.Equal(1, result.ItemsIncluded);
@@ -145,7 +177,7 @@ namespace VideoForensics.Client.Core.Tests
                 new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = Guid.NewGuid(), Reason = "r", AddedBy = "u" }
             ]);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-events", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             Assert.Equal(1, result.ItemsIncluded);
@@ -159,7 +191,7 @@ namespace VideoForensics.Client.Core.Tests
             MediaItem pinned = AddMedia("pinned3.mp4", deviceA);
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)], [deviceA, deviceB]);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-reports", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             List<string> names = ZipEntries(result.ArchivePath!);
@@ -177,7 +209,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             Guid caseId = SetUpCase([], [Guid.NewGuid()]);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-noreports", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             Assert.Equal(0, result.ItemsIncluded);
@@ -189,7 +221,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             Guid caseId = SetUpCase([], [Guid.NewGuid()], withWindow: false);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-empty", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.Null(result.ArchivePath);
             _reports.Verify(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -203,7 +235,7 @@ namespace VideoForensics.Client.Core.Tests
             MediaItem pinned = AddMedia("dev-a.mp4", deviceA, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)]);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-devs", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             _reports.Verify(r => r.BuildEvidenceReviewAsync(deviceA, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -217,7 +249,7 @@ namespace VideoForensics.Client.Core.Tests
             MediaItem pinned = AddMedia("no-window.mp4", null, rec);
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)], withWindow: false);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-nowin", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
             _reports.Verify(r => r.BuildEvidenceReviewAsync(It.IsAny<Guid?>(), It.Is<DateTime>(f => f == rec), It.Is<DateTime>(t => t > rec && t < rec.AddDays(1)), It.IsAny<CancellationToken>()), Times.Once);
@@ -230,7 +262,7 @@ namespace VideoForensics.Client.Core.Tests
             MediaItem pinned = AddMedia("pinned4.mp4");
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)]);
 
-            _ = await _orchestrator.ExportEvidenceAsync(caseId, "case-export-ref", "recipient", null, CancellationToken.None);
+            _ = await _orchestrator.ExportEvidenceAsync(caseId, "recipient", null, CancellationToken.None);
 
             _exportRecords.Verify(s => s.RecordExportAsync(It.IsAny<string>(), "C-1", "recipient", It.IsAny<string>(), It.IsAny<string>(), false, It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -241,7 +273,7 @@ namespace VideoForensics.Client.Core.Tests
             Guid unknown = Guid.NewGuid();
             _ = _cases.Setup(c => c.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
 
-            ExportResult result = await _orchestrator.ExportEvidenceAsync(unknown, "case-export-unknown", null, null, CancellationToken.None);
+            ExportResult result = await _orchestrator.ExportEvidenceAsync(unknown, null, null, CancellationToken.None);
 
             Assert.False(result.Success);
             Assert.NotNull(result.ErrorMessage);
