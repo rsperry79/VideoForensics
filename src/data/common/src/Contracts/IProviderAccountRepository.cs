@@ -17,8 +17,21 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists all provider accounts.</summary>
         Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct);
 
-        /// <summary>Lists active provider accounts.</summary>
+        /// <summary>Lists active provider accounts (excludes removed accounts).</summary>
         Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct);
+
+        /// <summary>Lists removed provider accounts (data retained), most recently removed first.</summary>
+        Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct);
+
+        /// <summary>
+        /// Retires a provider account: marks it removed and inactive, and deletes its sync schedule and stored credentials,
+        /// while retaining the account row and all of its collected data. No-op if the account is missing or already removed.
+        /// </summary>
+        /// <param name="accountId">The provider account ID.</param>
+        /// <param name="removedUtc">When the account was removed.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <param name="stepUpToken">Step-up token the server requires; used only by the remote implementation (sent as X-StepUp-Token), ignored locally.</param>
+        Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null);
 
         /// <summary>Adds a new provider account.</summary>
         Task AddAsync(ProviderAccount account, CancellationToken ct);
@@ -27,7 +40,10 @@ namespace VideoForensics.Data.Common.Contracts
         Task UpdateAsync(ProviderAccount account, CancellationToken ct);
 
         /// <summary>Deletes a provider account.</summary>
-        Task DeleteAsync(Guid accountId, CancellationToken ct);
+        /// <param name="accountId">The provider account ID.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <param name="stepUpToken">Step-up token the server requires; used only by the remote implementation (sent as X-StepUp-Token), ignored locally.</param>
+        Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null);
 
         /// <summary>Records an error condition for a provider account.</summary>
         /// <param name="providerAccountId">The provider account ID.</param>

@@ -29,6 +29,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="LastDownloadTimeUtc">Timestamp of the last batch download completion for this account, used as the default start time for the next download. Null if never downloaded.</param>
     /// <param name="LastErrorUtc">Timestamp of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
     /// <param name="LastErrorMessage">Description of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
+    /// <param name="RemovedUtc">When the account was retired (soft-removed); null while it is active.</param>
     public record ProviderAccountDto(
         Guid Id,
         Guid UserId,
@@ -38,8 +39,57 @@ namespace VideoForensics.Core.Api.Contracts
         bool IsActive,
         DateTime? LastDownloadTimeUtc,
         DateTime? LastErrorUtc,
-        string? LastErrorMessage
+        string? LastErrorMessage,
+        DateTime? RemovedUtc = null
     );
+
+    /// <summary>Request body for queueing a background export of a provider account.</summary>
+    /// <param name="PurgeAfterExport">When true, the account is hard-deleted after the export file is written.</param>
+    public record QueueAccountExportRequest(bool PurgeAfterExport);
+
+    /// <summary>Wire form of a background account export job's status.</summary>
+    /// <param name="JobId">The job id returned when the export was queued.</param>
+    /// <param name="AccountId">The provider account being exported.</param>
+    /// <param name="State">Lifecycle state name (Queued, Running, Succeeded, Failed).</param>
+    /// <param name="FilePath">Final export file path once written; null before that.</param>
+    /// <param name="ErrorMessage">Failure reason when the state is Failed.</param>
+    /// <param name="PurgeAfterExport">Whether the account is hard-deleted after a successful export.</param>
+    /// <param name="CreatedUtc">When the job was queued.</param>
+    /// <param name="CompletedUtc">When the job reached Succeeded or Failed.</param>
+    public record ExportJobDto(
+        Guid JobId,
+        Guid AccountId,
+        string State,
+        string? FilePath,
+        string? ErrorMessage,
+        bool PurgeAfterExport,
+        DateTime CreatedUtc,
+        DateTime? CompletedUtc
+    );
+
+    /// <summary>Extension methods for mapping export job statuses to/from <see cref="ExportJobDto"/>.</summary>
+    public static class ExportJobDtoMapping
+    {
+        /// <summary>Converts an export job status to its wire DTO.</summary>
+        public static ExportJobDto ToDto(this VideoForensics.Client.Common.Contracts.ExportJobStatus entity)
+        {
+            return new ExportJobDto(entity.JobId, entity.AccountId, entity.State.ToString(), entity.FilePath, entity.ErrorMessage, entity.PurgeAfterExport, entity.CreatedUtc, entity.CompletedUtc);
+        }
+
+        /// <summary>Converts an export job DTO back to the domain status.</summary>
+        public static VideoForensics.Client.Common.Contracts.ExportJobStatus ToDomain(this ExportJobDto dto)
+        {
+            return new VideoForensics.Client.Common.Contracts.ExportJobStatus(
+                dto.JobId,
+                dto.AccountId,
+                Enum.TryParse(dto.State, true, out VideoForensics.Client.Common.Contracts.ExportJobState state) ? state : VideoForensics.Client.Common.Contracts.ExportJobState.Failed,
+                dto.FilePath,
+                dto.ErrorMessage,
+                dto.PurgeAfterExport,
+                dto.CreatedUtc,
+                dto.CompletedUtc);
+        }
+    }
 
     /// <summary>Extension methods for mapping User entities to/from UserDtos.</summary>
     public static class UserDtoMapping
@@ -91,7 +141,8 @@ namespace VideoForensics.Core.Api.Contracts
                 IsActive: entity.IsActive,
                 LastDownloadTimeUtc: entity.LastDownloadTimeUtc,
                 LastErrorUtc: entity.LastErrorUtc,
-                LastErrorMessage: entity.LastErrorMessage
+                LastErrorMessage: entity.LastErrorMessage,
+                RemovedUtc: entity.RemovedUtc
             );
         }
 
@@ -110,7 +161,8 @@ namespace VideoForensics.Core.Api.Contracts
                 IsActive = dto.IsActive,
                 LastDownloadTimeUtc = dto.LastDownloadTimeUtc,
                 LastErrorUtc = dto.LastErrorUtc,
-                LastErrorMessage = dto.LastErrorMessage
+                LastErrorMessage = dto.LastErrorMessage,
+                RemovedUtc = dto.RemovedUtc
             };
         }
     }

@@ -149,6 +149,130 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_SetsRemovedUtc()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+            DateTime removedUtc = new(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            await _repository.RetireAsync(account.Id, removedUtc, CancellationToken.None);
+
+            ProviderAccount? retrieved = await _repository.GetAsync(account.Id, CancellationToken.None);
+            Assert.NotNull(retrieved);
+            Assert.Equal(removedUtc, retrieved.RemovedUtc);
+            Assert.False(retrieved.IsActive);
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_RemovesSyncSchedule()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None); // AddAsync also creates the default SyncSchedule
+
+            await _repository.RetireAsync(account.Id, DateTime.UtcNow, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Assert.False(await db.SyncSchedules.AnyAsync(s => s.ProviderAccountId == account.Id));
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_RemovesCredentials()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+            ProviderAccount other = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(other, CancellationToken.None);
+            await using (VideoForensicsDbContext seed = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                _ = seed.Credentials.Add(new Credential { Id = Guid.NewGuid(), ProviderAccountId = account.Id, CredentialType = "Password", EncryptedValue = "x", EncryptionProvider = "test", CreatedUtc = DateTime.UtcNow });
+                _ = seed.Credentials.Add(new Credential { Id = Guid.NewGuid(), ProviderAccountId = other.Id, CredentialType = "Password", EncryptedValue = "y", EncryptionProvider = "test", CreatedUtc = DateTime.UtcNow });
+                _ = await seed.SaveChangesAsync();
+            }
+
+            await _repository.RetireAsync(account.Id, DateTime.UtcNow, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Assert.False(await db.Credentials.AnyAsync(c => c.ProviderAccountId == account.Id));
+            Assert.True(await db.Credentials.AnyAsync(c => c.ProviderAccountId == other.Id));
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_KeepsAccountRow()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            await _repository.RetireAsync(account.Id, DateTime.UtcNow, CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Assert.True(await db.ProviderAccounts.AnyAsync(a => a.Id == account.Id));
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_AlreadyRemoved_KeepsOriginalRemovedUtc()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(account, CancellationToken.None);
+            DateTime first = new(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            await _repository.RetireAsync(account.Id, first, CancellationToken.None);
+            await _repository.RetireAsync(account.Id, first.AddDays(1), CancellationToken.None);
+
+            ProviderAccount? retrieved = await _repository.GetAsync(account.Id, CancellationToken.None);
+            Assert.Equal(first, retrieved!.RemovedUtc);
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_RetireAsync_MissingAccount_DoesNotThrow()
+        {
+            await _repository.RetireAsync(Guid.NewGuid(), DateTime.UtcNow, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_ListActiveAsync_ExcludesRemoved()
+        {
+            ProviderAccount kept = TestDataBuilder.BuildProviderAccount();
+            ProviderAccount removed = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(kept, CancellationToken.None);
+            await _repository.AddAsync(removed, CancellationToken.None);
+            await _repository.RetireAsync(removed.Id, DateTime.UtcNow, CancellationToken.None);
+
+            IReadOnlyList<ProviderAccount> list = await _repository.ListActiveAsync(CancellationToken.None);
+
+            _ = Assert.Single(list);
+            Assert.Equal(kept.Id, list[0].Id);
+            Assert.Equal(2, (await _repository.ListAsync(CancellationToken.None)).Count);
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_ListActiveAsync_RemovedButStillFlaggedActive_IsExcluded()
+        {
+            ProviderAccount account = TestDataBuilder.BuildProviderAccount();
+            account.RemovedUtc = DateTime.UtcNow;
+            account.IsActive = true;
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            Assert.Empty(await _repository.ListActiveAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ProviderAccountRepository_ListRemovedAsync_ReturnsOnlyRemoved()
+        {
+            ProviderAccount active = TestDataBuilder.BuildProviderAccount();
+            ProviderAccount older = TestDataBuilder.BuildProviderAccount();
+            ProviderAccount newer = TestDataBuilder.BuildProviderAccount();
+            await _repository.AddAsync(active, CancellationToken.None);
+            await _repository.AddAsync(older, CancellationToken.None);
+            await _repository.AddAsync(newer, CancellationToken.None);
+            await _repository.RetireAsync(older.Id, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc), CancellationToken.None);
+            await _repository.RetireAsync(newer.Id, new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), CancellationToken.None);
+
+            IReadOnlyList<ProviderAccount> list = await _repository.ListRemovedAsync(CancellationToken.None);
+
+            Assert.Equal([newer.Id, older.Id], list.Select(a => a.Id).ToArray());
+        }
+
+        [Fact]
         public async Task ProviderAccountRepository_UniqueConstraint_DuplicateUserProviderComboThrows()
         {
             var userId = Guid.NewGuid();

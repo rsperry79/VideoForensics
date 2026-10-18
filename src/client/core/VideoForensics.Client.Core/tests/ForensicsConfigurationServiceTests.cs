@@ -579,6 +579,33 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
+        public async Task LoadConfigurationAsync_WithStoredExportsLocation_LoadsCorrectly()
+        {
+            _ = _settingRepositoryMock
+                .Setup(r => r.GetAsync("ExportsLocation", It.IsAny<CancellationToken>()))
+                .ReturnsAsync("D:\\Exports");
+
+            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
+
+            Assert.Equal("D:\\Exports", config.ExportsLocation);
+        }
+
+        [Fact]
+        public async Task SaveConfigurationAsync_SavesExportsLocation()
+        {
+            var config = new ForensicsConfiguration
+            {
+                ExportsLocation = "D:\\Exports"
+            };
+
+            await _service.SaveConfigurationAsync(config);
+
+            _settingRepositoryMock.Verify(
+                r => r.SetAsync("ExportsLocation", "D:\\Exports", It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task SaveConfigurationAsync_SavesAllStorageLocationSettings()
         {
             var config = new ForensicsConfiguration

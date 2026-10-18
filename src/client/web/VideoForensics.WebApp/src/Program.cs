@@ -283,6 +283,7 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
+builder.Services.AddVideoForensicsAccountExport();
 
 // Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
 builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));

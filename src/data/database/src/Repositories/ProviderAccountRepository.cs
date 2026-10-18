@@ -49,11 +49,57 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.ProviderAccounts.ToListAsync(ct);
         }
 
-        /// <summary>Lists active provider accounts.</summary>
+        /// <summary>Lists active provider accounts (excludes removed accounts).</summary>
         public async Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.ProviderAccounts.Where(pa => pa.IsActive).ToListAsync(ct);
+            return await db.ProviderAccounts.Where(pa => pa.IsActive && pa.RemovedUtc == null).ToListAsync(ct);
+        }
+
+        /// <summary>Lists removed provider accounts (data retained), most recently removed first.</summary>
+        public async Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            // SQLite cannot ORDER BY a DateTime in SQL reliably across providers, but the removed set is small; sort client-side.
+            List<ProviderAccount> removed = await db.ProviderAccounts.Where(pa => pa.RemovedUtc != null).ToListAsync(ct);
+            return removed.OrderByDescending(pa => pa.RemovedUtc).ToList();
+        }
+
+        /// <summary>Retires a provider account, keeping its row and data. The step-up token is used only by the remote implementation and ignored here.</summary>
+        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            ProviderAccount? account = null;
+            try
+            {
+                account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == accountId, ct);
+                if (account == null || account.RemovedUtc != null)
+                {
+                    return;
+                }
+
+                account.RemovedUtc = removedUtc;
+                account.IsActive = false;
+
+                // SyncSchedule and Credentials have no cascading FK to ProviderAccount; remove them here so nothing keeps
+                // scheduling or authenticating a removed account. The account row and its collected data are retained.
+                SyncSchedule? schedule = await db.SyncSchedules.FirstOrDefaultAsync(s => s.ProviderAccountId == accountId, ct);
+                if (schedule != null)
+                {
+                    _ = db.SyncSchedules.Remove(schedule);
+                }
+
+                List<Credential> credentials = await db.Credentials.Where(c => c.ProviderAccountId == accountId).ToListAsync(ct);
+                db.Credentials.RemoveRange(credentials);
+
+                _ = await db.SaveChangesAsync(ct);
+                _logger.LogInformation("Provider account retired: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account.ProviderName));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retiring provider account: {ProviderAccountId} ({ProviderName})", accountId, SanitizeForLog(account?.ProviderName ?? "unknown"));
+                throw;
+            }
         }
 
         /// <summary>Adds a new provider account.</summary>
@@ -92,7 +138,7 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Deletes a provider account and its sync schedule in one atomic save.</summary>
-        public async Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public async Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             ProviderAccount? account = null;

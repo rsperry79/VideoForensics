@@ -18,5 +18,7 @@ namespace VideoForensics.Data.Common.Entities
         public DateTime? LastErrorUtc { get; set; }
         /// <summary>Description of the most recent failure surfaced to operators (e.g. credential decryption failure). Cleared on the next successful operation.</summary>
         public string? LastErrorMessage { get; set; }
+        /// <summary>Non-null once the account was removed: data retained, no longer active or scheduled.</summary>
+        public DateTime? RemovedUtc { get; set; }
     }
 }

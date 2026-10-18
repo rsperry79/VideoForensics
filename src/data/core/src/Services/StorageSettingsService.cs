@@ -141,6 +141,7 @@ namespace VideoForensics.Data.Core.Services
                 StorageCategory.Logs => config.LogsLocation,
                 StorageCategory.Reports => config.ReportsLocation,
                 StorageCategory.Backup => config.QueryExportLocation,
+                StorageCategory.Exports => config.ExportsLocation,
                 StorageCategory.Keys => null, // Keys never has an override
                 _ => null
             };
@@ -167,6 +168,9 @@ namespace VideoForensics.Data.Core.Services
                     break;
                 case StorageCategory.Backup:
                     config.QueryExportLocation = newPath;
+                    break;
+                case StorageCategory.Exports:
+                    config.ExportsLocation = newPath;
                     break;
                 case StorageCategory.Keys:
                     // Keys cannot be relocated, no override set

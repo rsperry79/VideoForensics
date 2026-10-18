@@ -104,6 +104,7 @@ namespace VideoForensics.Client.Core.Services
                 config.ReportOutputFormat = await GetStringSetting("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 config.DownloadLocation = await GetStringSetting("DownloadLocation", config.DownloadLocation, cancellationToken);
                 config.QueryExportLocation = await GetStringSetting("QueryExportLocation", config.QueryExportLocation, cancellationToken);
+                config.ExportsLocation = await GetStringSetting("ExportsLocation", config.ExportsLocation, cancellationToken);
                 config.DatabaseLocation = await GetStringSetting("DatabaseLocation", config.DatabaseLocation, cancellationToken);
                 config.TempDownloadLocation = await GetStringSetting("TempDownloadLocation", config.TempDownloadLocation, cancellationToken);
                 config.LogsLocation = await GetStringSetting("LogsLocation", config.LogsLocation, cancellationToken);
@@ -168,6 +169,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("ExportsLocation", config.ExportsLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("DatabaseLocation", config.DatabaseLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? "", cancellationToken);

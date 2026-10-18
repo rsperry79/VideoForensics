@@ -30,6 +30,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ReportOutputFormat = loadedConfig.ReportOutputFormat;
                 runtimeConfig.DownloadLocation = loadedConfig.DownloadLocation;
                 runtimeConfig.QueryExportLocation = loadedConfig.QueryExportLocation;
+                runtimeConfig.ExportsLocation = loadedConfig.ExportsLocation;
                 runtimeConfig.DatabaseLocation = loadedConfig.DatabaseLocation;
                 runtimeConfig.TempDownloadLocation = loadedConfig.TempDownloadLocation;
                 runtimeConfig.LogsLocation = loadedConfig.LogsLocation;

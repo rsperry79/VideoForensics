@@ -122,6 +122,13 @@ namespace VideoForensics.Hosting.BackgroundServices
                     }
 
                     providerName = account.ProviderName;
+                    if (account.RemovedUtc != null)
+                    {
+                        // Defensive: retiring an account deletes its schedule, so this only fires on a leftover row.
+                        _logger.LogDebug("Scheduled sync skipped: {ProviderName} account was removed", providerName);
+                        continue;
+                    }
+
                     if (!account.IsActive)
                     {
                         _logger.LogDebug("Scheduled sync skipped: {ProviderName} account is inactive", providerName);
