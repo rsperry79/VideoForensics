@@ -8,6 +8,12 @@ using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Core.Helpers.Platform;
 
+// Aliased: importing the whole providers-common namespace makes `Device` ambiguous with Data.Common.Entities.Device.
+using INotificationDispatcher = VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher;
+using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
+using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
+using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
+
 namespace VideoForensics.Data.Core.Services
 {
     /// <summary>Service for generating forensic analysis reports from stored evidence data.</summary>
@@ -22,6 +28,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
         private readonly IStorageLocationProvider _storageLocationProvider;
+        private readonly INotificationDispatcher? _notificationDispatcher;
 
         public ReportGenerationService(
             IMediaItemRepository mediaItemRepository,
@@ -32,8 +39,10 @@ namespace VideoForensics.Data.Core.Services
             IJammingRepository jammingRepository,
             IIntegrityRecordRepository integrityRecordRepository,
             ILogger<ReportGenerationService> logger,
-            IStorageLocationProvider storageLocationProvider)
+            IStorageLocationProvider storageLocationProvider,
+            INotificationDispatcher? notificationDispatcher = null)
         {
+            _notificationDispatcher = notificationDispatcher;
             _mediaItemRepository = mediaItemRepository;
             _deviceRepository = deviceRepository;
             _downloadEventRepository = downloadEventRepository;
@@ -274,6 +283,11 @@ namespace VideoForensics.Data.Core.Services
                     "Built chain of custody report: {ActionCount} actions, chain valid={ChainValid}",
                     filteredActions.Count,
                     chainIsValid);
+
+                if (!chainIsValid)
+                {
+                    await DispatchChainIntegrityAlertAsync(ct);
+                }
             }
             catch (Exception ex)
             {
@@ -281,6 +295,37 @@ namespace VideoForensics.Data.Core.Services
             }
 
             return report;
+        }
+
+        /// <summary>
+        /// Raises an Alert-severity notice so a broken audit chain shows in the notices bell.
+        /// Failures are isolated: a notification problem must never suppress the report itself.
+        /// </summary>
+        private async Task DispatchChainIntegrityAlertAsync(CancellationToken ct)
+        {
+            if (_notificationDispatcher == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _notificationDispatcher.DispatchAsync(
+                    new NotificationEvent(
+                        EventType: "ChainOfCustodyIntegrityFailed",
+                        TimestampUtc: DateTime.UtcNow,
+                        OperatorId: null,
+                        PairedDeviceId: null,
+                        SourceIp: null,
+                        Details: "Chain of custody integrity check failed: the audit trail hash chain does not verify.",
+                        Audience: NotificationAudience.AdminsOnly,
+                        Severity: NoticeSeverity.Alert),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch chain of custody integrity alert (non-critical)");
+            }
         }
 
         public async Task WriteReportAsync(object reportDto, string format, CancellationToken ct)
