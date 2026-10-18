@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -46,6 +48,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IDeviceDiscoveryService _deviceDiscovery;
         private readonly IMediaDownloadService? _mediaDownloadService;
         private readonly string _mediaRoot;
+        private readonly IDeviceConfigRepository? _deviceConfigRepository;
 
         /// <summary>
         /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
@@ -60,8 +63,10 @@ namespace VideoForensics.Hosting.Services
             IDeviceDiscoveryService deviceDiscovery,
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
-            string? mediaRoot = null)
+            string? mediaRoot = null,
+            IDeviceConfigRepository? deviceConfigRepository = null)
         {
+            _deviceConfigRepository = deviceConfigRepository;
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
             _locationRepository = locationRepository;
@@ -154,6 +159,7 @@ namespace VideoForensics.Hosting.Services
                         if (config != null)
                         {
                             configAreasSynced++;
+                            await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
                         }
 
                         device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
@@ -285,6 +291,43 @@ namespace VideoForensics.Hosting.Services
             }
 
             return existing;
+        }
+
+        /// <summary>
+        /// Appends a configuration snapshot only when the fetched values differ from the latest stored one, so history
+        /// records changes rather than one row per sync.
+        /// </summary>
+        private async Task PersistDeviceConfigIfChangedAsync(Guid deviceId, DeviceConfig config, CancellationToken cancellationToken)
+        {
+            if (_deviceConfigRepository is null)
+            {
+                return;
+            }
+
+            var sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
+            var customSettingsJson = config.CustomSettings is null ? null : JsonSerializer.Serialize(config.CustomSettings);
+
+            DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
+            if (latest is not null &&
+                latest.MotionDetectionEnabled == config.MotionDetectionEnabled &&
+                latest.MotionSensitivity == sensitivity &&
+                latest.RecordingMode == config.RecordingMode &&
+                latest.CustomSettingsJson == customSettingsJson)
+            {
+                return;
+            }
+
+            await _deviceConfigRepository.AppendSnapshotAsync(new DeviceConfigSnapshot
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                MotionDetectionEnabled = config.MotionDetectionEnabled,
+                MotionSensitivity = sensitivity,
+                RecordingMode = config.RecordingMode,
+                CustomSettingsJson = customSettingsJson,
+                CapturedAtUtc = DateTime.UtcNow,
+                Source = DeviceConfigSource.Fetched
+            }, cancellationToken);
         }
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)

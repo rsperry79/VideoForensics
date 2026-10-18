@@ -622,7 +622,8 @@ namespace VideoForensics.Hosting
                     provider.GetRequiredService<IProviderAccountRepository>(),
                     provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
                     provider.GetService<ILogger<EventPullService>>(),
-                    provider.GetKeyedService<IMediaDownloadService>(providerName)));
+                    provider.GetKeyedService<IMediaDownloadService>(providerName),
+                    deviceConfigRepository: provider.GetRequiredService<IDeviceConfigRepository>()));
             }
 
             return services;

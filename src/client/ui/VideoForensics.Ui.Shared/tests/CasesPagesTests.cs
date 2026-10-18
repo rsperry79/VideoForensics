@@ -250,7 +250,7 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         var component = RenderPage();
 
-        // ScopeRail now lives in the left-panel slot, which the page render does not draw, so only the page loads.
+        // ScopeRail now lives in the right-panel slot, which the page render does not draw, so only the page loads.
         CaseRepositoryMock.Verify(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()), Times.Once);
 
         var cases = GridData(component).ToList();
@@ -260,7 +260,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     }
 
     [Fact]
-    public void Cases_RendersScopeFilter_InLeftPanelSlot_NotInPageBody()
+    public void Cases_RendersScopeFilter_InRightPanelSlot_NotInLeftPanel()
     {
         CaseRepositoryMock
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
@@ -268,14 +268,14 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         var component = RenderPage();
 
-        // Page body has no ScopeRail; it was handed to the left-panel slot instead.
+        // Page body has no ScopeRail; it was handed to the right-panel slot.
         Assert.Empty(component.FindComponents<ScopeRail>());
-        var slot = Services.GetRequiredService<LeftPanelContentService>();
-        Assert.NotNull(slot.Content);
+        var leftSlot = Services.GetRequiredService<LeftPanelContentService>();
+        Assert.Null(leftSlot.Content);
 
-        // Rendering the slot fragment (as MainLayout's left pane would) produces the scope rail.
-        var leftPanel = Render(slot.Content!);
-        Assert.NotEmpty(leftPanel.FindComponents<ScopeRail>());
+        // Rendering the right-panel fragment (as MainLayout's right pane would) produces the scope rail.
+        var panel = Render(RightPanelFragment());
+        Assert.NotEmpty(panel.FindComponents<ScopeRail>());
     }
 
     [Fact]
