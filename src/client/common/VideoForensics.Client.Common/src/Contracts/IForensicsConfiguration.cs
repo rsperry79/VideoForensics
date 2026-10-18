@@ -80,6 +80,13 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         string? UniviewFfmpegPath { get; set; }
 
+        /// <summary>
+        /// Directory containing both ffmpeg and ffprobe executables. Used by every ffmpeg/ffprobe
+        /// consumer so the app does not depend on the process PATH (which can be stale). Null or empty
+        /// means "unset": on load it is auto-discovered from the app base directory, then PATH, and persisted.
+        /// </summary>
+        string? FfmpegBinDirectory { get; set; }
+
         /// <summary>Toggles on-demand live view sessions for cameras. Default on.</summary>
         bool EnableLiveView { get; set; }
         /// <summary>Idle timeout for active (non-sustained) live view sessions in minutes. Default 5.</summary>
@@ -173,6 +180,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string? InternetServerUrl { get; set; }
         public string? UniviewNvrHost { get; set; }
         public string? UniviewFfmpegPath { get; set; }
+        public string? FfmpegBinDirectory { get; set; }
         public bool EnableLiveView { get; set; } = true;
         public int LiveViewIdleTimeoutMinutes { get; set; } = 5;
         public int LiveViewTelemetrySampleIntervalSeconds { get; set; } = 2;

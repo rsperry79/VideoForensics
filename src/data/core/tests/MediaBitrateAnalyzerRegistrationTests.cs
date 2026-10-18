@@ -1,0 +1,33 @@
+using Microsoft.Extensions.DependencyInjection;
+
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Core;
+using VideoForensics.Data.Core.DependencyInjection;
+
+using Xunit;
+
+namespace VideoForensics.Data.Core.Tests
+{
+    /// <summary>
+    /// Verifies IMediaBitrateAnalyzer is transient so it re-reads IFfmpegToolLocation.BinDirectory on each resolve
+    /// instead of freezing the bin directory captured at first resolve (which may precede config load).
+    /// </summary>
+    public class MediaBitrateAnalyzerRegistrationTests
+    {
+        [Fact]
+        public void IMediaBitrateAnalyzer_ResolvedBeforeAndAfterBinDirectorySet_IsNewInstanceEachTime()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddVideoForensicsDataCore();
+            using ServiceProvider provider = services.BuildServiceProvider();
+
+            IFfmpegToolLocation location = provider.GetRequiredService<IFfmpegToolLocation>();
+            IMediaBitrateAnalyzer first = provider.GetRequiredService<IMediaBitrateAnalyzer>();
+
+            location.BinDirectory = Path.GetTempPath();
+            IMediaBitrateAnalyzer second = provider.GetRequiredService<IMediaBitrateAnalyzer>();
+
+            Assert.NotSame(first, second);
+        }
+    }
+}

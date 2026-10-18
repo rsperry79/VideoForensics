@@ -20,7 +20,12 @@ namespace VideoForensics.Data.Core.DependencyInjection
             // Phase 1 core services
             _ = services.AddScoped<IWatermarkService, WatermarkService>();
             _ = services.AddActionLogger();
-            services.TryAddSingleton<VideoForensics.Core.Providers.Core.IMediaBitrateAnalyzer, VideoForensics.Core.Providers.Core.FfprobeMediaBitrateAnalyzer>();
+            // Holder for the configured ffmpeg bin directory; ForensicsConfigurationService writes it, tool consumers read it.
+            services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation, VideoForensics.Core.Providers.Core.FfmpegToolLocation>();
+            // Transient: the bin directory may be set after first resolve, so each resolve must read it fresh.
+            services.TryAddTransient<VideoForensics.Core.Providers.Core.IMediaBitrateAnalyzer>(sp =>
+                new VideoForensics.Core.Providers.Core.FfprobeMediaBitrateAnalyzer(
+                    VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffprobe", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
             services.TryAddSingleton<VideoForensics.Core.Providers.Core.IClipColorAnalyzer, VideoForensics.Core.Providers.Core.FfmpegClipColorAnalyzer>();
             services.TryAddSingleton<VideoForensics.Core.Providers.Core.IAudioClipAnalyzer, VideoForensics.Core.Providers.Core.FfmpegAudioAnalyzer>();
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();

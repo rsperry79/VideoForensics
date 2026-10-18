@@ -406,7 +406,9 @@ namespace VideoForensics.Hosting
             // imports the whole database as portable JSON+zip, so evidence can be reconstituted into
             // a fresh database on another machine.
             _ = services.AddScoped<IMediaMetadataTagger>(serviceProvider =>
-                new FfmpegMediaMetadataTagger(serviceProvider.GetRequiredService<ILogger<FfmpegMediaMetadataTagger>>())
+                new FfmpegMediaMetadataTagger(
+                    serviceProvider.GetRequiredService<ILogger<FfmpegMediaMetadataTagger>>(),
+                    binDirectory: serviceProvider.GetRequiredService<IFfmpegToolLocation>().BinDirectory)
             );
 
             _ = services.AddScoped<IBackupExportService>(serviceProvider =>
@@ -433,7 +435,8 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<IForensicsConfigurationService>(serviceProvider =>
                 new ForensicsConfigurationService(
                     serviceProvider.GetRequiredService<ILogger<ForensicsConfigurationService>>(),
-                    serviceProvider.GetRequiredService<IAppSettingRepository>()
+                    serviceProvider.GetRequiredService<IAppSettingRepository>(),
+                    serviceProvider.GetRequiredService<IFfmpegToolLocation>()
                 )
             );
 

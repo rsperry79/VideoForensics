@@ -20,11 +20,11 @@ namespace VideoForensics.Providers.Ring.Services
         private readonly string _ffprobePath;
         private readonly ILogger _logger;
 
-        public FfmpegMediaMetadataTagger(ILogger logger, string? ffmpegPath = null, string? ffprobePath = null)
+        public FfmpegMediaMetadataTagger(ILogger logger, string? ffmpegPath = null, string? ffprobePath = null, string? binDirectory = null)
         {
             _logger = logger;
-            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
-            _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe");
+            _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg", binDirectory);
+            _ffprobePath = FfmpegPathResolver.Resolve(ffprobePath, "ffprobe", binDirectory);
         }
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
