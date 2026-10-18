@@ -487,6 +487,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapSoftwarePathsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();

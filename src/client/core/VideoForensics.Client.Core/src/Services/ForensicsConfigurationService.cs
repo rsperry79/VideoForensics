@@ -13,19 +13,23 @@ namespace VideoForensics.Client.Core.Services
         private readonly IAppSettingRepository _settingRepository;
         private readonly IFfmpegToolLocation? _ffmpegToolLocation;
         private readonly Func<string?> _discoverBinDirectory;
+        private readonly Func<string?> _discoverCloudflaredPath;
 
         /// <param name="ffmpegToolLocation">Optional holder that consumers read the ffmpeg bin directory from; kept in sync on load and save.</param>
         /// <param name="discoverBinDirectory">Optional discovery used on first run when FfmpegBinDirectory is empty. Defaults to <see cref="FfmpegBinDirectoryLocator.DiscoverDefault"/>.</param>
+        /// <param name="discoverCloudflaredPath">Optional discovery used when CloudflaredPath is empty. Defaults to finding "cloudflared" via <see cref="FfmpegBinDirectoryLocator.DiscoverDefaultExecutable"/>.</param>
         public ForensicsConfigurationService(
             ILogger<ForensicsConfigurationService> logger,
             IAppSettingRepository settingRepository,
             IFfmpegToolLocation? ffmpegToolLocation = null,
-            Func<string?>? discoverBinDirectory = null)
+            Func<string?>? discoverBinDirectory = null,
+            Func<string?>? discoverCloudflaredPath = null)
         {
             _logger = logger;
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
             _ffmpegToolLocation = ffmpegToolLocation;
             _discoverBinDirectory = discoverBinDirectory ?? FfmpegBinDirectoryLocator.DiscoverDefault;
+            _discoverCloudflaredPath = discoverCloudflaredPath ?? (() => FfmpegBinDirectoryLocator.DiscoverDefaultExecutable("cloudflared"));
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
@@ -42,6 +46,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             await EnsureFfmpegBinDirectoryAsync(config, cancellationToken);
+            await EnsureCloudflaredPathAsync(config, cancellationToken);
 
             if (_ffmpegToolLocation != null)
             {
@@ -91,6 +96,35 @@ namespace VideoForensics.Client.Core.Services
             }
         }
 
+        /// <summary>
+        /// Discovers cloudflared when CloudflaredPath is empty and persists only that key. Never throws.
+        /// </summary>
+        private async Task EnsureCloudflaredPathAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
+        {
+            if (!string.IsNullOrWhiteSpace(config.CloudflaredPath))
+            {
+                return;
+            }
+
+            try
+            {
+                var discovered = _discoverCloudflaredPath();
+                if (discovered == null)
+                {
+                    _logger.LogInformation("cloudflared not found in the app directory or PATH; set CloudflaredPath to enable Remote Access tunnels");
+                    return;
+                }
+
+                config.CloudflaredPath = discovered;
+                await _settingRepository.SetAsync("CloudflaredPath", discovered, cancellationToken);
+                _logger.LogInformation("Found cloudflared at {Path}; saved as CloudflaredPath", discovered);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "cloudflared discovery failed; set CloudflaredPath");
+            }
+        }
+
         private async Task LoadFromDatabaseAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
         {
             try
@@ -133,6 +167,7 @@ namespace VideoForensics.Client.Core.Services
                 config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
                 config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
                 config.FfmpegBinDirectory = await GetStringSetting("FfmpegBinDirectory", config.FfmpegBinDirectory, cancellationToken);
+                config.CloudflaredPath = await GetStringSetting("CloudflaredPath", config.CloudflaredPath, cancellationToken);
                 config.EnableLiveView = await GetBoolSetting("EnableLiveView", config.EnableLiveView, cancellationToken);
                 config.LiveViewIdleTimeoutMinutes = await GetIntSetting("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes, cancellationToken);
                 config.LiveViewTelemetrySampleIntervalSeconds = await GetIntSetting("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds, cancellationToken);
@@ -197,6 +232,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("CloudflaredPath", config.CloudflaredPath ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableLiveView", config.EnableLiveView.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds.ToString(), cancellationToken);

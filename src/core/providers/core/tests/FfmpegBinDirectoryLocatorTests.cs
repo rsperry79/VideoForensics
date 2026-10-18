@@ -78,6 +78,42 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
+        public void FindExecutable_ReturnsFirstDirectoryContainingFile()
+        {
+            var empty = CreateTempDir();
+            var good = CreateTempDir();
+            try
+            {
+                TouchFile(good, "cloudflared");
+
+                var result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { empty, good }, "cloudflared");
+
+                Assert.Equal(Path.Combine(good, "cloudflared" + Ext), result);
+            }
+            finally
+            {
+                Directory.Delete(empty, true);
+                Directory.Delete(good, true);
+            }
+        }
+
+        [Fact]
+        public void FindExecutable_NoMatch_ReturnsNull()
+        {
+            var dir = CreateTempDir();
+            try
+            {
+                var result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { dir, null }, "cloudflared");
+
+                Assert.Null(result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
         public void DefaultCandidates_AppBaseThenPathEntries_YieldsInOrderAndSkipsEmpty()
         {
             var pathVariable = string.Join(Path.PathSeparator, "C:\\first", "", "\"C:\\second\"", "C:\\third");

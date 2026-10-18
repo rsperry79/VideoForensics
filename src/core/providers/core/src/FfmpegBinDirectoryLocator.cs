@@ -51,8 +51,36 @@ namespace VideoForensics.Core.Providers.Core
             }
         }
 
+        /// <summary>
+        /// Returns the full path of <paramref name="fileName"/> (with the platform executable extension) inside the first
+        /// candidate directory that contains it, or null if none does. Null and whitespace candidates are skipped.
+        /// </summary>
+        public static string? FindExecutable(IEnumerable<string?> candidateDirectories, string fileName)
+        {
+            var exeName = fileName + (OperatingSystem.IsWindows() ? ".exe" : string.Empty);
+            foreach (var dir in candidateDirectories)
+            {
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    continue;
+                }
+
+                var candidate = Path.Combine(dir, exeName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Discovers the bin directory from the app base directory and then the process PATH.</summary>
         public static string? DiscoverDefault() =>
             FindBinDirectory(DefaultCandidates(AppContext.BaseDirectory, Environment.GetEnvironmentVariable("PATH")));
+
+        /// <summary>Discovers an executable by base name from the app base directory and then the process PATH.</summary>
+        public static string? DiscoverDefaultExecutable(string fileName) =>
+            FindExecutable(DefaultCandidates(AppContext.BaseDirectory, Environment.GetEnvironmentVariable("PATH")), fileName);
     }
 }
