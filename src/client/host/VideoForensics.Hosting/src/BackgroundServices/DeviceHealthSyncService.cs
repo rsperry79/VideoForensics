@@ -444,7 +444,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
-                    _logger.LogError(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceId} (non-critical)", deviceId);
+                    string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
+                    _logger.LogError(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
                 }
             }
         }

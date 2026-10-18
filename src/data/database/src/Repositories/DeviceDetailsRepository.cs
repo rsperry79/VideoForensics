@@ -29,9 +29,10 @@ namespace VideoForensics.Data.Database.Repositories
             DeviceSettingsChildren? settings = null)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = null;
             try
             {
-                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
                 if (device == null)
                 {
                     _logger.LogWarning("Device details not written: device {DeviceId} does not exist", deviceId);
@@ -120,11 +121,11 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Device details recorded for device {DeviceId}", deviceId);
+                _logger.LogDebug("Device details recorded for device {DeviceName}", device.Name);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error recording device details for device {DeviceName}", device?.Name ?? "unknown device");
                 throw;
             }
         }

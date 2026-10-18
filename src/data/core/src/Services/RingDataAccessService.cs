@@ -46,12 +46,12 @@ namespace VideoForensics.Data.Core.Services
 
             if (_cacheFreshnessService.IsStale(cached, DeviceTtlMinutes))
             {
-                _logger.LogDebug("Device cache stale for {DeviceId}, will refetch from API", deviceId);
+                _logger.LogDebug("Device cache stale for {DeviceName}, will refetch from API", cached.Name);
                 return (cached, true); // Cache stale, need API
             }
 
-            _logger.LogDebug("Device cache hit for {DeviceId}, age {AgeMinutes}min",
-                deviceId, _cacheFreshnessService.GetAgeMinutes(cached));
+            _logger.LogDebug("Device cache hit for {DeviceName}, age {AgeMinutes}min",
+                cached.Name,_cacheFreshnessService.GetAgeMinutes(cached));
             return (cached, false); // Cache fresh
         }
 
@@ -67,12 +67,12 @@ namespace VideoForensics.Data.Core.Services
 
             if (_cacheFreshnessService.IsStale(cached, LocationTtlMinutes))
             {
-                _logger.LogDebug("Location cache stale for {LocationId}, will refetch from API", locationId);
+                _logger.LogDebug("Location cache stale for {LocationName}, will refetch from API", cached.Name);
                 return (cached, true); // Cache stale, need API
             }
 
-            _logger.LogDebug("Location cache hit for {LocationId}, age {AgeMinutes}min",
-                locationId, _cacheFreshnessService.GetAgeMinutes(cached));
+            _logger.LogDebug("Location cache hit for {LocationName}, age {AgeMinutes}min",
+                cached.Name,_cacheFreshnessService.GetAgeMinutes(cached));
             return (cached, false); // Cache fresh
         }
 
@@ -81,7 +81,7 @@ namespace VideoForensics.Data.Core.Services
         {
             _ = _cacheFreshnessService.MarkSynced(device);
             await _deviceRepository.UpdateAsync(device, ct);
-            _logger.LogDebug("Persisted device {DeviceId} to cache", device.Id);
+            _logger.LogDebug("Persisted device {DeviceName} to cache", device.Name);
             return device;
         }
 
@@ -90,7 +90,7 @@ namespace VideoForensics.Data.Core.Services
         {
             _ = _cacheFreshnessService.MarkSynced(location);
             await _locationRepository.UpdateAsync(location, ct);
-            _logger.LogDebug("Persisted location {LocationId} to cache", location.Id);
+            _logger.LogDebug("Persisted location {LocationName} to cache", location.Name);
             return location;
         }
 

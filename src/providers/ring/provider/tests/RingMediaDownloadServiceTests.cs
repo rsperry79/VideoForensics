@@ -713,7 +713,7 @@ namespace VideoForensics.Providers.Ring.Tests
             });
             Guid deviceGuid = Guid.NewGuid();
 
-            await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", deviceGuid, CancellationToken.None);
+            await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", "Test Camera", deviceGuid, CancellationToken.None);
 
             dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<VideoForensics.Data.Common.Entities.DeviceHealth>(h =>
                 h.DeviceId == deviceGuid

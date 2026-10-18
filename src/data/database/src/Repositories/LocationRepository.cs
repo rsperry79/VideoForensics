@@ -124,19 +124,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task DeleteAsync(Guid locationId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Location? location = null;
             try
             {
-                Location? location = await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
+                location = await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
                 if (location != null)
                 {
                     _ = db.Locations.Remove(location);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Location deleted: {LocationId}", locationId);
+                    _logger.LogDebug("Location deleted: {LocationName}", location.Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting location: {LocationId}", locationId);
+                _logger.LogError(ex, "Error deleting location: {LocationName}", location?.Name ?? "unknown location");
                 throw;
             }
         }

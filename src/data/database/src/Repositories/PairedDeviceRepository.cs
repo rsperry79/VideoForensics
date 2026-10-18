@@ -44,8 +44,8 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.PairedDevices.Add(device);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogDebug("Paired device created: {PairedDeviceId} for Operator {OperatorId}, role {Role}",
-                device.Id, device.OperatorId, device.Role);
+            _logger.LogDebug("Paired device created: {PairedDeviceName} for Operator {OperatorId}, role {Role}",
+                device.DeviceName,device.OperatorId, device.Role);
             return device;
         }
 
@@ -83,7 +83,7 @@ namespace VideoForensics.Data.Database.Repositories
             device.RevokedAtUtc = DateTime.UtcNow;
             device.RevokedReason = reason;
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Paired device revoked: {PairedDeviceId} - {Reason}", pairedDeviceId, SanitizeForLog(reason));
+            _logger.LogInformation("Paired device revoked: {PairedDeviceName} - {Reason}", device.DeviceName, SanitizeForLog(reason));
         }
 
         public async Task<IReadOnlyList<Guid>> RevokeAllForOperatorAsync(Guid operatorId, string reason, CancellationToken ct)

@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Core.Services
             Device? device = await _deviceRepository.GetAsync(deviceId, ct);
             if (device?.LastSuccessfulPullAtUtc == null)
             {
-                _logger.LogDebug("No prior successful download found for device {DeviceId}; using requested start date {RequestedDate:O}", deviceId, requestedStartDate);
+                _logger.LogDebug("No prior successful download found for device {DeviceName}; using requested start date {RequestedDate:O}", device?.Name ?? "unknown", requestedStartDate);
                 return requestedStartDate;
             }
 

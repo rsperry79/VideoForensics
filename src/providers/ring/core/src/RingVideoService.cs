@@ -816,7 +816,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -828,7 +828,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -840,7 +840,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -852,7 +852,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot((int)d.Id, fileName);
+                        _ = await GetSnapshot((int)d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -860,7 +860,7 @@ namespace VideoForensics.Providers.Ring
             return true;
 
         }
-        internal async Task<bool> GetSnapshot(int doorbotId, string fileName)
+        internal async Task<bool> GetSnapshot(int doorbotId, string deviceName, string fileName)
         {
             try
             {
@@ -873,7 +873,7 @@ namespace VideoForensics.Providers.Ring
             catch (Exception exe)
             {
                 reporter.Warning($"Failed to download snapshot for device {doorbotId}: {exe.Message}");
-                log.LogError(exe, $"Failed to download snapshot for device {doorbotId}");
+                log.LogError(exe, $"Failed to download snapshot for device {deviceName}");
                 return false;
             }
         }
@@ -1192,7 +1192,7 @@ namespace VideoForensics.Providers.Ring
                 // Skip if already recorded
                 if (loadedEventIds.Contains(eventId))
                 {
-                    log.LogDebug($"Skipping duplicate failure record for EventId {eventId}");
+                    log.LogDebug($"Skipping duplicate failure record for EventId {ding.Doorbot?.Description}");
                     return;
                 }
 
@@ -1214,7 +1214,7 @@ namespace VideoForensics.Providers.Ring
 
                 newFailures.Add(failure);
                 _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
-                log.LogDebug($"Recorded failed download for EventId {eventId}");
+                log.LogDebug($"Recorded failed download for EventId {ding.Doorbot.Description}");
             }
             catch (Exception exe)
             {

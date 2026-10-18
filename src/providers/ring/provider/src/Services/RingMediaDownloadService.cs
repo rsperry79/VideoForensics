@@ -167,6 +167,8 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
             DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
+            // Hoisted above the try so the catch can log it; assigned once history is read (events carry the camera name).
+            string deviceName = deviceId;
             try
             {
                 _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
@@ -212,13 +214,14 @@ namespace VideoForensics.Providers.Ring.Services
                 // This ensures all watermark updates within the batch operate on consistent device state.
                 (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
+                deviceName = relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId;
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceName, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
                 // this is purely so gap-analysis can later explain a gap as "battery was low" with
                 // real data instead of guessing.
-                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceGuid, cancellationToken);
+                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceName, deviceGuid, cancellationToken);
 
                 // Cancels the in-flight batch either on real caller cancellation or the moment any
                 // one file hits a rate limit — matching the previous sequential loop's "stop on
@@ -249,7 +252,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
-                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
 
                         // Use the device GUID resolved at batch start; all events are for this same device
@@ -315,7 +318,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                 if (sha256Hash != null)
                                 {
-                                    _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                    _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                         @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
                                 }
 
@@ -490,7 +493,7 @@ namespace VideoForensics.Providers.Ring.Services
                                             persons,
                                             occurrences);
 
-                                        _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                        _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                             @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
 
                                         // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
@@ -640,8 +643,8 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
-                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
-                    downloadedFiles, downloadedBytes, deviceId);
+                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceName}",
+                    downloadedFiles, downloadedBytes, deviceName);
                 _logger.LogDebug("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
                     _peakActiveDownloadsForBatch, _maxConcurrentFileDownloads, relevantEvents.Count);
                 // _logger has no provider registered in Program.cs (nothing sinks LogInformation
@@ -715,7 +718,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -973,7 +976,7 @@ namespace VideoForensics.Providers.Ring.Services
             return (json, hashHex);
         }
 
-        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
+        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
             object? apiResponse = null)
         {
@@ -1357,7 +1360,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
-        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
+        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, string deviceName, Guid deviceGuid, CancellationToken ct)
         {
             try
             {
@@ -1367,21 +1370,21 @@ namespace VideoForensics.Providers.Ring.Services
                 Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
-                    _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No health telemetry available for device {DeviceName} in this run", deviceName);
                 }
                 else
                 {
                     Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
                     _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                     healthId = deviceHealth.Id;
-                    _logger.LogDebug("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                        providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                    _logger.LogDebug("Captured health metric for device {DeviceName}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                        deviceName, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
                 }
 
                 RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
                 if (details == null)
                 {
-                    _logger.LogDebug("No device details available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No device details available for device {DeviceName} in this run", deviceName);
                     return;
                 }
 
@@ -1397,7 +1400,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
             }
         }
 
