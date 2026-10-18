@@ -50,6 +50,39 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
+        /// <summary>
+        /// Test double whose fetches for registered (start, end) ranges signal "entered" and then
+        /// block until released, so a test controls the order in which concurrent fetches finish.
+        /// </summary>
+        private sealed class GatedSession : TestSession
+        {
+            public sealed class Gate
+            {
+                public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
+            private readonly Dictionary<(DateTime Start, DateTime End), Gate> _gates = [];
+
+            public Gate AddGate(DateTime start, DateTime end)
+            {
+                var gate = new Gate();
+                _gates[(start, end)] = gate;
+                return gate;
+            }
+
+            public override async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate, long? doorbotId = null)
+            {
+                if (endDate.HasValue && _gates.TryGetValue((startDate, endDate.Value), out var gate))
+                {
+                    gate.Entered.TrySetResult();
+                    await gate.Release.Task;
+                }
+
+                return await base.GetDoorbotsHistory(startDate, endDate, doorbotId);
+            }
+        }
+
         [Fact]
         public async Task RingHistoryEventCache_PreservesWideningMetadata_Under100ConcurrentRequests()
         {
@@ -221,6 +254,60 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Act & Assert
             Assert.False(cache.IsCached(baseDate, baseDate.AddDays(10)));
+
+            memoryCache.Dispose();
+        }
+
+        [Fact]
+        public async Task RingHistoryEventCache_SlowerWidening_DoesNotNarrowCachedRange()
+        {
+            // Arrange
+            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var logger = new Mock<ILogger>().Object;
+            var cache = new RingHistoryEventCache(memoryCache, logger);
+            var session = new GatedSession();
+            var d = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var ct = timeout.Token;
+
+            // Seed the cache with [D, D+5] before gating anything.
+            await cache.GetEventsAsync(session, d, d.AddDays(5), ct);
+
+            // X widens the start (fetch covers [D-10, D+5]) and is held in flight.
+            var xGate = session.AddGate(d.AddDays(-10), d.AddDays(5));
+            // Y widens the end; if it reads the stale seed it fetches [D, D+40].
+            var yGate = session.AddGate(d, d.AddDays(40));
+
+            // Act
+            var x = cache.GetEventsAsync(session, d.AddDays(-10), d.AddDays(5), ct);
+            await xGate.Entered.Task.WaitAsync(ct);
+
+            var y = cache.GetEventsAsync(session, d, d.AddDays(40), ct);
+            await Task.WhenAny(yGate.Entered.Task, Task.Delay(500));
+
+            if (yGate.Entered.Task.IsCompleted)
+            {
+                // No lock: Y stored [D, D+40] first, then the slower X overwrites it with the narrower range.
+                yGate.Release.SetResult();
+                await y.WaitAsync(ct);
+                xGate.Release.SetResult();
+                await x.WaitAsync(ct);
+            }
+            else
+            {
+                // Lock present: Y waits for X, then re-reads the cache and widens from X's stored range.
+                xGate.Release.SetResult();
+                await x.WaitAsync(ct);
+                await y.WaitAsync(ct);
+            }
+
+            var yResult = await y;
+
+            // Assert
+            Assert.True(
+                cache.IsCached(d, d.AddDays(40)),
+                "The widened end (D+40) was not preserved: a slower, narrower fetch overwrote the wider cached range");
+            Assert.NotEmpty(yResult);
 
             memoryCache.Dispose();
         }
