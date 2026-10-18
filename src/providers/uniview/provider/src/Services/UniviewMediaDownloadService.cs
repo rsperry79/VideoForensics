@@ -15,6 +15,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 {
     private readonly ILogger<UniviewMediaDownloadService> _logger;
     private readonly IUniviewSessionProvider _sessionProvider;
+    private readonly Func<UniviewClient, int, string, CancellationToken, Task> _liveSnapshotCapture;
 
     // Mutable state tracking — accessed from download thread and status-query threads
     private DownloadStatus _currentStatus = new(IsDownloading: false, FilesCompleted: 0, FilesTotal: 0, BytesDownloaded: 0);
@@ -28,12 +29,18 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     private DateTime? _capacityBanUntilUtc;
     private const int CapacityBanMinutes = 5;
 
+    /// <param name="liveSnapshotCapture">
+    /// Grabs one live frame to a JPEG path. Defaults to the client's RTSP grab; tests pass a fake so the fallback
+    /// runs without a camera or ffmpeg.
+    /// </param>
     public UniviewMediaDownloadService(
         ILogger<UniviewMediaDownloadService> logger,
-        IUniviewSessionProvider sessionProvider)
+        IUniviewSessionProvider sessionProvider,
+        Func<UniviewClient, int, string, CancellationToken, Task>? liveSnapshotCapture = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
+        _liveSnapshotCapture = liveSnapshotCapture ?? ((client, channel, path, ct) => client.CaptureLiveSnapshotAsync(channel, path, ct));
     }
 
     /// <summary>
@@ -475,9 +482,9 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     }
 
     /// <summary>
-    /// Uniview devices have no device-side historical snapshot capability — only live RTSP frame grab.
-    /// Captures a current-moment JPEG via ffmpeg and clearly documents that only a live snapshot was
-    /// captured, not historical ones for the requested range.
+    /// With a valid from/to window, extracts one JPEG per recorded segment in that window (device has no
+    /// snapshot API, so frames come from the downloaded recording). Without a window, falls back to a
+    /// single live RTSP frame grab.
     /// Account-aware overload that retrieves the client for a specific provider account.
     /// </summary>
     public async Task<DownloadResult> DownloadSnapshotsAsync(
@@ -513,6 +520,13 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             _ = Directory.CreateDirectory(outputPath);
 
+            // A real from/to window means snapshots come from recorded footage in that window;
+            // the live frame below is only the fallback when no window was supplied.
+            if (HasRequestedWindow(startDate, endDate))
+            {
+                return await DownloadWindowedSnapshotsAsync(client, channel, deviceId, outputPath, startDate, endDate, cancellationToken);
+            }
+
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
@@ -522,7 +536,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             try
             {
-                await client.CaptureLiveSnapshotAsync(channel, fileName, cancellationToken);
+                await _liveSnapshotCapture(client, channel, fileName, cancellationToken);
 
                 if (!File.Exists(fileName))
                 {
@@ -611,9 +625,9 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     }
 
     /// <summary>
-    /// Uniview devices have no device-side historical snapshot capability — only live RTSP frame grab.
-    /// Captures a current-moment JPEG via ffmpeg and clearly documents that only a live snapshot was
-    /// captured, not historical ones for the requested range.
+    /// With a valid from/to window, extracts one JPEG per recorded segment in that window (device has no
+    /// snapshot API, so frames come from the downloaded recording). Without a window, falls back to a
+    /// single live RTSP frame grab.
     /// </summary>
     public async Task<DownloadResult> DownloadSnapshotsAsync(
         string deviceId,
@@ -647,6 +661,13 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             _ = Directory.CreateDirectory(outputPath);
 
+            // A real from/to window means snapshots come from recorded footage in that window;
+            // the live frame below is only the fallback when no window was supplied.
+            if (HasRequestedWindow(startDate, endDate))
+            {
+                return await DownloadWindowedSnapshotsAsync(client, channel, deviceId, outputPath, startDate, endDate, cancellationToken);
+            }
+
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
@@ -656,7 +677,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
 
             try
             {
-                await client.CaptureLiveSnapshotAsync(channel, fileName, cancellationToken);
+                await _liveSnapshotCapture(client, channel, fileName, cancellationToken);
 
                 if (!File.Exists(fileName))
                 {
@@ -742,6 +763,166 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 Success: false,
                 ErrorMessage: $"Download failed: {ex.Message}");
         }
+    }
+
+    /// <summary>A usable window is one where both bounds are set and start precedes end.</summary>
+    public static bool HasRequestedWindow(DateTime startDate, DateTime endDate) =>
+        startDate != default && endDate != default && startDate < endDate;
+
+    /// <summary>One snapshot to extract: the segment to download and the offset into it.</summary>
+    public sealed record SnapshotTarget(RecordSegment Segment, TimeSpan Offset);
+
+    /// <summary>
+    /// Plans one frame per recorded segment overlapping the window, chronologically. The frame is taken
+    /// at the segment start, or at the window start when the segment began earlier.
+    /// </summary>
+    public static IReadOnlyList<SnapshotTarget> PlanSnapshotTargets(
+        IEnumerable<RecordSegment> segments, DateTimeOffset windowStart, DateTimeOffset windowEnd)
+    {
+        return segments
+            .Where(s => s.End > windowStart && s.Begin < windowEnd)
+            .OrderBy(s => s.Begin)
+            .Select(s => new SnapshotTarget(s, s.Begin >= windowStart ? TimeSpan.Zero : windowStart - s.Begin))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Lists recorded segments in the window, downloads each to a temp file, extracts a frame at the
+    /// planned offset and discards the temp video.
+    /// </summary>
+    private async Task<DownloadResult> DownloadWindowedSnapshotsAsync(
+        UniviewClient client, int channel, string deviceId, string outputPath,
+        DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
+    {
+        DateTimeOffset windowStart = new DateTimeOffset(startDate.ToUniversalTime(), TimeSpan.Zero);
+        DateTimeOffset windowEnd = new DateTimeOffset(endDate.ToUniversalTime(), TimeSpan.Zero);
+
+        var segments = new List<RecordSegment>();
+        foreach ((DateTimeOffset monthStart, DateTimeOffset monthEnd) in GetMonthChunks(startDate, endDate))
+        {
+            DateTimeOffset from = monthStart > windowStart ? monthStart : windowStart;
+            DateTimeOffset to = monthEnd < windowEnd ? monthEnd : windowEnd;
+            if (from >= to)
+            {
+                continue;
+            }
+
+            try
+            {
+                segments.AddRange(await client.ListSegmentsAsync(channel, from, to, cancellationToken));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
+                _activityLog.Enqueue($"✗ Failed to query {from:yyyy-MM}: {ex.Message}");
+            }
+        }
+
+        IReadOnlyList<SnapshotTarget> targets = PlanSnapshotTargets(segments, windowStart, windowEnd);
+        lock (_statusLock)
+        {
+            _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = targets.Count, FilesCompleted = 0, BytesDownloaded = 0 };
+        }
+
+        int filesDownloaded = 0;
+        long bytesDownloaded = 0L;
+        try
+        {
+            foreach (SnapshotTarget target in targets)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                string jpg = EnsureWithinRoot(outputPath, Path.Combine(outputPath,
+                    $"snapshot_{deviceId}_{(target.Segment.Begin + target.Offset):yyyyMMddHHmmss}.jpg"));
+                string tempVideo = EnsureWithinRoot(outputPath, Path.Combine(outputPath, $".snapshot_tmp_{Guid.NewGuid():N}.mp4"));
+
+                try
+                {
+                    if (File.Exists(jpg) && new FileInfo(jpg).Length > 0)
+                    {
+                        filesDownloaded++;
+                        bytesDownloaded += new FileInfo(jpg).Length;
+                        continue;
+                    }
+
+                    await client.DownloadSegmentAsync(target.Segment, tempVideo, cancellationToken);
+                    await client.CaptureFrameFromFileAsync(tempVideo, jpg, target.Offset, cancellationToken);
+
+                    if (!File.Exists(jpg) || new FileInfo(jpg).Length == 0)
+                    {
+                        if (File.Exists(jpg))
+                        {
+                            File.Delete(jpg);
+                        }
+
+                        _activityLog.Enqueue($"✗ {Path.GetFileName(jpg)}: frame extraction produced no output");
+                        continue;
+                    }
+
+                    long size = new FileInfo(jpg).Length;
+                    filesDownloaded++;
+                    bytesDownloaded += size;
+                    lock (_statusLock)
+                    {
+                        _currentStatus = _currentStatus with { FilesCompleted = filesDownloaded, BytesDownloaded = bytesDownloaded, CurrentFile = jpg };
+                    }
+
+                    _activityLog.Enqueue($"✓ {Path.GetFileName(jpg)} ({FormatBytes(size)})");
+                }
+                catch (DownloadCapacityException ex)
+                {
+                    _logger.LogError(ex, "Device capacity limit hit while capturing snapshot; stopping batch");
+                    lock (_statusLock)
+                    {
+                        _capacityBanUntilUtc = DateTime.UtcNow.AddMinutes(CapacityBanMinutes);
+                    }
+
+                    _activityLog.Enqueue($"✗ Capacity limit (code 60031): {ex.Message}");
+                    return new DownloadResult(
+                        Success: false,
+                        FilesDownloaded: filesDownloaded,
+                        BytesDownloaded: bytesDownloaded,
+                        ErrorMessage: "Snapshots stopped: device capacity limit reached. " +
+                                      "Wait for stale sessions to expire or reboot the NVR.",
+                        FilesMatched: targets.Count);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
+                    _activityLog.Enqueue($"✗ {Path.GetFileName(jpg)}: {ex.GetType().Name}");
+                }
+                finally
+                {
+                    if (File.Exists(tempVideo))
+                    {
+                        File.Delete(tempVideo);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            lock (_statusLock)
+            {
+                _currentStatus = _currentStatus with { IsDownloading = false };
+            }
+        }
+
+        _logger.LogInformation("Captured {Count} windowed snapshots ({Bytes} bytes) for device {DeviceId}", filesDownloaded, bytesDownloaded, deviceId);
+        return new DownloadResult(
+            Success: true,
+            FilesDownloaded: filesDownloaded,
+            BytesDownloaded: bytesDownloaded,
+            ErrorMessage: targets.Count == 0 ? "No recorded footage found in the requested window" : null,
+            FilesMatched: targets.Count);
     }
 
     public DownloadStatus GetStatus()

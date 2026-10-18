@@ -275,10 +275,8 @@ namespace VideoForensics.Utils.SelfTest
         /// </summary>
         private static async Task RunDbCompletenessCheckAsync(Session session, CliOptions options, string outputDir)
         {
-            // Same default as AddVideoForensicsSqlite: %ProgramData%\VideoForensics\videoforensics.db.
-            string dbPath = options.DbPath ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics", "videoforensics.db");
+            // Same default as the app: StorageLocationProvider Database root + videoforensics.db.
+            string dbPath = options.DbPath ?? CliOptions.DefaultDatabasePath();
 
             if (!options.Quiet)
             {

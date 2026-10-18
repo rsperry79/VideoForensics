@@ -14,7 +14,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapStorageSettingsEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/storage-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/storage-settings").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", GetStorageSettings)
                 .WithSummary("Get storage settings status")

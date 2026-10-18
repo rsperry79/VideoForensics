@@ -52,6 +52,7 @@ public class SecurityDevicesPageTests : BunitContext
         Services.AddScoped(_ => session);
         Services.AddScoped<ISelfApiHttpClientFactory>(_ => new FakeSelfApiHttpClientFactory());
         Services.AddScoped(_ => new Moq.Mock<WebAuthnClient>(Moq.Mock.Of<IJSRuntime>(), Moq.Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
 
         var cut = Render<SecurityDevices>();
 

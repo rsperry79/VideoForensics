@@ -67,6 +67,46 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         }
 
         [Fact]
+        public void ProviderSyncRunDtoMapping_ToSummaryDto_MapsSyncTypeAndCounts()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: DateTime.UtcNow);
+            run.SyncType = "Full";
+            run.DevicesSynced = 3;
+            run.LocationsSynced = 1;
+            run.EventsSynced = 42;
+            run.ConfigAreasSynced = 6;
+            run.FeedsFailed = 2;
+            run.SnapshotsSynced = 5;
+
+            ProviderSyncRunSummaryDto dto = run.ToSummaryDto();
+
+            Assert.Equal(5, dto.SnapshotsSynced);
+
+            Assert.Equal("Full", dto.SyncType);
+            Assert.Equal(3, dto.DevicesSynced);
+            Assert.Equal(1, dto.LocationsSynced);
+            Assert.Equal(42, dto.EventsSynced);
+            Assert.Equal(6, dto.ConfigAreasSynced);
+            Assert.Equal(2, dto.FeedsFailed);
+        }
+
+        [Fact]
+        public void ProviderSyncRunDtoMapping_ToSummaryDto_OldRunWithoutCounts_LeavesThemNull()
+        {
+            ProviderSyncRun run = CreateRun(success: true, errorMessage: null, completedUtc: DateTime.UtcNow);
+
+            ProviderSyncRunSummaryDto dto = run.ToSummaryDto();
+
+            Assert.Null(dto.SyncType);
+            Assert.Null(dto.DevicesSynced);
+            Assert.Null(dto.LocationsSynced);
+            Assert.Null(dto.EventsSynced);
+            Assert.Null(dto.ConfigAreasSynced);
+            Assert.Null(dto.FeedsFailed);
+            Assert.Null(dto.SnapshotsSynced);
+        }
+
+        [Fact]
         public void ProviderSyncRunDtoMapping_ToSummaryDto_FailedRun_KeepsSuccessFalse()
         {
             ProviderSyncRun run = CreateRun(success: false, errorMessage: "boom", completedUtc: null);

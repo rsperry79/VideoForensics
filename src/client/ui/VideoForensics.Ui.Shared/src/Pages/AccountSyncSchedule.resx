@@ -155,4 +155,19 @@
   <data name="FailedToSaveSchedule" xml:space="preserve">
     <value>Failed to save schedule: {0}</value>
   </data>
+  <data name="ConfigSyncIntervalInvalid" xml:space="preserve">
+    <value>Enter a whole number of hours from 1 to 720.</value>
+  </data>
+  <data name="ConfigSyncIntervalLabel" xml:space="preserve">
+    <value>Config sync interval (hours)</value>
+  </data>
+  <data name="ConfigSyncIntervalSaved" xml:space="preserve">
+    <value>Config sync interval saved.</value>
+  </data>
+  <data name="ConfigSyncIntervalSaveFailed" xml:space="preserve">
+    <value>Could not save the config sync interval.</value>
+  </data>
+  <data name="ErrorTitle" xml:space="preserve">
+    <value>Error</value>
+  </data>
 </root>

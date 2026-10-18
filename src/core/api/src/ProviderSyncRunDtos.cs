@@ -7,11 +7,25 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="StartedUtc">UTC time the sync started.</param>
     /// <param name="CompletedUtc">UTC time the sync finished; null when the run did not complete.</param>
     /// <param name="Success">True when the sync finished without an account error.</param>
+    /// <param name="SyncType">"Full" or "Incremental"; null for runs recorded before this was tracked.</param>
+    /// <param name="DevicesSynced">Devices stored by the run; null when not recorded.</param>
+    /// <param name="LocationsSynced">Locations stored by the run; null when not recorded.</param>
+    /// <param name="EventsSynced">Events stored by the run; null when not recorded.</param>
+    /// <param name="ConfigAreasSynced">Configuration areas stored by the run; null when not recorded.</param>
+    /// <param name="FeedsFailed">Per-device event feeds that failed; null when not recorded.</param>
+    /// <param name="SnapshotsSynced">Devices that returned a snapshot; null when snapshots were not part of the run.</param>
     public record ProviderSyncRunSummaryDto(
         Guid Id,
         DateTime StartedUtc,
         DateTime? CompletedUtc,
-        bool Success
+        bool Success,
+        string? SyncType = null,
+        int? DevicesSynced = null,
+        int? LocationsSynced = null,
+        int? EventsSynced = null,
+        int? ConfigAreasSynced = null,
+        int? FeedsFailed = null,
+        int? SnapshotsSynced = null
     );
 
     /// <summary>
@@ -63,7 +77,14 @@ namespace VideoForensics.Core.Api.Contracts
                 Id: entity.Id,
                 StartedUtc: entity.StartedUtc,
                 CompletedUtc: entity.CompletedUtc,
-                Success: entity.Success);
+                Success: entity.Success,
+                SyncType: entity.SyncType,
+                DevicesSynced: entity.DevicesSynced,
+                LocationsSynced: entity.LocationsSynced,
+                EventsSynced: entity.EventsSynced,
+                ConfigAreasSynced: entity.ConfigAreasSynced,
+                FeedsFailed: entity.FeedsFailed,
+                SnapshotsSynced: entity.SnapshotsSynced);
         }
     }
 }

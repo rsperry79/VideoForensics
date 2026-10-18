@@ -58,17 +58,17 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
-        /// Returns the chime ringtones available to assign via UpdateChime().
+        /// Returns the chime ringtones available to assign via UpdateChime(), together with the
+        /// account's default ringtone and default owner ids (the full typed response).
         /// </summary>
-        public async Task<List<Ringtone>> GetRingtones()
+        public async Task<RingtonesResponse> GetRingtones()
         {
             await EnsureSessionValid();
 
             var uri = new Uri(BaseUrl, "ringtones");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            RingtonesResponse? parsed = JsonSerializer.Deserialize<RingtonesResponse>(response);
-            return parsed?.Ringtones ?? [];
+            return JsonSerializer.Deserialize<RingtonesResponse>(response) ?? new RingtonesResponse();
         }
 
         /// <summary>

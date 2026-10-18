@@ -19,12 +19,37 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     }
 
     /// <summary>One device's point-in-time health telemetry, keyed by the provider's own device id (not the DB Guid).</summary>
+    /// <remarks>The trailing telemetry fields are optional so providers that don't report them can omit them.</remarks>
     public record DeviceHealthReading(
         string ProviderDeviceId,
         bool? Connected,
         decimal? BatteryPercentage,
         int? Rssi,
         string? WifiName,
-        string? FirmwareVersion
+        string? FirmwareVersion,
+        decimal? BatteryVoltageValue = null,
+        bool? IsExternalPowerConnected = null,
+        string? OtaStatus = null,
+        DateTime? LastHeartbeatUtc = null,
+        string? DeviceType = null,
+        string? FirmwareVersionStatus = null,
+        bool? BatteryPresent = null,
+        string? BatteryPercentageCategory = null,
+        string? BatteryVoltageCategory = null,
+        string? RssiCategory = null,
+        string? NetworkConnectionValue = null,
+        double? PacketLoss = null,
+        string? PacketLossCategory = null,
+        double? LatestSignalStrength = null,
+        string? LatestSignalCategory = null,
+        double? AverageSignalStrength = null,
+        string? AverageSignalCategory = null,
+        string? Firmware = null,
+        DateTime? UpdatedAtUtc = null,
+        double? PacketLossStrength = null,
+        bool? WifiIsRingNetwork = null,
+        bool? PtzConnected = null,
+        long? RingHealthId = null,
+        IReadOnlyList<string>? SupportedRpcCommands = null
     );
 }

@@ -90,8 +90,23 @@ namespace VideoForensics.Hosting
         {
             return new RingDeviceDiscoveryService(
                 provider.GetRequiredService<ILogger<RingDeviceDiscoveryService>>(),
-                provider.GetRequiredService<ISessionProvider>()
+                provider.GetRequiredService<ISessionProvider>(),
+                metadataRepository: provider.GetRequiredService<ILocationMetadataRepository>(),
+                locationRepository: provider.GetRequiredService<ILocationRepository>(),
+                settingsPersister: provider.GetRequiredService<RingAccountSettingsPersister>(),
+                eventHistoryWriter: provider.GetService<IRingEventHistoryWriter>(),
+                syncState: provider.GetService<IRingAccountSyncState>()
             );
+        }
+
+        /// <summary>
+        /// Builds the Ring account-settings persister (profile, ringtones, light groups, location mode) over the data-layer writer.
+        /// </summary>
+        private static RingAccountSettingsPersister BuildRingAccountSettingsPersister(IServiceProvider provider)
+        {
+            return new RingAccountSettingsPersister(
+                provider.GetRequiredService<IRingAccountSettingsWriter>(),
+                provider.GetRequiredService<ILogger<RingAccountSettingsPersister>>());
         }
 
         /// <summary>
@@ -285,6 +300,7 @@ namespace VideoForensics.Hosting
             {
                 _ = services.AddScoped<IProviderAuthService>(BuildRingAuthService);
                 _ = services.AddScoped<IDeviceDiscoveryService>(BuildRingDeviceDiscoveryService);
+                services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                 _ = services.AddScoped<IMediaDownloadService>(BuildRingMediaDownloadService);
                 _ = services.AddScoped<IEventAndConfigService>(BuildRingEventAndConfigService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
@@ -380,7 +396,9 @@ namespace VideoForensics.Hosting
                 IIntegrityVerificationService integrityVerificationService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IActionLogRepository actionLogRepository = serviceProvider.GetRequiredService<IActionLogRepository>();
                 IExportRecordService exportRecordService = serviceProvider.GetRequiredService<IExportRecordService>();
-                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService);
+                ICaseRepository caseRepository = serviceProvider.GetRequiredService<ICaseRepository>();
+                IReportGenerationService reportService = serviceProvider.GetRequiredService<IReportGenerationService>();
+                return new EvidenceExportOrchestrator(logger, mediaItemRepository, integrityVerificationService, actionLogRepository, exportRecordService, caseRepository, reportService);
             });
 
             // Backup export/import (event reimport feature): embeds/reads a DB record GUID in a
@@ -418,6 +436,9 @@ namespace VideoForensics.Hosting
                     serviceProvider.GetRequiredService<IAppSettingRepository>()
                 )
             );
+
+            // Server-tier release channel: reads/persists IForensicsConfiguration directly (client hosts get RemoteReleaseChannelService).
+            _ = services.AddScoped<IReleaseChannelService, VideoForensics.Hosting.Local.LocalReleaseChannelService>();
 
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
@@ -517,6 +538,7 @@ namespace VideoForensics.Hosting
 
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
+            _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
             return services;
@@ -536,10 +558,17 @@ namespace VideoForensics.Hosting
         {
             foreach (string providerName in enabledProviders ?? Enumerable.Empty<string>())
             {
+                // Wyze sign-in, device discovery and media download are not implemented yet; fail at startup, not on the first sync.
+                if (string.Equals(providerName, "Wyze", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Wyze is not available yet: sign-in, device discovery and media download are not implemented. Remove it from ScheduledTasks:EnabledProviders.");
+                }
+
                 if (string.Equals(providerName, "Ring", StringComparison.OrdinalIgnoreCase))
                 {
                     _ = services.AddKeyedScoped<IProviderAuthService>(providerName, (provider, key) => BuildRingAuthService(provider));
                     _ = services.AddKeyedScoped<IDeviceDiscoveryService>(providerName, (provider, key) => BuildRingDeviceDiscoveryService(provider));
+                    services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                     _ = services.AddKeyedScoped<IMediaDownloadService>(providerName, (provider, key) => BuildRingMediaDownloadService(provider));
                     _ = services.AddKeyedScoped<IEventAndConfigService>(providerName, (provider, key) => BuildRingEventAndConfigService(provider));
                     _ = services.AddKeyedScoped<IProviderHealthSource, RingHealthSource>(
@@ -574,6 +603,17 @@ namespace VideoForensics.Hosting
                 {
                     throw new InvalidOperationException($"Unknown provider '{providerName}' in AddVideoForensicsMultiProviderServices - expected 'Ring', 'Uniview', or 'Wyze'.");
                 }
+
+                // The pull is built from this provider's own keyed event and discovery services, so a manual sync of one
+                // provider's account never pulls through whichever provider registered last.
+                _ = services.AddKeyedScoped<IEventPullService>(providerName, (provider, key) => new EventPullService(
+                    provider.GetRequiredKeyedService<IEventAndConfigService>(providerName),
+                    provider.GetRequiredService<IDeviceRepository>(),
+                    provider.GetRequiredService<ILocationRepository>(),
+                    provider.GetRequiredService<IProviderAccountRepository>(),
+                    provider.GetRequiredKeyedService<IDeviceDiscoveryService>(providerName),
+                    provider.GetService<ILogger<EventPullService>>(),
+                    provider.GetKeyedService<IMediaDownloadService>(providerName)));
             }
 
             return services;

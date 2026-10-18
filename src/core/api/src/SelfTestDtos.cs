@@ -12,6 +12,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Scope">The scope level: None, PerLocation, PerDoorbot, or PerChime.</param>
     /// <param name="Destructive">True if this endpoint modifies device state.</param>
     /// <param name="Physical">True if this endpoint has physical effects (siren, light, etc.).</param>
+    /// <param name="Provider">Provider the endpoint belongs to, as a <c>ProviderType</c> name (for example "Ring").</param>
     public record SelfTestEndpointDto(
         string Key,
         string DisplayName,
@@ -21,7 +22,8 @@ namespace VideoForensics.Core.Api.Contracts
         string ApiPath,
         string Scope,
         bool Destructive,
-        bool Physical
+        bool Physical,
+        string Provider
     );
 
     /// <summary>

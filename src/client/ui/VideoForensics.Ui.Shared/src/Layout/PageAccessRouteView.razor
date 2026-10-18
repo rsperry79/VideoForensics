@@ -25,6 +25,11 @@
         </LayoutView>
     }
 }
+else if (!SessionState.IsSignedIn && IsPublicPage)
+{
+    @* Sign-in, register and setup must render for a signed-out visitor; AuthGate lets them through. *@
+    <RouteView RouteData="RouteData" DefaultLayout="DefaultLayout" />
+}
 
 @code {
     /// <summary>The matched route. Each <c>@page</c> template is looked up in <see cref="PageAccessRules"/>.</summary>
@@ -69,6 +74,13 @@
     }
 
     private NavContext BuildContext() => NavContext.FromSession(SessionState, AppLockPreferences.IsSupported);
+
+    /// <summary>A page is public only when every one of its <c>@page</c> templates is on AuthGate's allow-list.</summary>
+    private bool IsPublicPage =>
+        RouteData.PageType
+            .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
+            .OfType<RouteAttribute>()
+            .All(route => AuthGate.IsAllowListedRoute(route.Template));
 
     public void Dispose()
     {

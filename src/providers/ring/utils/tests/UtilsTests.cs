@@ -240,6 +240,62 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         }
 
         [Fact]
+        public void EndpointRegistry_DingRecording_IsReadOnlyUnscopedClientsApi()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("ding-recording");
+            Assert.NotNull(result);
+            Assert.Equal("GET", result.HttpMethod);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/clients_api/dings/{dingId}/recording", result.ApiPath);
+        }
+
+        [Fact]
+        public async Task EndpointRegistry_DingRecording_WithoutDingId_Throws()
+        {
+            string? previous = EndpointRegistry.DingId;
+            try
+            {
+                EndpointRegistry.DingId = null;
+                EndpointDescriptor descriptor = EndpointRegistry.Find("ding-recording")!;
+                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+            }
+            finally
+            {
+                EndpointRegistry.DingId = previous;
+            }
+        }
+
+        [Fact]
+        public void EndpointRegistry_DingSharePlay_IsReadOnlyUnscopedClientsApi()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("ding-share-play");
+            Assert.NotNull(result);
+            Assert.Equal("GET", result.HttpMethod);
+            Assert.False(result.Destructive);
+            Assert.False(result.Physical);
+            Assert.Equal(EndpointScope.None, result.Scope);
+            Assert.Equal("https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true", result.ApiPath);
+        }
+
+        [Fact]
+        public async Task EndpointRegistry_DingSharePlay_WithoutDingId_Throws()
+        {
+            string? previous = EndpointRegistry.DingId;
+            try
+            {
+                EndpointRegistry.DingId = null;
+                EndpointDescriptor descriptor = EndpointRegistry.Find("ding-share-play")!;
+                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+            }
+            finally
+            {
+                EndpointRegistry.DingId = previous;
+            }
+        }
+
+        [Fact]
         public void EndpointRegistry_RecordingUrl_IsReadOnlyUnscoped()
         {
             EndpointDescriptor? result = EndpointRegistry.Find("recording-url");
@@ -289,6 +345,43 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void Runner_ResolveSelection_ExplicitTriggerAlarmWithoutDestructive_Throws()
         {
             Assert.Throws<ArgumentException>(() => Runner.ResolveSelection(["trigger-alarm"], destructive: false, noPhysical: false));
+        }
+
+        [Fact]
+        public void EndpointRegistry_IntercomUnlock_IsDestructivePhysicalManualOnly()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("intercom-unlock");
+            Assert.NotNull(result);
+            Assert.True(result.Destructive);
+            Assert.True(result.Physical);
+            Assert.True(result.ManualOnly);
+            Assert.Equal(EndpointScope.PerDoorbot, result.Scope);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Runner_ResolveSelection_AllExcludesIntercomUnlock(bool destructive)
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["all"], destructive, noPhysical: false);
+            Assert.DoesNotContain(selected, e => e.Key == "intercom-unlock");
+        }
+
+        [Fact]
+        public void Runner_ResolveSelection_ExplicitIntercomUnlock_IsSelected()
+        {
+            List<EndpointDescriptor> selected = Runner.ResolveSelection(["intercom-unlock"], destructive: true, noPhysical: false);
+            Assert.Single(selected);
+            Assert.Equal("intercom-unlock", selected[0].Key);
+        }
+
+        [Fact]
+        public void EndpointRegistry_IntercomUnlock_WithoutDoorbotId_Throws()
+        {
+            EndpointDescriptor? result = EndpointRegistry.Find("intercom-unlock");
+            Assert.NotNull(result);
+            // The id check runs before the session is touched, so a null session is safe here.
+            Assert.Throws<InvalidOperationException>(() => result.Invoke(null!, EndpointTarget.None).GetAwaiter().GetResult());
         }
 
         [Fact]
@@ -657,6 +750,27 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             _ = Assert.Single(result);
             Assert.True(result.TryGetValue(999, out DoorbotSettingsSnapshot? snapshot));
             Assert.True(snapshot.NightModeEnabled);
+        }
+
+        [Fact]
+        public void DeviceSettingsSnapshot_NestedVolumeAndMotionOnly_ReadsFromVolumeAndMotionSettings()
+        {
+            // Shape of a real capture: no root doorbell_volume or motion_detection_enabled.
+            string json = @"{
+                ""doorbots"": [{
+                    ""id"": 123,
+                    ""settings"": {
+                        ""volume_settings"": { ""doorbell_volume"": 11 },
+                        ""motion_settings"": { ""motion_detection_enabled"": false }
+                    }
+                }]
+            }";
+
+            Dictionary<long, DoorbotSettingsSnapshot> result = DeviceSettingsSnapshot.ParseFromDevicesJson(json);
+
+            Assert.True(result.TryGetValue(123, out DoorbotSettingsSnapshot? snapshot));
+            Assert.Equal(11, snapshot.Volume);
+            Assert.False(snapshot.MotionDetectionEnabled);
         }
 
         [Fact]
@@ -1733,6 +1847,22 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Equal(defaults.ModeApiBaseUrl, mapped.ModeApiBaseUrl);
             Assert.Equal(defaults.MonitoringApiBaseUrl, mapped.MonitoringApiBaseUrl);
             Assert.Equal(defaults.DevicesApiBaseUrl, mapped.DevicesApiBaseUrl);
+        }
+    }
+    public class SelfTestDefaultDatabasePathTests
+    {
+        [Fact]
+        public void DefaultDatabasePath_NoOverride_MatchesAppDatabaseRoot()
+        {
+            string expected = Path.Combine(
+                new VideoForensics.Core.Helpers.Platform.StorageLocationProvider()
+                    .GetDefaultRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Database),
+                "videoforensics.db");
+
+            string actual = CliOptions.DefaultDatabasePath();
+
+            Assert.Equal(expected, actual);
+            Assert.EndsWith(Path.Combine("Database", "videoforensics.db"), actual);
         }
     }
 }

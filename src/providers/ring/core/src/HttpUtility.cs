@@ -297,6 +297,31 @@ namespace VideoForensics.Providers.Ring
         /// Fails immediately, with no network round-trip, while a hard ban cooldown is active - see
         /// HardBanThreshold. Checked before even waiting out the regular per-throttle cooldown below.
         /// </summary>
+        /// <summary>
+        /// Reads a 429 response's Retry-After header, as delta seconds or an HTTP date. Null when absent or unreadable, so the caller uses its default wait.
+        /// </summary>
+        internal static TimeSpan? ParseRetryAfter(HttpResponseMessage response)
+        {
+            System.Net.Http.Headers.RetryConditionHeaderValue? retryAfter = response.Headers.RetryAfter;
+            if (retryAfter is null)
+            {
+                return null;
+            }
+
+            if (retryAfter.Delta is { } delta && delta > TimeSpan.Zero)
+            {
+                return delta;
+            }
+
+            if (retryAfter.Date is { } date)
+            {
+                TimeSpan untilDate = date - DateTimeOffset.UtcNow;
+                return untilDate > TimeSpan.Zero ? untilDate : null;
+            }
+
+            return null;
+        }
+
         private static void ThrowIfHardBanned()
         {
             EnsureHardBanStateLoaded();
@@ -451,7 +476,7 @@ namespace VideoForensics.Providers.Ring
                     if (responseText.Contains("Too many requests", StringComparison.InvariantCultureIgnoreCase))
                     {
                         ApiRawLogger.LogEvent("Auth", "Throttled (HTTP 429/400 too many requests)");
-                        throw new Exceptions.ThrottledException();
+                        throw new Exceptions.ThrottledException() { RetryAfter = ParseRetryAfter(response) };
                     }
 
                     if (responseText.Contains("Verification Code is invalid or expired", StringComparison.InvariantCultureIgnoreCase))
@@ -570,7 +595,7 @@ namespace VideoForensics.Providers.Ring
                     // Check if the response is HTTP 429 Too Many Requests throttling
                     if (responseText.Contains("Too many requests", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        throw new Exceptions.ThrottledException();
+                        throw new Exceptions.ThrottledException() { RetryAfter = ParseRetryAfter(response) };
                     }
 
                     // Check if the two factor authentication token was incorrect or has expired. HTTP 400 Bad Request.
@@ -686,6 +711,39 @@ namespace VideoForensics.Providers.Ring
                 }
             }
             else if (!response.IsSuccessStatusCode)
+            {
+                throw new Exceptions.UnexpectedOutcomeException(response.StatusCode) { ResponseBody = TruncateForLog(responseFromServer) };
+            }
+        }
+
+        /// <summary>
+        /// Form-encoded (application/x-www-form-urlencoded) counterpart of
+        /// <see cref="SendRequestWithExpectedStatusOutcome"/>, for legacy clients_api endpoints such as
+        /// PUT doorbots/{id} that reject JSON bodies with HTTP 422. Same bearer-token handling and
+        /// status validation.
+        /// </summary>
+        /// <param name="url">Url of the request to make</param>
+        /// <param name="httpMethod">The HTTP method to use to call the provided Url</param>
+        /// <param name="formFields">Form fields to send as the request body</param>
+        /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
+        /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the response wasn't a success (2xx)</exception>
+        public async Task SendFormRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, Dictionary<string, string> formFields, string bearerToken = null, CancellationToken cancellationToken = default)
+        {
+            using var request = new HttpRequestMessage(httpMethod, url);
+
+            if (!string.IsNullOrEmpty(bearerToken))
+            {
+                request.Headers.Add(HttpRequestHeader.Authorization.ToString(), $"Bearer {bearerToken}");
+            }
+
+            request.Content = new FormUrlEncodedContent(formFields);
+            string requestBody = await request.Content.ReadAsStringAsync(cancellationToken);
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+            string responseFromServer = await response.Content.ReadAsStringAsync(cancellationToken);
+            ApiRawLogger.Raise(httpMethod.Method, url.ToString(), (int)response.StatusCode, $"REQUEST: {requestBody}\nRESPONSE: {responseFromServer}");
+
+            if (!response.IsSuccessStatusCode)
             {
                 throw new Exceptions.UnexpectedOutcomeException(response.StatusCode) { ResponseBody = TruncateForLog(responseFromServer) };
             }

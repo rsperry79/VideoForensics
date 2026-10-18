@@ -138,7 +138,8 @@ namespace VideoForensics.Hosting.BackgroundServices
 
                     IEventAndConfigService? eventService = sp.GetKeyedService<IEventAndConfigService>(key);
                     IProviderAuthService? authService = sp.GetKeyedService<IProviderAuthService>(key);
-                    if (eventService == null || authService == null)
+                    IMediaDownloadService? mediaService = sp.GetKeyedService<IMediaDownloadService>(key);
+                    if (eventService == null || authService == null || mediaService == null)
                     {
                         _logger.LogWarning("Scheduled sync skipped: no keyed provider services are registered for {ProviderName}", providerName);
                         continue;
@@ -149,7 +150,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         continue;
                     }
 
-                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), ct);
+                    await RunEventSyncAsync(sp, scheduleRepository, schedule, account, eventService, authService, sp.GetRequiredKeyedService<IDeviceDiscoveryService>(key), mediaService, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -171,6 +172,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             IEventAndConfigService eventService,
             IProviderAuthService authService,
             IDeviceDiscoveryService deviceDiscovery,
+            IMediaDownloadService mediaService,
             CancellationToken ct)
         {
             string providerName = account.ProviderName;
@@ -186,6 +188,8 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             DateTime startedUtc = _time.GetUtcNow().UtcDateTime;
             string? outcome;
+            EventPullResult? counts = null;
+            string? syncType = null; // set once the pull's start date is known; stays null if the sync never reached the pull
 
             try
             {
@@ -201,16 +205,19 @@ namespace VideoForensics.Hosting.BackgroundServices
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc; // first run: same as the manual sync-now endpoint
 
-                    // EventPullService is bound to ONE event service, so build it per account around its provider's keyed service.
+                    syncType = ProviderSyncRunRecorder.SyncTypeFor(from);
+
+                    // EventPullService is bound to ONE event service and ONE media download service for its provider, so build it per account around that provider's keyed services.
                     var pull = new EventPullService(
                         eventService,
                         sp.GetRequiredService<IDeviceRepository>(),
                         sp.GetRequiredService<ILocationRepository>(),
                         sp.GetRequiredService<IProviderAccountRepository>(),
                         deviceDiscovery,
-                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>());
+                        sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
+                        mediaService);
 
-                    await pull.PullAccountEventsAsync(accountId, from, ct);
+                    counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -229,7 +236,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 outcome = ex.Message;
             }
 
-            await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome);
+            await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, syncType, counts);
 
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;

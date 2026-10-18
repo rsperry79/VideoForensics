@@ -44,6 +44,20 @@ public class NoticesDropdownDismissTests : SimpleModeLayoutTestBase
     }
 
     [Fact]
+    public void MainLayout_DisposedWithAttachedPanelHandle_DetachesPanelResizeListener()
+    {
+        // Arrange - the right-panel handle attaches a JS listener that holds a DotNetObjectReference to this layout
+        var component = Render<MainLayout>();
+        component.WaitForAssertion(() => JSInterop.VerifyInvoke("vfPanelResize.attach"), TimeSpan.FromSeconds(10));
+
+        // Act
+        ((IDisposable)component.Instance).Dispose();
+
+        // Assert - without a detach, the JS listener keeps calling the disposed reference
+        JSInterop.VerifyInvoke("vfPanelResize.detach");
+    }
+
+    [Fact]
     public void MainLayout_NoticesDropdownClosed_RendersNoBackdrop()
     {
         // Arrange / Act

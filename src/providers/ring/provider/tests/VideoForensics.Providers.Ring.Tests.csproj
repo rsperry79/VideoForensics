@@ -31,4 +31,7 @@
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

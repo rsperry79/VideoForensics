@@ -76,25 +76,27 @@ namespace VideoForensics.Providers.Ring
 
         /// <summary>
         /// Sets the ringtone/notification volume of a doorbell or camera. Mirrors python-ring-doorbell's
-        /// async_set_volume: PUT clients_api/doorbots/{id} with the "doorbot[settings][doorbell_volume]"
-        /// flattened key Ring's legacy clients_api expects.
+        /// async_set_volume: PUT clients_api/doorbots/{id} with a form-encoded body (not JSON, which Ring
+        /// rejects with 422) containing "doorbot[description]" and "doorbot[settings][doorbell_volume]".
         /// </summary>
         /// <param name="doorbotId">ID of the device to set the volume of</param>
         /// <param name="volume">Volume level, 0-11 depending on device model</param>
+        /// <param name="deviceName">The device's name (description) as listed by Ring; sent as "doorbot[description]"</param>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetVolume(long doorbotId, int volume, CancellationToken cancellationToken = default)
+        public async Task SetVolume(long doorbotId, int volume, string deviceName, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
-            string bodyContent = JsonSerializer.Serialize(new System.Collections.Generic.Dictionary<string, object>
+            var fields = new System.Collections.Generic.Dictionary<string, string>
             {
-                ["doorbot[settings][doorbell_volume]"] = volume
-            });
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
+                ["doorbot[description]"] = deviceName,
+                ["doorbot[settings][doorbell_volume]"] = volume.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            };
+            await _httpUtility.SendFormRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, fields, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>
@@ -125,33 +127,34 @@ namespace VideoForensics.Providers.Ring
         /// </summary>
         /// <param name="doorbotId">ID of the doorbell to set the chime type of</param>
         /// <param name="type">Chime type: 0 = Mechanical, 1 = Digital, 2 = Not Present</param>
+        /// <param name="deviceName">The doorbell's name (description) as listed by Ring; sent as "doorbot[description]"</param>
         /// <param name="enabled">Whether the existing chime should ring. Leave NULL to not change this.</param>
         /// <param name="duration">Duration in seconds for a digital chime. Leave NULL to not change this.</param>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetChimeType(long doorbotId, int type, bool? enabled = null, int? duration = null, CancellationToken cancellationToken = default)
+        public async Task SetChimeType(long doorbotId, int type, string deviceName, bool? enabled = null, int? duration = null, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(BaseUrl, $"doorbots/{doorbotId}");
-            var fields = new System.Collections.Generic.Dictionary<string, object>
+            var fields = new System.Collections.Generic.Dictionary<string, string>
             {
-                ["doorbot[settings][chime_settings][type]"] = type
+                ["doorbot[description]"] = deviceName,
+                ["doorbot[settings][chime_settings][type]"] = type.ToString(System.Globalization.CultureInfo.InvariantCulture)
             };
             if (enabled.HasValue)
             {
-                fields["doorbot[settings][chime_settings][enable]"] = enabled.Value;
+                fields["doorbot[settings][chime_settings][enable]"] = enabled.Value.ToString();
             }
 
             if (duration.HasValue)
             {
-                fields["doorbot[settings][chime_settings][duration]"] = duration.Value;
+                fields["doorbot[settings][chime_settings][duration]"] = duration.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
-            string bodyContent = JsonSerializer.Serialize(fields);
-            await _httpUtility.SendRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, null, bodyContent, AuthenticationToken, cancellationToken);
+            await _httpUtility.SendFormRequestWithExpectedStatusOutcome(uri, System.Net.Http.HttpMethod.Put, fields, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>

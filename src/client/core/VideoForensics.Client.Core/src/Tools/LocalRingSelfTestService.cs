@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 
+using VideoForensics.Client.Common;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Helpers.Platform;
@@ -35,7 +36,8 @@ namespace VideoForensics.Client.Core.Tools
                     ApiPath: descriptor.ApiPath,
                     Scope: descriptor.Scope.ToString(),
                     Destructive: descriptor.Destructive,
-                    Physical: descriptor.Physical
+                    Physical: descriptor.Physical,
+                    Provider: ProviderType.Ring.ToString()
                 ))
                 .ToList()
                 .AsReadOnly();

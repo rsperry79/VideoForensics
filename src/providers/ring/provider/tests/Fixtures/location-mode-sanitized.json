@@ -1,0 +1,11 @@
+{
+  "mode": "home",
+  "lastUpdateTimeMS": 1787519584857,
+  "securityStatus": {
+    "lu": 1787519584857,
+    "md": "some"
+  },
+  "readOnly": false,
+  "notYetParticipatingInMode": [],
+  "modePanelType": "modes-api"
+}

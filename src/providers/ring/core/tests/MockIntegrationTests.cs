@@ -655,11 +655,25 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
-            await _mockSession!.SetVolume(123456, 5);
+            await _mockSession!.SetVolume(123456, 5, "Front Door");
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(new Uri(_mockSession!.BaseUrl, "doorbots/123456").ToString(), Url);
+            Assert.Equal("application/x-www-form-urlencoded", mockHandler.RequestContentTypes.Last(r => r.Url == Url).ContentType);
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url == Url).Body);
+            Assert.Equal("Front Door", form["doorbot[description]"]);
+            Assert.Equal("5", form["doorbot[settings][doorbell_volume]"]);
+            Assert.Equal(2, form.Count);
+        }
+
+        private static Dictionary<string, string> ParseForm(string? body)
+        {
+            Assert.NotNull(body);
+            return body!.Split('&').Select(p => p.Split('=', 2))
+                .ToDictionary(p => Uri.UnescapeDataString(p[0].Replace('+', ' ')), p => Uri.UnescapeDataString(p[1].Replace('+', ' ')));
         }
 
         [Fact]
@@ -683,11 +697,33 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
-            await _mockSession!.SetChimeType(123456, 1, enabled: true, duration: 3);
+            await _mockSession!.SetChimeType(123456, 1, "Front Door", enabled: true, duration: 3);
 
             (System.Net.Http.HttpMethod? Method, string? Url) = mockHandler.RequestLog.LastOrDefault(r => r.Url.EndsWith("doorbots/123456"));
             Assert.NotNull(Url);
             Assert.Equal(System.Net.Http.HttpMethod.Put, Method);
+            Assert.Equal(new Uri(_mockSession!.BaseUrl, "doorbots/123456").ToString(), Url);
+            Assert.Equal("application/x-www-form-urlencoded", mockHandler.RequestContentTypes.Last(r => r.Url == Url).ContentType);
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url == Url).Body);
+            Assert.Equal("Front Door", form["doorbot[description]"]);
+            Assert.Equal("1", form["doorbot[settings][chime_settings][type]"]);
+            Assert.Equal("True", form["doorbot[settings][chime_settings][enable]"]);
+            Assert.Equal("3", form["doorbot[settings][chime_settings][duration]"]);
+        }
+
+        [Fact]
+        public async Task MockSession_SetChimeType_OmitsEnableAndDurationWhenNotGiven()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
+            _ = await _mockSession!.Authenticate();
+
+            await _mockSession!.SetChimeType(123456, 2, "Front Door");
+
+            Dictionary<string, string> form = ParseForm(mockHandler.RequestBodies.Last(r => r.Url.EndsWith("doorbots/123456")).Body);
+            Assert.Equal(2, form.Count);
+            Assert.Equal("2", form["doorbot[settings][chime_settings][type]"]);
         }
 
         [Fact]
@@ -798,12 +834,29 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 @"{ ""device_groups"": [ { ""device_group_id"": ""grp-1"", ""name"": ""Backyard Lights"" } ] }");
             _ = await _mockSession!.Authenticate();
 
-            List<Entities.Group> groups = await _mockSession!.GetGroups(locationId);
+            Entities.GroupsResponse response = await _mockSession!.GetGroups(locationId);
 
-            Assert.NotNull(groups);
-            Assert.Equal(1, groups.Count);
-            Assert.Equal("grp-1", groups[0].DeviceGroupId);
-            Assert.Equal("Backyard Lights", groups[0].Name);
+            Assert.NotNull(response.DeviceGroups);
+            Assert.Equal(1, response.DeviceGroups!.Count);
+            Assert.Equal("grp-1", response.DeviceGroups[0].DeviceGroupId);
+            Assert.Equal("Backyard Lights", response.DeviceGroups[0].Name);
+        }
+
+        [Fact]
+        public async Task MockSession_GetGroups_ReturnsIsOwnerWithGroups()
+        {
+            MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
+            var locationId = Guid.NewGuid();
+            mockHandler.SetupResponse(
+                $"api.ring.com/groups/v1/locations/{locationId:D}/groups",
+                System.Net.HttpStatusCode.OK,
+                @"{ ""device_groups"": null, ""is_owner"": false }");
+            _ = await _mockSession!.Authenticate();
+
+            Entities.GroupsResponse response = await _mockSession!.GetGroups(locationId);
+
+            Assert.False(response.IsOwner);
+            Assert.Null(response.DeviceGroups);
         }
 
         [Fact]
@@ -915,9 +968,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 catch (Exceptions.SessionNotAuthenticatedException) { }
             }
 
-            await ExpectNotAuthenticated(() => session.SetVolume(123456, 5));
+            await ExpectNotAuthenticated(() => session.SetVolume(123456, 5, "Front Door"));
             await ExpectNotAuthenticated(() => session.SetMotionDetection(123456, true));
-            await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1));
+            await ExpectNotAuthenticated(() => session.SetChimeType(123456, 1, "Front Door"));
             await ExpectNotAuthenticated(() => session.SetDoNotDisturb(789012, 60));
             await ExpectNotAuthenticated(() => session.SetNightMode(123456, true));
             await ExpectNotAuthenticated(() => session.SetMotionZones(123456, new Entities.AdvancedMotionZones()));
@@ -1200,12 +1253,15 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""enabled"": true }");
+                @"{ ""disarmed"": [], ""home"": [ { ""deviceId"": ""dev-1"", ""deviceIdType"": ""doorbot"", ""actions"": [ ""enableMotionDetection"" ] } ], ""away"": [], ""options"": { ""defaultCameraOnlyMode"": ""home"" }, ""lastUpdateTimeMS"": 5 }");
             _ = await _mockSession!.Authenticate();
 
-            JsonElement settings = await _mockSession!.GetLocationModeSettings(locationId);
+            Entities.LocationModeSettingsResponse settings = await _mockSession!.GetLocationModeSettings(locationId);
 
-            Assert.True(settings.GetProperty("enabled").GetBoolean());
+            Assert.Equal("home", settings.Options!.DefaultCameraOnlyMode);
+            Assert.Single(settings.Home!);
+            Assert.Equal("dev-1", settings.Home![0].DeviceId);
+            Assert.Equal(5L, settings.LastUpdateTimeMs);
         }
 
         [Fact]
@@ -1261,12 +1317,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""shareable"": true }");
+                @"{ ""sharedUsersEnabled"": true, ""lastUpdateTimeMS"": 7 }");
             _ = await _mockSession!.Authenticate();
 
-            JsonElement sharing = await _mockSession!.GetLocationModeSharing(locationId);
+            Entities.LocationModeSharingResponse sharing = await _mockSession!.GetLocationModeSharing(locationId);
 
-            Assert.True(sharing.GetProperty("shareable").GetBoolean());
+            Assert.True(sharing.SharedUsersEnabled);
+            Assert.Equal(7L, sharing.LastUpdateTimeMs);
         }
 
         [Fact]
@@ -1389,15 +1446,18 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             mockHandler.SetupResponse(
                 "api.ring.com/clients_api/ringtones",
                 System.Net.HttpStatusCode.OK,
-                @"{ ""audios"": [ { ""id"": ""chime_default_ding_2"", ""description"": ""Default Ding"", ""category"": ""ding"", ""available"": true } ] }");
+                @"{ ""audios"": [ { ""id"": ""chime_default_ding_2"", ""description"": ""Default Ding"", ""category"": ""ding"", ""available"": true } ], ""default_ding_id"": ""chime_default_ding_2"", ""default_ding_user_id"": ""user-1"" }");
             _ = await _mockSession!.Authenticate();
 
-            List<Entities.Ringtone> ringtones = await _mockSession!.GetRingtones();
+            Entities.RingtonesResponse response = await _mockSession!.GetRingtones();
 
-            Assert.Equal(1, ringtones.Count);
-            Assert.Equal("Default Ding", ringtones[0].Description);
-            Assert.Equal("chime_default_ding_2", ringtones[0].Id);
-            Assert.Equal("ding", ringtones[0].Category);
+            Assert.NotNull(response.Ringtones);
+            Assert.Equal(1, response.Ringtones!.Count);
+            Assert.Equal("Default Ding", response.Ringtones[0].Description);
+            Assert.Equal("chime_default_ding_2", response.Ringtones[0].Id);
+            Assert.Equal("ding", response.Ringtones[0].Category);
+            Assert.Equal("chime_default_ding_2", response.DefaultDingId);
+            Assert.Equal("user-1", response.DefaultDingUserId);
         }
 
         [Fact]

@@ -77,6 +77,15 @@ namespace VideoForensics.Providers.Ring
         public static Dictionary<long, DoorbotSettingsSnapshot> OriginalDoorbotSettings { get; set; } = [];
         public static Dictionary<Guid, string> OriginalLocationModeByLocation { get; } = [];
 
+        // The form-encoded doorbots PUT needs doorbot[description] (the device name); take it from the
+        // same devices-listing snapshot the restore values come from rather than inventing one.
+        private static string RequireDeviceName(EndpointTarget target)
+        {
+            return OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && !string.IsNullOrEmpty(snap.Description)
+                ? snap.Description
+                : throw new InvalidOperationException($"No device name (description) found in the devices listing for doorbot {target.DoorbotId}");
+        }
+
         public static readonly IReadOnlyList<EndpointDescriptor> All =
         [
             new()
@@ -304,6 +313,32 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
+                Key = "ding-recording",
+                DisplayName = "Ding recording (clients API)",
+                Description = "Raw recording response for a ding from the clients API path used by python-ring-doorbell (compare with recording-url). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingRecordingAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/recording",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingRecordingAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-recording requires --ding-id <id>")
+            },
+            new()
+            {
+                Key = "ding-share-play",
+                DisplayName = "Event share play URL",
+                Description = "Raw share/play response for a ding from the clients API path used by ring-client-api (returns a playable video URL). Requires --ding-id; skipped if not provided.",
+                SessionMethod = "Session.GetDingSharePlayAsync(dingId)",
+                HttpMethod = "GET",
+                ApiPath = "https://api.ring.com/clients_api/dings/{dingId}/share/play?disable_redirect=true",
+                Scope = EndpointScope.None,
+                Invoke = (session, _) => !string.IsNullOrWhiteSpace(DingId)
+                    ? session.GetDingSharePlayAsync(long.Parse(DingId!))
+                    : throw new InvalidOperationException("ding-share-play requires --ding-id <id>")
+            },
+            new()
+            {
                 Key = "profile",
                 DisplayName = "Account profile",
                 Description = "Profile of the currently authenticated account.",
@@ -429,16 +464,16 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-volume",
                 DisplayName = "Set doorbell/camera volume",
                 Description = "Sets the ringtone/notification volume to test it, then restores the value captured from the devices listing beforehand. Requires --volume-level (0-11); skipped if not provided.",
-                SessionMethod = "Session.SetVolume(doorbotId, volume)",
+                SessionMethod = "Session.SetVolume(doorbotId, volume, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => VolumeLevel.HasValue
-                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value)
+                    ? session.SetVolume(target.DoorbotId!.Value, VolumeLevel.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-volume requires --volume-level <0-11>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume }
-                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume))
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { Volume: { } volume, Description: { } volumeDeviceName }
+                    ? new RestorePlan($"doorbell_volume={volume}", WasCaptured: true, Restore: session => session.SetVolume(target.DoorbotId!.Value, volume, volumeDeviceName))
                     : null
             },
             new()
@@ -467,19 +502,19 @@ namespace VideoForensics.Providers.Ring
                 Key = "set-chime-type",
                 DisplayName = "Set existing chime type",
                 Description = "Sets the wired chime type (0=Mechanical, 1=Digital, 2=Not Present) to test it, then restores the values captured from the devices listing beforehand. Requires --chime-type-value; skipped if not provided.",
-                SessionMethod = "Session.SetChimeType(doorbotId, type)",
+                SessionMethod = "Session.SetChimeType(doorbotId, type, deviceName)",
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/clients_api/doorbots/{doorbotId}",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Invoke = (session, target) => ChimeTypeValue.HasValue
-                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value)
+                    ? session.SetChimeType(target.DoorbotId!.Value, ChimeTypeValue.Value, RequireDeviceName(target))
                     : throw new InvalidOperationException("set-chime-type requires --chime-type-value <0|1|2>"),
-                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType }
+                PrepareRestore = target => OriginalDoorbotSettings.TryGetValue(target.DoorbotId!.Value, out DoorbotSettingsSnapshot? snap) && snap is { ChimeType: { } chimeType, Description: { } chimeDeviceName }
                     ? new RestorePlan(
                         $"chime_settings.type={chimeType}, enable={snap.ChimeEnabled}, duration={snap.ChimeDuration}",
                         WasCaptured: true,
-                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, snap.ChimeEnabled, snap.ChimeDuration))
+                        Restore: session => session.SetChimeType(target.DoorbotId!.Value, chimeType, chimeDeviceName, snap.ChimeEnabled, snap.ChimeDuration))
                     : null
             },
             new()
@@ -713,17 +748,21 @@ namespace VideoForensics.Providers.Ring
             },
             new()
             {
-                Key = "unlock-intercom",
-                DisplayName = "Unlock Intercom",
-                Description = "Unlocks a Ring Intercom device. Triggers a REAL, physical door unlock. Requires --doorbot-id (the Intercom's device id).",
+                Key = "intercom-unlock",
+                DisplayName = "Intercom unlock (manual only)",
+                Description = "Unlocks a Ring Intercom door. NEVER TESTED against a live device. Requires a Ring Intercom device. Triggers a REAL, physical door unlock - only run with --endpoints intercom-unlock --destructive --doorbot-id <intercom id>. Never part of --all or default runs.",
                 SessionMethod = "Session.Unlock(deviceId)",
+                // Session.Unlock sends PUT (the commands/v1 device_rpc path confirmed in a live run); this descriptor documents what is actually sent.
                 HttpMethod = "PUT",
                 ApiPath = "https://api.ring.com/commands/v1/devices/{deviceId}/device_rpc",
                 Scope = EndpointScope.PerDoorbot,
                 Destructive = true,
                 Physical = true,
+                ManualOnly = true,
                 NoRestoreReason = "not applicable: Ring Intercom auto re-locks after its own timeout; this client exposes no immediate re-lock command to call.",
-                Invoke = (session, target) => session.Unlock(target.DoorbotId!.Value)
+                Invoke = (session, target) => target.DoorbotId is { } deviceId
+                    ? session.Unlock(deviceId)
+                    : throw new InvalidOperationException("intercom-unlock requires --doorbot-id <intercom device id>")
             },
         ];
 

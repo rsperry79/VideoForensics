@@ -8,6 +8,7 @@ using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Services;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
@@ -41,6 +42,23 @@ namespace VideoForensics.Providers.Ring.Services
             if (value > 0)
             {
                 _maxConcurrentFileDownloads = value;
+            }
+        }
+
+        // Spaces Ring video requests. One request in flight and a minimum gap between request starts
+        // keeps an account's media pull under Ring's rate limit; set per run by SetRequestPacing.
+        private readonly MediaRequestPacer _pacer = new();
+
+        // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
+        private TimeSpan? _lastRetryAfter;
+
+        /// <inheritdoc />
+        public void SetRequestPacing(int maxConcurrent, TimeSpan minRequestInterval)
+        {
+            SetMaxConcurrentDownloads(maxConcurrent);
+            if (minRequestInterval >= TimeSpan.Zero)
+            {
+                _pacer.MinInterval = minRequestInterval;
             }
         }
 
@@ -183,6 +201,8 @@ namespace VideoForensics.Providers.Ring.Services
                 bool rateLimited = false;
                 int otherItemFailures = 0;
                 int permanentlySkipped = 0;
+                int alreadyPresentFiles = 0;
+                int throttledItems = 0;
 
                 _activeDownloads = 0;
                 _peakActiveDownloadsForBatch = 0;
@@ -190,7 +210,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 // Resolve and cache the device once at batch start to avoid per-item lookups.
                 // This ensures all watermark updates within the batch operate on consistent device state.
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, cancellationToken);
+                (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
@@ -300,6 +322,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 lock (_statusLock)
                                 {
                                     downloadedFiles++;
+                                    alreadyPresentFiles++;
                                     downloadedBytes += existingSize;
                                     mediaFilesValidated++;
                                     validatedFiles.Add(fileName);
@@ -359,19 +382,38 @@ namespace VideoForensics.Providers.Ring.Services
                         {
                             int concurrentNow = Interlocked.Increment(ref _activeDownloads);
                             InterlockedMax(ref _peakActiveDownloadsForBatch, concurrentNow);
+                            bool fetchedWithoutThrottle;
                             try
                             {
-                                await RetryWithBackoffAsync(async () =>
-                                {
-                                    await session.GetDoorbotHistoryRecording(@event, fileName);
-                                }, $"video for event {@event.Id}", rateLimitCts.Token);
+                                // A 429 waits Retry-After (or 60s) and retries this event; it never cancels the batch.
+                                fetchedWithoutThrottle = await ThrottleRetry.RunAsync(
+                                    () => RetryWithBackoffAsync(async () =>
+                                    {
+                                        await _pacer.WaitTurnAsync(rateLimitCts.Token);
+                                        await session.GetDoorbotHistoryRecording(@event, fileName);
+                                    }, $"video for event {@event.Id}", rateLimitCts.Token),
+                                    (wait, ct) =>
+                                    {
+                                        _lastRetryAfter = wait;
+                                        _logger.LogWarning("Ring throttled video for event {EventId}; waiting {Seconds}s before retrying it", @event.Id, wait.TotalSeconds);
+                                        return Task.Delay(wait, ct);
+                                    },
+                                    rateLimitCts.Token);
                             }
                             finally
                             {
                                 _ = Interlocked.Decrement(ref _activeDownloads);
                             }
 
-                            if (File.Exists(fileName))
+                            if (!fetchedWithoutThrottle)
+                            {
+                                // Still throttled after retries: not pulled in this run and not recorded as a permanent failure,
+                                // so the next sync tries it again.
+                                _ = Interlocked.Increment(ref throttledItems);
+                                _logger.LogWarning("Ring kept throttling event {EventId}; it is not pulled this run", @event.Id);
+                                _activityLog.Enqueue($"[yellow]⊘[/] {EscapeMarkup(Path.GetFileName(fileName))}: rate limited by Ring, will retry next sync");
+                            }
+                            else if (File.Exists(fileName))
                             {
                                 long downloadedSize = new FileInfo(fileName).Length;
                                 bool validated = downloadedSize > 0;
@@ -639,6 +681,10 @@ namespace VideoForensics.Providers.Ring.Services
                     {
                         skipReason = "cancelled";
                     }
+                    else if (throttledItems > 0)
+                    {
+                        skipReason = throttledItems == 1 ? "1 item still rate limited by Ring" : $"{throttledItems} items still rate limited by Ring";
+                    }
                     else if (otherItemFailures > 0)
                     {
                         skipReason = otherItemFailures == 1 ? "1 item failed to download" : $"{otherItemFailures} items failed to download";
@@ -661,7 +707,10 @@ namespace VideoForensics.Providers.Ring.Services
                     MediaFilesValidated: mediaFilesValidated,
                     ValidatedFiles: validatedFiles,
                     FilesMatched: effectiveMatched,
-                    SkipReason: skipReason
+                    SkipReason: skipReason,
+                    FilesAlreadyPresent: alreadyPresentFiles,
+                    RateLimited: rateLimited || throttledItems > 0,
+                    RetryAfter: _lastRetryAfter
                 );
             }
             catch (Exception ex)
@@ -770,7 +819,9 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Resolve device identity and record snapshot download
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, cancellationToken);
+                (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
+                RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
@@ -1160,7 +1211,75 @@ namespace VideoForensics.Providers.Ring.Services
             _cachedProviderAccountId = accountId;
         }
 
-        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
+        /// <summary>
+        /// Looks up a device's real kind and online state from the device list (the same source discovery
+        /// uses). Returns (null, null) when the list can't be fetched, so the device is recorded as Unknown
+        /// with an unknown online state rather than the download failing.
+        /// </summary>
+        internal async Task<(string? Kind, bool? IsOnline)> ResolveDeviceStateAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            Entities.Devices? devices;
+            try
+            {
+                devices = await GetDevicesForHealthAsync(session, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
+                return (null, null);
+            }
+
+            return ResolveDeviceState(devices, providerDeviceId);
+        }
+
+        /// <summary>
+        /// Finds the device in the list and returns its raw kind plus online state. Online follows discovery's
+        /// rule: Health.Connected first, then Subscribed (doorbots and stickup cams). Chimes have no Subscribed
+        /// field, so they use Health only. Returns null online when none of those is present, so an unknown
+        /// state is never stored as offline.
+        /// </summary>
+        internal static (string? Kind, bool? IsOnline) ResolveDeviceState(Entities.Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return (null, null);
+            }
+
+            Entities.Doorbot? doorbot = devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
+            if (doorbot != null)
+            {
+                return (KindOrListType(doorbot.Kind, "doorbot"), doorbot.Health?.Connected ?? doorbot.Subscribed);
+            }
+
+            Entities.StickupCam? stickupCam = devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId);
+            if (stickupCam != null)
+            {
+                return (KindOrListType(stickupCam.Kind, "stickup_cam"), stickupCam.Health?.Connected ?? stickupCam.Subscribed);
+            }
+
+            Entities.Doorbot? authorizedDoorbot = devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId);
+            if (authorizedDoorbot != null)
+            {
+                return (KindOrListType(authorizedDoorbot.Kind, "authorized_doorbot"), authorizedDoorbot.Health?.Connected ?? authorizedDoorbot.Subscribed);
+            }
+
+            Entities.Chime? chime = devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId);
+            if (chime != null)
+            {
+                return (KindOrListType(chime.Kind, "chime"), chime.Health?.Connected);
+            }
+
+            return (null, null);
+        }
+
+        // Discovery's device Metadata["kind"] is the raw Ring kind; when Ring omits it, discovery's Type
+        // (the list the device came from) is the fallback, which is the same thing VideoDownloadServiceAdapter does.
+        private static string KindOrListType(string? kind, string listType)
+        {
+            return string.IsNullOrWhiteSpace(kind) ? listType : kind;
+        }
+
+        internal async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, string? providerDeviceKind, bool? isOnline, CancellationToken ct, string? timeZoneId = null, DeviceDetailFields? deviceFields = null)
         {
             // Check per-device cache first
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cachedDeviceId))
@@ -1221,9 +1340,11 @@ namespace VideoForensics.Providers.Ring.Services
                 locationGuid,
                 providerDeviceId,
                 deviceName,
-                "camera",
-                true,
-                ct: ct);
+                RingDeviceTypeMapper.MapDeviceType(providerDeviceKind),
+                isOnline,
+                ct: ct,
+                timeZoneId: timeZoneId,
+                details: deviceFields);
 
             // Cache in the per-device dictionary
             _ = _deviceIdCache.TryAdd(providerDeviceId, device.Id);
@@ -1231,42 +1352,73 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
-        /// Fetches this device's current battery/connectivity telemetry and persists it as a
-        /// DeviceHealth metric, so gap-analysis can later explain a recording gap with real data
+        /// Fetches this device's current battery/connectivity telemetry and its device details (capabilities,
+        /// features, alerts) and persists them, so gap-analysis can later explain a recording gap with real data
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
-        private async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
+        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
         {
             try
             {
                 Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+
+                Guid? healthId = null;
                 Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
                     _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                }
+                else
+                {
+                    Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
+                    _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
+                    healthId = deviceHealth.Id;
+                    _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                        providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                }
+
+                RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
+                if (details == null)
+                {
+                    _logger.LogDebug("No device details available for device {DeviceId} in this run", providerDeviceId);
                     return;
                 }
 
-                var deviceHealth = new Data.Common.Entities.DeviceHealth
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceGuid,
-                    IsOnline = health.Connected,
-                    BatteryPercentage = health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
-                    WifiSignalRssi = health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
-                    WifiName = health.WifiName,
-                    FirmwareVersion = health.FirmwareVersion,
-                    CapturedAtUtc = DateTime.UtcNow
-                };
-
-                _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
-                _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                    providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                DateTime nowUtc = DateTime.UtcNow;
+                await _dataClient.RecordDeviceDetailsAsync(
+                    deviceGuid,
+                    healthId,
+                    RingDeviceDetailsMapper.ToCapabilities(details, deviceGuid, nowUtc),
+                    RingDeviceDetailsMapper.ToFeatures(details, deviceGuid),
+                    RingDeviceDetailsMapper.ToAlerts(details, deviceGuid),
+                    ct,
+                    RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceGuid));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health metric for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+            }
+        }
+
+        /// <summary>Maps Ring's health telemetry onto a DeviceHealths row for the given device.</summary>
+        internal static Data.Common.Entities.DeviceHealth BuildDeviceHealth(Entities.DeviceHealth health, Guid deviceGuid, DateTime capturedAtUtc)
+        {
+            return RingHealthTelemetryMapper.BuildDeviceHealth(health, deviceGuid, capturedAtUtc);
+        }
+
+        /// <summary>Returns the device's details from the cached ring_devices response, or null when they cannot be read.</summary>
+        internal async Task<RingDeviceDetails?> ResolveDeviceDetailsAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                return RingDeviceDetailsMapper.Find(devices, providerDeviceId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
+                return null;
             }
         }
 

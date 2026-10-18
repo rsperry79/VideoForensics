@@ -99,12 +99,16 @@ namespace VideoForensics.WebApp.Tests
             _ = builder.Services.AddSingleton(preferences.Object);
             _ = builder.Services.AddSingleton(auditLog.Object);
             _ = builder.Services.AddSingleton(tier.Object);
+            var stepUp = new Mock<IStepUpAuthService>();
+            _ = stepUp.Setup(s => s.Validate(It.IsAny<string>(), It.IsAny<Guid>())).Returns(true);
+            _ = builder.Services.AddSingleton(stepUp.Object);
             // Other routes mapped by MapDeviceManagementEndpoints need these resolvable, or endpoint construction throws at startup.
             _ = builder.Services.AddSingleton(new Mock<IPairedDeviceRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<IOperatorCredentialRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<VideoForensics.WebApp.Hubs.ILiveConnectionTracker>().Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
+            _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             _ = builder.Services.AddAuthorization(o => o.AddVideoForensicsPolicies());
             _ = builder.Services.AddAuthentication(TestScheme).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestScheme, _ => { });
             _ = builder.Services.AddRateLimiter(options =>
@@ -367,6 +371,22 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
+        public async Task UnlockOperator_NoStepUpToken_IsRejectedAndDoesNotUnlock()
+        {
+            await using var host = await StartAsync();
+            var targetId = Guid.NewGuid();
+
+            // No X-StepUp-Token header
+            var resp = await host.Client.SendAsync(new HttpRequestMessage(HttpMethod.Post, UnlockUrl(targetId))
+            {
+                Headers = { { "X-Test-Role", "SuperAdmin" }, { "X-Test-Tier", "Local" } }
+            });
+
+            Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+            host.Operators.Verify(r => r.UnlockAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task UnlockOperator_SuperAdminLocal_Returns200_AndUnlocks()
         {
             await using var host = await StartAsync();
@@ -374,7 +394,7 @@ namespace VideoForensics.WebApp.Tests
 
             var resp = await host.Client.SendAsync(new HttpRequestMessage(HttpMethod.Post, UnlockUrl(targetId))
             {
-                Headers = { { "X-Test-Role", "SuperAdmin" }, { "X-Test-Tier", "Local" } }
+                Headers = { { "X-Test-Role", "SuperAdmin" }, { "X-Test-Tier", "Local" }, { "X-StepUp-Token", "valid-step-up-token" } }
             });
 
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);

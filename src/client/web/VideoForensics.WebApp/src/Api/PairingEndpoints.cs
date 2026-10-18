@@ -271,6 +271,7 @@ namespace VideoForensics.WebApp.Api
             _ = app.MapPost("/api/v1/auth/webauthn/assertion-options", async (
                 IPairedDeviceRepository pairedDevices,
                 IOperatorRepository operators,
+                IOperatorCredentialRepository operatorCredentials,
                 IAuthMethodSettingsService authMethodsService,
                 ISecurityAuditLogger auditLog,
                 INetworkTierResolver tierResolver,
@@ -285,12 +286,35 @@ namespace VideoForensics.WebApp.Api
                     return passkeyGateResult;
                 }
 
-                IReadOnlyList<PairedDevice> allDevices = await pairedDevices.ListAsync(ct);
+                // An operator-passkey session carries the OperatorCredential.Id in its PairedDeviceId claim (see
+                // CompleteOperatorPasskeyStepUpAsync). Offer only that passkey, so the browser cannot pick another one.
+                List<PublicKeyCredentialDescriptor>? allowedCredentials = null;
+                if (Guid.TryParse(context.User.FindFirst(VideoForensicsClaimTypes.PairedDeviceId)?.Value, out Guid sessionCredentialId)
+                    && await pairedDevices.GetAsync(sessionCredentialId, ct) is null)
+                {
+                    Guid? sessionOperatorId = Guid.TryParse(context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value, out Guid parsedOperatorId)
+                        ? parsedOperatorId
+                        : null;
+                    OperatorCredential? sessionPasskey = await operatorCredentials.GetAsync(sessionCredentialId, ct);
+                    string? passkeyId = sessionOperatorId is Guid ownerId
+                        ? StepUpCredentialPolicy.OperatorPasskeyAllowedCredentialId(sessionPasskey, ownerId)
+                        : null;
+                    if (passkeyId is null)
+                    {
+                        return Results.Unauthorized();
+                    }
+
+                    allowedCredentials = new List<PublicKeyCredentialDescriptor>
+                    {
+                        new(PublicKeyCredentialType.PublicKey, Convert.FromBase64String(passkeyId), new[] { AuthenticatorTransport.Internal })
+                    };
+                }
+
                 // Every credential registration forces AuthenticatorAttachment.Platform above, so every
                 // stored credential is guaranteed to be a platform/internal authenticator; hinting that
                 // here (rather than leaving transports unset) lets the browser invoke Windows Hello
                 // directly instead of showing the full authenticator chooser.
-                var allowedCredentials = allDevices
+                allowedCredentials ??= (await pairedDevices.ListAsync(ct))
                     .Where(d => d.IsActive && d.WebAuthnCredentialId != null)
                     .Select(d => new PublicKeyCredentialDescriptor(
                         PublicKeyCredentialType.PublicKey,

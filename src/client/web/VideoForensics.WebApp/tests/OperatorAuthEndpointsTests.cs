@@ -1431,7 +1431,7 @@ namespace VideoForensics.WebApp.Tests
 
             // Act
             var result = await OperatorAuthEndpointsInvoker.StepUpPasswordAsync(
-                request, operators.Object, stepUpAuth.Object, auditLog.Object,
+                request, operators.Object, new Mock<ITwoFactorRoleRequirementRepository>().Object, stepUpAuth.Object, auditLog.Object,
                 tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -1466,7 +1466,7 @@ namespace VideoForensics.WebApp.Tests
 
             // Act
             var result = await OperatorAuthEndpointsInvoker.StepUpPasswordAsync(
-                request, operators.Object, stepUpAuth.Object, auditLog.Object,
+                request, operators.Object, new Mock<ITwoFactorRoleRequirementRepository>().Object, stepUpAuth.Object, auditLog.Object,
                 tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -1621,7 +1621,7 @@ namespace VideoForensics.WebApp.Tests
         /// route registration. Only the repositories and token service are mocked. Only this route is mapped,
         /// because mapping the whole operator-auth group needs every one of its unrelated services.
         /// </summary>
-        private static async Task<(HttpStatusCode Status, string Body)> RequestSessionKindAsync(bool limited, bool sendToken)
+        private static async Task<(HttpStatusCode Status, string Body)> RequestSessionKindAsync(bool limited, bool sendToken, bool twoFactorRequired = false)
         {
             const string token = "session-kind-token";
             var operatorId = Guid.NewGuid();
@@ -1643,6 +1643,7 @@ namespace VideoForensics.WebApp.Tests
                 Active = true,
                 IsApproved = true,
                 Username = $"session-kind-{operatorId:N}",
+                Role = OperatorRole.Admin,
                 FirstName = "Session",
                 LastName = "Kind",
                 Email = $"{operatorId:N}@test.invalid",
@@ -1654,11 +1655,15 @@ namespace VideoForensics.WebApp.Tests
             var credentials = new Mock<IOperatorCredentialRepository>();
             _ = credentials.Setup(c => c.ListForOperatorAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<OperatorCredential>());
 
+            var roleRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            _ = roleRequirements.Setup(r => r.GetRequirementForRoleAsync(OperatorRole.Admin, It.IsAny<CancellationToken>())).ReturnsAsync(twoFactorRequired);
+
             var builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
             _ = builder.Services.AddSingleton(tokenService.Object);
             _ = builder.Services.AddSingleton(operators.Object);
             _ = builder.Services.AddSingleton(credentials.Object);
+            _ = builder.Services.AddSingleton(roleRequirements.Object);
             _ = builder.Services.AddSingleton(new Mock<IPairedDeviceRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
             _ = builder.Services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
@@ -1736,6 +1741,73 @@ namespace VideoForensics.WebApp.Tests
             using JsonDocument document = JsonDocument.Parse(body);
             _ = document.RootElement.GetProperty("localTier").GetBoolean();
             Assert.False(document.RootElement.GetProperty("passkeySession").GetBoolean());
+            // A password login is the only session that re-enters a password for step-up.
+            Assert.True(document.RootElement.GetProperty("passwordSession").GetBoolean());
+        }
+
+        [Fact]
+        public async Task SessionKind_PasswordSessionInRoleRequiringTwoFactor_ReportsTwoFactorRequired()
+        {
+            // The policy requires a second factor, which is a passkey, so a password-only operator must upgrade before
+            // a destructive change. Passkey sessions still report the flag; the client decides what applies.
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true, twoFactorRequired: true);
+
+            Assert.Equal(HttpStatusCode.OK, status);
+            using JsonDocument document = JsonDocument.Parse(body);
+            Assert.True(document.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+
+        [Fact]
+        public async Task SessionKind_PasswordSessionInRoleWithoutTwoFactor_ReportsTwoFactorNotRequired()
+        {
+            (HttpStatusCode status, string body) = await RequestSessionKindAsync(limited: false, sendToken: true, twoFactorRequired: false);
+
+            Assert.Equal(HttpStatusCode.OK, status);
+            using JsonDocument document = JsonDocument.Parse(body);
+            Assert.False(document.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+
+        [Fact]
+        public async Task StepUpPassword_RoleRequiresTwoFactor_RefusesPasswordWithForbidden()
+        {
+            // The server enforces the policy too: a password cannot satisfy step-up for a role that requires a passkey,
+            // even when the client is bypassed.
+            var operatorId = Guid.NewGuid();
+            var op = new Operator
+            {
+                Id = operatorId,
+                DisplayName = "Policy Operator",
+                CreatedAtUtc = DateTime.UtcNow,
+                Active = true,
+                IsApproved = true,
+                Username = $"policy-{operatorId:N}",
+                FirstName = "Policy",
+                LastName = "Operator",
+                Email = $"{operatorId:N}@test.invalid",
+                Role = OperatorRole.Admin,
+                PasswordHash = "not-used-because-policy-refuses-first",
+            };
+            var operators = new Mock<IOperatorRepository>();
+            _ = operators.Setup(o => o.GetAsync(operatorId, It.IsAny<CancellationToken>())).ReturnsAsync(op);
+            var roleRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
+            _ = roleRequirements.Setup(r => r.GetRequirementForRoleAsync(OperatorRole.Admin, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            var context = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString())], "test"))
+            };
+
+            var method = typeof(OperatorAuthEndpoints).GetMethod(
+                "StepUpPasswordAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(method);
+            var result = await (Task<IResult>)method!.Invoke(null,
+                [new StepUpPasswordRequest("correct-or-not"), operators.Object, roleRequirements.Object,
+                 new Mock<IStepUpAuthService>().Object, new Mock<ISecurityAuditLogger>().Object,
+                 new Mock<INetworkTierResolver>().Object, context, CancellationToken.None])!;
+
+            var http = new DefaultHttpContext { RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider() };
+            await result.ExecuteAsync(http);
+            Assert.Equal(StatusCodes.Status403Forbidden, http.Response.StatusCode);
         }
 
         [Fact]
@@ -1918,6 +1990,7 @@ namespace VideoForensics.WebApp.Tests
         public static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
             IOperatorRepository operators,
+            ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1928,7 +2001,7 @@ namespace VideoForensics.WebApp.Tests
                 .GetMethod("StepUpPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
-                    [typeof(StepUpPasswordRequest), typeof(IOperatorRepository), typeof(IStepUpAuthService),
+                    [typeof(StepUpPasswordRequest), typeof(IOperatorRepository), typeof(ITwoFactorRoleRequirementRepository), typeof(IStepUpAuthService),
                      typeof(ISecurityAuditLogger), typeof(INetworkTierResolver), typeof(HttpContext), typeof(CancellationToken)],
                     null);
 
@@ -1937,7 +2010,7 @@ namespace VideoForensics.WebApp.Tests
                 throw new InvalidOperationException("Could not find StepUpPasswordAsync method");
             }
 
-            var result = method.Invoke(null, [request, operators, stepUpAuth, auditLog, tierResolver, context, ct]);
+            var result = method.Invoke(null, [request, operators, roleRequirements, stepUpAuth, auditLog, tierResolver, context, ct]);
             return await (Task<IResult>)result!;
         }
     }

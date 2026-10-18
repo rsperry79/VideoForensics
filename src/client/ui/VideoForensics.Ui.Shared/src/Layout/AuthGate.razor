@@ -172,6 +172,9 @@ else
         NavigationManager.LocationChanged -= HandleLocationChanged;
     }
 
+    /// <summary>True when a route template is reachable while signed out. Shared with PageAccessRouteView so the page guard does not blank these pages.</summary>
+    public static bool IsAllowListedRoute(string path) => AllowListedRoutes.Contains(path);
+
     /// <summary>
     /// Where an unauthenticated visitor on a non-allow-listed route should land, given the current
     /// bootstrap state. Public static (not private) so AuthGateTests.cs can exercise this exact

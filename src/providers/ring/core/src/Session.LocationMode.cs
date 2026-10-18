@@ -60,19 +60,18 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
-        /// Returns the Location Mode settings (e.g. per-mode alert configuration) for a location.
-        /// Response shape is not confirmed against a live capture, hence raw JsonElement rather
-        /// than an invented type.
+        /// Returns the Location Mode settings (per-mode device actions and options) for a location.
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve mode settings for</param>
-        public async Task<System.Text.Json.JsonElement> GetLocationModeSettings(Guid locationId)
+        /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the location has no mode settings (HTTP 404).</exception>
+        public async Task<LocationModeSettingsResponse> GetLocationModeSettings(Guid locationId)
         {
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}/settings");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
+            return JsonSerializer.Deserialize<LocationModeSettingsResponse>(response) ?? new LocationModeSettingsResponse();
         }
 
         /// <summary>
@@ -114,18 +113,18 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
-        /// Returns the Location Mode sharing configuration for a location. Response shape is not
-        /// confirmed against a live capture, hence raw JsonElement rather than an invented type.
+        /// Returns the Location Mode sharing configuration for a location.
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve mode sharing settings for</param>
-        public async Task<System.Text.Json.JsonElement> GetLocationModeSharing(Guid locationId)
+        /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the location has no mode sharing data (HTTP 404).</exception>
+        public async Task<LocationModeSharingResponse> GetLocationModeSharing(Guid locationId)
         {
             await EnsureSessionValid();
 
             var uri = new Uri(RingModeApiBaseUrl, $"location/{locationId:D}/sharing");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId);
 
-            return System.Text.Json.JsonDocument.Parse(response).RootElement.Clone();
+            return JsonSerializer.Deserialize<LocationModeSharingResponse>(response) ?? new LocationModeSharingResponse();
         }
 
         /// <summary>

@@ -132,4 +132,64 @@ public class NavSectionList_Tests : NavComponentTestBase
 
         Assert.Equal("/settings/notifications", selected?.Path);
     }
+
+    [Fact]
+    public void NavSectionList_ClickingCollapsedHeader_NavigatesToFirstItemOfSection()
+    {
+        NavItem? selected = null;
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings")
+            .Add(c => c.CurrentQuery, "")
+            .Add(c => c.OnItemSelected, EventCallback.Factory.Create<NavItem>(this, item => selected = item)));
+
+        component.Find(".left-nav-section[data-section='Security'] .left-nav-section-header").Click();
+
+        Assert.Equal("/settings/operators", selected?.Path);
+    }
+
+    [Fact]
+    public void NavSectionList_ClickingHeaderOfActiveSection_CollapsesWithoutNavigating()
+    {
+        NavItem? selected = null;
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings/notifications")
+            .Add(c => c.CurrentQuery, "")
+            .Add(c => c.OnItemSelected, EventCallback.Factory.Create<NavItem>(this, item => selected = item)));
+
+        component.Find(".left-nav-section[data-section='General'] .left-nav-section-header").Click();
+
+        Assert.Null(selected);
+        Assert.Empty(component.FindAll("[data-path='/settings/notifications']"));
+    }
+
+    [Fact]
+    public void NavSectionList_Header_IsButtonWithHeaderClassAndAriaExpanded()
+    {
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings")
+            .Add(c => c.CurrentQuery, ""));
+
+        var open = component.Find(".left-nav-section[data-section='General'] button.left-nav-section-header");
+        var closed = component.Find(".left-nav-section[data-section='Security'] button.left-nav-section-header");
+
+        Assert.Equal("true", open.GetAttribute("aria-expanded"));
+        Assert.Equal("false", closed.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void NavSectionList_Items_KeepItemStyleAndNotHeaderStyle()
+    {
+        var component = Render<NavSectionList>(p => p
+            .Add(c => c.Sections, TwoSections())
+            .Add(c => c.CurrentPath, "/settings")
+            .Add(c => c.CurrentQuery, ""));
+
+        var item = component.Find("[data-path='/settings'] button");
+
+        Assert.Contains("left-nav-item", item.ClassName);
+        Assert.DoesNotContain("left-nav-section-header", item.ClassName);
+    }
 }

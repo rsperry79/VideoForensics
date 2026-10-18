@@ -170,7 +170,8 @@ namespace VideoForensics.WebApp.Auth
                     {
                         new Claim(VideoForensicsClaimTypes.OperatorId, principal.OperatorId.ToString()),
                         new Claim(VideoForensicsClaimTypes.Role, principal.Role.ToString()),
-                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString())
+                        new Claim(VideoForensicsClaimTypes.NetworkTier, tier.ToString()),
+                        new Claim(VideoForensicsClaimTypes.CredentialKind, CredentialKind.Password.ToString())
                     };
                 }
                 else if (principal.Kind == CredentialKind.OperatorPasskey)

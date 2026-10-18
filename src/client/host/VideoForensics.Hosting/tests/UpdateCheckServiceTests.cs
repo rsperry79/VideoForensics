@@ -208,6 +208,46 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_RateLimited_KeepsPreviousStateAndReportsResetTime()
+        {
+            var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Stable };
+            (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, _) = CreateService(config, () => "1.0.0");
+
+            var release = new GitHubReleaseInfo(
+                "v99.0.0",
+                "https://github.com/rsperry79/VideoForensics/releases/tag/v99.0.0",
+                false,
+                false,
+                new[] { new GitHubReleaseAsset("VideoForensics-99.0.0.exe", "https://example.com/download", 1000) });
+            var reset = new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero);
+            _ = gitHubClient.SetupSequence(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(release)
+                .ThrowsAsync(new GitHubRateLimitException(reset));
+
+            await service.RunOneTickAsync(CancellationToken.None);
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            UpdateCheckState state = service.GetState();
+            Assert.True(state.UpdateAvailable);
+            Assert.Equal("99.0.0", state.LatestVersion);
+            Assert.Equal($"GitHub update check is rate limited; retrying after {reset:u}.", state.ErrorMessage);
+            Assert.NotNull(state.LastCheckedUtc);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RateLimited_DoesNotPropagate()
+        {
+            var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Testing };
+            (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, _) = CreateService(config);
+            _ = gitHubClient.Setup(c => c.GetLatestTestingReleaseAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new GitHubRateLimitException(DateTimeOffset.UtcNow.AddHours(1)));
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            Assert.Contains("rate limited", service.GetState().ErrorMessage);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_MalformedReleaseTag_SetsErrorMessageAndDoesNotThrow()
         {
             var config = new ForensicsConfiguration { ReleaseChannel = UpdateReleaseChannel.Stable };

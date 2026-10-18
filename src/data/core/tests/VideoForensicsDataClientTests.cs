@@ -21,6 +21,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IEventRepository> _mockEventRepository;
         private readonly Mock<IMediaItemRepository> _mockMediaItemRepository;
         private readonly Mock<IDeviceHealthRepository> _mockDeviceHealthRepository;
+        private readonly Mock<IDeviceDetailsRepository> _mockDeviceDetailsRepository;
         private readonly Mock<IProviderApiErrorLogRepository> _mockProviderApiErrorLogRepository;
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IWatermarkService> _mockWatermarkService;
@@ -44,6 +45,7 @@ namespace VideoForensics.Data.Core.Tests
             _mockEventRepository = new Mock<IEventRepository>();
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockDeviceHealthRepository = new Mock<IDeviceHealthRepository>();
+            _mockDeviceDetailsRepository = new Mock<IDeviceDetailsRepository>();
             _mockProviderApiErrorLogRepository = new Mock<IProviderApiErrorLogRepository>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockWatermarkService = new Mock<IWatermarkService>();
@@ -63,6 +65,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockEventRepository.Object,
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthRepository.Object,
+                _mockDeviceDetailsRepository.Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
@@ -777,6 +780,234 @@ namespace VideoForensics.Data.Core.Tests
             mockDeviceRepoInContext.Verify(
                 x => x.AddAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_UnknownOnlineState_StoresNull()
+        {
+            // Arrange: Ring gave no connection/subscription state, so the online flag is unknown.
+            var locationId = Guid.NewGuid();
+            string providerDeviceId = "device-unknown-state";
+            bool? isOnline = null;
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) =>
+                    await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, providerDeviceId, "Unknown Cam", "camera", isOnline, ct: CancellationToken.None);
+
+            // Assert: unknown is stored as null, not false.
+            Assert.Null(result.IsOnline);
+            mockDeviceRepoInContext.Verify(
+                x => x.AddAsync(It.Is<Device>(d => d.IsOnline == null), It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithDetailFields_StoresThemOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                RingDeviceId: "aabbcc", RingKind: "doorbell_v4", FirmwareVersion: "2.0.1",
+                Latitude: 41.5, Longitude: -87.6, Address: "1 Main St", Subscribed: true, SubscribedMotions: false,
+                BatteryLife: "87", ExternalConnection: true, Owned: true, Stolen: false);
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-detail", "Front", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            Assert.Equal("aabbcc", result.RingDeviceId);
+            Assert.Equal("doorbell_v4", result.RingKind);
+            Assert.Equal("2.0.1", result.FirmwareVersion);
+            Assert.Equal(41.5, result.Latitude);
+            Assert.Equal(-87.6, result.Longitude);
+            Assert.Equal("1 Main St", result.Address);
+            Assert.True(result.Subscribed);
+            Assert.False(result.SubscribedMotions);
+            Assert.Equal("87", result.BatteryLife);
+            Assert.True(result.ExternalConnection);
+            Assert.True(result.Owned);
+            Assert.False(result.Stolen);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithSettingsScalars_StoresOwnerAndSettingsOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                EnableVod: true, ExposureControl: 3, VodStatus: "active", DingAudioId: "d1", DoNotDisturbSecondsLeft: 1800,
+                LightBrightness: 80, OwnerId: "42", OwnerFirstName: "Pat", OwnerLastName: "Lee", OwnerEmail: "pat@example.com");
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-settings", "Porch", "camera", true, details: details, ct: CancellationToken.None);
+
+            Assert.True(result.EnableVod);
+            Assert.Equal(3, result.ExposureControl);
+            Assert.Equal("active", result.VodStatus);
+            Assert.Equal("d1", result.DingAudioId);
+            Assert.Equal(1800, result.DoNotDisturbSecondsLeft);
+            Assert.Equal(80, result.LightBrightness);
+            Assert.Equal("42", result.OwnerId);
+            Assert.Equal("Pat", result.OwnerFirstName);
+            Assert.Equal("Lee", result.OwnerLastName);
+            Assert.Equal("pat@example.com", result.OwnerEmail);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithRemainingScalars_StoresOnCreate()
+        {
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(
+                RingType: "doorbot", RingRingId: "abc", BatteryLife2: "55", BatteryVoltage: 12.5m, BatteryVoltage2: 3.3m,
+                LedStatus: "on", SirenSecondsRemaining: 30, NightMode: 1, MotionSnoozeJson: "{\"until\":5}",
+                SettingsMetadataJson: "{\"k\":1}", LightSettingsMetadataJson: "{\"s\":1}", PirSettingsSensitivity1: 1,
+                PirSettingsSensitivity2: 2, PirSettingsSensitivity3: 3, PirSettingsZoneEnable: 1, PirSettingsZoneMask: 15,
+                NightModeOn: true, MotionDetectionEnabled: false, SettingsChimeType: 2, SettingsChimeEnabled: true, SettingsChimeDuration: 3);
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-remaining", "Porch", "camera", true, details: details, ct: CancellationToken.None);
+
+            Assert.Equal("doorbot", result.RingType);
+            Assert.Equal("abc", result.RingRingId);
+            Assert.Equal("55", result.BatteryLife2);
+            Assert.Equal(12.5m, result.BatteryVoltage);
+            Assert.Equal(3.3m, result.BatteryVoltage2);
+            Assert.Equal("on", result.LedStatus);
+            Assert.Equal(30, result.SirenSecondsRemaining);
+            Assert.Equal(1, result.NightMode);
+            Assert.Equal("{\"until\":5}", result.MotionSnoozeJson);
+            Assert.Equal("{\"k\":1}", result.SettingsMetadataJson);
+            Assert.Equal("{\"s\":1}", result.LightSettingsMetadataJson);
+            Assert.Equal(2, result.PirSettingsSensitivity2);
+            Assert.Equal(15, result.PirSettingsZoneMask);
+            Assert.True(result.NightModeOn);
+            Assert.False(result.MotionDetectionEnabled);
+            Assert.Equal(2, result.SettingsChimeType);
+            Assert.True(result.SettingsChimeEnabled);
+            Assert.Equal(3, result.SettingsChimeDuration);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_ExistingDeviceWithoutDetailFields_LeavesStoredDetailFieldsUntouched()
+        {
+            var locationId = Guid.NewGuid();
+            var existing = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = locationId,
+                ProviderDeviceId = "device-keep",
+                Name = "Front",
+                Type = "doorbell",
+                RingDeviceId = "keepme",
+                Owned = true
+            };
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-keep", "Front", "doorbell", true, ct: CancellationToken.None);
+
+            Assert.Equal("keepme", result.RingDeviceId);
+            Assert.True(result.Owned);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_WithTimeZone_StoresTimeZoneIdOnCreate()
+        {
+            // Arrange: Ring's device time_zone must land in Devices.TimeZoneId (it was previously dropped).
+            var locationId = Guid.NewGuid();
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = mockDeviceRepoInContext.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-tz", "Front", "doorbell", true, timeZoneId: "America/New_York", ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("America/New_York", result.TimeZoneId);
+        }
+
+        [Fact]
+        public async Task EnsureDeviceAsync_ExistingDeviceWithTimeZone_UpdatesTimeZoneId()
+        {
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-tz2", Name = "Front", Type = "doorbell", TimeZoneId = null };
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-tz2", "Front", "doorbell", true, timeZoneId: "Europe/London", ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("Europe/London", result.TimeZoneId);
+        }
+
+        [Fact]
+        public async Task RecordDeviceDetailsAsync_DelegatesToDeviceDetailsRepository()
+        {
+            Guid deviceId = Guid.NewGuid();
+            Guid healthId = Guid.NewGuid();
+            var caps = new DeviceCapabilities { Id = Guid.NewGuid(), DeviceId = deviceId };
+
+            await _dataClient.RecordDeviceDetailsAsync(deviceId, healthId, caps, null, null, CancellationToken.None);
+
+            _mockDeviceDetailsRepository.Verify(r => r.UpsertAsync(deviceId, healthId, caps, null, null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

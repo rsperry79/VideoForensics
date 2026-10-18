@@ -39,7 +39,7 @@ internal sealed class CircuitFixture
     }
 
     /// <summary>Signs the circuit in as an operator with the given role and kind, and records the tier.</summary>
-    public void SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
+    public SessionPrincipal SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
     {
         const string token = "circuit-token";
         Session.Setup(s => s.SessionToken).Returns(token);
@@ -47,6 +47,7 @@ internal sealed class CircuitFixture
             Guid.NewGuid(), null, kind, role, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
         Tokens.Setup(t => t.Validate(token)).Returns(principal);
         Network.SetTier(tier);
+        return principal;
     }
 }
 
@@ -125,6 +126,47 @@ public class CircuitOperatorGate_Tests
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
     }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_OpenCircuitValidToken_ReturnsPrincipalOperatorId()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        SessionPrincipal principal = fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.Equal(principal.OperatorId, fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_ClosedCircuit_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = false;
+        fixture.SignIn(OperatorRole.SuperAdmin);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_NoToken_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
+    }
+
+    [Fact]
+    public void CircuitOperatorGate_OperatorId_InvalidToken_ReturnsNull()
+    {
+        var fixture = new CircuitFixture();
+        fixture.Scope.IsOpen = true;
+        fixture.Session.Setup(s => s.SessionToken).Returns("forged");
+        fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
+
+        Assert.Null(fixture.CreateGate().OperatorId);
+    }
 }
 
 public class GuardedProviderAccountRepository_Tests
@@ -199,10 +241,10 @@ public class GuardedEvidenceExportService_Tests
         var guarded = new GuardedEvidenceExportService(inner.Object, gate.Object);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
-            new List<Guid>(), "out", null, null, null, CancellationToken.None));
+            Guid.NewGuid(), "out", null, null, CancellationToken.None));
 
         inner.Verify(r => r.ExportEvidenceAsync(
-            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }
@@ -253,6 +295,7 @@ public class CircuitGuardRegistration_Tests
         services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
         services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
+        services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
         services.AddScoped(_ => new Mock<ICaseRepository>().Object);
         services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
@@ -538,7 +581,7 @@ public class GuardedEvidenceExportStepUp_Tests
     {
         var inner = new Mock<IEvidenceExportService>();
         inner.Setup(e => e.ExportEvidenceAsync(
-                It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(new ExportResult { Success = true });
         var gate = new Mock<ICircuitOperatorGate>();
@@ -553,10 +596,10 @@ public class GuardedEvidenceExportStepUp_Tests
         var (guarded, inner) = Create(localAdmin: true, stepUpValid: false);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
-            new List<Guid>(), "out", null, null, null, CancellationToken.None, null));
+            Guid.NewGuid(), "out", null, null, CancellationToken.None, null));
 
         inner.Verify(e => e.ExportEvidenceAsync(
-            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
@@ -566,11 +609,11 @@ public class GuardedEvidenceExportStepUp_Tests
         var (guarded, inner) = Create(localAdmin: true, stepUpValid: true);
 
         var result = await guarded.ExportEvidenceAsync(
-            new List<Guid>(), "out", null, null, null, CancellationToken.None, "step");
+            Guid.NewGuid(), "out", null, null, CancellationToken.None, "step");
 
         Assert.True(result.Success);
         inner.Verify(e => e.ExportEvidenceAsync(
-            It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<CancellationToken>(), "step"), Times.Once);
     }
 }

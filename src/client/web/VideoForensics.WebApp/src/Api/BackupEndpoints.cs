@@ -14,7 +14,7 @@ namespace VideoForensics.WebApp.Api
     /// Handles database backup export and import. Per the plan's auth-default rule,
     /// EVERY endpoint here requires paired-device authentication (RequireAuthorization()) - there is
     /// no general exemption for any backup operation. Both export and import are exposure-widening
-    /// operations that additionally require RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal),
+    /// operations that additionally require RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey),
     /// StepUpEndpointFilter re-authentication, and security audit logging (plan §5.4/§5.10).
     /// </summary>
     public static class BackupEndpoints
@@ -86,7 +86,7 @@ namespace VideoForensics.WebApp.Api
                 // If no file was created, return the result summary
                 return Results.Ok(result.ToDto());
             })
-            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
             .WithSummary("Export database backup")
@@ -144,7 +144,7 @@ namespace VideoForensics.WebApp.Api
                     }
                 }
             })
-            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal)
+            .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey)
             .AddEndpointFilter<StepUpEndpointFilter>()
             .RequireRateLimiting("media")
             .Accepts<IFormFile>("multipart/form-data")

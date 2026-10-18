@@ -1,5 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
@@ -222,6 +227,43 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(2880, capturedSettings.AutoBanDurationMinutes);
             var okResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
+        }
+
+        [Fact]
+        public void LockoutPolicyEndpoints_MappedRoutes_RequireSuperAdminLocalOrPasskeyPolicy()
+        {
+            IEndpointRouteBuilder app = BuildAndMap();
+
+            RouteEndpoint[] endpoints = app.DataSources
+                .SelectMany(d => d.Endpoints)
+                .OfType<RouteEndpoint>()
+                .Where(e => e.RoutePattern.RawText?.StartsWith("/api/v1/lockout-policy", StringComparison.Ordinal) == true)
+                .ToArray();
+
+            Assert.NotEmpty(endpoints);
+            foreach (RouteEndpoint endpoint in endpoints)
+            {
+                IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
+                Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+                Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
+            }
+        }
+
+        private static IEndpointRouteBuilder BuildAndMap()
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
+            {
+                options.ValidateScopes = true;
+                options.ValidateOnBuild = true;
+            });
+            _ = builder.Services.AddScoped(_ => Mock.Of<ILockoutPolicySettingsRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<ISecurityAuditLogger>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<INetworkTierResolver>());
+
+            WebApplication app = builder.Build();
+            app.MapLockoutPolicyEndpoints();
+            return app;
         }
     }
 

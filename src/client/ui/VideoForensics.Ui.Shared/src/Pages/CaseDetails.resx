@@ -143,4 +143,7 @@
   <data name="FailedToReopenCase" xml:space="preserve">
     <value>Failed to reopen case: {0}</value>
   </data>
+  <data name="ExportCase" xml:space="preserve">
+    <value>Export case</value>
+  </data>
 </root>

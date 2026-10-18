@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Data.Core.Models;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -20,14 +21,26 @@ namespace VideoForensics.Client.Core.Services
         private readonly IIntegrityVerificationService _integrityVerificationService;
         private readonly IActionLogRepository _actionLogRepository;
         private readonly IExportRecordService _exportRecordService;
+        private readonly ICaseRepository? _caseRepository;
+        private readonly IReportGenerationService? _reportService;
+
+        private static readonly JsonSerializerOptions ReportJsonOptions = new()
+        {
+            WriteIndented = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
 
         public EvidenceExportOrchestrator(
             ILogger<EvidenceExportOrchestrator> logger,
             IMediaItemRepository mediaItemRepository,
             IIntegrityVerificationService integrityVerificationService,
             IActionLogRepository actionLogRepository,
-            IExportRecordService exportRecordService)
+            IExportRecordService exportRecordService,
+            ICaseRepository? caseRepository = null,
+            IReportGenerationService? reportService = null)
         {
+            _caseRepository = caseRepository;
+            _reportService = reportService;
             _logger = logger;
             _mediaItemRepository = mediaItemRepository;
             _integrityVerificationService = integrityVerificationService;
@@ -35,14 +48,99 @@ namespace VideoForensics.Client.Core.Services
             _exportRecordService = exportRecordService;
         }
 
+        /// <inheritdoc />
         public async Task<ExportResult> ExportEvidenceAsync(
+            Guid caseId,
+            string outputDirectory,
+            string? recipientDescription,
+            string? passphrase,
+            CancellationToken ct,
+            string? stepUpToken = null)
+        {
+            if (_caseRepository is null || _reportService is null)
+            {
+                throw new InvalidOperationException("Case export requires the case repository and report generation service.");
+            }
+
+            ForensicCase? forensicCase = await _caseRepository.GetAsync(caseId, ct);
+            if (forensicCase is null)
+            {
+                _logger.LogWarning("Case export requested for unknown case {CaseId}", caseId);
+                return new ExportResult { Success = false, ErrorMessage = "Case not found." };
+            }
+
+            IReadOnlyList<CaseItem> pinned = await _caseRepository.ListItemsAsync(caseId, false, ct);
+            List<Guid> mediaItemIds = pinned
+                .Where(i => i.Kind == CaseItemKind.Media && i.MediaItemId.HasValue)
+                .Select(i => i.MediaItemId!.Value)
+                .Distinct()
+                .ToList();
+
+            // The case's own material: its scope devices/window plus the devices and recording times of its pinned media.
+            // Reports are never built for devices or time ranges the case does not reference.
+            var pinnedDeviceIds = new HashSet<Guid>();
+            DateTime? earliest = null;
+            DateTime? latest = null;
+            foreach (Guid mediaItemId in mediaItemIds)
+            {
+                MediaItem? media = await _mediaItemRepository.GetAsync(mediaItemId, ct);
+                if (media is null)
+                {
+                    continue;
+                }
+
+                _ = pinnedDeviceIds.Add(media.DeviceId);
+                earliest = earliest is null || media.RecordedAtUtc < earliest ? media.RecordedAtUtc : earliest;
+                latest = latest is null || media.RecordedAtUtc > latest ? media.RecordedAtUtc : latest;
+            }
+
+            DateTime? fromUtc = forensicCase.ScopeFromUtc ?? earliest;
+            DateTime? toUtc = forensicCase.ScopeToUtc
+                ?? (latest?.AddSeconds(1) ?? (forensicCase.ScopeFromUtc is not null ? DateTime.UtcNow : null));
+
+            var reportEntries = new List<(string Name, string Json)>();
+            if (fromUtc is not null && toUtc is not null)
+            {
+                IReadOnlyList<Guid> scopeDeviceIds = await _caseRepository.GetDeviceIdsAsync(caseId, ct);
+                foreach (Guid deviceId in scopeDeviceIds.Concat(pinnedDeviceIds).Distinct())
+                {
+                    string suffix = deviceId.ToString();
+                    DateTime from = fromUtc.Value;
+                    DateTime to = toUtc.Value;
+                    reportEntries.Add(($"reports/evidence-review_{suffix}.json", JsonSerializer.Serialize(await _reportService.BuildEvidenceReviewAsync(deviceId, from, to, ct), ReportJsonOptions)));
+                    reportEntries.Add(($"reports/forensic-analysis_{suffix}.json", JsonSerializer.Serialize(await _reportService.BuildForensicAnalysisReportAsync(deviceId, from, to, ct), ReportJsonOptions)));
+                    reportEntries.Add(($"reports/signal-anomaly_{suffix}.json", JsonSerializer.Serialize(await _reportService.BuildSignalAnomalyReportAsync(deviceId, from, to, ct), ReportJsonOptions)));
+                    reportEntries.Add(($"reports/access-control_{suffix}.json", JsonSerializer.Serialize(await _reportService.BuildAccessControlReportAsync(deviceId, from, to, ct), ReportJsonOptions)));
+                    reportEntries.Add(($"reports/chain-of-custody_{suffix}.json", JsonSerializer.Serialize(await _reportService.BuildChainOfCustodyReportAsync(deviceId, from, to, ct), ReportJsonOptions)));
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Case {CaseId} defines no time window and has no pinned media; exporting no reports", caseId);
+            }
+
+            return await ExportCoreAsync(mediaItemIds, outputDirectory, forensicCase.CaseNumber, recipientDescription, passphrase, reportEntries, ct);
+        }
+
+        /// <summary>Exports an explicit set of media items, not tied to a case. Not part of <see cref="IEvidenceExportService"/>.</summary>
+        public Task<ExportResult> ExportEvidenceAsync(
             IReadOnlyList<Guid> mediaItemIds,
             string outputDirectory,
             string? caseReference,
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,
-            string? stepUpToken = null)
+            string? stepUpToken = null) =>
+            ExportCoreAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, [], ct);
+
+        private async Task<ExportResult> ExportCoreAsync(
+            IReadOnlyList<Guid> mediaItemIds,
+            string outputDirectory,
+            string? caseReference,
+            string? recipientDescription,
+            string? passphrase,
+            IReadOnlyList<(string Name, string Json)> extraEntries,
+            CancellationToken ct)
         {
             // The step-up token is checked by the host before this runs (the WebApp's circuit guard). The local
             // export does not re-check it, so it must only be reached through that guard.
@@ -98,7 +196,7 @@ namespace VideoForensics.Client.Core.Services
                     }
                 }
 
-                if (itemsToExport.Count == 0)
+                if (itemsToExport.Count == 0 && extraEntries.Count == 0)
                 {
                     result.ErrorMessage = "No media items were suitable for export (all failed integrity verification or not found)";
                     _logger.LogError(result.ErrorMessage);
@@ -191,6 +289,17 @@ namespace VideoForensics.Client.Core.Services
                         {
                             _logger.LogWarning(ex, "Failed to add media file {FileName} to archive", item.FileName);
                         }
+                    }
+
+                    foreach ((string name, string json) in extraEntries)
+                    {
+                        zipStream.PutNextEntry(new ZipEntry(name));
+                        using (var writer = new StreamWriter(zipStream, System.Text.Encoding.UTF8, leaveOpen: true))
+                        {
+                            await writer.WriteAsync(json);
+                        }
+
+                        zipStream.CloseEntry();
                     }
 
                     // Add manifest.json

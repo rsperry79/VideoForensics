@@ -4,6 +4,7 @@
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Components.Inspector
 @using VideoForensics.Ui.Shared.Components.Scope
+@using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Cases
 @using VideoForensics.Ui.Shared.Services.Inspector
@@ -18,13 +19,18 @@
     <div style="overflow: auto;">
         <h4 class="mb-4">@L["CasesTitle"]</h4>
 
-<div class="mb-3 d-flex gap-2">
-    <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" style="max-width: 200px;" data-testid="case-status-filter">
-        <option value="">@L["FilterAll"]</option>
-        <option value="Open">@L["FilterOpen"]</option>
-        <option value="Closed">@L["FilterClosed"]</option>
-    </select>
+<PageRightPanelContent>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterStatus"]</small>
+        <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" aria-label="@L["FilterStatus"]" data-testid="case-status-filter">
+            <option value="">@L["FilterAll"]</option>
+            <option value="Open">@L["FilterOpen"]</option>
+            <option value="Closed">@L["FilterClosed"]</option>
+        </select>
+    </div>
+</PageRightPanelContent>
 
+<div class="mb-3 d-flex gap-2">
     @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Review)
     {
         <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">@L["NewCase"]</button>

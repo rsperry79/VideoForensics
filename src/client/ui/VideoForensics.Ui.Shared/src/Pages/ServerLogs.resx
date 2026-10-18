@@ -98,12 +98,6 @@
   <data name="NoEntries" xml:space="preserve">
     <value>No log entries match the current filter.</value>
   </data>
-  <data name="StepUpFailed" xml:space="preserve">
-    <value>Passkey verification was cancelled or failed, so server logs cannot be loaded.</value>
-  </data>
-  <data name="TryAgainButton" xml:space="preserve">
-    <value>Try again</value>
-  </data>
   <data name="AccessDenied" xml:space="preserve">
     <value>Access denied. Server logs require a SuperAdmin on the local network and a successful passkey verification.</value>
   </data>

@@ -28,5 +28,15 @@ namespace VideoForensics.WebApp.Api
                 && credential.IsApproved
                 && credential.IsActive;
         }
+
+        /// <summary>
+        /// The credential ID a step-up challenge may offer in an operator-passkey session: only the passkey the session
+        /// signed in with. Null when that passkey no longer satisfies the session, so the caller fails closed instead of
+        /// offering every credential to the browser.
+        /// </summary>
+        public static string? OperatorPasskeyAllowedCredentialId(OperatorCredential? sessionPasskey, Guid sessionOperatorId)
+        {
+            return IsAcceptableOperatorPasskey(sessionPasskey, sessionOperatorId) ? sessionPasskey!.WebAuthnCredentialId : null;
+        }
     }
 }

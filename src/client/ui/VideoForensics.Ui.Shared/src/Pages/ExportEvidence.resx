@@ -44,20 +44,23 @@
   <data name="SignInToExport" xml:space="preserve">
     <value>to export evidence.</value>
   </data>
-  <data name="NoItemsSelectedPrefix" xml:space="preserve">
-    <value>No items selected - go to</value>
+  <data name="CasePickerLabel" xml:space="preserve">
+    <value>Case</value>
   </data>
-  <data name="EventsLink" xml:space="preserve">
-    <value>Events</value>
+  <data name="CasePickerPlaceholder" xml:space="preserve">
+    <value>Select a case...</value>
   </data>
-  <data name="NoItemsSelectedSuffix" xml:space="preserve">
-    <value>and select items to export.</value>
+  <data name="SelectCaseMessage" xml:space="preserve">
+    <value>Select a case to export its reports and evidence.</value>
   </data>
-  <data name="ItemsSelectedMessage" xml:space="preserve">
-    <value>{0} item(s) selected for export.</value>
+  <data name="ExportScopeMessage" xml:space="preserve">
+    <value>Exports the selected case's reports and pinned evidence only.</value>
   </data>
-  <data name="CaseReferencePlaceholder" xml:space="preserve">
-    <value>Case reference</value>
+  <data name="NoCases" xml:space="preserve">
+    <value>No cases exist yet.</value>
+  </data>
+  <data name="FailedToLoadCases" xml:space="preserve">
+    <value>Failed to load cases: {0}</value>
   </data>
   <data name="RecipientDescriptionPlaceholder" xml:space="preserve">
     <value>Recipient description</value>

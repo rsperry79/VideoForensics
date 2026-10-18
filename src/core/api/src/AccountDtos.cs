@@ -197,4 +197,28 @@ namespace VideoForensics.Core.Api.Contracts
         string Message,
         DateTime SyncStartedAtUtc
     );
+
+    /// <summary>
+    /// Request body for POST /api/v1/accounts/provider-accounts/{id}/sync-now. A missing body runs the legacy sync.
+    /// Null fields default to SyncType "Events" and RangeKind "SinceLast".
+    /// </summary>
+    /// <param name="SyncType">"All" (events and snapshots), "Config", "Snapshots" or "Events".</param>
+    /// <param name="RangeKind">"SinceLast", "Days", "Custom" or "All" (the provider's retained history).</param>
+    /// <param name="Days">Days back from now, 1 to 3650. Required when RangeKind is "Days".</param>
+    /// <param name="StartUtc">Range start, required for "Custom". Must be before EndUtc.</param>
+    /// <param name="EndUtc">Range end, required for "Custom".</param>
+    public record SyncNowRequest(
+        string? SyncType,
+        string? RangeKind,
+        int? Days,
+        DateTime? StartUtc,
+        DateTime? EndUtc
+    );
+
+    /// <summary>
+    /// The account's config sync interval in hours. Returned by GET and accepted by PUT
+    /// /api/v1/accounts/provider-accounts/{id}/config-sync-interval; PUT accepts 1 to 720.
+    /// </summary>
+    /// <param name="Hours">Hours between config syncs.</param>
+    public record ConfigSyncIntervalDto(int Hours);
 }

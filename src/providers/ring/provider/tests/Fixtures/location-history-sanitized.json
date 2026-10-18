@@ -1,0 +1,396 @@
+{
+  "items": [
+    {
+      "schema": "Event",
+      "source_id": "86401464",
+      "event_id": "7697349643908571576",
+      "start_time": "2026-10-16T19:27:46.238Z",
+      "end_time": "2026-10-16T19:28:34.469Z",
+      "event_type": "motion",
+      "source_type": null,
+      "duration_ms": 48231,
+      "session_duration": 41000,
+      "state": "timed_out",
+      "had_subscription": true,
+      "is_favorite": false,
+      "recording_status": "ready",
+      "cv": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178874177
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": [
+          {
+            "timestamp": 1792178874177,
+            "type": "human",
+            "objects_per_lens": null
+          }
+        ],
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "origin": null,
+      "origin_display_name": null,
+      "error_message": null,
+      "updated_at": "2026-10-16T19:28:34.777Z",
+      "visualizations": {
+        "cloud_media_visualization": {
+          "schema": "CloudMediaVisualization",
+          "media": [
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-1",
+              "start_time": "2026-10-16T19:27:46.238Z",
+              "end_time": "2026-10-16T19:28:34.469Z",
+              "custom_metadata": {
+                "recording_24x7_enabled": false,
+                "ding_id": "7697349643908571576",
+                "tracks": [
+                  {
+                    "id": "audio.2.0",
+                    "codec": "PCMU",
+                    "type": "audio"
+                  },
+                  {
+                    "id": "video.2.256",
+                    "codec": "H264",
+                    "type": "video"
+                  }
+                ],
+                "audio_encoding": "PCMU",
+                "video_encoding": "H264",
+                "tba_transcoding_enabled": true
+              },
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "VIDEO",
+              "file_family": "VIDEO",
+              "preroll_duration_ms": 7400,
+              "playback_duration": 48231,
+              "source": "Apsara"
+            },
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-2",
+              "start_time": "2026-10-16T19:27:46.238Z",
+              "end_time": "2026-10-16T19:28:34.469Z",
+              "custom_metadata": null,
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "THUMBNAIL",
+              "file_family": "THUMBNAIL",
+              "preroll_duration_ms": null,
+              "playback_duration": 48231,
+              "source": "Apsara"
+            }
+          ]
+        },
+        "local_media_visualization": {
+          "schema": "LocalMediaVisualization",
+          "media": []
+        },
+        "radar_visualization": null,
+        "map_visualization": null,
+        "potential_gap_visualization": null
+      },
+      "device": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "owner_id": "00000000",
+      "delete_in_progress": false,
+      "low_confidence": null,
+      "similarity": null,
+      "riid": "fb723166c1cc92617a7201c3bd9218a5",
+      "user_specified_recording_disabled": null,
+      "is_watched": false,
+      "is_property_view_enabled": null,
+      "cek_transfer_recipient_response": null,
+      "is_active": false,
+      "user_action_disabled": false,
+      "mission": null
+    },
+    {
+      "schema": "Event",
+      "source_id": "86401464",
+      "event_id": "7697348832159752632",
+      "start_time": "2026-10-16T19:24:36.089Z",
+      "end_time": "2026-10-16T19:26:43.793Z",
+      "event_type": "motion",
+      "source_type": null,
+      "duration_ms": 127704,
+      "session_duration": 120000,
+      "state": "timed_out",
+      "had_subscription": true,
+      "is_favorite": false,
+      "recording_status": "ready",
+      "cv": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178685190
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": [
+          {
+            "timestamp": 1792178685190,
+            "type": "human",
+            "objects_per_lens": null
+          }
+        ],
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "origin": null,
+      "origin_display_name": null,
+      "error_message": null,
+      "updated_at": "2026-10-16T19:26:44.051Z",
+      "visualizations": {
+        "cloud_media_visualization": {
+          "schema": "CloudMediaVisualization",
+          "media": [
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-3",
+              "start_time": "2026-10-16T19:24:36.089Z",
+              "end_time": "2026-10-16T19:26:43.793Z",
+              "custom_metadata": {
+                "recording_24x7_enabled": false,
+                "ding_id": "7697348832159752632",
+                "tracks": [
+                  {
+                    "id": "audio.2.0",
+                    "codec": "PCMU",
+                    "type": "audio"
+                  },
+                  {
+                    "id": "video.2.256",
+                    "codec": "H264",
+                    "type": "video"
+                  }
+                ],
+                "audio_encoding": "PCMU",
+                "video_encoding": "H264",
+                "tba_transcoding_enabled": true
+              },
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "VIDEO",
+              "file_family": "VIDEO",
+              "preroll_duration_ms": 8600,
+              "playback_duration": 127704,
+              "source": "Apsara"
+            },
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-4",
+              "start_time": "2026-10-16T19:24:36.089Z",
+              "end_time": "2026-10-16T19:26:43.793Z",
+              "custom_metadata": null,
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "THUMBNAIL",
+              "file_family": "THUMBNAIL",
+              "preroll_duration_ms": null,
+              "playback_duration": 127704,
+              "source": "Apsara"
+            }
+          ]
+        },
+        "local_media_visualization": {
+          "schema": "LocalMediaVisualization",
+          "media": []
+        },
+        "radar_visualization": null,
+        "map_visualization": null,
+        "potential_gap_visualization": null
+      },
+      "device": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "owner_id": "00000000",
+      "delete_in_progress": false,
+      "low_confidence": null,
+      "similarity": null,
+      "riid": "c84423b1a380db6d4694b63a883156ee",
+      "user_specified_recording_disabled": null,
+      "is_watched": false,
+      "is_property_view_enabled": null,
+      "cek_transfer_recipient_response": null,
+      "is_active": false,
+      "user_action_disabled": false,
+      "mission": null
+    },
+    {
+      "schema": "Event",
+      "source_id": "86401464",
+      "event_id": "7697348535807009208",
+      "start_time": "2026-10-16T19:23:27.750Z",
+      "end_time": "2026-10-16T19:24:14.845Z",
+      "event_type": "motion",
+      "source_type": null,
+      "duration_ms": 47095,
+      "session_duration": 40000,
+      "state": "timed_out",
+      "had_subscription": true,
+      "is_favorite": false,
+      "recording_status": "ready",
+      "cv": {
+        "person_detected": true,
+        "stream_broken": false,
+        "detection_type": "human",
+        "detection_types": [
+          {
+            "detection_type": "human",
+            "verified_timestamps": [
+              1792178616249
+            ]
+          }
+        ],
+        "security_alerts": null,
+        "profiles": null,
+        "full_description": null,
+        "short_description": null,
+        "similarity": null,
+        "anomaly": null,
+        "detection_details": [
+          {
+            "timestamp": 1792178616249,
+            "type": "human",
+            "objects_per_lens": null
+          }
+        ],
+        "tags": null,
+        "key_moments": null
+      },
+      "properties": {
+        "is_alexa": false,
+        "is_sidewalk": false,
+        "is_autoreply": false,
+        "stark_reviewed": false
+      },
+      "origin": null,
+      "origin_display_name": null,
+      "error_message": null,
+      "updated_at": "2026-10-16T19:24:15.494Z",
+      "visualizations": {
+        "cloud_media_visualization": {
+          "schema": "CloudMediaVisualization",
+          "media": [
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-5",
+              "start_time": "2026-10-16T19:23:27.750Z",
+              "end_time": "2026-10-16T19:24:14.845Z",
+              "custom_metadata": {
+                "recording_24x7_enabled": false,
+                "ding_id": "7697348535807009208",
+                "tracks": [
+                  {
+                    "id": "audio.2.0",
+                    "codec": "PCMU",
+                    "type": "audio"
+                  },
+                  {
+                    "id": "video.2.256",
+                    "codec": "H264",
+                    "type": "video"
+                  }
+                ],
+                "audio_encoding": "PCMU",
+                "video_encoding": "H264",
+                "tba_transcoding_enabled": true
+              },
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "VIDEO",
+              "file_family": "VIDEO",
+              "preroll_duration_ms": 7800,
+              "playback_duration": 47095,
+              "source": "Apsara"
+            },
+            {
+              "schema": "Media",
+              "url": "https://sanitized.example.invalid/url-6",
+              "start_time": "2026-10-16T19:23:27.750Z",
+              "end_time": "2026-10-16T19:24:14.845Z",
+              "custom_metadata": null,
+              "is_e2ee": false,
+              "manifest_id": null,
+              "file_type": "THUMBNAIL",
+              "file_family": "THUMBNAIL",
+              "preroll_duration_ms": null,
+              "playback_duration": 47095,
+              "source": "Apsara"
+            }
+          ]
+        },
+        "local_media_visualization": {
+          "schema": "LocalMediaVisualization",
+          "media": []
+        },
+        "radar_visualization": null,
+        "map_visualization": null,
+        "potential_gap_visualization": null
+      },
+      "device": {
+        "id": 86401464,
+        "description": "Sanitized description",
+        "type": "doorbell_graham_cracker"
+      },
+      "owner_id": "00000000",
+      "delete_in_progress": false,
+      "low_confidence": null,
+      "similarity": null,
+      "riid": "33035d6be37a8d403d0a340360287291",
+      "user_specified_recording_disabled": null,
+      "is_watched": false,
+      "is_property_view_enabled": null,
+      "cek_transfer_recipient_response": null,
+      "is_active": false,
+      "user_action_disabled": false,
+      "mission": null
+    }
+  ],
+  "pagination_key": "sanitized-pagination-key",
+  "cek_transfer_recipient_response": null
+}

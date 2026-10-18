@@ -8,7 +8,6 @@
 @implements IAsyncDisposable
 @inject ILogViewerService LogViewer
 @inject PairedSessionState SessionState
-@inject WebAuthnClient WebAuthn
 @inject IJSRuntime JS
 @inject IServiceProvider Services
 @inject IStringLocalizer<ServerLogs> L
@@ -20,14 +19,7 @@
 
 @if (SessionState.IsSignedIn)
 {
-    @if (_stepUpError is not null)
-    {
-        <div class="alert alert-warning d-flex align-items-center justify-content-between gap-2" data-testid="logs-stepup-error">
-            <span>@L["StepUpFailed"] <span class="text-muted">@_stepUpError</span></span>
-            <button type="button" class="btn btn-sm btn-primary" data-testid="logs-retry" @onclick="RetryAsync">@L["TryAgainButton"]</button>
-        </div>
-    }
-    else if (_denied)
+    @if (_denied)
     {
         <div class="alert alert-danger" data-testid="logs-denied">@L["AccessDenied"]</div>
     }
@@ -142,15 +134,12 @@ else if (_sessionChecked)
     private readonly List<LogEntry> _rows = new();
     private readonly List<LogEntry> _held = new();
     private readonly HashSet<long> _expanded = new();
-    private readonly object _tokenGate = new();
 
     private TimeProvider _time = TimeProvider.System;
     private Run? _run;
     private CancellationTokenSource? _debounceCts;
     private IJSObjectReference? _module;
     private ElementReference _viewport;
-    private Task<string>? _stepUpTask;
-    private string? _stepUpToken;
     private volatile bool _disposed;
 
     private ConnectionStatus _status = ConnectionStatus.Connecting;
@@ -159,7 +148,6 @@ else if (_sessionChecked)
     private bool _autoScroll = true;
     private bool _scrollPending;
     private bool _denied;
-    private string? _stepUpError;
     private string _minLevel = "Information";
     private string _searchText = string.Empty;
     private string? _activeSearch;
@@ -237,7 +225,6 @@ else if (_sessionChecked)
     {
         CancelRun();
         _denied = false;
-        _stepUpError = null;
         _status = ConnectionStatus.Connecting;
         var run = new Run(_minLevel, _activeSearch);
         _run = run;
@@ -255,34 +242,15 @@ else if (_sessionChecked)
     {
         CancellationToken ct = run.Cts.Token;
         TimeSpan backoff = InitialBackoff;
-        bool authRetried = false;
         bool filled = false;
-        string? token = null;
 
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                try
-                {
-                    token = await AcquireTokenAsync();
-                }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    // User cancelled the passkey prompt or verification failed: surface it and wait for "Try again".
-                    await PostAsync(run, () =>
-                    {
-                        _stepUpError = ex.Message;
-                        _status = ConnectionStatus.Disconnected;
-                    });
-                    return;
-                }
-
-                ct.ThrowIfCancellationRequested();
-
                 if (!filled)
                 {
-                    LogPage page = await LogViewer.GetPageAsync(run.Query(null), token, ct);
+                    LogPage page = await LogViewer.GetPageAsync(run.Query(null), ct);
                     ct.ThrowIfCancellationRequested();
                     List<LogEntry> entries = page.Entries.OrderBy(e => e.Sequence).ToList();
                     // LatestSequence also covers newer entries that the filter excluded, so the stream does not re-scan them.
@@ -297,7 +265,7 @@ else if (_sessionChecked)
 
                 await PostAsync(run, () => _status = ConnectionStatus.Live);
 
-                await foreach (LogEntry entry in LogViewer.StreamAsync(run.Query(run.LastSequence), token, ct).WithCancellation(ct))
+                await foreach (LogEntry entry in LogViewer.StreamAsync(run.Query(run.LastSequence), ct).WithCancellation(ct))
                 {
                     if (entry.Sequence <= run.LastSequence)
                     {
@@ -308,7 +276,6 @@ else if (_sessionChecked)
                     run.Inbox.Enqueue(entry);
                     ScheduleFlush(run);
                     backoff = InitialBackoff;
-                    authRetried = false;
                 }
 
                 // The server closed the stream; treat it like a drop and resume from LastSequence.
@@ -320,23 +287,13 @@ else if (_sessionChecked)
             }
             catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
             {
-                if (token is not null)
+                // The session or role was rejected: show the denial and stop. Reads need no step-up, so there is nothing to retry.
+                await PostAsync(run, () =>
                 {
-                    InvalidateToken(token);
-                }
-
-                if (authRetried)
-                {
-                    await PostAsync(run, () =>
-                    {
-                        _denied = true;
-                        _status = ConnectionStatus.Disconnected;
-                    });
-                    return;
-                }
-
-                authRetried = true;
-                continue;
+                    _denied = true;
+                    _status = ConnectionStatus.Disconnected;
+                });
+                return;
             }
             catch (Exception)
             {
@@ -353,48 +310,6 @@ else if (_sessionChecked)
             }
 
             backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, MaxBackoff.Ticks));
-        }
-    }
-
-    private Task<string> AcquireTokenAsync()
-    {
-        lock (_tokenGate)
-        {
-            if (_stepUpToken is not null)
-            {
-                return Task.FromResult(_stepUpToken);
-            }
-
-            // Share an in-flight prompt between a restarted run and the one it replaced; a finished task is never reused.
-            if (_stepUpTask is { IsCompleted: false } inFlight)
-            {
-                return inFlight;
-            }
-
-            _stepUpTask = StepUpCoreAsync();
-            return _stepUpTask;
-        }
-    }
-
-    private async Task<string> StepUpCoreAsync()
-    {
-        string token = await WebAuthn.StepUpAsync(SessionState.SessionToken!);
-        lock (_tokenGate)
-        {
-            _stepUpToken = token;
-        }
-
-        return token;
-    }
-
-    private void InvalidateToken(string token)
-    {
-        lock (_tokenGate)
-        {
-            if (_stepUpToken == token)
-            {
-                _stepUpToken = null;
-            }
         }
     }
 
@@ -579,12 +494,6 @@ else if (_sessionChecked)
         {
             _expanded.Add(sequence);
         }
-    }
-
-    private Task RetryAsync()
-    {
-        StartRun();
-        return Task.CompletedTask;
     }
 
     private async Task DownloadAsync()

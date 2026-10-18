@@ -1,5 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
@@ -175,6 +180,44 @@ namespace VideoForensics.WebApp.Tests
             Assert.NotNull(result);
             // Should return 404
             operatorRepository.Verify(r => r.SetTwoFactorRequirementOverrideAsync(It.IsAny<Guid>(), It.IsAny<TwoFactorRequirementOverride>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public void TwoFactorPolicyEndpoints_MappedRoutes_RequireSuperAdminLocalOrPasskeyPolicy()
+        {
+            IEndpointRouteBuilder app = BuildAndMap();
+
+            RouteEndpoint[] endpoints = app.DataSources
+                .SelectMany(d => d.Endpoints)
+                .OfType<RouteEndpoint>()
+                .Where(e => e.RoutePattern.RawText?.StartsWith("/api/v1/two-factor-policy", StringComparison.Ordinal) == true)
+                .ToArray();
+
+            Assert.NotEmpty(endpoints);
+            foreach (RouteEndpoint endpoint in endpoints)
+            {
+                IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
+                Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+                Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
+            }
+        }
+
+        private static IEndpointRouteBuilder BuildAndMap()
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
+            {
+                options.ValidateScopes = true;
+                options.ValidateOnBuild = true;
+            });
+            _ = builder.Services.AddScoped(_ => Mock.Of<ITwoFactorRoleRequirementRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<IOperatorRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<ISecurityAuditLogger>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<INetworkTierResolver>());
+
+            WebApplication app = builder.Build();
+            app.MapTwoFactorPolicyEndpoints();
+            return app;
         }
     }
 

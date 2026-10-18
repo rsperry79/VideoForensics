@@ -28,14 +28,11 @@ namespace VideoForensics.Hosting.Local
 
         /// <inheritdoc />
         /// <exception cref="ArgumentException">
-        /// <paramref name="query"/> has an invalid <see cref="LogQuery.MinLevel"/>, or <paramref name="stepUpToken"/> is null or empty.
+        /// <paramref name="query"/> has an invalid <see cref="LogQuery.MinLevel"/>.
         /// </exception>
-        public Task<LogPage> GetPageAsync(LogQuery query, string stepUpToken, CancellationToken ct)
+        public Task<LogPage> GetPageAsync(LogQuery query, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(query);
-            // The token is validated for shape only. Why: this runs on the operator's own device, where no server-side
-            // step-up exists to check it against, so the value is otherwise ignored.
-            ArgumentException.ThrowIfNullOrEmpty(stepUpToken);
             ValidateMinLevel(query.MinLevel);
 
             ct.ThrowIfCancellationRequested();
@@ -59,14 +56,12 @@ namespace VideoForensics.Hosting.Local
         }
 
         /// <inheritdoc />
-        /// <exception cref="ArgumentException"><paramref name="stepUpToken"/> is null or empty, or the MinLevel is invalid.</exception>
+        /// <exception cref="ArgumentException">The MinLevel is invalid.</exception>
         public async IAsyncEnumerable<LogEntry> StreamAsync(
             LogQuery query,
-            string stepUpToken,
             [EnumeratorCancellation] CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(query);
-            ArgumentException.ThrowIfNullOrEmpty(stepUpToken);
             ValidateMinLevel(query.MinLevel);
 
             // Backlog and live subscription are taken atomically by the buffer, so no entry is lost or duplicated.

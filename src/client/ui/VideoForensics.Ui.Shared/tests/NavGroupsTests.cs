@@ -29,7 +29,7 @@ public class NavGroups_Tests
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/evidence", itemPaths);
-        Assert.Contains("/collect", itemPaths);
+        Assert.DoesNotContain("/collect", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/chat", itemPaths);
 

@@ -22,7 +22,7 @@ namespace VideoForensics.WebApp.Api
                 .RequireAuthorization(VideoForensicsPolicies.Admin);
 
             _ = group.MapPut("/", SetReleaseChannelAsync)
-                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+                .RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
         }
 
         /// <summary>

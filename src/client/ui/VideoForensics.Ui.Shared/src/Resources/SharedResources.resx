@@ -623,6 +623,21 @@
   <data name="NotFoundMessage" xml:space="preserve">
     <value>Sorry, there's nothing at this address.</value>
   </data>
+  <data name="StepUpPasswordTitle" xml:space="preserve">
+    <value>Confirm with your password</value>
+  </data>
+  <data name="StepUpPasswordDescription" xml:space="preserve">
+    <value>This change needs your password to continue.</value>
+  </data>
+  <data name="StepUpPasswordLabel" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="StepUpConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="StepUpCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="Security" xml:space="preserve">
     <value>Security</value>
   </data>

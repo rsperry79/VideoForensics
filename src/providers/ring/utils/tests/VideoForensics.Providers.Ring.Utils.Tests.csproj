@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Utils.csproj" />
     <ProjectReference Include="../../core/src/VideoForensics.Providers.Ring.Core.csproj" />
+    <ProjectReference Include="../../../../core/helpers/src/VideoForensics.Core.Helpers.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- CliOptions is internal to the SelfTest exe; compile it in directly rather than referencing the exe. -->

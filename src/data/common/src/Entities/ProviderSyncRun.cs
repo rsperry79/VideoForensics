@@ -23,5 +23,26 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Failure message for an unsuccessful run; null when Success is true. Truncated to 1024 characters at write time.</summary>
         public string? ErrorMessage { get; set; }
+
+        /// <summary>"Full" (provider's whole event history) or "Incremental" (since the last sync); null for runs recorded before this was tracked.</summary>
+        public string? SyncType { get; set; }
+
+        /// <summary>Devices discovered and stored by this run; null when not tallied.</summary>
+        public int? DevicesSynced { get; set; }
+
+        /// <summary>Locations discovered and stored by this run; null when not tallied.</summary>
+        public int? LocationsSynced { get; set; }
+
+        /// <summary>Events stored by this run; null when not tallied.</summary>
+        public int? EventsSynced { get; set; }
+
+        /// <summary>Configuration areas stored by this run; null when not tallied.</summary>
+        public int? ConfigAreasSynced { get; set; }
+
+        /// <summary>Per-device event feeds that failed during this run; null when not tallied.</summary>
+        public int? FeedsFailed { get; set; }
+
+        /// <summary>Devices that returned a snapshot during this run (Snapshots or All syncs); null when snapshots were not part of the run.</summary>
+        public int? SnapshotsSynced { get; set; }
     }
 }

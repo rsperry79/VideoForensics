@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using VideoForensics.Core.Logging.Services;
 
 namespace VideoForensics.Core.Api.Contracts
@@ -5,6 +7,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <summary>
     /// A single log entry for the in-memory buffer.
     /// </summary>
+    /// <remarks>TimestampUtc, Level, Category and Message are required on the wire; deserialization throws if any is missing.</remarks>
     /// <param name="Sequence">Monotonic sequence number assigned by the buffer.</param>
     /// <param name="TimestampUtc">When the log entry was created, in UTC.</param>
     /// <param name="Level">Log level (e.g., "Information", "Warning", "Error").</param>
@@ -13,10 +16,10 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Exception">Exception details (type, message, stack trace), if any; truncated to ~4000 chars.</param>
     public record LogEntryDto(
         long Sequence,
-        DateTimeOffset TimestampUtc,
-        string Level,
-        string Category,
-        string Message,
+        [property: JsonRequired] DateTimeOffset TimestampUtc,
+        [property: JsonRequired] string Level,
+        [property: JsonRequired] string Category,
+        [property: JsonRequired] string Message,
         string? Exception);
 
     /// <summary>
@@ -51,12 +54,13 @@ namespace VideoForensics.Core.Api.Contracts
         /// </summary>
         public static LogEntryDto ToDto(this LogRecord record)
         {
+            // A null from the logger must not become a missing field on the wire (the four fields are JsonRequired).
             return new LogEntryDto(
                 Sequence: record.Sequence,
                 TimestampUtc: record.TimestampUtc,
-                Level: record.Level,
-                Category: record.Category,
-                Message: record.Message,
+                Level: record.Level ?? string.Empty,
+                Category: record.Category ?? string.Empty,
+                Message: record.Message ?? string.Empty,
                 Exception: record.Exception);
         }
     }

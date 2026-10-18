@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
 @using Syncfusion.Blazor.Layouts
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -20,6 +21,7 @@
 @inject INoticeRepository NoticeRepository
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject InspectorState InspectorState
+@inject ILogger<MainLayout> Logger
 
 <div class="app-layout">
     @if (ConnectivityState.IsUnreachable)

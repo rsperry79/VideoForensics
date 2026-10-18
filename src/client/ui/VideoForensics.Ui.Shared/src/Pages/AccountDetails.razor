@@ -10,8 +10,8 @@
 @inject HttpClient HttpClient
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
+@inject StepUpService StepUp
 @inject IProviderAuthService AuthService
-@inject AccountSelectionState AccountSelectionState
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountDetails> L
 
@@ -77,19 +77,65 @@ else
         </div>
 
         <div class="mb-4">
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+                <div>
+                    <label class="form-label" for="sync-type">@L["SyncTypeLabel"]</label>
+                    <select id="sync-type" class="form-select" @bind="_syncType">
+                        @foreach (var t in SyncRequestBuilder.SyncTypes)
+                        {
+                            <option value="@t">@SyncTypeChoiceLabel(t)</option>
+                        }
+                    </select>
+                </div>
+                @if (!IsConfigSync)
+                {
+                    <div>
+                        <label class="form-label" for="sync-range">@L["SyncRangeLabel"]</label>
+                        <select id="sync-range" class="form-select" @onchange="OnRangeChanged">
+                            @foreach (var r in SyncRequestBuilder.RangeOptions)
+                            {
+                                <option value="@r" selected="@(r == _syncRange)">@RangeLabel(r)</option>
+                            }
+                        </select>
+                    </div>
+                    @if (_syncRange == SyncRequestBuilder.CustomRange)
+                    {
+                        <div>
+                            <label class="form-label" for="sync-custom-start">@L["SyncCustomStart"]</label>
+                            <input id="sync-custom-start" type="date" class="form-control" value="@_customStart" @onchange="e => _customStart = e.Value?.ToString() ?? string.Empty" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="sync-custom-end">@L["SyncCustomEnd"]</label>
+                            <input id="sync-custom-end" type="date" class="form-control" value="@_customEnd" @onchange="e => _customEnd = e.Value?.ToString() ?? string.Empty" />
+                            <div id="sync-custom-end-hint" class="form-text">@L["CustomEndHint"]</div>
+                        </div>
+                    }
+                }
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
                 <SfButton CssClass="e-primary" Content="@L["SyncNow"]" OnClick="SyncNowAsync" Disabled="@_isSyncing" />
                 @if (_isSyncing)
                 {
                     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
                 }
                 <SfButton CssClass="e-primary" Content="@L["SyncSchedule"]" OnClick="GoToSyncSchedule" />
-                <SfButton CssClass="e-primary" Content="@(_account.Id == _selectedAccountId ? L["Selected"] : L["Select"])" OnClick="() => SelectAccountAsync(_account.Id)" Disabled="@(_isBusy || _account.Id == _selectedAccountId)" />
                 @if (!string.IsNullOrEmpty(_account?.LastErrorMessage))
                 {
                     <SfButton CssClass="e-warning" Content="@L["Login"]" OnClick="() => _reAuthDialogVisible = true" />
                 }
             </div>
+        </div>
+
+        <div id="sync-output" class="mb-4">
+            <h5>@L["SyncOutputTitle"]</h5>
+            @if (LatestRun is { } latest)
+            {
+                <p class="mb-1">
+                    <strong>@L["LatestSyncRunLabel"]</strong>
+                    @latest.StartedUtc.ToLocalTime().ToString("g") - @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
+                </p>
+            }
+            <DownloadProgressPanel IsActive="@_isSyncing" />
         </div>
 
         <div>
@@ -119,11 +165,14 @@ else
             }
             else if (_syncRuns is not null)
             {
+                <div class="table-responsive">
                 <table class="table table-sm">
                     <thead>
                         <tr>
                             <th>@L["ColSyncTime"]</th>
                             <th>@L["ColSyncStatus"]</th>
+                            <th>@L["ColSyncType"]</th>
+                            <th>@L["ColSyncRecords"]</th>
                             <th>@L["ColDetails"]</th>
                         </tr>
                     </thead>
@@ -133,6 +182,8 @@ else
                             <tr class="sync-run-row">
                                 <td>@run.StartedUtc.ToLocalTime().ToString("g")</td>
                                 <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
+                                <td>@SyncTypeLabel(run.SyncType)</td>
+                                <td>@(SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced, L["SyncRecordsSnapshots"].Value) ?? L["SyncRecordsUnknown"].Value)</td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ToggleRunDetailsAsync(run.Id)">@L["ColDetails"]</button>
                                 </td>
@@ -140,7 +191,7 @@ else
                             @if (_expandedRunId == run.Id)
                             {
                                 <tr class="sync-run-detail">
-                                    <td colspan="3">
+                                    <td colspan="5">
                                         @if (_runDetailError)
                                         {
                                             <p class="text-danger mb-0">@L["SyncDetailsError"]</p>
@@ -162,6 +213,7 @@ else
                         }
                     </tbody>
                 </table>
+                </div>
             }
         </div>
 
@@ -224,7 +276,10 @@ else
     private string? _accountEmail;
     private bool _isLoading = true;
     private bool _isBusy;
-    private Guid? _selectedAccountId;
+    private string _syncType = "All";
+    private string _syncRange = "30";
+    private string _customStart = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).Start;
+    private string _customEnd = SyncRequestBuilder.DefaultCustomRange(DateTime.Today).End;
     private bool _confirmingRemove;
     private bool _reAuthDialogVisible;
     private bool _isSyncing;
@@ -237,6 +292,47 @@ else
     private Guid? _expandedRunId;
     private VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto? _runDetail;
     private bool _runDetailError;
+
+    private VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto? LatestRun =>
+        _syncRuns?.OrderByDescending(r => r.StartedUtc).FirstOrDefault();
+
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _syncRange = e.Value?.ToString() ?? "30";
+        if (_syncRange == SyncRequestBuilder.CustomRange)
+        {
+            (_customStart, _customEnd) = SyncRequestBuilder.DefaultCustomRange(DateTime.Today);
+        }
+    }
+
+    private string SyncTypeChoiceLabel(string type) => type switch
+    {
+        "Events" => L["SyncChoiceEvents"],
+        "Snapshots" => L["SyncChoiceSnapshots"],
+        "Config" => L["SyncChoiceConfig"],
+        _ => L["SyncChoiceAll"],
+    };
+
+    private bool IsConfigSync => _syncType == SyncRequestBuilder.ConfigSyncType;
+
+    private string RangeLabel(string range) => range switch
+    {
+        "30" => L["SyncRange30"],
+        "60" => L["SyncRange60"],
+        "90" => L["SyncRange90"],
+        "365" => L["SyncRange365"],
+        SyncRequestBuilder.AllRange => L["SyncRangeAll"],
+        _ => L["SyncRangeCustom"],
+    };
+
+    private string SyncTypeLabel(string? type) => type switch
+    {
+        "Full" => L["SyncTypeFull"],
+        "Incremental" => L["SyncTypeIncremental"],
+        "Snapshots" => L["SyncTypeSnapshots"],
+        "Config" => L["SyncTypeConfig"],
+        _ => L["SyncTypeUnknown"],
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -361,8 +457,6 @@ else
                 {
                     // Fall back to ProviderName if user lookup fails
                 }
-
-                await LoadSelectionAsync();
             }
         }
         catch (Exception ex)
@@ -372,60 +466,6 @@ else
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    /// <summary>
-    /// Resolves which linked account this browser has selected. The selection is per-browser (localStorage),
-    /// so it is read against all linked accounts, not just this one.
-    /// </summary>
-    private async Task LoadSelectionAsync()
-    {
-        try
-        {
-            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
-            _selectedAccountId = await AccountSelectionState.GetSelectedAccountIdAsync(accounts.Select(a => a.Id).ToList());
-        }
-        catch
-        {
-            // Without the account list no selection can be shown; the rest of the page still works.
-            _selectedAccountId = null;
-        }
-    }
-
-    private async Task SelectAccountAsync(Guid accountId)
-    {
-        _isBusy = true;
-        _statusMessage = null;
-        try
-        {
-            _selectedAccountId = accountId;
-            await AccountSelectionState.SetSelectedAccountIdAsync(accountId);
-
-            // The server-side active account still drives downloads, so keep it in step with this browser's choice.
-            ForensicsConfig.ActiveProviderAccountId = accountId;
-            try
-            {
-                await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-            }
-            catch (NotSupportedException)
-            {
-                _statusMessage = L["SettingServerOnly"];
-                return;
-            }
-
-            var resumed = await AuthService.RestoreFromSavedCredentialsAsync(accountId);
-            _statusMessage = resumed
-                ? L["SwitchedAndResumed"]
-                : L["SwitchedNotResumed"];
-        }
-        catch (Exception ex)
-        {
-            _statusMessage = L["CouldNotSwitch", ex.Message];
-        }
-        finally
-        {
-            _isBusy = false;
         }
     }
 
@@ -462,8 +502,8 @@ else
         {
             await SessionState.EnsureLoadedAsync();
             // Session state loads lazily; the token is only populated after this.
-            // Removing an account is protected by StepUpEndpointFilter: a fresh passkey assertion must accompany the call.
-            var stepUpToken = await WebAuthn.StepUpAsync(SessionState.SessionToken ?? throw new InvalidOperationException("Not signed in."));
+            // Removing an account is protected by StepUpEndpointFilter: a fresh step-up confirmation (passkey or password) must accompany the call.
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
             using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
             client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
@@ -514,13 +554,12 @@ else
             // Session state loads lazily; the token is only populated after this.
             // The injected HttpClient has no base address, so relative URIs fail before a request is sent.
             // Build the client the same way the other authenticated calls on this page do.
-            using var client = new HttpClient { BaseAddress = new Uri(NavigationManager.BaseUri) };
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
-            var response = await client.PostAsJsonAsync(
-                $"api/v1/accounts/provider-accounts/{Id}/sync-now",
-                new { },
-                CancellationToken.None
-            );
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(NavigationManager.BaseUri), $"api/v1/accounts/provider-accounts/{Id}/sync-now"))
+            {
+                Content = JsonContent.Create(SyncRequestBuilder.Build(_syncType, _syncRange, _customStart, _customEnd)),
+            };
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+            using HttpResponseMessage response = await HttpClient.SendAsync(request, CancellationToken.None);
 
             if (response.IsSuccessStatusCode)
             {

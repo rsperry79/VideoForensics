@@ -167,8 +167,8 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull both accounts concurrently
-            var task1 = sut.PullAccountEventsAsync(account1Id, null, cancellationToken);
-            var task2 = sut.PullAccountEventsAsync(account2Id, null, cancellationToken);
+            var task1 = sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
+            var task2 = sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
             await Task.WhenAll(task1, task2);
 
             // Assert: Each account's calls were made with correct accountId
@@ -287,8 +287,8 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act
-            await sut.PullAccountEventsAsync(account1Id, null, cancellationToken);
-            await sut.PullAccountEventsAsync(account2Id, null, cancellationToken);
+            await sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
+            await sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
 
             // Assert: Verify Account 1 pulled from 2 devices
             mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -409,7 +409,7 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull all 3 accounts concurrently
-            var tasks = accountIds.Select(id => sut.PullAccountEventsAsync(id, null, cancellationToken)).ToArray();
+            var tasks = accountIds.Select(id => sut.PullAccountEventsAsync(id, null, null, cancellationToken)).ToArray();
             await Task.WhenAll(tasks);
 
             // Assert: Each account was called exactly once, demonstrating no cross-contamination
@@ -477,7 +477,7 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull single account (backward compatibility test)
-            await sut.PullAccountEventsAsync(accountId, null, cancellationToken);
+            await sut.PullAccountEventsAsync(accountId, null, null, cancellationToken);
 
             // Assert: All expected methods were called
             mockProviderAccountRepository.Verify(r => r.GetAsync(accountId, cancellationToken), Times.Once);

@@ -6,6 +6,13 @@ namespace VideoForensics.Utils.SelfTest
     /// </summary>
     internal sealed class CliOptions
     {
+        /// <summary>Default SQLite path: the app's Database storage root plus videoforensics.db.
+        /// Uses the same provider as the app so the default cannot drift.</summary>
+        internal static string DefaultDatabasePath() => Path.Combine(
+            new VideoForensics.Core.Helpers.Platform.StorageLocationProvider()
+                .GetDefaultRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Database),
+            "videoforensics.db");
+
         public bool ShowHelp;
         public bool ListEndpoints;
         public bool ListEndpointsJson;
@@ -434,7 +441,7 @@ namespace VideoForensics.Utils.SelfTest
                                      that simply hasn't been downloaded yet is expected, not a
                                      failure - this is a completeness report, not a pass/fail gate).
           --db-path <path>          SQLite database file to use. Default:
-                                     %ProgramData%\VideoForensics\videoforensics.db (same file the
+                                     %ProgramData%\VideoForensics\Database\videoforensics.db (same file the
                                      main VideoForensics app uses). Applies to credential storage and
                                      --verify-db alike.
 

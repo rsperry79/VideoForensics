@@ -120,18 +120,38 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Report whether the current session is limited to passkey setup");
         }
 
-        private static IResult GetSessionKindAsync(ClaimsPrincipal user)
+        private static async Task<IResult> GetSessionKindAsync(
+            ClaimsPrincipal user,
+            IOperatorRepository operators,
+            ITwoFactorRoleRequirementRepository roleRequirements,
+            CancellationToken ct)
         {
             // The UI reads these to hide Local-only and passkey-only pages; the policies remain the enforcement.
             string? tierClaim = user.FindFirst(VideoForensicsClaimTypes.NetworkTier)?.Value;
             bool localTier = tierClaim != null && Enum.TryParse<NetworkTier>(tierClaim, out NetworkTier tier) && tier == NetworkTier.Local;
-            bool passkeySession = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value == "OperatorPasskey";
+            string? credentialKind = user.FindFirst(VideoForensicsClaimTypes.CredentialKind)?.Value;
+            bool passkeySession = credentialKind == "OperatorPasskey";
+            // Password sessions re-enter their password for step-up; the client needs this to pick the prompt.
+            bool passwordSession = credentialKind == "Password";
+            // The role's policy requires a second factor (a passkey). A password-only operator must upgrade before a
+            // destructive change instead of confirming with a password.
+            bool twoFactorRequired = false;
+            if (Guid.TryParse(user.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value, out Guid operatorId))
+            {
+                Operator? op = await operators.GetAsync(operatorId, ct);
+                if (op is not null)
+                {
+                    twoFactorRequired = await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, roleRequirements, ct);
+                }
+            }
 
             return Results.Ok(new
             {
                 passkeySetupOnly = user.HasClaim(VideoForensicsClaimTypes.PasskeySetupOnly, "true"),
                 localTier,
                 passkeySession,
+                passwordSession,
+                twoFactorRequired,
             });
         }
 
@@ -1029,6 +1049,7 @@ namespace VideoForensics.WebApp.Api
         private static async Task<IResult> StepUpPasswordAsync(
             StepUpPasswordRequest request,
             IOperatorRepository operators,
+            ITwoFactorRoleRequirementRepository roleRequirements,
             IStepUpAuthService stepUpAuth,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
@@ -1048,6 +1069,13 @@ namespace VideoForensics.WebApp.Api
                 // No password set on this account (e.g. passkey-only or a service-account operator) -
                 // this step-up path isn't usable for them; fail rather than crash on a null hash.
                 return Results.Unauthorized();
+            }
+
+            // Policy: a role whose two-factor requirement is a passkey cannot confirm with a password. Refused before the
+            // password is checked, so a password-only operator is told to upgrade rather than tested.
+            if (await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, roleRequirements, ct))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
             // Verify password

@@ -1,8 +1,25 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace VideoForensics.Hosting
 {
+    /// <summary>
+    /// Thrown when the GitHub API rejects a request because the rate limit is exhausted.
+    /// </summary>
+    public class GitHubRateLimitException : Exception
+    {
+        /// <summary>When the rate limit window resets (UTC).</summary>
+        public DateTimeOffset ResetAtUtc { get; }
+
+        public GitHubRateLimitException(DateTimeOffset resetAtUtc)
+            : base($"GitHub API rate limit exceeded; resets at {resetAtUtc:u}.")
+        {
+            ResetAtUtc = resetAtUtc;
+        }
+    }
+
     /// <summary>
     /// Information about a GitHub release fetched from the GitHub Releases REST API.
     /// <paramref name="Version"/> is read from the release's <c>version.json</c> asset when present; it is null otherwise.
@@ -42,6 +59,12 @@ namespace VideoForensics.Hosting
         /// <summary>Name of the release asset CI publishes to carry the authoritative version string.</summary>
         private const string VersionAssetName = "version.json";
 
+        // Anchored at the start so unrelated assets that merely contain the pattern are ignored.
+        private static readonly Regex InstallerNameVersionRegex = new(
+            @"^videoforensics_(\d+(?:\.\d+)+)_",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(1));
+
         private readonly HttpClient _httpClient;
 
         /// <summary>
@@ -53,23 +76,61 @@ namespace VideoForensics.Hosting
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
+        private const string ReleaseListEndpoint = "repos/rsperry79/VideoForensics/releases?per_page=30";
+
         public async Task<GitHubReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct)
         {
-            // Fetch the release tagged with "Release" (main branch latest)
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Release", ct);
+            // Stable channel: newest published, non-prerelease, versioned ("v...") release. The frozen "Release" label is stale.
+            return await FetchLatestVersionedAsync(prerelease: false, ct);
         }
 
         public async Task<GitHubReleaseInfo?> GetLatestTestingReleaseAsync(CancellationToken ct)
         {
-            // Fetch the release tagged with "Testing" (dev branch latest)
-            return await FetchReleaseAsync("repos/rsperry79/VideoForensics/releases/tags/Testing", ct);
+            // Testing channel: newest published prerelease with a versioned ("v...") tag. The frozen "Testing" label is stale.
+            return await FetchLatestVersionedAsync(prerelease: true, ct);
         }
 
-        private async Task<GitHubReleaseInfo?> FetchReleaseAsync(string endpoint, CancellationToken ct)
+        /// <summary>
+        /// Reads the release list (newest first) and maps the first non-draft release whose prerelease flag matches
+        /// and whose tag starts with "v". Returns null when none matches or on any failure.
+        /// </summary>
+        private async Task<GitHubReleaseInfo?> FetchLatestVersionedAsync(bool prerelease, CancellationToken ct)
         {
             try
             {
-                using HttpResponseMessage response = await _httpClient.GetAsync(endpoint, ct);
+                ChannelCache cache = prerelease ? _testingCache : _stableCache;
+                string? etag;
+                lock (cache)
+                {
+                    etag = cache.ETag;
+                }
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseListEndpoint);
+                if (etag != null && System.Net.Http.Headers.EntityTagHeaderValue.TryParse(etag, out var parsedEtag))
+                {
+                    request.Headers.IfNoneMatch.Add(parsedEtag);
+                }
+
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    // Conditional hits are not counted against the rate limit; reuse the previous result.
+                    lock (cache)
+                    {
+                        if (cache.HasResult)
+                        {
+                            return cache.Result;
+                        }
+                    }
+
+                    return null;
+                }
+
+                if (IsRateLimited(response))
+                {
+                    throw new GitHubRateLimitException(GetResetAtUtc(response));
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -77,33 +138,106 @@ namespace VideoForensics.Hosting
                 }
 
                 string content = await response.Content.ReadAsStringAsync(ct);
-                var releaseDto = JsonSerializer.Deserialize<GitHubReleaseDto>(content, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+                var releases = JsonSerializer.Deserialize<List<GitHubReleaseDto>>(content, SerializerOptions);
 
-                if (releaseDto == null)
+                GitHubReleaseDto? match = releases?.FirstOrDefault(r =>
+                    r != null
+                    && !r.Draft
+                    && r.Prerelease == prerelease
+                    && r.TagName.StartsWith('v'));
+
+                GitHubReleaseInfo? result = match == null ? null : await MapReleaseAsync(match, ct);
+
+                lock (cache)
                 {
-                    return null;
+                    cache.ETag = response.Headers.ETag?.ToString();
+                    cache.Result = result;
+                    cache.HasResult = true;
                 }
 
-                var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
-                    ?? new List<GitHubReleaseAsset>();
-
-                // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
-                string? version = await TryFetchVersionAsync(assets, ct);
-
-                return new GitHubReleaseInfo(
-                    releaseDto.TagName,
-                    releaseDto.HtmlUrl,
-                    releaseDto.Draft,
-                    releaseDto.Prerelease,
-                    assets,
-                    version
-                );
+                return result;
+            }
+            catch (GitHubRateLimitException)
+            {
+                throw;
             }
             catch
             {
                 // Catch any exception (JSON parse errors, network errors, etc.) and return null rather than propagating.
                 return null;
             }
+        }
+
+        private static readonly JsonSerializerOptions SerializerOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+        /// <summary>In-memory ETag and mapped result for one channel (guarded by lock on the instance).</summary>
+        private sealed class ChannelCache
+        {
+            public string? ETag;
+            public GitHubReleaseInfo? Result;
+            public bool HasResult;
+        }
+
+        private readonly ChannelCache _stableCache = new();
+        private readonly ChannelCache _testingCache = new();
+
+        private static bool IsRateLimited(HttpResponseMessage response)
+        {
+            if ((int)response.StatusCode == 429)
+            {
+                return true;
+            }
+
+            return response.StatusCode == HttpStatusCode.Forbidden
+                && response.Headers.TryGetValues("X-RateLimit-Remaining", out IEnumerable<string>? values)
+                && values.FirstOrDefault()?.Trim() == "0";
+        }
+
+        private static DateTimeOffset GetResetAtUtc(HttpResponseMessage response)
+        {
+            if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? values)
+                && long.TryParse(values.FirstOrDefault(), out long unixSeconds))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+            }
+
+            return DateTimeOffset.UtcNow.AddMinutes(60);
+        }
+
+        private async Task<GitHubReleaseInfo> MapReleaseAsync(GitHubReleaseDto releaseDto, CancellationToken ct)
+        {
+            var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
+                ?? new List<GitHubReleaseAsset>();
+
+            // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
+            string? version = await TryFetchVersionAsync(assets, ct) ?? TryParseVersionFromAssetNames(assets);
+
+            return new GitHubReleaseInfo(
+                releaseDto.TagName,
+                releaseDto.HtmlUrl,
+                releaseDto.Draft,
+                releaseDto.Prerelease,
+                assets,
+                version
+            );
+        }
+
+        /// <summary>
+        /// Fallback when version.json is missing or unreadable: derives the version from the Linux installer
+        /// asset name (e.g. <c>videoforensics_1.0.191_amd64.deb</c>). Returns null when nothing matches; never throws.
+        /// </summary>
+        private static string? TryParseVersionFromAssetNames(IReadOnlyList<GitHubReleaseAsset> assets)
+        {
+            foreach (GitHubReleaseAsset asset in assets)
+            {
+                Match match = InstallerNameVersionRegex.Match(asset.Name ?? string.Empty);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

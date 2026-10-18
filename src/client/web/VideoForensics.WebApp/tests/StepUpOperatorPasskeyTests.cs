@@ -113,5 +113,27 @@ namespace VideoForensics.WebApp.Tests
             Assert.False(StepUpCredentialPolicy.IsUsablePairedDevice(keylessDevice));
             Assert.False(StepUpCredentialPolicy.IsUsablePairedDevice(null));
         }
+
+        [Fact]
+        public void AssertionOptions_OperatorPasskeySession_OffersOnlyTheSignedInPasskey()
+        {
+            Guid operatorId = Guid.NewGuid();
+            OperatorCredential sessionPasskey = CreateCredential(operatorId, isApproved: true);
+
+            string? allowed = StepUpCredentialPolicy.OperatorPasskeyAllowedCredentialId(sessionPasskey, operatorId);
+
+            Assert.Equal("Y3JlZC1pZA==", allowed);
+        }
+
+        [Fact]
+        public void AssertionOptions_OperatorPasskeySession_AnotherOperatorsPasskey_OffersNothing()
+        {
+            Guid sessionOperatorId = Guid.NewGuid();
+            OperatorCredential otherPasskey = CreateCredential(Guid.NewGuid(), isApproved: true);
+
+            string? allowed = StepUpCredentialPolicy.OperatorPasskeyAllowedCredentialId(otherPasskey, sessionOperatorId);
+
+            Assert.Null(allowed);
+        }
     }
 }

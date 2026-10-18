@@ -206,6 +206,17 @@ namespace VideoForensics.Hosting.BackgroundServices
                     _logger.LogDebug("Update check tick: Already on latest version ({CurrentVersion})", _currentVersion);
                 }
             }
+            catch (GitHubRateLimitException ex)
+            {
+                // Keep the last good version/update state; only report the error and when to retry.
+                lock (_lock)
+                {
+                    _errorMessage = $"GitHub update check is rate limited; retrying after {ex.ResetAtUtc:u}.";
+                    _lastCheckedUtc = DateTime.UtcNow;
+                }
+
+                _logger.LogWarning("Update check tick: GitHub rate limited until {ResetAtUtc:u}", ex.ResetAtUtc);
+            }
             catch (Exception ex)
             {
                 // Catch any unexpected exception, log it, and update state with error.

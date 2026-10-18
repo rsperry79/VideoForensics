@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Core.Helpers.Json.Converters;
@@ -79,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Entities
 
         [JsonPropertyName("motion_snooze")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string MotionSnooze { get; set; }
+        public JsonElement? MotionSnooze { get; set; }
 
         [JsonPropertyName("stolen")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -112,17 +113,20 @@ namespace VideoForensics.Providers.Ring.Entities
         public decimal? BatteryVoltage2 { get; set; }
 
         [JsonPropertyName("led_status")]
-        [JsonConverter(typeof(FlexibleStringConverter))]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string LedStatus { get; set; }
+        public JsonElement? LedStatus { get; set; }
 
         [JsonPropertyName("siren_status")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public DeviceStatus SirenStatus { get; set; }
+        public DeviceStatus.Status SirenStatus { get; set; }
 
         [JsonPropertyName("night_mode")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? NightMode { get; set; }
+
+        [JsonPropertyName("zone_settings")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ZoneSettings ZoneSettings { get; set; }
 
         [JsonPropertyName("health")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

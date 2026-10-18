@@ -270,9 +270,17 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapPost("/provider-accounts/{id:guid}/sync-now", async (
                 Guid id,
+                SyncNowRequest? body,
                 IProviderAccountRepository accounts,
                 CancellationToken ct) =>
             {
+                // The body is optional: no body keeps the default incremental sync.
+                AccountSyncRequest? request = null;
+                if (body != null && !TryBuildSyncRequest(body, out request, out string? error))
+                {
+                    return Results.BadRequest(error);
+                }
+
                 ProviderAccount? account = await accounts.GetAsync(id, ct);
                 if (account == null)
                 {
@@ -292,7 +300,14 @@ namespace VideoForensics.WebApp.Api
                         using IServiceScope scope = scopeFactory.CreateScope();
 
                         IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
-                        await syncRunner.RunAsync(id, CancellationToken.None);
+                        if (request == null)
+                        {
+                            await syncRunner.RunAsync(id, CancellationToken.None);
+                        }
+                        else
+                        {
+                            await syncRunner.RunAsync(id, request, CancellationToken.None);
+                        }
                     }
                     catch
                     {
@@ -312,7 +327,119 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("media")
                 .WithSummary("Queue manual sync of events and device configuration")
                 .WithDescription("Initiates background pull of events and config for all devices in the account");
+
+            _ = group.MapGet("/provider-accounts/{id:guid}/config-sync-interval", async (
+                Guid id,
+                IRingAccountSyncState syncState,
+                CancellationToken ct) =>
+                Results.Ok(new ConfigSyncIntervalDto((await syncState.GetConfigSyncStateAsync(id, ct)).IntervalHours)))
+                .RequireRateLimiting("media")
+                .WithSummary("Get the config sync interval")
+                .WithDescription("Returns the hours between config syncs for the account. 24 when the account has none saved.");
+
+            _ = group.MapPut("/provider-accounts/{id:guid}/config-sync-interval", async (
+                Guid id,
+                ConfigSyncIntervalDto request,
+                IRingAccountSyncState syncState,
+                CancellationToken ct) =>
+            {
+                if (request.Hours is < MinConfigSyncIntervalHours or > MaxConfigSyncIntervalHours)
+                {
+                    return Results.BadRequest($"Hours must be between {MinConfigSyncIntervalHours} and {MaxConfigSyncIntervalHours}.");
+                }
+
+                return await syncState.SetConfigIntervalHoursAsync(id, request.Hours, ct)
+                    ? Results.Ok(request)
+                    : Results.NotFound();
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Set the config sync interval")
+                .WithDescription("Saves the hours between config syncs (1 to 720) for the account. 404 when the account has no Ring row.");
         }
+
+        /// <summary>Shortest config sync interval the PUT endpoint accepts, in hours.</summary>
+        private const int MinConfigSyncIntervalHours = 1;
+
+        /// <summary>Longest config sync interval the PUT endpoint accepts, in hours (30 days).</summary>
+        private const int MaxConfigSyncIntervalHours = 720;
+
+        /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
+        private const int MaxSyncDays = 3650;
+
+    /// <summary>
+    /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
+    /// time, so relabelling it as UTC would shift the instant by the server's offset. Unspecified dates are taken as UTC.
+    /// </summary>
+    private static DateTime ToUtcInstant(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
+
+    /// <summary>Validates the sync-now body and turns it into a runner request. Dates are treated as UTC.</summary>
+    private static bool TryBuildSyncRequest(SyncNowRequest body, out AccountSyncRequest? request, out string? error)
+    {
+        request = null;
+        error = null;
+
+        AccountSyncType type = AccountSyncType.All;
+        if (body.SyncType != null && !Enum.TryParse(body.SyncType, ignoreCase: true, out type))
+        {
+            error = "syncType must be All, Events or Snapshots";
+            return false;
+        }
+
+        if (!Enum.IsDefined(type))
+        {
+            error = "syncType must be All, Events or Snapshots";
+            return false;
+        }
+
+        DateTime? from = null;
+        DateTime? to = null;
+        bool allHistory = false;
+
+        switch (body.RangeKind?.ToLowerInvariant())
+        {
+            case null:
+                break;
+            case "all":
+                allHistory = true;
+                break;
+            case "days":
+                if (body.Days is not > 0 or > MaxSyncDays)
+                {
+                    error = $"days must be between 1 and {MaxSyncDays}";
+                    return false;
+                }
+
+                from = DateTime.UtcNow.AddDays(-body.Days.Value);
+                break;
+            case "custom":
+                if (body.StartUtc is null)
+                {
+                    error = "from is required for a custom range";
+                    return false;
+                }
+
+                from = ToUtcInstant(body.StartUtc.Value);
+                to = body.EndUtc is null ? null : ToUtcInstant(body.EndUtc.Value);
+                if (to <= from)
+                {
+                    error = "to must be after from";
+                    return false;
+                }
+
+                break;
+            default:
+                error = "rangeKind must be Days, All or Custom";
+                return false;
+        }
+
+        request = new AccountSyncRequest(type, from, to, allHistory);
+        return true;
+    }
 
     /// <summary>
     /// Background first sync for an account. Errors are recorded on the account by <see cref="IAccountSyncRunner"/>;

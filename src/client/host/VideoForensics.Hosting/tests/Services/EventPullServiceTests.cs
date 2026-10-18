@@ -100,7 +100,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(config);
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -169,7 +169,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: lastAuthTime, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: lastAuthTime, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -234,7 +234,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockProviderAccountRepository.Verify(r => r.UpdateAsync(
@@ -299,7 +299,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockDeviceRepository.Verify(r => r.UpdateAsync(
@@ -367,7 +367,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken);
+            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             Assert.NotNull(capturedAccount);
@@ -411,7 +411,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync(Array.Empty<DeviceEntity>());
 
             // Act
-            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken));
+            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
 
             // Assert
             Assert.Null(ex);
@@ -429,7 +429,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .ReturnsAsync((ProviderAccountEntity?)null);
 
             // Act
-            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, cancellationToken));
+            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
 
             // Assert
             Assert.Null(ex);

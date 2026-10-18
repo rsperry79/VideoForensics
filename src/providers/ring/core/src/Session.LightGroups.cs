@@ -20,21 +20,21 @@ namespace VideoForensics.Providers.Ring
         public Uri GroupsApiBaseUrl => _endpoints.GroupsApiBaseUrl;
 
         /// <summary>
-        /// Returns the Smart Lighting groups configured at the given location.
+        /// Returns the Smart Lighting groups configured at the given location, with the
+        /// account's is_owner flag for the location (the full typed response).
         /// </summary>
         /// <param name="locationId">ID of the location to retrieve light groups for</param>
         /// <exception cref="Exceptions.AuthenticationFailedException">Thrown when the refresh token is invalid.</exception>
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
-        public async Task<List<Group>> GetGroups(Guid locationId, CancellationToken cancellationToken = default)
+        public async Task<GroupsResponse> GetGroups(Guid locationId, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
             var uri = new Uri(GroupsApiBaseUrl, $"locations/{locationId:D}/groups");
             string response = await _httpUtility.GetContents(uri, AuthenticationToken, _hardwareId, cancellationToken);
 
-            GroupsResponse? parsed = JsonSerializer.Deserialize<GroupsResponse>(response);
-            return parsed?.DeviceGroups ?? [];
+            return JsonSerializer.Deserialize<GroupsResponse>(response) ?? new GroupsResponse();
         }
 
         /// <summary>

@@ -96,6 +96,13 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         void SetMaxConcurrentDownloads(int value) { }
 
         /// <summary>
+        /// Paces provider media requests: at most <paramref name="maxConcurrent"/> downloads in flight, and at least
+        /// <paramref name="minRequestInterval"/> between the starts of consecutive requests. A no-op for providers that
+        /// do not rate-limit media requests.
+        /// </summary>
+        void SetRequestPacing(int maxConcurrent, TimeSpan minRequestInterval) { }
+
+        /// <summary>
         /// Returns and clears any per-item activity messages (e.g. "downloaded X", "failed: Y")
         /// queued since the last call, so a caller can poll this alongside GetStatus() to show a
         /// live feed of individual file outcomes during a download in progress.
@@ -130,7 +137,13 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// zero, or when the provider hasn't been updated to classify it - callers should not assume
         /// a null reason means nothing was skipped, only that the cause is unknown.
         /// </summary>
-        string? SkipReason = null
+        string? SkipReason = null,
+        /// <summary>How many of FilesDownloaded were already on disk from an earlier run and so were not fetched again.</summary>
+        int FilesAlreadyPresent = 0,
+        /// <summary>True when the provider rate-limited the download and the wait-and-retry did not clear it.</summary>
+        bool RateLimited = false,
+        /// <summary>The provider's Retry-After hint from the last rate-limit response, when it sent one.</summary>
+        TimeSpan? RetryAfter = null
     );
 
     /// <summary>Metadata about a downloaded media file</summary>

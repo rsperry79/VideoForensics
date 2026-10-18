@@ -90,6 +90,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 AddReadings(readings, devices.Doorbots, d => d.Id.ToString(), d => d.Health);
                                 AddReadings(readings, devices.StickupCams, d => d.Id?.ToString(), d => d.Health);
                                 AddReadings(readings, devices.AuthorizedDoorbots, d => d.Id.ToString(), d => d.Health);
+                                AddReadings(readings, devices.Chimes, c => c.Id.ToString(), c => c.Health);
                             }
                         }
                         catch (Exception ex)
@@ -138,6 +139,7 @@ namespace VideoForensics.Providers.Ring.Services
                 AddReadings(readings, devices.Doorbots, d => d.Id.ToString(), d => d.Health);
                 AddReadings(readings, devices.StickupCams, d => d.Id?.ToString(), d => d.Health);
                 AddReadings(readings, devices.AuthorizedDoorbots, d => d.Id.ToString(), d => d.Health);
+                AddReadings(readings, devices.Chimes, c => c.Id.ToString(), c => c.Health);
 
                 return readings;
             }
@@ -174,7 +176,31 @@ namespace VideoForensics.Providers.Ring.Services
                     BatteryPercentage: health.BatteryPercentage.HasValue ? health.BatteryPercentage.Value : null,
                     Rssi: health.Rssi.HasValue ? (int)Math.Round(health.Rssi.Value) : null,
                     WifiName: health.WifiName,
-                    FirmwareVersion: health.FirmwareVersion
+                    FirmwareVersion: health.FirmwareVersion,
+                    BatteryVoltageValue: health.BatteryVoltage,
+                    IsExternalPowerConnected: RingHealthTelemetryMapper.ToExternalPowerConnected(health.ExtPowerState),
+                    OtaStatus: health.OtaStatus,
+                    LastHeartbeatUtc: RingHealthTelemetryMapper.ToHeartbeatUtc(health.LastUpdateTime),
+                    DeviceType: health.DeviceType,
+                    FirmwareVersionStatus: health.FirmwareVersionStatus,
+                    BatteryPresent: health.BatteryPresent,
+                    BatteryPercentageCategory: health.BatteryPercentageCategory,
+                    BatteryVoltageCategory: health.BatteryVoltageCategory,
+                    RssiCategory: health.RssiCategory,
+                    NetworkConnectionValue: health.NetworkConnectionValue,
+                    PacketLoss: health.PacketLoss,
+                    PacketLossCategory: health.PacketLossCategory,
+                    LatestSignalStrength: health.LatestSignalStrength,
+                    LatestSignalCategory: health.LatestSignalCategory,
+                    AverageSignalStrength: health.AverageSignalStrength,
+                    AverageSignalCategory: health.AverageSignalCategory,
+                    Firmware: health.Firmware,
+                    UpdatedAtUtc: RingHealthTelemetryMapper.ToUpdatedAtUtc(health.UpdatedAt),
+                    PacketLossStrength: health.PacketLossStrength,
+                    WifiIsRingNetwork: health.WifiIsRingNetwork,
+                    PtzConnected: health.PtzConnected,
+                    RingHealthId: health.Id,
+                    SupportedRpcCommands: health.SupportedRpcCommands
                 ));
             }
         }

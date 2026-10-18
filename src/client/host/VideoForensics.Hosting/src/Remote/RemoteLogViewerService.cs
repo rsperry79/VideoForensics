@@ -15,7 +15,6 @@ namespace VideoForensics.Hosting.Remote
     /// </summary>
     public sealed class RemoteLogViewerService : ILogViewerService
     {
-        private const string StepUpHeader = "X-StepUp-Token";
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
         private readonly HttpClient _httpClient;
@@ -26,12 +25,11 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<LogPage> GetPageAsync(LogQuery query, string stepUpToken, CancellationToken ct)
+        public async Task<LogPage> GetPageAsync(LogQuery query, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(query);
-            ArgumentException.ThrowIfNullOrEmpty(stepUpToken);
 
-            using HttpRequestMessage request = BuildRequest("/api/v1/logs", query, stepUpToken);
+            using HttpRequestMessage request = BuildRequest("/api/v1/logs", query);
             using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
             _ = response.EnsureSuccessStatusCode();
             LogPageDto? dto = await response.Content.ReadFromJsonAsync<LogPageDto>(JsonOptions, ct);
@@ -39,12 +37,11 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, string stepUpToken, [EnumeratorCancellation] CancellationToken ct)
+        public async IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, [EnumeratorCancellation] CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(query);
-            ArgumentException.ThrowIfNullOrEmpty(stepUpToken);
 
-            using HttpRequestMessage request = BuildRequest("/api/v1/logs/stream", query, stepUpToken);
+            using HttpRequestMessage request = BuildRequest("/api/v1/logs/stream", query);
             request.Headers.Accept.Add(new("text/event-stream"));
             // Headers-only: the body is an endless stream and must not be buffered.
             using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -62,7 +59,7 @@ namespace VideoForensics.Hosting.Remote
             }
         }
 
-        private static HttpRequestMessage BuildRequest(string path, LogQuery query, string stepUpToken)
+        private static HttpRequestMessage BuildRequest(string path, LogQuery query)
         {
             // Values are escaped individually: search text is user input and can contain '&', '#', spaces, etc.
             var parts = new List<string>();
@@ -72,10 +69,7 @@ namespace VideoForensics.Hosting.Remote
             if (query.Limit > 0) parts.Add("limit=" + query.Limit.ToString(CultureInfo.InvariantCulture));
 
             string url = parts.Count == 0 ? path : path + "?" + string.Join('&', parts);
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            // Per request, never DefaultRequestHeaders: the token is short-lived and must not leak into later calls.
-            request.Headers.Add(StepUpHeader, stepUpToken);
-            return request;
+            return new HttpRequestMessage(HttpMethod.Get, url);
         }
     }
 

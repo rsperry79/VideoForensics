@@ -82,6 +82,24 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         Assert.DoesNotContain("You do not have access to this page.", component.Markup);
     }
 
+    [Route("/signin")]
+    private sealed class SignInStubPage : ComponentBase
+    {
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.AddMarkupContent(0, "<div id=\"page-body\">sign-in page</div>");
+        }
+    }
+
+    [Fact]
+    public void PageAccessRouteView_SignedOutOnPublicRoute_RendersPage()
+    {
+        // Sign-in, register and setup are reachable while signed out (AuthGate allow-list); the guard must not blank them.
+        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<SignInStubPage>()));
+
+        Assert.Single(component.FindAll("#page-body"));
+    }
+
     [Fact]
     public async Task PageAccessRouteView_SignedInButServerTierUnknown_FailsClosedOnLocalPage()
     {

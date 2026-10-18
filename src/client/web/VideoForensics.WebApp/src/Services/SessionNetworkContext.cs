@@ -35,6 +35,11 @@ namespace VideoForensics.WebApp.Services
         public DateTime? ResolvedAtUtc { get; private set; }
 
         /// <summary>
+        /// The client IP of the connection that opened this circuit, for audit attribution only; null when no connection was available.
+        /// </summary>
+        public string? ClientIp { get; private set; }
+
+        /// <summary>
         /// Resolves the tier from the circuit's initial real HTTP connection and records it. A null
         /// <paramref name="httpContext"/> (no connection to resolve from at all) resolves to
         /// Internet, the safe default for "could not be determined".
@@ -43,6 +48,12 @@ namespace VideoForensics.WebApp.Services
         {
             NetworkTier resolved = httpContext != null ? resolver.ResolveTier(httpContext) : NetworkTier.Internet;
             SetTier(resolved);
+
+            // First capture wins: a reconnect must not change the IP recorded for this circuit.
+            if (httpContext != null && ClientIp is null)
+            {
+                ClientIp = resolver.ResolveClientIp(httpContext);
+            }
         }
 
         /// <summary>

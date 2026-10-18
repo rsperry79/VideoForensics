@@ -192,10 +192,36 @@ namespace VideoForensics.Hosting.BackgroundServices
                             WifiSignalRssi = reading.Rssi,
                             WifiName = reading.WifiName,
                             FirmwareVersion = reading.FirmwareVersion,
-                            CapturedAtUtc = DateTime.UtcNow
+                            BatteryVoltageValue = reading.BatteryVoltageValue,
+                            IsExternalPowerConnected = reading.IsExternalPowerConnected,
+                            OtaStatus = reading.OtaStatus,
+                            LastHeartbeatUtc = reading.LastHeartbeatUtc,
+                            CapturedAtUtc = DateTime.UtcNow,
+                            DeviceType = reading.DeviceType,
+                            FirmwareVersionStatus = reading.FirmwareVersionStatus,
+                            BatteryPresent = reading.BatteryPresent,
+                            BatteryPercentageCategory = reading.BatteryPercentageCategory,
+                            BatteryVoltageCategory = reading.BatteryVoltageCategory,
+                            RssiCategory = reading.RssiCategory,
+                            NetworkConnectionValue = reading.NetworkConnectionValue,
+                            PacketLoss = reading.PacketLoss,
+                            PacketLossCategory = reading.PacketLossCategory,
+                            LatestSignalStrength = reading.LatestSignalStrength,
+                            LatestSignalCategory = reading.LatestSignalCategory,
+                            AverageSignalStrength = reading.AverageSignalStrength,
+                            AverageSignalCategory = reading.AverageSignalCategory,
+                            Firmware = reading.Firmware,
+                            UpdatedAtUtc = reading.UpdatedAtUtc,
+                            PacketLossStrength = reading.PacketLossStrength,
+                            WifiIsRingNetwork = reading.WifiIsRingNetwork,
+                            PtzConnected = reading.PtzConnected,
+                            RingHealthId = reading.RingHealthId,
+                            SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
+                        // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
+                        await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
@@ -329,10 +355,36 @@ namespace VideoForensics.Hosting.BackgroundServices
                             WifiSignalRssi = reading.Rssi,
                             WifiName = reading.WifiName,
                             FirmwareVersion = reading.FirmwareVersion,
-                            CapturedAtUtc = DateTime.UtcNow
+                            BatteryVoltageValue = reading.BatteryVoltageValue,
+                            IsExternalPowerConnected = reading.IsExternalPowerConnected,
+                            OtaStatus = reading.OtaStatus,
+                            LastHeartbeatUtc = reading.LastHeartbeatUtc,
+                            CapturedAtUtc = DateTime.UtcNow,
+                            DeviceType = reading.DeviceType,
+                            FirmwareVersionStatus = reading.FirmwareVersionStatus,
+                            BatteryPresent = reading.BatteryPresent,
+                            BatteryPercentageCategory = reading.BatteryPercentageCategory,
+                            BatteryVoltageCategory = reading.BatteryVoltageCategory,
+                            RssiCategory = reading.RssiCategory,
+                            NetworkConnectionValue = reading.NetworkConnectionValue,
+                            PacketLoss = reading.PacketLoss,
+                            PacketLossCategory = reading.PacketLossCategory,
+                            LatestSignalStrength = reading.LatestSignalStrength,
+                            LatestSignalCategory = reading.LatestSignalCategory,
+                            AverageSignalStrength = reading.AverageSignalStrength,
+                            AverageSignalCategory = reading.AverageSignalCategory,
+                            Firmware = reading.Firmware,
+                            UpdatedAtUtc = reading.UpdatedAtUtc,
+                            PacketLossStrength = reading.PacketLossStrength,
+                            WifiIsRingNetwork = reading.WifiIsRingNetwork,
+                            PtzConnected = reading.PtzConnected,
+                            RingHealthId = reading.RingHealthId,
+                            SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
+                        // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
+                        await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
                     }
 

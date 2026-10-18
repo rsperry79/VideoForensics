@@ -10,13 +10,13 @@ namespace VideoForensics.WebApp.Api
     /// <summary>
     /// Admin endpoints for managing two-factor authentication policy settings: per-role requirements
     /// and per-operator overrides.
-    /// All routes require SuperAdmin+Local authorization (plan §5.10/§5.12).
+    /// All routes require SuperAdmin, Local for password sign-in or passkey from any tier (plan §5.10/§5.12).
     /// </summary>
     public static class TwoFactorPolicyEndpoints
     {
         public static void MapTwoFactorPolicyEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/two-factor-policy").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocal);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/two-factor-policy").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/roles", GetAllRolesAsync).WithName("GetTwoFactorRoleRequirements");
             _ = group.MapPut("/roles/{role}", UpdateRoleRequirementAsync).WithName("UpdateTwoFactorRoleRequirement").AddEndpointFilter<StepUpEndpointFilter>();

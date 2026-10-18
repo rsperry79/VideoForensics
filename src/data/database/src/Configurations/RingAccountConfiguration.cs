@@ -25,6 +25,10 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(ra => ra.ApiResponseHash)
                 .HasMaxLength(256);
 
+            _ = builder.Property(ra => ra.ConfigSyncIntervalHours)
+                .IsRequired()
+                .HasDefaultValue(24);
+
             _ = builder.HasIndex(ra => ra.ProviderAccountId)
                 .IsUnique();
 

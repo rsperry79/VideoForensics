@@ -30,6 +30,8 @@ namespace VideoForensics.Hosting.Tests
             };
         }
 
+        private static string ListJson(params string[] releaseJsons) => "[" + string.Join(",", releaseJsons) + "]";
+
         private static string GetRealisticReleaseJson(string tagName = "v1.2.3", bool draft = false, bool prerelease = false)
         {
             var release = new
@@ -64,7 +66,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new StringContent(GetRealisticReleaseJson("v1.5.0", draft: false, prerelease: false))
+                    Content = new StringContent(ListJson(GetRealisticReleaseJson("v1.5.0", draft: false, prerelease: false)))
                 };
                 response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 return Task.FromResult(response);
@@ -136,11 +138,10 @@ namespace VideoForensics.Hosting.Tests
         {
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                // Verify it's calling the Testing endpoint
-                Assert.EndsWith("releases/tags/Testing", request.RequestUri?.ToString() ?? "");
+                Assert.EndsWith("releases?per_page=30", request.RequestUri?.ToString() ?? "");
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new StringContent(GetRealisticReleaseJson("Testing", draft: false, prerelease: true))
+                    Content = new StringContent(ListJson(GetRealisticReleaseJson("v1.2.3-dev.5", draft: false, prerelease: true)))
                 };
                 response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 return Task.FromResult(response);
@@ -150,7 +151,7 @@ namespace VideoForensics.Hosting.Tests
             var result = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("Testing", result!.TagName);
+            Assert.Equal("v1.2.3-dev.5", result!.TagName);
             Assert.True(result.Prerelease);
             Assert.Equal(2, result.Assets.Count);
         }
@@ -214,14 +215,14 @@ namespace VideoForensics.Hosting.Tests
                 {
                     return Task.FromResult(JsonResponse("{\"version\":\"1.0.9.44078\",\"channel\":\"Release\"}"));
                 }
-                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+                return Task.FromResult(JsonResponse(ListJson(GetReleaseJsonWithVersionJsonAsset("v1.0.9"))));
             });
 
             var client = new GitHubReleaseClient(httpClient);
             var result = await client.GetLatestReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("Release", result!.TagName);
+            Assert.Equal("v1.0.9", result!.TagName);
             Assert.Equal("1.0.9.44078", result.Version);
         }
 
@@ -232,14 +233,14 @@ namespace VideoForensics.Hosting.Tests
             HttpClient httpClient = CreateHttpClient(request =>
             {
                 requestedUrls.Add(request.RequestUri?.ToString() ?? "");
-                return Task.FromResult(JsonResponse(GetRealisticReleaseJson("Release")));
+                return Task.FromResult(JsonResponse(ListJson(GetRealisticReleaseJson("v1.0.9"))));
             });
 
             var client = new GitHubReleaseClient(httpClient);
             var result = await client.GetLatestReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("Release", result!.TagName);
+            Assert.Equal("v1.0.9", result!.TagName);
             Assert.Null(result.Version);
             Assert.DoesNotContain(requestedUrls, u => u.EndsWith("version.json", StringComparison.OrdinalIgnoreCase));
         }
@@ -253,14 +254,14 @@ namespace VideoForensics.Hosting.Tests
                 {
                     return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
                 }
-                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+                return Task.FromResult(JsonResponse(ListJson(GetReleaseJsonWithVersionJsonAsset("v1.0.9"))));
             });
 
             var client = new GitHubReleaseClient(httpClient);
             var result = await client.GetLatestReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("Release", result!.TagName);
+            Assert.Equal("v1.0.9", result!.TagName);
             Assert.Null(result.Version);
         }
 
@@ -273,15 +274,332 @@ namespace VideoForensics.Hosting.Tests
                 {
                     return Task.FromResult(JsonResponse("{not valid json"));
                 }
-                return Task.FromResult(JsonResponse(GetReleaseJsonWithVersionJsonAsset("Release")));
+                return Task.FromResult(JsonResponse(ListJson(GetReleaseJsonWithVersionJsonAsset("v1.0.9"))));
             });
 
             var client = new GitHubReleaseClient(httpClient);
             var result = await client.GetLatestReleaseAsync(CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Equal("Release", result!.TagName);
+            Assert.Equal("v1.0.9", result!.TagName);
             Assert.Null(result.Version);
+        }
+
+        private static string GetReleaseJsonWithAssets(string tagName, bool prerelease, params string[] assetNames)
+        {
+            var release = new
+            {
+                tag_name = tagName,
+                html_url = $"https://github.com/rsperry79/VideoForensics/releases/tag/{tagName}",
+                draft = false,
+                prerelease,
+                assets = assetNames.Select(n => new
+                {
+                    name = n,
+                    browser_download_url = n == "version.json"
+                        ? VersionJsonUrl
+                        : $"https://github.com/rsperry79/VideoForensics/releases/download/{tagName}/{n}",
+                    size = 1024L
+                }).ToArray()
+            };
+            return JsonSerializer.Serialize(release);
+        }
+
+        private static async Task<GitHubReleaseInfo?> FetchWithAssetsAsync(string versionJsonBody, int versionJsonStatus, params string[] assetNames)
+        {
+            HttpClient httpClient = new GitHubReleaseClientTests().CreateHttpClient(request =>
+            {
+                if (request.RequestUri?.ToString() == VersionJsonUrl)
+                {
+                    if (versionJsonStatus != 200)
+                    {
+                        return Task.FromResult(new HttpResponseMessage((HttpStatusCode)versionJsonStatus));
+                    }
+                    return Task.FromResult(JsonResponse(versionJsonBody));
+                }
+                return Task.FromResult(JsonResponse(ListJson(GetReleaseJsonWithAssets("v1.0.191-dev.1", true, assetNames))));
+            });
+
+            return await new GitHubReleaseClient(httpClient).GetLatestTestingReleaseAsync(CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonAndDebBothPresent_PrefersVersionJson()
+        {
+            var result = await FetchWithAssetsAsync("{\"version\":\"9.9.9\"}", 200, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("9.9.9", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_NoVersionJsonThreePartDeb_DerivesVersionFromDebName()
+        {
+            var result = await FetchWithAssetsAsync("", 200, "VideoForensicsSetup.exe", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_NoVersionJsonFourPartDeb_DerivesVersionFromDebName()
+        {
+            HttpClient httpClient = CreateHttpClient(_ => Task.FromResult(JsonResponse(
+                ListJson(GetReleaseJsonWithAssets("v1.0.33", false, "videoforensics_1.0.33.20390_amd64.deb")))));
+
+            var result = await new GitHubReleaseClient(httpClient).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.33.20390", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_NoVersionJsonAndNoMatchingAsset_VersionIsNull()
+        {
+            var result = await FetchWithAssetsAsync("", 200, "VideoForensicsSetup.exe", "VideoForensics.deb", "notvideoforensics_1.0.1_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Null(result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonUnparseableAndDebPresent_FallsBackToDebName()
+        {
+            var result = await FetchWithAssetsAsync("{not valid json", 200, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_VersionJsonDownloadFailsAndDebPresent_FallsBackToDebName()
+        {
+            var result = await FetchWithAssetsAsync("", 404, "version.json", "videoforensics_1.0.191_amd64.deb");
+
+            Assert.NotNull(result);
+            Assert.Equal("1.0.191", result!.Version);
+        }
+
+        private const string ListEndpointSuffix = "releases?per_page=30";
+
+        private static GitHubReleaseClient ClientReturning(string listJson, Func<HttpRequestMessage, HttpResponseMessage?>? extra = null)
+        {
+            HttpClient httpClient = new GitHubReleaseClientTests().CreateHttpClient(request =>
+            {
+                HttpResponseMessage? special = extra?.Invoke(request);
+                if (special != null)
+                {
+                    return Task.FromResult(special);
+                }
+                Assert.EndsWith(ListEndpointSuffix, request.RequestUri?.ToString() ?? "");
+                return Task.FromResult(JsonResponse(listJson));
+            });
+            return new GitHubReleaseClient(httpClient);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_StaleTestingLabelListedFirst_PicksNewestVersionedPrerelease()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("Testing", prerelease: true),
+                GetRealisticReleaseJson("v1.1.21-dev.513", prerelease: true),
+                GetRealisticReleaseJson("v1.1.21-dev.512", prerelease: true));
+
+            var result = await ClientReturning(list).GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("v1.1.21-dev.513", result!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_MixedList_PicksNewestNonPrereleaseVersionedRelease()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("Release", prerelease: false),
+                GetRealisticReleaseJson("v1.1.21-dev.513", prerelease: true),
+                GetRealisticReleaseJson("v1.1.20-main.7", prerelease: false),
+                GetRealisticReleaseJson("v1.1.19-main.6", prerelease: false));
+
+            var result = await ClientReturning(list).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("v1.1.20-main.7", result!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_DraftListedFirst_SkipsDraft()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("v1.1.22-dev.514", draft: true, prerelease: true),
+                GetRealisticReleaseJson("v1.1.21-dev.513", prerelease: true));
+
+            var result = await ClientReturning(list).GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.Equal("v1.1.21-dev.513", result!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_DraftListedFirst_SkipsDraft()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("v1.1.22-main.9", draft: true, prerelease: false),
+                GetRealisticReleaseJson("v1.1.21-main.8", prerelease: false));
+
+            var result = await ClientReturning(list).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Equal("v1.1.21-main.8", result!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_OnlyStableReleasesListed_ReturnsNull()
+        {
+            string list = ListJson(GetRealisticReleaseJson("v1.1.20-main.7", prerelease: false));
+
+            var result = await ClientReturning(list).GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_OnlyPrereleasesListed_ReturnsNull()
+        {
+            string list = ListJson(GetRealisticReleaseJson("v1.1.21-dev.513", prerelease: true));
+
+            var result = await ClientReturning(list).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_OnlyLabelReleasesListed_ReturnsNull()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("Release", prerelease: false),
+                GetRealisticReleaseJson("Testing", prerelease: true));
+
+            Assert.Null(await ClientReturning(list).GetLatestReleaseAsync(CancellationToken.None));
+            Assert.Null(await ClientReturning(list).GetLatestTestingReleaseAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_EmptyList_ReturnsNull()
+        {
+            var result = await ClientReturning("[]").GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_SecondCallAfterEtag_SendsIfNoneMatchAndReturnsCachedOn304()
+        {
+            var ifNoneMatchValues = new List<string?>();
+            int call = 0;
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                ifNoneMatchValues.Add(request.Headers.IfNoneMatch.FirstOrDefault()?.Tag);
+                call++;
+                if (call == 1)
+                {
+                    HttpResponseMessage ok = JsonResponse(ListJson(GetRealisticReleaseJson("v1.5.0")));
+                    ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"abc123\"");
+                    return Task.FromResult(ok);
+                }
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            var first = await client.GetLatestReleaseAsync(CancellationToken.None);
+            var second = await client.GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Equal(2, call);
+            Assert.Null(ifNoneMatchValues[0]);
+            Assert.Equal("\"abc123\"", ifNoneMatchValues[1]);
+            Assert.NotNull(first);
+            Assert.Same(first, second);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_EtagCachedPerChannel_TestingDoesNotReuseStableEtag()
+        {
+            var ifNoneMatchValues = new List<string?>();
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                ifNoneMatchValues.Add(request.Headers.IfNoneMatch.FirstOrDefault()?.Tag);
+                HttpResponseMessage ok = JsonResponse(ListJson(
+                    GetRealisticReleaseJson("v1.5.0"),
+                    GetRealisticReleaseJson("v1.6.0-dev.1", prerelease: true)));
+                ok.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"abc123\"");
+                return Task.FromResult(ok);
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            _ = await client.GetLatestReleaseAsync(CancellationToken.None);
+            var testing = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.Null(ifNoneMatchValues[1]);
+            Assert.Equal("v1.6.0-dev.1", testing!.TagName);
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_ForbiddenWithRemainingZero_ThrowsRateLimitWithResetTime()
+        {
+            DateTimeOffset reset = DateTimeOffset.FromUnixTimeSeconds(1_900_000_000);
+            HttpClient httpClient = CreateHttpClient(request =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.Forbidden);
+                response.Headers.Add("X-RateLimit-Remaining", "0");
+                response.Headers.Add("X-RateLimit-Reset", reset.ToUnixTimeSeconds().ToString());
+                return Task.FromResult(response);
+            });
+
+            var client = new GitHubReleaseClient(httpClient);
+            GitHubRateLimitException ex = await Assert.ThrowsAsync<GitHubRateLimitException>(
+                () => client.GetLatestReleaseAsync(CancellationToken.None));
+
+            Assert.Equal(reset, ex.ResetAtUtc);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_TooManyRequestsWithoutResetHeader_ThrowsRateLimitWithDefaultReset()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage((HttpStatusCode)429)));
+
+            var client = new GitHubReleaseClient(httpClient);
+            DateTimeOffset before = DateTimeOffset.UtcNow;
+            GitHubRateLimitException ex = await Assert.ThrowsAsync<GitHubRateLimitException>(
+                () => client.GetLatestTestingReleaseAsync(CancellationToken.None));
+            DateTimeOffset after = DateTimeOffset.UtcNow;
+
+            Assert.InRange(ex.ResetAtUtc, before.AddMinutes(60), after.AddMinutes(60));
+        }
+
+        [Fact]
+        public async Task GetLatestReleaseAsync_ServerError_ReturnsNullAndDoesNotThrow()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+
+            var result = await new GitHubReleaseClient(httpClient).GetLatestReleaseAsync(CancellationToken.None);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetLatestTestingReleaseAsync_ChosenReleaseHasVersionJson_UsesItsVersion()
+        {
+            string list = ListJson(
+                GetRealisticReleaseJson("Testing", prerelease: true),
+                GetReleaseJsonWithAssets("v1.1.21-dev.513", true, "version.json"));
+
+            var client = ClientReturning(list, request =>
+                request.RequestUri?.ToString() == VersionJsonUrl
+                    ? JsonResponse("{\"version\":\"1.1.21.513\"}")
+                    : null);
+
+            var result = await client.GetLatestTestingReleaseAsync(CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("v1.1.21-dev.513", result!.TagName);
+            Assert.Equal("1.1.21.513", result.Version);
         }
     }
 }

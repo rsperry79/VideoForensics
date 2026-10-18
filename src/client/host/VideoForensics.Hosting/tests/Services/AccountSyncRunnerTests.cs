@@ -1,8 +1,10 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using VideoForensics.Core.Providers.Common.Contracts;
     using VideoForensics.Data.Common.Contracts;
+    using VideoForensics.Hosting.Contracts;
     using VideoForensics.Data.Common.Entities;
     using VideoForensics.Hosting.Services;
     using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
@@ -23,10 +25,10 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly DateTime _lastAuth = new(2026, 10, 14, 18, 0, 0, DateTimeKind.Utc);
 
         private AccountSyncRunner CreateSut() => new(
-            _mockAuth.Object,
-            _mockPull.Object,
+            new ServiceCollection().AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
+            Mock.Of<ISnapshotSyncService>(),
             _mockLogger.Object);
 
         private ProviderAccountEntity Account() => new()
@@ -66,7 +68,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockAccounts.Verify(r => r.UpdateAsync(
                 It.Is<ProviderAccountEntity>(a => a.LastErrorMessage != null && a.LastErrorUtc != null),
                 It.IsAny<CancellationToken>()), Times.Once);
-            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -82,7 +84,7 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockAccounts.Verify(r => r.UpdateAsync(
                 It.Is<ProviderAccountEntity>(a => a.LastErrorMessage!.Contains("refresh token rejected")),
                 It.IsAny<CancellationToken>()), Times.Once);
-            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -94,7 +96,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             await CreateSut().RunAsync(_accountId, CancellationToken.None);
 
-            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<CancellationToken>()), Times.Once);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
             _mockAccounts.Verify(r => r.UpdateAsync(It.IsAny<ProviderAccountEntity>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -107,8 +109,8 @@ namespace VideoForensics.Hosting.Tests.Services
 
             await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
 
-            // A null start asks the pull for everything the provider has, not just since the last auth.
-            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, null, It.IsAny<CancellationToken>()), Times.Once);
+            // The initial backfill starts one year back, not at the last auth.
+            _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -121,7 +123,7 @@ namespace VideoForensics.Hosting.Tests.Services
             await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
 
             _mockAccounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccountEntity>(a => a.LastErrorMessage != null), It.IsAny<CancellationToken>()), Times.Once);
-            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -139,6 +141,33 @@ namespace VideoForensics.Hosting.Tests.Services
             Assert.Null(run.ErrorMessage);
             Assert.NotNull(run.CompletedUtc);
             Assert.True(run.CompletedUtc >= run.StartedUtc);
+        }
+
+        [Fact]
+        public async Task RunAsync_SuccessfulRun_RecordsIncrementalSyncType()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSut().RunAsync(_accountId, CancellationToken.None);
+
+            Assert.Equal("Incremental", Assert.Single(runs).SyncType);
+        }
+
+        [Fact]
+        public async Task RunInitialAsync_SuccessfulRun_RecordsFullSyncTypeAndLeavesUntalliedCountsNull()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            List<ProviderSyncRun> runs = CaptureRuns();
+
+            await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
+
+            ProviderSyncRun run = Assert.Single(runs);
+            Assert.Equal("Full", run.SyncType);
+            Assert.Equal(0, run.EventsSynced);
+            Assert.Equal(0, run.DevicesSynced);
         }
 
         [Fact]
@@ -175,7 +204,7 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             SetupAccount(Account());
             SetupRestore(true);
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("pull boom"));
             List<ProviderSyncRun> runs = CaptureRuns();
 
@@ -197,9 +226,9 @@ namespace VideoForensics.Hosting.Tests.Services
             SetupAccount(account);
             SetupRestore(true);
             // The pull records its own failures on the account rather than throwing.
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Callback(() => account.LastErrorMessage = "device offline")
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(default(EventPullResult)));
             List<ProviderSyncRun> runs = CaptureRuns();
 
             await CreateSut().RunAsync(_accountId, CancellationToken.None);
@@ -221,7 +250,7 @@ namespace VideoForensics.Hosting.Tests.Services
             ProviderSyncRun run = Assert.Single(runs);
             Assert.False(run.Success);
             Assert.Equal("Account not found", run.ErrorMessage);
-            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -231,9 +260,9 @@ namespace VideoForensics.Hosting.Tests.Services
             bool deleted = false;
             _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => deleted ? null : account);
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Callback(() => deleted = true)
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(default(EventPullResult)));
             SetupRestore(true);
             List<ProviderSyncRun> runs = CaptureRuns();
 
@@ -250,7 +279,7 @@ namespace VideoForensics.Hosting.Tests.Services
             SetupAccount(Account());
             SetupRestore(true);
             using var cts = new CancellationTokenSource();
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
                     await cts.CancelAsync();
@@ -303,7 +332,7 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             SetupAccount(Account());
             SetupRestore(true);
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("pull boom"));
             _mockRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("database unavailable"));

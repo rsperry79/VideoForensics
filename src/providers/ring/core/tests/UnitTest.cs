@@ -513,13 +513,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string jsonWithStringLedStatus = """{"id": 1, "led_status": "on", "description": "test"}""";
             Entities.StickupCam? cam1 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithStringLedStatus);
             Assert.NotNull(cam1);
-            Assert.Equal("on", cam1.LedStatus);
+            Assert.Equal("on", cam1.LedStatus?.ToString());
 
             // Test with number LedStatus (the reason for FlexibleStringConverter)
             string jsonWithNumberLedStatus = """{"id": 1, "led_status": 1, "description": "test"}""";
             Entities.StickupCam? cam2 = System.Text.Json.JsonSerializer.Deserialize<Entities.StickupCam>(jsonWithNumberLedStatus);
             Assert.NotNull(cam2);
-            Assert.Equal("1", cam2.LedStatus);
+            Assert.Equal("1", cam2.LedStatus?.ToString());
         }
 
         /// <summary>

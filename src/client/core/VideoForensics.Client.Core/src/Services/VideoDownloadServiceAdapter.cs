@@ -33,6 +33,9 @@ namespace VideoForensics.Client.Core.Services
         private readonly Dictionary<string, Guid> _locationIdCache = [];
         // Real location names discovered via DiscoverUniqueDevicesAsync, keyed by provider location id.
         private readonly Dictionary<string, string> _knownLocationNames = [];
+        private readonly Dictionary<string, string> _knownLocationAddresses = [];
+        // Full discovered location records (incl. provider metadata) for the metadata-persist seam.
+        private readonly Dictionary<string, VideoForensics.Core.Providers.Common.Contracts.Location> _knownLocations = [];
         private string? _cachedLocationName;
         private readonly Dictionary<string, Guid> _deviceIdCache = [];
         // Device ID to location name mapping, set by the caller before downloading
@@ -97,6 +100,59 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Serializes an API response object to JSON and computes its SHA256 hash for audit/change tracking.</summary>
+        /// <summary>Returns the provider's device time zone from discovery metadata, or null when the provider gave none.</summary>
+        private static string? ResolveTimeZone(VideoForensics.Core.Providers.Common.Contracts.Device device)
+        {
+            return device.Metadata != null && device.Metadata.TryGetValue("time_zone", out string? timeZone) && !string.IsNullOrWhiteSpace(timeZone)
+                ? timeZone
+                : null;
+        }
+
+        /// <summary>
+        /// Picks the provider's device kind: the explicit "kind" metadata (e.g. doorbell_v4) when the
+        /// provider supplied one, otherwise the discovered device type.
+        /// </summary>
+        private static string? ResolveDeviceKind(VideoForensics.Core.Providers.Common.Contracts.Device device)
+        {
+            return device.Metadata != null && device.Metadata.TryGetValue("kind", out string? kind) && !string.IsNullOrWhiteSpace(kind)
+                ? kind
+                : device.Type;
+        }
+
+        /// <summary>
+        /// Maps a provider device kind/type (doorbell_*, doorbot, stickup_cam_*, chime_*, ...) to the
+        /// stored device type. Unrecognised or missing kinds are "Unknown", never silently "camera".
+        /// </summary>
+        internal static string MapDeviceType(string? providerKind)
+        {
+            if (string.IsNullOrWhiteSpace(providerKind))
+            {
+                return "Unknown";
+            }
+
+            string kind = providerKind.Trim().ToLowerInvariant();
+            if (kind.StartsWith("doorbell", StringComparison.Ordinal)
+                || kind.StartsWith("doorbot", StringComparison.Ordinal)
+                || kind.StartsWith("authorized_doorbot", StringComparison.Ordinal)
+                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal))
+            {
+                return "doorbell";
+            }
+
+            if (kind.StartsWith("chime", StringComparison.Ordinal))
+            {
+                return "chime";
+            }
+
+            if (kind.StartsWith("stickup_cam", StringComparison.Ordinal)
+                || kind.StartsWith("camera", StringComparison.Ordinal))
+            {
+                return "camera";
+            }
+
+            return "Unknown";
+        }
+
         private (string Json, string Hash) SerializeMetadata(object? apiResponse)
         {
             if (apiResponse == null)
@@ -116,7 +172,15 @@ namespace VideoForensics.Client.Core.Services
         /// real Ring location (not a synthetic placeholder) exists first. Cached per process/device and
         /// per process/location so this is only a DB round-trip on first use for a given device/location.
         /// </summary>
-        private async Task<Guid> EnsureDeviceIdentityAsync(string providerDeviceId, string deviceName, string? providerLocationId, CancellationToken ct)
+        private async Task<Guid> EnsureDeviceIdentityAsync(
+            string providerDeviceId,
+            string deviceName,
+            string? providerLocationId,
+            string? providerDeviceKind,
+            bool? isOnline,
+            string? deviceTimeZone,
+            CancellationToken ct,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? deviceFields = null)
         {
             if (_deviceIdCache.TryGetValue(providerDeviceId, out Guid cached))
             {
@@ -159,17 +223,30 @@ namespace VideoForensics.Client.Core.Services
                         ? knownName
                         : effectiveLocationId;
 
-                    (string? Json, string? Hash) = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
+                    // Real address when discovery supplied one; the synthetic id/name blob is only the
+                    // metadata payload and the hash goes in its own ApiResponseHash field.
+                    _knownLocationAddresses.TryGetValue(effectiveLocationId, out string? locationAddress);
+                    (string locationJson, string locationHash) = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
                     Data.Common.Entities.Location location = await _dataClient.EnsureLocationAsync(
-                        accountId, effectiveLocationId, locationName, Json, Hash, ct: ct);
+                        accountId, effectiveLocationId, locationName, locationAddress, locationJson, locationHash, ct);
                     locationGuid = location.Id;
                     _locationIdCache[effectiveLocationId] = locationGuid;
                     _cachedLocationName = location.Name;
+
+                    // Persist metadata now that the Location row exists, so a fresh database gets its
+                    // metadata on the first pass instead of waiting for the next discovery run.
+                    // The 5-minute throttle lives in the discovery service.
+                    if (_deviceService is VideoForensics.Core.Providers.Common.Contracts.ILocationMetadataPersister persister
+                        && _knownLocations.TryGetValue(effectiveLocationId, out VideoForensics.Core.Providers.Common.Contracts.Location? discovered))
+                    {
+                        await persister.PersistLocationMetadataAsync([discovered], ct);
+                    }
                 }
 
-                (string Json, string Hash) deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = "camera", isOnline = true });
+                string deviceType = MapDeviceType(providerDeviceKind);
+                (string Json, string Hash) deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = deviceType, isOnline });
                 Data.Common.Entities.Device device = await _dataClient.EnsureDeviceAsync(
-                    locationGuid, providerDeviceId, deviceName, "camera", true, deviceMetadata.Json, deviceMetadata.Hash, ct: ct);
+                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct, timeZoneId: deviceTimeZone, details: deviceFields);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
@@ -204,6 +281,12 @@ namespace VideoForensics.Client.Core.Services
             foreach (VideoForensics.Core.Providers.Common.Contracts.Location location in locations)
             {
                 _knownLocationNames[location.Id] = location.Name;
+                _knownLocations[location.Id] = location;
+                if (!string.IsNullOrWhiteSpace(location.Address))
+                {
+                    _knownLocationAddresses[location.Id] = location.Address;
+                }
+
                 _logger.LogInformation("Checking location: {LocationId}", location.Id);
                 IReadOnlyList<VideoForensics.Core.Providers.Common.Contracts.Device> devices = await _deviceService.GetDevicesAsync(location.Id.ToString());
                 if (devices == null || devices.Count == 0)
@@ -269,7 +352,8 @@ namespace VideoForensics.Client.Core.Services
                 DateTime deviceEffectiveStart = startDate;
                 try
                 {
-                    Guid deviceGuid = await EnsureDeviceIdentityAsync(device.Id, device.Name, device.LocationId, cancellationToken);
+                    Guid deviceGuid = await EnsureDeviceIdentityAsync(
+                        device.Id, device.Name, device.LocationId, ResolveDeviceKind(device), device.IsOnline, ResolveTimeZone(device), cancellationToken, device.Details);
                     deviceEffectiveStart = await _dataClient.GetWatermarkAsync(deviceGuid, startDate, force, cancellationToken);
                 }
                 catch (Exception ex)

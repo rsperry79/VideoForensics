@@ -11,9 +11,8 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
     public sealed class GuardedEvidenceExportService(IEvidenceExportService inner, ICircuitOperatorGate gate) : IEvidenceExportService
     {
         public Task<ExportResult> ExportEvidenceAsync(
-            IReadOnlyList<Guid> mediaItemIds,
+            Guid caseId,
             string outputDirectory,
-            string? caseReference,
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,
@@ -30,7 +29,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
                 throw new UnauthorizedAccessException(gate.StepUpDenial());
             }
 
-            return inner.ExportEvidenceAsync(mediaItemIds, outputDirectory, caseReference, recipientDescription, passphrase, ct, stepUpToken);
+            return inner.ExportEvidenceAsync(caseId, outputDirectory, recipientDescription, passphrase, ct, stepUpToken);
         }
     }
 }
