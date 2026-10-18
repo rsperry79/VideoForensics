@@ -8,6 +8,7 @@
 @using VideoForensics.Ui.Shared.Services.Inspector
 @using VideoForensics.Ui.Shared.Services.Scope
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Layout.LeftPanel
 @using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Resources
 @inject PairedSessionState SessionState
@@ -131,6 +132,7 @@
                             <NavSectionList Sections="@ActiveGroupSections" CurrentPath="@_currentPath" CurrentQuery="@_currentQuery"
                                             OnItemSelected="@((NavItem item) => Nav.NavigateTo(item.Path))" />
                         </div>
+                        <LeftPanelHost />
                     </div>
                 </SplitterPane>
                 <SplitterPane CssClass="splitter-content-wrapper">

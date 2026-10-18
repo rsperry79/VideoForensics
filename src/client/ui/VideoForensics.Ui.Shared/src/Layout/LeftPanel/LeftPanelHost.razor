@@ -1,0 +1,27 @@
+@using VideoForensics.Ui.Shared.Services
+@implements IDisposable
+@inject LeftPanelContentService LeftPanelContent
+
+@if (LeftPanelContent.Content is not null)
+{
+    <div class="left-panel-content">
+        @LeftPanelContent.Content
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        LeftPanelContent.OnChange += OnContentChanged;
+    }
+
+    private void OnContentChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        LeftPanelContent.OnChange -= OnContentChanged;
+    }
+}
