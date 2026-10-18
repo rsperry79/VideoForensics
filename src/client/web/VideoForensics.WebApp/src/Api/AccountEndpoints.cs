@@ -366,6 +366,17 @@ namespace VideoForensics.WebApp.Api
         /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
         private const int MaxSyncDays = 3650;
 
+    /// <summary>
+    /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
+    /// time, so relabelling it as UTC would shift the instant by the server's offset. Unspecified dates are taken as UTC.
+    /// </summary>
+    private static DateTime ToUtcInstant(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
+
     /// <summary>Validates the sync-now body and turns it into a runner request. Dates are treated as UTC.</summary>
     private static bool TryBuildSyncRequest(SyncNowRequest body, out AccountSyncRequest? request, out string? error)
     {
@@ -412,8 +423,8 @@ namespace VideoForensics.WebApp.Api
                     return false;
                 }
 
-                from = DateTime.SpecifyKind(body.StartUtc.Value, DateTimeKind.Utc);
-                to = body.EndUtc is null ? null : DateTime.SpecifyKind(body.EndUtc.Value, DateTimeKind.Utc);
+                from = ToUtcInstant(body.StartUtc.Value);
+                to = body.EndUtc is null ? null : ToUtcInstant(body.EndUtc.Value);
                 if (to <= from)
                 {
                     error = "to must be after from";

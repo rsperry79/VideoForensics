@@ -185,6 +185,17 @@ namespace VideoForensics.WebApp.Tests.Api
         }
 
         [Fact]
+        public async Task SyncNow_CustomBodyWithOffset_ConvertsToTheSameUtcInstant()
+        {
+            _ = await _client.PostAsync(SyncNowUrl, Json(
+                "{\"syncType\":\"Events\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-01T02:00:00+02:00\",\"endUtc\":\"2026-10-02T02:00:00+02:00\"}"));
+
+            AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), request.FromUtc!.Value.ToUniversalTime());
+            Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), request.ToUtc!.Value.ToUniversalTime());
+        }
+
+        [Fact]
         public async Task SyncNow_AllTypeAllHistory_RunsAllTypeOverFullHistory()
         {
             _ = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"All\",\"rangeKind\":\"All\"}"));
