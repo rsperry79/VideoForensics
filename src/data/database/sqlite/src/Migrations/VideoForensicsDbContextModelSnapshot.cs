@@ -5163,6 +5163,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("SnapshotIntervalSeconds")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("SnapshotLastRunUtc")
                         .HasColumnType("TEXT");
 

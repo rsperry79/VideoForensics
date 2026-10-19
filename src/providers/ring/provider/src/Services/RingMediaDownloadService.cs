@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -56,6 +57,9 @@ namespace VideoForensics.Providers.Ring.Services
         private const string RingAccountDisplayName = "Ring account";
         private readonly INotificationDispatcher? _notificationDispatcher;
 
+        // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
+        private readonly ISyncScheduleRepository? _syncScheduleRepository;
+
         // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
         private TimeSpan? _lastRetryAfter;
 
@@ -106,6 +110,8 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
+            // Read before RecordRateLimited: that call already adds the incident's second, and the saved value must be based on the spacing before it.
+            TimeSpan spacingBeforeIncident = pacer.MinInterval;
             bool newIncident = pacer.RecordRateLimited(ex.RetryAfter);
             TimeSpan pause = ex.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
             _logger.LogWarning("{AccountName} was rate limited by Ring; pausing media requests for {PauseSeconds}s and spacing them {IntervalSeconds}s apart",
@@ -117,9 +123,38 @@ namespace VideoForensics.Providers.Ring.Services
                 return;
             }
 
+            await SaveSnapshotIntervalAfterIncidentAsync(accountId, spacingBeforeIncident, cancellationToken);
+
             await DispatchRateLimitAlertAsync(
                 $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// Saves one second more than the account's current snapshot spacing as its SnapshotIntervalSeconds. The current spacing is the
+        /// stored value when set, otherwise the pacer's spacing before this incident. Failures are logged, never thrown, so a settings
+        /// write cannot fail the download that triggered it.
+        /// </summary>
+        private async Task SaveSnapshotIntervalAfterIncidentAsync(Guid accountId, TimeSpan spacingBeforeIncident, CancellationToken cancellationToken)
+        {
+            if (_syncScheduleRepository == null)
+            {
+                return;
+            }
+
+            try
+            {
+                SyncSchedule? schedule = await _syncScheduleRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
+                int currentSeconds = schedule?.SnapshotIntervalSeconds ?? (int)Math.Ceiling(spacingBeforeIncident.TotalSeconds);
+                int raisedSeconds = currentSeconds + 1;
+                await _syncScheduleRepository.SetSnapshotIntervalSecondsAsync(accountId, raisedSeconds, cancellationToken);
+                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalSeconds}s after a rate limit",
+                    RingAccountDisplayName, raisedSeconds);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Could not save the snapshot interval for {AccountName} after a rate limit", RingAccountDisplayName);
+            }
         }
 
         /// <summary>Raises the ProviderRateLimited alert with the given details. Dispatch failures are logged, never thrown.</summary>
@@ -210,13 +245,14 @@ namespace VideoForensics.Providers.Ring.Services
         private int _peakActiveDownloadsForBatch;
 
         public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
-            INotificationDispatcher? notificationDispatcher = null)
+            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
             _metadataTagger = metadataTagger ?? new FfmpegMediaMetadataTagger(logger);
             _notificationDispatcher = notificationDispatcher;
+            _syncScheduleRepository = syncScheduleRepository;
         }
 
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
