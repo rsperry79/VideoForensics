@@ -20,16 +20,30 @@ else if (!_readyForAnalysis)
         @L["SelectDevice"]
     </div>
 }
-else if (_report is not null)
+else
 {
-    <span><strong>@_report.Message</strong></span>
-
-    @if (_report.Incidents.Count > 0)
+    @* Jamming is per device. The panel analyzes each scoped device and shows one combined list, tagged by device. *@
+    @foreach (var failure in _failures)
     {
-        <SfGrid TValue="JammingIncidentRecord" DataSource="@_report.Incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+        <div class="alert alert-warning">@failure</div>
+    }
+
+    <span><strong>@L["JammingSummary", _incidents.Count, _analyzedCount]</strong></span>
+
+    @if (_incidents.Count > 0)
+    {
+        <SfGrid TValue="JammingIncidentRecord" DataSource="@_incidents" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
+                <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
+                    <Template>
+                        @{
+                            var incident = (JammingIncidentRecord)context;
+                            @(_deviceNames.GetValueOrDefault(incident.DeviceId, incident.DeviceId.ToString("D")[..8]))
+                        }
+                    </Template>
+                </GridColumn>
                 <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100" />
                 <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100" />
                 <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
@@ -50,6 +64,12 @@ else if (_report is not null)
 
     <h5 class="mt-4 mb-2">@L["RecordManualIncident"]</h5>
     <div class="d-flex flex-column gap-2">
+        <div>
+            <label>@L["RecordDevice"]</label>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" @bind-Value="_recordDeviceValue" DataSource="@_recordDeviceOptions">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
         <div>
             <label for="startUtc">@L["LabelStartUtc"]</label>
             <SfDateTimePicker TValue="DateTime" @bind-Value="_manualStartUtc" />
@@ -87,9 +107,13 @@ else if (_report is not null)
     private bool _isLoading = true;
     private string? _error;
     private bool _readyForAnalysis;
-    private JammingAnalysisReport? _report;
+    private int _analyzedCount;
+    private readonly List<string> _failures = new();
+    private List<JammingIncidentRecord> _incidents = new();
+    private Dictionary<Guid, string> _deviceNames = new();
     private ForensicScope _lastLoadedScope = new(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
 
+    private string _recordDeviceValue = string.Empty;
     private DateTime _manualStartUtc = DateTime.UtcNow.AddHours(-1);
     private DateTime _manualEndUtc = DateTime.UtcNow;
     private int _manualAffectedEventCount = 1;
@@ -99,6 +123,17 @@ else if (_report is not null)
     private bool _recording;
     private string? _recordMessage;
     private bool? _recordSuccess;
+
+    /// <summary>The scoped devices to analyze: the scope's explicit list, or every device when none is listed.</summary>
+    private IReadOnlyList<Guid> TargetDeviceIds =>
+        Scope.IncludesAllDevices
+            ? Devices.Select(d => d.Id).ToList()
+            : Scope.DeviceIds.ToList();
+
+    private IEnumerable<KeyValuePair<string, string>> _recordDeviceOptions =>
+        TargetDeviceIds.Select(id => new KeyValuePair<string, string>(id.ToString(), NameOf(id)));
+
+    private string NameOf(Guid deviceId) => _deviceNames.GetValueOrDefault(deviceId, deviceId.ToString("D")[..8]);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -116,38 +151,45 @@ else if (_report is not null)
         _isLoading = true;
         _error = null;
         _readyForAnalysis = false;
-        _report = null;
+        _analyzedCount = 0;
+        _failures.Clear();
+        _incidents = new List<JammingIncidentRecord>();
 
         try
         {
-            // Jamming requires exactly one device
-            if (Scope.IncludesAllDevices || Scope.DeviceIds.Count == 0)
+            _deviceNames = Devices.ToDictionary(d => d.Id, d => d.Name ?? d.Id.ToString("D")[..8]);
+            var targets = TargetDeviceIds;
+            if (targets.Count == 0)
             {
-                _error = "Select a single device for jamming analysis";
                 return;
             }
 
-            if (Scope.DeviceIds.Count > 1)
-            {
-                _error = "Select a single device (not multiple) for jamming analysis";
-                return;
-            }
-
-            var deviceId = Scope.DeviceIds.First();
             _readyForAnalysis = true;
-
-            _report = await JammingTools.AnalyzeJammingAsync(
-                deviceId,
-                Scope.FromUtc,
-                Scope.ToUtc,
-                CancellationToken.None);
-
-            if (!_report.Success)
+            if (!targets.Any(t => t.ToString() == _recordDeviceValue))
             {
-                _error = _report.ErrorMessage ?? "Analysis failed";
+                _recordDeviceValue = targets[0].ToString();
             }
 
-            _lastLoadedScope = Scope;
+            var incidents = new List<JammingIncidentRecord>();
+            foreach (var deviceId in targets)
+            {
+                var report = await JammingTools.AnalyzeJammingAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None);
+                if (!report.Success)
+                {
+                    _failures.Add(L["DeviceAnalysisFailed", NameOf(deviceId), report.ErrorMessage ?? L["AnalysisFailed"].Value].Value);
+                    continue;
+                }
+
+                _analyzedCount++;
+                incidents.AddRange(report.Incidents);
+            }
+
+            if (_analyzedCount == 0)
+            {
+                _error = _failures.Count > 0 ? _failures[0] : L["AnalysisFailed"].Value;
+            }
+
+            _incidents = incidents.OrderByDescending(i => i.StartUtc).ToList();
         }
         catch (Exception ex)
         {
@@ -155,20 +197,20 @@ else if (_report is not null)
         }
         finally
         {
+            _lastLoadedScope = Scope;
             _isLoading = false;
         }
     }
 
     private async Task RecordIncidentAsync()
     {
-        if (Scope.DeviceIds.Count != 1)
+        if (!Guid.TryParse(_recordDeviceValue, out var deviceId) || !TargetDeviceIds.Contains(deviceId))
         {
-            _recordMessage = "Invalid device selection";
+            _recordMessage = L["InvalidDeviceSelection"];
             _recordSuccess = false;
             return;
         }
 
-        var deviceId = Scope.DeviceIds.First();
         _recording = true;
         _recordMessage = null;
         _recordSuccess = null;
@@ -190,12 +232,9 @@ else if (_report is not null)
 
             if (success)
             {
-                // Reload the report
-                _report = await JammingTools.AnalyzeJammingAsync(
-                    deviceId,
-                    Scope.FromUtc,
-                    Scope.ToUtc,
-                    CancellationToken.None);
+                // The recorded incident belongs to one device; reload every device so the combined list stays whole.
+                _lastLoadedScope = new ForensicScope(new List<Guid>(), DateTime.MinValue, DateTime.MinValue, null);
+                await LoadReportAsync();
             }
         }
         finally

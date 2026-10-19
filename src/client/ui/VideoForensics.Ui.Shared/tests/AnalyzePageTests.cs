@@ -210,16 +210,21 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void TwoDeviceScope_Reports_ShowsNotice_NoServiceCall()
+    public void TwoDeviceScope_Reports_CallsEachDeviceOnce_NoSingleDeviceNotice()
     {
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() } });
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
 
         var component = RenderPage();
 
-        Assert.Contains("Select a single device (or all)", component.Markup);
+        Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
-            m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            m => m.BuildForensicAnalysisReportAsync(first, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        ReportGenerationServiceMock.Verify(
+            m => m.BuildForensicAnalysisReportAsync(second, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -237,17 +242,22 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void TwoDeviceScope_Anomalies_ShowsNotice_NoServiceCall()
+    public void TwoDeviceScope_Anomalies_CallsEachDeviceOnce_NoSingleDeviceNotice()
     {
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() } });
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
         NavigateToAnalysis("anomalies");
 
         var component = RenderPage();
 
-        Assert.Contains("Select a single device (or all)", component.Markup);
+        Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
-            m => m.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            m => m.BuildSignalAnomalyReportAsync(first, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        ReportGenerationServiceMock.Verify(
+            m => m.BuildSignalAnomalyReportAsync(second, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -265,17 +275,22 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void TwoDeviceScope_Access_ShowsNotice_NoServiceCall()
+    public void TwoDeviceScope_Access_CallsEachDeviceOnce_NoSingleDeviceNotice()
     {
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() } });
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
         NavigateToAnalysis("access");
 
         var component = RenderPage();
 
-        Assert.Contains("Select a single device (or all)", component.Markup);
+        Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
-            m => m.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            m => m.BuildAccessControlReportAsync(first, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        ReportGenerationServiceMock.Verify(
+            m => m.BuildAccessControlReportAsync(second, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }
 
@@ -417,13 +432,13 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void ZeroDevices_ShowsSelectSingleDeviceMessage_NoOrchestratorCall()
+    public void ZeroDevices_ShowsSelectDeviceMessage_NoOrchestratorCall()
     {
         NavigateToAnalysis("jamming");
 
         var component = RenderPage();
 
-        Assert.Contains("Select a single device for jamming analysis", component.Markup);
+        Assert.Contains("Select a device", component.Markup);
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

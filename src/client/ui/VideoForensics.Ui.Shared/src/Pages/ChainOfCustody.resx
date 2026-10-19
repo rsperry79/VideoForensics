@@ -92,7 +92,7 @@
   <data name="Filters" xml:space="preserve">
     <value>Filters</value>
   </data>
-  <data name="SelectDevicePlaceholder" xml:space="preserve">
-    <value>Select a device</value>
+  <data name="ColDevice" xml:space="preserve">
+    <value>Device</value>
   </data>
 </root>

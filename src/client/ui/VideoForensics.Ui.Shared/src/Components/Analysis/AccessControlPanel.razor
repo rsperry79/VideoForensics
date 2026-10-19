@@ -2,6 +2,7 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Analysis
 @using VideoForensics.Ui.Shared.Services.Scope
 @inject IReportGenerationService ReportGenerationService
 @inject IStringLocalizer<AccessControlPanel> L
@@ -108,23 +109,21 @@ else if (_report is not null)
 
         try
         {
-            Guid? deviceId = Scope.IncludesAllDevices
-                ? null
-                : Scope.DeviceIds.Count == 1 ? Scope.DeviceIds.First() : null;
-
-            // AccessControlPanel handles single device or all devices
-            // Multiple devices would need merging logic
-            if (Scope.DeviceIds.Count > 1)
+            // All devices is one server call; each explicit device is requested and the results are merged.
+            if (Scope.IncludesAllDevices)
             {
-                _error = "Select a single device (or all) for this analysis";
-                return;
+                _report = await ReportGenerationService.BuildAccessControlReportAsync(null, Scope.FromUtc, Scope.ToUtc, CancellationToken.None);
             }
+            else
+            {
+                var reports = new List<AccessControlReport>();
+                foreach (var deviceId in Scope.DeviceIds)
+                {
+                    reports.Add(await ReportGenerationService.BuildAccessControlReportAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None));
+                }
 
-            _report = await ReportGenerationService.BuildAccessControlReportAsync(
-                deviceId,
-                Scope.FromUtc,
-                Scope.ToUtc,
-                CancellationToken.None);
+                _report = reports.Count == 0 ? null : AnalysisReportMerge.Merge(reports);
+            }
 
             _lastLoadedScope = Scope;
         }
