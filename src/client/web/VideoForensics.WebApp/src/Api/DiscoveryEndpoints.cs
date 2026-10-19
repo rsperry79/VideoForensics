@@ -1,5 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -23,7 +24,7 @@ namespace VideoForensics.WebApp.Api
 
             _ = group.MapGet("/locations", GetLocations)
                 .WithSummary("Get all locations")
-                .WithDescription("Retrieves all locations/sites for the authenticated user from the provider.")
+                .WithDescription("Retrieves all locations/sites for the authenticated user from the stored data.")
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/locations/{locationId}/devices", GetDevicesByLocation)
@@ -54,29 +55,29 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("media");
         }
 
-        private static async Task<IResult> GetLocations(
-            IDeviceDiscoveryService discoveryService,
+        internal static async Task<IResult> GetLocations(
+            IStoredDeviceReader reader,
             CancellationToken ct)
         {
-            IReadOnlyList<Location> locations = await discoveryService.GetLocationsAsync(ct);
+            IReadOnlyList<Location> locations = await reader.GetLocationsAsync(ct);
             return Results.Ok(locations.Select(x => x.ToDto()));
         }
 
         private static async Task<IResult> GetDevicesByLocation(
             string locationId,
-            IDeviceDiscoveryService discoveryService,
+            IStoredDeviceReader reader,
             CancellationToken ct)
         {
-            IReadOnlyList<Device> devices = await discoveryService.GetDevicesAsync(locationId, ct);
+            IReadOnlyList<Device> devices = await reader.GetDevicesAsync(locationId, ct);
             return Results.Ok(devices.Select(x => x.ToDto()));
         }
 
         private static async Task<IResult> GetDevice(
             string deviceId,
-            IDeviceDiscoveryService discoveryService,
+            IStoredDeviceReader reader,
             CancellationToken ct)
         {
-            Device? device = await discoveryService.GetDeviceAsync(deviceId, ct);
+            Device? device = await reader.GetDeviceAsync(deviceId, ct);
             return device == null ? Results.NotFound() : Results.Ok(device.ToDto());
         }
 
