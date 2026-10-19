@@ -152,7 +152,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // One device's failure must not stop others - each device gets its own try/catch
-                    _logger.LogError(ex, "Bitrate calibration tick: device {DeviceName} failed (non-critical)", device.Name);
+                    _logger.LogWarning(ex, "Bitrate calibration tick: device {DeviceName} failed (non-critical)", device.Name);
                 }
             }
         }

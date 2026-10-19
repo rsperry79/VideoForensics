@@ -74,6 +74,15 @@ namespace VideoForensics.Client.Common.Contracts
         Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct);
 
         /// <summary>
+        /// Starts one local integrity job that verifies each listed device in turn, or returns the running integrity job.
+        /// Results from every device land in the one job, each tagged with its <see cref="MediaVerificationResult.DeviceId"/>.
+        /// </summary>
+        /// <param name="deviceIds">Devices to verify; must not be empty.</param>
+        /// <param name="ct">Cancellation token for the start call only; the job itself is not cancelled by it.</param>
+        /// <returns>Snapshot of the started or already-running job.</returns>
+        Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct);
+
+        /// <summary>
         /// Starts a provider reconciliation, or returns the running one if a reconcile is already in progress.
         /// </summary>
         /// <param name="deviceId">Guid device ID from the data layer.</param>

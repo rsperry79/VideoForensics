@@ -228,6 +228,12 @@ namespace VideoForensics.WebApp.Api
                     account.LastDownloadTimeUtc = request.LastDownloadTimeUtc.Value;
                 }
 
+                // A removed account keeps its data for the record but must never be switched back to active.
+                if (account.RemovedUtc != null && request.IsActive)
+                {
+                    return Results.Conflict("Account has been removed and cannot be reactivated.");
+                }
+
                 account.IsActive = request.IsActive;
 
                 await accounts.UpdateAsync(account, ct);
@@ -288,6 +294,13 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
+                // Purge is disabled (see IAccountExportService.PurgeDisabledMessage). Reject before anything is retired,
+                // so a refused request cannot leave the account retired with its credentials gone.
+                if (request.PurgeAfterExport)
+                {
+                    return Results.BadRequest(new { error = IAccountExportService.PurgeDisabledMessage });
+                }
+
                 // Retire first so the scheduler stops pulling for the account before the export runs.
                 if (request.PurgeAfterExport && account.RemovedUtc == null)
                 {
@@ -334,7 +347,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }
@@ -365,7 +378,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }

@@ -64,8 +64,19 @@ namespace VideoForensics.WebApp.Api
             IEvidenceValidationJobs jobs,
             CancellationToken ct)
         {
-            EvidenceValidationJob job = await jobs.StartIntegrityAsync(request.DeviceId, ct);
-            return Results.Ok(job.ToDto());
+            // A non-empty device list starts one job over those devices; otherwise the single-device form applies.
+            try
+            {
+                EvidenceValidationJob job = request.DeviceIds is { Count: > 0 } deviceIds
+                    ? await jobs.StartIntegrityForDevicesAsync(deviceIds, ct)
+                    : await jobs.StartIntegrityAsync(request.DeviceId, ct);
+                return Results.Ok(job.ToDto());
+            }
+            catch (InvalidOperationException ex)
+            {
+                // A different device set is already being verified; the caller must wait for that run.
+                return Results.Conflict(ex.Message);
+            }
         }
 
         /// <summary>Starts (or joins the running) provider reconciliation job and returns its snapshot.</summary>
@@ -224,7 +235,8 @@ namespace VideoForensics.WebApp.Api
                 MediaItemId: result.MediaItemId,
                 FileName: result.FileName,
                 Status: result.Status,
-                FailureReason: result.FailureReason
+                FailureReason: result.FailureReason,
+                DeviceId: result.DeviceId
             );
         }
 

@@ -37,7 +37,7 @@ public class SoftwarePathsPageTests : BunitContext
     {
         // No signed-in session, so the step-up challenge cannot produce a token. This is the same failure
         // the page sees when the operator cancels the challenge.
-        _handler.Bodies["/api/software-paths"] = new { ffmpegBinDirectory = "", cloudflaredPath = "" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = "", cloudflaredPath = "" };
 
         var cut = Render<SoftwarePaths>();
         cut.WaitForAssertion(() => Assert.Single(_handler.Sent, s => s.Method == HttpMethod.Get));
@@ -53,12 +53,12 @@ public class SoftwarePathsPageTests : BunitContext
     {
         var session = await SignInWithPasskeyAsync();
 
-        _handler.Bodies["/api/software-paths"] = new { ffmpegBinDirectory = @"C:\old", cloudflaredPath = "" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = @"C:\old", cloudflaredPath = "" };
         var cut = Render<SoftwarePaths>();
         cut.WaitForElement("#ffmpeg-bin-directory");
 
         // The handler answers the POST with whatever the body currently holds, so the saved values are the new ones.
-        _handler.Bodies["/api/software-paths"] = new { ffmpegBinDirectory = @"C:\new", cloudflaredPath = @"C:\cf\cloudflared.exe" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = @"C:\new", cloudflaredPath = @"C:\cf\cloudflared.exe" };
         cut.Find("#ffmpeg-bin-directory").Change(@"C:\new");
         cut.Find("#cloudflared-path").Change(@"C:\cf\cloudflared.exe");
 
@@ -76,7 +76,7 @@ public class SoftwarePathsPageTests : BunitContext
         const string serverError = @"Path does not exist: C:\missing";
         await SignInWithPasskeyAsync();
 
-        _handler.Bodies["/api/software-paths"] = new { ffmpegBinDirectory = "", cloudflaredPath = "" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = "", cloudflaredPath = "" };
         _handler.PostError = serverError;
         var cut = Render<SoftwarePaths>();
         cut.WaitForElement("#ffmpeg-bin-directory");

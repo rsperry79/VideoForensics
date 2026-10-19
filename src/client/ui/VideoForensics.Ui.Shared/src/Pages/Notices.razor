@@ -4,7 +4,10 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Core.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject DeviceOwnershipService OwnershipService
 @inject INoticeRepository NoticeRepository
 @inject IStringLocalizer<Notices> L
 @inject INoticeDismissalRepository NoticeDismissalRepository
@@ -20,6 +23,21 @@
 }
 else
 {
+    <PageRightPanelContent>
+        <div class="right-panel-section">
+            <small style="font-weight: bold;">@L["FilterProvider"]</small>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_providerFilterValue" DataSource="@ProviderFilterOptions"
+                Placeholder="@L["AllProviders"]" data-testid="notices-provider-filter" ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnProviderFilterChanged(args))">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+            <small style="font-weight: bold;">@L["FilterAccount"]</small>
+            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
+                Placeholder="@L["AllAccounts"]" data-testid="notices-account-filter" ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
+                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+    </PageRightPanelContent>
+
     <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
         <SfCheckBox TChecked="bool" @bind-Checked="_showDismissed" @bind-Checked:after="LoadNoticesAsync" Label="@L["ShowDismissed"]" />
         <SfButton Content="@L["MarkAllAsRead"]" OnClick="@DismissAllAsync" Disabled="@(_notices.Count == 0)" CssClass="e-info" />
@@ -73,13 +91,80 @@ else
 @code {
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<Notice> _notices = new();
+    private List<Notice> _allNotices = new();
     private bool _showDismissed = false;
     private bool _isLoading = true;
+
+    // Provider/Account filters. A notice without a provider account is global, so it is hidden while either filter is set.
+    private DeviceOwnershipSnapshot? _ownership;
+    private string _providerFilterValue = string.Empty;
+    private string _accountFilterValue = string.Empty;
+
+    private IEnumerable<KeyValuePair<string, string>> ProviderFilterOptions =>
+        (_ownership?.ProviderNames ?? Array.Empty<string>()).Select(p => new KeyValuePair<string, string>(p, p));
+
+    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions =>
+        ScopeDeviceFilter.AccountsForProvider(_ownership?.Accounts ?? Array.Empty<ProviderAccount>(), ProviderFilterOrNull)
+            .Select(a => new KeyValuePair<string, string>(a.Id.ToString(), _ownership!.AccountNames.GetValueOrDefault(a.Id, a.ProviderName)));
+
+    private string? ProviderFilterOrNull => string.IsNullOrEmpty(_providerFilterValue) ? null : _providerFilterValue;
 
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbHome"].Value, "/"), (L["NoticesTitle"].Value, null) };
+        _ownership = await OwnershipService.LoadAsync(Array.Empty<VideoForensics.Data.Common.Entities.Device>(), CancellationToken.None);
         await LoadNoticesAsync();
+    }
+
+    private void OnProviderFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        _providerFilterValue = args.Value ?? string.Empty;
+
+        // An account from another provider can't stay selected.
+        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
+        {
+            _accountFilterValue = string.Empty;
+        }
+
+        ApplyFilters();
+    }
+
+    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        _accountFilterValue = args.Value ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var accountId = Guid.TryParse(_accountFilterValue, out var parsed) ? parsed : (Guid?)null;
+        _notices = _allNotices.Where(n => Matches(n, accountId)).ToList();
+    }
+
+    private bool Matches(Notice notice, Guid? accountId)
+    {
+        if (ProviderFilterOrNull is null && accountId is null)
+        {
+            return true;
+        }
+
+        if (notice.ProviderAccountId is not { } noticeAccountId)
+        {
+            return false;
+        }
+
+        if (accountId is { } selectedAccount && noticeAccountId != selectedAccount)
+        {
+            return false;
+        }
+
+        if (ProviderFilterOrNull is { } provider)
+        {
+            var account = _ownership?.Accounts.FirstOrDefault(a => a.Id == noticeAccountId);
+            return account is not null && string.Equals(account.ProviderName, provider, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -104,9 +189,10 @@ else
 
         _isLoading = true;
         bool isAdmin = SessionState.Role is not null && Enum.TryParse<OperatorRole>(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Admin;
-        _notices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, isAdmin, _showDismissed, CancellationToken.None))
+        _allNotices = (await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, isAdmin, _showDismissed, CancellationToken.None))
             .OrderByDescending(n => n.TimestampUtc)
             .ToList();
+        ApplyFilters();
         _isLoading = false;
     }
 

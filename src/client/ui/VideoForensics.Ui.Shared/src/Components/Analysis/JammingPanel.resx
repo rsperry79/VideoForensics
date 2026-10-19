@@ -95,4 +95,19 @@
   <data name="ApplyFilter" xml:space="preserve">
     <value>Apply Filter</value>
   </data>
+  <data name="JammingSummary" xml:space="preserve">
+    <value>{0} incident(s) across {1} device(s)</value>
+  </data>
+  <data name="DeviceAnalysisFailed" xml:space="preserve">
+    <value>Jamming analysis failed for {0}: {1}</value>
+  </data>
+  <data name="InvalidDeviceSelection" xml:space="preserve">
+    <value>Choose a device to record the incident for.</value>
+  </data>
+  <data name="RecordDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="ColDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
 </root>

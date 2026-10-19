@@ -11,24 +11,27 @@ namespace VideoForensics.Providers.Ring.Services
     /// returns the FULL account history (all devices), not just one device's. A cache
     /// allows a sequential per-device download loop to reuse the data instead of making
     /// redundant API calls.
+    /// Entries are kept per Ring account: one cache instance may serve several accounts, and
+    /// account B must never be served account A's events.
     /// </summary>
     public interface IRingHistoryEventCache
     {
         /// <summary>
-        /// Gets the cached doorbot history events for the specified date range.
+        /// Gets the cached doorbot history events for the specified account and date range.
         /// Cache widening logic: a request whose [startDate, endDate] falls entirely inside
-        /// what's already cached is served by filtering the cached events in memory with no
+        /// what's already cached for that account is served by filtering the cached events in memory with no
         /// network call. A request that needs data older than what's cached (e.g. a device with
         /// an earlier watermark) fetches the union of the two ranges and widens the cache.
+        /// A session with no account identity is fetched directly and never cached.
         /// </summary>
         Task<List<DoorbotHistoryEvent>> GetEventsAsync(Session session, DateTime startDate, DateTime endDate, CancellationToken ct);
 
         /// <summary>
-        /// Best-effort hint for whether events in the given date range are already cached.
+        /// Best-effort hint for whether events in the given date range are already cached for this account.
         /// No lock is held; this is a hint for callers deciding whether to skip an inter-device delay,
         /// not a correctness-critical read.
         /// </summary>
-        bool IsCached(DateTime startDate, DateTime endDate);
+        bool IsCached(Session session, DateTime startDate, DateTime endDate);
     }
 
     /// <summary>
@@ -45,10 +48,11 @@ namespace VideoForensics.Providers.Ring.Services
 
     public class RingHistoryEventCache : IRingHistoryEventCache
     {
+        private const string CacheKeyPrefix = "ring_doorbot_history:";
+        private const int CacheTtlHours = 24;
+
         private readonly IMemoryCache _cache;
         private readonly ILogger _logger;
-        private const string CacheKey = "ring_doorbot_history";
-        private const int CacheTtlHours = 24;
 
         // Serializes the cache-miss path (decide range, fetch, store) so each fetch widens from the
         // entry the previous fetch stored; otherwise a slower, narrower fetch could overwrite a wider one.
@@ -60,12 +64,28 @@ namespace VideoForensics.Providers.Ring.Services
             _logger = logger;
         }
 
-        public bool IsCached(DateTime startDate, DateTime endDate)
+        /// <summary>
+        /// The cache key for one account. The key is built from the login name, never from a shared constant, so two
+        /// accounts can never read each other's entries. Null when the session has no account identity.
+        /// </summary>
+        private static string? KeyFor(Session session)
+        {
+            string? username = session.Username;
+            return string.IsNullOrWhiteSpace(username) ? null : CacheKeyPrefix + username.Trim().ToUpperInvariant();
+        }
+
+        public bool IsCached(Session session, DateTime startDate, DateTime endDate)
         {
             // No lock: this is a best-effort hint for a caller deciding whether to skip an inter-
             // device delay, not a correctness-critical read - a stale answer just means one call
             // waits (or doesn't) a few seconds longer/shorter than strictly necessary.
-            if (_cache.TryGetValue(CacheKey, out CachedHistoryRange? cachedRange))
+            string? key = KeyFor(session);
+            if (key is null)
+            {
+                return false;
+            }
+
+            if (_cache.TryGetValue(key, out CachedHistoryRange? cachedRange))
             {
                 return cachedRange != null &&
                        startDate >= cachedRange.Start &&
@@ -75,9 +95,9 @@ namespace VideoForensics.Providers.Ring.Services
             return false;
         }
 
-        private List<DoorbotHistoryEvent>? TryServeFromCache(DateTime startDate, DateTime endDate, out CachedHistoryRange? cachedRange)
+        private List<DoorbotHistoryEvent>? TryServeFromCache(string key, DateTime startDate, DateTime endDate, out CachedHistoryRange? cachedRange)
         {
-            if (_cache.TryGetValue(CacheKey, out cachedRange))
+            if (_cache.TryGetValue(key, out cachedRange))
             {
                 if (cachedRange != null &&
                     startDate >= cachedRange.Start &&
@@ -108,7 +128,15 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<List<DoorbotHistoryEvent>> GetEventsAsync(Session session, DateTime startDate, DateTime endDate, CancellationToken ct)
         {
-            var served = TryServeFromCache(startDate, endDate, out _);
+            string? key = KeyFor(session);
+            if (key is null)
+            {
+                // No account identity to key on: sharing an entry could leak another account's events, so do not cache.
+                _logger.LogWarning("Doorbot history requested for a session with no account identity; fetching without caching");
+                return await session.GetDoorbotsHistory(startDate, endDate) ?? [];
+            }
+
+            var served = TryServeFromCache(key, startDate, endDate, out _);
             if (served != null)
             {
                 return served;
@@ -118,7 +146,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 // Re-read inside the gate: another caller may have stored a range that now covers this request.
-                served = TryServeFromCache(startDate, endDate, out var cachedRange);
+                served = TryServeFromCache(key, startDate, endDate, out var cachedRange);
                 if (served != null)
                 {
                     return served;
@@ -154,7 +182,7 @@ namespace VideoForensics.Providers.Ring.Services
                     CachedAt = DateTime.UtcNow
                 };
 
-                _cache.Set(CacheKey, cacheEntry, new MemoryCacheEntryOptions
+                _cache.Set(key, cacheEntry, new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(CacheTtlHours)
                 });

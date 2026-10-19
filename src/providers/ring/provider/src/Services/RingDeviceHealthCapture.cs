@@ -65,7 +65,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to capture device health metric for device {DeviceName} (non-critical)", deviceName);
+                _logger.LogWarning(ex, "Failed to capture device health metric for device {DeviceName} (non-critical)", deviceName);
             }
         }
 

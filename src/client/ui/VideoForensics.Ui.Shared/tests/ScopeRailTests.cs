@@ -20,6 +20,8 @@ public class ScopeRail_Rendering_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLocalization();
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
+        Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
 
         // Default TimeProvider for tests that don't need a fixed clock; RegisterFakeTime overrides
         // this (later registrations win resolution) for tests asserting exact quick-range dates.

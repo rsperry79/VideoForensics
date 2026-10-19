@@ -15,7 +15,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapSoftwarePathsEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/software-paths").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/software-paths").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", (IForensicsConfiguration config) => Results.Ok(new
             {
@@ -43,12 +43,13 @@ namespace VideoForensics.WebApp.Api
             string? ffmpegDir = string.IsNullOrWhiteSpace(request.FfmpegBinDirectory) ? null : request.FfmpegBinDirectory.Trim();
             string? cloudflaredPath = string.IsNullOrWhiteSpace(request.CloudflaredPath) ? null : request.CloudflaredPath.Trim();
 
-            if (ffmpegDir != null && FfmpegBinDirectoryLocator.FindBinDirectory(new[] { ffmpegDir }) == null)
+            // Relative paths resolve against the server's working directory, so they could point anywhere; only absolute paths are accepted.
+            if (ffmpegDir != null && (!Path.IsPathRooted(ffmpegDir) || FfmpegBinDirectoryLocator.FindBinDirectory(new[] { ffmpegDir }) == null))
             {
                 return Results.BadRequest(new { error = "FFmpeg bin directory must exist and contain both ffmpeg and ffprobe." });
             }
 
-            if (cloudflaredPath != null && !File.Exists(cloudflaredPath))
+            if (cloudflaredPath != null && (!Path.IsPathRooted(cloudflaredPath) || !File.Exists(cloudflaredPath)))
             {
                 return Results.BadRequest(new { error = "cloudflared path must point to an existing file." });
             }
@@ -58,7 +59,17 @@ namespace VideoForensics.WebApp.Api
 
             config.FfmpegBinDirectory = ffmpegDir;
             config.CloudflaredPath = cloudflaredPath;
-            await configService.SaveConfigurationAsync(config, ct);
+            try
+            {
+                await configService.SaveConfigurationAsync(config, ct);
+            }
+            catch
+            {
+                // The config object is shared for the life of the server: a failed save must not leave it showing values that were never persisted.
+                config.FfmpegBinDirectory = oldFfmpegDir;
+                config.CloudflaredPath = oldCloudflaredPath;
+                throw;
+            }
 
             string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             await auditLog.LogAsync(SecurityAuditEventTypes.SoftwarePathsChanged,

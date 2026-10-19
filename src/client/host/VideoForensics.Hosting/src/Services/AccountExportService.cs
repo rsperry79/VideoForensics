@@ -44,6 +44,13 @@ namespace VideoForensics.Hosting.Services
         /// <inheritdoc />
         public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct, string? stepUpToken = null)
         {
+            // Purge is off: the delete cascades into data the export does not yet write (snapshots, config history, case
+            // links), so an account is never deleted after an export. Export-only requests are unaffected.
+            if (purgeAfterExport)
+            {
+                throw new InvalidOperationException(IAccountExportService.PurgeDisabledMessage);
+            }
+
             Guid jobId = Guid.NewGuid();
             _jobs[jobId] = new ExportJobStatus(jobId, accountId, ExportJobState.Queued, null, null, purgeAfterExport, _time.GetUtcNow().UtcDateTime, null);
             _latestJobByAccount[accountId] = jobId;
@@ -115,6 +122,18 @@ namespace VideoForensics.Hosting.Services
 
                 if (job.PurgeAfterExport)
                 {
+                    // Purge is irreversible: prove the file on disk is a complete document before deleting anything.
+                    try
+                    {
+                        await VerifyExportFileAsync(finalPath, ct);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _ = Update(jobId, j => j with { State = ExportJobState.Failed, FilePath = finalPath, ErrorMessage = "Export file failed verification; account was not deleted: " + ex.Message, CompletedUtc = _time.GetUtcNow().UtcDateTime });
+                        _logger.LogError(ex, "Account export job {JobId} for {ProviderName} account: export file failed verification, account kept", jobId, providerName);
+                        return;
+                    }
+
                     try
                     {
                         await accounts.DeleteAsync(account.Id, ct);
@@ -172,6 +191,21 @@ namespace VideoForensics.Hosting.Services
         {
             IForensicsConfiguration config = await sp.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync("", ct);
             return sp.GetRequiredService<IStorageLocationProvider>().GetEffectiveRoot(StorageCategory.Exports, config.ExportsLocation);
+        }
+
+        /// <summary>
+        /// Re-reads the written export and parses it to the end. A truncated or malformed file throws, which keeps the
+        /// account from being purged on the strength of a bad export.
+        /// </summary>
+        internal static async Task VerifyExportFileAsync(string path, CancellationToken ct)
+        {
+            await using FileStream read = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (read.Length == 0)
+            {
+                throw new InvalidDataException("export file is empty");
+            }
+
+            using JsonDocument document = await JsonDocument.ParseAsync(read, cancellationToken: ct);
         }
 
         internal static string SanitizeFileName(string name)

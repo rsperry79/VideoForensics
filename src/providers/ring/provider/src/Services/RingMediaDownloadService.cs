@@ -299,8 +299,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -353,6 +356,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                 }
 
+                                _logger.LogInformation("Media file {FileName} already exists ({Bytes} bytes); skipped download", SanitizeForLog(Path.GetFileName(fileName)), existingSize);
                                 _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
                                 return;
                             }
@@ -432,8 +436,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -540,10 +547,12 @@ namespace VideoForensics.Providers.Ring.Services
                                     };
                                 }
 
+                                _logger.LogInformation("Downloaded media file {FileName} ({Bytes} bytes) for event {EventId}", SanitizeForLog(Path.GetFileName(fileName)), downloadedSize, eventIdStr);
                                 _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)})");
                             }
                             else
                             {
+                                _logger.LogWarning("Media file {FileName} is empty or invalid", SanitizeForLog(Path.GetFileName(fileName)));
                                 _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)} empty/invalid");
                             }
                         }
@@ -775,7 +784,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
@@ -834,8 +843,11 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     try
                     {
-                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), cancellationToken);
-                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        await using (FileStream hashStream = File.OpenRead(fileName))
+                        {
+                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, cancellationToken);
+                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1432,7 +1444,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
+                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
             }
         }
 

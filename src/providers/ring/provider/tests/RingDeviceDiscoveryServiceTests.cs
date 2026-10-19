@@ -1,3 +1,5 @@
+using System.Net;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -665,6 +667,123 @@ namespace VideoForensics.Providers.Ring.Tests
                     Name = "Home"
                 });
             return repo;
+        }
+
+        [Fact]
+        public async Task RingDeviceDiscoveryService_TwoAccounts_EachGetsItsOwnDeviceList()
+        {
+            // Arrange
+            const string locationId = "11111111-1111-1111-1111-111111111111";
+            var accountA = Guid.NewGuid();
+            var accountB = Guid.NewGuid();
+            var sessionA = CreateDevicesSession(new Doorbot { Id = 111, Description = "Account A Door", LocationId = Guid.Parse(locationId) });
+            var sessionB = CreateDevicesSession(new Doorbot { Id = 222, Description = "Account B Door", LocationId = Guid.Parse(locationId) });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountA)).Returns(sessionA.Object);
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountB)).Returns(sessionB.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<Device> devicesA = await service.GetDevicesAsync(accountA, locationId);
+            IReadOnlyList<Device> devicesB = await service.GetDevicesAsync(accountB, locationId);
+
+            // Assert
+            _ = Assert.Single(devicesA);
+            Assert.Equal("111", devicesA[0].Id);
+            _ = Assert.Single(devicesB);
+            Assert.Equal("222", devicesB[0].Id);
+        }
+
+        [Fact]
+        public async Task RingDeviceDiscoveryService_SameAccountWithinTtl_ReusesCachedDeviceList()
+        {
+            // Arrange
+            const string locationId = "11111111-1111-1111-1111-111111111111";
+            var accountA = Guid.NewGuid();
+            var session = CreateDevicesSession(new Doorbot { Id = 111, Description = "Front Door", LocationId = Guid.Parse(locationId) });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountA)).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            // Act
+            _ = await service.GetDevicesAsync(accountA, locationId);
+            IReadOnlyList<Device> second = await service.GetDevicesAsync(accountA, locationId);
+
+            // Assert
+            _ = Assert.Single(second);
+            session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RingDeviceDiscoveryService_TwoAccounts_EachGetsItsOwnLocations()
+        {
+            // Arrange
+            const string locationIdA = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+            const string locationIdB = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+            var accountA = Guid.NewGuid();
+            var accountB = Guid.NewGuid();
+            var sessionA = new Session("a@example.com", "password", new AccountStubHandler(locationIdA, "Home A"));
+            _ = await sessionA.Authenticate();
+            var sessionB = new Session("b@example.com", "password", new AccountStubHandler(locationIdB, "Home B"));
+            _ = await sessionB.Authenticate();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountA)).Returns(sessionA);
+            _ = sessionProvider.Setup(sp => sp.GetSession(accountB)).Returns(sessionB);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            // Act
+            IReadOnlyList<CommonContracts.Location> locationsA = await service.GetLocationsAsync(accountA);
+            IReadOnlyList<CommonContracts.Location> locationsB = await service.GetLocationsAsync(accountB);
+
+            // Assert
+            _ = Assert.Single(locationsA);
+            Assert.Equal(locationIdA, locationsA[0].Id);
+            _ = Assert.Single(locationsB);
+            Assert.Equal(locationIdB, locationsB[0].Id);
+        }
+
+        private static Mock<Session> CreateDevicesSession(Doorbot doorbot)
+        {
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            return session;
+        }
+
+        /// <summary>Serves OAuth, one account's locations and an empty device list; anything else is a 404. Never reaches the network.</summary>
+        private sealed class AccountStubHandler : HttpMessageHandler
+        {
+            private const string LocationsUrl = "https://api.ring.com/devices/v1/locations";
+            private const string RingDevicesUrl = "https://api.ring.com/clients_api/ring_devices";
+            private readonly string _locationsJson;
+
+            public AccountStubHandler(string locationId, string locationName) =>
+                _locationsJson = $"{{\"user_locations\":[{{\"location_id\":\"{locationId}\",\"name\":\"{locationName}\",\"is_owner\":true}}]}}";
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.GetLeftPart(UriPartial.Path) ?? string.Empty;
+                HttpStatusCode status = HttpStatusCode.NotFound;
+                string body = "{\"error\":\"Not found\"}";
+
+                if (url.StartsWith("https://oauth.ring.com/", StringComparison.Ordinal))
+                {
+                    status = HttpStatusCode.OK;
+                    body = "{\"access_token\":\"TEST-TOKEN\",\"refresh_token\":\"refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\"}";
+                }
+                else if (url == LocationsUrl)
+                {
+                    status = HttpStatusCode.OK;
+                    body = _locationsJson;
+                }
+                else if (url == RingDevicesUrl)
+                {
+                    status = HttpStatusCode.OK;
+                    body = "{\"doorbots\":[],\"authorized_doorbots\":[],\"stickup_cams\":[],\"base_stations\":[],\"chimes\":[]}";
+                }
+
+                return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body), RequestMessage = request });
+            }
         }
     }
 }

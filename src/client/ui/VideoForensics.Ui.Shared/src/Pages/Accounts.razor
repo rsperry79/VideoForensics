@@ -19,6 +19,14 @@
             Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
         </SfMultiSelect>
     </div>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterAccount"]</small>
+        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
+            Placeholder="@L["AllAccounts"]" data-testid="accounts-account-filter"
+            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
+            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
 </PageRightPanelContent>
 
 @if (_removeTarget is { } target)
@@ -160,6 +168,9 @@ else
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
+    // About an hour at the poll interval; a job still running after that is reported instead of polled forever.
+    private const int MaxPollTicks = 1200;
+
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly Dictionary<Guid, ExportTrack> _exports = new();
     private readonly HashSet<Guid> _pollingJobs = new();
@@ -168,6 +179,7 @@ else
     private List<AccountRow> _removedRows = new();
     private List<string> _providerNames = new();
     private string[] _selectedProviders = Array.Empty<string>();
+    private string _accountFilterValue = string.Empty;
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
     private IEnumerable<AccountRow> _filteredRemovedRows = new List<AccountRow>();
     private RemoveTarget? _removeTarget;
@@ -282,14 +294,43 @@ else
     private void OnProvidersChanged(string[] selected)
     {
         _selectedProviders = selected ?? Array.Empty<string>();
+
+        // An account from a provider that is no longer selected can't stay as the filter.
+        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
+        {
+            _accountFilterValue = string.Empty;
+        }
+
         ApplyProviderFilter();
     }
 
     private void ApplyProviderFilter()
     {
         var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-        _filteredRows = _rows.Where(r => selected.Contains(r.Account.ProviderName)).ToList();
-        _filteredRemovedRows = _removedRows.Where(r => selected.Contains(r.Account.ProviderName)).ToList();
+        var accountId = Guid.TryParse(_accountFilterValue, out var parsed) ? parsed : (Guid?)null;
+        bool Keep(AccountRow r) =>
+            selected.Contains(r.Account.ProviderName) && (accountId is null || r.Account.Id == accountId);
+
+        _filteredRows = _rows.Where(Keep).ToList();
+        _filteredRemovedRows = _removedRows.Where(Keep).ToList();
+    }
+
+    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
+    {
+        get
+        {
+            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
+            return _rows
+                .Where(r => selected.Contains(r.Account.ProviderName))
+                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
+        }
+    }
+
+    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        _accountFilterValue = args.Value ?? string.Empty;
+        ApplyProviderFilter();
     }
 
     private void StartRemove(Guid accountId, bool startAtDeleteStep)
@@ -325,11 +366,21 @@ else
         try
         {
             using var timer = new PeriodicTimer(PollInterval);
+            int ticks = 0;
             do
             {
                 ExportJobStatus? status = await ExportService.GetStatusAsync(jobId, ct);
-                if (status is not null && _exports.TryGetValue(accountId, out ExportTrack? track))
+                if (_exports.TryGetValue(accountId, out ExportTrack? track))
                 {
+                    if (status is null)
+                    {
+                        // The server no longer knows this job (for example after a restart). Stop rather than poll forever.
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportStatusLost"].Value;
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+
                     track.State = status.State;
                     track.FilePath = status.FilePath;
                     track.ErrorMessage = status.ErrorMessage;
@@ -341,6 +392,14 @@ else
                             await LoadAccountsAsync();
                             StateHasChanged();
                         });
+                        return;
+                    }
+
+                    if (++ticks >= MaxPollTicks)
+                    {
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportPollTimedOut"].Value;
+                        await InvokeAsync(StateHasChanged);
                         return;
                     }
 

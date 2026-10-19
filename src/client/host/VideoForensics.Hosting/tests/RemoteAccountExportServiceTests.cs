@@ -123,5 +123,40 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(jobId, status!.JobId);
             Assert.Equal(ExportJobState.Running, status.State);
         }
+
+        private sealed class DisposeTrackingContent : StringContent
+        {
+            public DisposeTrackingContent(string json)
+                : base(json, Encoding.UTF8, "application/json")
+            {
+            }
+
+            public bool Disposed { get; private set; }
+
+            protected override void Dispose(bool disposing)
+            {
+                Disposed = true;
+                base.Dispose(disposing);
+            }
+        }
+
+        [Fact]
+        public async Task RemoteAccountExportService_GetStatusAsync_DisposesTheResponse()
+        {
+            var jobId = Guid.NewGuid();
+            var dto = new ExportJobDto(jobId, Guid.NewGuid(), "Succeeded", "x.json", null, false, DateTime.UtcNow, DateTime.UtcNow);
+            DisposeTrackingContent? content = null;
+            var handler = new CapturingHandler(_ =>
+            {
+                content = new DisposeTrackingContent(JsonSerializer.Serialize(dto, JsonOptions));
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+            });
+            var sut = new RemoteAccountExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
+
+            _ = await sut.GetStatusAsync(jobId, CancellationToken.None);
+
+            // The response (and its content stream) must be released once its body has been read.
+            Assert.True(content!.Disposed);
+        }
     }
 }

@@ -103,6 +103,15 @@ namespace VideoForensics.Data.Core.Contracts
             CancellationToken ct,
             DeviceSettingsChildren? settings = null);
 
+        /// <summary>
+        /// Writes a device's scalar detail columns and records one setting-change row per value that changed, in one transaction.
+        /// Identity, name, type, location and the response hash are left untouched. A device that is not stored yet is skipped.
+        /// </summary>
+        Task UpdateDeviceDetailFieldsAsync(
+            Guid deviceId,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields details,
+            CancellationToken ct);
+
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);
 

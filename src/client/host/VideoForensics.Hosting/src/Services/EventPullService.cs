@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -46,6 +48,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IDeviceDiscoveryService _deviceDiscovery;
         private readonly IMediaDownloadService? _mediaDownloadService;
         private readonly string _mediaRoot;
+        private readonly IDeviceConfigRepository? _deviceConfigRepository;
 
         /// <summary>
         /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
@@ -60,8 +63,10 @@ namespace VideoForensics.Hosting.Services
             IDeviceDiscoveryService deviceDiscovery,
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
-            string? mediaRoot = null)
+            string? mediaRoot = null,
+            IDeviceConfigRepository? deviceConfigRepository = null)
         {
+            _deviceConfigRepository = deviceConfigRepository;
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
             _locationRepository = locationRepository;
@@ -98,6 +103,8 @@ namespace VideoForensics.Hosting.Services
                     return new EventPullResult(devicesSynced, locationsSynced);
                 }
 
+                _logger.LogInformation("Syncing events for {DeviceCount} device(s)", inventory.Devices.Count);
+
                 var startTime = fromTimestampUtc ?? DateTime.MinValue;
                 // A null end date means "now". Unspecified kinds are treated as UTC, the contract for both bounds.
                 var endTime = toTimestampUtc is { } to
@@ -117,15 +124,18 @@ namespace VideoForensics.Hosting.Services
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
+                int deviceIndex = 0;
                 foreach (InventoryDevice inventoryDevice in inventory.Devices)
                 {
                     DeviceEntity? device = inventoryDevice.Device;
                     if (device == null) continue;
                     string providerLocationId = inventoryDevice.ProviderLocationId;
+                    string deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
+                    deviceIndex++;
 
                     try
                     {
-                        _logger.LogDebug("Pulling events for device");
+                        _logger.LogInformation("Syncing events for device {DeviceName} ({Index}/{DeviceCount})", deviceName, deviceIndex, inventory.Devices.Count);
 
                         IReadOnlyList<DeviceEvent> events = await _eventAndConfigService.GetEventsAsync(
                             accountId,
@@ -137,7 +147,8 @@ namespace VideoForensics.Hosting.Services
                         );
 
                         // The provider is asked for the window, but not every provider trims strictly; count only what is inside it.
-                        eventsSynced += events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
+                        int deviceEventCount = events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
+                        eventsSynced += deviceEventCount;
 
                         if (_mediaDownloadService != null)
                         {
@@ -154,20 +165,30 @@ namespace VideoForensics.Hosting.Services
                         if (config != null)
                         {
                             configAreasSynced++;
+                            // Config history is secondary to the events and media just synced. A failure here is logged and
+                            // does not count the whole device pull as failed.
+                            try
+                            {
+                                await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
+                            }
+                            catch (Exception ex) when (ex is not OperationCanceledException)
+                            {
+                                _logger.LogWarning(ex, "Could not record device configuration history; events were synced");
+                            }
                         }
 
                         device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
 
-                        _logger.LogDebug("Successfully pulled events for device");
+                        _logger.LogInformation("Successfully pulled events for device");
+                        _logger.LogInformation("Synced device {DeviceName}: {EventCount} event(s)", deviceName, deviceEventCount);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to pull events for device");
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
-                        var deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
                         feedsFailed++;
                     }
@@ -285,6 +306,94 @@ namespace VideoForensics.Hosting.Services
             }
 
             return existing;
+        }
+
+        /// <summary>
+        /// Appends a configuration snapshot only when the fetched values differ from the latest stored one, so history
+        /// records changes rather than one row per sync.
+        /// </summary>
+        private async Task PersistDeviceConfigIfChangedAsync(Guid deviceId, DeviceConfig config, CancellationToken cancellationToken)
+        {
+            if (_deviceConfigRepository is null)
+            {
+                return;
+            }
+
+            var sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
+            var customSettingsJson = CanonicalJson(config.CustomSettings);
+
+            DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
+            if (latest is not null &&
+                latest.MotionDetectionEnabled == config.MotionDetectionEnabled &&
+                latest.MotionSensitivity == sensitivity &&
+                latest.RecordingMode == config.RecordingMode &&
+                latest.CustomSettingsJson == customSettingsJson)
+            {
+                return;
+            }
+
+            await _deviceConfigRepository.AppendSnapshotAsync(new DeviceConfigSnapshot
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                MotionDetectionEnabled = config.MotionDetectionEnabled,
+                MotionSensitivity = sensitivity,
+                RecordingMode = config.RecordingMode,
+                CustomSettingsJson = customSettingsJson,
+                CapturedAtUtc = DateTime.UtcNow,
+                Source = DeviceConfigSource.Fetched
+            }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Serializes settings with object keys sorted at every level. Dictionary enumeration order is not a stable
+        /// contract, so an unsorted serialization would make the same settings look changed on every sync and append a
+        /// duplicate snapshot each time.
+        /// </summary>
+        internal static string? CanonicalJson(object? value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            using JsonDocument document = JsonSerializer.SerializeToDocument(value);
+            using MemoryStream stream = new();
+            using (Utf8JsonWriter writer = new(stream))
+            {
+                WriteSorted(document.RootElement, writer);
+            }
+
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        private static void WriteSorted(JsonElement element, Utf8JsonWriter writer)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (JsonProperty property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    {
+                        writer.WritePropertyName(property.Name);
+                        WriteSorted(property.Value, writer);
+                    }
+
+                    writer.WriteEndObject();
+                    break;
+                case JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (JsonElement item in element.EnumerateArray())
+                    {
+                        WriteSorted(item, writer);
+                    }
+
+                    writer.WriteEndArray();
+                    break;
+                default:
+                    element.WriteTo(writer);
+                    break;
+            }
         }
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)

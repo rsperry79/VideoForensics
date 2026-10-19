@@ -11,6 +11,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists the locations linked to a provider account.</summary>
         Task<IReadOnlyList<Location>> ListByProviderAccountIdAsync(Guid providerAccountId, CancellationToken ct);
 
+        /// <summary>
+        /// Lists the provider accounts linked to a location (any provider). Callers filter by ProviderName.
+        /// Used to resolve which account owns a location before a provider call; an empty list means no link.
+        /// </summary>
+        Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct);
+
         /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
         Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct);
 

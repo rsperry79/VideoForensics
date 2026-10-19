@@ -8,11 +8,11 @@
 
     protected override void OnParametersSet()
     {
-        LeftPanel.Set(ChildContent);
+        LeftPanel.Set(ChildContent, this);
     }
 
     public void Dispose()
     {
-        LeftPanel.Clear();
+        LeftPanel.Clear(this);
     }
 }

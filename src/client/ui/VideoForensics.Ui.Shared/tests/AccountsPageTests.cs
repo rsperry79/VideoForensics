@@ -36,6 +36,7 @@ public abstract class AccountsPageTestBase : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLocalization();
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
@@ -312,12 +313,12 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void AccountsPage_RemoveDeletePermanently_WithExport_QueuesExportAndPurge()
+    public void AccountsPage_RemoveDeletePermanently_WithExport_QueuesExportOnlyAndKeepsAccount()
     {
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RingAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Setup(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
@@ -330,7 +331,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
 
         cut.WaitForAssertion(() =>
         {
-            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
+            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
             Assert.Contains("Running", cut.Find("#removed-accounts").TextContent);
         });
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
@@ -342,7 +343,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RemovedAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RemovedAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Setup(e => e.QueueExportAsync(RemovedAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
@@ -376,5 +377,24 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains("Running", cut.Find("#removed-accounts").TextContent));
+    }
+
+    [Fact]
+    public void AccountsPage_ExportJobGone_StopsPollingAndReportsLost()
+    {
+        // The server no longer knows the job (e.g. after a restart). The page must report it and stop, not poll forever.
+        var jobId = Guid.NewGuid();
+        SetRemovedAccount(RemovedAccountId);
+        ExportServiceMock
+            .Setup(e => e.GetLatestStatusForAccountAsync(RemovedAccountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExportJobStatus(jobId, RemovedAccountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
+        ExportServiceMock
+            .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExportJobStatus?)null);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains("no longer tracked by the server", cut.Find("#removed-accounts").TextContent),
+            timeout: TimeSpan.FromSeconds(15));
     }
 }

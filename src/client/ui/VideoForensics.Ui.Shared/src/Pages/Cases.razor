@@ -16,13 +16,10 @@
 @inject InspectorState InspectorState
 @inject IStringLocalizer<Cases> L
 
-<PageLeftPanelContent>
-    <ScopeRail />
-</PageLeftPanelContent>
-
     <h4 class="mb-4">@L["CasesTitle"]</h4>
 
 <PageRightPanelContent>
+    <ScopeRail />
     <div class="right-panel-section">
     <small style="font-weight: bold;">@L["FilterStatus"]</small>
     <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" aria-label="@L["FilterStatus"]" data-testid="case-status-filter">

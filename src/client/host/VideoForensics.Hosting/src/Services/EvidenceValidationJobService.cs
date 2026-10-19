@@ -24,7 +24,26 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
+            StartIntegrity(deviceId is { } id ? new[] { id } : null, ct);
+
+        /// <inheritdoc />
+        public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(deviceIds);
+            if (deviceIds.Count == 0)
+            {
+                throw new ArgumentException("At least one device is required.", nameof(deviceIds));
+            }
+
+            return StartIntegrity(deviceIds.Distinct().ToArray(), ct);
+        }
+
+        /// <summary>
+        /// Starts the one integrity job, or returns the running one. A null list means every device; a list verifies
+        /// those devices in turn inside the same job.
+        /// </summary>
+        private Task<EvidenceValidationJob> StartIntegrity(IReadOnlyList<Guid>? deviceIds, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             JobRecord job;
@@ -33,17 +52,25 @@ namespace VideoForensics.Hosting.Services
             {
                 if (TryGetRunning(EvidenceValidationJobKind.Integrity, out JobRecord? running))
                 {
-                    return Task.FromResult(running!.Snapshot());
+                    // Joining is only safe for the same devices; otherwise the caller would get results for the wrong set.
+                    if (SameScope(running!.Scope, deviceIds))
+                    {
+                        return Task.FromResult(running.Snapshot());
+                    }
+
+                    return Task.FromException<EvidenceValidationJob>(new InvalidOperationException(
+                        "An integrity check is already running for a different set of devices. Wait for it to finish."));
                 }
 
                 job = NewJob(EvidenceValidationJobKind.Integrity);
+                job.Scope = deviceIds;
                 job.Append("Integrity check started");
                 _latest[EvidenceValidationJobKind.Integrity] = job;
                 snapshot = job.Snapshot();
             }
 
             _logger.LogInformation("Evidence integrity check started");
-            _ = Task.Run(() => RunIntegrityAsync(job, deviceId));
+            _ = Task.Run(() => RunIntegrityAsync(job, deviceIds));
             return Task.FromResult(snapshot);
         }
 
@@ -86,14 +113,39 @@ namespace VideoForensics.Hosting.Services
             }
         }
 
-        private async Task RunIntegrityAsync(JobRecord job, Guid? deviceId)
+        private async Task RunIntegrityAsync(JobRecord job, IReadOnlyList<Guid>? deviceIds)
         {
             try
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
-                IReadOnlyList<MediaVerificationResult> results = await validation.VerifyLocalIntegrityAsync(
-                    deviceId, CancellationToken.None, new DelegateProgress(line => AppendLog(job, line)));
+                var progress = new DelegateProgress(line => AppendLog(job, line));
+
+                List<MediaVerificationResult> results = new();
+                if (deviceIds is null)
+                {
+                    results.AddRange(await validation.VerifyLocalIntegrityAsync(null, CancellationToken.None, progress));
+                }
+                else
+                {
+                    // One job, one device after another; each result is tagged so the combined list stays attributable.
+                    foreach (Guid deviceId in deviceIds)
+                    {
+                        IReadOnlyList<MediaVerificationResult> deviceResults =
+                            await validation.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None, progress);
+                        foreach (MediaVerificationResult result in deviceResults)
+                        {
+                            result.DeviceId = deviceId;
+                            results.Add(result);
+                        }
+
+                        // Publish as each device finishes, so a later device failing keeps the results already verified.
+                        lock (_gate)
+                        {
+                            job.IntegrityResults = results.ToArray();
+                        }
+                    }
+                }
 
                 lock (_gate)
                 {
@@ -157,6 +209,17 @@ namespace VideoForensics.Hosting.Services
             _logger.LogError("Evidence validation job failed: {Reason}", message);
         }
 
+        /// <summary>Two integrity scopes match when both mean every device, or both list the same devices.</summary>
+        private static bool SameScope(IReadOnlyList<Guid>? running, IReadOnlyList<Guid>? requested)
+        {
+            if (running is null || requested is null)
+            {
+                return running is null && requested is null;
+            }
+
+            return running.ToHashSet().SetEquals(requested);
+        }
+
         /// <summary>Caller must hold <see cref="_gate"/>.</summary>
         private bool TryGetRunning(EvidenceValidationJobKind kind, out JobRecord? running)
         {
@@ -211,13 +274,29 @@ namespace VideoForensics.Hosting.Services
             public required EvidenceValidationJobKind Kind { get; init; }
             public EvidenceValidationJobState State { get; set; }
             public required DateTime StartedUtc { get; init; }
+
+            /// <summary>Devices this integrity run covers; null means every device.</summary>
+            public IReadOnlyList<Guid>? Scope { get; set; }
             public DateTime? CompletedUtc { get; set; }
             public MediaVerificationResult[]? IntegrityResults { get; set; }
             public ReconciliationDiscrepancy[]? Discrepancies { get; set; }
             public string? ErrorMessage { get; set; }
 
-            /// <summary>Appends a timestamped log line.</summary>
-            public void Append(string text) => _log.Add($"{DateTime.UtcNow:HH:mm:ss} {text}");
+            /// <summary>
+            /// Appends a timestamped log line. A long run (one line per file) keeps the newest lines: the log is capped
+            /// so polling snapshots stay small, and the oldest lines drop first.
+            /// </summary>
+            public void Append(string text)
+            {
+                if (_log.Count >= MaxLogLines)
+                {
+                    _log.RemoveAt(0);
+                }
+
+                _log.Add($"{DateTime.UtcNow:HH:mm:ss} {text}");
+            }
+
+            private const int MaxLogLines = 1000;
 
             /// <summary>Copies the current state so the caller never shares the mutable lists.</summary>
             public EvidenceValidationJob Snapshot() => new()

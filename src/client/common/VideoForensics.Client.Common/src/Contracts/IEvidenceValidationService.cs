@@ -9,6 +9,9 @@ namespace VideoForensics.Client.Common.Contracts
         public required string FileName { get; set; }
         public required string Status { get; set; } // "verified", "failed", "missing"
         public string? FailureReason { get; set; }
+
+        /// <summary>Device the file belongs to. Set by the job that verified it; null when the run covered all devices without tagging.</summary>
+        public Guid? DeviceId { get; set; }
     }
 
     /// <summary>Service for validating evidence files (local integrity + provider reconciliation).</summary>

@@ -77,4 +77,16 @@
   <data name="SeverityCritical" xml:space="preserve">
     <value>Critical</value>
   </data>
+  <data name="FilterProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="AllProviders" xml:space="preserve">
+    <value>All providers</value>
+  </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
 </root>

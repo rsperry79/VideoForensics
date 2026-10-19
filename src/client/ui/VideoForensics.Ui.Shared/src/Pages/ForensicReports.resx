@@ -110,4 +110,22 @@
   <data name="ColTimestamp" xml:space="preserve">
     <value>Timestamp</value>
   </data>
+  <data name="TabReports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="TabSignalAnomalies" xml:space="preserve">
+    <value>Signal Anomalies</value>
+  </data>
+  <data name="TabAccessControl" xml:space="preserve">
+    <value>Access Control</value>
+  </data>
+  <data name="TabJammingAnalysis" xml:space="preserve">
+    <value>Jamming Analysis</value>
+  </data>
+  <data name="ScopeSummary" xml:space="preserve">
+    <value>Scope: {0} device(s) selected | {1} to {2}</value>
+  </data>
+  <data name="NoDevicesMatchFilter" xml:space="preserve">
+    <value>No devices match the Provider or Account filter. Clear the filter or choose another to run this analysis.</value>
+  </data>
 </root>

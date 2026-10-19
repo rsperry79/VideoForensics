@@ -37,6 +37,17 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Lists the provider accounts linked to a location (any provider).</summary>
+        public async Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.LocationId == locationId)
+                .Join(db.ProviderAccounts.AsNoTracking(), l => l.ProviderAccountId, pa => pa.Id, (l, pa) => pa)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
         public async Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct)
         {

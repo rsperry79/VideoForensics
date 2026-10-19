@@ -110,4 +110,16 @@
   <data name="ExportSucceededNotice" xml:space="preserve">
     <value>Export of {0} saved to {1}</value>
   </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
+  <data name="ExportStatusLost" xml:space="preserve">
+    <value>The export is no longer tracked by the server (it may have restarted). Check the exports folder.</value>
+  </data>
+  <data name="ExportPollTimedOut" xml:space="preserve">
+    <value>The export has not finished after an hour. Check the server logs.</value>
+  </data>
 </root>

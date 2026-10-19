@@ -5,7 +5,9 @@
 @using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Scope
 @using Syncfusion.Blazor.Calendars
 @inject PairedSessionState SessionState
 @inject IEvidenceValidationJobs EvidenceValidationJobs
@@ -38,14 +40,20 @@ else
     {
         <PageRightPanelContent>
             <div class="right-panel-section">
+                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
                 <span>@L["AllDevicesFilter"]</span>
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["AllDevicesFilter"]">
-                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-                </SfDropDownList>
+                <SfMultiSelect TValue="string[]" TItem="KeyValuePair<string,string>" Value="@_integrityDeviceIds" ValueChanged="@OnIntegrityDevicesPicked"
+                    DataSource="@DeviceOptions" Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["AllDevicesFilter"]">
+                    <MultiSelectFieldSettings Text="Value" Value="Key"></MultiSelectFieldSettings>
+                </SfMultiSelect>
             </div>
         </PageRightPanelContent>
 
         <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" Disabled="@IsRunning(EvidenceValidationJobKind.Integrity)" />
+        @if (_verifyError is not null)
+        {
+            <div class="alert alert-danger" data-testid="verify-error">@_verifyError</div>
+        }
 
         @RenderConsole(EvidenceValidationJobKind.Integrity)
 
@@ -61,6 +69,14 @@ else
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
+                        <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
+                            <Template>
+                                @{
+                                    var result = (MediaVerificationResult)context;
+                                    @(result.DeviceId is { } id ? DeviceNameOf(id) : "-")
+                                }
+                            </Template>
+                        </GridColumn>
                         <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
                         <GridColumn HeaderText="@L["ColStatus"]" MinWidth="100">
                             <Template>
@@ -80,6 +96,7 @@ else
     {
         <PageRightPanelContent>
             <div class="right-panel-section">
+                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
                 <span>@L["SelectDeviceFilter"]</span>
                 <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["SelectDeviceFilter"]">
                     <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
@@ -152,8 +169,32 @@ else
     private EvidenceValidationJobKind ActiveKind =>
         _activeTab == "reconcile" ? EvidenceValidationJobKind.Reconcile : EvidenceValidationJobKind.Integrity;
 
+    // Provider/Account filters narrow the device picker. Switching tabs recreates the filter controls, so the
+    // visible list is reset to every device to keep the page and its controls in step.
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private bool _isFiltered;
+    private string[] _integrityDeviceIds = Array.Empty<string>();
+    private string? _verifyError;
+
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
-        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+        _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+
+    private Task OnDeviceFilterChanged(DeviceFilterResult result)
+    {
+        _isFiltered = result.IsFiltered;
+        _visibleDevices = result.Devices.ToList();
+        // Drop any chosen integrity device the filter now hides.
+        var visibleIds = _visibleDevices.Select(d => d.Id.ToString()).ToHashSet();
+        _integrityDeviceIds = _integrityDeviceIds.Where(visibleIds.Contains).ToArray();
+
+        // The reconcile tab still picks one device; clear it when the filter hides it.
+        if (!_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
+        {
+            _selectedDeviceId = string.Empty;
+        }
+
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -169,6 +210,7 @@ else
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+                _visibleDevices = _devices;
 
                 // Reattach to whatever job is already running or finished for the active tab. Nothing is
                 // auto-started: verifying hashes every media file's bytes, so it stays an explicit action.
@@ -184,6 +226,12 @@ else
     private async Task SelectTabAsync(string tab)
     {
         _activeTab = tab;
+
+        // Each tab builds its own filter controls, so they start at "all" on every switch. The page's device state
+        // resets with them, and so does the integrity selection, which would otherwise outlive the filter it was made under.
+        _visibleDevices = _devices;
+        _isFiltered = false;
+        _integrityDeviceIds = Array.Empty<string>();
         if (_isAuthenticated)
         {
             await ReattachAsync(ActiveKind);
@@ -192,10 +240,45 @@ else
 
     private async Task VerifyIntegrityAsync()
     {
-        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
-        var job = await EvidenceValidationJobs.StartIntegrityAsync(deviceId, CancellationToken.None);
+        _verifyError = null;
+        try
+        {
+            await VerifyIntegrityCoreAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A conflicting run or a failed request must reach the operator, not fail the page.
+            _verifyError = L["VerifyFailed", ex.Message].Value;
+        }
+    }
+
+    private async Task VerifyIntegrityCoreAsync()
+    {
+        // One job covers the chosen devices. With nothing chosen, a filter covers every device it leaves visible,
+        // and no filter covers every device. A filter that leaves no device verifies nothing.
+        IReadOnlyList<Guid>? targets = _integrityDeviceIds.Length > 0
+            ? _visibleDevices.Where(d => _integrityDeviceIds.Contains(d.Id.ToString())).Select(d => d.Id).ToList()
+            : _isFiltered ? _visibleDevices.Select(d => d.Id).ToList() : null;
+
+        if (targets is { Count: 0 })
+        {
+            return;
+        }
+
+        var job = targets is null
+            ? await EvidenceValidationJobs.StartIntegrityAsync(null, CancellationToken.None)
+            : await EvidenceValidationJobs.StartIntegrityForDevicesAsync(targets, CancellationToken.None);
         Track(EvidenceValidationJobKind.Integrity, job);
     }
+
+    private Task OnIntegrityDevicesPicked(string[] selected)
+    {
+        _integrityDeviceIds = selected ?? Array.Empty<string>();
+        return Task.CompletedTask;
+    }
+
+    private string DeviceNameOf(Guid deviceId) =>
+        _devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? deviceId.ToString("D")[..8];
 
     private async Task ReconcileAsync()
     {

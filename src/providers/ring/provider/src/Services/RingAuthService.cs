@@ -359,7 +359,7 @@ namespace VideoForensics.Providers.Ring.Services
                             }
                             catch (Exception notifEx)
                             {
-                                _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", ProviderName);
+                                _logger.LogWarning(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", ProviderName);
                             }
                         }
                     }
@@ -434,7 +434,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         }
                                         catch (Exception notifEx)
                                         {
-                                            _logger.LogError(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", account.ProviderName);
+                                            _logger.LogWarning(notifEx, "Failed to dispatch credential decryption failure notification for account {ProviderName}", account.ProviderName);
                                         }
                                     }
                                 }
