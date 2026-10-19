@@ -34,7 +34,7 @@ namespace VideoForensics.Hosting.Remote
                 httpRequest.Headers.Add("X-StepUp-Token", stepUpToken);
             }
 
-            HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, ct);
+            using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, ct);
             _ = response.EnsureSuccessStatusCode();
             ExportJobDto? dto = await response.Content.ReadFromJsonAsync<ExportJobDto>(JsonOptions, ct);
             return dto?.JobId ?? throw new InvalidOperationException("The server returned no export job.");
@@ -43,7 +43,7 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<ExportJobStatus?> GetStatusAsync(Guid jobId, CancellationToken ct)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/exports/{jobId}", ct);
+            using HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/exports/{jobId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 return null;
@@ -57,7 +57,7 @@ namespace VideoForensics.Hosting.Remote
         /// <inheritdoc />
         public async Task<ExportJobStatus?> GetLatestStatusForAccountAsync(Guid accountId, CancellationToken ct)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{accountId}/export-status", ct);
+            using HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/accounts/provider-accounts/{accountId}/export-status", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 return null;
