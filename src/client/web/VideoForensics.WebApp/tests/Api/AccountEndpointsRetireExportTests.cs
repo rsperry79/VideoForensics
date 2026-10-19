@@ -238,5 +238,32 @@ namespace VideoForensics.WebApp.Tests.Api
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Fact]
+        public async Task AccountEndpoints_UpdateRemovedAccount_ToActive_Returns409AndDoesNotUpdate()
+        {
+            _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateAccount(false, DateTime.UtcNow));
+
+            HttpResponseMessage response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/v1/accounts/provider-accounts/{_accountId}")
+            {
+                Content = JsonContent.Create(new { isActive = true }),
+            });
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            _accounts.Verify(a => a.UpdateAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AccountEndpoints_SyncNow_OnRemovedAccountThatStillFlagsActive_Returns409()
+        {
+            // A removed account can still carry IsActive=true from before retirement; sync must check removal too.
+            _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateAccount(true, DateTime.UtcNow));
+
+            HttpResponseMessage response = await _client.SendAsync(StepUpPost($"/api/v1/accounts/provider-accounts/{_accountId}/sync-now"));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        }
     }
 }

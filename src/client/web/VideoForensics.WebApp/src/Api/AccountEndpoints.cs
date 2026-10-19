@@ -228,6 +228,12 @@ namespace VideoForensics.WebApp.Api
                     account.LastDownloadTimeUtc = request.LastDownloadTimeUtc.Value;
                 }
 
+                // A removed account keeps its data for the record but must never be switched back to active.
+                if (account.RemovedUtc != null && request.IsActive)
+                {
+                    return Results.Conflict("Account has been removed and cannot be reactivated.");
+                }
+
                 account.IsActive = request.IsActive;
 
                 await accounts.UpdateAsync(account, ct);
@@ -341,7 +347,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }
@@ -372,7 +378,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }
