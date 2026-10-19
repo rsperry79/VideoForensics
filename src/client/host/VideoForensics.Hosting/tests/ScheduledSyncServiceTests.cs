@@ -679,4 +679,4 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), ScheduledSyncService.ResolveTickInterval(configured));
         }
     }
-}
+}
