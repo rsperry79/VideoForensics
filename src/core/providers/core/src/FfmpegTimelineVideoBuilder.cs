@@ -65,6 +65,13 @@ namespace VideoForensics.Core.Providers.Core
             IReadOnlyList<TimelineClip> clips = ValidateClips(request);
             string outputPath = Path.GetFullPath(request.OutputPath);
 
+            // ffmpeg runs with -y, so an output that names an input would overwrite that input. Refuse it before anything runs.
+            if (stills.Select(s => Path.GetFullPath(s.ImagePath)).Concat(clips.Select(c => Path.GetFullPath(c.VideoPath)))
+                .Any(input => string.Equals(input, outputPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException("The output path must not be one of the input files.", nameof(request));
+            }
+
             ct.ThrowIfCancellationRequested();
 
             (bool durationsOk, IReadOnlyList<ProbedClip> probedClips, string? durationError) = await TryProbeClipDurationsAsync(clips, ct);
@@ -122,11 +129,16 @@ namespace VideoForensics.Core.Providers.Core
                 string listPath = Path.Combine(workDir, "segments.txt");
                 await File.WriteAllTextAsync(listPath, BuildConcatList(segmentPaths), ct);
 
-                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, outputPath), ct);
-                if (joinError is not null || !File.Exists(outputPath))
+                // Join inside the work directory and move into place only on success. A failed or cancelled join must not
+                // leave a truncated file at the requested path, or destroy an earlier good file there.
+                string joinedPath = Path.Combine(workDir, "joined.mp4");
+                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath), ct);
+                if (joinError is not null || !File.Exists(joinedPath))
                 {
                     return new TimelineVideoResult(false, null, joinError ?? "ffmpeg did not write the output file.", 0);
                 }
+
+                File.Move(joinedPath, outputPath, overwrite: true);
 
                 _logger.LogInformation(
                     "Built timeline video from {StillCount} stills and {ClipCount} clips: {FrameCount} frames in {SegmentCount} segments at {Width}x{Height}",
@@ -450,7 +462,7 @@ namespace VideoForensics.Core.Providers.Core
         private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath)
         {
             string seconds = segment.Seconds.ToString(CultureInfo.InvariantCulture);
-            var args = new List<string>();
+            var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error" };
             if (segment.IsClip)
             {
                 string offset = segment.Offset.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
@@ -477,7 +489,7 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath)
         {
-            return new[] { "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-y", outputPath };
+            return new[] { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-y", outputPath };
         }
 
         /// <summary>Runs ffmpeg with the given arguments. Returns null on success, or the failure reason.</summary>

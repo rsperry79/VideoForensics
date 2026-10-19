@@ -201,5 +201,19 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             return Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {baseName}.");
         }
+
+        [Fact]
+        public async Task BuildAsync_OutputPathIsAnInput_ThrowsAndLeavesTheInputUntouched()
+        {
+            // ffmpeg runs with -y, so an output that names an input would overwrite that input. It must be refused up front.
+            string still = WriteDummyFile("evidence.png");
+            byte[] before = File.ReadAllBytes(still);
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+            var request = new TimelineVideoRequest(new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(1)) }, still);
+
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+
+            Assert.Equal(before, File.ReadAllBytes(still));
+        }
     }
 }
