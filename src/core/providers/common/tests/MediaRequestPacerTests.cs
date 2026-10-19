@@ -265,5 +265,40 @@ namespace VideoForensics.Core.Providers.Common.Tests
 
             Assert.True(outcome.AlertRaised);
         }
+
+        [Fact]
+        public void RecordHardBan_Always_MarksRateLimitIncident()
+        {
+            var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
+
+            _ = pacer.RecordHardBan(null);
+
+            Assert.True(pacer.IsInRateLimitIncident);
+        }
+
+        [Fact]
+        public void RecordRateLimited_AfterHardBanBeforeSuccess_IsSameIncidentWithNoSpacing()
+        {
+            var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
+            _ = pacer.RecordHardBan(null);
+
+            bool newIncident = pacer.RecordRateLimited(null);
+
+            Assert.False(newIncident);
+            Assert.Equal(TimeSpan.FromSeconds(1), pacer.MinInterval);
+            Assert.Equal(TimeSpan.Zero, pacer.RateLimitPenalty);
+        }
+
+        [Fact]
+        public void MarkRequestSucceeded_AfterHardBan_EndsIncident()
+        {
+            var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
+            _ = pacer.RecordHardBan(null);
+
+            pacer.MarkRequestSucceeded();
+
+            Assert.False(pacer.IsInRateLimitIncident);
+            Assert.True(pacer.RecordRateLimited(null));
+        }
     }
 }

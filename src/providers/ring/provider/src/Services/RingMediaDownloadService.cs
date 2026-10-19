@@ -73,10 +73,19 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        /// <summary>Clock for pacers created after it is set. Null uses the system clock. Tests set it to drive hard-ban windows without sleeping.</summary>
+        internal Func<DateTime>? PacerClock { get; set; }
+
         /// <summary>Returns the request pacer for one provider account, creating it on first use.</summary>
         internal MediaRequestPacer GetPacerForAccount(Guid accountId)
         {
-            return _pacers.GetOrAdd(accountId, _ => new MediaRequestPacer(minInterval: _baseRequestInterval));
+            return _pacers.GetOrAdd(accountId, _ => new MediaRequestPacer(utcNow: PacerClock, minInterval: _baseRequestInterval));
+        }
+
+        /// <summary>Records a successful media request for one account, ending that account's rate-limit incident.</summary>
+        internal void RecordMediaSuccess(Guid accountId)
+        {
+            GetPacerForAccount(accountId).MarkRequestSucceeded();
         }
 
         /// <summary>
@@ -493,7 +502,7 @@ namespace VideoForensics.Providers.Ring.Services
                                         {
                                             await session.GetDoorbotHistoryRecording(@event, fileName);
                                             // A successful media request ends this account's rate-limit incident.
-                                            accountPacer.MarkRequestSucceeded();
+                                            RecordMediaSuccess(accountId);
                                         }
                                         catch (ThrottledException ex)
                                         {

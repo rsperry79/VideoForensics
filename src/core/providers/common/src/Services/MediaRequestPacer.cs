@@ -42,7 +42,7 @@ namespace VideoForensics.Core.Providers.Common.Services
         /// <summary>Total extra spacing added by <see cref="RecordRateLimited"/>. Survives <see cref="MinInterval"/> being reset.</summary>
         public TimeSpan RateLimitPenalty { get; private set; }
 
-        /// <summary>True from the first 429 of an incident until <see cref="MarkRequestSucceeded"/>. Tests read it.</summary>
+        /// <summary>True from the first 429 or hard ban of an incident until <see cref="MarkRequestSucceeded"/>. Tests read it.</summary>
         public bool IsInRateLimitIncident
         {
             get { lock (_state) { return _inRateLimitIncident; } }
@@ -87,8 +87,9 @@ namespace VideoForensics.Core.Providers.Common.Services
         /// <summary>
         /// Records a hard ban from the provider. Pauses for <see cref="HardBanPause"/>, or <see cref="RepeatHardBanPause"/> when
         /// another hard ban arrived since the last success, or Retry-After when that is longer. Never shortens an existing pause.
-        /// Adds no spacing penalty. Alerts once per ban window: returns AlertRaised false while the window from the last alert
-        /// is still active.
+        /// Adds no spacing penalty. Starts the rate-limit incident if none is active, so a 429 before the next success is part of
+        /// the same incident (no extra spacing, no new alert). Alerts once per ban window: returns AlertRaised false while the
+        /// window from the last alert is still active.
         /// </summary>
         public HardBanOutcome RecordHardBan(TimeSpan? retryAfter)
         {
@@ -107,6 +108,7 @@ namespace VideoForensics.Core.Providers.Common.Services
 
                 bool windowActive = _hardBanWindowUntilUtc.HasValue && now < _hardBanWindowUntilUtc.Value;
                 _hardBanSinceSuccess = true;
+                _inRateLimitIncident = true;
                 _hardBanWindowUntilUtc = windowActive && _hardBanWindowUntilUtc > pauseUntil ? _hardBanWindowUntilUtc : pauseUntil;
                 return new HardBanOutcome(AlertRaised: !windowActive, Pause: pause);
             }

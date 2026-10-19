@@ -18,7 +18,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static readonly Guid AccountA = Guid.Parse("11111111-1111-1111-1111-111111111111");
         private static readonly Guid AccountB = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-        private static (RingMediaDownloadService Service, Mock<INotificationDispatcher> Dispatcher) CreateService()
+        private static (RingMediaDownloadService Service, Mock<INotificationDispatcher> Dispatcher) CreateService(Func<DateTime>? utcNow = null)
         {
             var dispatcher = new Mock<INotificationDispatcher>();
             var service = new RingMediaDownloadService(
@@ -27,6 +27,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 new Mock<IVideoForensicsDataClient>().Object,
                 metadataTagger: null,
                 notificationDispatcher: dispatcher.Object);
+            service.PacerClock = utcNow;
             return (service, dispatcher);
         }
 
@@ -145,6 +146,20 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task RecordThrottledAsync_RateLimitAfterHardBanBeforeSuccess_AddsNoSpacingAndNoSecondAlert()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+            MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
+            TimeSpan baseInterval = pacerA.MinInterval;
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+
+            Assert.Equal(baseInterval, pacerA.MinInterval);
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RecordThrottledAsync_HardBanAfterNormalRateLimitInSameIncident_RaisesHardBanAlert()
         {
             (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
@@ -173,6 +188,40 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Contains("15 minutes", alert.Details);
             Assert.DoesNotContain(AccountA.ToString(), alert.Details);
             Assert.DoesNotContain("secret-ban-detail", alert.Details);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_SecondHardBanBeforeSuccessAfterWindowLapses_AlertSaysThirtyMinutes()
+        {
+            DateTime now = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService(() => now);
+            var captured = new List<NotificationEvent>();
+            _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+                .Callback<NotificationEvent, CancellationToken>((e, _) => captured.Add(e))
+                .Returns(Task.CompletedTask);
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+            // The first 15-minute window has lapsed and Ring is still refusing: no successful request in between.
+            now = now.AddMinutes(16);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+
+            Assert.Equal(2, captured.Count);
+            Assert.Contains("15 minutes", captured[0].Details);
+            Assert.Contains("30 minutes", captured[1].Details);
+        }
+
+        [Fact]
+        public async Task RecordMediaSuccess_AfterRateLimit_EndsIncidentSoNextRateLimitAlerts()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+            MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+
+            service.RecordMediaSuccess(AccountA);
+
+            Assert.False(pacerA.IsInRateLimitIncident);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
