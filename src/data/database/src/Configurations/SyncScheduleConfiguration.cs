@@ -14,6 +14,9 @@ namespace VideoForensics.Data.Database.Configurations
 
             _ = builder.HasIndex(ss => ss.ProviderAccountId).IsUnique();
 
+            // Null = not configured; the pacer's default spacing applies.
+            _ = builder.Property(ss => ss.SnapshotIntervalSeconds).IsRequired(false);
+
             // Configure relationship to JammingScheduleWindows with cascade delete
             _ = builder
                 .HasMany(ss => ss.JammingWindows)

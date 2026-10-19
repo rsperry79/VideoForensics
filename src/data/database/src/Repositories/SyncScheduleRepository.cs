@@ -192,5 +192,21 @@ namespace VideoForensics.Data.Database.Repositories
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(ss => ss.SnapshotLastRunUtc, ranAtUtc)
                     .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
-        }    }
+        }
+
+        /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
+        public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)
+        {
+            if (seconds < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "SnapshotIntervalSeconds must be at least 1.");
+            }
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(ss => ss.SnapshotIntervalSeconds, (int?)seconds), ct);
+        }
+    }
 }

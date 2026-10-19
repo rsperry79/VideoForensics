@@ -19,6 +19,11 @@ namespace VideoForensics.Data.Common.Entities
         /// Minimum floor is defined by MinimumPollIntervalMinutes (rate-limit safety measure).</summary>
         public int SnapshotRssiIntervalMinutes { get; set; }
 
+        /// <summary>Spacing in seconds between snapshot requests for this account. Null means not configured: the effective
+        /// spacing is then the media pacer's current MinInterval. Raised by one second each time Ring starts a new rate-limit
+        /// incident for the account (see RingMediaDownloadService), so the stored spacing settles at a rate Ring accepts.</summary>
+        public int? SnapshotIntervalSeconds { get; set; }
+
         /// <summary>Indicates whether syncing is enabled for this account.</summary>
         public bool IsEnabled { get; set; }
 

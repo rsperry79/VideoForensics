@@ -130,7 +130,8 @@ namespace VideoForensics.Hosting
                 provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
                 provider.GetRequiredService<IVideoForensicsDataClient>(),
-                notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
+                notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
+                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>()
             );
         }
 

@@ -157,5 +157,52 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
         }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_NewSchedule_IsNull()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account), CancellationToken.None);
+
+            SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
+
+            Assert.NotNull(row);
+            Assert.Null(row.SnapshotIntervalSeconds);
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_ExistingRow_UpdatesOnlySnapshotIntervalSeconds()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account, eventMinutes: 30, snapshotMinutes: 45, advanced: true), CancellationToken.None);
+
+            await _repository.SetSnapshotIntervalSecondsAsync(account, 3, CancellationToken.None);
+
+            SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
+            Assert.NotNull(row);
+            Assert.Equal(3, row.SnapshotIntervalSeconds);
+            Assert.Equal(30, row.EventPollIntervalMinutes);
+            Assert.Equal(45, row.SnapshotRssiIntervalMinutes);
+            Assert.True(row.IsEnabled);
+            Assert.True(row.UseAdvancedJammingSchedule);
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_MissingRow_IsNoOp()
+        {
+            await _repository.SetSnapshotIntervalSecondsAsync(Guid.NewGuid(), 3, CancellationToken.None);
+
+            Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_NonPositiveSeconds_ThrowsArgumentOutOfRange()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account), CancellationToken.None);
+
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => _repository.SetSnapshotIntervalSecondsAsync(account, 0, CancellationToken.None));
+        }
     }
 }
