@@ -50,7 +50,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetLightAsync(
             string providerDeviceId, SetLightRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetLightAsync(providerId, body.On, ct));
@@ -58,7 +58,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetSirenAsync(
             string providerDeviceId, SetSirenRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             if (body.DurationSeconds is { } duration && (duration < 1 || duration > 3600))
             {
@@ -71,7 +71,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetVolumeAsync(
             string providerDeviceId, SetVolumeRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             if (body.Volume < 0 || body.Volume > 11)
             {
@@ -84,7 +84,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetNightModeAsync(
             string providerDeviceId, SetNightModeRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetNightModeAsync(providerId, body.Enabled, ct));
@@ -92,7 +92,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetMotionDetectionAsync(
             string providerDeviceId, SetMotionDetectionRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetMotionDetectionAsync(providerId, body.Enabled, ct));
@@ -100,7 +100,7 @@ namespace VideoForensics.WebApp.Api
 
         public static Task<IResult> SetDoNotDisturbAsync(
             string providerDeviceId, SetDoNotDisturbRequest body, IDeviceRepository devices, IDeviceControlService control,
-            ILogger logger, CancellationToken ct)
+            ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
             if (body.Seconds < 1 || body.Seconds > 86400)
             {
@@ -112,7 +112,7 @@ namespace VideoForensics.WebApp.Api
         }
 
         private static async Task<IResult> ControlAsync(
-            string providerDeviceId, IDeviceRepository devices, ILogger logger, CancellationToken ct,
+            string providerDeviceId, IDeviceRepository devices, ILogger<DeviceControlLog> logger, CancellationToken ct,
             Func<string, Task> applyControl)
         {
             // Lookup is by provider id across all devices; see the class remarks for the account-scoping limitation.
@@ -152,3 +152,6 @@ namespace VideoForensics.WebApp.Api
         }
     }
 }
+
+/// <summary>Log category for device control endpoints. Endpoints are a static class, so they cannot be a logger type argument.</summary>
+public sealed class DeviceControlLog;
