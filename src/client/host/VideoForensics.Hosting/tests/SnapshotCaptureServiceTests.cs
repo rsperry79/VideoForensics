@@ -75,7 +75,7 @@ namespace VideoForensics.Hosting.Tests
             }
         }
 
-        private Device AddDevice(string providerDeviceId, bool captureEnabled = true)
+        private Device AddDevice(string providerDeviceId, bool captureEnabled = true, string type = "doorbot", bool? isOnline = null)
         {
             var device = new Device
             {
@@ -83,7 +83,8 @@ namespace VideoForensics.Hosting.Tests
                 LocationId = _locationId,
                 ProviderDeviceId = providerDeviceId,
                 Name = "Front Door " + providerDeviceId,
-                Type = "doorbot",
+                Type = type,
+                IsOnline = isOnline,
                 SnapshotCaptureEnabled = captureEnabled,
             };
             _devicesList.Add(device);
@@ -141,6 +142,64 @@ namespace VideoForensics.Hosting.Tests
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_OfflineDevice_SkipsDevice()
+        {
+            _ = AddDevice("12345", isOnline: false);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Empty(_rows);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_UnknownOnlineState_StillCaptures()
+        {
+            // Null means the provider gave no connection state; it is not evidence the device is offline.
+            _ = AddDevice("12345", isOnline: null);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("chime")]
+        [InlineData("base_station")]
+        [InlineData("range_extender")]
+        [InlineData("")]
+        public async Task RunOneTickAsync_NonCameraDevice_SkipsDevice(string type)
+        {
+            _ = AddDevice("12345", type: type, isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Empty(_rows);
+        }
+
+        [Theory]
+        [InlineData("doorbot")]
+        [InlineData("authorized_doorbot")]
+        [InlineData("stickup_cam")]
+        public async Task RunOneTickAsync_OnlineCameraType_Captures(string type)
+        {
+            _ = AddDevice("12345", type: type, isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
