@@ -159,7 +159,16 @@ namespace VideoForensics.Hosting.Services
                         if (config != null)
                         {
                             configAreasSynced++;
-                            await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
+                            // Config history is secondary to the events and media just synced. A failure here is logged and
+                            // does not count the whole device pull as failed.
+                            try
+                            {
+                                await PersistDeviceConfigIfChangedAsync(device.Id, config, cancellationToken);
+                            }
+                            catch (Exception ex) when (ex is not OperationCanceledException)
+                            {
+                                _logger.LogWarning(ex, "Could not record device configuration history; events were synced");
+                            }
                         }
 
                         device.LastSuccessfulPullAtUtc = DateTime.UtcNow;
@@ -305,7 +314,7 @@ namespace VideoForensics.Hosting.Services
             }
 
             var sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
-            var customSettingsJson = config.CustomSettings is null ? null : JsonSerializer.Serialize(config.CustomSettings);
+            var customSettingsJson = CanonicalJson(config.CustomSettings);
 
             DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
             if (latest is not null &&
@@ -328,6 +337,57 @@ namespace VideoForensics.Hosting.Services
                 CapturedAtUtc = DateTime.UtcNow,
                 Source = DeviceConfigSource.Fetched
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Serializes settings with object keys sorted at every level. Dictionary enumeration order is not a stable
+        /// contract, so an unsorted serialization would make the same settings look changed on every sync and append a
+        /// duplicate snapshot each time.
+        /// </summary>
+        internal static string? CanonicalJson(object? value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            using JsonDocument document = JsonSerializer.SerializeToDocument(value);
+            using MemoryStream stream = new();
+            using (Utf8JsonWriter writer = new(stream))
+            {
+                WriteSorted(document.RootElement, writer);
+            }
+
+            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        private static void WriteSorted(JsonElement element, Utf8JsonWriter writer)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (JsonProperty property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    {
+                        writer.WritePropertyName(property.Name);
+                        WriteSorted(property.Value, writer);
+                    }
+
+                    writer.WriteEndObject();
+                    break;
+                case JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (JsonElement item in element.EnumerateArray())
+                    {
+                        WriteSorted(item, writer);
+                    }
+
+                    writer.WriteEndArray();
+                    break;
+                default:
+                    element.WriteTo(writer);
+                    break;
+            }
         }
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)

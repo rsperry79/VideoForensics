@@ -125,5 +125,51 @@ namespace VideoForensics.Hosting.Tests.Services
                 It.Is<DeviceConfigEntity>(s => s.MotionDetectionEnabled == false && s.MotionSensitivity == "20" && s.RecordingMode == "motion"),
                 cancellationToken), Times.Once);
         }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_ConfigHistoryWriteFails_DeviceStillCountsAsSynced()
+        {
+            var cancellationToken = CancellationToken.None;
+            SetUpAccountAndDevice(Fetched());
+            _configs.Setup(r => r.GetLatestAsync(_deviceId, cancellationToken)).ThrowsAsync(new InvalidOperationException("config store offline"));
+
+            EventPullResult result = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+
+            // The events and media were already synced; a config-history failure must not fail the device pull.
+            Assert.Equal(0, result.FeedsFailed);
+        }
+
+        [Fact]
+        public void CanonicalJson_SameSettingsInDifferentOrder_ProduceTheSameText()
+        {
+            var first = new Dictionary<string, object> { ["alpha"] = 1, ["beta"] = new Dictionary<string, object> { ["x"] = "a", ["y"] = "b" } };
+            var second = new Dictionary<string, object> { ["beta"] = new Dictionary<string, object> { ["y"] = "b", ["x"] = "a" }, ["alpha"] = 1 };
+
+            Assert.Equal(EventPullService.CanonicalJson(first), EventPullService.CanonicalJson(second));
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_CustomSettingsReorderedOnly_DoesNotAppend()
+        {
+            var cancellationToken = CancellationToken.None;
+            var stored = new Dictionary<string, object> { ["alpha"] = 1, ["beta"] = "b" };
+            var reordered = new Dictionary<string, object> { ["beta"] = "b", ["alpha"] = 1 };
+            SetUpAccountAndDevice(new DeviceConfig(DeviceId: "device-123", MotionDetectionEnabled: true, MotionSensitivity: 80, RecordingMode: "always", CustomSettings: reordered));
+            _configs.Setup(r => r.GetLatestAsync(_deviceId, cancellationToken)).ReturnsAsync(new DeviceConfigEntity
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = _deviceId,
+                MotionDetectionEnabled = true,
+                MotionSensitivity = "80",
+                RecordingMode = "always",
+                CustomSettingsJson = EventPullService.CanonicalJson(stored),
+                CapturedAtUtc = DateTime.UtcNow.AddHours(-1),
+                Source = DeviceConfigSource.Fetched
+            });
+
+            _ = await CreateSut().PullAccountEventsAsync(_accountId, null, null, cancellationToken);
+
+            _configs.Verify(r => r.AppendSnapshotAsync(It.IsAny<DeviceConfigEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }
