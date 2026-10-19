@@ -215,5 +215,98 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             Assert.Equal(before, File.ReadAllBytes(still));
         }
+
+        [Fact]
+        public void ProcessTimeout_LongerOutput_GetsMoreBudgetThanTheBase()
+        {
+            var baseline = TimeSpan.FromSeconds(120);
+
+            Assert.Equal(baseline, FfmpegTimelineVideoBuilder.ProcessTimeout(baseline, 0));
+            Assert.True(FfmpegTimelineVideoBuilder.ProcessTimeout(baseline, 600) > TimeSpan.FromSeconds(600));
+        }
+
+        [Fact]
+        public async Task BuildAsync_OverlappingStills_EachShowsUntilTheNextCapture()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // Still A is captured at T0 with a 5 s hold, but B is captured at T0+2. True to time, A shows for 2 s until B
+            // is captured, then B shows for its 2 s. Expected 4 frames, not the 7 the raw holds would give.
+            string a = Path.Combine(_workDir, "a.png");
+            string b = Path.Combine(_workDir, "b.png");
+            CreatePng(a, 320, 240);
+            CreatePng(b, 320, 240);
+            var stills = new[]
+            {
+                new TimelineStill(a, T0, TimeSpan.FromSeconds(5)),
+                new TimelineStill(b, T0.AddSeconds(2), TimeSpan.FromSeconds(2)),
+            };
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(
+                new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4")), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Equal(4, result.FrameCount);
+        }
+
+        [Fact]
+        public async Task BuildAsync_GapBetweenStills_IsFilledWithBlackFrames()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // A covers [T0, T0+2); B covers [T0+5, T0+6). The 3 s between them is filled, so the video runs 6 s.
+            string a = Path.Combine(_workDir, "a.png");
+            string b = Path.Combine(_workDir, "b.png");
+            CreatePng(a, 320, 240);
+            CreatePng(b, 320, 240);
+            var stills = new[]
+            {
+                new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
+                new TimelineStill(b, T0.AddSeconds(5), TimeSpan.FromSeconds(1)),
+            };
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(
+                new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4")), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Equal(6, result.FrameCount);
+        }
+
+        [Fact]
+        public async Task BuildAsync_GapBetweenStills_RecordsTheGapRangeInTheFile()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // Same layout as the gap-fill test: A covers frames 0-1, the gap is frames 2-4, B is frame 5.
+            // The gap range is written as half-open output seconds, so the file says the gap is [2, 5).
+            string a = Path.Combine(_workDir, "a.png");
+            string b = Path.Combine(_workDir, "b.png");
+            CreatePng(a, 320, 240);
+            CreatePng(b, 320, 240);
+            var stills = new[]
+            {
+                new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
+                new TimelineStill(b, T0.AddSeconds(5), TimeSpan.FromSeconds(1)),
+            };
+            string output = Path.Combine(_workDir, "out.mp4");
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            string comment = RunTool("ffprobe", "-v", "error", "-show_entries", "format_tags=comment", "-of", "csv=p=0", output).Trim();
+            Assert.Equal("vf_gap_seconds=2:5", comment);
+        }
     }
 }

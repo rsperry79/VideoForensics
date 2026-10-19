@@ -27,7 +27,9 @@ namespace VideoForensics.Core.Providers.Core
     /// </list>
     /// Overlapping clips resolve to the one that starts first; the later clip is trimmed to start where the earlier
     /// one ends. Declared windows are used for placement, so a part of a declared window past the clip's real end is a
-    /// gap: it still cuts stills, but nothing fills it. Gaps between segments are not filled.
+    /// gap: it still cuts stills, and the gap is filled with black frames like any other uncovered time.
+    /// Stills are true to time: each shows until the next still is captured, or for its hold if that comes first.
+    /// Uncovered time of a second or more between covered segments is filled with black frames, so the video runs in real time.
     /// </para>
     /// </summary>
     public sealed class FfmpegTimelineVideoBuilder : ITimelineVideoBuilder
@@ -81,19 +83,20 @@ namespace VideoForensics.Core.Providers.Core
                 return new TimelineVideoResult(false, null, durationError, 0);
             }
 
-            var mediaPaths = stills.Select(s => s.ImagePath).Concat(clips.Select(c => c.VideoPath)).ToList();
-            (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(mediaPaths, ct);
-            if (!sized)
-            {
-                _logger.LogError("Timeline video build could not read media dimensions for {MediaCount} inputs: {Error}", mediaPaths.Count, sizeError);
-                return new TimelineVideoResult(false, null, sizeError, 0);
-            }
-
             IReadOnlyList<Segment> segments = PlanSegments(stills, probedClips);
             if (segments.Count == 0)
             {
                 _logger.LogError("Timeline video build has no segments left after applying {ClipCount} clips", clips.Count);
                 return new TimelineVideoResult(false, null, "No timeline segments remain after applying the clips.", 0);
+            }
+
+            // Size only the media the plan actually encodes: a clip that contributes nothing must not fail the build.
+            var sourcePaths = segments.Select(s => s.SourcePath).OfType<string>().Distinct().ToList();
+            (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(sourcePaths, ct);
+            if (!sized)
+            {
+                _logger.LogError("Timeline video build could not read media dimensions for {MediaCount} inputs: {Error}", sourcePaths.Count, sizeError);
+                return new TimelineVideoResult(false, null, sizeError, 0);
             }
 
             int frameCount = segments.Sum(s => s.Seconds);
@@ -117,7 +120,7 @@ namespace VideoForensics.Core.Providers.Core
                 for (int i = 0; i < segments.Count; i++)
                 {
                     string segmentPath = Path.Combine(workDir, $"segment-{i:D4}.mp4");
-                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath), ct);
+                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath, width, height), ProcessTimeout(_timeout, segments[i].Seconds), ct);
                     if (encodeError is not null)
                     {
                         return new TimelineVideoResult(false, null, encodeError, 0);
@@ -132,7 +135,7 @@ namespace VideoForensics.Core.Providers.Core
                 // Join inside the work directory and move into place only on success. A failed or cancelled join must not
                 // leave a truncated file at the requested path, or destroy an earlier good file there.
                 string joinedPath = Path.Combine(workDir, "joined.mp4");
-                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath), ct);
+                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath, GapRanges(segments)), ProcessTimeout(_timeout, frameCount), ct);
                 if (joinError is not null || !File.Exists(joinedPath))
                 {
                     return new TimelineVideoResult(false, null, joinError ?? "ffmpeg did not write the output file.", 0);
@@ -140,10 +143,17 @@ namespace VideoForensics.Core.Providers.Core
 
                 File.Move(joinedPath, outputPath, overwrite: true);
 
+                // Report the frames the file holds, not the frames the plan intended: they differ when a source is shorter than declared.
+                (bool counted, int writtenFrames, string? countError) = await TryCountOutputFramesAsync(outputPath, ct);
+                if (!counted)
+                {
+                    return new TimelineVideoResult(false, null, countError, 0);
+                }
+
                 _logger.LogInformation(
                     "Built timeline video from {StillCount} stills and {ClipCount} clips: {FrameCount} frames in {SegmentCount} segments at {Width}x{Height}",
-                    stills.Count, clips.Count, frameCount, segments.Count, width, height);
-                return new TimelineVideoResult(true, outputPath, null, frameCount);
+                    stills.Count, clips.Count, writtenFrames, segments.Count, width, height);
+                return new TimelineVideoResult(true, outputPath, null, writtenFrames);
             }
             finally
             {
@@ -214,17 +224,31 @@ namespace VideoForensics.Core.Providers.Core
             List<ClipWindow> windows = ResolveClipWindows(clips);
             var items = new List<(DateTimeOffset Start, Segment Segment)>();
 
-            foreach (TimelineStill still in stills)
+            // True to time: a still shows until the next still is captured, or for its hold if that comes first.
+            // stills are ordered by capture time, so the next still is the one after it in the list.
+            for (int index = 0; index < stills.Count; index++)
             {
+                TimelineStill still = stills[index];
                 DateTimeOffset stillEnd = still.CapturedAt + still.Hold;
+                if (index + 1 < stills.Count && stills[index + 1].CapturedAt < stillEnd)
+                {
+                    stillEnd = stills[index + 1].CapturedAt;
+                }
+
                 List<ClipWindow> overlapping = windows
                     .Where(w => w.End > still.CapturedAt && w.Start < stillEnd)
                     .ToList();
 
                 if (overlapping.Count == 0)
                 {
-                    // An uncut still keeps the original rule: its hold rounded to whole seconds, minimum 1 s.
-                    items.Add((still.CapturedAt, new Segment(false, still.ImagePath, TimeSpan.Zero, WholeSecondHold(still.Hold))));
+                    // An uncut still keeps the original rule (its shown time rounded to whole seconds, minimum 1 s), but it
+                    // shows only until the next capture. Two captures at the same instant leave the first with nothing to show.
+                    if (stillEnd <= still.CapturedAt)
+                    {
+                        continue;
+                    }
+
+                    items.Add((still.CapturedAt, new Segment(false, still.ImagePath, TimeSpan.Zero, WholeSecondHold(stillEnd - still.CapturedAt))));
                     continue;
                 }
 
@@ -249,7 +273,24 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // OrderBy is stable, so equal start times keep their insertion order.
-            return items.OrderBy(i => i.Start).Select(i => i.Segment).ToList();
+            // Fill every gap of a second or more between covered time with black frames, so the video runs in real time.
+            // A shorter gap is dropped, like a cut-off remainder. Leading and trailing time is not filled.
+            var ordered = items.OrderBy(i => i.Start).ToList();
+            var result = new List<Segment>(ordered.Count);
+            DateTimeOffset? covered = null;
+            foreach ((DateTimeOffset start, Segment segment) in ordered)
+            {
+                if (covered is { } coveredUntil && start - coveredUntil >= TimeSpan.FromSeconds(1))
+                {
+                    result.Add(new Segment(false, null, TimeSpan.Zero, WholeSecondHold(start - coveredUntil)));
+                }
+
+                result.Add(segment);
+                DateTimeOffset end = start + TimeSpan.FromSeconds(segment.Seconds);
+                covered = covered is { } prior && prior > end ? prior : end;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -459,18 +500,20 @@ namespace VideoForensics.Core.Providers.Core
         /// Builds the ffmpeg arguments that encode one segment to a 1 fps MP4 of exactly its whole-second frame count.
         /// A still loops for its duration; a clip is seeked to the offset of its used window and read for its duration.
         /// </summary>
-        private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath)
+        private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath, int width, int height)
         {
             string seconds = segment.Seconds.ToString(CultureInfo.InvariantCulture);
             var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error" };
             if (segment.IsClip)
             {
                 string offset = segment.Offset.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                args.AddRange(new[] { "-ss", offset, "-t", seconds, "-i", segment.SourcePath });
+                args.AddRange(new[] { "-ss", offset, "-t", seconds, "-i", segment.SourcePath! });
             }
             else
             {
-                args.AddRange(new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
+                args.AddRange(segment.SourcePath is null
+                    ? new[] { "-f", "lavfi", "-i", $"color=c=black:s={width}x{height}:r=1", "-t", seconds }
+                    : new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
             }
 
             args.AddRange(new[]
@@ -487,13 +530,51 @@ namespace VideoForensics.Core.Providers.Core
         /// Builds the ffmpeg arguments that join the encoded segments without re-encoding. The segments share one
         /// encoder setup, so stream copy is valid.
         /// </summary>
-        private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath)
+        /// <summary>
+        /// The output seconds that are black gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
+        /// none. The file records these so a viewer can tell gap-filled time from captured stills and clips.
+        /// </summary>
+        private static string GapRanges(IReadOnlyList<Segment> segments)
         {
-            return new[] { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-y", outputPath };
+            var parts = new List<string>();
+            int cursor = 0;
+            foreach (Segment segment in segments)
+            {
+                if (segment.SourcePath is null)
+                {
+                    parts.Add($"{cursor}:{cursor + segment.Seconds}");
+                }
+
+                cursor += segment.Seconds;
+            }
+
+            return string.Join(",", parts);
         }
 
+        private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath, string gapRanges)
+        {
+            var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy" };
+            if (gapRanges.Length > 0)
+            {
+                args.AddRange(new[] { "-metadata", "comment=vf_gap_seconds=" + gapRanges });
+            }
+
+            args.AddRange(new[] { "-y", outputPath });
+            return args;
+        }
+
+        /// <summary>
+        /// The budget for one ffmpeg process: the base timeout plus room for encoding its output. A fixed budget would fail
+        /// a build on length alone, since a long clip segment legitimately takes longer than the base timeout.
+        /// </summary>
+        internal static TimeSpan ProcessTimeout(TimeSpan baseTimeout, int outputSeconds) =>
+            baseTimeout + TimeSpan.FromSeconds(outputSeconds * BudgetSecondsPerOutputSecond);
+
+        // Generous: a 4K source can encode at a fraction of real time.
+        private const int BudgetSecondsPerOutputSecond = 4;
+
         /// <summary>Runs ffmpeg with the given arguments. Returns null on success, or the failure reason.</summary>
-        private async Task<string?> TryRunFfmpegAsync(IReadOnlyList<string> args, CancellationToken ct)
+        private async Task<string?> TryRunFfmpegAsync(IReadOnlyList<string> args, TimeSpan timeout, CancellationToken ct)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -511,7 +592,7 @@ namespace VideoForensics.Core.Providers.Core
             ProcessResult run;
             try
             {
-                run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
+                run = await ProcessRunner.RunAsync(startInfo, timeout, ct);
             }
             catch (OperationCanceledException)
             {
@@ -559,31 +640,95 @@ namespace VideoForensics.Core.Providers.Core
             return string.IsNullOrEmpty(directory) ? probeName : Path.Combine(directory, probeName);
         }
 
-        private void TryDeleteDirectory(string dir)
+        /// <summary>
+        /// Counts the frames the written video holds, from its video stream duration at the one-frame-per-second rate the
+        /// segments are built with. Failures are returned, not thrown, except cancellation.
+        /// </summary>
+        private async Task<(bool Ok, int Frames, string? Error)> TryCountOutputFramesAsync(string path, CancellationToken ct)
         {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _ffprobePath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            foreach (string arg in new[] { "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "csv=p=0" })
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+            startInfo.ArgumentList.Add(path);
+
+            ProcessResult run;
             try
             {
-                if (Directory.Exists(dir))
+                run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return (false, 0, $"Could not read the output video: {ex.Message}");
+            }
+
+            if (run.ExitCode != 0)
+            {
+                return (false, 0, $"ffprobe could not read the output video (exit code {run.ExitCode}).");
+            }
+
+            if (!double.TryParse(run.StandardOutput.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds)
+                || !double.IsFinite(seconds)
+                || seconds <= 0)
+            {
+                return (false, 0, "ffprobe returned an unreadable duration for the output video.");
+            }
+
+            return (true, (int)Math.Round(seconds, MidpointRounding.AwayFromZero), null);
+        }
+
+        private void TryDeleteDirectory(string dir)
+        {
+            // A killed ffmpeg can still hold a segment open for a moment, which makes the first delete fail on Windows.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
                 {
-                    Directory.Delete(dir, recursive: true);
+                    if (Directory.Exists(dir))
+                    {
+                        Directory.Delete(dir, recursive: true);
+                    }
+
+                    return;
+                }
+                catch (IOException) when (attempt < DeleteAttempts)
+                {
+                    Thread.Sleep(DeleteRetryDelay);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    return;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    return;
                 }
             }
-            catch (IOException ex)
-            {
-                _logger.LogWarning(ex, "Could not delete timeline temp directory");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "Could not delete timeline temp directory");
-            }
         }
+
+        private const int DeleteAttempts = 3;
+        private static readonly TimeSpan DeleteRetryDelay = TimeSpan.FromMilliseconds(250);
 
         /// <summary>One piece of the output timeline: a still frame run or a clip run, with its whole-second frame count.</summary>
         /// <param name="IsClip">True for a clip segment, false for a still segment.</param>
         /// <param name="SourcePath">The still image or clip video file.</param>
         /// <param name="Offset">For a clip, how far into the clip the used window starts.</param>
         /// <param name="Seconds">Whole-second frame count of the segment.</param>
-        private sealed record Segment(bool IsClip, string SourcePath, TimeSpan Offset, int Seconds);
+        private sealed record Segment(bool IsClip, string? SourcePath, TimeSpan Offset, int Seconds);
 
         /// <summary>A clip with its ffprobe-measured real duration in seconds.</summary>
         private sealed record ProbedClip(TimelineClip Clip, double RealSeconds);

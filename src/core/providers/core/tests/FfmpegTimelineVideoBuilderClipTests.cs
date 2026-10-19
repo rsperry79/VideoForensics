@@ -196,7 +196,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             //   Real seconds left = 2 - 3 = -1, so B's usable seconds are 0 and B adds no segment.
             // Still: [T0, T0+6) red, 6 s. A covers [T0, T0+1) and B's window covers [T0+1, T0+5), so only the tail
             //   [T0+5, T0+6) remains: 1 s, 1 frame.
-            // Expected: 2 (A) + 1 (still tail) = 3 frames. Frames 0-1 are clip A, frame 2 is the red tail.
+            // Clip A is usable for 2 s at its window start; the rest of its declared window has no real video, so it is a gap that is
+            // filled with black. Expected: 2 (A) + 6 black gap (T0-1 to T0+5) + 1 (still tail) = 9 frames, in real time.
             var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
             var clips = new[]
             {
@@ -209,14 +210,18 @@ namespace VideoForensics.Core.Providers.Core.Tests
             TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output, clips), CancellationToken.None);
 
             Assert.True(result.Success, result.ErrorMessage);
-            Assert.Equal(3, result.FrameCount);
-            Assert.Equal("3", ProbeStreamField(output, "nb_read_frames"));
+            Assert.Equal(9, result.FrameCount);
+            Assert.Equal("9", ProbeStreamField(output, "nb_read_frames"));
 
             List<(byte R, byte G, byte B)> frames = ReadFrameAverages(output);
-            Assert.Equal(3, frames.Count);
+            Assert.Equal(9, frames.Count);
             Assert.False(IsRed(frames[0]), $"frame 0 should be clip A, not the still, was {frames[0]}");
             Assert.False(IsRed(frames[1]), $"frame 1 should be clip A, not the still, was {frames[1]}");
-            Assert.True(IsRed(frames[2]), $"frame 2 should be the still tail, was {frames[2]}");
+            for (int gap = 2; gap <= 7; gap++)
+            {
+                Assert.True(frames[gap].R < 32 && frames[gap].G < 32 && frames[gap].B < 32, $"frame {gap} should be black gap fill, was {frames[gap]}");
+            }
+            Assert.True(IsRed(frames[8]), $"frame 8 should be the still tail, was {frames[8]}");
         }
 
         [Fact]
@@ -390,6 +395,37 @@ namespace VideoForensics.Core.Providers.Core.Tests
             }
 
             return Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {baseName}.");
+        }
+
+        [Fact]
+        public async Task BuildAsync_UnusedAudioOnlyClip_DoesNotFailTheBuild()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // Same layout as the offset-past-end test, but clip B has no video stream. B contributes no segment,
+            // so no dimension probe may run on it: a clip that adds nothing must not fail the build.
+            string still = Path.Combine(_workDir, "still.png");
+            string clip = Path.Combine(_workDir, "clip.mp4");
+            string sound = Path.Combine(_workDir, "sound.m4a");
+            CreatePng(still, "red", 320, 240);
+            CreateVideo(clip, 320, 240, seconds: 2);
+            RunTool("ffmpeg", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "2", "-c:a", "aac", "-y", sound);
+
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
+            var clips = new[]
+            {
+                new TimelineClip(clip, T0.AddSeconds(-3), TimeSpan.FromSeconds(4)),
+                new TimelineClip(sound, T0.AddSeconds(-2), TimeSpan.FromSeconds(7)),
+            };
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(
+                new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"), clips), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
         }
     }
 }

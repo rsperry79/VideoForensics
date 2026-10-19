@@ -299,8 +299,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -433,8 +436,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -837,8 +843,11 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     try
                     {
-                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), cancellationToken);
-                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        await using (FileStream hashStream = File.OpenRead(fileName))
+                        {
+                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, cancellationToken);
+                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        }
                     }
                     catch (Exception ex)
                     {

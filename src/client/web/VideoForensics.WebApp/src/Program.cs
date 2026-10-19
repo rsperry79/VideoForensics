@@ -280,6 +280,8 @@ builder.Services.AddRateLimiter(options =>
 // or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
+// Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
+builder.Services.AddSnapshotProbe(builder.Configuration);
 
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
@@ -514,6 +516,7 @@ app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
+app.MapSnapshotProbeEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
 // Gated with paired-device authorization (matching other API endpoints)

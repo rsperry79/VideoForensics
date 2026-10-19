@@ -11,3 +11,7 @@
 2026-10-18 | UI change | heredoc bash test-file write failed | unbalanced quoting in Bash heredoc with apostrophes/backticks in shell command | use Write tool for new files
 2026-10-18 | UI change | bUnit tests failed DI resolution after adding ScopeRail deps | ScopeRail now injects provider/location/user repos and right-panel service; test bases did not register them | register ScopeOwnershipTestDoubles.RegisterEmpty and RightPanelContentService in every test base that renders ScopeRail
 2026-10-18 | UI change | sed line-ending edit broke build | inserted line used LF/CR mismatch for a file that was LF in HEAD | check original line endings with git show before editing
+
+2026-10-18 | media logs subagent | taskkill /F on all dotnet.exe to stop a hung test host | killed unrelated dotnet processes without checking | do not kill processes; report a hung test host instead (rule to add)
+2026-10-18 | media logs subagent | RingMediaDownloadService tests left temp folders locked | File.OpenRead in SHA-256 hash path never disposed (RingMediaDownloadService.cs ~302, 435, 837) | using around each OpenRead (in progress: fix/ring-hash-stream-dispose)
+2026-10-18 | worktree cleanup | git worktree remove given a path that was already gone | worktree was removed earlier; path not checked first | run git worktree list --porcelain before removing
