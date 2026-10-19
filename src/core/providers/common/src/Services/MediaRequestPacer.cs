@@ -17,9 +17,20 @@ namespace VideoForensics.Core.Providers.Common.Services
         private TimeSpan _minInterval;
         private DateTime? _pauseUntilUtc;
         private bool _inRateLimitIncident;
+        private bool _hardBanSinceSuccess;
+        private DateTime? _hardBanWindowUntilUtc;
 
         /// <summary>Default pause after a rate limit that carries no Retry-After.</summary>
         public static readonly TimeSpan DefaultRateLimitPause = TimeSpan.FromSeconds(60);
+
+        /// <summary>Pause for a hard ban that is not preceded by another hard ban since the last successful request.</summary>
+        public static readonly TimeSpan HardBanPause = TimeSpan.FromMinutes(15);
+
+        /// <summary>Pause for a hard ban that arrives again before a successful request. Ring is still refusing us, so back off longer.</summary>
+        public static readonly TimeSpan RepeatHardBanPause = TimeSpan.FromMinutes(30);
+
+        /// <summary>Result of <see cref="RecordHardBan"/>: the pause applied, and whether the caller should raise the hard-ban alert.</summary>
+        public readonly record struct HardBanOutcome(bool AlertRaised, TimeSpan Pause);
 
         /// <summary>Minimum time between the starts of consecutive turns.</summary>
         public TimeSpan MinInterval
@@ -74,7 +85,36 @@ namespace VideoForensics.Core.Providers.Common.Services
         }
 
         /// <summary>
+        /// Records a hard ban from the provider. Pauses for <see cref="HardBanPause"/>, or <see cref="RepeatHardBanPause"/> when
+        /// another hard ban arrived since the last success, or Retry-After when that is longer. Never shortens an existing pause.
+        /// Adds no spacing penalty. Alerts once per ban window: returns AlertRaised false while the window from the last alert
+        /// is still active.
+        /// </summary>
+        public HardBanOutcome RecordHardBan(TimeSpan? retryAfter)
+        {
+            lock (_state)
+            {
+                DateTime now = _utcNow();
+                // Why the repeat rule keys on "since last success" rather than "window active": Ring keeps refusing until a
+                // request actually succeeds, so a ban that lapses and recurs without a success is still a repeat.
+                TimeSpan rule = _hardBanSinceSuccess ? RepeatHardBanPause : HardBanPause;
+                TimeSpan pause = retryAfter.HasValue && retryAfter.Value > rule ? retryAfter.Value : rule;
+                DateTime pauseUntil = now + pause;
+                if (!_pauseUntilUtc.HasValue || pauseUntil > _pauseUntilUtc.Value)
+                {
+                    _pauseUntilUtc = pauseUntil;
+                }
+
+                bool windowActive = _hardBanWindowUntilUtc.HasValue && now < _hardBanWindowUntilUtc.Value;
+                _hardBanSinceSuccess = true;
+                _hardBanWindowUntilUtc = windowActive && _hardBanWindowUntilUtc > pauseUntil ? _hardBanWindowUntilUtc : pauseUntil;
+                return new HardBanOutcome(AlertRaised: !windowActive, Pause: pause);
+            }
+        }
+
+        /// <summary>
         /// Ends the current rate-limit incident after a successful media request. The next 429 starts a new incident.
+        /// Also ends the hard-ban escalation, so the next hard ban uses <see cref="HardBanPause"/> again.
         /// Does not reduce <see cref="MinInterval"/>.
         /// </summary>
         public void MarkRequestSucceeded()
@@ -82,6 +122,7 @@ namespace VideoForensics.Core.Providers.Common.Services
             lock (_state)
             {
                 _inRateLimitIncident = false;
+                _hardBanSinceSuccess = false;
             }
         }
 

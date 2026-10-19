@@ -111,16 +111,68 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_HardBan_DoesNotSlowOrAlert()
+        public async Task RecordThrottledAsync_HardBan_DoesNotChangeSpacing()
         {
-            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+            (RingMediaDownloadService service, _) = CreateService();
             MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
             TimeSpan baseInterval = pacerA.MinInterval;
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
 
             Assert.Equal(baseInterval, pacerA.MinInterval);
-            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(TimeSpan.Zero, pacerA.RateLimitPenalty);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_HardBan_RaisesOneHardBanAlert()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_HardBanRepeatedInsideWindow_RaisesOneAlert()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_HardBanAfterNormalRateLimitInSameIncident_RaisesHardBanAlert()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("ban", isHardBan: true), CancellationToken.None);
+
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_HardBan_AlertNamesRingAccountAndHardBanWithoutGuidOrExceptionMessage()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+            var captured = new List<NotificationEvent>();
+            _ = dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+                .Callback<NotificationEvent, CancellationToken>((e, _) => captured.Add(e))
+                .Returns(Task.CompletedTask);
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException("secret-ban-detail", isHardBan: true), CancellationToken.None);
+
+            NotificationEvent alert = Assert.Single(captured);
+            Assert.Equal("ProviderRateLimited", alert.EventType);
+            Assert.Contains("Ring account", alert.Details);
+            Assert.Contains("hard ban", alert.Details);
+            Assert.Contains("15 minutes", alert.Details);
+            Assert.DoesNotContain(AccountA.ToString(), alert.Details);
+            Assert.DoesNotContain("secret-ban-detail", alert.Details);
         }
 
         [Fact]

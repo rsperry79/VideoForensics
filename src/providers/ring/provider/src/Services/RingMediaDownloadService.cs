@@ -82,24 +82,50 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>
         /// Handles one 429 from Ring for <paramref name="accountId"/>: pauses that account's media requests for Retry-After
         /// (60 seconds when absent). A new rate-limit incident also adds a second to its spacing and raises an alert naming the
-        /// account; 429s inside an ongoing incident only extend the pause. A hard ban is ignored here, because retrying it
-        /// cannot succeed and it is not a per-request rate limit.
+        /// account; 429s inside an ongoing incident only extend the pause. A hard ban pauses the account for 15 or 30 minutes
+        /// (see <see cref="MediaRequestPacer.RecordHardBan"/>), adds no spacing, and alerts once per ban window.
         /// </summary>
         internal async Task RecordThrottledAsync(Guid accountId, ThrottledException ex, CancellationToken cancellationToken)
         {
+            MediaRequestPacer pacer = GetPacerForAccount(accountId);
+
             if (ex.IsHardBan)
             {
+                MediaRequestPacer.HardBanOutcome ban = pacer.RecordHardBan(ex.RetryAfter);
+                _logger.LogWarning("{AccountName} is under a hard ban from Ring; pausing media requests for {PauseMinutes} minutes",
+                    RingAccountDisplayName, ban.Pause.TotalMinutes);
+
+                if (!ban.AlertRaised)
+                {
+                    return;
+                }
+
+                await DispatchRateLimitAlertAsync(
+                    $"{RingAccountDisplayName} is under a hard ban from Ring. Media requests are paused for {ban.Pause.TotalMinutes:0} minutes.",
+                    cancellationToken);
                 return;
             }
 
-            MediaRequestPacer pacer = GetPacerForAccount(accountId);
             bool newIncident = pacer.RecordRateLimited(ex.RetryAfter);
             TimeSpan pause = ex.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
             _logger.LogWarning("{AccountName} was rate limited by Ring; pausing media requests for {PauseSeconds}s and spacing them {IntervalSeconds}s apart",
                 RingAccountDisplayName, pause.TotalSeconds, pacer.MinInterval.TotalSeconds);
 
             // Only the first 429 of an incident alerts; retries that hit 429 again while it lasts are logged, not alerted.
-            if (!newIncident || _notificationDispatcher == null)
+            if (!newIncident)
+            {
+                return;
+            }
+
+            await DispatchRateLimitAlertAsync(
+                $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
+                cancellationToken);
+        }
+
+        /// <summary>Raises the ProviderRateLimited alert with the given details. Dispatch failures are logged, never thrown.</summary>
+        private async Task DispatchRateLimitAlertAsync(string details, CancellationToken cancellationToken)
+        {
+            if (_notificationDispatcher == null)
             {
                 return;
             }
@@ -113,7 +139,7 @@ namespace VideoForensics.Providers.Ring.Services
                         OperatorId: null,
                         PairedDeviceId: null,
                         SourceIp: null,
-                        Details: $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
+                        Details: details,
                         Audience: NotificationAudience.AdminsOnly,
                         Severity: NoticeSeverity.Alert),
                     cancellationToken);
