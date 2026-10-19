@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -16,7 +17,7 @@ using VideoForensics.Providers.Ring.Exceptions;
 
 namespace VideoForensics.Providers.Ring.Services
 {
-    public class RingMediaDownloadService : IMediaDownloadService
+    public class RingMediaDownloadService : IMediaDownloadService, IProviderSnapshotCapture
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
@@ -142,6 +143,99 @@ namespace VideoForensics.Providers.Ring.Services
             await DispatchRateLimitAlertAsync(
                 $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// Runs one snapshot capture attempt: trigger a fresh frame, wait <paramref name="settleDelay"/>, then read the latest frame.
+        /// Both provider calls take a turn on this account's pacer, so they share its spacing and rate-limit pause with downloads.
+        /// A 429 or hard ban goes through <see cref="RecordThrottledAsync"/>, and the attempt comes back with status 429.
+        /// </summary>
+        /// <remarks>
+        /// The status of the latest-snapshot read is the real HTTP status Ring returned. A failed trigger reports the status carried by the thrown exception.
+        /// </remarks>
+        public async Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, TimeSpan settleDelay, CancellationToken cancellationToken)
+        {
+            if (!int.TryParse(providerDeviceId, out int doorbotId))
+            {
+                throw new ArgumentException("Ring device ids are numeric.", nameof(providerDeviceId));
+            }
+
+            Session session = _sessionProvider.GetSession(providerAccountId)
+                ?? throw new InvalidOperationException("No active Ring session for this account. Restore its credentials before capturing.");
+            MediaRequestPacer pacer = GetPacerForAccount(providerAccountId);
+
+            try
+            {
+                await pacer.WaitTurnAsync(cancellationToken);
+                await session.UpdateSnapshot(doorbotId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
+            }
+
+            await Task.Delay(settleDelay, cancellationToken);
+
+            try
+            {
+                await pacer.WaitTurnAsync(cancellationToken);
+                HttpUtility.DownloadResult snapshot = await session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+                if (snapshot.Status == HttpStatusCode.TooManyRequests)
+                {
+                    // Same path as a thrown 429: record the throttle, then report 429 with the pause.
+                    return await ClassifySnapshotFailureAsync(providerAccountId,
+                        new ThrottledException { StatusCode = snapshot.Status, RetryAfter = snapshot.RetryAfter }, cancellationToken);
+                }
+
+                RecordMediaSuccess(providerAccountId);
+                return ClassifySnapshotResponse((int)snapshot.Status, snapshot.Bytes);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Maps the real HTTP status and body of a latest-snapshot read to an attempt. Only a 200 with a JPEG body carries an image;
+        /// any other status is recorded as Ring returned it, with no image.
+        /// </summary>
+        internal static SnapshotCaptureAttempt ClassifySnapshotResponse(int status, byte[] body)
+        {
+            bool isImage = status == 200 && HasJpegSignature(body);
+            return new SnapshotCaptureAttempt(status, isImage ? body : null, null);
+        }
+
+        /// <summary>True when the bytes start with the JPEG SOI marker (FF D8 FF).</summary>
+        internal static bool HasJpegSignature(byte[] body)
+        {
+            return body.Length >= 3 && body[0] == 0xFF && body[1] == 0xD8 && body[2] == 0xFF;
+        }
+
+        /// <summary>
+        /// Maps a failed snapshot call to an attempt. A rate limit or hard ban is first recorded through <see cref="RecordThrottledAsync"/>,
+        /// then reported as 429 with the pause the account must respect. Errors that carry no HTTP status return a null status.
+        /// </summary>
+        private async Task<SnapshotCaptureAttempt> ClassifySnapshotFailureAsync(Guid accountId, Exception ex, CancellationToken cancellationToken)
+        {
+            switch (ex)
+            {
+                case ThrottledException throttled:
+                    await RecordThrottledAsync(accountId, throttled, cancellationToken);
+                    // Hard bans use the longer repeat pause, which is the safe bound when the exact ban length is not known here.
+                    TimeSpan pause = throttled.IsHardBan
+                        ? MediaRequestPacer.RepeatHardBanPause
+                        : throttled.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
+                    return new SnapshotCaptureAttempt(429, null, pause);
+                case UnexpectedOutcomeException outcome:
+                    return new SnapshotCaptureAttempt((int)outcome.ReturnedStatusCode, null, null);
+                case DeviceUnknownException unknown:
+                    return new SnapshotCaptureAttempt((int)(unknown.StatusCode ?? System.Net.HttpStatusCode.NotFound), null, null);
+                default:
+                    _logger.LogWarning("Snapshot capture for {AccountName} failed without an HTTP status: {ExceptionType}",
+                        RingAccountDisplayName, ex.GetType().Name);
+                    return new SnapshotCaptureAttempt(null, null, null);
+            }
         }
 
         /// <summary>

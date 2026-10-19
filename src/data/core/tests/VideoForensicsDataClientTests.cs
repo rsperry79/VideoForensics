@@ -842,6 +842,51 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_MovedDeviceWithCaptureDisabled_CarriesDisabledFlagToNewRecord()
+        {
+            // Arrange: the operator turned snapshot capture off for this device at its old location.
+            // A move creates a new row; the flag must carry over rather than reset to the entity default (true).
+            var oldLocationId = Guid.NewGuid();
+            var newLocationId = Guid.NewGuid();
+            string providerDeviceId = "device-capture-off";
+
+            var existingDevice = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = oldLocationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = "Garage Camera",
+                Type = "camera",
+                IsOnline = true,
+                SnapshotCaptureEnabled = false
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(newLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([existingDevice]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByProviderDeviceIdAsync(newLocationId, providerDeviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Device?)null);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                newLocationId, providerDeviceId, "Garage Camera", "camera", true, ct: CancellationToken.None);
+
+            // Assert: the new record keeps the operator's capture-off choice.
+            Assert.NotEqual(existingDevice.Id, result.Id);
+            Assert.False(result.SnapshotCaptureEnabled);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_UnknownOnlineState_StoresNull()
         {
             // Arrange: Ring gave no connection/subscription state, so the online flag is unknown.

@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Api.Contracts;
@@ -122,9 +123,29 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>
+        /// Registers <see cref="SnapshotCaptureService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
+        /// registers nothing. Server tier only (VideoForensics.WebApp); never call this from a client host.
+        /// </summary>
+        public static IServiceCollection AddVideoForensicsSnapshotCapture(this IServiceCollection services, IConfiguration configuration)
+        {
+            if (!configuration.GetValue("SnapshotCapture:Enabled", defaultValue: true))
+            {
+                return services;
+            }
+
+            // Keyed by provider name, like the scheduled sync. Capture needs Ring's auth (to restore a session) and its snapshot service,
+            // whether or not Ring is listed in ScheduledTasks:EnabledProviders.
+            _ = services.AddKeyedScoped<IProviderAuthService>("Ring", (provider, key) => BuildRingAuthService(provider));
+            _ = services.AddKeyedScoped<IProviderSnapshotCapture>("Ring", (provider, key) => BuildRingMediaDownloadService(provider));
+            services.TryAddSingleton(TimeProvider.System);
+            _ = services.AddHostedService<SnapshotCaptureService>();
+            return services;
+        }
+
+        /// <summary>
         /// Builds a Ring media download service for use by multiple registration paths.
         /// </summary>
-        private static IMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider)
+        private static VideoForensics.Providers.Ring.Services.RingMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider)
         {
             return new RingMediaDownloadService(
                 provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),

@@ -627,12 +627,32 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
+        /// The HTTP status Ring returned for a download, with the body bytes and any Retry-After wait.
+        /// </summary>
+        /// <param name="Status">The real HTTP status code of the response.</param>
+        /// <param name="Bytes">The response body, whatever the status.</param>
+        /// <param name="RetryAfter">The Retry-After wait from the response, when present.</param>
+        public sealed record DownloadResult(HttpStatusCode Status, byte[] Bytes, TimeSpan? RetryAfter);
+
+        /// <summary>
         /// Downloads the file from the provided Url
         /// </summary>
         /// <param name="url">Url to download the file from</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Byte array with the file download</returns>
         public async Task<byte[]> DownloadFile(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
+        {
+            DownloadResult result = await DownloadFileWithStatus(url, bearerToken, cancellationToken);
+            return result.Bytes;
+        }
+
+        /// <summary>
+        /// Downloads the file from the provided Url and returns the real HTTP status alongside the body. Does not throw on non-success statuses.
+        /// </summary>
+        /// <param name="url">Url to download the file from</param>
+        /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
+        /// <returns>The status, body bytes and Retry-After wait of the response</returns>
+        public async Task<DownloadResult> DownloadFileWithStatus(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             // Construct the request
             var request = new HttpRequestMessage
@@ -658,7 +678,7 @@ namespace VideoForensics.Providers.Ring
             using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
             byte[] bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
-            return bytes;
+            return new DownloadResult(response.StatusCode, bytes, ParseRetryAfter(response));
         }
 
         /// <summary>

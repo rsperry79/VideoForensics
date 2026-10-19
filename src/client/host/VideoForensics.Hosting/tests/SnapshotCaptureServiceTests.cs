@@ -1,0 +1,251 @@
+using System.Globalization;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+using Moq;
+
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
+using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Providers.Ring.Services;
+
+using Xunit;
+
+using Device = VideoForensics.Data.Common.Entities.Device;
+using Location = VideoForensics.Data.Common.Entities.Location;
+
+namespace VideoForensics.Hosting.Tests
+{
+    public class SnapshotCaptureServiceTests : IDisposable
+    {
+        private static readonly DateTimeOffset T0 = new(2026, 10, 19, 12, 0, 0, TimeSpan.Zero);
+        private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02, 0x03];
+
+        private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-snapshot-capture-" + Guid.NewGuid().ToString("N"));
+        private readonly Guid _accountId = Guid.NewGuid();
+        private readonly Guid _locationId = Guid.NewGuid();
+        private readonly MutableTimeProvider _time = new(T0);
+        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<ISyncScheduleRepository> _schedules = new();
+        private readonly Mock<ILocationRepository> _locations = new();
+        private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
+        private readonly Mock<IProviderSnapshotCapture> _capture = new();
+        private readonly Mock<IProviderAuthService> _auth = new();
+        private readonly Mock<ISessionProvider> _sessions = new();
+        private readonly List<SnapshotCapture> _rows = [];
+
+        public SnapshotCaptureServiceTests()
+        {
+            _ = _accounts.Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new ProviderAccount { Id = _accountId, ProviderName = "Ring", IsActive = true }]);
+            _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((SyncSchedule?)null);
+            _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" }]);
+            _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+            _ = _captureRows.Setup(r => r.AddAsync(It.IsAny<SnapshotCapture>(), It.IsAny<CancellationToken>()))
+                .Callback<SnapshotCapture, CancellationToken>((c, _) => _rows.Add(c))
+                .ReturnsAsync((SnapshotCapture c, CancellationToken _) => c);
+            _ = _captureRows.Setup(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
+                    (IReadOnlyList<SnapshotCapture>)_rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_root))
+            {
+                Directory.Delete(_root, recursive: true);
+            }
+        }
+
+        private sealed class MutableTimeProvider(DateTimeOffset start) : TimeProvider
+        {
+            public DateTimeOffset Now { get; set; } = start;
+
+            public override DateTimeOffset GetUtcNow()
+            {
+                return Now;
+            }
+        }
+
+        private Device AddDevice(string providerDeviceId, bool captureEnabled = true)
+        {
+            var device = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = _locationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = "Front Door " + providerDeviceId,
+                Type = "doorbot",
+                SnapshotCaptureEnabled = captureEnabled,
+            };
+            _devicesList.Add(device);
+            _ = _devices.Setup(r => r.GetByLocationIdAsync(_locationId, It.IsAny<CancellationToken>())).ReturnsAsync(_devicesList.ToList());
+            return device;
+        }
+
+        private readonly List<Device> _devicesList = [];
+
+        private async Task RunTickAsync()
+        {
+            ServiceProvider provider = BuildProvider();
+            try
+            {
+                var service = new SnapshotCaptureService(
+                    provider.GetRequiredService<IServiceScopeFactory>(),
+                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
+                    NullLogger<SnapshotCaptureService>.Instance,
+                    _time);
+                await service.RunOneTickAsync(CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+        }
+
+        private ServiceProvider BuildProvider()
+        {
+            var services = new ServiceCollection();
+            _ = services.AddSingleton(_accounts.Object);
+            _ = services.AddSingleton(_schedules.Object);
+            _ = services.AddSingleton(_locations.Object);
+            _ = services.AddSingleton(_devices.Object);
+            _ = services.AddSingleton(_captureRows.Object);
+            _ = services.AddSingleton(_sessions.Object);
+            _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
+            _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
+            return services.BuildServiceProvider();
+        }
+
+        private static string ExpectedFileName(DateTimeOffset at)
+        {
+            return at.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_DisabledDevice_SkipsDevice()
+        {
+            _ = AddDevice("12345", captureEnabled: false);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Empty(_rows);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_DefaultInterval_CapturesOncePerSixtySeconds()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(30);
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(61);
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_StoredIntervalSeconds_UsesStoredInterval()
+        {
+            _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotIntervalSeconds = 120 });
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(61);
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_Success_WritesImageUnderAccountAndDeviceFoldersAndRecords200()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            string accountFolder = _accountId.ToString("N");
+            string expectedRelative = Path.Combine(accountFolder, "12345", ExpectedFileName(T0));
+            Assert.True(File.Exists(Path.Combine(_root, expectedRelative)));
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(200, row.HttpStatus);
+            Assert.True(row.IsCurrent);
+            Assert.Equal(expectedRelative, row.MediaFilePath);
+            Assert.Equal(T0, row.CapturedAtUtc);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_FailedAttempt_RecordsNon200AndWritesNoFile()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+
+            await RunTickAsync();
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(404, row.HttpStatus);
+            Assert.False(row.IsCurrent);
+            Assert.Null(row.MediaFilePath);
+            Assert.False(Directory.Exists(Path.Combine(_root, _accountId.ToString("N"))));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_Throttled_RecordsA429AndPausesAccountUntilPauseEnds()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.SetupSequence(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(429, null, TimeSpan.FromSeconds(60)))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(30);
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(61);
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            Assert.Equal(2, _rows.Count);
+            Assert.Equal(429, _rows[0].HttpStatus);
+            Assert.Null(_rows[0].MediaFilePath);
+            Assert.Equal(200, _rows[1].HttpStatus);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_DeviceCaptureThrows_ContinuesWithNextDevice()
+        {
+            Device first = AddDevice("111");
+            Device second = AddDevice("222");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "111", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("network down"));
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), "222", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(second.Id, row.DeviceId);
+            Assert.NotEqual(first.Id, row.DeviceId);
+        }
+    }
+}

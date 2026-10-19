@@ -755,6 +755,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<int?>("SirenSecondsRemaining")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("SnapshotCaptureEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<bool?>("Stolen")
                         .HasColumnType("INTEGER");
 

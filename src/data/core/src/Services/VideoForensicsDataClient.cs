@@ -749,7 +749,9 @@ namespace VideoForensics.Data.Core.Services
                                 ApiResponseHash = apiResponseHash,
                                 TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
-                                SyncStatus = SyncStatus.Synced
+                                SyncStatus = SyncStatus.Synced,
+                                // Local operator setting, not a Ring value: carry it over so a move does not re-enable capture.
+                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled
                             };
                             ApplyDetailFields(newDevice, details);
 

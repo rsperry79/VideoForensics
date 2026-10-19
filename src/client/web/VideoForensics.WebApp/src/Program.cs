@@ -285,6 +285,9 @@ builder.Services.AddSnapshotProbe(builder.Configuration);
 
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
+
+// Server-side Ring snapshot capture per enabled device (on by default; SnapshotCapture:Enabled=false turns it off).
+builder.Services.AddVideoForensicsSnapshotCapture(builder.Configuration);
 builder.Services.AddVideoForensicsAccountExport();
 
 // Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
