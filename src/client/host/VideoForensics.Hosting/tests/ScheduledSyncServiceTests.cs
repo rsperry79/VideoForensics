@@ -70,6 +70,8 @@ namespace VideoForensics.Hosting.Tests
             public Mock<ISyncScheduleRepository> Schedules { get; } = new();
             public Mock<IProviderAccountRepository> Accounts { get; } = new();
             public Mock<IDeviceRepository> Devices { get; } = new();
+
+            public Mock<IDeviceConfigRepository> DeviceConfigs { get; } = new();
             public Mock<ILocationRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
@@ -179,6 +181,7 @@ namespace VideoForensics.Hosting.Tests
                 _ = _services.AddSingleton(Schedules.Object);
                 _ = _services.AddSingleton(Accounts.Object);
                 _ = _services.AddSingleton(Devices.Object);
+                _ = _services.AddSingleton(DeviceConfigs.Object);
                 _ = _services.AddSingleton(Locations.Object);
                 _ = _services.AddSingleton(Budget.Object);
                 _ = _services.AddSingleton(SyncRuns.Object);
@@ -676,4 +679,4 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), ScheduledSyncService.ResolveTickInterval(configured));
         }
     }
-}
+}

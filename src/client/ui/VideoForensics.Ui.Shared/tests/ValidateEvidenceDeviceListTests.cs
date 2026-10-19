@@ -55,4 +55,36 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
             Times.Once);
         _jobs.Verify(m => m.StartIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task SwitchingTabs_ResetsTheProviderFilter_SoVerifyCoversEveryDevice()
+    {
+        var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
+        var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
+        var backLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "B", Name = "Back" };
+        var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
+        var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
+
+        var deviceRepository = new Mock<IDeviceRepository>();
+        deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { front, back });
+        Services.AddScoped(_ => deviceRepository.Object);
+        // The filter only reaches Front, so a stale filter would verify one device; a reset verifies both.
+        ScopeOwnershipTestDoubles.Register(
+            Services,
+            new[] { account },
+            new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { frontLocation } });
+        await SignInOperatorAsync();
+
+        var page = Render<ValidateEvidencePage>();
+        var panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
+        panel.Find("[data-testid='provider-filter']").Change("Ring");
+
+        // Leave the integrity tab and come back: the controls are rebuilt at "all", and the page must agree.
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Reconcile with Provider").Click();
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Verify Integrity").Click();
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Verify").Click();
+
+        _jobs.Verify(m => m.StartIntegrityAsync(null, It.IsAny<CancellationToken>()), Times.Once);
+        _jobs.Verify(m => m.StartIntegrityForDevicesAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
