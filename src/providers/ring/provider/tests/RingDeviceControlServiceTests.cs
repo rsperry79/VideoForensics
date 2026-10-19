@@ -15,7 +15,6 @@ using Xunit;
 using CommonContracts = VideoForensics.Core.Providers.Common.Contracts;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
-using RingDevices = VideoForensics.Providers.Ring.Entities.Devices;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -41,17 +40,6 @@ namespace VideoForensics.Providers.Ring.Tests
             public required Mock<ISessionProvider> SessionProvider { get; init; }
         }
 
-        private static RingDevices BuildRingDevices()
-        {
-            return new RingDevices
-            {
-                Doorbots = new List<Doorbot> { new Doorbot { Id = 123, Description = DoorbotName } },
-                AuthorizedDoorbots = new List<Doorbot>(),
-                Chimes = new List<Chime> { new Chime { Id = 456, Description = "Hall Chime" } },
-                StickupCams = new List<StickupCam>(),
-            };
-        }
-
         private static List<DeviceEntity> BuildDeviceRows()
         {
             return new List<DeviceEntity>
@@ -69,7 +57,6 @@ namespace VideoForensics.Providers.Ring.Tests
         private static Harness Build(IReadOnlyList<ProviderAccount>? linkedAccounts = null, List<DeviceEntity>? deviceRows = null)
         {
             var session = new Mock<Session>("testuser", "testpass", null, null, null);
-            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>())).ReturnsAsync(BuildRingDevices());
 
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session.Object);
@@ -147,6 +134,44 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task RingDeviceControlService_SetVolume_UsesStoredNameAndNoRingDeviceList()
+        {
+            Harness h = Build();
+
+            await h.Service.SetVolumeAsync(DoorbotProviderId, 7, CancellationToken.None);
+
+            h.Session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Never);
+            h.Session.Verify(s => s.SetVolume(123L, 7, DoorbotName, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RingDeviceControlService_SetChimeDoNotDisturb_NoRingDeviceListCall()
+        {
+            Harness h = Build();
+
+            await h.Service.SetDoNotDisturbAsync(ChimeProviderId, 600, CancellationToken.None);
+
+            h.Session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Never);
+            h.Session.Verify(s => s.SetDoNotDisturb(456L, 600, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RingDeviceControlService_StoredNameBlank_ThrowsBeforeProviderCall()
+        {
+            List<DeviceEntity> rows = BuildDeviceRows();
+            rows[0].Name = "   ";
+            Harness h = Build(deviceRows: rows);
+
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => h.Service.SetVolumeAsync(DoorbotProviderId, 7, CancellationToken.None));
+
+            Assert.Equal("Device name is not stored yet; run a sync first", ex.Message);
+            h.SessionProvider.Verify(sp => sp.GetSession(It.IsAny<Guid>()), Times.Never);
+            h.Session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Never);
+            h.Session.Verify(s => s.SetVolume(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task SetLightAsync_NonNumericDeviceId_ThrowsArgumentException()
         {
             Harness h = Build();
@@ -199,7 +224,7 @@ namespace VideoForensics.Providers.Ring.Tests
             h.SessionProvider.Verify(sp => sp.GetSession(RingAccountId), Times.Once);
             h.SessionProvider.Verify(sp => sp.GetSession(WyzeAccountId), Times.Never);
             h.SessionProvider.Verify(sp => sp.GetSession(), Times.Never);
-            h.Session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Once);
+            h.Session.Verify(s => s.GetRingDevices(It.IsAny<Guid?>()), Times.Never);
             h.Session.Verify(s => s.SetLight(123L, true, It.IsAny<CancellationToken>()), Times.Once);
         }
 

@@ -34,56 +34,44 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task SetLightAsync(string providerDeviceId, bool on, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveDoorbotNameAsync(session, id, ct);
-            await session.SetLight(id, on, ct);
-            Audit(name, "Light");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetLight(target.DoorbotId, on, ct);
+            Audit(target.Name, "Light");
         }
 
         public async Task SetSirenAsync(string providerDeviceId, bool on, int? durationSeconds, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveDoorbotNameAsync(session, id, ct);
-            await session.SetSiren(id, on, durationSeconds, ct);
-            Audit(name, "Siren");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetSiren(target.DoorbotId, on, durationSeconds, ct);
+            Audit(target.Name, "Siren");
         }
 
         public async Task SetVolumeAsync(string providerDeviceId, int volume, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveDoorbotNameAsync(session, id, ct);
-            await session.SetVolume(id, volume, name, ct);
-            Audit(name, "Volume");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetVolume(target.DoorbotId, volume, target.Name, ct);
+            Audit(target.Name, "Volume");
         }
 
         public async Task SetNightModeAsync(string providerDeviceId, bool enabled, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveDoorbotNameAsync(session, id, ct);
-            await session.SetNightMode(id, enabled, ct);
-            Audit(name, "NightMode");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetNightMode(target.DoorbotId, enabled, ct);
+            Audit(target.Name, "NightMode");
         }
 
         public async Task SetMotionDetectionAsync(string providerDeviceId, bool enabled, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveDoorbotNameAsync(session, id, ct);
-            await session.SetMotionDetection(id, enabled, ct);
-            Audit(name, "MotionDetection");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetMotionDetection(target.DoorbotId, enabled, ct);
+            Audit(target.Name, "MotionDetection");
         }
 
         public async Task SetDoNotDisturbAsync(string providerDeviceId, int seconds, CancellationToken ct)
         {
-            long id = ParseId(providerDeviceId);
-            Session session = await ResolveSessionAsync(providerDeviceId, ct);
-            string name = await ResolveChimeNameAsync(session, id, ct);
-            await session.SetDoNotDisturb(id, seconds, ct);
-            Audit(name, "DoNotDisturb");
+            ResolvedControlTarget target = await ResolveTargetAsync(providerDeviceId, ct);
+            await target.Session.SetDoNotDisturb(target.DoorbotId, seconds, ct);
+            Audit(target.Name, "DoNotDisturb");
         }
 
         private static long ParseId(string providerDeviceId)
@@ -96,10 +84,18 @@ namespace VideoForensics.Providers.Ring.Services
             return id;
         }
 
+        // Resolved once per control: the Ring SDK session for the device's single linked account, the numeric
+        // Ring id, and the display name stored on the Device row. The control path never reads device state from Ring.
+        private sealed record ResolvedControlTarget(Session Session, long DoorbotId, string Name);
+
         // Resolves the device by provider id, then the Ring account linked to its location. Fails closed:
         // zero or several Ring accounts throw before any provider call, so a control cannot land on the wrong account.
-        private async Task<Session> ResolveSessionAsync(string providerDeviceId, CancellationToken ct)
+        // The stored device name is required; a blank name throws before the session is fetched, and Ring is never
+        // queried for it (only the config sync populates Device.Name).
+        private async Task<ResolvedControlTarget> ResolveTargetAsync(string providerDeviceId, CancellationToken ct)
         {
+            long id = ParseId(providerDeviceId);
+
             IReadOnlyList<DeviceEntity> rows = await _devices.ListAsync(ct);
             DeviceEntity device = rows.FirstOrDefault(d => string.Equals(d.ProviderDeviceId, providerDeviceId, StringComparison.Ordinal))
                 ?? throw new KeyNotFoundException("Device was not found.");
@@ -119,47 +115,15 @@ namespace VideoForensics.Providers.Ring.Services
                 throw new InvalidOperationException("Device is linked to more than one Ring account; control refused");
             }
 
-            return _sessionProvider.GetSession(ringAccounts[0].Id)
-                ?? throw new InvalidOperationException("Ring account is not signed in.");
-        }
-
-        // Ring's device-settings calls need the device's display name (volume PUT sends it as
-        // doorbot[description]), so the name is looked up from the device list before each control.
-        private static async Task<string> ResolveDoorbotNameAsync(Session session, long id, CancellationToken ct)
-        {
-            Devices devices = await session.GetRingDevices(null);
-            ct.ThrowIfCancellationRequested();
-
-            IEnumerable<(long Id, string? Description)> candidates = (devices.Doorbots ?? new List<Doorbot>())
-                .Concat(devices.AuthorizedDoorbots ?? new List<Doorbot>())
-                .Select(d => ((long)d.Id, (string?)d.Description))
-                .Concat((devices.StickupCams ?? new List<StickupCam>()).Where(c => c.Id.HasValue).Select(c => (c.Id!.Value, (string?)c.Description)));
-
-            return FindName(candidates, id);
-        }
-
-        private static async Task<string> ResolveChimeNameAsync(Session session, long id, CancellationToken ct)
-        {
-            Devices devices = await session.GetRingDevices(null);
-            ct.ThrowIfCancellationRequested();
-
-            IEnumerable<(long Id, string? Description)> candidates = (devices.Chimes ?? new List<Chime>())
-                .Select(c => ((long)c.Id, (string?)c.Description));
-
-            return FindName(candidates, id);
-        }
-
-        private static string FindName(IEnumerable<(long Id, string? Description)> candidates, long id)
-        {
-            foreach ((long candidateId, string? description) in candidates)
+            if (string.IsNullOrWhiteSpace(device.Name))
             {
-                if (candidateId == id)
-                {
-                    return description ?? string.Empty;
-                }
+                throw new InvalidOperationException("Device name is not stored yet; run a sync first");
             }
 
-            throw new InvalidOperationException("Ring device was not found on this account.");
+            Session session = _sessionProvider.GetSession(ringAccounts[0].Id)
+                ?? throw new InvalidOperationException("Ring account is not signed in.");
+
+            return new ResolvedControlTarget(session, id, device.Name);
         }
 
         // Logs the device name and control name only, never Ring ids or URLs.
