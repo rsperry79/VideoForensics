@@ -15,7 +15,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapSoftwarePathsEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/software-paths").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+            RouteGroupBuilder group = app.MapGroup("/api/v1/software-paths").RequireAuthorization(VideoForensicsPolicies.SuperAdminLocalOrPasskey);
 
             _ = group.MapGet("/", (IForensicsConfiguration config) => Results.Ok(new
             {

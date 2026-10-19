@@ -159,7 +159,7 @@ else
     // The step-up token rides on this one request only; the shared HttpClient's default headers are never touched.
     private HttpRequestMessage CreateRequest(HttpMethod method, object? body, string? stepUpToken)
     {
-        var request = new HttpRequestMessage(method, new Uri(NavigationManager.BaseUri + "api/software-paths"));
+        var request = new HttpRequestMessage(method, new Uri(NavigationManager.BaseUri + "api/v1/software-paths"));
         if (SessionState.SessionToken is not null)
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
