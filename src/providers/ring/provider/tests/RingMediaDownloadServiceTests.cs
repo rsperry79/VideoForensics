@@ -1,3 +1,5 @@
+using System.Net;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -782,6 +784,218 @@ namespace VideoForensics.Providers.Ring.Tests
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_SuccessfulDownload_LogsInformationWithFileName()
+        {
+            string outputPath = CreateTempOutputDirectory();
+            try
+            {
+                var logger = new RecordingLogger();
+                RingMediaDownloadService service = await CreateAuthenticatedDownloadServiceAsync(logger, EventCreatedAtUtc);
+
+                _ = await service.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+
+                string fileName = Path.GetFileName(Assert.Single(Directory.GetFiles(outputPath, "*.mp4")));
+                Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Information
+                    && entry.Message.StartsWith("Downloaded media file", StringComparison.Ordinal)
+                    && entry.Message.Contains(fileName, StringComparison.Ordinal));
+            }
+            finally
+            {
+                DeleteOutputDirectory(outputPath);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_FileAlreadyOnDisk_LogsInformationSkip()
+        {
+            string outputPath = CreateTempOutputDirectory();
+            try
+            {
+                // First run downloads the file so the second run finds it already present on disk.
+                RingMediaDownloadService firstRun = await CreateAuthenticatedDownloadServiceAsync(new RecordingLogger(), EventCreatedAtUtc);
+                _ = await firstRun.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+                string fileName = Path.GetFileName(Assert.Single(Directory.GetFiles(outputPath, "*.mp4")));
+
+                var logger = new RecordingLogger();
+                RingMediaDownloadService secondRun = await CreateAuthenticatedDownloadServiceAsync(logger, EventCreatedAtUtc);
+                _ = await secondRun.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+
+                Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Information
+                    && entry.Message.StartsWith("Media file", StringComparison.Ordinal)
+                    && entry.Message.Contains(fileName, StringComparison.Ordinal)
+                    && entry.Message.Contains("already exists", StringComparison.Ordinal));
+            }
+            finally
+            {
+                DeleteOutputDirectory(outputPath);
+            }
+        }
+
+        private const string DownloadDeviceId = "86401464";
+
+        // Fixed for the run so both passes of a test name the file identically (the name embeds the second).
+        private static readonly DateTime EventCreatedAtUtc = DateTime.UtcNow.AddHours(-1);
+
+        private static DateTime DownloadStart() => DateTime.UtcNow.AddDays(-7);
+
+        private static DateTime DownloadEnd() => DateTime.UtcNow.AddDays(1);
+
+        private static string CreateTempOutputDirectory()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "rmds-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(path);
+            return path;
+        }
+
+        /// <summary>
+        /// Deletes the output folder, retrying briefly. The service's SHA-256 check opens files with File.OpenRead
+        /// without disposing the stream, so a just-written recording can still be locked when the test finishes.
+        /// </summary>
+        private static void DeleteOutputDirectory(string path)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    Directory.Delete(path, recursive: true);
+                    return;
+                }
+                catch (IOException) when (attempt < 20)
+                {
+                    Thread.Sleep(100);
+                }
+                catch (IOException)
+                {
+                    // Still locked after retries: leave the temp folder for the OS rather than failing the test.
+                    return;
+                }
+            }
+        }
+
+        /// <summary>Builds a service whose session serves one recent motion event for the device and a fake recording.</summary>
+        private static async Task<RingMediaDownloadService> CreateAuthenticatedDownloadServiceAsync(ILogger logger, DateTime eventCreatedAtUtc)
+        {
+            var session = new Session("user@example.com", "password", new DownloadStubHandler(HistoryJson(eventCreatedAtUtc)), new WritingVideoDownloader());
+            await session.Authenticate();
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
+
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "default", Name = "default" });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = DownloadDeviceId,
+                    Name = "Front Door",
+                    Type = "doorbell",
+                    IsOnline = true
+                });
+
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient.Object, new Mock<IMediaMetadataTagger>().Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            return service;
+        }
+
+        private static string HistoryJson(DateTime createdAtUtc) => $$$"""
+            [{"id":123,"created_at":"{{{createdAtUtc:O}}}","answered":false,"events":[],"kind":"motion",
+            "favorite":false,"snapshot_url":"","recording":{"status":"ready"},"duration":41,
+            "doorbot":{"id":86401464,"description":"Front Door","type":"doorbell_graham_cracker"}}]
+            """;
+
+        private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body, HttpRequestMessage request) =>
+            new(status) { Content = new StringContent(body), RequestMessage = request };
+
+        /// <summary>Answers OAuth, one history event, and a recording URL; everything else is a 404.</summary>
+        private sealed class DownloadStubHandler : HttpMessageHandler
+        {
+            private readonly string _historyJson;
+
+            public DownloadStubHandler(string historyJson) => _historyJson = historyJson;
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.ToString() ?? string.Empty;
+                if (url.StartsWith("https://oauth.ring.com/", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK,
+                        "{\"access_token\":\"SESSION-TOKEN-NEVER-STORED\",\"refresh_token\":\"refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", request));
+                }
+
+                if (url.Contains("/ring_devices", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK,
+                        "{\"doorbots\":[{\"id\":86401464,\"description\":\"Front Door\",\"kind\":\"doorbell_graham_cracker\"}],\"authorized_doorbots\":[],\"stickup_cams\":[],\"base_stations\":[],\"chimes\":[]}",
+                        request));
+                }
+
+                if (url.Contains("/share/download", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK, "{\"url\":\"https://cdn.example.test/recording.mp4\"}", request));
+                }
+
+                if (url.Contains("/history", StringComparison.Ordinal))
+                {
+                    // Only the first page carries the event; a paged follow-up (older_than) is empty so pagination ends.
+                    string query = request.RequestUri?.Query ?? string.Empty;
+                    string body = query.Contains("older_than", StringComparison.Ordinal) ? "[]" : _historyJson;
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK, body, request));
+                }
+
+                return Task.FromResult(JsonResponse(HttpStatusCode.NotFound, "{\"error\":\"Not found\"}", request));
+            }
+        }
+
+        /// <summary>Writes a small fake recording so the download produces a non-empty file.</summary>
+        private sealed class WritingVideoDownloader : IVideoDownloader
+        {
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream());
+
+            public Task DownloadToFileAsync(string url, string saveAsPath) =>
+                File.WriteAllBytesAsync(saveAsPath, new byte[] { 1, 2, 3, 4 });
+        }
+
+        /// <summary>Keeps each log entry's level and formatted text so a test can assert on it.</summary>
+        private sealed class RecordingLogger : ILogger
+        {
+            private readonly object _gate = new();
+            private readonly List<(LogLevel Level, string Message)> _entries = [];
+
+            public IReadOnlyList<(LogLevel Level, string Message)> Entries
+            {
+                get
+                {
+                    lock (_gate)
+                    {
+                        return _entries.ToArray();
+                    }
+                }
+            }
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                lock (_gate)
+                {
+                    _entries.Add((logLevel, exception == null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"));
+                }
+            }
         }
     }
 }
