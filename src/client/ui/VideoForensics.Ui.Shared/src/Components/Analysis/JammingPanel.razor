@@ -105,6 +105,7 @@ else
     public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = new List<VideoForensics.Data.Common.Entities.Device>();
 
     private bool _isLoading = true;
+    private int _loadVersion;
     private string? _error;
     private bool _readyForAnalysis;
     private int _analyzedCount;
@@ -148,6 +149,8 @@ else
 
     private async Task LoadReportAsync()
     {
+        // Each device is awaited in turn; a newer load (new scope or recorded incident) supersedes this one.
+        int version = ++_loadVersion;
         _isLoading = true;
         _error = null;
         _readyForAnalysis = false;
@@ -174,6 +177,11 @@ else
             foreach (var deviceId in targets)
             {
                 var report = await JammingTools.AnalyzeJammingAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None);
+                if (version != _loadVersion)
+                {
+                    return;
+                }
+
                 if (!report.Success)
                 {
                     _failures.Add(L["DeviceAnalysisFailed", NameOf(deviceId), report.ErrorMessage ?? L["AnalysisFailed"].Value].Value);
@@ -191,14 +199,20 @@ else
 
             _incidents = incidents.OrderByDescending(i => i.StartUtc).ToList();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _error = $"Failed to load jamming analysis: {ex.Message}";
+            if (version == _loadVersion)
+            {
+                _error = $"Failed to load jamming analysis: {ex.Message}";
+            }
         }
         finally
         {
-            _lastLoadedScope = Scope;
-            _isLoading = false;
+            if (version == _loadVersion)
+            {
+                _lastLoadedScope = Scope;
+                _isLoading = false;
+            }
         }
     }
 
