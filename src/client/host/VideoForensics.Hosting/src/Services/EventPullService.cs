@@ -103,6 +103,8 @@ namespace VideoForensics.Hosting.Services
                     return new EventPullResult(devicesSynced, locationsSynced);
                 }
 
+                _logger.LogInformation("Syncing events for {DeviceCount} device(s)", inventory.Devices.Count);
+
                 var startTime = fromTimestampUtc ?? DateTime.MinValue;
                 // A null end date means "now". Unspecified kinds are treated as UTC, the contract for both bounds.
                 var endTime = toTimestampUtc is { } to
@@ -122,15 +124,18 @@ namespace VideoForensics.Hosting.Services
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
+                int deviceIndex = 0;
                 foreach (InventoryDevice inventoryDevice in inventory.Devices)
                 {
                     DeviceEntity? device = inventoryDevice.Device;
                     if (device == null) continue;
                     string providerLocationId = inventoryDevice.ProviderLocationId;
+                    string deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
+                    deviceIndex++;
 
                     try
                     {
-                        _logger.LogDebug("Pulling events for device");
+                        _logger.LogInformation("Syncing events for device {DeviceName} ({Index}/{DeviceCount})", deviceName, deviceIndex, inventory.Devices.Count);
 
                         IReadOnlyList<DeviceEvent> events = await _eventAndConfigService.GetEventsAsync(
                             accountId,
@@ -142,7 +147,8 @@ namespace VideoForensics.Hosting.Services
                         );
 
                         // The provider is asked for the window, but not every provider trims strictly; count only what is inside it.
-                        eventsSynced += events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
+                        int deviceEventCount = events?.Count(e => e.Timestamp >= startTime && e.Timestamp <= endTime) ?? 0;
+                        eventsSynced += deviceEventCount;
 
                         if (_mediaDownloadService != null)
                         {
@@ -176,13 +182,13 @@ namespace VideoForensics.Hosting.Services
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
 
                         _logger.LogDebug("Successfully pulled events for device");
+                        _logger.LogInformation("Synced device {DeviceName}: {EventCount} event(s)", deviceName, deviceEventCount);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to pull events for device");
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
-                        var deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
                         feedsFailed++;
                     }
