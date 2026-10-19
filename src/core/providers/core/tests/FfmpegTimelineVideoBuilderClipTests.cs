@@ -391,5 +391,36 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             return Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {baseName}.");
         }
+
+        [Fact]
+        public async Task BuildAsync_UnusedAudioOnlyClip_DoesNotFailTheBuild()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // Same layout as the offset-past-end test, but clip B has no video stream. B contributes no segment,
+            // so no dimension probe may run on it: a clip that adds nothing must not fail the build.
+            string still = Path.Combine(_workDir, "still.png");
+            string clip = Path.Combine(_workDir, "clip.mp4");
+            string sound = Path.Combine(_workDir, "sound.m4a");
+            CreatePng(still, "red", 320, 240);
+            CreateVideo(clip, 320, 240, seconds: 2);
+            RunTool("ffmpeg", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "2", "-c:a", "aac", "-y", sound);
+
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
+            var clips = new[]
+            {
+                new TimelineClip(clip, T0.AddSeconds(-3), TimeSpan.FromSeconds(4)),
+                new TimelineClip(sound, T0.AddSeconds(-2), TimeSpan.FromSeconds(7)),
+            };
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(
+                new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"), clips), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+        }
     }
 }

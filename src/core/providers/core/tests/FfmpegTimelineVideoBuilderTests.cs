@@ -215,5 +215,14 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             Assert.Equal(before, File.ReadAllBytes(still));
         }
+
+        [Fact]
+        public void ProcessTimeout_LongerOutput_GetsMoreBudgetThanTheBase()
+        {
+            var baseline = TimeSpan.FromSeconds(120);
+
+            Assert.Equal(baseline, FfmpegTimelineVideoBuilder.ProcessTimeout(baseline, 0));
+            Assert.True(FfmpegTimelineVideoBuilder.ProcessTimeout(baseline, 600) > TimeSpan.FromSeconds(600));
+        }
     }
 }

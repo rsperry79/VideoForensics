@@ -81,19 +81,20 @@ namespace VideoForensics.Core.Providers.Core
                 return new TimelineVideoResult(false, null, durationError, 0);
             }
 
-            var mediaPaths = stills.Select(s => s.ImagePath).Concat(clips.Select(c => c.VideoPath)).ToList();
-            (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(mediaPaths, ct);
-            if (!sized)
-            {
-                _logger.LogError("Timeline video build could not read media dimensions for {MediaCount} inputs: {Error}", mediaPaths.Count, sizeError);
-                return new TimelineVideoResult(false, null, sizeError, 0);
-            }
-
             IReadOnlyList<Segment> segments = PlanSegments(stills, probedClips);
             if (segments.Count == 0)
             {
                 _logger.LogError("Timeline video build has no segments left after applying {ClipCount} clips", clips.Count);
                 return new TimelineVideoResult(false, null, "No timeline segments remain after applying the clips.", 0);
+            }
+
+            // Size only the media the plan actually encodes: a clip that contributes nothing must not fail the build.
+            var sourcePaths = segments.Select(s => s.SourcePath).Distinct().ToList();
+            (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(sourcePaths, ct);
+            if (!sized)
+            {
+                _logger.LogError("Timeline video build could not read media dimensions for {MediaCount} inputs: {Error}", sourcePaths.Count, sizeError);
+                return new TimelineVideoResult(false, null, sizeError, 0);
             }
 
             int frameCount = segments.Sum(s => s.Seconds);
@@ -117,7 +118,7 @@ namespace VideoForensics.Core.Providers.Core
                 for (int i = 0; i < segments.Count; i++)
                 {
                     string segmentPath = Path.Combine(workDir, $"segment-{i:D4}.mp4");
-                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath), ct);
+                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath), ProcessTimeout(_timeout, segments[i].Seconds), ct);
                     if (encodeError is not null)
                     {
                         return new TimelineVideoResult(false, null, encodeError, 0);
@@ -132,7 +133,7 @@ namespace VideoForensics.Core.Providers.Core
                 // Join inside the work directory and move into place only on success. A failed or cancelled join must not
                 // leave a truncated file at the requested path, or destroy an earlier good file there.
                 string joinedPath = Path.Combine(workDir, "joined.mp4");
-                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath), ct);
+                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath), ProcessTimeout(_timeout, frameCount), ct);
                 if (joinError is not null || !File.Exists(joinedPath))
                 {
                     return new TimelineVideoResult(false, null, joinError ?? "ffmpeg did not write the output file.", 0);
@@ -140,10 +141,17 @@ namespace VideoForensics.Core.Providers.Core
 
                 File.Move(joinedPath, outputPath, overwrite: true);
 
+                // Report the frames the file holds, not the frames the plan intended: they differ when a source is shorter than declared.
+                (bool counted, int writtenFrames, string? countError) = await TryCountOutputFramesAsync(outputPath, ct);
+                if (!counted)
+                {
+                    return new TimelineVideoResult(false, null, countError, 0);
+                }
+
                 _logger.LogInformation(
                     "Built timeline video from {StillCount} stills and {ClipCount} clips: {FrameCount} frames in {SegmentCount} segments at {Width}x{Height}",
-                    stills.Count, clips.Count, frameCount, segments.Count, width, height);
-                return new TimelineVideoResult(true, outputPath, null, frameCount);
+                    stills.Count, clips.Count, writtenFrames, segments.Count, width, height);
+                return new TimelineVideoResult(true, outputPath, null, writtenFrames);
             }
             finally
             {
@@ -492,8 +500,18 @@ namespace VideoForensics.Core.Providers.Core
             return new[] { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-y", outputPath };
         }
 
+        /// <summary>
+        /// The budget for one ffmpeg process: the base timeout plus room for encoding its output. A fixed budget would fail
+        /// a build on length alone, since a long clip segment legitimately takes longer than the base timeout.
+        /// </summary>
+        internal static TimeSpan ProcessTimeout(TimeSpan baseTimeout, int outputSeconds) =>
+            baseTimeout + TimeSpan.FromSeconds(outputSeconds * BudgetSecondsPerOutputSecond);
+
+        // Generous: a 4K source can encode at a fraction of real time.
+        private const int BudgetSecondsPerOutputSecond = 4;
+
         /// <summary>Runs ffmpeg with the given arguments. Returns null on success, or the failure reason.</summary>
-        private async Task<string?> TryRunFfmpegAsync(IReadOnlyList<string> args, CancellationToken ct)
+        private async Task<string?> TryRunFfmpegAsync(IReadOnlyList<string> args, TimeSpan timeout, CancellationToken ct)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -511,7 +529,7 @@ namespace VideoForensics.Core.Providers.Core
             ProcessResult run;
             try
             {
-                run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
+                run = await ProcessRunner.RunAsync(startInfo, timeout, ct);
             }
             catch (OperationCanceledException)
             {
@@ -559,24 +577,88 @@ namespace VideoForensics.Core.Providers.Core
             return string.IsNullOrEmpty(directory) ? probeName : Path.Combine(directory, probeName);
         }
 
-        private void TryDeleteDirectory(string dir)
+        /// <summary>
+        /// Counts the frames the written video holds, from its video stream duration at the one-frame-per-second rate the
+        /// segments are built with. Failures are returned, not thrown, except cancellation.
+        /// </summary>
+        private async Task<(bool Ok, int Frames, string? Error)> TryCountOutputFramesAsync(string path, CancellationToken ct)
         {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _ffprobePath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            foreach (string arg in new[] { "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "csv=p=0" })
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+            startInfo.ArgumentList.Add(path);
+
+            ProcessResult run;
             try
             {
-                if (Directory.Exists(dir))
+                run = await ProcessRunner.RunAsync(startInfo, _timeout, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return (false, 0, $"Could not read the output video: {ex.Message}");
+            }
+
+            if (run.ExitCode != 0)
+            {
+                return (false, 0, $"ffprobe could not read the output video (exit code {run.ExitCode}).");
+            }
+
+            if (!double.TryParse(run.StandardOutput.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds)
+                || !double.IsFinite(seconds)
+                || seconds <= 0)
+            {
+                return (false, 0, "ffprobe returned an unreadable duration for the output video.");
+            }
+
+            return (true, (int)Math.Round(seconds, MidpointRounding.AwayFromZero), null);
+        }
+
+        private void TryDeleteDirectory(string dir)
+        {
+            // A killed ffmpeg can still hold a segment open for a moment, which makes the first delete fail on Windows.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
                 {
-                    Directory.Delete(dir, recursive: true);
+                    if (Directory.Exists(dir))
+                    {
+                        Directory.Delete(dir, recursive: true);
+                    }
+
+                    return;
+                }
+                catch (IOException) when (attempt < DeleteAttempts)
+                {
+                    Thread.Sleep(DeleteRetryDelay);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    return;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogWarning(ex, "Could not delete timeline temp directory");
+                    return;
                 }
             }
-            catch (IOException ex)
-            {
-                _logger.LogWarning(ex, "Could not delete timeline temp directory");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "Could not delete timeline temp directory");
-            }
         }
+
+        private const int DeleteAttempts = 3;
+        private static readonly TimeSpan DeleteRetryDelay = TimeSpan.FromMilliseconds(250);
 
         /// <summary>One piece of the output timeline: a still frame run or a clip run, with its whole-second frame count.</summary>
         /// <param name="IsClip">True for a clip segment, false for a still segment.</param>
