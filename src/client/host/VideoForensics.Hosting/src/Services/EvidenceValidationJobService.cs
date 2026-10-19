@@ -138,6 +138,12 @@ namespace VideoForensics.Hosting.Services
                             result.DeviceId = deviceId;
                             results.Add(result);
                         }
+
+                        // Publish as each device finishes, so a later device failing keeps the results already verified.
+                        lock (_gate)
+                        {
+                            job.IntegrityResults = results.ToArray();
+                        }
                     }
                 }
 
@@ -276,8 +282,21 @@ namespace VideoForensics.Hosting.Services
             public ReconciliationDiscrepancy[]? Discrepancies { get; set; }
             public string? ErrorMessage { get; set; }
 
-            /// <summary>Appends a timestamped log line.</summary>
-            public void Append(string text) => _log.Add($"{DateTime.UtcNow:HH:mm:ss} {text}");
+            /// <summary>
+            /// Appends a timestamped log line. A long run (one line per file) keeps the newest lines: the log is capped
+            /// so polling snapshots stay small, and the oldest lines drop first.
+            /// </summary>
+            public void Append(string text)
+            {
+                if (_log.Count >= MaxLogLines)
+                {
+                    _log.RemoveAt(0);
+                }
+
+                _log.Add($"{DateTime.UtcNow:HH:mm:ss} {text}");
+            }
+
+            private const int MaxLogLines = 1000;
 
             /// <summary>Copies the current state so the caller never shares the mutable lists.</summary>
             public EvidenceValidationJob Snapshot() => new()
