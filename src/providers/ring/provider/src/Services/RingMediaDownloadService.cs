@@ -60,6 +60,11 @@ namespace VideoForensics.Providers.Ring.Services
         // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
         private readonly ISyncScheduleRepository? _syncScheduleRepository;
 
+        // Saved SnapshotIntervalSeconds per account, used as a spacing floor that SetRequestPacing must not drop below.
+        // Loaded once per account per process (see EnsureStoredSpacingLoadedAsync); raised again after each saved incident.
+        private readonly ConcurrentDictionary<Guid, TimeSpan> _storedSpacingFloors = new();
+        private readonly ConcurrentDictionary<Guid, Lazy<Task>> _storedSpacingLoads = new();
+
         // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
         private TimeSpan? _lastRetryAfter;
 
@@ -70,9 +75,9 @@ namespace VideoForensics.Providers.Ring.Services
             if (minRequestInterval >= TimeSpan.Zero)
             {
                 _baseRequestInterval = minRequestInterval;
-                foreach (MediaRequestPacer pacer in _pacers.Values)
+                foreach (KeyValuePair<Guid, MediaRequestPacer> entry in _pacers)
                 {
-                    pacer.MinInterval = minRequestInterval + pacer.RateLimitPenalty;
+                    entry.Value.MinInterval = ApplyStoredSpacingFloor(entry.Key, minRequestInterval + entry.Value.RateLimitPenalty);
                 }
             }
         }
@@ -157,6 +162,7 @@ namespace VideoForensics.Providers.Ring.Services
                 int currentSeconds = schedule?.SnapshotIntervalSeconds ?? (int)Math.Ceiling(spacingBeforeIncident.TotalSeconds);
                 int raisedSeconds = currentSeconds + 1;
                 await _syncScheduleRepository.SetSnapshotIntervalSecondsAsync(accountId, raisedSeconds, cancellationToken);
+                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(raisedSeconds);
                 _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalSeconds}s after a rate limit",
                     RingAccountDisplayName, raisedSeconds);
             }
@@ -164,6 +170,58 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogError(ex, "Could not save the snapshot interval for {AccountName} after a rate limit", RingAccountDisplayName);
             }
+        }
+
+        /// <summary>
+        /// Loads the account's saved SnapshotIntervalSeconds once per process and raises its pacer to at least that spacing, so a
+        /// restart keeps the spacing the last rate-limit incident saved. Concurrent callers share one load. A load that fails is
+        /// logged and not retried in this process; the pacer keeps its base spacing.
+        /// </summary>
+        private Task EnsureStoredSpacingLoadedAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            if (_syncScheduleRepository == null || accountId == Guid.Empty)
+            {
+                return Task.CompletedTask;
+            }
+
+            // Lazy so that when two downloads race, only the stored entry's task ever runs the repository read.
+            Lazy<Task> load = _storedSpacingLoads.GetOrAdd(accountId, _ => new Lazy<Task>(() => LoadStoredSpacingAsync(accountId, cancellationToken)));
+            return load.Value;
+        }
+
+        private async Task LoadStoredSpacingAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                SyncSchedule? schedule = await _syncScheduleRepository!.GetByProviderAccountIdAsync(accountId, cancellationToken);
+                int? storedSeconds = schedule?.SnapshotIntervalSeconds;
+                if (storedSeconds is not > 0)
+                {
+                    return;
+                }
+
+                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(storedSeconds.Value);
+                MediaRequestPacer pacer = GetPacerForAccount(accountId);
+                pacer.MinInterval = ApplyStoredSpacingFloor(accountId, pacer.MinInterval);
+                _logger.LogInformation("{AccountName} spacing restored to {IntervalSeconds}s from the saved snapshot interval",
+                    RingAccountDisplayName, storedSeconds.Value);
+            }
+            catch (OperationCanceledException)
+            {
+                // Forget the cancelled load so a later download can retry it.
+                _ = _storedSpacingLoads.TryRemove(accountId, out _);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not load the saved snapshot interval for {AccountName}; keeping base spacing", RingAccountDisplayName);
+            }
+        }
+
+        /// <summary>Returns the larger of <paramref name="spacing"/> and the account's saved floor, so a saved spacing is never lowered.</summary>
+        private TimeSpan ApplyStoredSpacingFloor(Guid accountId, TimeSpan spacing)
+        {
+            return _storedSpacingFloors.TryGetValue(accountId, out TimeSpan floor) && floor > spacing ? floor : spacing;
         }
 
         /// <summary>Raises the ProviderRateLimited alert with the given details. Dispatch failures are logged, never thrown.</summary>
@@ -310,6 +368,9 @@ namespace VideoForensics.Providers.Ring.Services
                     deviceId, startDate, endDate);
 
                 Guid accountId = _cachedProviderAccountId ?? Guid.Empty;
+                // Must run before the first pacer turn so the saved spacing applies to this run's first request.
+                await EnsureStoredSpacingLoadedAsync(accountId, cancellationToken);
+
                 Session? session = _sessionProvider.GetSession(accountId);
                 if (session == null)
                 {

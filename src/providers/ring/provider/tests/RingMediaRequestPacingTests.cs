@@ -296,5 +296,133 @@ namespace VideoForensics.Providers.Ring.Tests
 
             repository.Verify(r => r.SetSnapshotIntervalSecondsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        /// <summary>Collects log entries so tests can assert a failure was logged without a Moq expression over generic Log.</summary>
+        private sealed class CapturingLogger : ILogger
+        {
+            public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                Entries.Add((logLevel, formatter(state, exception), exception));
+            }
+        }
+
+        private static (RingMediaDownloadService Service, Mock<ISyncScheduleRepository> Repository, CapturingLogger Logger) CreateServiceForStoredInterval(
+            int? storedSeconds, Exception? loadFailure = null)
+        {
+            var repository = new Mock<ISyncScheduleRepository>();
+            var logger = new CapturingLogger();
+            if (loadFailure != null)
+            {
+                _ = repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>())).ThrowsAsync(loadFailure);
+            }
+            else
+            {
+                _ = repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalSeconds = storedSeconds });
+            }
+
+            var service = new RingMediaDownloadService(
+                logger,
+                new Mock<ISessionProvider>().Object,
+                new Mock<IVideoForensicsDataClient>().Object,
+                metadataTagger: null,
+                notificationDispatcher: new Mock<INotificationDispatcher>().Object,
+                syncScheduleRepository: repository.Object);
+            service.SetActiveProviderAccountId(AccountA);
+            service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
+            return (service, repository, logger);
+        }
+
+        // Session is null in these tests, so the download returns before any Ring call; the stored interval loads first in the entry point.
+        private static Task<DownloadResult> DownloadOnceAsync(RingMediaDownloadService service) =>
+            service.DownloadVideosAsync("device-1", Path.GetTempPath(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, cancellationToken: CancellationToken.None);
+
+        [Fact]
+        public async Task DownloadVideosAsync_StoredIntervalAboveBase_RaisesPacerToStoredInterval()
+        {
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+
+            _ = await DownloadOnceAsync(service);
+
+            Assert.Equal(TimeSpan.FromSeconds(3), service.GetPacerForAccount(AccountA).MinInterval);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_StoredIntervalBelowBase_KeepsBaseSpacing()
+        {
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 1);
+
+            _ = await DownloadOnceAsync(service);
+
+            Assert.Equal(TimeSpan.FromSeconds(2), service.GetPacerForAccount(AccountA).MinInterval);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_NoStoredInterval_KeepsBaseSpacing()
+        {
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: null);
+
+            _ = await DownloadOnceAsync(service);
+
+            Assert.Equal(TimeSpan.FromSeconds(2), service.GetPacerForAccount(AccountA).MinInterval);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_RepositoryThrows_KeepsBaseSpacingLogsAndDoesNotThrow()
+        {
+            (RingMediaDownloadService service, _, CapturingLogger logger) =
+                CreateServiceForStoredInterval(storedSeconds: null, loadFailure: new InvalidOperationException("db-detail-xyz"));
+
+            _ = await DownloadOnceAsync(service);
+
+            Assert.Equal(TimeSpan.FromSeconds(2), service.GetPacerForAccount(AccountA).MinInterval);
+            (LogLevel level, string message, Exception? exception) = Assert.Single(logger.Entries, e => e.Message.Contains("snapshot interval"));
+            Assert.Equal(LogLevel.Error, level);
+            Assert.Contains("Ring account", message);
+            Assert.DoesNotContain(AccountA.ToString(), message);
+            Assert.IsType<InvalidOperationException>(exception);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_TwoDownloads_LoadsStoredIntervalOnce()
+        {
+            (RingMediaDownloadService service, Mock<ISyncScheduleRepository> repository, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+
+            _ = await DownloadOnceAsync(service);
+            _ = await DownloadOnceAsync(service);
+
+            repository.Verify(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SetRequestPacing_AfterStoredIntervalLoaded_KeepsStoredFloor()
+        {
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            _ = await DownloadOnceAsync(service);
+
+            // Each run calls SetRequestPacing; the restored spacing must survive it.
+            service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
+
+            Assert.Equal(TimeSpan.FromSeconds(3), service.GetPacerForAccount(AccountA).MinInterval);
+        }
+
+        [Fact]
+        public async Task SetRequestPacing_AfterIncidentFollowingStoredInterval_KeepsRaisedSpacing()
+        {
+            (RingMediaDownloadService service, _, _) = CreateServiceForStoredInterval(storedSeconds: 3);
+            _ = await DownloadOnceAsync(service);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+
+            // The incident saved 4 seconds; the next run's SetRequestPacing must not drop it back to 3.
+            service.SetRequestPacing(1, TimeSpan.FromSeconds(2));
+
+            Assert.Equal(TimeSpan.FromSeconds(4), service.GetPacerForAccount(AccountA).MinInterval);
+        }
     }
 }
