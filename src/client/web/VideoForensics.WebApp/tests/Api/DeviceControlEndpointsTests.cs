@@ -32,7 +32,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var control = new Mock<IDeviceControlService>();
 
             var result = await DeviceControlEndpoints.SetLightAsync(
-                "999", new SetLightRequest(true), devices.Object, control.Object, NullLogger.Instance, CancellationToken.None);
+                "999", new SetLightRequest(true), devices.Object, control.Object, NullLogger<DeviceControlLog>.Instance, CancellationToken.None);
 
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status404NotFound, status.StatusCode);
@@ -50,7 +50,7 @@ namespace VideoForensics.WebApp.Tests.Api
                 .ThrowsAsync(new InvalidOperationException("Device is linked to more than one Ring account; control refused"));
 
             var result = await DeviceControlEndpoints.SetLightAsync(
-                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger.Instance, CancellationToken.None);
+                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger<DeviceControlLog>.Instance, CancellationToken.None);
 
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status409Conflict, status.StatusCode);
@@ -67,7 +67,7 @@ namespace VideoForensics.WebApp.Tests.Api
                 .ThrowsAsync(new KeyNotFoundException("No Ring account is linked to this device"));
 
             var result = await DeviceControlEndpoints.SetLightAsync(
-                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger.Instance, CancellationToken.None);
+                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger<DeviceControlLog>.Instance, CancellationToken.None);
 
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status404NotFound, status.StatusCode);
@@ -80,7 +80,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var control = new Mock<IDeviceControlService>();
 
             var result = await DeviceControlEndpoints.SetVolumeAsync(
-                "123", new SetVolumeRequest(12), devices.Object, control.Object, NullLogger.Instance, CancellationToken.None);
+                "123", new SetVolumeRequest(12), devices.Object, control.Object, NullLogger<DeviceControlLog>.Instance, CancellationToken.None);
 
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, status.StatusCode);
@@ -97,7 +97,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var control = new Mock<IDeviceControlService>();
 
             var result = await DeviceControlEndpoints.SetLightAsync(
-                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger.Instance, CancellationToken.None);
+                "123", new SetLightRequest(true), devices.Object, control.Object, NullLogger<DeviceControlLog>.Instance, CancellationToken.None);
 
             var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status204NoContent, status.StatusCode);
