@@ -381,6 +381,132 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
+        private const string VideoEventCreatedAt = "2026-10-17T12:00:00Z";
+
+        private sealed class StubVideoHistoryHandler : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.ToString() ?? string.Empty;
+                string body;
+                if (url.Contains("oauth", StringComparison.OrdinalIgnoreCase))
+                {
+                    body = "{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}";
+                }
+                else if (url.Contains("share/download", StringComparison.Ordinal))
+                {
+                    body = "{\"url\":\"https://recordings.example.test/rec.mp4\"}";
+                }
+                else if (url.Contains("history", StringComparison.Ordinal))
+                {
+                    // First page has the one event; any older_than page is empty so paging terminates.
+                    body = url.Contains("older_than", StringComparison.Ordinal)
+                        ? "[]"
+                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}}]";
+                }
+                else
+                {
+                    body = "{}";
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+                });
+            }
+        }
+
+        private sealed class StubVideoDownloader : IVideoDownloader
+        {
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3, 4 }));
+
+            public async Task DownloadToFileAsync(string url, string saveAsPath)
+            {
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(saveAsPath)!);
+                await File.WriteAllBytesAsync(saveAsPath, new byte[] { 0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70 });
+            }
+        }
+
+        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync()
+        {
+            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(), new StubVideoDownloader(), null);
+            _ = await session.Authenticate();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
+            ILogger logger = new Mock<ILogger>().Object;
+            var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            var tagger = new Mock<IMediaMetadataTagger>();
+            _ = tagger.Setup(t => t.TagEventIdAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object, tagger.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            return (service, session);
+        }
+
+        private static void TryDeleteFolder(string folder)
+        {
+            if (Directory.Exists(folder))
+            {
+                try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_NewVideo_ReleasesFileHandle()
+        {
+            // Arrange - history returns one event; the stub downloader writes a non-empty mp4, which the service then hashes
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vhandle_new_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the file was newly written, and deleting the folder (no retry) must not hit a locked file
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.NotEmpty(Directory.GetFiles(folder, "*.mp4"));
+                Exception? ex = Record.Exception(() => Directory.Delete(folder, recursive: true));
+                Assert.Null(ex);
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_ExistingVideoOnDisk_ReleasesFileHandle()
+        {
+            // Arrange - pre-create the exact file the service computes for the event so the existing-file hash path runs
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vhandle_existing_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(folder);
+            string existingFile = Path.Combine(folder,
+                MediaFileNamer.FormatMediaFileName("cam", DateTime.Parse(VideoEventCreatedAt), "motion", "mp4"));
+            byte[] existingBytes = new byte[] { 9, 9, 9, 9 };
+            await File.WriteAllBytesAsync(existingFile, existingBytes);
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the pre-existing file was kept (not redownloaded), and the folder can be deleted without a locked file
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.Equal(existingBytes, await File.ReadAllBytesAsync(existingFile));
+                Exception? ex = Record.Exception(() => Directory.Delete(folder, recursive: true));
+                Assert.Null(ex);
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
         [Fact]
         public async Task DownloadSnapshotsAsync_WithInvalidDeviceId_ReturnsFailure()
         {
