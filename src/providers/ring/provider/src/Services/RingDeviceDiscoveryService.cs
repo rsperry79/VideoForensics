@@ -46,8 +46,10 @@ namespace VideoForensics.Providers.Ring.Services
         // few minutes is a non-issue here.
         private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10);
         private readonly SemaphoreSlim _locationsCacheLock = new(1, 1);
-        private IReadOnlyList<Location>? _cachedLocations;
-        private DateTime _cachedLocationsAt;
+        // Keyed by provider account id so one account never reads another's list. The parameterless
+        // overloads (no account id) share the LegacyAccountCacheKey slot.
+        private static readonly Guid LegacyAccountCacheKey = Guid.Empty;
+        private readonly Dictionary<Guid, (IReadOnlyList<Location> Locations, DateTime FetchedAt)> _cachedLocations = [];
 
         public RingDeviceDiscoveryService(
             ILogger logger,
@@ -82,11 +84,11 @@ namespace VideoForensics.Providers.Ring.Services
             await _locationsCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
+                if (_cachedLocations.TryGetValue(LegacyAccountCacheKey, out var cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached locations ({Count}), fetched {Age:F0}s ago",
-                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
-                    return _cachedLocations;
+                        cachedLocations.Locations.Count, (DateTime.UtcNow - cachedLocations.FetchedAt).TotalSeconds);
+                    return cachedLocations.Locations;
                 }
 
                 _logger.LogDebug("Fetching Ring locations");
@@ -169,8 +171,7 @@ namespace VideoForensics.Providers.Ring.Services
                     _logger.LogDebug("Location: {LocationName}", loc.Name);
                 }
 
-                _cachedLocations = result;
-                _cachedLocationsAt = DateTime.UtcNow;
+                _cachedLocations[LegacyAccountCacheKey] = (result, DateTime.UtcNow);
 
                 // Capture location metadata as audit trail (non-critical, fire-and-forget)
                 _ = Task.Run(() => PersistLocationMetadataAsync(result, cancellationToken), cancellationToken);
@@ -271,7 +272,7 @@ namespace VideoForensics.Providers.Ring.Services
         // as this used to, sent the same expensive request N times per run for no benefit. On an
         // account already skating close to Ring's rate limit, that's real, avoidable load.
         private readonly SemaphoreSlim _allDevicesCacheLock = new(1, 1);
-        private (IReadOnlyList<Device> Devices, DateTime FetchedAt)? _cachedAllDevices;
+        private readonly Dictionary<Guid, (IReadOnlyList<Device> Devices, DateTime FetchedAt)> _cachedAllDevices = [];
 
         public async Task<IReadOnlyList<Device>> GetDevicesAsync(string locationId, CancellationToken cancellationToken = default)
         {
@@ -284,11 +285,11 @@ namespace VideoForensics.Providers.Ring.Services
             await _allDevicesCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedAllDevices.HasValue && DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt < CacheTtl)
+                if (_cachedAllDevices.TryGetValue(LegacyAccountCacheKey, out var cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached device list ({Count}), fetched {Age:F0}s ago",
-                        _cachedAllDevices.Value.Devices.Count, (DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt).TotalSeconds);
-                    return _cachedAllDevices.Value.Devices;
+                        cachedDevices.Devices.Count, (DateTime.UtcNow - cachedDevices.FetchedAt).TotalSeconds);
+                    return cachedDevices.Devices;
                 }
 
                 _logger.LogDebug("Fetching the account's full device list");
@@ -405,7 +406,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 ReadOnlyCollection<Device> readOnlyDevices = allAccountDevices.AsReadOnly();
-                _cachedAllDevices = (readOnlyDevices, DateTime.UtcNow);
+                _cachedAllDevices[LegacyAccountCacheKey] = (readOnlyDevices, DateTime.UtcNow);
                 return readOnlyDevices;
             }
             catch (Exception ex)
@@ -466,11 +467,11 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 IReadOnlyList<Location> result;
-                if (_cachedLocations != null && DateTime.UtcNow - _cachedLocationsAt < CacheTtl)
+                if (_cachedLocations.TryGetValue(providerAccountId, out var cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
-                        _cachedLocations.Count, (DateTime.UtcNow - _cachedLocationsAt).TotalSeconds);
-                    result = _cachedLocations;
+                        cachedLocations.Locations.Count, (DateTime.UtcNow - cachedLocations.FetchedAt).TotalSeconds);
+                    result = cachedLocations.Locations;
 
                     // The config and event calls below need a valid session even when the device list is cached.
                     await EnsureSessionValidAsync(session);
@@ -484,8 +485,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
 
                     result = fetched;
-                    _cachedLocations = result;
-                    _cachedLocationsAt = DateTime.UtcNow;
+                    _cachedLocations[providerAccountId] = (result, DateTime.UtcNow);
                 }
 
                 // Config and event feeds run on every call, cached or fresh. The cache only skips the device list fetch.
@@ -1055,11 +1055,11 @@ namespace VideoForensics.Providers.Ring.Services
             await _allDevicesCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedAllDevices.HasValue && DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt < CacheTtl)
+                if (_cachedAllDevices.TryGetValue(providerAccountId, out var cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached device list ({Count}) for {ProviderName} account, fetched {Age:F0}s ago",
-                        _cachedAllDevices.Value.Devices.Count, ProviderName, (DateTime.UtcNow - _cachedAllDevices.Value.FetchedAt).TotalSeconds);
-                    return _cachedAllDevices.Value.Devices;
+                        cachedDevices.Devices.Count, ProviderName, (DateTime.UtcNow - cachedDevices.FetchedAt).TotalSeconds);
+                    return cachedDevices.Devices;
                 }
 
                 _logger.LogDebug("Fetching device list for {ProviderName} account", ProviderName);
@@ -1175,7 +1175,7 @@ namespace VideoForensics.Providers.Ring.Services
                 IReadOnlyList<Device> result = deviceMap.Values.ToList().AsReadOnly();
                 _logger.LogInformation("Found {DeviceCount} devices for {ProviderName} account", result.Count, ProviderName);
 
-                _cachedAllDevices = (result, DateTime.UtcNow);
+                _cachedAllDevices[providerAccountId] = (result, DateTime.UtcNow);
 
                 return result;
             }
