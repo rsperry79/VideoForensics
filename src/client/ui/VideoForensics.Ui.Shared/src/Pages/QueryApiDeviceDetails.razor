@@ -1,0 +1,174 @@
+@page "/query/devices/{LocationId}/{DeviceId}"
+@using System.Globalization
+@using System.Reflection
+@using System.Text.Json
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Components
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services.QueryApi
+@using VideoForensics.Core.Providers.Common.Contracts
+@inject IDeviceDiscoveryService DeviceDiscoveryService
+@inject IStringLocalizer<QueryApiDeviceDetails> L
+@inject IStringLocalizer<SharedResources> SharedL
+
+<Breadcrumb Items="@BreadcrumbItems" />
+
+@if (!string.IsNullOrEmpty(_loadError))
+{
+    <div class="alert alert-danger mt-2">@_loadError</div>
+}
+else if (_loading)
+{
+    <p>@L["Loading"]</p>
+}
+else if (_device is null)
+{
+    <p data-testid="device-not-found">@L["DeviceNotFound"]</p>
+}
+else
+{
+    <h4 class="mb-4" data-testid="device-name">@QueryApiDrillDownHelpers.DeviceDisplayLabel(_device)</h4>
+
+    <div class="card border rounded p-4 mb-4">
+        <h5 class="mb-3">@L["SectionIdentity"]</h5>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">@L["LabelId"]</dt>
+            <dd class="col-sm-9" data-testid="device-id">@_device.Id</dd>
+            <dt class="col-sm-3">@L["LabelName"]</dt>
+            <dd class="col-sm-9">@_device.Name</dd>
+            <dt class="col-sm-3">@L["LabelType"]</dt>
+            <dd class="col-sm-9">@_device.Type</dd>
+            <dt class="col-sm-3">@L["LabelLocationId"]</dt>
+            <dd class="col-sm-9">@_device.LocationId</dd>
+        </dl>
+    </div>
+
+    <div class="card border rounded p-4 mb-4">
+        <h5 class="mb-3">@L["SectionStatus"]</h5>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">@L["LabelOnline"]</dt>
+            <dd class="col-sm-9" data-testid="device-status">@StatusText(_device.IsOnline)</dd>
+        </dl>
+    </div>
+
+    <div class="card border rounded p-4 mb-4">
+        <h5 class="mb-3">@L["SectionDetails"]</h5>
+        @if (_detailRows.Count == 0)
+        {
+            <p class="mb-0">@L["NoDetails"]</p>
+        }
+        else
+        {
+            <dl class="row mb-0">
+                @foreach (var row in _detailRows)
+                {
+                    <dt class="col-sm-3">@row.Label</dt>
+                    <dd class="col-sm-9">@row.Value</dd>
+                }
+            </dl>
+        }
+    </div>
+
+    @if (_device.Metadata is { Count: > 0 })
+    {
+        <div class="card border rounded p-4 mb-4">
+            <h5 class="mb-3">@L["SectionMetadata"]</h5>
+            <dl class="row mb-0">
+                @foreach (var kvp in _device.Metadata)
+                {
+                    <dt class="col-sm-3">@kvp.Key</dt>
+                    <dd class="col-sm-9">@kvp.Value</dd>
+                }
+            </dl>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public string LocationId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string DeviceId { get; set; } = string.Empty;
+
+    private Device? _device;
+    private bool _loading = true;
+    private string? _loadError;
+    private List<(string Label, string Value)> _detailRows = new();
+
+    private List<(string Label, string? Url)> BreadcrumbItems =>
+    [
+        (SharedL["Sources"], "/accounts"),
+        (SharedL["Query API"], "/query"),
+        (L["BreadcrumbDevices"], "/query/devices"),
+        (_device is null ? DeviceId : QueryApiDrillDownHelpers.DeviceDisplayLabel(_device), null)
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        _device = null;
+        try
+        {
+            var devices = await DeviceDiscoveryService.GetDevicesAsync(LocationId, CancellationToken.None);
+            _device = devices.FirstOrDefault(d => d.Id == DeviceId);
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["FailedToGetDevice", ex.Message];
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        _detailRows = BuildDetailRows(_device);
+    }
+
+    private string StatusText(bool? isOnline) =>
+        isOnline switch
+        {
+            null => L["Unknown"],
+            true => L["Yes"],
+            false => L["No"]
+        };
+
+    // One label/value row per populated provider detail field. A null property means the provider did not
+    // supply it, so it is omitted rather than shown as a value.
+    private List<(string Label, string Value)> BuildDetailRows(Device? device)
+    {
+        var rows = new List<(string Label, string Value)>();
+        if (device?.Details is null)
+        {
+            return rows;
+        }
+
+        foreach (var property in typeof(DeviceDetailFields).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var value = property.GetValue(device.Details);
+            if (value is null)
+            {
+                continue;
+            }
+
+            rows.Add((L["Detail_" + property.Name], FormatValue(value)));
+        }
+
+        return rows;
+    }
+
+    // Scalars render as text; lists join their items; anything structured (zones, settings) renders as compact JSON.
+    private string FormatValue(object value) =>
+        value switch
+        {
+            bool b => b ? L["Yes"] : L["No"],
+            string s => s,
+            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty,
+            System.Collections.IEnumerable list when value is not string => string.Join(", ", list.Cast<object>().Select(FormatScalarOrJson)),
+            _ => JsonSerializer.Serialize(value)
+        };
+
+    private static string FormatScalarOrJson(object item) =>
+        item is string or bool or IFormattable ? item.ToString() ?? string.Empty : JsonSerializer.Serialize(item);
+}

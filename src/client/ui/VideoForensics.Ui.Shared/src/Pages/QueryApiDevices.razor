@@ -15,6 +15,7 @@
 @inject IStringLocalizer<QueryApiDevices> L
 @inject IStringLocalizer<SharedResources> SharedL
 @inject IQueryApiFilterState FilterState
+@inject NavigationManager NavigationManager
 
 <Breadcrumb Items="@BreadcrumbItems" />
 
@@ -55,7 +56,6 @@
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <ForensicGrid TItem="Device"
                     DataSource="@_devices"
-                    ToInspector="@ToDeviceInspector"
                     OnRowSelected="@OnDeviceRowSelected"
                     Columns="@DeviceGridColumns"
                     ExportFileName="devices.csv"
@@ -116,7 +116,6 @@
     private bool _devicesLoading;
     private string? _devicesError;
     private List<Device>? _devices;
-    private DateTime _devicesRetrievedAt;
 
     private async Task RunDevicesAsync()
     {
@@ -124,7 +123,6 @@
         _devicesError = null;
         try
         {
-            _devicesRetrievedAt = DateTime.UtcNow;
             var devices = await DeviceDiscoveryService.GetDevicesAsync(FilterState.LocationId ?? string.Empty, CancellationToken.None);
             _devices = devices.ToList();
         }
@@ -142,16 +140,14 @@
     private IReadOnlyList<QueryApiSelectOption> LocationOptions =>
         (_locations ?? []).Select(l => new QueryApiSelectOption(l.Id, QueryApiDrillDownHelpers.LocationDisplayLabel(l))).ToList();
 
-    // Row selection: selecting a device sets the shared device selection used by the Events subpage
+    // Row selection: sets the shared device selection used by the Events subpage, then opens the device detail page.
+    // No inspector is shown for devices; the detail page is the drill-down.
     private Task OnDeviceRowSelected(Device device)
     {
         FilterState.SetDeviceId(QueryApiDrillDownHelpers.DrillDownDeviceId(device));
+        var locationId = FilterState.LocationId ?? string.Empty;
+        NavigationManager.NavigateTo($"/query/devices/{Uri.EscapeDataString(locationId)}/{Uri.EscapeDataString(device.Id)}");
         return Task.CompletedTask;
-    }
-
-    private InspectorModel ToDeviceInspector(Device device)
-    {
-        return DeviceInspectorMapper.ToInspector(device, FilterState.LocationId ?? string.Empty, _devicesRetrievedAt);
     }
 
     private RenderFragment DeviceGridColumns => __builder =>
