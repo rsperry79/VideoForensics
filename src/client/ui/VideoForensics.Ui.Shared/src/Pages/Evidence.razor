@@ -15,6 +15,7 @@
 @using VideoForensics.Ui.Shared.Services.Scope
 @using VideoForensics.Ui.Shared.Components.Inspector
 @using VideoForensics.Ui.Shared.Components.Evidence
+@using VideoForensics.Ui.Shared.Components.Scope
 @implements IDisposable
 @inject IMediaContentUrlProvider MediaUrlProvider
 @inject IDeviceRepository DeviceRepository
@@ -50,9 +51,7 @@ else if (_vm is null)
 else
 {
     <PageRightPanelContent>
-        <div class="right-panel-section">
-            <h6>@L["PageTitle"]</h6>
-        </div>
+        <ScopeRail />
     </PageRightPanelContent>
 
     <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mb-4">

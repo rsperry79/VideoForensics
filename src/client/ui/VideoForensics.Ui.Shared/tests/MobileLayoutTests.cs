@@ -23,6 +23,7 @@ public class MobileFiltersSheet_Rendering_Tests : BunitContext
 {
     public MobileFiltersSheet_Rendering_Tests()
     {
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         JSInterop.Mode = JSRuntimeMode.Loose;
 
         // Register Syncfusion services required by SfButton

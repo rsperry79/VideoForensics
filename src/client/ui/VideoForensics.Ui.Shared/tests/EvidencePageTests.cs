@@ -100,6 +100,7 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         Services.AddLocalization();
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
 
         // Only exercised by Grid-view tests, but harmless to register unconditionally.
         ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<EvidenceItem>, TestSfGrid>();

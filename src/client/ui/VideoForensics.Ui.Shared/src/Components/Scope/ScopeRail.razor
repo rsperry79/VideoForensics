@@ -11,6 +11,9 @@
 @using VideoForensics.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 @inject IDeviceRepository DeviceRepository
+@inject IProviderAccountRepository ProviderAccountRepository
+@inject ILocationRepository LocationRepository
+@inject IUserRepository UserRepository
 @inject ICaseRepository CaseRepository
 @inject CaseState CaseState
 @inject PairedSessionState SessionState
@@ -55,16 +58,35 @@
         }
         else
         {
+            <div class="scope-section" data-testid="scope-provider-account">
+                <div class="scope-section-label">@L["ScopeProvider"]</div>
+                <select class="scope-case-select" data-testid="scope-provider-filter" aria-label="@L["ScopeProvider"]" @onchange="OnProviderPicked">
+                    <option value="" selected="@(_providerFilter is null)">@L["ScopeAllProviders"]</option>
+                    @foreach (var provider in _providerNames)
+                    {
+                        <option value="@provider" selected="@(_providerFilter == provider)">@provider</option>
+                    }
+                </select>
+                <div class="scope-section-label">@L["ScopeAccount"]</div>
+                <select class="scope-case-select" data-testid="scope-account-filter" aria-label="@L["ScopeAccount"]" @onchange="OnAccountPicked">
+                    <option value="" selected="@(_accountFilter is null)">@L["ScopeAllAccounts"]</option>
+                    @foreach (var account in AccountOptions)
+                    {
+                        <option value="@account.Id" selected="@(_accountFilter == account.Id)">@_accountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
+                    }
+                </select>
+            </div>
+
             <div class="scope-section">
                 <div class="scope-section-label">@L["ScopeDevices"]</div>
-                @if (_devices.Count == 0)
+                @if (_visibleDevices.Count == 0)
                 {
                     <div class="scope-hint">@L["ScopeNoDevices"]</div>
                 }
                 else
                 {
                     <div class="scope-device-list">
-                        @foreach (var device in _devices)
+                        @foreach (var device in _visibleDevices)
                         {
                             <label class="scope-device-item">
                                 <input type="checkbox"
@@ -127,6 +149,13 @@
     private const string DateInputFormat = "yyyy-MM-dd";
 
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private List<ProviderAccount> _accounts = new();
+    private Dictionary<Guid, string> _accountNames = new();
+    private IReadOnlyList<DeviceOwnership> _ownership = Array.Empty<DeviceOwnership>();
+    private IReadOnlyList<string> _providerNames = Array.Empty<string>();
+    private string? _providerFilter;
+    private Guid? _accountFilter;
     private bool _devicesLoaded = false;
     private bool _deviceLoadError = false;
     private string _searchDraft = string.Empty;
@@ -154,6 +183,11 @@
         {
             _deviceLoadError = true;
             _devicesLoaded = true;
+        }
+
+        if (!_deviceLoadError)
+        {
+            await LoadOwnershipAsync();
         }
 
         try
@@ -240,6 +274,103 @@
         if (newUri != currentUri)
         {
             Nav.NavigateTo(newUri, new NavigationOptions { ReplaceHistoryEntry = true });
+        }
+    }
+
+    /// <summary>
+    /// Loads the provider accounts and their locations so devices can be narrowed by provider and account.
+    /// A failure leaves the filters empty and every device visible rather than hiding the device list.
+    /// </summary>
+    private async Task LoadOwnershipAsync()
+    {
+        try
+        {
+            _accounts = (await ProviderAccountRepository.ListAsync(CancellationToken.None)).ToList();
+            var locationIdsByAccount = new Dictionary<Guid, IReadOnlyList<Guid>>();
+            foreach (var account in _accounts)
+            {
+                var locations = await LocationRepository.ListByProviderAccountIdAsync(account.Id, CancellationToken.None);
+                locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
+            }
+
+            _ownership = ScopeDeviceFilter.BuildOwnership(_devices, _accounts, locationIdsByAccount);
+            _providerNames = _accounts.Select(a => a.ProviderName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        catch
+        {
+            _accounts = new List<ProviderAccount>();
+            _ownership = Array.Empty<DeviceOwnership>();
+            _providerNames = Array.Empty<string>();
+        }
+
+        await LoadAccountNamesAsync();
+        RecomputeVisibleDevices();
+    }
+
+    /// <summary>Shows the operator-facing user name for each account, falling back to the provider name.</summary>
+    private async Task LoadAccountNamesAsync()
+    {
+        _accountNames = new Dictionary<Guid, string>();
+        foreach (var account in _accounts)
+        {
+            var name = account.ProviderName;
+            try
+            {
+                var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
+                if (user is not null)
+                {
+                    name = user.DisplayName;
+                }
+            }
+            catch
+            {
+                // Keep the provider name when the user lookup fails.
+            }
+
+            _accountNames[account.Id] = name;
+        }
+    }
+
+    private IEnumerable<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
+
+    private void RecomputeVisibleDevices()
+    {
+        _visibleDevices = ScopeDeviceFilter.Filter(_devices, _ownership, _providerFilter, _accountFilter).ToList();
+    }
+
+    private void OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        _providerFilter = string.IsNullOrWhiteSpace(value) ? null : value;
+
+        // An account outside the newly picked provider can no longer be selected.
+        if (_accountFilter is not null && !AccountOptions.Any(a => a.Id == _accountFilter))
+        {
+            _accountFilter = null;
+        }
+
+        ApplyFilters();
+    }
+
+    private void OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        _accountFilter = Guid.TryParse(value, out var parsed) ? parsed : null;
+        ApplyFilters();
+    }
+
+    /// <summary>
+    /// Recomputes the visible device list and, while a provider or account filter is active, scopes the
+    /// investigation to exactly the visible devices. Clearing the filters keeps the current device selection.
+    /// </summary>
+    private void ApplyFilters()
+    {
+        RecomputeVisibleDevices();
+
+        if (_providerFilter is not null || _accountFilter is not null)
+        {
+            var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
+            ScopeState.Set(ScopeState.Current with { DeviceIds = visibleIds });
         }
     }
 
