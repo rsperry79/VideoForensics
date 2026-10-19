@@ -218,6 +218,54 @@
   <data name="Detail_Zones" xml:space="preserve">
     <value>Zones</value>
   </data>
+  <data name="ControlDndApply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="ControlDndLabel" xml:space="preserve">
+    <value>Do not disturb seconds (1 to 86400)</value>
+  </data>
+  <data name="ControlFailed" xml:space="preserve">
+    <value>The device did not accept the command. Try again.</value>
+  </data>
+  <data name="ControlInvalidRange" xml:space="preserve">
+    <value>Enter a value in the allowed range.</value>
+  </data>
+  <data name="ControlLightOff" xml:space="preserve">
+    <value>Light off</value>
+  </data>
+  <data name="ControlLightOn" xml:space="preserve">
+    <value>Light on</value>
+  </data>
+  <data name="ControlMotionOff" xml:space="preserve">
+    <value>Motion off</value>
+  </data>
+  <data name="ControlMotionOn" xml:space="preserve">
+    <value>Motion on</value>
+  </data>
+  <data name="ControlNightOff" xml:space="preserve">
+    <value>Night mode off</value>
+  </data>
+  <data name="ControlNightOn" xml:space="preserve">
+    <value>Night mode on</value>
+  </data>
+  <data name="ControlSirenOff" xml:space="preserve">
+    <value>Siren off</value>
+  </data>
+  <data name="ControlSirenOn" xml:space="preserve">
+    <value>Siren on</value>
+  </data>
+  <data name="ControlSuccess" xml:space="preserve">
+    <value>Command sent to the device.</value>
+  </data>
+  <data name="ControlVolumeApply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="ControlVolumeLabel" xml:space="preserve">
+    <value>Volume (0 to 11)</value>
+  </data>
+  <data name="ControlsTitle" xml:space="preserve">
+    <value>Controls</value>
+  </data>
   <data name="DeviceNotFound" xml:space="preserve">
     <value>Device not found in this location.</value>
   </data>

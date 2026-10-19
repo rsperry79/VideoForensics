@@ -17,6 +17,7 @@ using Xunit;
 public class QueryApiDeviceDetailsPage_Tests : BunitContext
 {
     private readonly Mock<IDeviceDiscoveryService> _discovery = new();
+    private readonly Mock<IDeviceControlService> _control = new();
 
     public QueryApiDeviceDetailsPage_Tests()
     {
@@ -30,6 +31,7 @@ public class QueryApiDeviceDetailsPage_Tests : BunitContext
         Services.AddSingleton(new ScopeState());
         Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
         Services.AddSingleton(_discovery.Object);
+        Services.AddSingleton(_control.Object);
         Services.AddLogging();
         SetRendererInfo(new RendererInfo("Server", true));
     }
@@ -85,5 +87,68 @@ public class QueryApiDeviceDetailsPage_Tests : BunitContext
         var cut = RenderDetails("loc-1", "dev-missing");
 
         Assert.Equal("Device not found in this location.", cut.Find("[data-testid='device-not-found']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void DeviceControls_DoorbotType_ShowsLightAndMotionButtonsNotDnd()
+    {
+        SetupDevices(new Device("dev-1", "Front Door", "doorbot", "loc-1", true));
+
+        var cut = RenderDetails("loc-1", "dev-1");
+
+        Assert.Single(cut.FindAll("[data-testid='control-light-on']"));
+        Assert.Single(cut.FindAll("[data-testid='control-motion-on']"));
+        Assert.Empty(cut.FindAll("[data-testid='control-dnd-apply']"));
+    }
+
+    [Fact]
+    public void DeviceControls_ChimeType_ShowsDndControlNotLight()
+    {
+        SetupDevices(new Device("chime-1", "Hall Chime", "chime", "loc-1", true));
+
+        var cut = RenderDetails("loc-1", "chime-1");
+
+        Assert.Single(cut.FindAll("[data-testid='control-dnd-apply']"));
+        Assert.Empty(cut.FindAll("[data-testid='control-light-on']"));
+    }
+
+    [Fact]
+    public void DeviceControls_LightOnClicked_CallsSetLightOnceWithProviderId()
+    {
+        SetupDevices(new Device("dev-1", "Front Door", "doorbot", "loc-1", true));
+        var cut = RenderDetails("loc-1", "dev-1");
+
+        cut.Find("[data-testid='control-light-on']").Click();
+
+        _control.Verify(c => c.SetLightAsync("dev-1", true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void DeviceControls_ControlFails_ShowsLocalizedFailureNotExceptionText()
+    {
+        SetupDevices(new Device("dev-1", "Front Door", "doorbot", "loc-1", true));
+        _control.Setup(c => c.SetLightAsync("dev-1", true, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("POST https://api.ring.com/devices/dev-1 failed"));
+        var cut = RenderDetails("loc-1", "dev-1");
+
+        cut.Find("[data-testid='control-light-on']").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "The device did not accept the command. Try again.",
+            cut.Find("[data-testid='control-message']").TextContent.Trim()));
+        Assert.DoesNotContain("api.ring.com", cut.Markup);
+    }
+
+    [Fact]
+    public void DeviceControls_VolumeOutOfRange_ShowsInvalidRangeAndCallsNothing()
+    {
+        SetupDevices(new Device("dev-1", "Front Door", "doorbot", "loc-1", true));
+        var cut = RenderDetails("loc-1", "dev-1");
+
+        cut.Find("[data-testid='control-volume-input']").Change("12");
+        cut.Find("[data-testid='control-volume-apply']").Click();
+
+        Assert.Equal("Enter a value in the allowed range.", cut.Find("[data-testid='control-message']").TextContent.Trim());
+        _control.Verify(c => c.SetVolumeAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

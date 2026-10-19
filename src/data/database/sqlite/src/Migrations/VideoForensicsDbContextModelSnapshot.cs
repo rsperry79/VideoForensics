@@ -1227,6 +1227,36 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceMotionSnoozePresets");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceSettingChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OldValue")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "ChangedAtUtc");
+
+                    b.ToTable("DeviceSettingChanges");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceZone", b =>
                 {
                     b.Property<Guid>("Id")

@@ -502,6 +502,7 @@ app.MapAuthMethodEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
+app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();

@@ -53,6 +53,33 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(location.Id, retrieved.Id);
         }
 
+        [Fact]
+        public async Task LocationRepository_ListProviderAccountsForLocation_ReturnsOnlyLinkedAccounts()
+        {
+            Location location = TestDataBuilder.BuildLocation();
+            await _repository.AddAsync(location, CancellationToken.None);
+            ProviderAccount linked = await AddAccountAsync();
+            _ = await AddAccountAsync();
+
+            await _repository.LinkToProviderAccountAsync(location.Id, linked.Id, CancellationToken.None);
+            IReadOnlyList<ProviderAccount> accounts = await _repository.ListProviderAccountsForLocationAsync(location.Id, CancellationToken.None);
+
+            ProviderAccount only = Assert.Single(accounts);
+            Assert.Equal(linked.Id, only.Id);
+        }
+
+        [Fact]
+        public async Task LocationRepository_ListProviderAccountsForUnlinkedLocation_ReturnsEmpty()
+        {
+            Location location = TestDataBuilder.BuildLocation();
+            await _repository.AddAsync(location, CancellationToken.None);
+            _ = await AddAccountAsync();
+
+            IReadOnlyList<ProviderAccount> accounts = await _repository.ListProviderAccountsForLocationAsync(location.Id, CancellationToken.None);
+
+            Assert.Empty(accounts);
+        }
+
         private async Task<ProviderAccount> AddAccountAsync()
         {
             ProviderAccount account = TestDataBuilder.BuildProviderAccount();

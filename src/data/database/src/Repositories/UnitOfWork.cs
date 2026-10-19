@@ -78,11 +78,17 @@ namespace VideoForensics.Data.Database.Repositories
         public IActionLogRepository ActionLog => new UnitOfWorkActionLogRepository(_db, _logger);
         public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
         public IDeviceConfigRepository DeviceConfig => new UnitOfWorkDeviceConfigRepository(_db, _logger);
+        public IDeviceSettingChangeRepository DeviceSettingChanges => new UnitOfWorkDeviceSettingChangeRepository(_db, _logger);
         public IProviderReconciliationRepository ProviderReconciliation => new UnitOfWorkProviderReconciliationRepository(_db, _logger);
         public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
         public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
+
+        public async Task SaveChangesAsync(CancellationToken ct)
+        {
+            _ = await _db.SaveChangesAsync(ct);
+        }
     }
 
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
@@ -237,6 +243,16 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Location?> GetAsync(Guid locationId, CancellationToken ct)
         {
             return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.Id == locationId));
+        }
+
+        /// <summary>Lists the provider accounts linked to a location (any provider).</summary>
+        public Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.LocationId == locationId)
+                .Join(_db.ProviderAccounts.AsNoTracking(), l => l.ProviderAccountId, pa => pa.Id, (l, pa) => pa)
+                .ToList());
         }
 
         /// <summary>Lists the locations linked to a provider account.</summary>
@@ -808,6 +824,29 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             return Task.CompletedTask;
+        }
+    }
+
+    internal class UnitOfWorkDeviceSettingChangeRepository : IDeviceSettingChangeRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkDeviceSettingChangeRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        // Synchronous add on the transaction's DbContext: the rows commit with the Device update that produced them.
+        public Task AddRangeAsync(IEnumerable<DeviceSettingChange> changes, CancellationToken ct)
+        {
+            _db.DeviceSettingChanges.AddRange(changes);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<DeviceSettingChange>> ListByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<DeviceSettingChange>)_db.DeviceSettingChanges.AsNoTracking()
+                .Where(dsc => dsc.DeviceId == deviceId)
+                .OrderByDescending(dsc => dsc.ChangedAtUtc)
+                .ToList());
         }
     }
 

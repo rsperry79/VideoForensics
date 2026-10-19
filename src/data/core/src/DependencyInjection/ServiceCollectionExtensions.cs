@@ -41,6 +41,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
+            services.TryAddScoped<IStoredDeviceReader, StoredDeviceDiscoveryReader>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)
             _ = services.AddScoped<IIntegrityVerificationService, IntegrityVerificationService>();
