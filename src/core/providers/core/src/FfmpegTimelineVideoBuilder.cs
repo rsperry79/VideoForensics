@@ -27,7 +27,9 @@ namespace VideoForensics.Core.Providers.Core
     /// </list>
     /// Overlapping clips resolve to the one that starts first; the later clip is trimmed to start where the earlier
     /// one ends. Declared windows are used for placement, so a part of a declared window past the clip's real end is a
-    /// gap: it still cuts stills, but nothing fills it. Gaps between segments are not filled.
+    /// gap: it still cuts stills, and the gap is filled with black frames like any other uncovered time.
+    /// Stills are true to time: each shows until the next still is captured, or for its hold if that comes first.
+    /// Uncovered time of a second or more between covered segments is filled with black frames, so the video runs in real time.
     /// </para>
     /// </summary>
     public sealed class FfmpegTimelineVideoBuilder : ITimelineVideoBuilder
@@ -89,7 +91,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // Size only the media the plan actually encodes: a clip that contributes nothing must not fail the build.
-            var sourcePaths = segments.Select(s => s.SourcePath).Distinct().ToList();
+            var sourcePaths = segments.Select(s => s.SourcePath).OfType<string>().Distinct().ToList();
             (bool sized, int width, int height, string? sizeError) = await TryProbeTargetSizeAsync(sourcePaths, ct);
             if (!sized)
             {
@@ -118,7 +120,7 @@ namespace VideoForensics.Core.Providers.Core
                 for (int i = 0; i < segments.Count; i++)
                 {
                     string segmentPath = Path.Combine(workDir, $"segment-{i:D4}.mp4");
-                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath), ProcessTimeout(_timeout, segments[i].Seconds), ct);
+                    string? encodeError = await TryRunFfmpegAsync(BuildSegmentArgs(segments[i], filter, segmentPath, width, height), ProcessTimeout(_timeout, segments[i].Seconds), ct);
                     if (encodeError is not null)
                     {
                         return new TimelineVideoResult(false, null, encodeError, 0);
@@ -222,17 +224,31 @@ namespace VideoForensics.Core.Providers.Core
             List<ClipWindow> windows = ResolveClipWindows(clips);
             var items = new List<(DateTimeOffset Start, Segment Segment)>();
 
-            foreach (TimelineStill still in stills)
+            // True to time: a still shows until the next still is captured, or for its hold if that comes first.
+            // stills are ordered by capture time, so the next still is the one after it in the list.
+            for (int index = 0; index < stills.Count; index++)
             {
+                TimelineStill still = stills[index];
                 DateTimeOffset stillEnd = still.CapturedAt + still.Hold;
+                if (index + 1 < stills.Count && stills[index + 1].CapturedAt < stillEnd)
+                {
+                    stillEnd = stills[index + 1].CapturedAt;
+                }
+
                 List<ClipWindow> overlapping = windows
                     .Where(w => w.End > still.CapturedAt && w.Start < stillEnd)
                     .ToList();
 
                 if (overlapping.Count == 0)
                 {
-                    // An uncut still keeps the original rule: its hold rounded to whole seconds, minimum 1 s.
-                    items.Add((still.CapturedAt, new Segment(false, still.ImagePath, TimeSpan.Zero, WholeSecondHold(still.Hold))));
+                    // An uncut still keeps the original rule (its shown time rounded to whole seconds, minimum 1 s), but it
+                    // shows only until the next capture. Two captures at the same instant leave the first with nothing to show.
+                    if (stillEnd <= still.CapturedAt)
+                    {
+                        continue;
+                    }
+
+                    items.Add((still.CapturedAt, new Segment(false, still.ImagePath, TimeSpan.Zero, WholeSecondHold(stillEnd - still.CapturedAt))));
                     continue;
                 }
 
@@ -257,7 +273,24 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // OrderBy is stable, so equal start times keep their insertion order.
-            return items.OrderBy(i => i.Start).Select(i => i.Segment).ToList();
+            // Fill every gap of a second or more between covered time with black frames, so the video runs in real time.
+            // A shorter gap is dropped, like a cut-off remainder. Leading and trailing time is not filled.
+            var ordered = items.OrderBy(i => i.Start).ToList();
+            var result = new List<Segment>(ordered.Count);
+            DateTimeOffset? covered = null;
+            foreach ((DateTimeOffset start, Segment segment) in ordered)
+            {
+                if (covered is { } coveredUntil && start - coveredUntil >= TimeSpan.FromSeconds(1))
+                {
+                    result.Add(new Segment(false, null, TimeSpan.Zero, WholeSecondHold(start - coveredUntil)));
+                }
+
+                result.Add(segment);
+                DateTimeOffset end = start + TimeSpan.FromSeconds(segment.Seconds);
+                covered = covered is { } prior && prior > end ? prior : end;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -467,18 +500,20 @@ namespace VideoForensics.Core.Providers.Core
         /// Builds the ffmpeg arguments that encode one segment to a 1 fps MP4 of exactly its whole-second frame count.
         /// A still loops for its duration; a clip is seeked to the offset of its used window and read for its duration.
         /// </summary>
-        private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath)
+        private static IReadOnlyList<string> BuildSegmentArgs(Segment segment, string filter, string segmentPath, int width, int height)
         {
             string seconds = segment.Seconds.ToString(CultureInfo.InvariantCulture);
             var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error" };
             if (segment.IsClip)
             {
                 string offset = segment.Offset.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                args.AddRange(new[] { "-ss", offset, "-t", seconds, "-i", segment.SourcePath });
+                args.AddRange(new[] { "-ss", offset, "-t", seconds, "-i", segment.SourcePath! });
             }
             else
             {
-                args.AddRange(new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
+                args.AddRange(segment.SourcePath is null
+                    ? new[] { "-f", "lavfi", "-i", $"color=c=black:s={width}x{height}:r=1", "-t", seconds }
+                    : new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
             }
 
             args.AddRange(new[]
@@ -665,7 +700,7 @@ namespace VideoForensics.Core.Providers.Core
         /// <param name="SourcePath">The still image or clip video file.</param>
         /// <param name="Offset">For a clip, how far into the clip the used window starts.</param>
         /// <param name="Seconds">Whole-second frame count of the segment.</param>
-        private sealed record Segment(bool IsClip, string SourcePath, TimeSpan Offset, int Seconds);
+        private sealed record Segment(bool IsClip, string? SourcePath, TimeSpan Offset, int Seconds);
 
         /// <summary>A clip with its ffprobe-measured real duration in seconds.</summary>
         private sealed record ProbedClip(TimelineClip Clip, double RealSeconds);
