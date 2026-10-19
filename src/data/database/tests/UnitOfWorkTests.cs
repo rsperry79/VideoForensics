@@ -67,20 +67,56 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UnitOfWork_DeviceSettingChangeAddRange_RollsBackWithDeviceUpdate()
         {
-            // Change history must commit or roll back with the Device write it describes.
+            // Change history must commit or roll back with the Device write it describes. The writes are flushed with
+            // SaveChangesAsync before the throw, so the rollback is proven against rows that actually reached the database.
+            var userId = Guid.NewGuid();
+            var accountId = Guid.NewGuid();
+            var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
+            const string originalFirmware = "1.0.0";
+
+            _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                User user = TestDataBuilder.BuildUser();
+                user.Id = userId;
+                await context.Users.AddAsync(user, CancellationToken.None);
+
+                ProviderAccount account = TestDataBuilder.BuildProviderAccount(userId);
+                account.Id = accountId;
+                await context.ProviderAccounts.AddAsync(account, CancellationToken.None);
+
+                Location location = TestDataBuilder.BuildLocation();
+                location.Id = locationId;
+                await context.Locations.AddAsync(location, CancellationToken.None);
+
+                Device device = TestDataBuilder.BuildDevice(locationId);
+                device.Id = deviceId;
+                device.FirmwareVersion = originalFirmware;
+                device.LightBrightness = 1;
+                await context.Devices.AddAsync(device, CancellationToken.None);
+                return null;
+            }, CancellationToken.None);
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<object?>(async context =>
             {
+                Device device = (await context.Devices.GetAsync(deviceId, CancellationToken.None))!;
+                device.FirmwareVersion = "2.0.0";
+                await context.Devices.UpdateAsync(device, CancellationToken.None);
                 await context.DeviceSettingChanges.AddRangeAsync(
                 [
                     new DeviceSettingChange { Id = Guid.NewGuid(), DeviceId = deviceId, FieldName = "LightBrightness", OldValue = "1", NewValue = "2", ChangedAtUtc = DateTime.UtcNow }
                 ], CancellationToken.None);
+
+                // Flush both writes to the database inside the transaction, then fail before commit.
+                await context.SaveChangesAsync(CancellationToken.None);
                 throw new InvalidOperationException("boom");
             }, CancellationToken.None));
 
             VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
-            Assert.False(ctx.DeviceSettingChanges.Any(c => c.DeviceId == deviceId));
+            Device? stored = await ctx.Devices.FirstOrDefaultAsync(d => d.Id == deviceId);
+            Assert.NotNull(stored);
+            Assert.Equal(originalFirmware, stored.FirmwareVersion);
+            Assert.Equal(0, await ctx.DeviceSettingChanges.CountAsync(c => c.DeviceId == deviceId));
         }
 
         [Fact]

@@ -1204,6 +1204,94 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task UpdateDeviceDetailFields_ChangedChimeVolume_RecordsOneRow()
+        {
+            // Arrange: stored ChimeVolume 1, incoming 2. Identity, name and the response hash must be left alone.
+            Guid deviceId = Guid.NewGuid();
+            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1, ApiResponseHash = "hash-kept" };
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<object?>> work, CancellationToken ct) => await work(mockContext.Object));
+            List<DeviceSettingChange>? recorded = null;
+            _ = mockChangeRepoInContext
+                .Setup(x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()))
+                .Callback((IEnumerable<DeviceSettingChange> changes, CancellationToken _) => recorded = changes.ToList())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(recorded);
+            DeviceSettingChange change = Assert.Single(recorded);
+            Assert.Equal(deviceId, change.DeviceId);
+            Assert.Equal("ChimeVolume", change.FieldName);
+            Assert.Equal("1", change.OldValue);
+            Assert.Equal("2", change.NewValue);
+            Assert.Equal(2, existing.ChimeVolume);
+            Assert.Equal("device-upd", existing.ProviderDeviceId);
+            Assert.Equal("Chime", existing.Name);
+            Assert.Equal("hash-kept", existing.ApiResponseHash);
+            mockDeviceRepoInContext.Verify(x => x.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateDeviceDetailFields_UnknownDevice_WritesNothing()
+        {
+            // Arrange: no device row for the id.
+            Guid deviceId = Guid.NewGuid();
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync((Device?)null);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<object?>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details, CancellationToken.None);
+
+            // Assert
+            mockDeviceRepoInContext.Verify(x => x.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockChangeRepoInContext.Verify(x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateDeviceDetailFields_NullStoredValue_RecordsNothing()
+        {
+            // Arrange: ChimeVolume has never been populated (null); incoming is 2.
+            Guid deviceId = Guid.NewGuid();
+            var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-null", Name = "Chime", Type = "chime", ChimeVolume = null };
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetAsync(deviceId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<object?>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<object?>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details, CancellationToken.None);
+
+            // Assert: the value is written, but first population is not recorded as a change.
+            Assert.Equal(2, existing.ChimeVolume);
+            mockChangeRepoInContext.Verify(x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_CreatesNewDeviceWhenMovedToNewLocation()
         {
             // Arrange: device was previously recorded under a placeholder/synthetic location.

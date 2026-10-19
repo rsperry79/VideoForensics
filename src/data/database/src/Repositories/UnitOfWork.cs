@@ -84,6 +84,11 @@ namespace VideoForensics.Data.Database.Repositories
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
         public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
+
+        public async Task SaveChangesAsync(CancellationToken ct)
+        {
+            _ = await _db.SaveChangesAsync(ct);
+        }
     }
 
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
@@ -238,6 +243,16 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Location?> GetAsync(Guid locationId, CancellationToken ct)
         {
             return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.Id == locationId));
+        }
+
+        /// <summary>Lists the provider accounts linked to a location (any provider).</summary>
+        public Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.LocationId == locationId)
+                .Join(_db.ProviderAccounts.AsNoTracking(), l => l.ProviderAccountId, pa => pa.Id, (l, pa) => pa)
+                .ToList());
         }
 
         /// <summary>Lists the locations linked to a provider account.</summary>

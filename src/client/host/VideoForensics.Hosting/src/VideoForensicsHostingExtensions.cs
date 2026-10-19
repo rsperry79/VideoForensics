@@ -84,6 +84,18 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>
+        /// Builds the Ring device-control service (light, siren, volume, night mode, motion detection, do-not-disturb).
+        /// </summary>
+        private static VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService BuildRingDeviceControlService(IServiceProvider provider)
+        {
+            return new RingDeviceControlService(
+                provider.GetRequiredService<ILogger<RingDeviceControlService>>(),
+                provider.GetRequiredService<ISessionProvider>(),
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IDeviceRepository>(),
+                provider.GetRequiredService<VideoForensics.Data.Common.Contracts.ILocationRepository>());
+        }
+
+        /// <summary>
         /// Builds a Ring device discovery service for use by multiple registration paths.
         /// </summary>
         private static IDeviceDiscoveryService BuildRingDeviceDiscoveryService(IServiceProvider provider)
@@ -304,6 +316,7 @@ namespace VideoForensics.Hosting
                 services.TryAddScoped<RingAccountSettingsPersister>(BuildRingAccountSettingsPersister);
                 _ = services.AddScoped<IMediaDownloadService>(BuildRingMediaDownloadService);
                 _ = services.AddScoped<IEventAndConfigService>(BuildRingEventAndConfigService);
+                _ = services.AddScoped<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService>(BuildRingDeviceControlService);
                 _ = services.AddScoped<IVideoProvider>(provider =>
                     new RingVideoProvider(
                         provider.GetRequiredService<ILogger<RingVideoProvider>>(),
@@ -676,6 +689,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService, RemoteDeviceControlService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);

@@ -52,6 +52,9 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Exposes DbSets for detection-related entities to enable direct persistence in transactions.</summary>
         IDetectionEntityProvider DetectionEntities { get; }
+
+        /// <summary>Flushes pending changes to the database within the shared transaction. The transaction still commits or rolls back as a whole.</summary>
+        Task SaveChangesAsync(CancellationToken ct);
     }
 
     /// <summary>Provides access to detection-related DbSets within a transaction context.</summary>

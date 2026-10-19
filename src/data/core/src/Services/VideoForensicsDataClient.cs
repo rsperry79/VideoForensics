@@ -122,6 +122,40 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public async Task UpdateDeviceDetailFieldsAsync(
+            Guid deviceId,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields details,
+            CancellationToken ct)
+        {
+            try
+            {
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    Device? device = await context.Devices.GetAsync(deviceId, ct);
+                    if (device == null)
+                    {
+                        _logger.LogDebug("Device detail fields not stored: device {DeviceId} is not in the database yet", deviceId);
+                        return null;
+                    }
+
+                    var changes = new List<DeviceSettingChange>();
+                    ApplyDetailFields(device, details, changes);
+                    await context.Devices.UpdateAsync(device, ct);
+                    if (changes.Count > 0)
+                    {
+                        // Same unit of work as the Device update: history commits or rolls back with it.
+                        await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                    }
+                    return null;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating detail fields for device {DeviceId}", deviceId);
+                throw;
+            }
+        }
+
         public async Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct)
         {
             try
