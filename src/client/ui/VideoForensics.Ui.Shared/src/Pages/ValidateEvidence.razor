@@ -226,8 +226,12 @@ else
     private async Task SelectTabAsync(string tab)
     {
         _activeTab = tab;
+
+        // Each tab builds its own filter controls, so they start at "all" on every switch. The page's device state
+        // resets with them, and so does the integrity selection, which would otherwise outlive the filter it was made under.
         _visibleDevices = _devices;
         _isFiltered = false;
+        _integrityDeviceIds = Array.Empty<string>();
         if (_isAuthenticated)
         {
             await ReattachAsync(ActiveKind);
