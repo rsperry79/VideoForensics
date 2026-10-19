@@ -55,7 +55,9 @@ namespace VideoForensics.Core.Providers.Core
                 foreach (var raw in pathVariable.Split(Path.PathSeparator))
                 {
                     var entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
-                    if (entry.Length > 0)
+                    // A relative entry resolves against the working directory, and a found directory is persisted as configuration.
+                    // Only rooted entries are candidates; an unexpanded %VAR% (unset variable) is not rooted either.
+                    if (entry.Length > 0 && Path.IsPathRooted(entry))
                     {
                         yield return entry;
                     }

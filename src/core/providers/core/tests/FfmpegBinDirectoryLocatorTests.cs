@@ -136,13 +136,43 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
-        public void DefaultCandidates_PathEntryWithEnvironmentVariable_IsExpanded()
+        public void DefaultCandidates_PathEntryWithEnvironmentVariable_IsExpandedToItsValue()
         {
-            var pathVariable = "%SystemRoot%\\bin";
+            // Set the variable here rather than reading a machine variable: the expected value must not come from the code under test.
+            const string variable = "VF_LOCATOR_TEST_ROOT";
+            Environment.SetEnvironmentVariable(variable, "C:\vf-tools");
+            try
+            {
+                var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\app", $"%{variable}%\bin").ToList();
 
-            var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\\app", pathVariable).ToList();
+                Assert.Equal(new[] { "C:\app", "C:\vf-tools\bin" }, result);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(variable, null);
+            }
+        }
 
-            Assert.Equal(new[] { "C:\\app", Environment.ExpandEnvironmentVariables("%SystemRoot%\\bin") }, result);
+        [Fact]
+        public void DefaultCandidates_RelativeEntries_AreNotCandidates()
+        {
+            // A relative entry would resolve against the working directory and could be persisted as configuration.
+            var pathVariable = string.Join(Path.PathSeparator, ".", "bin", "C:\tools");
+
+            var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\app", pathVariable).ToList();
+
+            Assert.Equal(new[] { "C:\app", "C:\tools" }, result);
+        }
+
+        [Fact]
+        public void DefaultCandidates_UnsetEnvironmentVariable_IsNotACandidate()
+        {
+            const string variable = "VF_LOCATOR_TEST_UNSET";
+            Environment.SetEnvironmentVariable(variable, null);
+
+            var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\app", $"%{variable}%\bin").ToList();
+
+            Assert.Equal(new[] { "C:\app" }, result);
         }
     }
 }
