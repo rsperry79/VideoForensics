@@ -24,9 +24,18 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
+            PostIntegrityAsync(new StartIntegrityJobRequest(deviceId), ct);
+
+        /// <inheritdoc />
+        public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)
         {
-            var request = new StartIntegrityJobRequest(deviceId);
+            ArgumentNullException.ThrowIfNull(deviceIds);
+            return PostIntegrityAsync(new StartIntegrityJobRequest(null, deviceIds.ToArray()), ct);
+        }
+
+        private async Task<EvidenceValidationJob> PostIntegrityAsync(StartIntegrityJobRequest request, CancellationToken ct)
+        {
             string jsonContent = JsonSerializer.Serialize(request);
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/evidence/jobs/integrity")
             {
@@ -100,7 +109,8 @@ namespace VideoForensics.Hosting.Remote
                     MediaItemId = r.MediaItemId,
                     FileName = r.FileName,
                     Status = r.Status,
-                    FailureReason = r.FailureReason
+                    FailureReason = r.FailureReason,
+                    DeviceId = r.DeviceId
                 }).ToList(),
                 Discrepancies = dto.Discrepancies?.Select(d => d.ToDomain()).ToList(),
                 ErrorMessage = dto.ErrorMessage

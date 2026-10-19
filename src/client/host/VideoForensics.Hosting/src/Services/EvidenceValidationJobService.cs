@@ -24,7 +24,26 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
+            StartIntegrity(deviceId is { } id ? new[] { id } : null, ct);
+
+        /// <inheritdoc />
+        public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(deviceIds);
+            if (deviceIds.Count == 0)
+            {
+                throw new ArgumentException("At least one device is required.", nameof(deviceIds));
+            }
+
+            return StartIntegrity(deviceIds.Distinct().ToArray(), ct);
+        }
+
+        /// <summary>
+        /// Starts the one integrity job, or returns the running one. A null list means every device; a list verifies
+        /// those devices in turn inside the same job.
+        /// </summary>
+        private Task<EvidenceValidationJob> StartIntegrity(IReadOnlyList<Guid>? deviceIds, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             JobRecord job;
@@ -43,7 +62,7 @@ namespace VideoForensics.Hosting.Services
             }
 
             _logger.LogInformation("Evidence integrity check started");
-            _ = Task.Run(() => RunIntegrityAsync(job, deviceId));
+            _ = Task.Run(() => RunIntegrityAsync(job, deviceIds));
             return Task.FromResult(snapshot);
         }
 
@@ -86,14 +105,33 @@ namespace VideoForensics.Hosting.Services
             }
         }
 
-        private async Task RunIntegrityAsync(JobRecord job, Guid? deviceId)
+        private async Task RunIntegrityAsync(JobRecord job, IReadOnlyList<Guid>? deviceIds)
         {
             try
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
-                IReadOnlyList<MediaVerificationResult> results = await validation.VerifyLocalIntegrityAsync(
-                    deviceId, CancellationToken.None, new DelegateProgress(line => AppendLog(job, line)));
+                var progress = new DelegateProgress(line => AppendLog(job, line));
+
+                List<MediaVerificationResult> results = new();
+                if (deviceIds is null)
+                {
+                    results.AddRange(await validation.VerifyLocalIntegrityAsync(null, CancellationToken.None, progress));
+                }
+                else
+                {
+                    // One job, one device after another; each result is tagged so the combined list stays attributable.
+                    foreach (Guid deviceId in deviceIds)
+                    {
+                        IReadOnlyList<MediaVerificationResult> deviceResults =
+                            await validation.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None, progress);
+                        foreach (MediaVerificationResult result in deviceResults)
+                        {
+                            result.DeviceId = deviceId;
+                            results.Add(result);
+                        }
+                    }
+                }
 
                 lock (_gate)
                 {

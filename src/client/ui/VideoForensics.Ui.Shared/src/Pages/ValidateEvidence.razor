@@ -41,10 +41,11 @@ else
         <PageRightPanelContent>
             <div class="right-panel-section">
                 <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
-                <span>@(_isFiltered ? L["SelectDeviceFilter"] : L["AllDevicesFilter"])</span>
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@(_isFiltered ? L["SelectDeviceFilter"] : L["AllDevicesFilter"])">
-                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-                </SfDropDownList>
+                <span>@L["AllDevicesFilter"]</span>
+                <SfMultiSelect TValue="string[]" TItem="KeyValuePair<string,string>" Value="@_integrityDeviceIds" ValueChanged="@OnIntegrityDevicesPicked"
+                    DataSource="@DeviceOptions" Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["AllDevicesFilter"]">
+                    <MultiSelectFieldSettings Text="Value" Value="Key"></MultiSelectFieldSettings>
+                </SfMultiSelect>
             </div>
         </PageRightPanelContent>
 
@@ -64,6 +65,14 @@ else
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
+                        <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
+                            <Template>
+                                @{
+                                    var result = (MediaVerificationResult)context;
+                                    @(result.DeviceId is { } id ? DeviceNameOf(id) : "-")
+                                }
+                            </Template>
+                        </GridColumn>
                         <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
                         <GridColumn HeaderText="@L["ColStatus"]" MinWidth="100">
                             <Template>
@@ -160,6 +169,7 @@ else
     // visible list is reset to every device to keep the page and its controls in step.
     private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
     private bool _isFiltered;
+    private string[] _integrityDeviceIds = Array.Empty<string>();
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -168,7 +178,11 @@ else
     {
         _isFiltered = result.IsFiltered;
         _visibleDevices = result.Devices.ToList();
-        // No device is picked for the operator: while filtered, verification needs an explicit device.
+        // Drop any chosen integrity device the filter now hides.
+        var visibleIds = _visibleDevices.Select(d => d.Id.ToString()).ToHashSet();
+        _integrityDeviceIds = _integrityDeviceIds.Where(visibleIds.Contains).ToArray();
+
+        // The reconcile tab still picks one device; clear it when the filter hides it.
         if (!_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
         {
             _selectedDeviceId = string.Empty;
@@ -217,16 +231,31 @@ else
 
     private async Task VerifyIntegrityAsync()
     {
-        // While filtered, an empty selection must not verify every device.
-        if (_isFiltered && string.IsNullOrEmpty(_selectedDeviceId))
+        // One job covers the chosen devices. With nothing chosen, a filter covers every device it leaves visible,
+        // and no filter covers every device. A filter that leaves no device verifies nothing.
+        IReadOnlyList<Guid>? targets = _integrityDeviceIds.Length > 0
+            ? _visibleDevices.Where(d => _integrityDeviceIds.Contains(d.Id.ToString())).Select(d => d.Id).ToList()
+            : _isFiltered ? _visibleDevices.Select(d => d.Id).ToList() : null;
+
+        if (targets is { Count: 0 })
         {
             return;
         }
 
-        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
-        var job = await EvidenceValidationJobs.StartIntegrityAsync(deviceId, CancellationToken.None);
+        var job = targets is null
+            ? await EvidenceValidationJobs.StartIntegrityAsync(null, CancellationToken.None)
+            : await EvidenceValidationJobs.StartIntegrityForDevicesAsync(targets, CancellationToken.None);
         Track(EvidenceValidationJobKind.Integrity, job);
     }
+
+    private Task OnIntegrityDevicesPicked(string[] selected)
+    {
+        _integrityDeviceIds = selected ?? Array.Empty<string>();
+        return Task.CompletedTask;
+    }
+
+    private string DeviceNameOf(Guid deviceId) =>
+        _devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? deviceId.ToString("D")[..8];
 
     private async Task ReconcileAsync()
     {

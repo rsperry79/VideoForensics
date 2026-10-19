@@ -11,7 +11,8 @@ namespace VideoForensics.Core.Api.Contracts
         Guid MediaItemId,
         string FileName,
         string Status,
-        string? FailureReason
+        string? FailureReason,
+        Guid? DeviceId = null
     );
 
     /// <summary>
@@ -89,8 +90,9 @@ namespace VideoForensics.Core.Api.Contracts
     );
 
     /// <summary>Request to start a local integrity job.</summary>
-    /// <param name="DeviceId">Device to verify, or null to verify all.</param>
-    public record StartIntegrityJobRequest(Guid? DeviceId);
+    /// <param name="DeviceId">Device to verify, or null to verify all. Used when <paramref name="DeviceIds"/> is absent.</param>
+    /// <param name="DeviceIds">Devices to verify in one job. When present and non-empty it takes precedence over <paramref name="DeviceId"/>.</param>
+    public record StartIntegrityJobRequest(Guid? DeviceId, IReadOnlyList<Guid>? DeviceIds = null);
 
     /// <summary>Request to start a provider reconciliation job.</summary>
     /// <param name="DeviceId">Database device ID.</param>

@@ -50,7 +50,8 @@ namespace VideoForensics.Hosting.Remote
                 MediaItemId = dto.MediaItemId,
                 FileName = dto.FileName,
                 Status = dto.Status,
-                FailureReason = dto.FailureReason
+                FailureReason = dto.FailureReason,
+                DeviceId = dto.DeviceId
             }).ToList();
         }
 

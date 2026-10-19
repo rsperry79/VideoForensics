@@ -125,4 +125,7 @@
   <data name="BreadcrumbAnalyze" xml:space="preserve">
     <value>Analyze</value>
   </data>
+  <data name="ColDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
 </root>
