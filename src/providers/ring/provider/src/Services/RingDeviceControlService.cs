@@ -132,8 +132,8 @@ namespace VideoForensics.Providers.Ring.Services
 
             IEnumerable<(long Id, string? Description)> candidates = (devices.Doorbots ?? new List<Doorbot>())
                 .Concat(devices.AuthorizedDoorbots ?? new List<Doorbot>())
-                .Select(d => ((long)d.Id, d.Description))
-                .Concat((devices.StickupCams ?? new List<StickupCam>()).Where(c => c.Id.HasValue).Select(c => (c.Id!.Value, c.Description)));
+                .Select(d => ((long)d.Id, (string?)d.Description))
+                .Concat((devices.StickupCams ?? new List<StickupCam>()).Where(c => c.Id.HasValue).Select(c => (c.Id!.Value, (string?)c.Description)));
 
             return FindName(candidates, id);
         }
@@ -144,7 +144,7 @@ namespace VideoForensics.Providers.Ring.Services
             ct.ThrowIfCancellationRequested();
 
             IEnumerable<(long Id, string? Description)> candidates = (devices.Chimes ?? new List<Chime>())
-                .Select(c => ((long)c.Id, c.Description));
+                .Select(c => ((long)c.Id, (string?)c.Description));
 
             return FindName(candidates, id);
         }
