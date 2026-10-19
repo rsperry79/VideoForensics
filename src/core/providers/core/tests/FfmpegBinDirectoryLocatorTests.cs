@@ -122,5 +122,15 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             Assert.Equal(new[] { "C:\\app", "C:\\first", "C:\\second", "C:\\third" }, result);
         }
+
+        [Fact]
+        public void DefaultCandidates_PathEntryWithEnvironmentVariable_IsExpanded()
+        {
+            var pathVariable = "%SystemRoot%\\bin";
+
+            var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\\app", pathVariable).ToList();
+
+            Assert.Equal(new[] { "C:\\app", Environment.ExpandEnvironmentVariables("%SystemRoot%\\bin") }, result);
+        }
     }
 }

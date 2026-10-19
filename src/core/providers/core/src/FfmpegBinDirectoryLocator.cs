@@ -29,8 +29,10 @@ namespace VideoForensics.Core.Providers.Core
         }
 
         /// <summary>
-        /// Yields the app base directory first, then each PATH entry in order. Empty entries are skipped and surrounding quotes are trimmed.
-        /// Pure function (no environment access) so it can be tested with arbitrary inputs.
+        /// Yields the app base directory first, then each PATH entry in order. Empty entries are skipped, surrounding quotes are trimmed,
+        /// and %VAR% references are expanded: a process started with an unexpanded PATH (e.g. one that still holds
+        /// "%LOCALAPPDATA%\...") would otherwise never match the real directory.
+        /// Pure apart from variable expansion, so it can be tested with arbitrary inputs.
         /// </summary>
         public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, string? pathVariable)
         {
@@ -43,7 +45,7 @@ namespace VideoForensics.Core.Providers.Core
 
             foreach (var raw in pathVariable.Split(Path.PathSeparator))
             {
-                var entry = raw.Trim().Trim('"').Trim();
+                var entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
                 if (entry.Length > 0)
                 {
                     yield return entry;
