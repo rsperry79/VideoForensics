@@ -55,4 +55,33 @@ public class LeftPanelContentServiceTests
         Assert.Null(service.Content);
         Assert.Equal(0, raised);
     }
+
+    [Fact]
+    public void Clear_ByAnEarlierOwner_KeepsTheContentAnotherPageSetSince()
+    {
+        // Blazor sets the next page's content before disposing the previous page, so the previous
+        // page's Clear must not wipe content that now belongs to the next page.
+        var service = new LeftPanelContentService();
+        var previousPage = new object();
+        var nextPage = new object();
+        RenderFragment next = _ => { };
+        service.Set(_ => { }, previousPage);
+        service.Set(next, nextPage);
+
+        service.Clear(previousPage);
+
+        Assert.Same(next, service.Content);
+    }
+
+    [Fact]
+    public void Clear_ByCurrentOwner_ClearsItsContent()
+    {
+        var service = new LeftPanelContentService();
+        var page = new object();
+        service.Set(_ => { }, page);
+
+        service.Clear(page);
+
+        Assert.Null(service.Content);
+    }
 }
