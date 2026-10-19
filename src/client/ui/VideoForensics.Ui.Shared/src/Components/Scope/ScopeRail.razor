@@ -35,7 +35,8 @@
                 }
             </select>
 
-            @if (CaseState.ActiveCase is not null && CaseState.ScopeDiffersFromCase && _role.HasValue && _role >= OperatorRole.Review)
+            @* A no-match filter is not a device list, so it can't be saved to a case as one. *@
+            @if (CaseState.ActiveCase is not null && CaseState.ScopeDiffersFromCase && _role.HasValue && _role >= OperatorRole.Review && !ScopeState.Current.MatchesNoDevices)
             {
                 <button type="button" class="scope-quick-range-btn" data-testid="save-scope-to-case" @onclick="OnSaveScopeToCaseClicked">@L["ScopeSaveToCase"]</button>
             }
@@ -327,8 +328,13 @@
 
         if (_providerFilter is not null || _accountFilter is not null)
         {
+            // A filter that matches no device is recorded explicitly: an empty DeviceIds alone would mean "all devices".
             var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
-            ScopeState.Set(ScopeState.Current with { DeviceIds = visibleIds });
+            ScopeState.Set(ScopeState.Current with { DeviceIds = visibleIds, MatchesNoDevices = visibleIds.Count == 0 });
+        }
+        else
+        {
+            ScopeState.Set(ScopeState.Current with { MatchesNoDevices = false });
         }
     }
 

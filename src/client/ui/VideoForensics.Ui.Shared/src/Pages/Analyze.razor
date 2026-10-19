@@ -78,7 +78,12 @@ else
         </small>
     </div>
 
-    @if (_activeAnalysis == "reports")
+    @if (ScopeState.Current.MatchesNoDevices)
+    {
+        // A filter that matches no device has nothing to analyze; the panels would otherwise treat it as all devices.
+        <div class="alert alert-info" data-testid="no-devices-match">@L["NoDevicesMatchFilter"]</div>
+    }
+    else if (_activeAnalysis == "reports")
     {
         <ForensicReportPanel Scope="ScopeState.Current" Devices="_devices" />
     }

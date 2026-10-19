@@ -41,8 +41,8 @@ else
         <PageRightPanelContent>
             <div class="right-panel-section">
                 <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
-                <span>@L["AllDevicesFilter"]</span>
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["AllDevicesFilter"]">
+                <span>@(_isFiltered ? L["SelectDeviceFilter"] : L["AllDevicesFilter"])</span>
+                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@(_isFiltered ? L["SelectDeviceFilter"] : L["AllDevicesFilter"])">
                     <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
                 </SfDropDownList>
             </div>
@@ -168,9 +168,10 @@ else
     {
         _isFiltered = result.IsFiltered;
         _visibleDevices = result.Devices.ToList();
-        if (_isFiltered && !_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
+        // No device is picked for the operator: while filtered, verification needs an explicit device.
+        if (!_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
         {
-            _selectedDeviceId = _visibleDevices.FirstOrDefault()?.Id.ToString() ?? string.Empty;
+            _selectedDeviceId = string.Empty;
         }
 
         return Task.CompletedTask;
@@ -216,8 +217,8 @@ else
 
     private async Task VerifyIntegrityAsync()
     {
-        // A filter that leaves no device must not verify every device.
-        if (_isFiltered && _visibleDevices.Count == 0)
+        // While filtered, an empty selection must not verify every device.
+        if (_isFiltered && string.IsNullOrEmpty(_selectedDeviceId))
         {
             return;
         }

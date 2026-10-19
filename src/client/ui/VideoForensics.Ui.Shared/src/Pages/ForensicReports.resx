@@ -125,4 +125,7 @@
   <data name="ScopeSummary" xml:space="preserve">
     <value>Scope: {0} device(s) selected | {1} to {2}</value>
   </data>
+  <data name="NoDevicesMatchFilter" xml:space="preserve">
+    <value>No devices match the Provider or Account filter. Clear the filter or choose another to run this analysis.</value>
+  </data>
 </root>
