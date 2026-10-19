@@ -279,5 +279,34 @@ namespace VideoForensics.Core.Providers.Core.Tests
             Assert.True(result.Success, result.ErrorMessage);
             Assert.Equal(6, result.FrameCount);
         }
+
+        [Fact]
+        public async Task BuildAsync_GapBetweenStills_RecordsTheGapRangeInTheFile()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                return;
+            }
+
+            // Same layout as the gap-fill test: A covers frames 0-1, the gap is frames 2-4, B is frame 5.
+            // The gap range is written as half-open output seconds, so the file says the gap is [2, 5).
+            string a = Path.Combine(_workDir, "a.png");
+            string b = Path.Combine(_workDir, "b.png");
+            CreatePng(a, 320, 240);
+            CreatePng(b, 320, 240);
+            var stills = new[]
+            {
+                new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
+                new TimelineStill(b, T0.AddSeconds(5), TimeSpan.FromSeconds(1)),
+            };
+            string output = Path.Combine(_workDir, "out.mp4");
+            var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
+
+            TimelineVideoResult result = await builder.BuildAsync(new TimelineVideoRequest(stills, output), CancellationToken.None);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            string comment = RunTool("ffprobe", "-v", "error", "-show_entries", "format_tags=comment", "-of", "csv=p=0", output).Trim();
+            Assert.Equal("vf_gap_seconds=2:5", comment);
+        }
     }
 }

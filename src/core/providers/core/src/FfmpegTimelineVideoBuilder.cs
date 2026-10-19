@@ -135,7 +135,7 @@ namespace VideoForensics.Core.Providers.Core
                 // Join inside the work directory and move into place only on success. A failed or cancelled join must not
                 // leave a truncated file at the requested path, or destroy an earlier good file there.
                 string joinedPath = Path.Combine(workDir, "joined.mp4");
-                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath), ProcessTimeout(_timeout, frameCount), ct);
+                string? joinError = await TryRunFfmpegAsync(BuildConcatArgs(listPath, joinedPath, GapRanges(segments)), ProcessTimeout(_timeout, frameCount), ct);
                 if (joinError is not null || !File.Exists(joinedPath))
                 {
                     return new TimelineVideoResult(false, null, joinError ?? "ffmpeg did not write the output file.", 0);
@@ -530,9 +530,37 @@ namespace VideoForensics.Core.Providers.Core
         /// Builds the ffmpeg arguments that join the encoded segments without re-encoding. The segments share one
         /// encoder setup, so stream copy is valid.
         /// </summary>
-        private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath)
+        /// <summary>
+        /// The output seconds that are black gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
+        /// none. The file records these so a viewer can tell gap-filled time from captured stills and clips.
+        /// </summary>
+        private static string GapRanges(IReadOnlyList<Segment> segments)
         {
-            return new[] { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-y", outputPath };
+            var parts = new List<string>();
+            int cursor = 0;
+            foreach (Segment segment in segments)
+            {
+                if (segment.SourcePath is null)
+                {
+                    parts.Add($"{cursor}:{cursor + segment.Seconds}");
+                }
+
+                cursor += segment.Seconds;
+            }
+
+            return string.Join(",", parts);
+        }
+
+        private static IReadOnlyList<string> BuildConcatArgs(string listPath, string outputPath, string gapRanges)
+        {
+            var args = new List<string> { "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy" };
+            if (gapRanges.Length > 0)
+            {
+                args.AddRange(new[] { "-metadata", "comment=vf_gap_seconds=" + gapRanges });
+            }
+
+            args.AddRange(new[] { "-y", outputPath });
+            return args;
         }
 
         /// <summary>
