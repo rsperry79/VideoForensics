@@ -130,5 +130,34 @@ namespace VideoForensics.WebApp.Tests
             Assert.True(string.IsNullOrEmpty(config.CloudflaredPath));
             configService.Verify(cs => cs.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task SetSoftwarePathsAsync_RelativeCloudflaredPath_ReturnsBadRequestAndChangesNothing()
+        {
+            var (config, configService, auditLog) = CreateMocks(cloudflaredPath: @"C:\old\cloudflared.exe");
+
+            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(null, "cloudflared.exe"), config, configService, auditLog);
+
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
+            Assert.Equal(@"C:\old\cloudflared.exe", config.CloudflaredPath);
+            configService.Verify(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SetSoftwarePathsAsync_SaveFails_RestoresPreviousValuesAndRethrows()
+        {
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: @"C:\old\bin", cloudflaredPath: null);
+            var binDir = CreateBinDirectory();
+            _ = configService.Setup(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("disk full"));
+
+            _ = await Assert.ThrowsAsync<IOException>(() =>
+                InvokeAsync(new SetSoftwarePathsRequest(binDir, null), config, configService, auditLog));
+
+            // The shared config must not keep a value that was never persisted.
+            Assert.Equal(@"C:\old\bin", config.FfmpegBinDirectory);
+            auditLog.Verify(al => al.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }
