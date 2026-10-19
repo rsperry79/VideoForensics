@@ -9,6 +9,7 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Services;
+using VideoForensics.Providers.Ring.Exceptions;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
@@ -45,9 +46,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        // Spaces Ring video requests. One request in flight and a minimum gap between request starts
-        // keeps an account's media pull under Ring's rate limit; set per run by SetRequestPacing.
-        private readonly MediaRequestPacer _pacer = new();
+        // Spaces Ring video requests with one pacer per provider account, so a rate limit on one account
+        // slows only that account. Each pacer starts at _baseRequestInterval (set per run by SetRequestPacing);
+        // a rate limit adds to that account's pacer, and the addition survives later SetRequestPacing calls.
+        private readonly ConcurrentDictionary<Guid, MediaRequestPacer> _pacers = new();
+        private TimeSpan _baseRequestInterval = TimeSpan.FromSeconds(1);
+
+        // Name used in rate-limit alerts. The account GUID is never shown to the user or logged.
+        private const string RingAccountDisplayName = "Ring account";
+        private readonly INotificationDispatcher? _notificationDispatcher;
 
         // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
         private TimeSpan? _lastRetryAfter;
@@ -58,7 +65,60 @@ namespace VideoForensics.Providers.Ring.Services
             SetMaxConcurrentDownloads(maxConcurrent);
             if (minRequestInterval >= TimeSpan.Zero)
             {
-                _pacer.MinInterval = minRequestInterval;
+                _baseRequestInterval = minRequestInterval;
+                foreach (MediaRequestPacer pacer in _pacers.Values)
+                {
+                    pacer.MinInterval = minRequestInterval + pacer.RateLimitPenalty;
+                }
+            }
+        }
+
+        /// <summary>Returns the request pacer for one provider account, creating it on first use.</summary>
+        internal MediaRequestPacer GetPacerForAccount(Guid accountId)
+        {
+            return _pacers.GetOrAdd(accountId, _ => new MediaRequestPacer(minInterval: _baseRequestInterval));
+        }
+
+        /// <summary>
+        /// Handles one 429 from Ring for <paramref name="accountId"/>: pauses that account's media requests for Retry-After
+        /// (60 seconds when absent), adds a second to its spacing, and raises an alert naming the account. A hard ban is
+        /// ignored here, because retrying it cannot succeed and it is not a per-request rate limit.
+        /// </summary>
+        internal async Task RecordThrottledAsync(Guid accountId, ThrottledException ex, CancellationToken cancellationToken)
+        {
+            if (ex.IsHardBan)
+            {
+                return;
+            }
+
+            MediaRequestPacer pacer = GetPacerForAccount(accountId);
+            pacer.RecordRateLimited(ex.RetryAfter);
+            TimeSpan pause = ex.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
+            _logger.LogWarning("{AccountName} was rate limited by Ring; pausing media requests for {PauseSeconds}s and spacing them {IntervalSeconds}s apart",
+                RingAccountDisplayName, pause.TotalSeconds, pacer.MinInterval.TotalSeconds);
+
+            if (_notificationDispatcher == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _notificationDispatcher.DispatchAsync(
+                    new NotificationEvent(
+                        EventType: "ProviderRateLimited",
+                        TimestampUtc: DateTime.UtcNow,
+                        OperatorId: null,
+                        PairedDeviceId: null,
+                        SourceIp: null,
+                        Details: $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
+                        Audience: NotificationAudience.AdminsOnly,
+                        Severity: NoticeSeverity.Alert),
+                    cancellationToken);
+            }
+            catch (Exception notifEx) when (notifEx is not OperationCanceledException)
+            {
+                _logger.LogWarning(notifEx, "Failed to dispatch rate limit alert for {AccountName}", RingAccountDisplayName);
             }
         }
 
@@ -121,12 +181,14 @@ namespace VideoForensics.Providers.Ring.Services
         // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
         private int _peakActiveDownloadsForBatch;
 
-        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null)
+        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
+            INotificationDispatcher? notificationDispatcher = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
             _metadataTagger = metadataTagger ?? new FfmpegMediaMetadataTagger(logger);
+            _notificationDispatcher = notificationDispatcher;
         }
 
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
@@ -174,7 +236,8 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
-                Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
+                Guid accountId = _cachedProviderAccountId ?? Guid.Empty;
+                Session? session = _sessionProvider.GetSession(accountId);
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -396,8 +459,17 @@ namespace VideoForensics.Providers.Ring.Services
                                 fetchedWithoutThrottle = await ThrottleRetry.RunAsync(
                                     () => RetryWithBackoffAsync(async () =>
                                     {
-                                        await _pacer.WaitTurnAsync(rateLimitCts.Token);
-                                        await session.GetDoorbotHistoryRecording(@event, fileName);
+                                        await GetPacerForAccount(accountId).WaitTurnAsync(rateLimitCts.Token);
+                                        try
+                                        {
+                                            await session.GetDoorbotHistoryRecording(@event, fileName);
+                                        }
+                                        catch (ThrottledException ex)
+                                        {
+                                            // Each 429 pauses this account and slows it by a second; the rethrow keeps the existing retry handling.
+                                            await RecordThrottledAsync(accountId, ex, rateLimitCts.Token);
+                                            throw;
+                                        }
                                     }, $"video for event {@event.Id}", rateLimitCts.Token),
                                     (wait, ct) =>
                                     {

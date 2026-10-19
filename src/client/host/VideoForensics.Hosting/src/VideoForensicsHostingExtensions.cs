@@ -117,7 +117,8 @@ namespace VideoForensics.Hosting
             return new RingMediaDownloadService(
                 provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
-                provider.GetRequiredService<IVideoForensicsDataClient>()
+                provider.GetRequiredService<IVideoForensicsDataClient>(),
+                notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>()
             );
         }
 
