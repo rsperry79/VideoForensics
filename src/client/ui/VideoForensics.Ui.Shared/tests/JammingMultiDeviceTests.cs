@@ -20,7 +20,7 @@ public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
     }
 
     [Fact]
-    public void SupersededLoad_DoesNotOverwriteTheNewerResult()
+    public async Task SupersededLoad_DoesNotOverwriteTheNewerResult()
     {
         var first = CreateTestDevice("First");
         var second = CreateTestDevice("Second");
@@ -34,9 +34,9 @@ public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
         var component = RenderPage();
 
         // Switch to the second device while the first is still in flight, then let the first finish.
-        component.InvokeAsync(() => ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { second.Id } })).GetAwaiter().GetResult();
+        await component.InvokeAsync(() => ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { second.Id } }));
         component.WaitForAssertion(() => Assert.Contains("across 1 device(s)", component.Markup));
-        component.InvokeAsync(() => gate.SetResult(new List<DeviceHealth>())).GetAwaiter().GetResult();
+        await component.InvokeAsync(() => gate.SetResult(new List<DeviceHealth>()));
 
         // Without the guard the superseded run would bump the shared count to 2.
         component.WaitForAssertion(() => Assert.Contains("across 1 device(s)", component.Markup));

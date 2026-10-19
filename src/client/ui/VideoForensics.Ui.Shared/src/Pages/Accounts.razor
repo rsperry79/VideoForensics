@@ -23,7 +23,7 @@
         <small style="font-weight: bold;">@L["FilterAccount"]</small>
         <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
             Placeholder="@L["AllAccounts"]" data-testid="accounts-account-filter"
-            ValueChange="@OnAccountFilterChanged">
+            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
             <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
         </SfDropDownList>
     </div>

@@ -27,12 +27,12 @@ else
         <div class="right-panel-section">
             <small style="font-weight: bold;">@L["FilterProvider"]</small>
             <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_providerFilterValue" DataSource="@ProviderFilterOptions"
-                Placeholder="@L["AllProviders"]" data-testid="notices-provider-filter" ValueChange="@OnProviderFilterChanged">
+                Placeholder="@L["AllProviders"]" data-testid="notices-provider-filter" ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnProviderFilterChanged(args))">
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
             </SfDropDownList>
             <small style="font-weight: bold;">@L["FilterAccount"]</small>
             <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
-                Placeholder="@L["AllAccounts"]" data-testid="notices-account-filter" ValueChange="@OnAccountFilterChanged">
+                Placeholder="@L["AllAccounts"]" data-testid="notices-account-filter" ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
             </SfDropDownList>
         </div>
