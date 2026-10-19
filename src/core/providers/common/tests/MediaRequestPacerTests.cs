@@ -36,5 +36,42 @@ namespace VideoForensics.Core.Providers.Common.Tests
 
             Assert.Empty(delays);
         }
+
+        [Fact]
+        public void RecordRateLimited_NoRetryAfter_AddsOneSecondToMinInterval()
+        {
+            var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
+
+            pacer.RecordRateLimited(null);
+
+            Assert.Equal(TimeSpan.FromSeconds(2), pacer.MinInterval);
+            Assert.Equal(TimeSpan.FromSeconds(1), pacer.RateLimitPenalty);
+        }
+
+        [Fact]
+        public void RecordRateLimited_CalledTwice_AddsTwoSecondsToMinInterval()
+        {
+            var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
+
+            pacer.RecordRateLimited(null);
+            pacer.RecordRateLimited(null);
+
+            Assert.Equal(TimeSpan.FromSeconds(3), pacer.MinInterval);
+        }
+
+        [Fact]
+        public async Task WaitTurnAsync_PauseLongerThanInterval_WaitsForPause()
+        {
+            DateTime now = Start;
+            var delays = new List<TimeSpan>();
+            var pacer = new MediaRequestPacer(() => now, (delay, _) => { delays.Add(delay); now += delay; return Task.CompletedTask; }, TimeSpan.FromSeconds(1));
+
+            await pacer.WaitTurnAsync(CancellationToken.None);
+            pacer.RecordRateLimited(TimeSpan.FromSeconds(7));
+            await pacer.WaitTurnAsync(CancellationToken.None);
+
+            Assert.Equal(TimeSpan.FromSeconds(7), Assert.Single(delays));
+            Assert.Equal(Start.AddSeconds(7), now);
+        }
     }
 }
