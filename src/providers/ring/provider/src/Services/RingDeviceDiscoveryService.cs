@@ -1290,7 +1290,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Skipping location metadata capture (non-critical operation failed)");
+                _logger.LogWarning(ex, "Skipping location metadata capture (non-critical operation failed)");
             }
         }
 

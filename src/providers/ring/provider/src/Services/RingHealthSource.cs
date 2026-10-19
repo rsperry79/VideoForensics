@@ -95,13 +95,13 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
+                            _logger.LogWarning(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
                             // Continue with next account
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing Ring account {ProviderName} (non-critical)", account.ProviderName);
+                        _logger.LogWarning(ex, "Error processing Ring account {ProviderName} (non-critical)", account.ProviderName);
                         // Continue with next account
                     }
                 }
@@ -110,7 +110,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch Ring device health telemetry for multi-account scenario (non-critical)");
+                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry for multi-account scenario (non-critical)");
                 return Array.Empty<DeviceHealthReading>();
             }
         }
@@ -145,7 +145,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch Ring device health telemetry (non-critical)");
+                _logger.LogWarning(ex, "Failed to fetch Ring device health telemetry (non-critical)");
                 return Array.Empty<DeviceHealthReading>();
             }
         }

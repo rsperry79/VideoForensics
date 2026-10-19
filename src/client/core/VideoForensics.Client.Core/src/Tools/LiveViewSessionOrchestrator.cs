@@ -183,7 +183,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to publish state change for live view session {SessionId} (non-critical)", session.Id);
+                _logger.LogWarning(ex, "Failed to publish state change for live view session {SessionId} (non-critical)", session.Id);
             }
         }
 
@@ -330,7 +330,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to score telemetry sample for live view session {SessionId}; persisting unscored (non-critical)", sessionId);
+                _logger.LogWarning(ex, "Failed to score telemetry sample for live view session {SessionId}; persisting unscored (non-critical)", sessionId);
                 return null;
             }
         }
@@ -350,7 +350,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to publish telemetry sample for live view session {SessionId} (non-critical)", sessionId);
+                _logger.LogWarning(ex, "Failed to publish telemetry sample for live view session {SessionId} (non-critical)", sessionId);
             }
         }
 
@@ -530,7 +530,7 @@ namespace VideoForensics.Client.Core.Tools
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to dispatch sustained mode notification for session {SessionId} (non-critical)", sessionId);
+                _logger.LogWarning(ex, "Failed to dispatch sustained mode notification for session {SessionId} (non-critical)", sessionId);
             }
 
             return session;

@@ -181,7 +181,7 @@ namespace VideoForensics.Hosting.Services
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
 
-                        _logger.LogDebug("Successfully pulled events for device");
+                        _logger.LogInformation("Successfully pulled events for device");
                         _logger.LogInformation("Synced device {DeviceName}: {EventCount} event(s)", deviceName, deviceEventCount);
                     }
                     catch (Exception ex)

@@ -775,7 +775,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
@@ -1432,7 +1432,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
+                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
             }
         }
 

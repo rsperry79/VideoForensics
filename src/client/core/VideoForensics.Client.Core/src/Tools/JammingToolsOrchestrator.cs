@@ -117,7 +117,7 @@ namespace VideoForensics.Client.Core.Tools
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
+                        _logger.LogWarning(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
                     }
                 }
 
@@ -321,7 +321,7 @@ namespace VideoForensics.Client.Core.Tools
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
+                                    _logger.LogWarning(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
                                 }
                             }
 

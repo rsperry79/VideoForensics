@@ -124,7 +124,7 @@ namespace VideoForensics.Hosting.Services
             string? error = failed > 0 ? $"{failed} of {targets.Count} device(s) failed: {firstError}" : null;
             if (error is null)
             {
-                _logger.LogDebug("Snapshot sync for {AccountName} saved {SnapshotCount} snapshot(s) from {DeviceCount} device(s)", accountName, saved, succeeded);
+                _logger.LogInformation("Snapshot sync for {AccountName} saved {SnapshotCount} snapshot(s) from {DeviceCount} device(s)", accountName, saved, succeeded);
             }
             else
             {

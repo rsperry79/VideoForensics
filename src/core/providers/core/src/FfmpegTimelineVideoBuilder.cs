@@ -558,11 +558,11 @@ namespace VideoForensics.Core.Providers.Core
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Could not delete timeline temp directory");
+                _logger.LogWarning(ex, "Could not delete timeline temp directory");
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "Could not delete timeline temp directory");
+                _logger.LogWarning(ex, "Could not delete timeline temp directory");
             }
         }
 

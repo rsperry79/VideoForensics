@@ -261,7 +261,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogError(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
+                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
                         }
                     }
 
@@ -273,7 +273,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     // One provider's failure must not stop another's - each health source gets its
                     // own try/catch, matching the plan's explicit call-out for this.
-                    _logger.LogError(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogWarning(ex, "Health sync tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
         }
@@ -397,7 +397,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
+                    _logger.LogWarning(ex, "Elevated polling tick: {SourceType} failed (non-critical)", healthSource.GetType().Name);
                 }
             }
 
@@ -445,7 +445,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
                     string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
-                    _logger.LogError(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
+                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
                 }
             }
         }
