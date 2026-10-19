@@ -124,6 +124,18 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         [Fact]
+        public void DefaultCandidates_MultiplePathVariables_YieldsAppBaseThenEachInOrder()
+        {
+            var processPath = "C:\\process";
+            var userPath = "C:\\user";
+            var machinePath = "C:\\machine";
+
+            var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\\app", new[] { processPath, null, userPath, machinePath }).ToList();
+
+            Assert.Equal(new[] { "C:\\app", "C:\\process", "C:\\user", "C:\\machine" }, result);
+        }
+
+        [Fact]
         public void DefaultCandidates_PathEntryWithEnvironmentVariable_IsExpanded()
         {
             var pathVariable = "%SystemRoot%\\bin";

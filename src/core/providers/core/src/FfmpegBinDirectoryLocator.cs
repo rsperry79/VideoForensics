@@ -34,21 +34,31 @@ namespace VideoForensics.Core.Providers.Core
         /// "%LOCALAPPDATA%\...") would otherwise never match the real directory.
         /// Pure apart from variable expansion, so it can be tested with arbitrary inputs.
         /// </summary>
-        public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, string? pathVariable)
+        public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, string? pathVariable) =>
+            DefaultCandidates(appBaseDirectory, new[] { pathVariable });
+
+        /// <summary>
+        /// Like <see cref="DefaultCandidates(string, string?)"/> but over several PATH sources in order (process, user, machine).
+        /// Needed because a desktop app started before a tool was installed keeps a stale process PATH; the registry PATHs are current.
+        /// </summary>
+        public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, IEnumerable<string?> pathVariables)
         {
             yield return appBaseDirectory;
 
-            if (string.IsNullOrEmpty(pathVariable))
+            foreach (var pathVariable in pathVariables)
             {
-                yield break;
-            }
-
-            foreach (var raw in pathVariable.Split(Path.PathSeparator))
-            {
-                var entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
-                if (entry.Length > 0)
+                if (string.IsNullOrEmpty(pathVariable))
                 {
-                    yield return entry;
+                    continue;
+                }
+
+                foreach (var raw in pathVariable.Split(Path.PathSeparator))
+                {
+                    var entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
+                    if (entry.Length > 0)
+                    {
+                        yield return entry;
+                    }
                 }
             }
         }
@@ -77,12 +87,19 @@ namespace VideoForensics.Core.Providers.Core
             return null;
         }
 
-        /// <summary>Discovers the bin directory from the app base directory and then the process PATH.</summary>
+        /// <summary>Discovers the bin directory from the app base directory, then the process, user and machine PATH.</summary>
         public static string? DiscoverDefault() =>
-            FindBinDirectory(DefaultCandidates(AppContext.BaseDirectory, Environment.GetEnvironmentVariable("PATH")));
+            FindBinDirectory(DefaultCandidates(AppContext.BaseDirectory, PathVariables()));
 
-        /// <summary>Discovers an executable by base name from the app base directory and then the process PATH.</summary>
+        /// <summary>Discovers an executable by base name from the app base directory, then the process, user and machine PATH.</summary>
         public static string? DiscoverDefaultExecutable(string fileName) =>
-            FindExecutable(DefaultCandidates(AppContext.BaseDirectory, Environment.GetEnvironmentVariable("PATH")), fileName);
+            FindExecutable(DefaultCandidates(AppContext.BaseDirectory, PathVariables()), fileName);
+
+        private static string?[] PathVariables() =>
+        [
+            Environment.GetEnvironmentVariable("PATH"),
+            Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User),
+            Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine),
+        ];
     }
 }
