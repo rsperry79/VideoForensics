@@ -168,6 +168,9 @@ else
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
+    // About an hour at the poll interval; a job still running after that is reported instead of polled forever.
+    private const int MaxPollTicks = 1200;
+
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly Dictionary<Guid, ExportTrack> _exports = new();
     private readonly HashSet<Guid> _pollingJobs = new();
@@ -363,11 +366,21 @@ else
         try
         {
             using var timer = new PeriodicTimer(PollInterval);
+            int ticks = 0;
             do
             {
                 ExportJobStatus? status = await ExportService.GetStatusAsync(jobId, ct);
-                if (status is not null && _exports.TryGetValue(accountId, out ExportTrack? track))
+                if (_exports.TryGetValue(accountId, out ExportTrack? track))
                 {
+                    if (status is null)
+                    {
+                        // The server no longer knows this job (for example after a restart). Stop rather than poll forever.
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportStatusLost"].Value;
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+
                     track.State = status.State;
                     track.FilePath = status.FilePath;
                     track.ErrorMessage = status.ErrorMessage;
@@ -379,6 +392,14 @@ else
                             await LoadAccountsAsync();
                             StateHasChanged();
                         });
+                        return;
+                    }
+
+                    if (++ticks >= MaxPollTicks)
+                    {
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportPollTimedOut"].Value;
+                        await InvokeAsync(StateHasChanged);
                         return;
                     }
 

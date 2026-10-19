@@ -378,4 +378,23 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
 
         cut.WaitForAssertion(() => Assert.Contains("Running", cut.Find("#removed-accounts").TextContent));
     }
+
+    [Fact]
+    public void AccountsPage_ExportJobGone_StopsPollingAndReportsLost()
+    {
+        // The server no longer knows the job (e.g. after a restart). The page must report it and stop, not poll forever.
+        var jobId = Guid.NewGuid();
+        SetRemovedAccount(RemovedAccountId);
+        ExportServiceMock
+            .Setup(e => e.GetLatestStatusForAccountAsync(RemovedAccountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExportJobStatus(jobId, RemovedAccountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
+        ExportServiceMock
+            .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExportJobStatus?)null);
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains("no longer tracked by the server", cut.Find("#removed-accounts").TextContent),
+            timeout: TimeSpan.FromSeconds(15));
+    }
 }
