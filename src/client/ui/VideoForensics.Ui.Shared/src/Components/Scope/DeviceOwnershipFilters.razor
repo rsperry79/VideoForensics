@@ -1,0 +1,87 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Data.Common.Entities
+@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services.Scope
+@inject DeviceOwnershipService OwnershipService
+@inject IStringLocalizer<SharedResources> L
+
+@if (_snapshot is not null)
+{
+    <div class="device-ownership-filters" data-testid="device-ownership-filters">
+        <small>@L["ScopeProvider"]</small>
+        <select class="form-select" data-testid="provider-filter" aria-label="@L["ScopeProvider"]" @onchange="OnProviderPicked">
+            <option value="" selected="@(_providerFilter is null)">@L["ScopeAllProviders"]</option>
+            @foreach (var provider in _snapshot.ProviderNames)
+            {
+                <option value="@provider" selected="@(_providerFilter == provider)">@provider</option>
+            }
+        </select>
+        <small>@L["ScopeAccount"]</small>
+        <select class="form-select" data-testid="account-filter" aria-label="@L["ScopeAccount"]" @onchange="OnAccountPicked">
+            <option value="" selected="@(_accountFilter is null)">@L["ScopeAllAccounts"]</option>
+            @foreach (var account in AccountOptions)
+            {
+                <option value="@account.Id" selected="@(_accountFilter == account.Id)">@_snapshot.AccountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
+            }
+        </select>
+    </div>
+}
+
+@code {
+    /// <summary>The devices the filters narrow. Changing the list reloads the ownership snapshot.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<VideoForensics.Data.Common.Entities.Device> Devices { get; set; } = Array.Empty<VideoForensics.Data.Common.Entities.Device>();
+
+    /// <summary>Raised after each filter change with the devices that remain visible.</summary>
+    [Parameter]
+    public EventCallback<DeviceFilterResult> VisibleDevicesChanged { get; set; }
+
+    private DeviceOwnershipSnapshot? _snapshot;
+    private IReadOnlyList<VideoForensics.Data.Common.Entities.Device>? _loadedFor;
+    private string? _providerFilter;
+    private Guid? _accountFilter;
+
+    private IEnumerable<VideoForensics.Data.Common.Entities.ProviderAccount> AccountOptions =>
+        _snapshot is null
+            ? Enumerable.Empty<VideoForensics.Data.Common.Entities.ProviderAccount>()
+            : ScopeDeviceFilter.AccountsForProvider(_snapshot.Accounts, _providerFilter);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ReferenceEquals(Devices, _loadedFor))
+        {
+            return;
+        }
+
+        _loadedFor = Devices;
+        _snapshot = await OwnershipService.LoadAsync(Devices, CancellationToken.None);
+    }
+
+    private async Task OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        _providerFilter = string.IsNullOrWhiteSpace(value) ? null : value;
+
+        // An account outside the newly picked provider can no longer be selected.
+        if (_accountFilter is not null && !AccountOptions.Any(a => a.Id == _accountFilter))
+        {
+            _accountFilter = null;
+        }
+
+        await PublishAsync();
+    }
+
+    private async Task OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        _accountFilter = Guid.TryParse(value, out var parsed) ? parsed : null;
+        await PublishAsync();
+    }
+
+    private async Task PublishAsync()
+    {
+        var isFiltered = _providerFilter is not null || _accountFilter is not null;
+        var visible = ScopeDeviceFilter.Filter(Devices, _snapshot?.Ownership ?? Array.Empty<DeviceOwnership>(), _providerFilter, _accountFilter);
+        await VisibleDevicesChanged.InvokeAsync(new DeviceFilterResult(visible, isFiltered));
+    }
+}

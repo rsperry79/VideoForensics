@@ -41,5 +41,6 @@ internal static class ScopeOwnershipTestDoubles
         services.AddScoped(_ => accountRepository.Object);
         services.AddScoped(_ => locationRepository.Object);
         services.AddScoped(_ => userRepository.Object);
+        services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.DeviceOwnershipService>();
     }
 }

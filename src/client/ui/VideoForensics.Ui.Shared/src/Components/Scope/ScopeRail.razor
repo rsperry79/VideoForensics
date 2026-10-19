@@ -11,9 +11,7 @@
 @using VideoForensics.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 @inject IDeviceRepository DeviceRepository
-@inject IProviderAccountRepository ProviderAccountRepository
-@inject ILocationRepository LocationRepository
-@inject IUserRepository UserRepository
+@inject DeviceOwnershipService OwnershipService
 @inject ICaseRepository CaseRepository
 @inject CaseState CaseState
 @inject PairedSessionState SessionState
@@ -283,52 +281,12 @@
     /// </summary>
     private async Task LoadOwnershipAsync()
     {
-        try
-        {
-            _accounts = (await ProviderAccountRepository.ListAsync(CancellationToken.None)).ToList();
-            var locationIdsByAccount = new Dictionary<Guid, IReadOnlyList<Guid>>();
-            foreach (var account in _accounts)
-            {
-                var locations = await LocationRepository.ListByProviderAccountIdAsync(account.Id, CancellationToken.None);
-                locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
-            }
-
-            _ownership = ScopeDeviceFilter.BuildOwnership(_devices, _accounts, locationIdsByAccount);
-            _providerNames = _accounts.Select(a => a.ProviderName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-        }
-        catch
-        {
-            _accounts = new List<ProviderAccount>();
-            _ownership = Array.Empty<DeviceOwnership>();
-            _providerNames = Array.Empty<string>();
-        }
-
-        await LoadAccountNamesAsync();
+        var snapshot = await OwnershipService.LoadAsync(_devices, CancellationToken.None);
+        _accounts = snapshot.Accounts.ToList();
+        _accountNames = snapshot.AccountNames.ToDictionary(kv => kv.Key, kv => kv.Value);
+        _ownership = snapshot.Ownership;
+        _providerNames = snapshot.ProviderNames;
         RecomputeVisibleDevices();
-    }
-
-    /// <summary>Shows the operator-facing user name for each account, falling back to the provider name.</summary>
-    private async Task LoadAccountNamesAsync()
-    {
-        _accountNames = new Dictionary<Guid, string>();
-        foreach (var account in _accounts)
-        {
-            var name = account.ProviderName;
-            try
-            {
-                var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
-                if (user is not null)
-                {
-                    name = user.DisplayName;
-                }
-            }
-            catch
-            {
-                // Keep the provider name when the user lookup fails.
-            }
-
-            _accountNames[account.Id] = name;
-        }
     }
 
     private IEnumerable<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);

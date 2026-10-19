@@ -20,6 +20,7 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
     public ValidateEvidencePageTests()
     {
         Services.AddScoped(_ => _jobs.Object);
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         Services.AddSingleton<IStringLocalizer<SharedResources>>(TestLocalizer.Create());
     }
 

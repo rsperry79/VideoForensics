@@ -110,4 +110,10 @@
   <data name="ExportSucceededNotice" xml:space="preserve">
     <value>Export of {0} saved to {1}</value>
   </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
 </root>

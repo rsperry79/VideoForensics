@@ -6,6 +6,8 @@
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using Syncfusion.Blazor.Calendars
+@using VideoForensics.Ui.Shared.Components.Scope
+@using VideoForensics.Ui.Shared.Services.Scope
 @inject PairedSessionState SessionState
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -27,6 +29,7 @@ else
     <PageRightPanelContent>
         <div class="right-panel-section">
             <h6>@L["Filters"]</h6>
+            <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
             <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions"
                 Placeholder="@L["AllDevicesPlaceholder"]" class="w-100 mt-2" ValueChange="@(async (ChangeEventArgs<string, KeyValuePair<string, string>> args) => await RunReportAsync())">
                 <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
@@ -91,8 +94,25 @@ else
     private ChainOfCustodyReport? _report;
     private IEnumerable<ActionLogEntry> _filteredAuditTrail = new List<ActionLogEntry>();
 
+    // Provider/Account filters narrow this list. While a filter is set there is no "all devices" choice:
+    // the report is for one device, so an empty selection falls back to the first visible device.
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private bool _isFiltered;
+
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
-        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+        _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+
+    private async Task OnDeviceFilterChanged(DeviceFilterResult result)
+    {
+        _isFiltered = result.IsFiltered;
+        _visibleDevices = result.Devices.ToList();
+        if (_isFiltered && !_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
+        {
+            _selectedDeviceId = _visibleDevices.FirstOrDefault()?.Id.ToString() ?? string.Empty;
+        }
+
+        await RunReportAsync();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,6 +126,7 @@ else
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+                _visibleDevices = _devices;
                 await RunReportAsync();
             }
         }
@@ -117,6 +138,14 @@ else
 
     private async Task RunReportAsync()
     {
+        // A filter that leaves no device must not widen to "all devices".
+        if (_isFiltered && _visibleDevices.Count == 0)
+        {
+            _report = null;
+            _filteredAuditTrail = new List<ActionLogEntry>();
+            return;
+        }
+
         Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
         _report = await ReportGenerationService.BuildChainOfCustodyReportAsync(
             deviceId,

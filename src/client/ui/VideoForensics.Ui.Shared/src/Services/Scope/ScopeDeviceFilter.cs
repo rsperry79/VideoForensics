@@ -5,6 +5,9 @@ namespace VideoForensics.Ui.Shared.Services.Scope;
 /// <summary>A device's link to the provider account that can see it, via the device's location.</summary>
 public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName);
 
+/// <summary>The devices left after a Provider/Account filter, and whether any filter is set.</summary>
+public sealed record DeviceFilterResult(IReadOnlyList<Device> Devices, bool IsFiltered);
+
 /// <summary>
 /// Narrows the device list for the right-rail Provider and Account filters. Devices belong to accounts
 /// only through their location (a location can be shared by several accounts), so ownership is derived
