@@ -1058,6 +1058,140 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDevice_ExistingDeviceNewHash_UpdatesApiResponseHash()
+        {
+            // Arrange: a device already stored under the same location with an older response hash.
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash", Name = "Front", Type = "doorbell", ApiResponseHash = "old-hash" };
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-hash", "Front", "doorbell", true, apiResponseHash: "new-hash", ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("new-hash", result.ApiResponseHash);
+        }
+
+        [Fact]
+        public async Task EnsureDevice_ExistingDeviceNullHash_KeepsStoredApiResponseHash()
+        {
+            // Arrange: a sync without a response hash must not blank the hash already on record.
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-hash2", Name = "Front", Type = "doorbell", ApiResponseHash = "kept-hash" };
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-hash2", "Front", "doorbell", true, apiResponseHash: null, ct: CancellationToken.None);
+
+            // Assert
+            Assert.Equal("kept-hash", result.ApiResponseHash);
+        }
+
+        [Fact]
+        public async Task DeviceSettingChange_FieldValueChanged_RecordsOneRow()
+        {
+            // Arrange: stored LightBrightness 50, incoming 80; every other detail field is null on both sides.
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-chg", Name = "Front", Type = "doorbell", LightBrightness = 50 };
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+            List<DeviceSettingChange>? recorded = null;
+            _ = mockChangeRepoInContext
+                .Setup(x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()))
+                .Callback((IEnumerable<DeviceSettingChange> changes, CancellationToken _) => recorded = changes.ToList())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            _ = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-chg", "Front", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(recorded);
+            DeviceSettingChange change = Assert.Single(recorded);
+            Assert.Equal(existing.Id, change.DeviceId);
+            Assert.Equal("LightBrightness", change.FieldName);
+            Assert.Equal("50", change.OldValue);
+            Assert.Equal("80", change.NewValue);
+        }
+
+        [Fact]
+        public async Task DeviceSettingChange_UnchangedValue_RecordsNothing()
+        {
+            // Arrange: stored and incoming LightBrightness are both 80.
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-same", Name = "Front", Type = "doorbell", LightBrightness = 80 };
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            _ = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-same", "Front", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            // Assert
+            mockChangeRepoInContext.Verify(
+                x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeviceSettingChange_FirstPopulationFromNull_RecordsNothing()
+        {
+            // Arrange: stored LightBrightness is null (never populated); incoming is 80.
+            var locationId = Guid.NewGuid();
+            var existing = new Device { Id = Guid.NewGuid(), LocationId = locationId, ProviderDeviceId = "device-first", Name = "Front", Type = "doorbell", LightBrightness = null };
+            var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(LightBrightness: 80);
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            var mockChangeRepoInContext = new Mock<IDeviceSettingChangeRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockContext.Setup(x => x.DeviceSettingChanges).Returns(mockChangeRepoInContext.Object);
+            _ = mockDeviceRepoInContext.Setup(x => x.GetByLocationIdAsync(locationId, It.IsAny<CancellationToken>())).ReturnsAsync([existing]);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                locationId, "device-first", "Front", "doorbell", true, details: details, ct: CancellationToken.None);
+
+            // Assert: the value is written, but first population is not recorded as a change.
+            Assert.Equal(80, result.LightBrightness);
+            mockChangeRepoInContext.Verify(
+                x => x.AddRangeAsync(It.IsAny<IEnumerable<DeviceSettingChange>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task RecordDeviceDetailsAsync_DelegatesToDeviceDetailsRepository()
         {
             Guid deviceId = Guid.NewGuid();

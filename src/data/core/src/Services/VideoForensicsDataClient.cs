@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Contracts;
@@ -472,72 +474,162 @@ namespace VideoForensics.Data.Core.Services
         }
 
         /// <summary>
+        /// Records one change row when a stored scalar differs from the incoming value. A null stored value is never a
+        /// change (first population of a column), and null-to-null is equal. Values are invariant-culture text so the
+        /// history reads the same regardless of the server's locale.
+        /// </summary>
+        private static void TrackScalarChange(List<DeviceSettingChange>? changes, Guid deviceId, DateTime changedAtUtc, string fieldName, object? stored, object? incoming)
+        {
+            if (changes == null || stored == null)
+            {
+                return;
+            }
+
+            string oldText = Convert.ToString(stored, CultureInfo.InvariantCulture)!;
+            string? newText = incoming == null ? null : Convert.ToString(incoming, CultureInfo.InvariantCulture);
+            if (oldText == newText)
+            {
+                return;
+            }
+
+            changes.Add(new DeviceSettingChange
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FieldName = fieldName,
+                OldValue = oldText,
+                NewValue = newText,
+                ChangedAtUtc = changedAtUtc
+            });
+        }
+
+        /// <summary>
         /// Copies provider detail fields onto a device row. A null <paramref name="details"/> is a no-op so a
         /// sync that carries no detail fields never blanks values already on record; a non-null one overwrites
         /// every column, so a field the provider no longer reports is stored as null.
+        /// When <paramref name="changes"/> is supplied, each scalar whose stored value actually changes is appended to it
+        /// BEFORE the overwrite, so the caller persists the history in the same transaction. Pass null on create paths.
         /// </summary>
-        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details)
+        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details, List<DeviceSettingChange>? changes = null)
         {
             if (details == null)
             {
                 return;
             }
 
+            DateTime changedAtUtc = DateTime.UtcNow;
+
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingDeviceId), device.RingDeviceId, details.RingDeviceId);
             device.RingDeviceId = details.RingDeviceId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingKind), device.RingKind, details.RingKind);
             device.RingKind = details.RingKind;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.FirmwareVersion), device.FirmwareVersion, details.FirmwareVersion);
             device.FirmwareVersion = details.FirmwareVersion;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Latitude), device.Latitude, details.Latitude);
             device.Latitude = details.Latitude;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Longitude), device.Longitude, details.Longitude);
             device.Longitude = details.Longitude;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Address), device.Address, details.Address);
             device.Address = details.Address;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Subscribed), device.Subscribed, details.Subscribed);
             device.Subscribed = details.Subscribed;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SubscribedMotions), device.SubscribedMotions, details.SubscribedMotions);
             device.SubscribedMotions = details.SubscribedMotions;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryLife), device.BatteryLife, details.BatteryLife);
             device.BatteryLife = details.BatteryLife;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ExternalConnection), device.ExternalConnection, details.ExternalConnection);
             device.ExternalConnection = details.ExternalConnection;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Owned), device.Owned, details.Owned);
             device.Owned = details.Owned;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Stolen), device.Stolen, details.Stolen);
             device.Stolen = details.Stolen;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableVod), device.EnableVod, details.EnableVod);
             device.EnableVod = details.EnableVod;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ExposureControl), device.ExposureControl, details.ExposureControl);
             device.ExposureControl = details.ExposureControl;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionSnoozePresetProfile), device.MotionSnoozePresetProfile, details.MotionSnoozePresetProfile);
             device.MotionSnoozePresetProfile = details.MotionSnoozePresetProfile;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LiveViewPresetProfile), device.LiveViewPresetProfile, details.LiveViewPresetProfile);
             device.LiveViewPresetProfile = details.LiveViewPresetProfile;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSensitivity1), device.PirSensitivity1, details.PirSensitivity1);
             device.PirSensitivity1 = details.PirSensitivity1;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.VodSuspended), device.VodSuspended, details.VodSuspended);
             device.VodSuspended = details.VodSuspended;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DoorbellVolume), device.DoorbellVolume, details.DoorbellVolume);
             device.DoorbellVolume = details.DoorbellVolume;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.VodStatus), device.VodStatus, details.VodStatus);
             device.VodStatus = details.VodStatus;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.AdvancedMotionDetectionEnabled), device.AdvancedMotionDetectionEnabled, details.AdvancedMotionDetectionEnabled);
             device.AdvancedMotionDetectionEnabled = details.AdvancedMotionDetectionEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.AdvancedMotionDetectionHumanOnlyMode), device.AdvancedMotionDetectionHumanOnlyMode, details.AdvancedMotionDetectionHumanOnlyMode);
             device.AdvancedMotionDetectionHumanOnlyMode = details.AdvancedMotionDetectionHumanOnlyMode;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableAudioRecording), device.EnableAudioRecording, details.EnableAudioRecording);
             device.EnableAudioRecording = details.EnableAudioRecording;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableWhiteLeds), device.EnableWhiteLeds, details.EnableWhiteLeds);
             device.EnableWhiteLeds = details.EnableWhiteLeds;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ChimeVolume), device.ChimeVolume, details.ChimeVolume);
             device.ChimeVolume = details.ChimeVolume;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DingAudioUserId), device.DingAudioUserId, details.DingAudioUserId);
             device.DingAudioUserId = details.DingAudioUserId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DingAudioId), device.DingAudioId, details.DingAudioId);
             device.DingAudioId = details.DingAudioId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionAudioUserId), device.MotionAudioUserId, details.MotionAudioUserId);
             device.MotionAudioUserId = details.MotionAudioUserId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionAudioId), device.MotionAudioId, details.MotionAudioId);
             device.MotionAudioId = details.MotionAudioId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DoNotDisturbSecondsLeft), device.DoNotDisturbSecondsLeft, details.DoNotDisturbSecondsLeft);
             device.DoNotDisturbSecondsLeft = details.DoNotDisturbSecondsLeft;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LightBrightness), device.LightBrightness, details.LightBrightness);
             device.LightBrightness = details.LightBrightness;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerId), device.OwnerId, details.OwnerId);
             device.OwnerId = details.OwnerId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerFirstName), device.OwnerFirstName, details.OwnerFirstName);
             device.OwnerFirstName = details.OwnerFirstName;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerLastName), device.OwnerLastName, details.OwnerLastName);
             device.OwnerLastName = details.OwnerLastName;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerEmail), device.OwnerEmail, details.OwnerEmail);
             device.OwnerEmail = details.OwnerEmail;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingType), device.RingType, details.RingType);
             device.RingType = details.RingType;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingRingId), device.RingRingId, details.RingRingId);
             device.RingRingId = details.RingRingId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryLife2), device.BatteryLife2, details.BatteryLife2);
             device.BatteryLife2 = details.BatteryLife2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage), device.BatteryVoltage, details.BatteryVoltage);
             device.BatteryVoltage = details.BatteryVoltage;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage2), device.BatteryVoltage2, details.BatteryVoltage2);
             device.BatteryVoltage2 = details.BatteryVoltage2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedStatus), device.LedStatus, details.LedStatus);
             device.LedStatus = details.LedStatus;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SirenSecondsRemaining), device.SirenSecondsRemaining, details.SirenSecondsRemaining);
             device.SirenSecondsRemaining = details.SirenSecondsRemaining;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightMode), device.NightMode, details.NightMode);
             device.NightMode = details.NightMode;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionSnoozeJson), device.MotionSnoozeJson, details.MotionSnoozeJson);
             device.MotionSnoozeJson = details.MotionSnoozeJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsMetadataJson), device.SettingsMetadataJson, details.SettingsMetadataJson);
             device.SettingsMetadataJson = details.SettingsMetadataJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LightSettingsMetadataJson), device.LightSettingsMetadataJson, details.LightSettingsMetadataJson);
             device.LightSettingsMetadataJson = details.LightSettingsMetadataJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity1), device.PirSettingsSensitivity1, details.PirSettingsSensitivity1);
             device.PirSettingsSensitivity1 = details.PirSettingsSensitivity1;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity2), device.PirSettingsSensitivity2, details.PirSettingsSensitivity2);
             device.PirSettingsSensitivity2 = details.PirSettingsSensitivity2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity3), device.PirSettingsSensitivity3, details.PirSettingsSensitivity3);
             device.PirSettingsSensitivity3 = details.PirSettingsSensitivity3;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsZoneEnable), device.PirSettingsZoneEnable, details.PirSettingsZoneEnable);
             device.PirSettingsZoneEnable = details.PirSettingsZoneEnable;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsZoneMask), device.PirSettingsZoneMask, details.PirSettingsZoneMask);
             device.PirSettingsZoneMask = details.PirSettingsZoneMask;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightModeOn), device.NightModeOn, details.NightModeOn);
             device.NightModeOn = details.NightModeOn;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionDetectionEnabled), device.MotionDetectionEnabled, details.MotionDetectionEnabled);
             device.MotionDetectionEnabled = details.MotionDetectionEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeType), device.SettingsChimeType, details.SettingsChimeType);
             device.SettingsChimeType = details.SettingsChimeType;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeEnabled), device.SettingsChimeEnabled, details.SettingsChimeEnabled);
             device.SettingsChimeEnabled = details.SettingsChimeEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeDuration), device.SettingsChimeDuration, details.SettingsChimeDuration);
             device.SettingsChimeDuration = details.SettingsChimeDuration;
         }
 
@@ -657,8 +749,20 @@ namespace VideoForensics.Data.Core.Services
                             existingDevice.TimeZoneId = timeZoneId;
                         }
 
-                        ApplyDetailFields(existingDevice, details);
+                        // Same guard as TimeZoneId: a sync that carries no response hash keeps the stored one.
+                        if (!string.IsNullOrWhiteSpace(apiResponseHash))
+                        {
+                            existingDevice.ApiResponseHash = apiResponseHash;
+                        }
+
+                        var changes = new List<DeviceSettingChange>();
+                        ApplyDetailFields(existingDevice, details, changes);
                         await context.Devices.UpdateAsync(existingDevice, ct);
+                        if (changes.Count > 0)
+                        {
+                            // Same unit of work as the Device update: history commits or rolls back with it.
+                            await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                        }
                         _logger.LogDebug("Found and updated existing device: {DeviceName}", existingDevice.Name);
                         return existingDevice;
                     }

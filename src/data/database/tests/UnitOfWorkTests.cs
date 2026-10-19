@@ -65,6 +65,25 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task UnitOfWork_DeviceSettingChangeAddRange_RollsBackWithDeviceUpdate()
+        {
+            // Change history must commit or roll back with the Device write it describes.
+            var deviceId = Guid.NewGuid();
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => _unitOfWork.ExecuteAsync<object?>(async context =>
+            {
+                await context.DeviceSettingChanges.AddRangeAsync(
+                [
+                    new DeviceSettingChange { Id = Guid.NewGuid(), DeviceId = deviceId, FieldName = "LightBrightness", OldValue = "1", NewValue = "2", ChangedAtUtc = DateTime.UtcNow }
+                ], CancellationToken.None);
+                throw new InvalidOperationException("boom");
+            }, CancellationToken.None));
+
+            VideoForensicsDbContext ctx = _fixture.Factory.CreateDbContext();
+            Assert.False(ctx.DeviceSettingChanges.Any(c => c.DeviceId == deviceId));
+        }
+
+        [Fact]
         public async Task UnitOfWork_ExecuteAsync_RollsBackOnException()
         {
             var userId = Guid.NewGuid();
