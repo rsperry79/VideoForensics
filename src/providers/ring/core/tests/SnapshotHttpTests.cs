@@ -4,6 +4,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 
+using VideoForensics.Providers.Ring.Exceptions;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
@@ -107,16 +109,38 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         [Fact]
-        public async Task DownloadFile_Non200_ReturnsBodyWithoutThrowing()
+        public async Task DownloadFile_200_ReturnsBytes()
         {
-            // Current behaviour: DownloadFile delegates to DownloadFileWithStatus and returns the body
-            // for any status; it does not throw on non-2xx. See the report for the discrepancy with
-            // the original expectation.
-            HttpUtility http = HttpUtilityWith(_ => ByteResponse(HttpStatusCode.InternalServerError, JpegBytes));
+            HttpUtility http = HttpUtilityWith(_ => ByteResponse(HttpStatusCode.OK, JpegBytes));
 
             byte[] bytes = await http.DownloadFile(SnapshotUri);
 
             Assert.Equal(JpegBytes, bytes);
+        }
+
+        [Fact]
+        public async Task DownloadFile_Non200_Throws()
+        {
+            HttpUtility http = HttpUtilityWith(_ => ByteResponse(HttpStatusCode.InternalServerError, JpegBytes));
+
+            DownloadFailedException ex = await Assert.ThrowsAsync<DownloadFailedException>(() => http.DownloadFile(SnapshotUri));
+
+            Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        }
+
+        [Fact]
+        public async Task DownloadFile_429_ThrowsThrottledExceptionWithRetryAfter()
+        {
+            HttpUtility http = HttpUtilityWith(_ =>
+            {
+                HttpResponseMessage response = ByteResponse((HttpStatusCode)429, []);
+                response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(12));
+                return response;
+            });
+
+            ThrottledException ex = await Assert.ThrowsAsync<ThrottledException>(() => http.DownloadFile(SnapshotUri));
+
+            Assert.Equal(TimeSpan.FromSeconds(12), ex.RetryAfter);
         }
 
         [Fact]

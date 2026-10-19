@@ -640,10 +640,32 @@ namespace VideoForensics.Providers.Ring
         /// <param name="url">Url to download the file from</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Byte array with the file download</returns>
+        /// <exception cref="Exceptions.ThrottledException">Thrown when Ring responds with HTTP 429. Carries the Retry-After wait.</exception>
+        /// <exception cref="Exceptions.DownloadFailedException">Thrown for any other non-2xx response, so an error page is never returned as file data.</exception>
         public async Task<byte[]> DownloadFile(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
         {
             DownloadResult result = await DownloadFileWithStatus(url, bearerToken, cancellationToken);
+
+            if (result.Status == (HttpStatusCode)429)
+            {
+                throw new Exceptions.ThrottledException { StatusCode = result.Status, RetryAfter = result.RetryAfter };
+            }
+
+            if (!IsSuccessStatus(result.Status))
+            {
+                throw new Exceptions.DownloadFailedException(url.ToString()) { StatusCode = result.Status };
+            }
+
             return result.Bytes;
+        }
+
+        /// <summary>
+        /// True for HTTP 2xx status codes.
+        /// </summary>
+        private static bool IsSuccessStatus(HttpStatusCode status)
+        {
+            int code = (int)status;
+            return code >= 200 && code <= 299;
         }
 
         /// <summary>
