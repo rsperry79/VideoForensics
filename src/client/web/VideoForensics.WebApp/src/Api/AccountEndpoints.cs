@@ -288,6 +288,13 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
+                // Purge is disabled (see IAccountExportService.PurgeDisabledMessage). Reject before anything is retired,
+                // so a refused request cannot leave the account retired with its credentials gone.
+                if (request.PurgeAfterExport)
+                {
+                    return Results.BadRequest(new { error = IAccountExportService.PurgeDisabledMessage });
+                }
+
                 // Retire first so the scheduler stops pulling for the account before the export runs.
                 if (request.PurgeAfterExport && account.RemovedUtc == null)
                 {

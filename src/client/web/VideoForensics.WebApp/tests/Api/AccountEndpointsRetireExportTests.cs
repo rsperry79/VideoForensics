@@ -173,22 +173,16 @@ namespace VideoForensics.WebApp.Tests.Api
         }
 
         [Fact]
-        public async Task AccountEndpoints_QueueExportAndPurge_ActiveAccount_RetiresBeforeQueueing()
+        public async Task AccountEndpoints_QueueExportAndPurge_IsRejected_AndNothingIsRetiredOrQueued()
         {
-            var order = new List<string>();
-            var jobId = Guid.NewGuid();
             _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateAccount(true));
-            _ = _accounts.Setup(a => a.RetireAsync(_accountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
-                .Callback(() => order.Add("retire")).Returns(Task.CompletedTask);
-            _ = _exports.Setup(e => e.QueueExportAsync(_accountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
-                .Callback(() => order.Add("queue")).ReturnsAsync(jobId);
-            _ = _exports.Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ExportJobStatus(jobId, _accountId, ExportJobState.Queued, null, null, true, DateTime.UtcNow, null));
 
             HttpResponseMessage response = await _client.SendAsync(StepUpPost($"/api/v1/accounts/provider-accounts/{_accountId}/exports", new { purgeAfterExport = true }));
 
-            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-            Assert.Equal(["retire", "queue"], order);
+            // Purge is disabled, so the request is refused before the account is retired or any export is queued.
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            _accounts.Verify(a => a.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+            _exports.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
         [Fact]

@@ -313,12 +313,12 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void AccountsPage_RemoveDeletePermanently_WithExport_QueuesExportAndPurge()
+    public void AccountsPage_RemoveDeletePermanently_WithExport_QueuesExportOnlyAndKeepsAccount()
     {
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RingAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Setup(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
@@ -331,7 +331,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
 
         cut.WaitForAssertion(() =>
         {
-            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
+            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
             Assert.Contains("Running", cut.Find("#removed-accounts").TextContent);
         });
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
@@ -343,7 +343,7 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         var jobId = Guid.NewGuid();
         SetRemovedAccount(RemovedAccountId);
         ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RemovedAccountId, true, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Setup(e => e.QueueExportAsync(RemovedAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(jobId);
         ExportServiceMock
             .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))

@@ -7,6 +7,9 @@ namespace VideoForensics.Client.Common.Contracts
     /// </summary>
     public interface IAccountExportService
     {
+        /// <summary>Returned when a purge-after-export is requested while purging is disabled.</summary>
+        public const string PurgeDisabledMessage = "Purge after export is disabled until the export covers all related data.";
+
         /// <summary>Queues an export and returns its job id immediately; the work runs on a background thread.</summary>
         /// <param name="accountId">The provider account to export.</param>
         /// <param name="purgeAfterExport">When true, hard-deletes the account after the export file is written.</param>

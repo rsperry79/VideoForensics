@@ -113,19 +113,34 @@ namespace VideoForensics.Hosting.Tests
             return (await sut.GetStatusAsync(jobId, CancellationToken.None))!;
         }
 
+        private const string PurgeSkip = "Purge after export is disabled (see IAccountExportService.PurgeDisabledMessage); re-enable with the export-coverage guard.";
+
+        [Fact]
+        public async Task AccountExportService_QueueExportAsync_WithPurge_IsRefusedAndQueuesNothing()
+        {
+            AccountExportService sut = CreateSut();
+
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                sut.QueueExportAsync(_account.Id, true, CancellationToken.None));
+
+            Assert.Equal(IAccountExportService.PurgeDisabledMessage, ex.Message);
+            Assert.Null(await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None));
+            _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+        }
+
         [Fact]
         public async Task AccountExportService_QueueExportAsync_ReturnsJobIdAndQueuedStatus()
         {
             AccountExportService sut = CreateSut();
 
-            Guid jobId = await sut.QueueExportAsync(_account.Id, true, CancellationToken.None);
+            Guid jobId = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
 
             Assert.NotEqual(Guid.Empty, jobId);
             ExportJobStatus? status = await sut.GetStatusAsync(jobId, CancellationToken.None);
             Assert.NotNull(status);
             Assert.Equal(ExportJobState.Queued, status.State);
             Assert.Equal(_account.Id, status.AccountId);
-            Assert.True(status.PurgeAfterExport);
+            Assert.False(status.PurgeAfterExport);
             _accounts.Verify(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -161,7 +176,7 @@ namespace VideoForensics.Hosting.Tests
             _credentials.VerifyNoOtherCalls();
         }
 
-        [Fact]
+        [Fact(Skip = PurgeSkip)]
         public async Task AccountExportService_RunJob_PurgeAfterExport_DeletesAccountOnlyAfterSuccess()
         {
             bool fileExistedAtDelete = false;
@@ -188,7 +203,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact]
+        [Fact(Skip = PurgeSkip)]
         public async Task AccountExportService_RunJob_ExportFails_AccountIsKeptAndJobFailed()
         {
             // A regular file where the exports folder should be makes directory creation / writing fail.
@@ -204,7 +219,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact]
+        [Fact(Skip = PurgeSkip)]
         public async Task AccountExportService_RunJob_AccountMissing_FailsWithNotFound()
         {
             AccountExportService sut = CreateSut();
@@ -216,7 +231,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact]
+        [Fact(Skip = PurgeSkip)]
         public async Task AccountExportService_RunJob_PurgeDeleteThrows_JobFailsExportFileKept()
         {
             _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>())).ThrowsAsync(new InvalidOperationException("delete boom"));
@@ -278,7 +293,7 @@ namespace VideoForensics.Hosting.Tests
         {
             AccountExportService sut = CreateSut();
             _ = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
-            Guid second = await sut.QueueExportAsync(_account.Id, true, CancellationToken.None);
+            Guid second = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
 
             ExportJobStatus? status = await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None);
 

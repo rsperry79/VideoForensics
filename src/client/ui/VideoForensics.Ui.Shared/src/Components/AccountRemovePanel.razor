@@ -97,7 +97,8 @@
             return null;
         }
 
-        Guid jobId = await ExportService.QueueExportAsync(AccountId, true, ct, token);
+        // Export only: purge is disabled, so the account is kept. "Delete without export" is the separate, explicit delete.
+        Guid jobId = await ExportService.QueueExportAsync(AccountId, false, ct, token);
         return new RemoveResult(AccountId, RemoveOutcome.ExportQueued, jobId);
     });
 
