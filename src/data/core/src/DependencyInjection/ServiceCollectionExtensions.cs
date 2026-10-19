@@ -39,6 +39,10 @@ namespace VideoForensics.Data.Core.DependencyInjection
                     sp.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegTimelineVideoBuilder>>(),
                     VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
+            // Snapshot timelines: the mapper has no dependencies; the service reads stored captures and drives the builder above.
+            services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
+            services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
             services.TryAddScoped<IStoredDeviceReader, StoredDeviceDiscoveryReader>();

@@ -85,5 +85,22 @@ namespace VideoForensics.Data.Database.Tests
             Assert.All(results, r => Assert.True(r.IsCurrent));
             Assert.Equal(new[] { T0, T0.AddMinutes(10) }, results.Select(r => r.CapturedAtUtc).ToArray());
         }
+        [Fact]
+        public async Task SnapshotCapture_GetAttemptsForDevice_IncludesNonCurrentRowsInOrder()
+        {
+            Guid deviceId = await SeedDeviceAsync();
+
+            // Failed attempts must come back too: the timeline mapper needs them to end a still's hold.
+            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(10), "fresh", 200, "Devices/x/b.jpg", null), CancellationToken.None);
+            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(5), "fresh", 404, null, null), CancellationToken.None);
+            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0, "latest", 200, "Devices/x/a.jpg", null), CancellationToken.None);
+            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(30), "fresh", 200, "Devices/x/late.jpg", null), CancellationToken.None);
+
+            IReadOnlyList<SnapshotCapture> results = await _repository.GetAttemptsForDeviceAsync(
+                deviceId, T0.AddMinutes(-1), T0.AddMinutes(20), CancellationToken.None);
+
+            Assert.Equal(new[] { 200, 404, 200 }, results.Select(r => r.HttpStatus).ToArray());
+            Assert.Equal(new[] { T0, T0.AddMinutes(5), T0.AddMinutes(10) }, results.Select(r => r.CapturedAtUtc).ToArray());
+        }
     }
 }

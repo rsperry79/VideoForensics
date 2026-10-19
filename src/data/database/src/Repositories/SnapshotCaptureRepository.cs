@@ -53,5 +53,20 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(c => c.CapturedAtUtc)
                 .ToListAsync(ct);
         }
+
+        /// <summary>Gets every capture attempt (current or not) for a device within a date range, oldest first.</summary>
+        public async Task<IReadOnlyList<SnapshotCapture>> GetAttemptsForDeviceAsync(Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+
+            // Same UTC normalization as GetCurrentForDeviceAsync: stored values are UTC.
+            DateTimeOffset fromUtc = from.ToUniversalTime();
+            DateTimeOffset toUtc = to.ToUniversalTime();
+
+            return await db.SnapshotCaptures
+                .Where(c => c.DeviceId == deviceId && c.CapturedAtUtc >= fromUtc && c.CapturedAtUtc <= toUtc)
+                .OrderBy(c => c.CapturedAtUtc)
+                .ToListAsync(ct);
+        }
     }
 }
