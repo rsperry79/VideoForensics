@@ -30,6 +30,11 @@ namespace VideoForensics.Data.Core.Services
         private readonly IStorageLocationProvider _storageLocationProvider;
         private readonly INotificationDispatcher? _notificationDispatcher;
 
+        // Chain-failure alert throttle. Per service instance, so one circuit's fan-out of per-device reports alerts once.
+        private readonly object _chainAlertGate = new();
+        private DateTime _lastChainAlertUtc = DateTime.MinValue;
+        private static readonly TimeSpan ChainAlertWindow = TimeSpan.FromHours(1);
+
         public ReportGenerationService(
             IMediaItemRepository mediaItemRepository,
             IDeviceRepository deviceRepository,
@@ -227,6 +232,7 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
+                    .Where(a => IsForDevice(a, deviceId))
                     .ToList();
 
                 var accessEvents = filteredActions
@@ -270,11 +276,13 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
+                    .Where(a => IsForDevice(a, deviceId))
                     .OrderBy(a => a.TimestampUtc)
                     .ToList();
 
                 report.AuditTrail = filteredActions;
 
+                // The hash chain is one chain for the whole log, so the verdict is global whatever device is asked for.
                 bool chainIsValid = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
                 report.ChainIntegrityVerified = chainIsValid;
                 report.ChainVerificationStatus = chainIsValid ? "Valid hash chain" : "Chain integrity check failed";
@@ -298,6 +306,25 @@ namespace VideoForensics.Data.Core.Services
         }
 
         /// <summary>
+        /// Whether an audit entry belongs to a device's trail. Entries about the device itself match by id; other
+        /// entries match when their details name the device. A null device keeps every entry.
+        /// </summary>
+        private static bool IsForDevice(ActionLogEntry entry, Guid? deviceId)
+        {
+            if (deviceId is not { } id)
+            {
+                return true;
+            }
+
+            if (entry.EntityId == id)
+            {
+                return true;
+            }
+
+            return entry.DetailsJson?.Contains(id.ToString("D"), StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
+        /// <summary>
         /// Raises an Alert-severity notice so a broken audit chain shows in the notices bell.
         /// Failures are isolated: a notification problem must never suppress the report itself.
         /// </summary>
@@ -306,6 +333,17 @@ namespace VideoForensics.Data.Core.Services
             if (_notificationDispatcher == null)
             {
                 return;
+            }
+
+            // Every report build re-checks the chain, so a broken chain would alert on each refresh. Alert at most once per window.
+            lock (_chainAlertGate)
+            {
+                if (DateTime.UtcNow - _lastChainAlertUtc < ChainAlertWindow)
+                {
+                    return;
+                }
+
+                _lastChainAlertUtc = DateTime.UtcNow;
             }
 
             try

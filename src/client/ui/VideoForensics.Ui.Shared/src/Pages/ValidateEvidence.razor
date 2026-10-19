@@ -50,6 +50,10 @@ else
         </PageRightPanelContent>
 
         <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" Disabled="@IsRunning(EvidenceValidationJobKind.Integrity)" />
+        @if (_verifyError is not null)
+        {
+            <div class="alert alert-danger" data-testid="verify-error">@_verifyError</div>
+        }
 
         @RenderConsole(EvidenceValidationJobKind.Integrity)
 
@@ -170,6 +174,7 @@ else
     private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
     private bool _isFiltered;
     private string[] _integrityDeviceIds = Array.Empty<string>();
+    private string? _verifyError;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
         _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
@@ -230,6 +235,20 @@ else
     }
 
     private async Task VerifyIntegrityAsync()
+    {
+        _verifyError = null;
+        try
+        {
+            await VerifyIntegrityCoreAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A conflicting run or a failed request must reach the operator, not fail the page.
+            _verifyError = L["VerifyFailed", ex.Message].Value;
+        }
+    }
+
+    private async Task VerifyIntegrityCoreAsync()
     {
         // One job covers the chosen devices. With nothing chosen, a filter covers every device it leaves visible,
         // and no filter covers every device. A filter that leaves no device verifies nothing.

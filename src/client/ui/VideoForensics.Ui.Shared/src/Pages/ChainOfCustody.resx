@@ -95,4 +95,7 @@
   <data name="ColDevice" xml:space="preserve">
     <value>Device</value>
   </data>
+  <data name="ChainReportFailed" xml:space="preserve">
+    <value>Could not build the chain of custody report: {0}</value>
+  </data>
 </root>

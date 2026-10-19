@@ -44,6 +44,11 @@ else
 
     </PageRightPanelContent>
 
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" data-testid="chain-report-error">@_error</div>
+    }
+
     @if (_report is not null)
     {
         @* One combined verdict: the chain is verified only when every selected device's chain verifies. *@
@@ -98,6 +103,8 @@ else
     // The combined report: a verdict over every selected device, and one audit list with a device column.
     private ChainOfCustodyReport? _report;
     private List<ChainAuditRow> _auditRows = new();
+    private int _reportVersion;
+    private string? _error;
 
     /// <summary>One audit entry from any device; DeviceName is "-" for the unfiltered whole-database report.</summary>
     private sealed record ChainAuditRow(
@@ -154,13 +161,39 @@ else
         }
     }
 
+    /// <summary>Runs the report for the current selection. Overlapping runs are resolved by version: only the newest one is shown.</summary>
     private async Task RunReportAsync()
+    {
+        int version = ++_reportVersion;
+        _error = null;
+        try
+        {
+            await RunReportCoreAsync(version);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (version == _reportVersion)
+            {
+                _error = L["ChainReportFailed", ex.Message].Value;
+                _report = null;
+                _auditRows = new List<ChainAuditRow>();
+            }
+        }
+    }
+
+    private async Task RunReportCoreAsync(int version)
     {
         if (_selectedDeviceIds.Length == 0 && !_isFiltered)
         {
             // Unfiltered and nothing picked: the whole database, as before.
-            _report = await ReportGenerationService.BuildChainOfCustodyReportAsync(null, _fromDate, _toDate, CancellationToken.None);
-            _auditRows = _report.AuditTrail.Select(e => ToRow("-", e)).OrderByDescending(r => r.TimestampUtc).ToList();
+            var whole = await ReportGenerationService.BuildChainOfCustodyReportAsync(null, _fromDate, _toDate, CancellationToken.None);
+            if (version != _reportVersion)
+            {
+                return;
+            }
+
+            _report = whole;
+            _auditRows = whole.AuditTrail.Select(e => ToRow("-", e)).OrderByDescending(r => r.TimestampUtc).ToList();
             return;
         }
 
@@ -177,22 +210,28 @@ else
         }
 
         var rows = new List<ChainAuditRow>();
-        var failures = new List<string>();
+        var seen = new HashSet<Guid>();
+        ChainOfCustodyReport? first = null;
         foreach (var device in targets)
         {
             var report = await ReportGenerationService.BuildChainOfCustodyReportAsync(device.Id, _fromDate, _toDate, CancellationToken.None);
-            rows.AddRange(report.AuditTrail.Select(e => ToRow(device.Name, e)));
-            if (!report.ChainIntegrityVerified)
+            if (version != _reportVersion)
             {
-                failures.Add($"{device.Name}: {report.ChainVerificationStatus}");
+                return; // A newer filter or date change has started; its result replaces this one.
+            }
+
+            first ??= report;
+            foreach (var entry in report.AuditTrail.Where(e => seen.Add(e.Id)))
+            {
+                rows.Add(ToRow(device.Name, entry));
             }
         }
 
-        // The combined verdict is verified only when every device's chain verifies; failures name the devices.
+        // The hash chain is one chain for the whole log, so every per-device report carries the same verdict.
         _report = new ChainOfCustodyReport
         {
-            ChainIntegrityVerified = failures.Count == 0,
-            ChainVerificationStatus = string.Join("; ", failures),
+            ChainIntegrityVerified = first!.ChainIntegrityVerified,
+            ChainVerificationStatus = first.ChainVerificationStatus,
             AuditTrail = new List<ActionLogEntry>(),
         };
         _auditRows = rows.OrderByDescending(r => r.TimestampUtc).ToList();

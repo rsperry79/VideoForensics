@@ -52,10 +52,18 @@ namespace VideoForensics.Hosting.Services
             {
                 if (TryGetRunning(EvidenceValidationJobKind.Integrity, out JobRecord? running))
                 {
-                    return Task.FromResult(running!.Snapshot());
+                    // Joining is only safe for the same devices; otherwise the caller would get results for the wrong set.
+                    if (SameScope(running!.Scope, deviceIds))
+                    {
+                        return Task.FromResult(running.Snapshot());
+                    }
+
+                    return Task.FromException<EvidenceValidationJob>(new InvalidOperationException(
+                        "An integrity check is already running for a different set of devices. Wait for it to finish."));
                 }
 
                 job = NewJob(EvidenceValidationJobKind.Integrity);
+                job.Scope = deviceIds;
                 job.Append("Integrity check started");
                 _latest[EvidenceValidationJobKind.Integrity] = job;
                 snapshot = job.Snapshot();
@@ -195,6 +203,17 @@ namespace VideoForensics.Hosting.Services
             _logger.LogError("Evidence validation job failed: {Reason}", message);
         }
 
+        /// <summary>Two integrity scopes match when both mean every device, or both list the same devices.</summary>
+        private static bool SameScope(IReadOnlyList<Guid>? running, IReadOnlyList<Guid>? requested)
+        {
+            if (running is null || requested is null)
+            {
+                return running is null && requested is null;
+            }
+
+            return running.ToHashSet().SetEquals(requested);
+        }
+
         /// <summary>Caller must hold <see cref="_gate"/>.</summary>
         private bool TryGetRunning(EvidenceValidationJobKind kind, out JobRecord? running)
         {
@@ -249,6 +268,9 @@ namespace VideoForensics.Hosting.Services
             public required EvidenceValidationJobKind Kind { get; init; }
             public EvidenceValidationJobState State { get; set; }
             public required DateTime StartedUtc { get; init; }
+
+            /// <summary>Devices this integrity run covers; null means every device.</summary>
+            public IReadOnlyList<Guid>? Scope { get; set; }
             public DateTime? CompletedUtc { get; set; }
             public MediaVerificationResult[]? IntegrityResults { get; set; }
             public ReconciliationDiscrepancy[]? Discrepancies { get; set; }

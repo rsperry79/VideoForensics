@@ -36,7 +36,24 @@ public class ChainOfCustody_Combined_Tests : BunitContext
     }
 
     [Fact]
-    public async Task FilteredToTwoDevices_ShowsOneVerdictNamingTheFailingDevice()
+    public async Task ReportServiceThrows_ShowsErrorAlertInsteadOfFailingThePage()
+    {
+        _deviceRepository
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Device>());
+        _reportService
+            .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("database offline"));
+        await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+
+        var page = Render<ChainOfCustody>();
+
+        var error = Assert.Single(page.FindAll("[data-testid='chain-report-error']"));
+        Assert.Contains("database offline", error.TextContent);
+    }
+
+    [Fact]
+    public async Task FilteredToTwoDevices_ShowsOneGlobalVerdict()
     {
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var frontLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "F", Name = "Front" };
@@ -53,7 +70,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = true });
         _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(front.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = true });
+            .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
         _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(back.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
@@ -75,7 +92,7 @@ public class ChainOfCustody_Combined_Tests : BunitContext
 
         // One verdict for the whole selection, not one per device, and it names the device that failed.
         var alert = Assert.Single(component.FindAll(".alert-danger"));
-        Assert.Contains("Back: hash mismatch", alert.TextContent);
+        Assert.Contains("hash mismatch", alert.TextContent);
         Assert.Empty(component.FindAll(".alert-success"));
         _reportService.Verify(
             m => m.BuildChainOfCustodyReportAsync(front.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),

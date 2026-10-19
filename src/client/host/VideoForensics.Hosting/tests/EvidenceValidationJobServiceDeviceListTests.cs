@@ -89,6 +89,31 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task StartIntegrityForDevicesAsync_WhileADifferentSetRuns_Throws_AndSameSetJoins()
+        {
+            Guid running = Guid.NewGuid();
+            Guid other = Guid.NewGuid();
+            TaskCompletionSource<IReadOnlyList<MediaVerificationResult>> gate = new();
+            Mock<IEvidenceValidationService> validation = new();
+            validation.Setup(v => v.VerifyLocalIntegrityAsync(running, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                .Returns(gate.Task);
+            EvidenceValidationJobService service = CreateService(validation);
+
+            _ = await service.StartIntegrityForDevicesAsync(new[] { running }, CancellationToken.None);
+
+            // A different device set must not be handed the running job's results.
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.StartIntegrityForDevicesAsync(new[] { other }, CancellationToken.None));
+
+            // The same set may join the running job.
+            EvidenceValidationJob joined = await service.StartIntegrityForDevicesAsync(new[] { running }, CancellationToken.None);
+            Assert.Equal(EvidenceValidationJobState.Running, joined.State);
+
+            gate.SetResult(new List<MediaVerificationResult>());
+            _ = await WaitForCompletionAsync(service);
+        }
+
+        [Fact]
         public async Task StartIntegrityForDevicesAsync_EmptyList_ThrowsArgumentException()
         {
             Mock<IEvidenceValidationService> validation = new();

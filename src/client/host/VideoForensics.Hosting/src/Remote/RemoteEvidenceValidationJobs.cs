@@ -31,7 +31,11 @@ namespace VideoForensics.Hosting.Remote
         public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(deviceIds);
-            return PostIntegrityAsync(new StartIntegrityJobRequest(null, deviceIds.ToArray()), ct);
+            // The single-device field is also sent for a one-device list, so a server that predates DeviceIds
+            // still verifies exactly that device instead of falling back to all devices.
+            Guid[] ids = deviceIds.ToArray();
+            Guid? single = ids.Length == 1 ? ids[0] : null;
+            return PostIntegrityAsync(new StartIntegrityJobRequest(single, ids), ct);
         }
 
         private async Task<EvidenceValidationJob> PostIntegrityAsync(StartIntegrityJobRequest request, CancellationToken ct)

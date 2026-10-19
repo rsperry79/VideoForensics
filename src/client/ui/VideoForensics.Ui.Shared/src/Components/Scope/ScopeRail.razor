@@ -234,6 +234,14 @@
     {
         var uri = new Uri(Nav.Uri);
         ScopeState.ApplyQueryString(uri.Query);
+
+        // A no-match flag restored from the URL is only meaningful while a Provider/Account filter is shown.
+        // This rail does not restore its filter controls from the URL, so an orphaned flag is dropped rather than
+        // left blocking every page with a notice the operator cannot act on.
+        if (ScopeState.Current.MatchesNoDevices && _providerFilter is null && _accountFilter is null)
+        {
+            ScopeState.Set(ScopeState.Current with { MatchesNoDevices = false });
+        }
     }
 
     private async Task ApplyCaseFromUrlAsync()
@@ -349,7 +357,9 @@
             ? (current.Contains(deviceId) ? current.ToList() : current.Append(deviceId).ToList())
             : current.Where(id => id != deviceId).ToList();
 
-        ScopeState.Set(ScopeState.Current with { DeviceIds = updated });
+        // Unchecking the last visible device under an active filter means "no device", not "all devices".
+        var filtered = _providerFilter is not null || _accountFilter is not null;
+        ScopeState.Set(ScopeState.Current with { DeviceIds = updated, MatchesNoDevices = filtered && updated.Count == 0 });
     }
 
     private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)

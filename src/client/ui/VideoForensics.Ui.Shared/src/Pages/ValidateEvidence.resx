@@ -128,4 +128,7 @@
   <data name="ColDevice" xml:space="preserve">
     <value>Device</value>
   </data>
+  <data name="VerifyFailed" xml:space="preserve">
+    <value>Could not start verification: {0}</value>
+  </data>
 </root>

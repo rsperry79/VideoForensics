@@ -65,10 +65,18 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             // A non-empty device list starts one job over those devices; otherwise the single-device form applies.
-            EvidenceValidationJob job = request.DeviceIds is { Count: > 0 } deviceIds
-                ? await jobs.StartIntegrityForDevicesAsync(deviceIds, ct)
-                : await jobs.StartIntegrityAsync(request.DeviceId, ct);
-            return Results.Ok(job.ToDto());
+            try
+            {
+                EvidenceValidationJob job = request.DeviceIds is { Count: > 0 } deviceIds
+                    ? await jobs.StartIntegrityForDevicesAsync(deviceIds, ct)
+                    : await jobs.StartIntegrityAsync(request.DeviceId, ct);
+                return Results.Ok(job.ToDto());
+            }
+            catch (InvalidOperationException ex)
+            {
+                // A different device set is already being verified; the caller must wait for that run.
+                return Results.Conflict(ex.Message);
+            }
         }
 
         /// <summary>Starts (or joins the running) provider reconciliation job and returns its snapshot.</summary>
