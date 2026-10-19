@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="BreadcrumbDevices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="Detail_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Detail_AdvancedMotionDetectionEnabled" xml:space="preserve">
+    <value>Advanced Motion Detection Enabled</value>
+  </data>
+  <data name="Detail_AdvancedMotionDetectionHumanOnlyMode" xml:space="preserve">
+    <value>Advanced Motion Detection Human Only Mode</value>
+  </data>
+  <data name="Detail_AdvancedMotionZones" xml:space="preserve">
+    <value>Advanced Motion Zones</value>
+  </data>
+  <data name="Detail_AdvancedObjectSettings" xml:space="preserve">
+    <value>Advanced Object Settings</value>
+  </data>
+  <data name="Detail_BatteryLife" xml:space="preserve">
+    <value>Battery Life</value>
+  </data>
+  <data name="Detail_BatteryLife2" xml:space="preserve">
+    <value>Battery Life 2</value>
+  </data>
+  <data name="Detail_BatteryVoltage" xml:space="preserve">
+    <value>Battery Voltage</value>
+  </data>
+  <data name="Detail_BatteryVoltage2" xml:space="preserve">
+    <value>Battery Voltage 2</value>
+  </data>
+  <data name="Detail_ChimeVolume" xml:space="preserve">
+    <value>Chime Volume</value>
+  </data>
+  <data name="Detail_DingAudioId" xml:space="preserve">
+    <value>Ding Audio Id</value>
+  </data>
+  <data name="Detail_DingAudioUserId" xml:space="preserve">
+    <value>Ding Audio User Id</value>
+  </data>
+  <data name="Detail_DoNotDisturbSecondsLeft" xml:space="preserve">
+    <value>Do Not Disturb Seconds Left</value>
+  </data>
+  <data name="Detail_DoorbellVolume" xml:space="preserve">
+    <value>Doorbell Volume</value>
+  </data>
+  <data name="Detail_EnableAudioRecording" xml:space="preserve">
+    <value>Enable Audio Recording</value>
+  </data>
+  <data name="Detail_EnableVod" xml:space="preserve">
+    <value>Enable Vod</value>
+  </data>
+  <data name="Detail_EnableWhiteLeds" xml:space="preserve">
+    <value>Enable White Leds</value>
+  </data>
+  <data name="Detail_ExposureControl" xml:space="preserve">
+    <value>Exposure Control</value>
+  </data>
+  <data name="Detail_ExternalConnection" xml:space="preserve">
+    <value>External Connection</value>
+  </data>
+  <data name="Detail_FirmwareVersion" xml:space="preserve">
+    <value>Firmware Version</value>
+  </data>
+  <data name="Detail_Latitude" xml:space="preserve">
+    <value>Latitude</value>
+  </data>
+  <data name="Detail_LedStatus" xml:space="preserve">
+    <value>Led Status</value>
+  </data>
+  <data name="Detail_LightBrightness" xml:space="preserve">
+    <value>Light Brightness</value>
+  </data>
+  <data name="Detail_LightSettingsMetadataJson" xml:space="preserve">
+    <value>Light Settings Metadata Json</value>
+  </data>
+  <data name="Detail_LiveViewPresetProfile" xml:space="preserve">
+    <value>Live View Preset Profile</value>
+  </data>
+  <data name="Detail_LiveViewPresets" xml:space="preserve">
+    <value>Live View Presets</value>
+  </data>
+  <data name="Detail_Longitude" xml:space="preserve">
+    <value>Longitude</value>
+  </data>
+  <data name="Detail_MotionAudioId" xml:space="preserve">
+    <value>Motion Audio Id</value>
+  </data>
+  <data name="Detail_MotionAudioUserId" xml:space="preserve">
+    <value>Motion Audio User Id</value>
+  </data>
+  <data name="Detail_MotionDetectionEnabled" xml:space="preserve">
+    <value>Motion Detection Enabled</value>
+  </data>
+  <data name="Detail_MotionSnoozeJson" xml:space="preserve">
+    <value>Motion Snooze Json</value>
+  </data>
+  <data name="Detail_MotionSnoozePresetProfile" xml:space="preserve">
+    <value>Motion Snooze Preset Profile</value>
+  </data>
+  <data name="Detail_MotionSnoozePresets" xml:space="preserve">
+    <value>Motion Snooze Presets</value>
+  </data>
+  <data name="Detail_NightMode" xml:space="preserve">
+    <value>Night Mode</value>
+  </data>
+  <data name="Detail_NightModeOn" xml:space="preserve">
+    <value>Night Mode On</value>
+  </data>
+  <data name="Detail_Owned" xml:space="preserve">
+    <value>Owned</value>
+  </data>
+  <data name="Detail_OwnerEmail" xml:space="preserve">
+    <value>Owner Email</value>
+  </data>
+  <data name="Detail_OwnerFirstName" xml:space="preserve">
+    <value>Owner First Name</value>
+  </data>
+  <data name="Detail_OwnerId" xml:space="preserve">
+    <value>Owner Id</value>
+  </data>
+  <data name="Detail_OwnerLastName" xml:space="preserve">
+    <value>Owner Last Name</value>
+  </data>
+  <data name="Detail_PirSensitivity1" xml:space="preserve">
+    <value>Pir Sensitivity 1</value>
+  </data>
+  <data name="Detail_PirSettingsSensitivity1" xml:space="preserve">
+    <value>Pir Settings Sensitivity 1</value>
+  </data>
+  <data name="Detail_PirSettingsSensitivity2" xml:space="preserve">
+    <value>Pir Settings Sensitivity 2</value>
+  </data>
+  <data name="Detail_PirSettingsSensitivity3" xml:space="preserve">
+    <value>Pir Settings Sensitivity 3</value>
+  </data>
+  <data name="Detail_PirSettingsZoneEnable" xml:space="preserve">
+    <value>Pir Settings Zone Enable</value>
+  </data>
+  <data name="Detail_PirSettingsZoneMask" xml:space="preserve">
+    <value>Pir Settings Zone Mask</value>
+  </data>
+  <data name="Detail_RingDeviceId" xml:space="preserve">
+    <value>Ring Device Id</value>
+  </data>
+  <data name="Detail_RingKind" xml:space="preserve">
+    <value>Ring Kind</value>
+  </data>
+  <data name="Detail_RingRingId" xml:space="preserve">
+    <value>Ring Ring Id</value>
+  </data>
+  <data name="Detail_RingType" xml:space="preserve">
+    <value>Ring Type</value>
+  </data>
+  <data name="Detail_SettingsChimeDuration" xml:space="preserve">
+    <value>Settings Chime Duration</value>
+  </data>
+  <data name="Detail_SettingsChimeEnabled" xml:space="preserve">
+    <value>Settings Chime Enabled</value>
+  </data>
+  <data name="Detail_SettingsChimeType" xml:space="preserve">
+    <value>Settings Chime Type</value>
+  </data>
+  <data name="Detail_SettingsMetadataJson" xml:space="preserve">
+    <value>Settings Metadata Json</value>
+  </data>
+  <data name="Detail_SirenSecondsRemaining" xml:space="preserve">
+    <value>Siren Seconds Remaining</value>
+  </data>
+  <data name="Detail_Stolen" xml:space="preserve">
+    <value>Stolen</value>
+  </data>
+  <data name="Detail_Subscribed" xml:space="preserve">
+    <value>Subscribed</value>
+  </data>
+  <data name="Detail_SubscribedMotions" xml:space="preserve">
+    <value>Subscribed Motions</value>
+  </data>
+  <data name="Detail_VodStatus" xml:space="preserve">
+    <value>Vod Status</value>
+  </data>
+  <data name="Detail_VodSuspended" xml:space="preserve">
+    <value>Vod Suspended</value>
+  </data>
+  <data name="Detail_Zones" xml:space="preserve">
+    <value>Zones</value>
+  </data>
+  <data name="DeviceNotFound" xml:space="preserve">
+    <value>Device not found in this location.</value>
+  </data>
+  <data name="FailedToGetDevice" xml:space="preserve">
+    <value>Failed to get device: {0}</value>
+  </data>
+  <data name="LabelId" xml:space="preserve">
+    <value>Id</value>
+  </data>
+  <data name="LabelLocationId" xml:space="preserve">
+    <value>Location Id</value>
+  </data>
+  <data name="LabelName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="LabelOnline" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="LabelType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="NoDetails" xml:space="preserve">
+    <value>No provider details were supplied for this device.</value>
+  </data>
+  <data name="SectionDetails" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="SectionIdentity" xml:space="preserve">
+    <value>Identity</value>
+  </data>
+  <data name="SectionMetadata" xml:space="preserve">
+    <value>Metadata</value>
+  </data>
+  <data name="SectionStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+</root>

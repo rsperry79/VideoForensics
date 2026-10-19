@@ -10,7 +10,9 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Ui.Shared.Components.Inspector;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Ui.Shared.Services.Inspector;
 using VideoForensics.Ui.Shared.Services.QueryApi;
 using VideoForensics.Ui.Shared.Services.Scope;
 using Xunit;
@@ -85,6 +87,39 @@ public class QueryApiDevicesPage_Tests : BunitContext
             .Single(c => c.Instance.ID == "query-api-location-filter");
 
         Assert.Equal("loc-2", dropdown.Instance.Value);
+    }
+
+    [Fact]
+    public async Task QueryApiDevicesPage_DeviceRowSelected_DoesNotShowInspector()
+    {
+        var device = new Device("dev-1", "Front Door", "doorbell", "loc-1", true);
+        _discovery.Setup(d => d.GetDevicesAsync("loc-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Device> { device });
+        Services.GetRequiredService<IQueryApiFilterState>().SetLocationId("loc-1");
+
+        var cut = Render<QueryApiDevices>();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Get Devices").Click();
+        var grid = cut.FindComponent<ForensicGrid<Device>>();
+        await cut.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(device));
+
+        Assert.Null(Services.GetRequiredService<InspectorState>().Current);
+    }
+
+    [Fact]
+    public async Task QueryApiDevicesPage_DeviceRowSelected_NavigatesToDeviceDetailPage()
+    {
+        var device = new Device("dev-1", "Front Door", "doorbell", "loc-1", true);
+        _discovery.Setup(d => d.GetDevicesAsync("loc-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Device> { device });
+        Services.GetRequiredService<IQueryApiFilterState>().SetLocationId("loc-1");
+
+        var cut = Render<QueryApiDevices>();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Get Devices").Click();
+        var grid = cut.FindComponent<ForensicGrid<Device>>();
+        await cut.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(device));
+
+        Assert.EndsWith("/query/devices/loc-1/dev-1", Services.GetRequiredService<NavigationManager>().Uri);
+        Assert.Equal("dev-1", Services.GetRequiredService<IQueryApiFilterState>().DeviceId);
     }
 
     private RenderFragment GetRightPanelContent()
