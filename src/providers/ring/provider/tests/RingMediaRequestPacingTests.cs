@@ -57,11 +57,37 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RecordThrottledAsync_TwoRateLimits_RaisesOneAlertPerThrottle()
+        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_RaisesOneAlert()
         {
             (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
 
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+
+            dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_TwoRateLimitsInOneIncident_AddsOneSecondOfSpacing()
+        {
+            (RingMediaDownloadService service, _) = CreateService();
+            MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
+            TimeSpan baseInterval = pacerA.MinInterval;
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+
+            Assert.Equal(baseInterval + TimeSpan.FromSeconds(1), pacerA.MinInterval);
+        }
+
+        [Fact]
+        public async Task RecordThrottledAsync_RateLimitAfterSuccess_RaisesSecondAlert()
+        {
+            (RingMediaDownloadService service, Mock<INotificationDispatcher> dispatcher) = CreateService();
+            MediaRequestPacer pacerA = service.GetPacerForAccount(AccountA);
+
+            await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
+            pacerA.MarkRequestSucceeded();
             await service.RecordThrottledAsync(AccountA, new ThrottledException(), CancellationToken.None);
 
             dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Exactly(2));

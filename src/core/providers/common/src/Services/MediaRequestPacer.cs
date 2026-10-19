@@ -16,6 +16,7 @@ namespace VideoForensics.Core.Providers.Common.Services
         private readonly object _state = new();
         private TimeSpan _minInterval;
         private DateTime? _pauseUntilUtc;
+        private bool _inRateLimitIncident;
 
         /// <summary>Default pause after a rate limit that carries no Retry-After.</summary>
         public static readonly TimeSpan DefaultRateLimitPause = TimeSpan.FromSeconds(60);
@@ -30,6 +31,12 @@ namespace VideoForensics.Core.Providers.Common.Services
         /// <summary>Total extra spacing added by <see cref="RecordRateLimited"/>. Survives <see cref="MinInterval"/> being reset.</summary>
         public TimeSpan RateLimitPenalty { get; private set; }
 
+        /// <summary>True from the first 429 of an incident until <see cref="MarkRequestSucceeded"/>. Tests read it.</summary>
+        public bool IsInRateLimitIncident
+        {
+            get { lock (_state) { return _inRateLimitIncident; } }
+        }
+
         /// <summary>Creates a pacer. Defaults: the system clock, a real delay, and a one-second interval.</summary>
         public MediaRequestPacer(Func<DateTime>? utcNow = null, Func<TimeSpan, CancellationToken, Task>? delay = null, TimeSpan? minInterval = null)
         {
@@ -39,10 +46,11 @@ namespace VideoForensics.Core.Providers.Common.Services
         }
 
         /// <summary>
-        /// Records a rate limit from the provider: no turn starts before the pause (Retry-After, or 60 seconds when absent)
-        /// has passed, and <see cref="MinInterval"/> grows by one second. Each call adds another second; nothing speeds it back up.
+        /// Records a 429 from the provider. The pause always extends (never shortens) to Retry-After (or 60 seconds when absent).
+        /// Spacing grows by one second only when this call starts a new incident, so retries that hit 429 again inside the same
+        /// incident add nothing. Returns true when this call started a new incident, so callers can alert once per incident.
         /// </summary>
-        public void RecordRateLimited(TimeSpan? retryAfter)
+        public bool RecordRateLimited(TimeSpan? retryAfter)
         {
             lock (_state)
             {
@@ -53,8 +61,27 @@ namespace VideoForensics.Core.Providers.Common.Services
                     _pauseUntilUtc = pauseUntil;
                 }
 
+                if (_inRateLimitIncident)
+                {
+                    return false;
+                }
+
+                _inRateLimitIncident = true;
                 _minInterval += TimeSpan.FromSeconds(1);
                 RateLimitPenalty += TimeSpan.FromSeconds(1);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Ends the current rate-limit incident after a successful media request. The next 429 starts a new incident.
+        /// Does not reduce <see cref="MinInterval"/>.
+        /// </summary>
+        public void MarkRequestSucceeded()
+        {
+            lock (_state)
+            {
+                _inRateLimitIncident = false;
             }
         }
 

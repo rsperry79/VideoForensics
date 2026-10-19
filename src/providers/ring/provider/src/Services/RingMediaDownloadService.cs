@@ -81,8 +81,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         /// <summary>
         /// Handles one 429 from Ring for <paramref name="accountId"/>: pauses that account's media requests for Retry-After
-        /// (60 seconds when absent), adds a second to its spacing, and raises an alert naming the account. A hard ban is
-        /// ignored here, because retrying it cannot succeed and it is not a per-request rate limit.
+        /// (60 seconds when absent). A new rate-limit incident also adds a second to its spacing and raises an alert naming the
+        /// account; 429s inside an ongoing incident only extend the pause. A hard ban is ignored here, because retrying it
+        /// cannot succeed and it is not a per-request rate limit.
         /// </summary>
         internal async Task RecordThrottledAsync(Guid accountId, ThrottledException ex, CancellationToken cancellationToken)
         {
@@ -92,12 +93,13 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             MediaRequestPacer pacer = GetPacerForAccount(accountId);
-            pacer.RecordRateLimited(ex.RetryAfter);
+            bool newIncident = pacer.RecordRateLimited(ex.RetryAfter);
             TimeSpan pause = ex.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
             _logger.LogWarning("{AccountName} was rate limited by Ring; pausing media requests for {PauseSeconds}s and spacing them {IntervalSeconds}s apart",
                 RingAccountDisplayName, pause.TotalSeconds, pacer.MinInterval.TotalSeconds);
 
-            if (_notificationDispatcher == null)
+            // Only the first 429 of an incident alerts; retries that hit 429 again while it lasts are logged, not alerted.
+            if (!newIncident || _notificationDispatcher == null)
             {
                 return;
             }
@@ -459,10 +461,13 @@ namespace VideoForensics.Providers.Ring.Services
                                 fetchedWithoutThrottle = await ThrottleRetry.RunAsync(
                                     () => RetryWithBackoffAsync(async () =>
                                     {
-                                        await GetPacerForAccount(accountId).WaitTurnAsync(rateLimitCts.Token);
+                                        MediaRequestPacer accountPacer = GetPacerForAccount(accountId);
+                                        await accountPacer.WaitTurnAsync(rateLimitCts.Token);
                                         try
                                         {
                                             await session.GetDoorbotHistoryRecording(@event, fileName);
+                                            // A successful media request ends this account's rate-limit incident.
+                                            accountPacer.MarkRequestSucceeded();
                                         }
                                         catch (ThrottledException ex)
                                         {
