@@ -3,7 +3,6 @@ namespace VideoForensics.Ui.Shared.Tests;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 using Moq;
 using Xunit;
 using VideoForensics.Data.Common.Contracts;
@@ -15,22 +14,18 @@ using VideoForensics.Ui.Shared.Services.Scope;
 using Device = VideoForensics.Data.Common.Entities.Device;
 
 /// <summary>The rail's Provider and Account filters narrow the device list and scope the investigation to it.</summary>
-public class ScopeRail_ProviderAccountFilter_Tests : BunitContext
+public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
 {
     public ScopeRail_ProviderAccountFilter_Tests()
     {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton(TimeProvider.System);
         Services.AddScoped(_ => new ScopeState());
 
+        // Overrides the base's Open-only case repository: this rail test also queries with a nullable status.
         var caseRepository = new Mock<ICaseRepository>();
         caseRepository
             .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ForensicCase>());
         Services.AddScoped(_ => caseRepository.Object);
-        Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     private static Device MakeDevice(string name, Guid locationId) => new()
