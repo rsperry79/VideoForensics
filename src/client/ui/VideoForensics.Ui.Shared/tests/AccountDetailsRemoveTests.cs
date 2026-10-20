@@ -166,3 +166,49 @@ public class AccountDetailsRemove_Tests : AccountDetailsRemoveTestBase
         AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 }
+
+public class AccountDetailsPurge_Tests : AccountDetailsRemoveTestBase
+{
+    [Fact]
+    public void AccountDetails_ExportAndDelete_FirstClick_OnlyAsksForConfirmation()
+    {
+        var cut = RenderPage();
+
+        ClickButton(cut, "Remove Account");
+        ClickButton(cut, "Delete permanently");
+        ClickButton(cut, "Export and delete");
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='account-purge-confirm']")));
+        ExportServiceMock.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public void AccountDetails_ExportAndDelete_Confirmed_QueuesPurgeWithStepUp()
+    {
+        var cut = RenderPage();
+
+        ClickButton(cut, "Remove Account");
+        ClickButton(cut, "Delete permanently");
+        ClickButton(cut, "Export and delete");
+        ClickButton(cut, "Export and delete now");
+
+        cut.WaitForAssertion(() =>
+            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, true, It.IsAny<CancellationToken>(), "step-token"), Times.Once));
+        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public void AccountDetails_ExportAndDelete_CancelledConfirmation_QueuesNothing()
+    {
+        var cut = RenderPage();
+
+        ClickButton(cut, "Remove Account");
+        ClickButton(cut, "Delete permanently");
+        ClickButton(cut, "Export and delete");
+        ClickButton(cut, "Cancel");
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid='account-purge-confirm']")));
+        ExportServiceMock.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
+    }
+}

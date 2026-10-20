@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
@@ -37,6 +39,40 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 ProviderAccount? persisted = await db.ProviderAccounts.FindAsync(new object[] { account.Id }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(persisted);
                 Assert.False(persisted.InitialSyncCompleted);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteAsync_SharedLocationAndDevice_OtherAccountKeepsThemAndItsLink()
+        {
+            // Arrange: accounts A (being purged) and B share one location and its device
+            Guid accountA = Guid.NewGuid();
+            Guid accountB = Guid.NewGuid();
+            Guid locationId = Guid.NewGuid();
+            Guid deviceId = Guid.NewGuid();
+
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                db.ProviderAccounts.Add(new ProviderAccount { Id = accountA, UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true });
+                db.ProviderAccounts.Add(new ProviderAccount { Id = accountB, UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true });
+                db.Locations.Add(new Location { Id = locationId, ProviderLocationId = "shared-loc", Name = "Shared" });
+                db.Devices.Add(new Device { Id = deviceId, LocationId = locationId, ProviderDeviceId = "d-1", Name = "Door", Type = "doorbell" });
+                db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = accountA, LocationId = locationId });
+                db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = accountB, LocationId = locationId });
+                await db.SaveChangesAsync(CancellationToken.None);
+            }
+
+            // Act: purge account A
+            await _repository.DeleteAsync(accountA, CancellationToken.None);
+
+            // Assert: A is gone with its own link; the shared location, the device and B's link are untouched
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                Assert.Null(await db.ProviderAccounts.FindAsync(new object[] { accountA }, CancellationToken.None));
+                Assert.False(await db.ProviderAccountLocations.AnyAsync(l => l.ProviderAccountId == accountA, CancellationToken.None));
+                Assert.NotNull(await db.Locations.FindAsync(new object[] { locationId }, CancellationToken.None));
+                Assert.NotNull(await db.Devices.FindAsync(new object[] { deviceId }, CancellationToken.None));
+                Assert.True(await db.ProviderAccountLocations.AnyAsync(l => l.ProviderAccountId == accountB && l.LocationId == locationId, CancellationToken.None));
             }
         }
 

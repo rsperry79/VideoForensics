@@ -45,7 +45,15 @@ namespace VideoForensics.Core.Api.Contracts
 
     /// <summary>Request body for queueing a background export of a provider account.</summary>
     /// <param name="PurgeAfterExport">When true, the account is hard-deleted after the export file is written.</param>
-    public record QueueAccountExportRequest(bool PurgeAfterExport);
+    /// <param name="ConfirmPurge">The operator confirmed the purge in the UI. Required whenever <paramref name="PurgeAfterExport"/> is true.</param>
+    public record QueueAccountExportRequest(bool PurgeAfterExport, bool ConfirmPurge = false)
+    {
+        /// <summary>Returned when a purge is requested without the operator's confirmation.</summary>
+        public const string PurgeNotConfirmedMessage = "Purging an account needs the operator to confirm it first.";
+
+        /// <summary>The reason this request is refused, or null when it may proceed.</summary>
+        public string? ValidationError => PurgeAfterExport && !ConfirmPurge ? PurgeNotConfirmedMessage : null;
+    }
 
     /// <summary>Wire form of a background account export job's status.</summary>
     /// <param name="JobId">The job id returned when the export was queued.</param>

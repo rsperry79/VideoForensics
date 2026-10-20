@@ -22,12 +22,21 @@
         </div>
         <small class="text-muted">@L["AccountRemove_RetainHint"]</small>
     }
+    else if (_purgeConfirm)
+    {
+        <p class="text-danger" data-testid="account-purge-confirm">@L["AccountRemove_PurgeConfirm"]</p>
+        <div class="d-flex gap-2 align-items-center">
+            <SfButton CssClass="e-danger" Content="@L["AccountRemove_PurgeConfirmButton"]" OnClick="PurgeAsync" Disabled="@_isBusy" />
+            <SfButton CssClass="e-outline" Content="@L["AccountRemove_Cancel"]" OnClick="CancelPurgeConfirm" Disabled="@_isBusy" />
+        </div>
+    }
     else
     {
         <p>@L["AccountRemove_ExportPrompt"]</p>
         <div class="d-flex gap-2 align-items-center">
             <SfButton CssClass="e-primary" Content="@L["AccountRemove_ExportFirst"]" OnClick="ExportFirstAsync" Disabled="@_isBusy" />
             <SfButton CssClass="e-danger" Content="@L["AccountRemove_DeleteWithoutExport"]" OnClick="DeleteWithoutExportAsync" Disabled="@_isBusy" />
+            <SfButton CssClass="e-danger" Content="@L["AccountRemove_ExportAndDelete"]" OnClick="AskPurgeConfirmAsync" Disabled="@_isBusy" />
             <SfButton CssClass="e-outline" Content="@L["AccountRemove_Cancel"]" OnClick="CancelAsync" Disabled="@_isBusy" />
         </div>
     }
@@ -41,6 +50,7 @@
     public sealed record RemoveResult(Guid AccountId, RemoveOutcome Outcome, Guid? ExportJobId);
 
     private bool _deleteStep;
+    private bool _purgeConfirm;
     private bool _isBusy;
     private string? _errorMessage;
 
@@ -64,6 +74,19 @@
     }
 
     private Task CancelAsync() => OnCancelled.InvokeAsync();
+
+    /// <summary>The purge is irreversible, so the first click only asks; nothing is queued until the operator confirms.</summary>
+    private Task AskPurgeConfirmAsync()
+    {
+        _purgeConfirm = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelPurgeConfirm()
+    {
+        _purgeConfirm = false;
+        return Task.CompletedTask;
+    }
 
     private Task RetainAsync() => RunAsync(async ct =>
     {
@@ -99,6 +122,19 @@
 
         // Export only: purge is disabled, so the account is kept. "Delete without export" is the separate, explicit delete.
         Guid jobId = await ExportService.QueueExportAsync(AccountId, false, ct, token);
+        return new RemoveResult(AccountId, RemoveOutcome.ExportQueued, jobId);
+    });
+
+    /// <summary>Exports, then deletes the account's own rows. Shared locations, devices and events are not touched.</summary>
+    private Task PurgeAsync() => RunAsync(async ct =>
+    {
+        string? token = await TryGetStepUpTokenAsync();
+        if (token is null)
+        {
+            return null;
+        }
+
+        Guid jobId = await ExportService.QueueExportAsync(AccountId, true, ct, token);
         return new RemoveResult(AccountId, RemoveOutcome.ExportQueued, jobId);
     });
 
