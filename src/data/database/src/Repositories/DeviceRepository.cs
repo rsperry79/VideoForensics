@@ -55,21 +55,14 @@ namespace VideoForensics.Data.Database.Repositories
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             List<Device> devices = await db.Devices.ToListAsync(ct);
 
-            // One lookup for all locations rather than one per device. A location with several linked accounts
-            // takes the first by ProviderName, so the result is stable across calls.
-            var providerByLocation = await db.ProviderAccountLocations
+            // One lookup for all locations rather than one per device.
+            List<(Guid LocationId, string ProviderName)> links = (await db.ProviderAccountLocations
                 .AsNoTracking()
                 .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
-                .ToListAsync(ct);
-            Dictionary<Guid, string> names = providerByLocation
-                .GroupBy(x => x.LocationId)
-                .ToDictionary(g => g.Key, g => g.Select(x => x.ProviderName).OrderBy(n => n, StringComparer.Ordinal).First());
-
-            foreach (Device device in devices)
-            {
-                device.ProviderName = names.GetValueOrDefault(device.LocationId);
-            }
-
+                .ToListAsync(ct))
+                .Select(x => (x.LocationId, x.ProviderName))
+                .ToList();
+            DeviceProviderNames.Assign(devices, links);
             return devices;
         }
 

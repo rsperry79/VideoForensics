@@ -89,4 +89,7 @@
   <data name="ColThreshold" xml:space="preserve">
     <value>Threshold</value>
   </data>
+  <data name="OtherSettingsTitle" xml:space="preserve">
+    <value>Other settings</value>
+  </data>
 </root>

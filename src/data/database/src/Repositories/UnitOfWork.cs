@@ -346,7 +346,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<Device>)_db.Devices.AsNoTracking().ToList());
+            List<Device> devices = _db.Devices.AsNoTracking().ToList();
+            List<(Guid LocationId, string ProviderName)> links = _db.ProviderAccountLocations
+                .AsNoTracking()
+                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
+                .AsEnumerable()
+                .Select(x => (x.LocationId, x.ProviderName))
+                .ToList();
+            DeviceProviderNames.Assign(devices, links);
+            return Task.FromResult((IReadOnlyList<Device>)devices);
         }
 
         public Task AddAsync(Device device, CancellationToken ct) { _ = _db.Devices.Add(device); return Task.CompletedTask; }

@@ -73,6 +73,11 @@ else
             </table>
         }
     }
+    @if (!string.IsNullOrEmpty(_device.SettingsMetadataJson))
+    {
+        <h6 class="mt-3">@L["OtherSettingsTitle"]</h6>
+        <pre data-testid="ring-other-settings" style="white-space: pre-wrap; font-size: 0.85rem;">@_device.SettingsMetadataJson</pre>
+    }
 }
 
 @code {

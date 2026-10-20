@@ -54,7 +54,8 @@ namespace VideoForensics.Core.Api.Contracts
         bool? ExternalConnection = null,
         bool? Owned = null,
         bool? Stolen = null,
-        string? ProviderName = null
+        string? ProviderName = null,
+        string? SettingsMetadataJson = null
     );
 
     /// <summary>Sync status enumeration for a device.</summary>
@@ -104,7 +105,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ExternalConnection: entity.ExternalConnection,
                 Owned: entity.Owned,
                 Stolen: entity.Stolen,
-                ProviderName: entity.ProviderName
+                ProviderName: entity.ProviderName,
+                SettingsMetadataJson: entity.SettingsMetadataJson
             );
         }
 
@@ -140,7 +142,8 @@ namespace VideoForensics.Core.Api.Contracts
                 ExternalConnection = dto.ExternalConnection,
                 Owned = dto.Owned,
                 Stolen = dto.Stolen,
-                ProviderName = dto.ProviderName
+                ProviderName = dto.ProviderName,
+                SettingsMetadataJson = dto.SettingsMetadataJson
             };
         }
     }
