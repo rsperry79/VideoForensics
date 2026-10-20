@@ -153,7 +153,13 @@ namespace VideoForensics.Hosting.BackgroundServices
                         continue;
                     }
 
-                    if (!ScheduleCalculator.IsEventDue(schedule, _time.GetUtcNow().UtcDateTime))
+                    DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
+                    if (ScheduleCalculator.IsSnapshotDue(schedule, nowUtc))
+                    {
+                        await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, ct);
+                    }
+
+                    if (!ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
                         continue;
                     }
@@ -169,6 +175,42 @@ namespace VideoForensics.Hosting.BackgroundServices
                     // One account's failure must never stop the others.
                     _logger.LogError(ex, "Scheduled sync failed for {ProviderName} account", providerName);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Pulls the latest snapshot for each device of a due account and records the next snapshot run. The provider
+        /// session is restored first, as the event pull does; a failed restore still records the run so it is not retried every tick.
+        /// </summary>
+        private async Task RunSnapshotSyncAsync(
+            IServiceProvider sp,
+            ISyncScheduleRepository scheduleRepository,
+            SyncSchedule schedule,
+            ProviderAccount account,
+            IProviderAuthService authService,
+            CancellationToken ct)
+        {
+            DateTime now = _time.GetUtcNow().UtcDateTime;
+            try
+            {
+                if (await authService.RestoreFromSavedCredentialsAsync(account.Id, ct))
+                {
+                    SnapshotSyncResult result = await sp.GetRequiredService<ISnapshotSyncService>()
+                        .SyncAccountSnapshotsAsync(account.Id, fromUtc: null, toUtc: null, ct);
+                    if (result.ErrorMessage is not null)
+                    {
+                        _logger.LogWarning("Scheduled snapshot sync for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Scheduled snapshot sync skipped: saved credentials could not be restored for {ProviderName} account", account.ProviderName);
+                }
+            }
+            finally
+            {
+                // Uses CancellationToken.None so the run is recorded even when shutdown cancelled the pull.
+                await scheduleRepository.RecordSnapshotRunAsync(account.Id, now, ScheduleCalculator.NextSnapshotRunUtc(schedule, now), CancellationToken.None);
             }
         }
 
