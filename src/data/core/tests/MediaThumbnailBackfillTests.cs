@@ -52,7 +52,7 @@ public class MediaThumbnailBackfillTests : IDisposable
     {
         MediaItem ok = Item(OnDisk("a.mp4"), "video/mp4");
         MediaItem failing = Item(OnDisk("b.mp4"), "video/mp4");
-        _items.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { ok, failing });
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { ok, failing });
         _thumbnails.Setup(t => t.EnsureThumbnailAsync(ok, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _thumbnails.Setup(t => t.EnsureThumbnailAsync(failing, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
@@ -63,13 +63,12 @@ public class MediaThumbnailBackfillTests : IDisposable
         Assert.Equal(1, result.Unavailable);
     }
 
+    /// <summary>A selected row whose clip is gone is counted, not attempted: there is nothing to extract a frame from.</summary>
     [Fact]
-    public async Task BackfillAsync_SkipsImagesPurgedItemsAndMissingFiles()
+    public async Task BackfillAsync_RowWhoseFileIsGone_CountedAsMissingAndNotAttempted()
     {
-        MediaItem still = Item(OnDisk("still.jpg"), "image/jpeg");
-        MediaItem purged = Item(OnDisk("gone.mp4"), "video/mp4", purged: true);
         MediaItem missingFile = Item(Path.Combine(_dir, "never-written.mp4"), "video/mp4");
-        _items.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { still, purged, missingFile });
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { missingFile });
 
         MediaThumbnailBackfillResult result = await CreateSut().BackfillAsync(CancellationToken.None);
 
@@ -81,7 +80,7 @@ public class MediaThumbnailBackfillTests : IDisposable
     [Fact]
     public async Task BackfillAsync_NoMediaItems_ReturnsEmptyResult()
     {
-        _items.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem>());
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem>());
 
         MediaThumbnailBackfillResult result = await CreateSut().BackfillAsync(CancellationToken.None);
 

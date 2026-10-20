@@ -427,8 +427,9 @@ namespace VideoForensics.Hosting
                 IDeviceRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
                 IIntegrityVerificationService integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                VideoForensics.Data.Core.Services.IMediaThumbnailService thumbnails = serviceProvider.GetRequiredService<VideoForensics.Data.Core.Services.IMediaThumbnailService>();
                 IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
-                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
+                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, thumbnails, reconciliationService);
             });
             _ = services.AddSingleton<IEvidenceValidationJobs, EvidenceValidationJobService>();
 

@@ -84,6 +84,22 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.MediaItems.ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        /// <remarks>
+        /// The video test mirrors the thumbnail service's rule (format name contains "video" or "mp4"), so the
+        /// database returns only rows that the backfill would act on.
+        /// </remarks>
+        public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .AsNoTracking()
+                .Where(m => !m.IsPurged
+                    && m.ThumbnailPath == null
+                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .ToListAsync(ct);
+        }
+
         /// <summary>Adds a new media item.</summary>
         public async Task AddAsync(MediaItem mediaItem, CancellationToken ct)
         {

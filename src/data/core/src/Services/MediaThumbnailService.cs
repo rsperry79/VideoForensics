@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Core.Services
@@ -18,6 +19,12 @@ namespace VideoForensics.Data.Core.Services
         /// (generated now if it is missing). Null when no thumbnail can be produced.
         /// </summary>
         Task<string?> ResolveThumbnailPathAsync(MediaItem media, CancellationToken ct);
+
+        /// <summary>
+        /// Brings a video row in line with the disk: records the thumbnail file name when the file exists, and clears
+        /// the stored name when the file is gone so the backfill picks the row up again. Saves only when something changed.
+        /// </summary>
+        Task ReconcileThumbnailAsync(MediaItem media, CancellationToken ct);
     }
 
     /// <inheritdoc />
@@ -27,23 +34,63 @@ namespace VideoForensics.Data.Core.Services
         private const long PreferredOffsetMs = 1000;
 
         private readonly IMediaFrameExtractor _frames;
+        private readonly IMediaItemRepository _items;
         private readonly ILogger<MediaThumbnailService> _logger;
 
         /// <summary>Creates the service.</summary>
-        public MediaThumbnailService(IMediaFrameExtractor frames, ILogger<MediaThumbnailService> logger)
+        public MediaThumbnailService(IMediaFrameExtractor frames, IMediaItemRepository items, ILogger<MediaThumbnailService> logger)
         {
             _frames = frames;
+            _items = items;
             _logger = logger;
         }
 
         /// <summary>
-        /// Path of the thumbnail sidecar, next to the media file. A sidecar keeps thumbnails out of the schema:
-        /// the file is the only record, so a missing one is found by checking the disk.
+        /// File name of a clip's thumbnail: the stem plus ".thumb.png". It is stored on the row relative to the clip's
+        /// folder, so the folder comes from the clip and the archive can move without rewriting rows.
         /// </summary>
+        public static string ThumbnailFileNameFor(string mediaFilePath) =>
+            Path.GetFileNameWithoutExtension(mediaFilePath) + ".thumb.png";
+
+        /// <summary>Full path of the thumbnail beside the clip.</summary>
         public static string ThumbnailPathFor(string mediaFilePath)
         {
             string directory = Path.GetDirectoryName(mediaFilePath) ?? string.Empty;
-            return Path.Combine(directory, Path.GetFileNameWithoutExtension(mediaFilePath) + ".thumb.png");
+            return Path.Combine(directory, ThumbnailFileNameFor(mediaFilePath));
+        }
+
+        /// <inheritdoc />
+        public async Task ReconcileThumbnailAsync(MediaItem media, CancellationToken ct)
+        {
+            if (!IsVideo(media.MediaFormat))
+            {
+                return;
+            }
+
+            if (File.Exists(ThumbnailPathFor(media.FilePath)))
+            {
+                await RecordPathAsync(media, ct);
+                return;
+            }
+
+            if (media.ThumbnailPath is not null)
+            {
+                media.ThumbnailPath = null;
+                await _items.UpdateAsync(media, ct);
+            }
+        }
+
+        /// <summary>Stores the file name on the row when it is missing or stale; saves only on a change.</summary>
+        private async Task RecordPathAsync(MediaItem media, CancellationToken ct)
+        {
+            string fileName = ThumbnailFileNameFor(media.FilePath);
+            if (media.ThumbnailPath == fileName)
+            {
+                return;
+            }
+
+            media.ThumbnailPath = fileName;
+            await _items.UpdateAsync(media, ct);
         }
 
         /// <inheritdoc />
@@ -68,6 +115,7 @@ namespace VideoForensics.Data.Core.Services
             string thumbnail = ThumbnailPathFor(media.FilePath);
             if (File.Exists(thumbnail))
             {
+                await RecordPathAsync(media, ct);
                 return true;
             }
 
@@ -85,6 +133,7 @@ namespace VideoForensics.Data.Core.Services
                 string temp = thumbnail + ".tmp";
                 await File.WriteAllBytesAsync(temp, png, ct);
                 File.Move(temp, thumbnail, overwrite: true);
+                await RecordPathAsync(media, ct);
                 return true;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

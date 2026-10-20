@@ -74,6 +74,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockDeviceRepository.Object,
                     _mockIntegrityService.Object,
                     _mockMediaItemRepository.Object,
+                    new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                     _mockReconciliationService.Object);
 
                 // Act
@@ -132,6 +133,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockDeviceRepository.Object,
                     _mockIntegrityService.Object,
                     _mockMediaItemRepository.Object,
+                    new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                     _mockReconciliationService.Object);
 
                 // Act
@@ -177,6 +179,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
 
             // Act
@@ -228,6 +231,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
 
             // Act
@@ -286,6 +290,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
 
             // Act
@@ -337,6 +342,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
 
             // Act
@@ -392,6 +398,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
 
             // Act
@@ -444,6 +451,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _mockDeviceRepository.Object,
                     _mockIntegrityService.Object,
                     _mockMediaItemRepository.Object,
+                    new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                     _mockReconciliationService.Object);
                 var progress = new ProgressCollector();
 
@@ -503,6 +511,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 _mockDeviceRepository.Object,
                 _mockIntegrityService.Object,
                 _mockMediaItemRepository.Object,
+                new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>().Object,
                 _mockReconciliationService.Object);
             var progress = new ProgressCollector();
 

@@ -36,6 +36,12 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <summary>
+        /// Thumbnail backfill runs only on the server, next to the files, so no client endpoint exists for this query.
+        /// </summary>
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct) =>
+            throw new NotSupportedException("Videos without a thumbnail are listed by the server's own repository, not over HTTP.");
+
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items", ct);

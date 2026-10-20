@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 using VideoForensics.Core.Providers.Core;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 
@@ -14,6 +15,7 @@ public class MediaThumbnailServiceTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-thumb-" + Guid.NewGuid());
     private readonly Mock<IMediaFrameExtractor> _frames = new();
+    private readonly Mock<IMediaItemRepository> _items = new();
 
     public MediaThumbnailServiceTests() => Directory.CreateDirectory(_dir);
 
@@ -25,7 +27,7 @@ public class MediaThumbnailServiceTests : IDisposable
         }
     }
 
-    private MediaThumbnailService CreateService() => new(_frames.Object, NullLogger<MediaThumbnailService>.Instance);
+    private MediaThumbnailService CreateService() => new(_frames.Object, _items.Object, NullLogger<MediaThumbnailService>.Instance);
 
     private string WriteMedia(string name, string format = "video/mp4")
     {
@@ -47,6 +49,86 @@ public class MediaThumbnailServiceTests : IDisposable
     private void FrameAt(long offsetMs, byte[] png) =>
         _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), offsetMs, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = true, PngBytes = png });
+
+    /// <summary>The row stores only the file name: the folder comes from the clip, so the archive can move without rewriting rows.</summary>
+    [Fact]
+    public async Task EnsureThumbnailAsync_Video_RecordsRelativeThumbnailPathOnRow()
+    {
+        string media = WriteMedia("clip.mp4");
+        FrameAt(1000, new byte[] { 0x89 });
+        MediaItem row = MediaFor(media);
+
+        _ = await CreateService().EnsureThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Equal("clip.thumb.png", row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(row, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnsureThumbnailAsync_SidecarExistsButRowHasNoPath_RecordsPath()
+    {
+        string media = WriteMedia("clip.mp4");
+        File.WriteAllBytes(MediaThumbnailService.ThumbnailPathFor(media), new byte[] { 0x89 });
+        MediaItem row = MediaFor(media);
+
+        _ = await CreateService().EnsureThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Equal("clip.thumb.png", row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(row, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnsureThumbnailAsync_Failure_LeavesRowWithoutPath()
+    {
+        string media = WriteMedia("clip.mp4");
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "no frame" });
+        MediaItem row = MediaFor(media);
+
+        _ = await CreateService().EnsureThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Null(row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>A verification run compares the row with the disk: a stored path whose file has gone is cleared, so the backfill selects it.</summary>
+    [Fact]
+    public async Task ReconcileThumbnailAsync_RowHasPathButFileMissing_ClearsPathAndSaves()
+    {
+        string media = WriteMedia("clip.mp4");
+        MediaItem row = MediaFor(media);
+        row.ThumbnailPath = "clip.thumb.png";
+
+        await CreateService().ReconcileThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Null(row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(row, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReconcileThumbnailAsync_FileExistsButRowHasNoPath_SetsPathAndSaves()
+    {
+        string media = WriteMedia("clip.mp4");
+        File.WriteAllBytes(MediaThumbnailService.ThumbnailPathFor(media), new byte[] { 0x89 });
+        MediaItem row = MediaFor(media);
+
+        await CreateService().ReconcileThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Equal("clip.thumb.png", row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(row, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReconcileThumbnailAsync_Consistent_DoesNotSave()
+    {
+        string media = WriteMedia("clip.mp4");
+        MediaItem row = MediaFor(media);
+
+        await CreateService().ReconcileThumbnailAsync(row, CancellationToken.None);
+
+        Assert.Null(row.ThumbnailPath);
+        _items.Verify(r => r.UpdateAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     [Fact]
     public void ThumbnailPathFor_UsesStemAndThumbPng()

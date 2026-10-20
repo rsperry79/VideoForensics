@@ -29,6 +29,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists all media items.</summary>
         Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct);
 
+        /// <summary>Lists non-purged video items whose <see cref="MediaItem.ThumbnailPath"/> is not yet set.</summary>
+        Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct);
+
         /// <summary>Adds a new media item.</summary>
         Task AddAsync(MediaItem mediaItem, CancellationToken ct);
 

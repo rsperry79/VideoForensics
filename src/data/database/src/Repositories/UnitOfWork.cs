@@ -414,6 +414,13 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.ApiSourceHash == apiSourceHash));
         }
 
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.ThumbnailPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .ToList());
+        }
+
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId).ToList());

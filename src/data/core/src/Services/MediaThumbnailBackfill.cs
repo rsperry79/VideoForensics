@@ -39,7 +39,8 @@ namespace VideoForensics.Data.Core.Services
         /// <inheritdoc />
         public async Task<MediaThumbnailBackfillResult> BackfillAsync(CancellationToken ct)
         {
-            IReadOnlyList<MediaItem> items = await _items.ListAsync(ct);
+            // The repository selects only videos with no ThumbnailPath, so the pass never scans the whole archive.
+            IReadOnlyList<MediaItem> items = await _items.ListVideosWithoutThumbnailAsync(ct);
 
             int checkedCount = 0;
             int available = 0;
@@ -49,12 +50,6 @@ namespace VideoForensics.Data.Core.Services
             foreach (MediaItem media in items)
             {
                 ct.ThrowIfCancellationRequested();
-
-                // Images are their own thumbnail, and purged clips have no file to read.
-                if (media.IsPurged || !MediaThumbnailService.IsVideo(media.MediaFormat))
-                {
-                    continue;
-                }
 
                 if (!File.Exists(media.FilePath))
                 {
