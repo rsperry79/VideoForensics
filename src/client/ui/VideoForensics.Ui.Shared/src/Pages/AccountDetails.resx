@@ -56,6 +56,21 @@
   <data name="ActiveLabel" xml:space="preserve">
     <value>Active</value>
   </data>
+  <data name="AccountTabsLabel" xml:space="preserve">
+    <value>Account sections</value>
+  </data>
+  <data name="TabDetails" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="TabCases" xml:space="preserve">
+    <value>Cases</value>
+  </data>
+  <data name="TabSync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="LastSyncCompletedLabel" xml:space="preserve">
+    <value>Last Sync Completed</value>
+  </data>
   <data name="LastDownloadLabel" xml:space="preserve">
     <value>Last Download</value>
   </data>
