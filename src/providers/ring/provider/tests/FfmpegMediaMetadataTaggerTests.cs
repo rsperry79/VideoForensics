@@ -109,28 +109,27 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>
-        /// ffmpeg exits 0 for JPEG input but writes no comment bytes, so tagging must report failure
-        /// (and not start ffmpeg) rather than claim the snapshot was tagged.
+        /// ffmpeg writes no comment into JPEG output, so JPEG tagging writes the COM segment directly and reads it back
+        /// without shelling out. Both binaries are missing on purpose: any ffmpeg/ffprobe call would fail the round trip.
         /// </summary>
         [Fact]
-        public async Task TagEventIdAsync_JpegMedia_ReturnsFalseAndLeavesFileUntouched()
+        public async Task TagEventIdAsync_JpegMedia_WritesCommentThatReadEventIdAsyncReturns()
         {
             string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
-            byte[] original = new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 };
-            File.WriteAllBytes(tempFile, original);
-            var logger = new Mock<ILogger>();
+            File.WriteAllBytes(tempFile, new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
+            Guid eventId = Guid.NewGuid();
             try
             {
-                // Missing binary on purpose: if the JPEG check ran ffmpeg, the failure would show up as an error, not the warning.
-                var tagger = new FfmpegMediaMetadataTagger(logger.Object, ffmpegPath: "nonexistent-ffmpeg-binary-xyz");
-                bool result = await tagger.TagEventIdAsync(tempFile, Guid.NewGuid(), CancellationToken.None);
+                var tagger = new FfmpegMediaMetadataTagger(
+                    _mockLogger.Object,
+                    ffmpegPath: "nonexistent-ffmpeg-binary-xyz",
+                    ffprobePath: "nonexistent-ffprobe-binary-xyz");
 
-                Assert.False(result);
-                Assert.Equal(original, File.ReadAllBytes(tempFile));
-                Assert.False(File.Exists(tempFile + ".tmp"));
-                logger.Verify(
-                    l => l.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                    Times.Once);
+                bool tagged = await tagger.TagEventIdAsync(tempFile, eventId, CancellationToken.None);
+                Guid? read = await tagger.ReadEventIdAsync(tempFile, CancellationToken.None);
+
+                Assert.True(tagged);
+                Assert.Equal(eventId, read);
             }
             finally
             {
@@ -138,6 +137,76 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     File.Delete(tempFile);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Real-binary round trip: tags an MP4 with ffmpeg and reads the comment back with ffprobe. Skips when
+        /// ffmpeg is not installed, so it never passes vacuously.
+        /// </summary>
+        [Fact]
+        public async Task TagEventIdAsync_Mp4_RoundTripsWithRealFfmpegAndFfprobe()
+        {
+            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            {
+                Assert.Skip("ffmpeg and ffprobe must be on PATH for this round trip.");
+            }
+
+            string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".mp4");
+            Guid eventId = Guid.NewGuid();
+            try
+            {
+                using (Process generate = Process.Start(new ProcessStartInfo("ffmpeg")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    ArgumentList = { "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=d=1:s=64x64", "-c:v", "mpeg4", tempFile },
+                })!)
+                {
+                    await generate.WaitForExitAsync(CancellationToken.None);
+                    Assert.Equal(0, generate.ExitCode);
+                }
+
+                var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg", ffprobePath: "ffprobe");
+
+                bool tagged = await tagger.TagEventIdAsync(tempFile, eventId, CancellationToken.None);
+                Guid? read = await tagger.ReadEventIdAsync(tempFile, CancellationToken.None);
+
+                Assert.True(tagged);
+                Assert.Equal(eventId, read);
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
+        }
+
+        private static bool ToolAvailable(string name)
+        {
+            try
+            {
+                using Process? probe = Process.Start(new ProcessStartInfo(name, "-version")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                });
+                if (probe is null)
+                {
+                    return false;
+                }
+
+                probe.StandardOutput.ReadToEnd();
+                probe.WaitForExit();
+                return probe.ExitCode == 0;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                return false;
             }
         }
 
