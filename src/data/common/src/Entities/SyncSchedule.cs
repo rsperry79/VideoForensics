@@ -24,6 +24,12 @@ namespace VideoForensics.Data.Common.Entities
         /// incident for the account (see RingMediaDownloadService), so the stored spacing settles at a rate Ring accepts.</summary>
         public int? SnapshotIntervalSeconds { get; set; }
 
+        /// <summary>Minutes between MP4 roll-ups of this account's snapshots into one loop. Default 15, minimum 1.</summary>
+        public int SnapshotRollupIntervalMinutes { get; set; } = DefaultSnapshotRollupIntervalMinutes;
+
+        /// <summary>When the last roll-up finished; null if no roll-up has run. Written by the roll-up job, never by the schedule form.</summary>
+        public DateTime? LastRollupUtc { get; set; }
+
         /// <summary>Indicates whether syncing is enabled for this account.</summary>
         public bool IsEnabled { get; set; }
 
@@ -55,6 +61,12 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Default snapshot/RSSI interval for a newly linked account: one minute, stored in seconds.</summary>
         public const int DefaultSnapshotIntervalSeconds = 60;
 
+        /// <summary>Default roll-up interval in minutes for snapshots into MP4 loops.</summary>
+        public const int DefaultSnapshotRollupIntervalMinutes = 15;
+
+        /// <summary>Smallest roll-up interval in minutes.</summary>
+        public const int MinimumSnapshotRollupIntervalMinutes = 1;
+
         /// <summary>Snapshot/RSSI floor in seconds. One second is the smallest interval an operator can set.</summary>
         public const int MinimumSnapshotIntervalSeconds = 1;
 
@@ -73,6 +85,7 @@ namespace VideoForensics.Data.Common.Entities
                 ProviderAccountId = providerAccountId,
                 EventPollIntervalMinutes = DefaultEventPollIntervalMinutes,
                 SnapshotRssiIntervalSeconds = DefaultSnapshotIntervalSeconds,
+                SnapshotRollupIntervalMinutes = DefaultSnapshotRollupIntervalMinutes,
                 IsEnabled = true,
                 UseAdvancedJammingSchedule = false
             };

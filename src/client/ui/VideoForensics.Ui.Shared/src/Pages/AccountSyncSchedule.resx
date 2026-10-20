@@ -146,6 +146,9 @@
   <data name="EndAfterStart" xml:space="preserve">
     <value>End time must be after start time for {0}.</value>
   </data>
+  <data name="SnapshotRollupIntervalLabel" xml:space="preserve">
+    <value>Snapshot roll-up interval (minutes):</value>
+  </data>
   <data name="IntervalUnitLabel" xml:space="preserve">
     <value>Interval unit</value>
   </data>

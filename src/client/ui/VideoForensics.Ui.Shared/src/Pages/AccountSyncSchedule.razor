@@ -49,6 +49,10 @@ else
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
                     <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
                 </div>
+                <div class="mb-3">
+                    <label for="snapshot-rollup-interval">@L["SnapshotRollupIntervalLabel"]</label>
+                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" Min="1" Step="1" />
+                </div>
 
                 <div class="mb-3">
                     <label for="is-enabled">
@@ -169,6 +173,7 @@ else
     private SyncSchedule? _schedule;
     private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
     private int _eventPollIntervalMinutes = 60;
+    private int _snapshotRollupIntervalMinutes = SyncSchedule.DefaultSnapshotRollupIntervalMinutes;
     private bool _isEnabled = true;
     private bool _useAdvancedJammingSchedule;
     private List<JammingScheduleWindow>? _jammingWindows;
@@ -326,6 +331,7 @@ else
             {
                 _snapshotRssiIntervalSeconds = _schedule.SnapshotRssiIntervalSeconds;
                 _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
+                _snapshotRollupIntervalMinutes = _schedule.SnapshotRollupIntervalMinutes;
                 _isEnabled = _schedule.IsEnabled;
                 _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
                 // Create a mutable copy of jamming windows for editing
@@ -470,6 +476,7 @@ else
                     ProviderAccountId = Id,
                     SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds,
                     EventPollIntervalMinutes = _eventPollIntervalMinutes,
+                    SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes,
                     IsEnabled = _isEnabled,
                     UseAdvancedJammingSchedule = _useAdvancedJammingSchedule,
                     EventNextRunUtc = null,
@@ -483,6 +490,7 @@ else
             {
                 _schedule.SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds;
                 _schedule.EventPollIntervalMinutes = _eventPollIntervalMinutes;
+                _schedule.SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes;
                 _schedule.IsEnabled = _isEnabled;
                 _schedule.UseAdvancedJammingSchedule = _useAdvancedJammingSchedule;
                 // Ensure SyncScheduleId is set on windows for persistence

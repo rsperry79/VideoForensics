@@ -5347,6 +5347,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("LastRollupUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
@@ -5358,6 +5361,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                     b.Property<DateTime?>("SnapshotNextRunUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("SnapshotRollupIntervalMinutes")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("SnapshotRssiIntervalSeconds")
                         .HasColumnType("INTEGER");

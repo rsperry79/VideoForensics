@@ -36,14 +36,21 @@ namespace VideoForensics.Data.Database.Repositories
             if (schedule.EventPollIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
             {
                 throw new ArgumentException(
-                    $"EventPollIntervalMinutes ({schedule.EventPollIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
+                    $"EventPollIntervalMinutes ({schedule.EventPollIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
                     nameof(schedule));
             }
 
             if (schedule.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
             {
                 throw new ArgumentException(
-                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
+                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    nameof(schedule));
+            }
+
+            if (schedule.SnapshotRollupIntervalMinutes < SyncSchedule.MinimumSnapshotRollupIntervalMinutes)
+            {
+                throw new ArgumentException(
+                    $"SnapshotRollupIntervalMinutes ({schedule.SnapshotRollupIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotRollupIntervalMinutes}",
                     nameof(schedule));
             }
 
@@ -83,7 +90,7 @@ namespace VideoForensics.Data.Database.Repositories
                     if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
                     {
                         throw new ArgumentException(
-                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
+                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
                             nameof(schedule));
                     }
                 }
@@ -100,6 +107,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
                     existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
+                    existing.SnapshotRollupIntervalMinutes = schedule.SnapshotRollupIntervalMinutes;
                     existing.IsEnabled = schedule.IsEnabled;
                     existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                     existing.EventNextRunUtc = schedule.EventNextRunUtc;
