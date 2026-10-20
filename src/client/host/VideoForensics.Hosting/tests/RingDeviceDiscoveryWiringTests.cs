@@ -49,6 +49,8 @@ namespace VideoForensics.Hosting.Tests
             var services = new ServiceCollection();
             _ = services.AddLogging();
             _ = services.AddSingleton(new Mock<ISessionProvider>().Object);
+            // Media thumbnails resolve a frame extractor, which the client host registers. Only resolution is under test, so stub it.
+            _ = services.AddScoped(_ => new Mock<VideoForensics.Core.Providers.Core.IMediaFrameExtractor>().Object);
             _ = services.AddVideoForensicsDataLayer(Path.Combine(Path.GetTempPath(), "wiring-test.db"));
             _ = services.AddVideoForensicsMultiProviderServices(["Ring"]);
 
