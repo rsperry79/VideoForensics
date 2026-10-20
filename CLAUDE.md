@@ -1,27 +1,23 @@
-# VideoForensics Development Guidelines
+# VideoForensics
 
-Detail lives in `.claude/rules/` (path-scoped, load when matching files are read), `.claude/skills/` (procedures), and `.claude/project-layout.md` (read on demand).
+Detail: `.claude/rules/` (path-scoped), `.claude/skills/` (procedures), `.claude/project-layout.md` (on demand).
 
-## Core
-- Every `.csproj` references `Microsoft.CodeAnalysis` 5.9.0 (match sibling projects).
-- Every signed project uses `VideoForensics.snk` (root). Breaking: replaced `KoenZomers.RingApi.snk`, so assembly identity and strong-name references changed; `InternalsVisibleTo` keys updated to match.
+## Code
+- `.csproj`: `Microsoft.CodeAnalysis` 5.9.0. Signed projects use `VideoForensics.snk` (root).
 - Public APIs are interfaces in `Contracts/`. No vendor SDK outside service layers.
-- Every non-test change ships with tests for each new path. Write tests first (TDD).
-- Async for all I/O; async methods take `CancellationToken`.
-- Log user-facing paths (Info on success, Error on failure) with context. Expose errors via `GetLastError()`. Log account names, never raw GUIDs.
-- Validate input at API boundaries only. No secrets in code. No plaintext passwords.
-- Public interfaces get XML docs. Complex logic gets "why" comments. Breaking changes update this file and the commit message.
+- Non-test changes ship with tests (TDD). Async I/O; async methods take `CancellationToken`.
+- Log user paths (Info success, Error failure) with context; account names, never GUIDs. Expose errors via `GetLastError()`.
+- Validate input at API boundaries. No secrets or plaintext passwords in code.
+- Public interfaces get XML docs; complex logic gets "why" comments.
+- Breaking change: update this file and the commit message.
 
 ## Workflow
-- Code work runs in a worktree forked from `wip`, never the main checkout. Procedure: skill `code-workflow`.
-- Never push to `dev` or `main`. PR and promotion rules: skill `pr-promotion`.
-- Haiku subagents write implementation files; verify their output yourself.
-- Confirm with the user before any full gate.
+- Code work in a worktree from `wip`, never the main checkout (skill `code-workflow`).
+- Never push `dev` or `main` (skill `pr-promotion`).
+- Haiku subagents write files; verify their output. Confirm before any full gate.
 - Never `git clean -X`. Never kill processes in bulk.
-- Log each failed task, build, test, or tool call to `.claude/task_failure_log.md` (format in `code-workflow`).
+- Log failures to `.claude/task_failure_log.md` (format in `code-workflow`).
 
 ## Output
-- Terse. One sentence on what changed. No trailing summaries.
-
-## Off-limits
+- Terse. No trailing summaries.
 - Do not read `docs/` or `archive/` unless asked.
