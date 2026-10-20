@@ -192,7 +192,8 @@ namespace VideoForensics.WebApp.Api
                     LinkedUtc = DateTime.UtcNow,
                     LastSuccessfulAuthUtc = null,
                     IsActive = true,
-                    LastDownloadTimeUtc = null
+                    LastDownloadTimeUtc = null,
+                    InitialSyncCompleted = false
                 };
                 await accounts.AddAsync(account, ct);
 
