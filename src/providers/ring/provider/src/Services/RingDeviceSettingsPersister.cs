@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Providers.Ring.Catalog;
-using VideoForensics.Providers.Ring.Interfaces;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -18,10 +16,6 @@ namespace VideoForensics.Providers.Ring.Services
     /// </summary>
     public class RingDeviceSettingsPersister
     {
-        private const string RingProviderName = "Ring";
-
-        private static readonly IRingModelCatalog RingCatalog = new RingModelCatalog();
-
         private readonly IVideoForensicsDataClient _dataClient;
         private readonly IDeviceRepository _deviceRepository;
         private readonly ILogger _logger;
@@ -68,27 +62,10 @@ namespace VideoForensics.Providers.Ring.Services
         /// Records a kind the Ring catalog does not list, so the database knows the device model exists. The family comes from
         /// the device's Ring type. Known kinds and devices without a kind are left alone.
         /// </summary>
-        private async Task RecordUnknownKindAsync(Device device, RingDeviceDetails details, CancellationToken ct)
+        private Task RecordUnknownKindAsync(Device device, RingDeviceDetails details, CancellationToken ct)
         {
-            string? kind = details.DeviceFields?.RingKind;
-            if (string.IsNullOrWhiteSpace(kind) || RingCatalog.Find(kind) != null)
-            {
-                return;
-            }
-
-            await _dataClient.EnsureDeviceModelAsync(RingProviderName, kind, FamilyForType(device.Type), ct);
-        }
-
-        /// <summary>Maps a Ring device type (as discovery sets it on the device row) to its product family.</summary>
-        internal static string FamilyForType(string type)
-        {
-            return type switch
-            {
-                "doorbot" or "authorized_doorbot" => RingDeviceFamily.Doorbell.ToString(),
-                "stickup_cam" => RingDeviceFamily.Camera.ToString(),
-                "chime" => RingDeviceFamily.Chime.ToString(),
-                _ => "Unknown",
-            };
+            return RingModelDiscovery.RecordUnknownKindAsync(
+                _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyForType(device.Type), ct);
         }
     }
 }

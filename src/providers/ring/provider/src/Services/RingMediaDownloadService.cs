@@ -1736,6 +1736,9 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 DateTime nowUtc = DateTime.UtcNow;
+                // The download path can see a new kind before the settings sync does, so it records unknown kinds too.
+                await RingModelDiscovery.RecordUnknownKindAsync(
+                    _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyFor(devices, providerDeviceId), ct);
                 await _dataClient.RecordDeviceDetailsAsync(
                     deviceGuid,
                     healthId,
