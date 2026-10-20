@@ -1299,6 +1299,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Catalog");
+
                     b.HasKey("Kind");
 
                     b.HasIndex("Provider");

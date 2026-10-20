@@ -22,6 +22,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IDeviceDetailsRepository _deviceDetailsRepository;
+        private readonly IDeviceModelRepository _deviceModelRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
@@ -43,6 +44,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
             IDeviceDetailsRepository deviceDetailsRepository,
+            IDeviceModelRepository deviceModelRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -62,6 +64,7 @@ namespace VideoForensics.Data.Core.Services
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthRepository = deviceHealthRepository;
             _deviceDetailsRepository = deviceDetailsRepository;
+            _deviceModelRepository = deviceModelRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -100,6 +103,11 @@ namespace VideoForensics.Data.Core.Services
                 _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
                 throw;
             }
+        }
+
+        public Task EnsureDeviceModelAsync(string provider, string kind, string family, CancellationToken ct)
+        {
+            return _deviceModelRepository.EnsureDiscoveredAsync(provider, kind, family, ct);
         }
 
         public async Task RecordDeviceDetailsAsync(

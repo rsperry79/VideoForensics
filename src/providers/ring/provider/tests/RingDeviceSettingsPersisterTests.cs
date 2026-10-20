@@ -73,6 +73,61 @@ namespace VideoForensics.Providers.Ring.Tests
             data.Verify(d => d.RecordDeviceDetailsAsync(DeviceGuid, null, null, It.IsAny<DeviceFeatures?>(), It.IsAny<IReadOnlyList<DeviceAlerts>?>(), It.IsAny<CancellationToken>(), It.IsAny<DeviceSettingsChildren?>()), Times.Once);
         }
 
+        [Fact]
+        public async Task RingDeviceSettingsPersister_PersistAsync_UnknownRingKind_EnsuresDiscoveredModel()
+        {
+            // Arrange: a kind the catalog does not list must be recorded so the database knows about it.
+            Mock<IVideoForensicsDataClient> data = CreateDataClient();
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
+            var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
+            RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "doorbell_brand_new"));
+
+            // Act
+            _ = await persister.PersistAsync(ProviderDeviceId, details, CancellationToken.None);
+
+            // Assert
+            data.Verify(d => d.EnsureDeviceModelAsync("Ring", "doorbell_brand_new", "Doorbell", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RingDeviceSettingsPersister_PersistAsync_UnknownChimeKind_UsesChimeFamily()
+        {
+            Mock<IVideoForensicsDataClient> data = CreateDataClient();
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
+            var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
+            RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "chime_brand_new"));
+
+            _ = await persister.PersistAsync(ProviderDeviceId, details, CancellationToken.None);
+
+            data.Verify(d => d.EnsureDeviceModelAsync("Ring", "chime_brand_new", "Chime", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RingDeviceSettingsPersister_PersistAsync_KnownRingKind_DoesNotEnsureModel()
+        {
+            Mock<IVideoForensicsDataClient> data = CreateDataClient();
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Hall", Type = "chime" } });
+            var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
+            RingDeviceDetails details = CreateDetails(new DeviceDetailFields(RingKind: "chime_pro_v2"));
+
+            _ = await persister.PersistAsync(ProviderDeviceId, details, CancellationToken.None);
+
+            data.Verify(d => d.EnsureDeviceModelAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RingDeviceSettingsPersister_PersistAsync_NoRingKind_DoesNotEnsureModel()
+        {
+            Mock<IVideoForensicsDataClient> data = CreateDataClient();
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(new[] { new Device { Id = DeviceGuid, ProviderDeviceId = ProviderDeviceId, Name = "Front", Type = "doorbot" } });
+            var persister = new RingDeviceSettingsPersister(data.Object, devices.Object, Mock.Of<ILogger>());
+            RingDeviceDetails details = CreateDetails(new DeviceDetailFields(ChimeVolume: 2));
+
+            _ = await persister.PersistAsync(ProviderDeviceId, details, CancellationToken.None);
+
+            data.Verify(d => d.EnsureDeviceModelAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         private static Mock<IVideoForensicsDataClient> CreateDataClient()
         {
             var data = new Mock<IVideoForensicsDataClient>();

@@ -17,6 +17,22 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Generation label as the provider names it, null when unknown.</summary>
         public string? Generation { get; set; }
+
+        /// <summary>
+        /// Where the row came from: <see cref="DeviceModelSources.Catalog"/> (seeded from a reference source) or
+        /// <see cref="DeviceModelSources.Discovered"/> (a kind the catalog did not list, recorded when a device reported it).
+        /// </summary>
+        public string Source { get; set; } = DeviceModelSources.Catalog;
+    }
+
+    /// <summary>Values for <see cref="DeviceModel.Source"/>.</summary>
+    public static class DeviceModelSources
+    {
+        /// <summary>Seeded from a reference source; retired by the seeder when the source drops it.</summary>
+        public const string Catalog = "Catalog";
+
+        /// <summary>Recorded because a device reported a kind the catalog does not list; never retired by the seeder.</summary>
+        public const string Discovered = "Discovered";
     }
 
     /// <summary>A capability a device model can have (for example "camera", "chime", "wifi_bridge").</summary>

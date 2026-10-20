@@ -12,6 +12,7 @@ namespace VideoForensics.Data.Database.Configurations
         {
             _ = builder.HasKey(m => m.Kind);
             _ = builder.HasIndex(m => m.Provider);
+            _ = builder.Property(m => m.Source).IsRequired().HasMaxLength(16).HasDefaultValue(DeviceModelSources.Catalog);
         }
     }
 

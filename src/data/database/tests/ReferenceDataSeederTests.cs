@@ -119,6 +119,70 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(5, versions["Other"]);
         }
 
+        [Fact]
+        public async Task Seed_DiscoveredRowAndItsLinks_SurviveAVersionBump()
+        {
+            var camera = new List<DeviceFeatureDefinition> { new() { Code = "camera", Name = "Camera" } };
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], camera, []))], CancellationToken.None);
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
+            {
+                db.DeviceModels.Add(new DeviceModel { Kind = "doorbell_brand_new", Provider = "Ring", Family = "Doorbell", Source = "Discovered" });
+                db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "doorbell_brand_new", FeatureCode = "camera" });
+                _ = await db.SaveChangesAsync();
+            }
+
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(2, Set("Other"))], CancellationToken.None);
+
+            await using VideoForensicsDbContext check = await _fixture.Factory.CreateDbContextAsync();
+            Assert.True(await check.DeviceModels.AnyAsync(m => m.Kind == "doorbell_brand_new" && m.Source == "Discovered"));
+            Assert.True(await check.DeviceModelFeatures.AnyAsync(l => l.DeviceModelKind == "doorbell_brand_new"));
+        }
+
+        [Fact]
+        public async Task Seed_CatalogNowListsDiscoveredKind_PromotesRowToCatalog()
+        {
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], [], []))], CancellationToken.None);
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
+            {
+                db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Chime", Source = "Discovered" });
+                _ = await db.SaveChangesAsync();
+            }
+
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(2, Set("Chime Pro (2nd Gen)", "chime"))], CancellationToken.None);
+
+            await using VideoForensicsDbContext check = await _fixture.Factory.CreateDbContextAsync();
+            DeviceModel row = await check.DeviceModels.SingleAsync(m => m.Kind == "chime_pro_v2");
+            Assert.Equal("Catalog", row.Source);
+            Assert.Equal("Chime Pro (2nd Gen)", row.ModelName);
+        }
+
+        [Fact]
+        public async Task EnsureDiscoveredModel_UnknownKind_InsertsDiscoveredRowWithoutName()
+        {
+            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(_fixture.Factory, "Ring", "doorbell_brand_new", "Doorbell", CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            DeviceModel row = await db.DeviceModels.SingleAsync(m => m.Kind == "doorbell_brand_new");
+            Assert.Equal("Discovered", row.Source);
+            Assert.Equal("Ring", row.Provider);
+            Assert.Equal("Doorbell", row.Family);
+            Assert.Null(row.ModelName);
+        }
+
+        [Fact]
+        public async Task EnsureDiscoveredModel_KnownKind_LeavesExistingRowAlone()
+        {
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, Set("Chime Pro (2nd Gen)", "chime"))], CancellationToken.None);
+
+            await ReferenceDataSeeder.EnsureDiscoveredModelAsync(_fixture.Factory, "Ring", "chime_pro_v2", "Doorbell", CancellationToken.None);
+
+            await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
+            DeviceModel row = await db.DeviceModels.SingleAsync();
+            Assert.Equal("Catalog", row.Source);
+            Assert.Equal("Chime", row.Family);
+            Assert.Equal("Chime Pro (2nd Gen)", row.ModelName);
+        }
+
         private sealed class FakeSource(string name, int version, ReferenceDataSet data) : IReferenceDataSource
         {
             public string Name { get; } = name;
