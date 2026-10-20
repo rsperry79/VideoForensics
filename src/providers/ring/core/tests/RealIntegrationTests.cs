@@ -3,19 +3,14 @@ using VideoForensics.Providers.Ring.Core.Tests.Mocks;
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
-    /// Real Ring API integration tests using credentials from RingVideos app config.
-    /// These tests require the RingVideos application to have been run with valid Ring API credentials.
+    /// Real Ring API integration tests using the refresh token saved in the database.
+    /// Sessions are restored through RealSessionHelper, the same RingAuthService path the server uses.
     ///
     /// To setup:
-    /// 1. Run the RingVideos application: dotnet run --project RingVideos/RingVideos.csproj
-    /// 2. Enter your Ring API email and password when prompted
-    /// 3. Credentials are automatically saved encrypted in AppData
-    /// 4. Run these tests again to execute against real API
-    ///
-    /// These tests validate actual Ring API behavior and can be run in CI/CD
-    /// if credentials are securely provided to the RingVideos app.
-    ///
-    /// Phase 4 Implementation - Uses RingVideos App Config
+    /// 1. Run the SelfTester authentication flow: cd src/selftest && dotnet run -- --auth
+    /// 2. Complete the Ring sign-in (two-factor accounts included)
+    /// 3. The encrypted refresh token is saved to the database
+    /// 4. Run these tests again to execute against the real API
     /// </summary>
     public class RealIntegrationTests : IAsyncLifetime
     {
@@ -55,20 +50,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies session can be created with valid credentials")]
         public void RealSession_CanBeCreatedWithCredentials()
         {
-            if (!_credentialsAvailable)
-            {
-                Assert.Skip("Ring API credentials not configured in AppData");
-            }
-            // CreateSessionWithoutAuth specifically needs username/password - a refresh-token-only
-            // credential set (the common case after the SelfTester's 2FA `--auth` flow) can't
-            // satisfy it even though _credentialsAvailable is true.
-            if (!RealSessionHelper.UsernamePasswordAvailable())
-            {
-                Assert.Skip("Saved credentials are refresh-token-only; this test needs username/password");
-            }
-
-            // Arrange & Act
-            Session session = RealSessionHelper.CreateSessionWithoutAuth();
+            // Arrange: a session built from credentials supplied here. No network call happens until Authenticate(),
+            // so this needs no saved Ring account and must never skip.
+            // Act
+            var session = new Session("test-user@example.com", "test-password");
 
             // Assert
             Assert.NotNull(session);
@@ -81,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -104,7 +89,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -118,14 +103,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Uri baseUrl = _session.BaseUrl;
 
             // Assert
-            // Username is only populated when the session was constructed from username/password
-            // (see Session's constructors) - a refresh-token-only credential set (the common case
-            // after the SelfTester's 2FA `--auth` flow) authenticates a session with no Username set.
-            if (RealSessionHelper.UsernamePasswordAvailable())
-            {
-                Assert.NotNull(username);
-            }
-
             Assert.NotNull(oauthUrl);
             Assert.NotNull(baseUrl);
             Assert.True(oauthUrl.ToString().Contains("oauth.ring.com"));
@@ -138,7 +115,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -160,7 +137,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -182,7 +159,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -204,7 +181,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
@@ -229,7 +206,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             if (!_credentialsAvailable)
             {
-                Assert.Skip("Ring API credentials not configured in AppData");
+                Assert.Skip(RealSessionHelper.GetSetupInstructions());
             }
 
             if (_session == null)
