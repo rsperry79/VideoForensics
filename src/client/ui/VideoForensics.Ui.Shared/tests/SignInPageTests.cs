@@ -397,16 +397,20 @@ public class SignInPageTests : BunitContext
     }
 
     [Fact]
-    public async Task SignIn_PasskeyAvailable_PasskeyButtonIsOutlineStyle()
+    public async Task SignIn_PasskeyAvailable_PasskeyButtonIsActivePrimary()
     {
-        // Arrange - the passkey button is secondary to the password sign-in, so it renders outlined
+        // Arrange - the passkey button is a full primary button, not an outlined one that reads as disabled
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
 
         // Act & Assert
         component.WaitForAssertion(() =>
-            Assert.Contains("e-outline", FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList));
+        {
+            var classes = FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList;
+            Assert.Contains("e-primary", classes);
+            Assert.DoesNotContain("e-outline", classes);
+        });
     }
 
     [Fact]
