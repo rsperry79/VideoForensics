@@ -157,6 +157,34 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task Seed_PromotedDiscoveredRow_KeepsOneRowAndReplacesItsLinks()
+        {
+            // Devices store the kind string, so promotion must keep the same key and drop the discovered row's own links.
+            var camera = new List<DeviceFeatureDefinition> { new() { Code = "camera", Name = "Camera" } };
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], camera, []))], CancellationToken.None);
+            await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
+            {
+                db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Unknown", Source = "Discovered" });
+                db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "chime_pro_v2", FeatureCode = "camera" });
+                _ = await db.SaveChangesAsync();
+            }
+
+            await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(2, Set("Chime Pro (2nd Gen)", "chime", "wifi_bridge"))], CancellationToken.None);
+
+            await using VideoForensicsDbContext check = await _fixture.Factory.CreateDbContextAsync();
+            Assert.Equal(1, await check.DeviceModels.CountAsync(m => m.Kind == "chime_pro_v2"));
+            DeviceModel row = await check.DeviceModels.SingleAsync(m => m.Kind == "chime_pro_v2");
+            Assert.Equal("Catalog", row.Source);
+            Assert.Equal("Chime", row.Family);
+            List<string> links = await check.DeviceModelFeatures
+                .Where(l => l.DeviceModelKind == "chime_pro_v2")
+                .Select(l => l.FeatureCode)
+                .OrderBy(c => c)
+                .ToListAsync();
+            Assert.Equal(new[] { "chime", "wifi_bridge" }, links);
+        }
+
+        [Fact]
         public async Task EnsureDiscoveredModel_UnknownKind_InsertsDiscoveredRowWithoutName()
         {
             await ReferenceDataSeeder.EnsureDiscoveredModelAsync(_fixture.Factory, "Ring", "doorbell_brand_new", "Doorbell", CancellationToken.None);
