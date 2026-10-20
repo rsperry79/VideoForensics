@@ -6,6 +6,7 @@ namespace VideoForensics.Hosting.Tests.Services
     using VideoForensics.Core.Helpers.Platform;
     using VideoForensics.Core.Providers.Common.Contracts;
     using VideoForensics.Hosting.Contracts;
+    using VideoForensics.Providers.Ring.Services;
     using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
     /// <summary>Snapshot sync fetches snapshots for every device of an account through the provider-neutral download contract.</summary>
@@ -174,6 +175,41 @@ namespace VideoForensics.Hosting.Tests.Services
             wyze.Verify(d => d.SetActiveProviderAccountId(_accountId), Times.Once);
             wyze.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
             ring.Verify(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        private void AddDevicesWithState(params (string Id, bool? IsOnline)[] devices) => _devices
+            .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(devices.Select(d => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = d.Id, Name = $"Cam {d.Id}", Type = "doorbot", IsOnline = d.IsOnline }).ToList());
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_RingOfflineDevice_IsSkippedAndNotCounted()
+        {
+            AddDevicesWithState(("1", false), ("2", true));
+            DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
+            IServiceCollection services = new ServiceCollection().AddScoped(_ => _download.Object);
+            _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", new RingDeviceOnlineStatus());
+
+            SnapshotSyncResult result = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(1, result.DevicesAttempted);
+            Assert.Equal(1, result.DevicesSucceeded);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_ProviderWithoutStatusRule_KeepsOfflineDevice()
+        {
+            // Without a registered rule the sync has no basis to call a device offline, so it keeps the device.
+            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Wyze", LinkedUtc = DateTime.UtcNow, IsActive = true });
+            AddDevicesWithState(("1", false));
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+
+            SnapshotSyncResult result = await Sut(new ServiceCollection().AddScoped(_ => _download.Object))
+                .SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(1, result.DevicesSucceeded);
         }
 
         [Fact]
