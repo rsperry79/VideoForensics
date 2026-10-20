@@ -172,6 +172,11 @@ else
             }
         </div>
 
+        <div id="validate" class="mb-4">
+            <h5>@L["ValidateSectionTitle"]</h5>
+            <ValidateEvidence AccountId="@Id" />
+        </div>
+
         <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
                       ProviderName="@Account.ProviderName"
                       InitialEmail="@AccountEmail"

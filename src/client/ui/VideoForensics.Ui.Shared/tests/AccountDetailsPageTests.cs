@@ -122,6 +122,10 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => AuthServiceMock.Object);
         Services.AddScoped(_ => ForensicsConfigMock.Object);
         Services.AddScoped(_ => ForensicsConfigServiceMock.Object);
+        // The Sync tab embeds the validate panel, which resolves these when it renders.
+        Services.AddScoped(_ => Mock.Of<ILocationRepository>());
+        Services.AddScoped(_ => Mock.Of<IDeviceRepository>());
+        Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));

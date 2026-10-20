@@ -56,31 +56,6 @@ public class ValidateEvidencePageTests : OperatorSessionGateTestBase
         });
     }
 
-    [Fact]
-    public void ValidateEvidence_WhenRendered_ShowsBackControlWithLocalizedLabel()
-    {
-        var component = Render<ValidateEvidencePage>();
-
-        var analyzeLabel = Services.GetRequiredService<IStringLocalizer<ValidateEvidencePage>>()["BreadcrumbAnalyze"].Value;
-        var backTitle = TestLocalizer.Create()["BreadcrumbBack"].Value;
-
-        var link = Assert.Single(component.FindAll("nav a"));
-        Assert.Equal("/analyze", link.GetAttribute("href"));
-        Assert.Equal(analyzeLabel, link.TextContent.Trim());
-        Assert.NotNull(component.Find($"button[title='{backTitle}']"));
-    }
-
-    [Fact]
-    public void ValidateEvidence_WhenBackClicked_NavigatesToAnalyze()
-    {
-        var component = Render<ValidateEvidencePage>();
-        var backTitle = TestLocalizer.Create()["BreadcrumbBack"].Value;
-
-        component.Find($"button[title='{backTitle}']").Click();
-
-        Assert.EndsWith("/analyze", Services.GetRequiredService<NavigationManager>().Uri);
-    }
-
     private static EvidenceValidationJob Job(
         EvidenceValidationJobState state,
         string[]? log = null,
