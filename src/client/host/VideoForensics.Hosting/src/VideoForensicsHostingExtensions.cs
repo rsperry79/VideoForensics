@@ -137,6 +137,7 @@ namespace VideoForensics.Hosting
             // whether or not Ring is listed in ScheduledTasks:EnabledProviders.
             _ = services.AddKeyedScoped<IProviderAuthService>("Ring", (provider, key) => BuildRingAuthService(provider));
             _ = services.AddKeyedScoped<IProviderSnapshotCapture>("Ring", (provider, key) => BuildRingMediaDownloadService(provider));
+            _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
             services.TryAddSingleton(TimeProvider.System);
             _ = services.AddHostedService<SnapshotCaptureService>();
             return services;

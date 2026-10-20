@@ -39,6 +39,9 @@ namespace VideoForensics.Hosting.Tests
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly List<SnapshotCapture> _rows = [];
 
+        // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.
+        private IProviderDeviceStatus _deviceStatus = new RingDeviceOnlineStatus();
+
         public SnapshotCaptureServiceTests()
         {
             _ = _accounts.Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
@@ -123,6 +126,7 @@ namespace VideoForensics.Hosting.Tests
             _ = services.AddSingleton(_sessions.Object);
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
+            _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             return services.BuildServiceProvider();
         }
 
@@ -155,6 +159,23 @@ namespace VideoForensics.Hosting.Tests
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ProviderRuleSaysOffline_SkipsDeviceEvenWhenConnectionReadsOnline()
+        {
+            // The capture service must ask the provider rather than trust the stored IsOnline column.
+            var status = new Mock<IProviderDeviceStatus>();
+            _ = status.Setup(s => s.IsOffline(It.IsAny<string>(), It.IsAny<bool?>())).Returns(true);
+            _deviceStatus = status.Object;
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            status.Verify(s => s.IsOffline("doorbot", true), Times.Once);
         }
 
         [Fact]

@@ -20,8 +20,8 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// <summary>
     /// Captures a snapshot for every enabled device of every active Ring account, once per account interval, and records every
     /// attempt in <see cref="SnapshotCapture"/>. The interval is the account's stored SnapshotIntervalSeconds when set, otherwise 60 s.
-    /// A device is skipped when its Device.SnapshotCaptureEnabled flag is off, when IsOnline is false, or when its type has no camera
-    /// (see <see cref="HasCamera"/>). An unknown online state (null) is not skipped: the provider gave no state to act on.
+    /// A device is skipped when its Device.SnapshotCaptureEnabled flag is off, when the provider's <see cref="IProviderDeviceStatus"/>
+    /// reports it offline, or when its type has no camera (see <see cref="HasCamera"/>). An unknown online state (null) is not skipped.
     ///
     /// Each attempt runs through <see cref="IProviderSnapshotCapture"/>, which takes the account's pacer turns and handles rate limits
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
@@ -158,6 +158,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
+            IProviderDeviceStatus deviceStatus = sp.GetRequiredKeyedService<IProviderDeviceStatus>(RingProviderName);
             var due = new List<Device>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
 
@@ -167,7 +168,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 {
                     // Offline or camera-less devices would only log a failed attempt each interval, so they are not due.
                     if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled
-                        || device.IsOnline == false || !HasCamera(device.Type))
+                        || deviceStatus.IsOffline(device.Type, device.IsOnline) || !HasCamera(device.Type))
                     {
                         continue;
                     }
