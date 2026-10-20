@@ -8,36 +8,26 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Repositories
 {
     /// <summary>Repository implementation for MediaItem entities.</summary>
-    public class MediaItemRepository : IMediaItemRepository
+    public class MediaItemRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<MediaItemRepository> logger) : IMediaItemRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
-        private readonly ILogger<MediaItemRepository> _logger;
-
-        /// <summary>Initializes a new instance of the MediaItemRepository.</summary>
-        public MediaItemRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<MediaItemRepository> logger)
-        {
-            _factory = factory;
-            _logger = logger;
-        }
-
         /// <summary>Gets a media item by ID.</summary>
         public async Task<MediaItem?> GetAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct);
         }
 
         /// <summary>Gets media items by device ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.Where(m => m.DeviceId == deviceId).ToListAsync(ct);
         }
 
         /// <inheritdoc />
         public async Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems
                 .AsNoTracking()
                 .Where(m => m.DeviceId == deviceId)
@@ -50,7 +40,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems
                 .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc)
                 .ToListAsync(ct);
@@ -59,28 +49,28 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.FirstOrDefaultAsync(m => m.Sha256Hash == sha256Hash, ct);
         }
 
         /// <summary>Gets a media item by API source hash for deduplication.</summary>
         public async Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.FirstOrDefaultAsync(m => m.ApiSourceHash == apiSourceHash, ct);
         }
 
         /// <summary>Gets media items by download event ID.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.Where(m => m.DownloadEventId == downloadEventId).ToListAsync(ct);
         }
 
         /// <summary>Lists all media items.</summary>
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems.ToListAsync(ct);
         }
 
@@ -91,7 +81,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </remarks>
         public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             return await db.MediaItems
                 .AsNoTracking()
                 .Where(m => !m.IsPurged
@@ -103,16 +93,20 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Adds a new media item.</summary>
         public async Task AddAsync(MediaItem mediaItem, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
                 _ = db.MediaItems.Add(mediaItem);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Media item added: {FileName}", SanitizeForLog(mediaItem.FileName));
+                // Guard: the sanitized name is only worth computing when debug logging is on.
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug("Media item added: {FileName}", SanitizeForLog(mediaItem.FileName));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding media item: {FileName}", SanitizeForLog(mediaItem.FileName));
+                logger.LogError(ex, "Error adding media item: {FileName}", SanitizeForLog(mediaItem.FileName));
                 throw;
             }
         }
@@ -120,16 +114,20 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Updates an existing media item.</summary>
         public async Task UpdateAsync(MediaItem mediaItem, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
                 _ = db.MediaItems.Update(mediaItem);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogDebug("Media item updated: {FileName}", SanitizeForLog(mediaItem.FileName));
+                // Guard: the sanitized name is only worth computing when debug logging is on.
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug("Media item updated: {FileName}", SanitizeForLog(mediaItem.FileName));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating media item: {FileName}", SanitizeForLog(mediaItem.FileName));
+                logger.LogError(ex, "Error updating media item: {FileName}", SanitizeForLog(mediaItem.FileName));
                 throw;
             }
         }
@@ -137,7 +135,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// <summary>Deletes a media item.</summary>
         public async Task DeleteAsync(Guid mediaItemId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
             try
             {
                 MediaItem? mediaItem = await db.MediaItems.FirstOrDefaultAsync(m => m.Id == mediaItemId, ct);
@@ -145,18 +143,24 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.MediaItems.Remove(mediaItem);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogDebug("Media item deleted: {MediaItemId}", mediaItemId);
+                    // Guard: keeps the debug log call off the hot path when debug logging is off.
+                    if (logger.IsEnabled(LogLevel.Debug))
+                    {
+                        logger.LogDebug("Media item deleted: {MediaItemId}", mediaItemId);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting media item: {MediaItemId}", mediaItemId);
+                logger.LogError(ex, "Error deleting media item: {MediaItemId}", mediaItemId);
                 throw;
             }
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
     }
 }
