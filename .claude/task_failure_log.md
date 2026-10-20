@@ -24,3 +24,5 @@
 2026-10-20 | media-provider-event-link | dotnet test data core tests: CS1056 errors in obj/.../SelfRegisteredExtensions.cs | stale generated file with NUL bytes in tests obj dir | deleted that generated file by explicit path; rebuild regenerated it
 2026-10-20 | Ui.Shared loader revert | scoped test run before loader change | CS7036: test files called 3-arg EventRowLoader ctor, loader still required IDownloadEventRepository | implement loader ctor change (done in same batch)
 2026-10-20 12:46 | verify settings CSS fix | background dotnet run --no-build on port 5170 exited 127 | command not found in background shell | not retried; verify via user-run app or fix shell PATH
+2026-10-20T12:52:43-07:00 | test | MediaViewer filter: 2 tests failed (EvidencePageTests ClickSnapshotStripThumbnail_OpensMediaViewer, 'data-key event:...' not found) | fails on wip baseline too, not caused by toolbar class change | not fixed; investigate separately
+2026-10-20T12:56:16-07:00 | test | SignIn filter: 3 Evidence tests failed (GrabStill/PlaceHold/ReleaseHold ShowsSignInToast) | same failures on wip baseline, pre-existing | not fixed; investigate separately
