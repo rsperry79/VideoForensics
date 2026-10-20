@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
+using VideoForensics.Client.Common.Contracts;
+
 namespace VideoForensics.Hosting
 {
     /// <summary>
@@ -26,11 +28,6 @@ namespace VideoForensics.Hosting
     /// Moving tags such as "Release" and "Testing" are not version numbers, so callers should prefer Version over TagName.
     /// </summary>
     public record GitHubReleaseInfo(string TagName, string HtmlUrl, bool Draft, bool Prerelease, IReadOnlyList<GitHubReleaseAsset> Assets, string? Version = null);
-
-    /// <summary>
-    /// An asset (downloadable file) attached to a GitHub release.
-    /// </summary>
-    public record GitHubReleaseAsset(string Name, string BrowserDownloadUrl, long Size);
 
     /// <summary>
     /// Fetches release information from the GitHub Releases REST API.

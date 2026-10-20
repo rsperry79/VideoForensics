@@ -1,27 +1,14 @@
-using CliWrap;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.BackgroundServices
 {
-    /// <summary>
-    /// Interface for the platform-specific update installer.
-    /// Windows: downloads to temp, launches with /passive flag (non-interactive).
-    /// Debian/Linux: downloads to a pending-update location; does not auto-invoke dpkg (requires root + manual admin action).
-    /// </summary>
-    public interface IUpdateInstaller
-    {
-        /// <summary>Downloads the release asset and invokes the installer on the current platform.</summary>
-        Task DownloadAndInvokeAsync(GitHubReleaseAsset asset, CancellationToken ct);
-    }
-
     /// <summary>
     /// Periodically checks GitHub for a newer release (Stable or Testing channel per config)
     /// and either just reports it's available (NotifyOnly) or downloads and launches the installer
@@ -300,25 +287,19 @@ namespace VideoForensics.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// Finds a platform-matching asset from the release's asset list:
-        /// - Windows: looks for an asset ending with .exe
-        /// - Other platforms: looks for an asset ending with .deb
+        /// Finds the asset whose extension matches the installer's <see cref="IUpdateInstaller.PackageExtension"/>.
+        /// The installer owns the platform decision, so this method never inspects the OS.
         /// Returns null if no matching asset is found.
         /// </summary>
-        private static GitHubReleaseAsset? FindPlatformAsset(IReadOnlyList<GitHubReleaseAsset> assets)
+        private GitHubReleaseAsset? FindPlatformAsset(IReadOnlyList<GitHubReleaseAsset> assets)
         {
             if (assets.Count == 0)
             {
                 return null;
             }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return assets.FirstOrDefault(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
-            }
-
-            // Assume Linux/Debian by default.
-            return assets.FirstOrDefault(a => a.Name.EndsWith(".deb", StringComparison.OrdinalIgnoreCase));
+            string extension = _updateInstaller.PackageExtension;
+            return assets.FirstOrDefault(a => a.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
         }
     }
 
@@ -336,43 +317,20 @@ namespace VideoForensics.Hosting.BackgroundServices
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <inheritdoc />
+        public string PackageExtension => ".deb";
+
         public async Task DownloadAndInvokeAsync(GitHubReleaseAsset asset, CancellationToken ct)
         {
             try
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    await DownloadAndInvokeOnWindowsAsync(asset, ct);
-                }
-                else
-                {
-                    await DownloadForLinuxAsync(asset, ct);
-                }
+                await DownloadForLinuxAsync(asset, ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to download/invoke installer for asset '{AssetName}'", asset.Name);
                 throw;
             }
-        }
-
-        private static async Task DownloadAndInvokeOnWindowsAsync(GitHubReleaseAsset asset, CancellationToken ct)
-        {
-            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), asset.Name);
-
-            using (var client = new HttpClient())
-            {
-                await using var response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct);
-                await using var fileStream = System.IO.File.Create(tempPath);
-                await response.CopyToAsync(fileStream, ct);
-            }
-
-            // Fire-and-forget: launch the installer with /passive flag (non-interactive).
-            // CliWrap handles the process lifecycle; we don't await it directly so the update
-            // can proceed without blocking the application.
-            _ = Cli.Wrap(tempPath)
-                .WithArguments("/passive")
-                .ExecuteAsync(ct);
         }
 
         private static async Task DownloadForLinuxAsync(GitHubReleaseAsset asset, CancellationToken ct)
