@@ -67,9 +67,16 @@ namespace VideoForensics.Ui.Shared.Layout
     {
         public static readonly IReadOnlyList<NavGroup> All =
         [
-            new("evidence", "Evidence", "/evidence",
+            new("media", "Media", "/media",
             [
-                new("Evidence", "/evidence"),
+                new("Media", "/media"),
+                new("Chat Assistant", "/chat")
+            ]),
+
+            new("cases", "Cases", "/cases",
+            [
+                new("All Cases", "/cases"),
+                new("New Case", "/cases/new"),
                 new("Analyze", "/analyze",
                     Children:
                     [
@@ -78,13 +85,6 @@ namespace VideoForensics.Ui.Shared.Layout
                         new("Access Control", "/analyze?analysis=access"),
                         new("Jamming Analysis", "/analyze?analysis=jamming")
                     ]),
-                new("Chat Assistant", "/chat")
-            ]),
-
-            new("cases", "Cases", "/cases",
-            [
-                new("All Cases", "/cases"),
-                new("New Case", "/cases/new"),
                 new("Chain of Custody", "/analyze/chain-of-custody"),
                 new("Validate Evidence", "/analyze/validate/integrity"),
                 new("Export Evidence", "/review/export")

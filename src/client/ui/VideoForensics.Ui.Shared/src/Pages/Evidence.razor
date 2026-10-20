@@ -1,5 +1,5 @@
 @page "/"
-@page "/evidence"
+@page "/media"
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
@@ -360,7 +360,7 @@ else
         _currentView = view;
         var query = ScopeState.ToQueryString();
         var separator = string.IsNullOrEmpty(query) ? "" : "&";
-        NavigationManager.NavigateTo($"/evidence?{query}{separator}view={view.ToString().ToLowerInvariant()}", replace: true);
+        NavigationManager.NavigateTo($"/media?{query}{separator}view={view.ToString().ToLowerInvariant()}", replace: true);
     }
 
     private async Task SelectItemAsync(string key)
@@ -397,7 +397,7 @@ else
         var query = ScopeState.ToQueryString();
         var separator = string.IsNullOrEmpty(query) ? "" : "&";
         var viewParam = _currentView == EvidenceView.Timeline ? "" : $"&view={_currentView.ToString().ToLowerInvariant()}";
-        NavigationManager.NavigateTo($"/evidence?{query}{separator}item={key}{viewParam}", replace: true);
+        NavigationManager.NavigateTo($"/media?{query}{separator}item={key}{viewParam}", replace: true);
     }
 
     /// <summary>
@@ -599,7 +599,7 @@ else
             parts.Add(viewPart);
         }
         var combined = string.Join("&", parts);
-        NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/evidence" : $"/evidence?{combined}", replace: true);
+        NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/media" : $"/media?{combined}", replace: true);
     }
 
     /// <summary>

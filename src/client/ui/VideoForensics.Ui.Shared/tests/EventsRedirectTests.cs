@@ -21,7 +21,7 @@ public class EventsRedirect_Tests : BunitContext
 
         Render<EventsRedirect>();
 
-        Assert.EndsWith("/evidence?view=grid", nav.Uri);
+        Assert.EndsWith("/media?view=grid", nav.Uri);
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class EventsRedirect_Tests : BunitContext
         Assert.Contains("to=2026-01-08", uri);
         Assert.Contains("q=motion", uri);
         Assert.Contains("view=grid", uri);
-        Assert.StartsWith("http://localhost/evidence?", uri);
+        Assert.StartsWith("http://localhost/media?", uri);
     }
 
     [Fact]

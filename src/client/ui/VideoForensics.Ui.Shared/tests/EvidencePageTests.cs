@@ -412,7 +412,7 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     public void GridViewQueryParam_RendersGridView_TimelineAbsent()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo("/evidence?view=grid", replace: true);
+        nav.NavigateTo("/media?view=grid", replace: true);
 
         var component = RenderEvidencePage();
 
@@ -425,7 +425,7 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     public void ItemQueryParam_OpensViewerDirectly()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo($"/evidence?item=event:{EventId}", replace: true);
+        nav.NavigateTo($"/media?item=event:{EventId}", replace: true);
 
         var component = RenderEvidencePage();
 
@@ -675,7 +675,7 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     private IRenderedComponent<Evidence> RenderGrid()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo("/evidence?view=grid", replace: true);
+        nav.NavigateTo("/media?view=grid", replace: true);
         return RenderEvidencePage();
     }
 

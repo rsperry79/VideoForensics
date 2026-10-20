@@ -106,16 +106,16 @@ public class NavSectionList_Tests : NavComponentTestBase
     {
         IReadOnlyList<NavSection> sections =
         [
-            new(null, [new("Evidence", "/evidence")]),
+            new(null, [new("Evidence", "/media")]),
             new("Security", [new("Operators", "/settings/operators")])
         ];
 
         var component = Render<NavSectionList>(p => p
             .Add(c => c.Sections, sections)
-            .Add(c => c.CurrentPath, "/evidence")
+            .Add(c => c.CurrentPath, "/media")
             .Add(c => c.CurrentQuery, ""));
 
-        Assert.Single(component.FindAll("[data-path='/evidence']"));
+        Assert.Single(component.FindAll("[data-path='/media']"));
     }
 
     [Fact]
