@@ -12,6 +12,7 @@ using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.WebApp.Services.CircuitGuards;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
@@ -274,6 +275,13 @@ builder.Services.AddRateLimiter(options =>
 // or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
+
+// Windows update installer (downloads the release .exe and launches it with /passive). AddVideoForensicsServerCore
+// registers the Debian default first, so this registration comes after it and wins.
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+}
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
 builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
