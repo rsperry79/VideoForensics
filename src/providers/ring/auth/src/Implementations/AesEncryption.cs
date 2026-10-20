@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring.Implementations
 {
@@ -123,8 +124,7 @@ namespace VideoForensics.Providers.Ring.Implementations
         private byte[] GetOrCreateSalt()
         {
             string saltPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
+                new StorageLocationProvider().GetDataRoot(),
                 "ring-credential-salt.bin");
 
             // If the salt file exists, read and return it
