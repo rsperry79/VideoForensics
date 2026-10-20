@@ -21,6 +21,9 @@ namespace VideoForensics.Hosting.Contracts
         /// <summary>Connection lifecycle transitions. Emits the current state to each new subscriber.</summary>
         IObservable<ConnectionState> Connection { get; }
 
+        /// <summary>A video's thumbnail was produced on the server. Raw push, so a late subscriber gets nothing old.</summary>
+        IObservable<ThumbnailReadyDto> ThumbnailReady { get; }
+
         /// <summary>
         /// Starts connecting to the hub. The first call connects; repeated calls while connecting or connected are no-ops.
         /// Throws if the initial connection attempt fails.

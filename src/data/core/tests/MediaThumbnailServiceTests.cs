@@ -16,6 +16,7 @@ public class MediaThumbnailServiceTests : IDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-thumb-" + Guid.NewGuid());
     private readonly Mock<IMediaFrameExtractor> _frames = new();
     private readonly Mock<IMediaItemRepository> _items = new();
+    private readonly Mock<IMediaThumbnailNotifier> _notifier = new();
 
     public MediaThumbnailServiceTests() => Directory.CreateDirectory(_dir);
 
@@ -27,7 +28,33 @@ public class MediaThumbnailServiceTests : IDisposable
         }
     }
 
-    private MediaThumbnailService CreateService() => new(_frames.Object, _items.Object, NullLogger<MediaThumbnailService>.Instance);
+    private MediaThumbnailService CreateService() =>
+        new(_frames.Object, _items.Object, _notifier.Object, NullLogger<MediaThumbnailService>.Instance);
+
+    /// <summary>Clients watching evidence refresh a thumbnail when one is produced, so a new still must be announced.</summary>
+    [Fact]
+    public async Task EnsureThumbnailAsync_NewThumbnail_NotifiesThumbnailReadyOnce()
+    {
+        string media = WriteMedia("clip.mp4");
+        FrameAt(1000, new byte[] { 0x89 });
+        MediaItem row = MediaFor(media);
+
+        _ = await CreateService().EnsureThumbnailAsync(row, CancellationToken.None);
+
+        _notifier.Verify(n => n.ThumbnailReadyAsync(row.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>An existing sidecar was already announced when it was made, so re-checking must not announce it again.</summary>
+    [Fact]
+    public async Task EnsureThumbnailAsync_SidecarAlreadyExists_DoesNotNotify()
+    {
+        string media = WriteMedia("clip.mp4");
+        File.WriteAllBytes(MediaThumbnailService.ThumbnailPathFor(media), new byte[] { 0x89 });
+
+        _ = await CreateService().EnsureThumbnailAsync(MediaFor(media), CancellationToken.None);
+
+        _notifier.Verify(n => n.ThumbnailReadyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     private string WriteMedia(string name, string format = "video/mp4")
     {

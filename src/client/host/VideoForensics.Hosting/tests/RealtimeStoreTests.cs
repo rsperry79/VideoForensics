@@ -3,6 +3,7 @@ using System.Reactive.Subjects;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting.Remote;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -15,13 +16,50 @@ namespace VideoForensics.Hosting.Tests
             public Subject<NotificationEvent> Urgent { get; } = new();
             public Subject<SelfTestStatusDto> SelfTest { get; } = new();
             public Subject<ConnectionState> State { get; } = new();
+            public Subject<ThumbnailReadyDto> Thumbnails { get; } = new();
 
             public IObservable<DownloadProgressDto> DownloadProgress => Progress;
             public IObservable<NotificationEvent> UrgentEvents => Urgent;
             public IObservable<SelfTestStatusDto> SelfTestStatus => SelfTest;
             public IObservable<ConnectionState> Connection => State;
+            public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
             public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
             public Task StopAsync() => Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Thumbnail-ready is an event, not state: a subscriber that arrives later must not be told about an old thumbnail.
+        /// Replaying it would make an open evidence view refetch a thumbnail it already has.
+        /// </summary>
+        [Fact]
+        public void RealtimeStore_ThumbnailReady_ForwardsEventsWithoutReplay()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var early = new ThumbnailReadyDto(Guid.NewGuid());
+            var later = new ThumbnailReadyDto(Guid.NewGuid());
+            hub.Thumbnails.OnNext(early);
+
+            var seen = new List<ThumbnailReadyDto>();
+            using IDisposable subscription = store.ThumbnailReady.Subscribe(seen.Add);
+            hub.Thumbnails.OnNext(later);
+
+            Assert.Equal(new[] { later }, seen);
+        }
+
+        [Fact]
+        public void RemoteThumbnailReadySource_ForwardsStoreEvents()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var source = new RemoteThumbnailReadySource(store);
+            var ready = new ThumbnailReadyDto(Guid.NewGuid());
+
+            var seen = new List<ThumbnailReadyDto>();
+            using IDisposable subscription = source.ThumbnailReady.Subscribe(seen.Add);
+            hub.Thumbnails.OnNext(ready);
+
+            Assert.Equal(new[] { ready }, seen);
         }
 
         [Fact]
@@ -112,7 +150,7 @@ namespace VideoForensics.Hosting.Tests
 
             IReadOnlyList<string> drained = store.DrainActivityLog();
 
-            Assert.Equal(new[] { "first-a", "first-b", "second-a" }, drained);
+            Assert.Equal(["first-a", "first-b", "second-a"], drained);
         }
 
         [Fact]
@@ -133,7 +171,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var hub = new FakeRealtimeHub();
             using var store = new RealtimeStore(hub);
-            string[] lines = Enumerable.Range(0, 600).Select(i => $"line-{i}").ToArray();
+            string[] lines = [.. Enumerable.Range(0, 600).Select(i => $"line-{i}")];
 
             hub.Progress.OnNext(CreateProgressWithActivity(lines));
             IReadOnlyList<string> drained = store.DrainActivityLog();
@@ -186,7 +224,7 @@ namespace VideoForensics.Hosting.Tests
                 0,
                 0,
                 null,
-                Array.Empty<string>(),
+                [],
                 new Dictionary<string, int>(),
                 lastError,
                 null);

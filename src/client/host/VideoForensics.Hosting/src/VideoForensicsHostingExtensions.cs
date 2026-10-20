@@ -766,6 +766,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 
             return services;

@@ -254,6 +254,7 @@ namespace VideoForensics.Hosting.Tests
             public IObservable<NotificationEvent> UrgentEvents { get; } = new Subject<NotificationEvent>();
             public IObservable<SelfTestStatusDto> SelfTestStatus { get; } = new Subject<SelfTestStatusDto>();
             public IObservable<ConnectionState> Connection { get; } = new Subject<ConnectionState>();
+            public IObservable<ThumbnailReadyDto> ThumbnailReady { get; } = new Subject<ThumbnailReadyDto>();
             public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
             public Task StopAsync() => Task.CompletedTask;
         }

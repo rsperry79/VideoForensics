@@ -280,6 +280,11 @@ builder.Services.AddRateLimiter(options =>
 // or the VIDEOFORENSICS_ActiveProvider environment variable), defaulting to "Ring" for backward compatibility.
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
+// Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
+// own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
+builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
+builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.WebApp.Hubs.LiveThumbnailNotifier>());
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, VideoForensics.WebApp.Services.LocalThumbnailReadySource>();
 // Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
 builder.Services.AddSnapshotProbe(builder.Configuration);
 

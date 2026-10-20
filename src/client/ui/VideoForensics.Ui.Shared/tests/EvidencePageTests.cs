@@ -33,6 +33,22 @@ using Syncfusion.Blazor.Navigations;
 /// </summary>
 public abstract class EvidencePageTestBase : BunitContext
 {
+    /// <summary>Thumbnail-ready events the page under test receives; tests push through this subject.</summary>
+    protected readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReadySubject = new();
+
+    /// <summary>Fake source that forwards <see cref="ThumbnailReadySubject"/> to the page.</summary>
+    protected sealed class FakeThumbnailReadySource : VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource
+    {
+        private readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> _ready;
+
+        public FakeThumbnailReadySource(System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ready)
+        {
+            _ready = ready;
+        }
+
+        public IObservable<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReady => _ready;
+    }
+
     protected static readonly DateTime FixedNowUtc = new(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
     protected static readonly DateTime EventOccurredAtUtc = new(2026, 9, 20, 10, 0, 0, DateTimeKind.Utc);
     protected static readonly DateTime VideoRecordedAtUtc = new(2026, 9, 20, 8, 0, 0, DateTimeKind.Utc);
@@ -195,6 +211,7 @@ public abstract class EvidencePageTestBase : BunitContext
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
 
+        Services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
         Services.AddScoped(_ => AuthServiceMock.Object);
         Services.AddScoped(_ => DeviceRepositoryMock.Object);
         Services.AddScoped(_ => EventRepositoryMock.Object);
@@ -283,6 +300,42 @@ public class Evidence_Gallery_Tests : EvidencePageTestBase
 
         var img = component.Find($".gallery-tile[data-key='event:{EventId}'] img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
+    }
+}
+
+/// <summary>
+/// A thumbnail produced while the page is open re-fetches that item's URL, so its image reloads with the new still.
+/// An event for an item the page does not show must not cause a fetch.
+/// </summary>
+public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public void ThumbnailReady_ForItemOnPage_RefetchesThatItemsUrl()
+    {
+        var component = RenderEvidencePage();
+
+        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId));
+
+        // The initial load fetches several items at once; the refresh fetches exactly this one.
+        component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(VideoMediaId)),
+                It.IsAny<CancellationToken>()),
+            Times.Once));
+    }
+
+    [Fact]
+    public async Task ThumbnailReady_ForItemNotOnPage_DoesNotFetch()
+    {
+        var component = RenderEvidencePage();
+        var unknown = Guid.NewGuid();
+
+        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(unknown));
+        await component.InvokeAsync(() => Task.CompletedTask);
+
+        MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(unknown)), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }
 

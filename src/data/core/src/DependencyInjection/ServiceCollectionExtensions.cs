@@ -43,6 +43,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
             services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();

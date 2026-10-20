@@ -12,6 +12,9 @@ namespace VideoForensics.WebApp.Hubs
         /// <summary>Self-test status push. Sent only to admin callers (the "admins" group and admin snapshot-on-connect).</summary>
         public const string SelfTestStatus = "SelfTestStatus";
 
+        /// <summary>Thumbnail-ready push. Sent to every connection; the payload is the media item ID only.</summary>
+        public const string ThumbnailReady = "ThumbnailReady";
+
         /// <summary>Live-view session state push. Sent only to connections subscribed to that session's group.</summary>
         public const string LiveViewSessionChanged = "LiveViewSessionChanged";
 

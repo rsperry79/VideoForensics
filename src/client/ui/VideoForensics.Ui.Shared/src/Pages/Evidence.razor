@@ -1,5 +1,6 @@
 @page "/"
 @page "/evidence"
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
@@ -31,6 +32,7 @@
 @inject IMediaStillCaptureService MediaStillCaptureService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
+@inject IServiceProvider ServiceProvider
 
 <h4 class="mb-4">@L["PageTitle"]</h4>
 
@@ -224,6 +226,7 @@ else
     private string? _mediaLoadError;
     private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
+    private IDisposable? _thumbnailReadySubscription;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
     private List<EvidenceItem> _stripItems = new();
@@ -248,6 +251,11 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Optional: a host without thumbnail events simply never raises one, so the page must not require the source.
+        VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource? thumbnailSource =
+            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>();
+        _thumbnailReadySubscription = thumbnailSource?.ThumbnailReady.Subscribe(OnThumbnailReady);
+
         _contextMenuItems = BuildContextMenuItems();
 
         try
@@ -906,11 +914,45 @@ else
         return System.Net.WebUtility.UrlDecode(query.Substring(valueStart, valueEnd - valueStart));
     }
 
+    /// <summary>
+    /// A thumbnail was just produced for an item this page shows. The ticket for its content URL differs from the one
+    /// it has, so the new URL makes the image reload and show the still. The event arrives on a background thread,
+    /// so the work runs through the component's render context.
+    /// </summary>
+    private void OnThumbnailReady(VideoForensics.Core.Api.Contracts.ThumbnailReadyDto ready)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            bool onPage = _vm?.Items.Any(i => i.Media?.Id == ready.MediaItemId) == true;
+            if (!onPage)
+            {
+                return;
+            }
+
+            try
+            {
+                IReadOnlyDictionary<Guid, string> urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { ready.MediaItemId }, CancellationToken.None);
+                foreach (KeyValuePair<Guid, string> kvp in urls)
+                {
+                    _thumbnailUrls[kvp.Key] = kvp.Value;
+                }
+
+                StateHasChanged();
+            }
+            catch
+            {
+                // Keep the old URL. The next page load fetches it again, so one missed refresh is not an error to show.
+            }
+        });
+    }
+
     public void Dispose()
     {
         if (_onScopeChangeHandler is not null)
         {
             ScopeState.OnChange -= _onScopeChangeHandler;
         }
+
+        _thumbnailReadySubscription?.Dispose();
     }
 }

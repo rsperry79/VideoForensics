@@ -35,13 +35,19 @@ namespace VideoForensics.Data.Core.Services
 
         private readonly IMediaFrameExtractor _frames;
         private readonly IMediaItemRepository _items;
+        private readonly IMediaThumbnailNotifier _notifier;
         private readonly ILogger<MediaThumbnailService> _logger;
 
         /// <summary>Creates the service.</summary>
-        public MediaThumbnailService(IMediaFrameExtractor frames, IMediaItemRepository items, ILogger<MediaThumbnailService> logger)
+        public MediaThumbnailService(
+            IMediaFrameExtractor frames,
+            IMediaItemRepository items,
+            IMediaThumbnailNotifier notifier,
+            ILogger<MediaThumbnailService> logger)
         {
             _frames = frames;
             _items = items;
+            _notifier = notifier;
             _logger = logger;
         }
 
@@ -134,6 +140,7 @@ namespace VideoForensics.Data.Core.Services
                 await File.WriteAllBytesAsync(temp, png, ct);
                 File.Move(temp, thumbnail, overwrite: true);
                 await RecordPathAsync(media, ct);
+                await AnnounceAsync(media.Id, ct);
                 return true;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -144,6 +151,26 @@ namespace VideoForensics.Data.Core.Services
             {
                 _logger.LogError(ex, "Thumbnail generation failed for media item {MediaItemId}", media.Id);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Why: the thumbnail is already saved when this runs, so a failed announcement must not make generation fail
+        /// (the next pass would then wrongly regenerate it). The failure is logged, and open views simply refresh later.
+        /// </summary>
+        private async Task AnnounceAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            try
+            {
+                await _notifier.ThumbnailReadyAsync(mediaItemId, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not announce thumbnail for media item {MediaItemId}", mediaItemId);
             }
         }
 
