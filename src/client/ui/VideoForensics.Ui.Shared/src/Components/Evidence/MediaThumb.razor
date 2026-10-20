@@ -1,6 +1,6 @@
 @* Thumbnail for an evidence media item. Images are their own thumbnail; a video's thumbnail is the frame the
    server stored at import, served from the thumbnail route for the same ticket. *@
-<img src="@ThumbnailSrc" alt="@Alt" class="@CssClass" style="@Style" />
+<img src="@ThumbnailSrc" alt="@Alt" class="@CssClass" style="@Style" loading="lazy" />
 
 @code {
     /// <summary>Ticketed content URL for the media item.</summary>
