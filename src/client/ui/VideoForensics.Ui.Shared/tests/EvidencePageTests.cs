@@ -651,6 +651,25 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     private static EvidenceItem FindItem(IRenderedComponent<Evidence> component, string key) =>
         component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.DataSource!.First(i => i.Key == key);
 
+    /// <summary>
+    /// Syncfusion's grid builds its context menu from ContextMenuItems and expects typed
+    /// ContextMenuItemModel entries; anonymous objects crash the grid's ContextMenu during
+    /// OnInitialized (NullReferenceException in ContextMenu.GetMenuItems), which takes the Blazor circuit down.
+    /// </summary>
+    [Fact]
+    public void GridContextMenuItems_AreTypedSyncfusionItemModels_WithStableIds()
+    {
+        var component = RenderGrid();
+
+        var items = component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.ContextMenuItems;
+
+        Assert.NotNull(items);
+        Assert.All(items, i => Assert.IsType<ContextMenuItemModel>(i));
+        Assert.Equal(
+            new[] { "details", "export", "hold", "release", "verify" },
+            items.Cast<ContextMenuItemModel>().Select(i => i.Id));
+    }
+
     [Fact]
     public async Task Export_SelectedEventWithMedia_NavigatesToReviewExportWithMediaId()
     {

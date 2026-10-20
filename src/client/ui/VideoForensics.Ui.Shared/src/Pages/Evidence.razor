@@ -159,7 +159,7 @@ else
                 Columns="@GridColumns"
                 ExportFileName="evidence.csv"
                 PageSize="20"
-                ContextMenuItems="@ContextMenuItems"
+                ContextMenuItems="@_contextMenuItems"
                 ContextMenuItemClicked="@OnGridContextMenuClicked" />
         </div>
     }
@@ -248,6 +248,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _contextMenuItems = BuildContextMenuItems();
+
         try
         {
             await SessionState.EnsureLoadedAsync();
@@ -670,13 +672,17 @@ else
         return EvidenceInspectorMapper.ToInspector(item, _activeHoldsByMediaItemId, _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
     }
 
-    private List<object>? ContextMenuItems => new List<object>
+    // Built once at init: Syncfusion requires typed ContextMenuItemModel entries (anonymous objects
+    // crash the grid's ContextMenu), and a per-render getter would hand the grid a new list each render.
+    private List<object> _contextMenuItems = new();
+
+    private List<object> BuildContextMenuItems() => new()
     {
-        new { Text = L["ViewDetails"], Id = "details" },
-        new { Text = L["ExportSelected"], Id = "export" },
-        new { Text = L["PlaceLegalHold"], Id = "hold" },
-        new { Text = L["ReleaseLegalHold"], Id = "release" },
-        new { Text = L["VerifyIntegrityDevice"], Id = "verify" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ViewDetails"], Id = "details" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ExportSelected"], Id = "export" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["PlaceLegalHold"], Id = "hold" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ReleaseLegalHold"], Id = "release" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["VerifyIntegrityDevice"], Id = "verify" },
     };
 
     /// <summary>
