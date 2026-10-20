@@ -66,6 +66,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthRepository.Object,
                 _mockDeviceDetailsRepository.Object,
+                new Mock<IDeviceModelRepository>().Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,

@@ -16,6 +16,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IClipColorAnalyzer> _color = new();
         private readonly Mock<IAudioClipAnalyzer> _audio = new();
         private readonly Mock<IDeviceRepository> _devices = new();
+        private readonly Mock<IMediaThumbnailService> _thumbnails = new();
         private readonly Guid _deviceId = Guid.NewGuid();
 
         private MediaAnalysisService CreateSut() => new(
@@ -24,6 +25,7 @@ namespace VideoForensics.Data.Core.Tests
             _bitrate.Object,
             _color.Object,
             _audio.Object,
+            _thumbnails.Object,
             Options.Create(new MediaAnalysisOptions()),
             NullLogger<MediaAnalysisService>.Instance);
 
@@ -52,6 +54,26 @@ namespace VideoForensics.Data.Core.Tests
             _bitrate.Setup(a => a.AnalyzeAsync(clip.FilePath, clip.FileSizeBytes, It.IsAny<CancellationToken>())).ReturnsAsync(bitrate);
             _color.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<CancellationToken>())).ReturnsAsync(color);
             _audio.Setup(a => a.AnalyzeAsync(clip.FilePath, bitrate.DurationSeconds, It.IsAny<CancellationToken>())).ReturnsAsync(audio);
+        }
+
+        /// <summary>
+        /// Thumbnails are made on import, so they must not depend on analysis succeeding: an incomplete analysis
+        /// takes an early return, and the thumbnail still has to be generated before it.
+        /// </summary>
+        [Fact]
+        public async Task AnalyzeAsync_IncompleteAnalysis_StillEnsuresThumbnail()
+        {
+            MediaItem clip = Clip(_deviceId, "Day", 300_000);
+            _items.Setup(r => r.GetAsync(clip.Id, It.IsAny<CancellationToken>())).ReturnsAsync(clip);
+            _items.Setup(r => r.GetRecentByDeviceAsync(clip.DeviceId, MediaAnalysisService.HistoryWindowClips, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Array.Empty<MediaItem>());
+            _bitrate.Setup(a => a.AnalyzeAsync(clip.FilePath, clip.FileSizeBytes, It.IsAny<CancellationToken>())).ReturnsAsync((MediaBitrateAnalysis?)null);
+            _color.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<CancellationToken>())).ReturnsAsync((ClipColorStats?)null);
+            _audio.Setup(a => a.AnalyzeAsync(clip.FilePath, It.IsAny<double?>(), It.IsAny<CancellationToken>())).ReturnsAsync((AudioClipStats?)null);
+
+            await CreateSut().AnalyzeAsync(clip.Id, CancellationToken.None);
+
+            _thumbnails.Verify(t => t.EnsureThumbnailAsync(clip, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

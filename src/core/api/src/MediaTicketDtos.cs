@@ -32,5 +32,14 @@ namespace VideoForensics.Core.Api.Contracts
         {
             return $"/api/v1/media/{mediaItemId}/content?ticket={Uri.EscapeDataString(ticketToken)}";
         }
+
+        /// <summary>
+        /// Derives the thumbnail URL from a ticketed content URL. One ticket authorises both routes, so the client
+        /// needs no second ticket request. Returns the input unchanged when it is not a content URL.
+        /// </summary>
+        public static string ThumbnailUrlFromContentUrl(string contentUrl)
+        {
+            return contentUrl.Replace("/content?", "/thumbnail?", StringComparison.Ordinal);
+        }
     }
 }

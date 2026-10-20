@@ -38,6 +38,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaBitrateAnalyzer _bitrate;
         private readonly IClipColorAnalyzer _color;
         private readonly IAudioClipAnalyzer _audio;
+        private readonly IMediaThumbnailService _thumbnails;
         private readonly ILogger<MediaAnalysisService> _logger;
 
         /// <summary>Creates the service.</summary>
@@ -47,6 +48,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaBitrateAnalyzer bitrate,
             IClipColorAnalyzer color,
             IAudioClipAnalyzer audio,
+            IMediaThumbnailService thumbnails,
             IOptions<MediaAnalysisOptions> options,
             ILogger<MediaAnalysisService> logger)
         {
@@ -56,6 +58,7 @@ namespace VideoForensics.Data.Core.Services
             _bitrate = bitrate;
             _color = color;
             _audio = audio;
+            _thumbnails = thumbnails;
             _logger = logger;
         }
 
@@ -67,6 +70,10 @@ namespace VideoForensics.Data.Core.Services
             {
                 return;
             }
+
+            // Thumbnails are generated on import, before any early return below, so an incomplete analysis
+            // never leaves a video without one. Never fails the analysis: the service reports false instead.
+            _ = await _thumbnails.EnsureThumbnailAsync(media, ct);
 
             MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(media.FilePath, media.FileSizeBytes, ct);
             ClipColorStats? color = await _color.AnalyzeAsync(media.FilePath, ct);

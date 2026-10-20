@@ -67,6 +67,13 @@ namespace VideoForensics.Data.Core.Services
                                 _logger.LogDebug("Deleted file during retention purge: {FilePath}", item.FilePath);
                             }
 
+                            // The stored thumbnail is derived from the clip, so it goes too, even if the clip was already gone.
+                            string thumbnail = MediaThumbnailService.ThumbnailPathFor(item.FilePath);
+                            if (File.Exists(thumbnail))
+                            {
+                                File.Delete(thumbnail);
+                            }
+
                             item.IsPurged = true;
                             item.PurgedAtUtc = DateTime.UtcNow;
                             item.PurgeReason = $"Retention policy: older than {_retentionDays} days";

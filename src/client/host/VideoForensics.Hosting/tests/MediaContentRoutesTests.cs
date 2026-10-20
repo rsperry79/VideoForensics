@@ -22,6 +22,23 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public void ThumbnailUrlFromContentUrl_SwapsRouteAndKeepsTheTicket()
+        {
+            var mediaItemId = Guid.NewGuid();
+            string contentUrl = MediaContentRoutes.ContentUrl(mediaItemId, "tok");
+
+            string thumbnail = MediaContentRoutes.ThumbnailUrlFromContentUrl(contentUrl);
+
+            Assert.Equal($"/api/v1/media/{mediaItemId}/thumbnail?ticket=tok", thumbnail);
+        }
+
+        [Fact]
+        public void ThumbnailUrlFromContentUrl_NotAContentUrl_ReturnsInputUnchanged()
+        {
+            Assert.Equal("https://cdn.test/a.jpg", MediaContentRoutes.ThumbnailUrlFromContentUrl("https://cdn.test/a.jpg"));
+        }
+
+        [Fact]
         public void ContentUrl_EscapesSpecialCharactersInToken()
         {
             // Arrange

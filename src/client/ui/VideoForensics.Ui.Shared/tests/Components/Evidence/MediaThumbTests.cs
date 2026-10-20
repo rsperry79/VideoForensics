@@ -20,21 +20,19 @@ public class MediaThumbTests : BunitContext
     }
 
     /// <summary>
-    /// A video has no image to show, so the thumbnail is the first frame of the file itself: metadata-only
-    /// preload plus a seek to 0.1s makes the browser paint a frame without downloading the whole clip.
+    /// A video's thumbnail is the frame the server stored at import, served from the thumbnail route that the same
+    /// ticket authorises. The clip itself is never loaded for a thumbnail.
     /// </summary>
     [Fact]
-    public void Video_RendersVideoElementSeekedToFirstFrame_WithMetadataPreload()
+    public void Video_RendersImgWithServerThumbnailUrl_AndNoVideoElement()
     {
         var component = Render<MediaThumb>(p => p
-            .Add(x => x.Url, "https://cdn.test/clip.mp4?ticket=2")
+            .Add(x => x.Url, "/api/v1/media/abc/content?ticket=2")
             .Add(x => x.IsVideo, true)
             .Add(x => x.Alt, "Driveway"));
 
-        var video = component.Find("video");
-        Assert.Equal("https://cdn.test/clip.mp4?ticket=2#t=0.1", video.GetAttribute("src"));
-        Assert.Equal("metadata", video.GetAttribute("preload"));
-        Assert.NotNull(video.GetAttribute("muted"));
-        Assert.Empty(component.FindAll("img"));
+        var img = component.Find("img");
+        Assert.Equal("/api/v1/media/abc/thumbnail?ticket=2", img.GetAttribute("src"));
+        Assert.Empty(component.FindAll("video"));
     }
 }

@@ -1,20 +1,13 @@
-@* Thumbnail for an evidence media item. Images use the file itself; videos use their first frame,
-   painted by the browser from a metadata-only preload, so no separate poster file is needed. *@
-@if (IsVideo)
-{
-    <video src="@VideoSrc" preload="metadata" muted playsinline class="@CssClass" style="@Style" aria-label="@Alt"></video>
-}
-else
-{
-    <img src="@Url" alt="@Alt" class="@CssClass" style="@Style" />
-}
+@* Thumbnail for an evidence media item. Images are their own thumbnail; a video's thumbnail is the frame the
+   server stored at import, served from the thumbnail route for the same ticket. *@
+<img src="@ThumbnailSrc" alt="@Alt" class="@CssClass" style="@Style" />
 
 @code {
     /// <summary>Ticketed content URL for the media item.</summary>
     [Parameter, EditorRequired]
     public string Url { get; set; } = string.Empty;
 
-    /// <summary>True for video media; false renders an image.</summary>
+    /// <summary>True for video media, whose thumbnail is a stored frame rather than the file.</summary>
     [Parameter]
     public bool IsVideo { get; set; }
 
@@ -31,8 +24,10 @@ else
     public string? Style { get; set; }
 
     /// <summary>
-    /// Why: a metadata-only preload often paints nothing until the player seeks, so the 0.1s media fragment asks
-    /// for a real frame. Players that ignore the fragment just show the default blank tile.
+    /// Why: the thumbnail route shares the content ticket, so no second ticket request is needed. Clients never
+    /// load the clip itself just to show a poster.
     /// </summary>
-    private string VideoSrc => Url + "#t=0.1";
+    private string ThumbnailSrc => IsVideo
+        ? VideoForensics.Core.Api.Contracts.MediaContentRoutes.ThumbnailUrlFromContentUrl(Url)
+        : Url;
 }
