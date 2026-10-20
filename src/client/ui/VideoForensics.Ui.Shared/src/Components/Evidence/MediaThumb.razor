@@ -1,0 +1,38 @@
+@* Thumbnail for an evidence media item. Images use the file itself; videos use their first frame,
+   painted by the browser from a metadata-only preload, so no separate poster file is needed. *@
+@if (IsVideo)
+{
+    <video src="@VideoSrc" preload="metadata" muted playsinline class="@CssClass" style="@Style" aria-label="@Alt"></video>
+}
+else
+{
+    <img src="@Url" alt="@Alt" class="@CssClass" style="@Style" />
+}
+
+@code {
+    /// <summary>Ticketed content URL for the media item.</summary>
+    [Parameter, EditorRequired]
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>True for video media; false renders an image.</summary>
+    [Parameter]
+    public bool IsVideo { get; set; }
+
+    /// <summary>Accessible label for the thumbnail.</summary>
+    [Parameter]
+    public string? Alt { get; set; }
+
+    /// <summary>Optional CSS class applied to the rendered element.</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    /// <summary>Optional inline style applied to the rendered element (for fixed-size grid cells).</summary>
+    [Parameter]
+    public string? Style { get; set; }
+
+    /// <summary>
+    /// Why: a metadata-only preload often paints nothing until the player seeks, so the 0.1s media fragment asks
+    /// for a real frame. Players that ignore the fragment just show the default blank tile.
+    /// </summary>
+    private string VideoSrc => Url + "#t=0.1";
+}

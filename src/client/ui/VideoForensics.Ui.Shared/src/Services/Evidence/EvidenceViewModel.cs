@@ -78,7 +78,7 @@ public class EvidenceViewModel
         Items.Where(i => i.HasViewableMedia).ToList().AsReadOnly();
 
     /// <summary>
-    /// Media IDs for images among Items (up to max, in order).
+    /// Media IDs with a thumbnail among Items (images, plus videos for their first frame), up to max, in order.
     /// </summary>
     public IReadOnlyList<Guid> ThumbnailMediaIds(int max = 500)
     {
@@ -90,7 +90,7 @@ public class EvidenceViewModel
                 break;
             }
 
-            if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat))
+            if (item.Media is not null && (MediaFormatHelper.IsImage(item.Media.MediaFormat) || MediaFormatHelper.IsVideo(item.Media.MediaFormat)))
             {
                 ids.Add(item.Media.Id);
             }
