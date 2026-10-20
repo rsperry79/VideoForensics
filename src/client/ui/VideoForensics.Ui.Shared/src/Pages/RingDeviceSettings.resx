@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Title" xml:space="preserve">
+    <value>Ring device settings</value>
+  </data>
+  <data name="BackToDeviceConfig" xml:space="preserve">
+    <value>Back to device configuration</value>
+  </data>
+  <data name="NotFound" xml:space="preserve">
+    <value>This device was not found.</value>
+  </data>
+  <data name="NotRing" xml:space="preserve">
+    <value>This device is not linked to a Ring account, so the Ring settings page does not apply.</value>
+  </data>
+  <data name="NoTypedSettings" xml:space="preserve">
+    <value>No typed settings are stored for this device.</value>
+  </data>
+  <data name="OfflineMotionTitle" xml:space="preserve">
+    <value>Offline motion</value>
+  </data>
+  <data name="DetectionTypesTitle" xml:space="preserve">
+    <value>Detection types</value>
+  </data>
+  <data name="ThresholdsTitle" xml:space="preserve">
+    <value>Thresholds</value>
+  </data>
+  <data name="ColSubscribed" xml:space="preserve">
+    <value>Subscribed</value>
+  </data>
+  <data name="ColEnabledFlag" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="ColMaxUploadKb" xml:space="preserve">
+    <value>Max upload (KB)</value>
+  </data>
+  <data name="ColResolutionP" xml:space="preserve">
+    <value>Resolution (p)</value>
+  </data>
+  <data name="ColFrequencyAfterSecs" xml:space="preserve">
+    <value>Frequency after (s)</value>
+  </data>
+  <data name="ColPeriodAfterSecs" xml:space="preserve">
+    <value>Period after (s)</value>
+  </data>
+  <data name="ColDetectionType" xml:space="preserve">
+    <value>Detection type</value>
+  </data>
+  <data name="ColMode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="ColRecord" xml:space="preserve">
+    <value>Record</value>
+  </data>
+  <data name="ColNotification" xml:space="preserve">
+    <value>Notification</value>
+  </data>
+  <data name="ColThreshold" xml:space="preserve">
+    <value>Threshold</value>
+  </data>
+</root>

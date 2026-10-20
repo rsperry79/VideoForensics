@@ -1001,6 +1001,64 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceConfigSnapshots");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceDetectionThreshold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Threshold")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceDetectionThresholds");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceDetectionType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectionType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Mode")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Notification")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Record")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceDetectionTypes");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatures", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1230,6 +1288,40 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId");
 
                     b.ToTable("DeviceMotionSnoozePresets");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceOfflineMotionSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FrequencyAfterSecs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxUploadKb")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PeriodAfterSecs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ResolutionP")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Subscribed")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.ToTable("DeviceOfflineMotionSettings");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceSettingChange", b =>

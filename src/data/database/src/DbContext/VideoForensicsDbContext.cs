@@ -301,6 +301,9 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the advanced object settings of a device.</summary>
         public DbSet<DeviceAdvancedObjectSetting> DeviceAdvancedObjectSettings { get; set; }
+        public DbSet<DeviceOfflineMotionSettings> DeviceOfflineMotionSettings { get; set; }
+        public DbSet<DeviceDetectionType> DeviceDetectionTypes { get; set; }
+        public DbSet<DeviceDetectionThreshold> DeviceDetectionThresholds { get; set; }
 
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }

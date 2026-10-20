@@ -92,4 +92,61 @@
   <data name="AskAdministratorToLinkAccount" xml:space="preserve">
     <value>Ask an administrator to link a provider account.</value>
   </data>
+  <data name="ProviderFilter" xml:space="preserve">
+    <value>Provider type</value>
+  </data>
+  <data name="AllProviders" xml:space="preserve">
+    <value>All providers</value>
+  </data>
+  <data name="OpenRingSettings" xml:space="preserve">
+    <value>Open Ring settings</value>
+  </data>
+  <data name="TypedSettingsTitle" xml:space="preserve">
+    <value>Typed settings</value>
+  </data>
+  <data name="NoTypedSettings" xml:space="preserve">
+    <value>No typed settings are stored for this device.</value>
+  </data>
+  <data name="OfflineMotionTitle" xml:space="preserve">
+    <value>Offline motion</value>
+  </data>
+  <data name="DetectionTypesTitle" xml:space="preserve">
+    <value>Detection types</value>
+  </data>
+  <data name="ThresholdsTitle" xml:space="preserve">
+    <value>Thresholds</value>
+  </data>
+  <data name="ColSubscribed" xml:space="preserve">
+    <value>Subscribed</value>
+  </data>
+  <data name="ColEnabledFlag" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="ColMaxUploadKb" xml:space="preserve">
+    <value>Max upload (KB)</value>
+  </data>
+  <data name="ColResolutionP" xml:space="preserve">
+    <value>Resolution (p)</value>
+  </data>
+  <data name="ColFrequencyAfterSecs" xml:space="preserve">
+    <value>Frequency after (s)</value>
+  </data>
+  <data name="ColPeriodAfterSecs" xml:space="preserve">
+    <value>Period after (s)</value>
+  </data>
+  <data name="ColDetectionType" xml:space="preserve">
+    <value>Detection type</value>
+  </data>
+  <data name="ColMode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="ColRecord" xml:space="preserve">
+    <value>Record</value>
+  </data>
+  <data name="ColNotification" xml:space="preserve">
+    <value>Notification</value>
+  </data>
+  <data name="ColThreshold" xml:space="preserve">
+    <value>Threshold</value>
+  </data>
 </root>

@@ -53,7 +53,24 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Devices.ToListAsync(ct);
+            List<Device> devices = await db.Devices.ToListAsync(ct);
+
+            // One lookup for all locations rather than one per device. A location with several linked accounts
+            // takes the first by ProviderName, so the result is stable across calls.
+            var providerByLocation = await db.ProviderAccountLocations
+                .AsNoTracking()
+                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
+                .ToListAsync(ct);
+            Dictionary<Guid, string> names = providerByLocation
+                .GroupBy(x => x.LocationId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.ProviderName).OrderBy(n => n, StringComparer.Ordinal).First());
+
+            foreach (Device device in devices)
+            {
+                device.ProviderName = names.GetValueOrDefault(device.LocationId);
+            }
+
+            return devices;
         }
 
         /// <summary>Adds a new device.</summary>

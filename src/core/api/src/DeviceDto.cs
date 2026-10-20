@@ -53,7 +53,8 @@ namespace VideoForensics.Core.Api.Contracts
         string? BatteryLife = null,
         bool? ExternalConnection = null,
         bool? Owned = null,
-        bool? Stolen = null
+        bool? Stolen = null,
+        string? ProviderName = null
     );
 
     /// <summary>Sync status enumeration for a device.</summary>
@@ -102,7 +103,8 @@ namespace VideoForensics.Core.Api.Contracts
                 BatteryLife: entity.BatteryLife,
                 ExternalConnection: entity.ExternalConnection,
                 Owned: entity.Owned,
-                Stolen: entity.Stolen
+                Stolen: entity.Stolen,
+                ProviderName: entity.ProviderName
             );
         }
 
@@ -137,7 +139,8 @@ namespace VideoForensics.Core.Api.Contracts
                 BatteryLife = dto.BatteryLife,
                 ExternalConnection = dto.ExternalConnection,
                 Owned = dto.Owned,
-                Stolen = dto.Stolen
+                Stolen = dto.Stolen,
+                ProviderName = dto.ProviderName
             };
         }
     }

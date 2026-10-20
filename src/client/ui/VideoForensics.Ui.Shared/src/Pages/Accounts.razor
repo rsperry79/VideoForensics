@@ -84,7 +84,6 @@ else
                             @{
                                 var row = (AccountRow)context;
                                 <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
-                                <SfButton Content="@L["Remove"]" OnClick="@((UIMouseEventArgs) => StartRemove(row.Account.Id, false))" CssClass="e-danger" />
                             }
                         </Template>
                     </GridColumn>
