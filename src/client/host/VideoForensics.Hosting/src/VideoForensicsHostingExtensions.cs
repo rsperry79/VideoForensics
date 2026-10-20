@@ -281,6 +281,10 @@ namespace VideoForensics.Hosting
             _ = services.AddVideoForensicsDatabase();
             _ = services.AddVideoForensicsDataCore();
 
+            // Reference data loaded on database generation (see ReferenceDataSeeder). Registered here so every data-layer host seeds the same rows.
+            _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.IRingModelCatalog, VideoForensics.Providers.Ring.Catalog.RingModelCatalog>();
+            _ = services.AddSingleton<IReferenceDataSource, RingReferenceDataSource>();
+
             // App-lock (plan §5.9) is device-local and only meaningful on MAUI - every host gets
             // this no-op default; VideoForensics.MauiApp registers the real Preferences-backed
             // implementation afterward, which wins by DI's last-registration-wins rule.
@@ -771,7 +775,7 @@ namespace VideoForensics.Hosting
         public static async Task InitializeVideoForensicsDataAsync(IServiceProvider services, ILogger logger, CancellationToken ct)
         {
             IDbContextFactory<VideoForensicsDbContext> dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-            await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct);
+            await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct, services.GetServices<IReferenceDataSource>());
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
             // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the
