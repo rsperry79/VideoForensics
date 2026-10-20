@@ -106,7 +106,7 @@ public class NavSectionList_Tests : NavComponentTestBase
     {
         IReadOnlyList<NavSection> sections =
         [
-            new(null, [new("Evidence", "/media")]),
+            new(null, [new("Media", "/media")]),
             new("Security", [new("Operators", "/settings/operators")])
         ];
 
