@@ -36,14 +36,14 @@ namespace VideoForensics.Data.Database.Repositories
             if (schedule.EventPollIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
             {
                 throw new ArgumentException(
-                    $"EventPollIntervalMinutes ({schedule.EventPollIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    $"EventPollIntervalMinutes ({schedule.EventPollIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
                     nameof(schedule));
             }
 
-            if (schedule.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+            if (schedule.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
             {
                 throw new ArgumentException(
-                    $"SnapshotRssiIntervalMinutes ({schedule.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
                     nameof(schedule));
             }
 
@@ -80,10 +80,10 @@ namespace VideoForensics.Data.Database.Repositories
                             nameof(schedule));
                     }
 
-                    if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+                    if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
                     {
                         throw new ArgumentException(
-                            $"Window SnapshotRssiIntervalMinutes ({window.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumSnapshotIntervalSeconds}",
                             nameof(schedule));
                     }
                 }
@@ -99,7 +99,7 @@ namespace VideoForensics.Data.Database.Repositories
                 if (existing != null)
                 {
                     existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
-                    existing.SnapshotRssiIntervalMinutes = schedule.SnapshotRssiIntervalMinutes;
+                    existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
                     existing.IsEnabled = schedule.IsEnabled;
                     existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                     existing.EventNextRunUtc = schedule.EventNextRunUtc;

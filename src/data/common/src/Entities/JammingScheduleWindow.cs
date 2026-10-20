@@ -24,9 +24,9 @@ namespace VideoForensics.Data.Common.Entities
         /// Validation is enforced at the application layer (repository Upsert), not the database.</summary>
         public int EndMinuteOfDay { get; set; }
 
-        /// <summary>Snapshot/RSSI polling interval in minutes during this window.
-        /// Overrides the default SnapshotRssiIntervalMinutes while this window is active.
-        /// Minimum floor is defined by SyncSchedule.MinimumPollIntervalMinutes (rate-limit safety measure).</summary>
-        public int SnapshotRssiIntervalMinutes { get; set; }
+        /// <summary>Snapshot/RSSI polling interval in seconds during this window.
+        /// Overrides the default SnapshotRssiIntervalSeconds while this window is active.
+        /// Minimum floor is defined by SyncSchedule.MinimumSnapshotIntervalSeconds (rate-limit safety measure).</summary>
+        public int SnapshotRssiIntervalSeconds { get; set; }
     }
 }
