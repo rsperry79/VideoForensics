@@ -19,3 +19,7 @@ paths:
 - Desktop-first. Resizable panels via Syncfusion `SfSplitter`.
 - `Routes.razor` uses `ResponsiveLayout`, which swaps to `MobileLayout` below 600px.
 - Mobile logic goes in `MobileLayout` or `ResponsiveLayout`, never `MainLayout`.
+
+## Theme colors
+
+- Text color in Ui.Shared CSS uses only Bootstrap 5.3 text variables (e.g. `--bs-secondary-color`). Never use a background variable (e.g. `--bs-secondary`) as text, and never use an undefined variable such as `--bs-muted-color`.
