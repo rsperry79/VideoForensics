@@ -328,6 +328,11 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
 
+// First sync: runner, then validate-all as the media step, flagged complete only on full success.
+builder.Services.AddScoped<VideoForensics.WebApp.Services.IInitialSyncCoordinator, VideoForensics.WebApp.Services.InitialSyncCoordinator>();
+builder.Services.AddScoped<VideoForensics.WebApp.Services.InitialSyncResumer>();
+builder.Services.AddHostedService<VideoForensics.WebApp.Services.InitialSyncResumeService>();
+
 // Embedded MCP-backed chat assistant: server-side implementation of IChatService that drives
 // an LLM tool-use loop against this app's own forensic analysis tools.
 builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IChatService, VideoForensics.WebApp.Chat.ChatOrchestrator>();
