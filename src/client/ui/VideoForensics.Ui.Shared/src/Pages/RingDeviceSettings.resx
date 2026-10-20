@@ -36,7 +36,7 @@
     <value>Ring device settings</value>
   </data>
   <data name="BackToDeviceConfig" xml:space="preserve">
-    <value>Back to device configuration</value>
+    <value>Back to accounts</value>
   </data>
   <data name="NotFound" xml:space="preserve">
     <value>This device was not found.</value>

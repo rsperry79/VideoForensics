@@ -110,6 +110,8 @@ namespace VideoForensics.Client.Common.Contracts
         bool EnableBitrateCalibration { get; set; }
         /// <summary>Check interval in minutes for launching calibration sessions for under-sampled or stale buckets. Default 15.</summary>
         int CalibrationCheckIntervalMinutes { get; set; }
+        /// <summary>Seconds without a health reading before an account device counts as offline on its Devices tab. Default 300 (5 minutes).</summary>
+        int DeviceOfflineThresholdSeconds { get; set; }
         /// <summary>Duration in seconds of a single bitrate calibration session. Default 12.</summary>
         int CalibrationSessionDurationSeconds { get; set; }
         /// <summary>Minimum telemetry samples per time bucket to consider calibration complete for that bucket. Default 5.</summary>
@@ -197,6 +199,7 @@ namespace VideoForensics.Client.Common.Contracts
         public int ElevatedPollingIntervalSeconds { get; set; } = 45;
         public bool EnableBitrateCalibration { get; set; } = true;
         public int CalibrationCheckIntervalMinutes { get; set; } = 15;
+        public int DeviceOfflineThresholdSeconds { get; set; } = 300;
         public int CalibrationSessionDurationSeconds { get; set; } = 12;
         public int MinCalibrationSamplesPerBucket { get; set; } = 5;
         public int CalibrationStalenessDays { get; set; } = 14;

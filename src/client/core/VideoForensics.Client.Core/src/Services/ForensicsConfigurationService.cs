@@ -178,6 +178,7 @@ namespace VideoForensics.Client.Core.Services
                 config.ElevatedPollingIntervalSeconds = await GetIntSetting("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds, cancellationToken);
                 config.EnableBitrateCalibration = await GetBoolSetting("EnableBitrateCalibration", config.EnableBitrateCalibration, cancellationToken);
                 config.CalibrationCheckIntervalMinutes = await GetIntSetting("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes, cancellationToken);
+                config.DeviceOfflineThresholdSeconds = await GetIntSetting("DeviceOfflineThresholdSeconds", config.DeviceOfflineThresholdSeconds, cancellationToken);
                 config.CalibrationSessionDurationSeconds = await GetIntSetting("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds, cancellationToken);
                 config.MinCalibrationSamplesPerBucket = await GetIntSetting("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket, cancellationToken);
                 config.CalibrationStalenessDays = await GetIntSetting("CalibrationStalenessDays", config.CalibrationStalenessDays, cancellationToken);
@@ -244,6 +245,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableBitrateCalibration", config.EnableBitrateCalibration.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("DeviceOfflineThresholdSeconds", config.DeviceOfflineThresholdSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationStalenessDays", config.CalibrationStalenessDays.ToString(), cancellationToken);

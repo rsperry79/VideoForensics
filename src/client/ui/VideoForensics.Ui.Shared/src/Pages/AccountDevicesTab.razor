@@ -1,0 +1,155 @@
+@page "/accounts/{Id:guid}/devices"
+@inherits AccountTabPageBase
+@using VideoForensics.Ui.Shared.Services.Devices
+@inject ILocationRepository LocationRepository
+@inject IDeviceRepository DeviceRepository
+@inject IDeviceHealthRepository DeviceHealthRepository
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+@if (IsLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p>@StatusMessage</p>
+    }
+
+    @if (Account == null)
+    {
+        <p>@L["AccountNotFound"]</p>
+    }
+    else
+    {
+        <AccountTabs AccountId="@Id" />
+
+        <div class="mb-4">
+            <label class="form-label fw-bold" for="device-offline-threshold">@L["DeviceOfflineAfterLabel"]</label>
+            <IntervalSecondsInput Id="device-offline-threshold" Value="ForensicsConfig.DeviceOfflineThresholdSeconds"
+                                  ValueChanged="OnThresholdChangedAsync" MinimumSeconds="1" />
+            @if (_thresholdSaveFailed)
+            {
+                <p class="text-danger mb-0 mt-1">@L["DeviceOfflineThresholdSaveFailed"]</p>
+            }
+        </div>
+
+        @if (_devicesError)
+        {
+            <p class="text-danger">@L["LoadListError"]</p>
+        }
+        else if (_devices.Count == 0)
+        {
+            <p>@L["DevicesNone"]</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+            <table class="table table-sm" id="account-devices">
+                <thead>
+                    <tr>
+                        <th>@L["ColDeviceName"]</th>
+                        <th>@L["ColDeviceStatus"]</th>
+                        <th>@L["ColDeviceLastSeen"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _devices)
+                    {
+                        <tr class="device-row">
+                            <td>@row.Device.Name</td>
+                            <td>
+                                @if (row.Status == DeviceUptimeStatus.Online)
+                                {
+                                    <span class="badge bg-success">@L["DeviceOnline"]</span>
+                                }
+                                else if (row.Status == DeviceUptimeStatus.Offline)
+                                {
+                                    <span class="badge bg-danger" data-testid="device-offline-warning">@L["DeviceOffline"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@L["DeviceUnknown"]</span>
+                                }
+                            </td>
+                            <td>@(row.LastSeenUtc is { } seen ? seen.ToLocalTime().ToString("g") : L["Never"].Value)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+    }
+}
+
+@code {
+    private sealed record DeviceRow(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeenUtc);
+
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private List<DeviceRow> _devices = new();
+    private bool _devicesError;
+    private bool _thresholdSaveFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountAsync();
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["TabDevices"], null) };
+        if (Account is not null)
+        {
+            await LoadDevicesAsync();
+        }
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var rows = new List<DeviceRow>();
+            var locations = await LocationRepository.ListByProviderAccountIdAsync(Id, CancellationToken.None);
+            foreach (var location in locations)
+            {
+                foreach (var device in await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None))
+                {
+                    var health = await DeviceHealthRepository.GetLatestAsync(device.Id, CancellationToken.None);
+                    DateTime? lastSeen = health is null ? null : DeviceUptime.LastSeenUtc(health.LastHeartbeatUtc, health.CapturedAtUtc);
+                    var status = DeviceUptime.Evaluate(
+                        health?.IsOnline,
+                        health?.LastHeartbeatUtc,
+                        health?.CapturedAtUtc,
+                        now,
+                        ForensicsConfig.DeviceOfflineThresholdSeconds);
+                    rows.Add(new DeviceRow(device, status, lastSeen));
+                }
+            }
+
+            _devices = rows.OrderBy(r => r.Device.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            _devicesError = false;
+        }
+        catch
+        {
+            _devices = new();
+            _devicesError = true;
+        }
+    }
+
+    private async Task OnThresholdChangedAsync(int seconds)
+    {
+        ForensicsConfig.DeviceOfflineThresholdSeconds = seconds;
+        _thresholdSaveFailed = false;
+        try
+        {
+            await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+        }
+        catch
+        {
+            _thresholdSaveFailed = true;
+        }
+
+        await LoadDevicesAsync();
+    }
+}

@@ -96,7 +96,7 @@ public class NavGroups_Tests
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/accounts", itemPaths);
-        Assert.Contains("/devices/config", itemPaths);
+        Assert.DoesNotContain("/devices/config", itemPaths);
         Assert.Contains("/query", itemPaths);
         Assert.Contains("/query/api-tester", itemPaths);
         Assert.DoesNotContain("/tools/ring-selftest", itemPaths);

@@ -33,7 +33,6 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/lockout-policy", AccessPolicy.SuperAdminLocal)]
     [InlineData("/settings/auth-methods", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts", AccessPolicy.SuperAdminLocal)]
-    [InlineData("/devices/config", AccessPolicy.SuperAdminLocal)]
     [InlineData("/review/export", AccessPolicy.SuperAdminLocal)]
     [InlineData("/query", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts/add", AccessPolicy.SuperAdminLocal)]

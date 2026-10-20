@@ -62,6 +62,36 @@
   <data name="TabDetails" xml:space="preserve">
     <value>Details</value>
   </data>
+  <data name="TabDevices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="DeviceOfflineAfterLabel" xml:space="preserve">
+    <value>Device offline after</value>
+  </data>
+  <data name="DeviceOfflineThresholdSaveFailed" xml:space="preserve">
+    <value>Could not save the offline threshold.</value>
+  </data>
+  <data name="DevicesNone" xml:space="preserve">
+    <value>No devices are linked to this account.</value>
+  </data>
+  <data name="ColDeviceName" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="ColDeviceStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ColDeviceLastSeen" xml:space="preserve">
+    <value>Last seen</value>
+  </data>
+  <data name="DeviceOnline" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="DeviceOffline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="DeviceUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
   <data name="TabCases" xml:space="preserve">
     <value>Cases</value>
   </data>

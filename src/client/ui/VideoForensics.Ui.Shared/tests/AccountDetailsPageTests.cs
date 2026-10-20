@@ -82,6 +82,12 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IProviderAuthService> AuthServiceMock { get; } = new();
 
+    protected Mock<ILocationRepository> LocationRepositoryMock { get; } = new();
+
+    protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
+
+    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -123,8 +129,9 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => ForensicsConfigMock.Object);
         Services.AddScoped(_ => ForensicsConfigServiceMock.Object);
         // The Sync tab embeds the validate panel, which resolves these when it renders.
-        Services.AddScoped(_ => Mock.Of<ILocationRepository>());
-        Services.AddScoped(_ => Mock.Of<IDeviceRepository>());
+        Services.AddScoped(_ => LocationRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
