@@ -33,7 +33,7 @@
 
 ::deep .timeline-row {
     display: grid;
-    grid-template-columns: 80px 100px 1fr 64px;
+    grid-template-columns: 80px 1fr;
     align-items: center;
     gap: 1rem;
     padding: 0.75rem;
@@ -46,31 +46,37 @@
     background-color: var(--hover-bg, #f5f5f5);
 }
 
+/* Same font as the rest of the row: a monospace time next to a proportional label reads as two different fonts. */
 ::deep .timeline-row-time {
-    font-family: monospace;
+    font-variant-numeric: tabular-nums;
     font-size: 0.85rem;
 }
 
-::deep .timeline-row-kind {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
-    background-color: var(--badge-bg, #e8eaf6);
-    border-radius: 3px;
-    text-align: center;
-}
-
+/* The label is a pill whose background is the event-type tone. Text is dark on every tone so it stays
+   readable in both themes; the pill's own background, not the theme text colour, sets contrast. */
 ::deep .timeline-row-label {
-    font-size: 0.9rem;
+    justify-self: start;
+    max-width: 100%;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: #1b1b1b;
+    background-color: #bdbdbd;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-::deep .timeline-row-thumb {
-    width: 64px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 4px;
+::deep .timeline-row-label.timeline-tone-motion {
+    background-color: #81c784;
+}
+
+::deep .timeline-row-label.timeline-tone-manual {
+    background-color: #ffd54f;
+}
+
+::deep .timeline-row-label.timeline-tone-in-case {
+    background-color: #e57373;
 }
 
 ::deep .evidence-gallery {

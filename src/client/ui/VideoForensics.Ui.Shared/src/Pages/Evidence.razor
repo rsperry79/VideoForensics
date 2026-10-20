@@ -2,6 +2,7 @@
 @page "/media"
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
@@ -33,6 +34,8 @@
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
 @inject IServiceProvider ServiceProvider
+@inject ICaseRepository CaseRepository
+@inject ILogger<Evidence> Logger
 
 <h4 class="mb-4">@L["PageTitle"]</h4>
 
@@ -137,12 +140,7 @@ else
                             {
                                 <div class="timeline-row" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
                                     <div class="timeline-row-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
-                                    <div class="timeline-row-kind">@item.Kind.ToString()</div>
-                                    <div class="timeline-row-label">@item.Label</div>
-                                    @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
-                                    {
-                                        <MediaThumb Url="@thumbUrl" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="" CssClass="timeline-row-thumb" />
-                                    }
+                                    <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
                                 </div>
                             }
                         </div>
@@ -220,6 +218,7 @@ else
     private string? _summaryText;
     private EvidenceView _currentView = EvidenceView.Timeline;
     private IReadOnlyList<EvidenceDayGroup> _dayGroups = new List<EvidenceDayGroup>();
+    private IReadOnlySet<Guid> _pinnedIds = new HashSet<Guid>();
     private Dictionary<Guid, string> _thumbnailUrls = new();
     private bool _thumbnailsUnavailable;
     private string? _currentMediaUrl;
@@ -285,6 +284,36 @@ else
         }
     }
 
+    // Collects the IDs of every event and media item pinned to a case, so timeline rows can show the in-case tone.
+    // A failure here must not hide the evidence itself: the rows just render without the in-case tone.
+    private async Task<IReadOnlySet<Guid>> LoadPinnedIdsAsync(CancellationToken ct)
+    {
+        var pinned = new HashSet<Guid>();
+        try
+        {
+            foreach (var forensicCase in await CaseRepository.ListAsync(null, ct))
+            {
+                foreach (var caseItem in await CaseRepository.ListItemsAsync(forensicCase.Id, includeRemoved: false, ct))
+                {
+                    if (caseItem.EventId is { } eventId)
+                        pinned.Add(eventId);
+                    if (caseItem.MediaItemId is { } mediaId)
+                        pinned.Add(mediaId);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load case pins for the Evidence timeline.");
+        }
+
+        return pinned;
+    }
+
     private async Task LoadEvidenceAsync()
     {
         try
@@ -295,6 +324,7 @@ else
             var result = await evidenceLoader.LoadAsync(ScopeState.Current, _devices, CancellationToken.None);
 
             _vm = new EvidenceViewModel(result);
+            _pinnedIds = await LoadPinnedIdsAsync(CancellationToken.None);
             _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
             _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);
 

@@ -73,6 +73,7 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<IEvidenceValidationService> EvidenceValidationServiceMock { get; } = new();
     protected Mock<IMediaStillCaptureService> MediaStillCaptureServiceMock { get; } = new();
+    protected Mock<ICaseRepository> CaseRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected InspectorState InspectorState { get; } = new();
@@ -224,6 +225,7 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
         Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);
+        Services.AddScoped(_ => CaseRepositoryMock.Object);
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
@@ -1088,5 +1090,48 @@ public class Evidence_SignIn_Tests : EvidencePageTestBase
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Contains("to browse evidence.", component.Markup);
         Assert.Empty(component.FindAll(".timeline-row"));
+    }
+}
+
+public class Evidence_TimelineTone_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public void PinnedEvent_RowLabelHasInCaseTone()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ForensicCase> { new() { Id = Guid.NewGuid(), CaseNumber = "manual-1", Title = "Case", CreatedBy = "op" } });
+        CaseRepositoryMock
+            .Setup(r => r.ListItemsAsync(It.IsAny<Guid>(), false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CaseItem> { new() { Id = Guid.NewGuid(), CaseId = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = EventId, Reason = "r", AddedBy = "op" } });
+
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.Contains("timeline-tone-in-case", label.ClassName);
+    }
+
+    [Fact]
+    public void UnpinnedMotionEvent_RowLabelHasMotionTone()
+    {
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.Contains("timeline-tone-motion", label.ClassName);
+        Assert.DoesNotContain("timeline-row-kind", component.Markup);
+        Assert.Empty(component.FindAll(".timeline-row-thumb"));
+    }
+
+    [Fact]
+    public void CaseLookupThrows_EvidenceStillRendersWithoutInCaseTone()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("case store unreachable"));
+
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.DoesNotContain("timeline-tone-in-case", label.ClassName);
     }
 }
