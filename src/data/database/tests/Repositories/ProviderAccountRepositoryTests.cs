@@ -16,6 +16,31 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         }
 
         [Fact]
+        public async Task AddAsync_NewAccount_PersistsInitialSyncCompletedAsFalse()
+        {
+            // Arrange: a newly linked account has not finished its first sync yet
+            var account = new ProviderAccount
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                ProviderName = "RingCamera",
+                IsActive = true,
+                InitialSyncCompleted = false
+            };
+
+            // Act
+            await _repository.AddAsync(account, CancellationToken.None);
+
+            // Assert: the flag round-trips as false, so an interrupted first sync is detectable
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                ProviderAccount? persisted = await db.ProviderAccounts.FindAsync(new object[] { account.Id }, cancellationToken: CancellationToken.None);
+                Assert.NotNull(persisted);
+                Assert.False(persisted.InitialSyncCompleted);
+            }
+        }
+
+        [Fact]
         public async Task AddAsync_SanitizesLogOutput_WhenProviderNameContainsNewlines()
         {
             // Arrange: Create a provider account with ProviderName containing CRLF (log injection attempt)
