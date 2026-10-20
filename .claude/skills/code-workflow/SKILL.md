@@ -49,5 +49,6 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 
 ## Failure log
 - On any failed task, subagent, build, test, tool, or connector call: append `date | phase | what failed | cause | fix` to `.claude/task_failure_log.md` at the time.
+- When a background command fails, read its output file for the actual error before naming a cause in the log.
 - Phase end: review this phase's entries. For each recurring or avoidable cause, draft one single-sentence rule and ask the user whether to add it. Add only on yes. Do not hold the handoff for the answer.
 - Keep open entries at about 20 or fewer. Delete resolved entries. Mark ones covered by a rule `(covered)`. Summarize the oldest into one line each if over.

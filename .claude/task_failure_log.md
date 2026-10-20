@@ -23,3 +23,4 @@
 2026-10-20 | WebApp media rate-limit TDD | dotnet test red run failed on DLL copy lock | running VideoForensics.WebApp (PID 33932) held src/bin DLLs | redirected BaseOutputPath to scratchpad, did not kill process
 2026-10-20 | media-provider-event-link | dotnet test data core tests: CS1056 errors in obj/.../SelfRegisteredExtensions.cs | stale generated file with NUL bytes in tests obj dir | deleted that generated file by explicit path; rebuild regenerated it
 2026-10-20 | Ui.Shared loader revert | scoped test run before loader change | CS7036: test files called 3-arg EventRowLoader ctor, loader still required IDownloadEventRepository | implement loader ctor change (done in same batch)
+2026-10-20 12:46 | verify settings CSS fix | background dotnet run --no-build on port 5170 exited 127 | command not found in background shell | not retried; verify via user-run app or fix shell PATH
