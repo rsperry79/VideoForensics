@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>VideoForensics.Providers.Wyze</RootNamespace>
         <SignAssembly>true</SignAssembly>
-        <AssemblyOriginatorKeyFile>../../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile>../../../../../VideoForensics.snk</AssemblyOriginatorKeyFile>
         <AssemblyName>VideoForensics.Providers.Wyze.Common</AssemblyName>
         <Company>Video Forensics</Company>
         <Authors>Video Forensics Team</Authors>
@@ -16,7 +16,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="../../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <None Include="../../../../../VideoForensics.snk" Link="VideoForensics.snk" />
     </ItemGroup>
 
     <ItemGroup>

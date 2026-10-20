@@ -8,7 +8,7 @@
     <RootNamespace>VideoForensics.Providers.Ring.Common.Tests</RootNamespace>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\..\..\..\KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\..\..\..\VideoForensics.snk</AssemblyOriginatorKeyFile>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>

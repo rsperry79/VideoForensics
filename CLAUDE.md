@@ -4,6 +4,7 @@ Detail lives in `.claude/rules/` (path-scoped, load when matching files are read
 
 ## Core
 - Every `.csproj` references `Microsoft.CodeAnalysis` 5.9.0 (match sibling projects).
+- Every signed project uses `VideoForensics.snk` (root). Breaking: replaced `KoenZomers.RingApi.snk`, so assembly identity and strong-name references changed; `InternalsVisibleTo` keys updated to match.
 - Public APIs are interfaces in `Contracts/`. No vendor SDK outside service layers.
 - Every non-test change ships with tests for each new path. Write tests first (TDD).
 - Async for all I/O; async methods take `CancellationToken`.
