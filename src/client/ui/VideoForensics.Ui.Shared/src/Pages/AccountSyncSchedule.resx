@@ -45,7 +45,7 @@
     <value>Configure Sync Settings</value>
   </data>
   <data name="SnapshotRssiIntervalLabel" xml:space="preserve">
-    <value>Snapshot/RSSI Interval (minutes):</value>
+    <value>Snapshot/RSSI Interval:</value>
   </data>
   <data name="EventPollIntervalLabel" xml:space="preserve">
     <value>Event Poll Interval (minutes):</value>
@@ -90,7 +90,7 @@
     <value>End Time</value>
   </data>
   <data name="ColIntervalMin" xml:space="preserve">
-    <value>Interval (min)</value>
+    <value>Interval</value>
   </data>
   <data name="Remove" xml:space="preserve">
     <value>Remove</value>
@@ -146,8 +146,17 @@
   <data name="EndAfterStart" xml:space="preserve">
     <value>End time must be after start time for {0}.</value>
   </data>
+  <data name="IntervalUnitLabel" xml:space="preserve">
+    <value>Interval unit</value>
+  </data>
+  <data name="IntervalUnitSeconds" xml:space="preserve">
+    <value>seconds</value>
+  </data>
+  <data name="IntervalUnitMinutes" xml:space="preserve">
+    <value>minutes</value>
+  </data>
   <data name="IntervalMinimum" xml:space="preserve">
-    <value>Window interval must be &gt;= {0} minute(s).</value>
+    <value>Interval must be at least {0} seconds.</value>
   </data>
   <data name="ScheduleSaved" xml:space="preserve">
     <value>Schedule saved successfully.</value>

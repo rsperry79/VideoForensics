@@ -122,7 +122,7 @@ namespace VideoForensics.Hosting.Tests
                     ProviderAccountId = account.Id,
                     IsEnabled = true,
                     EventPollIntervalMinutes = intervalMinutes,
-                    SnapshotRssiIntervalMinutes = 60,
+                    SnapshotRssiIntervalSeconds = 60,
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };

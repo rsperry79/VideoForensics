@@ -45,7 +45,7 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" Min="1" Step="1" />
+                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => _snapshotRssiIntervalSeconds = v" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
@@ -135,7 +135,7 @@ else
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" Min="1" Step="1" />
+                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => window.SnapshotRssiIntervalSeconds = v" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -170,7 +170,7 @@ else
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private SyncSchedule? _schedule;
-    private int _snapshotRssiIntervalMinutes = 60;
+    private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
     private int _eventPollIntervalMinutes = 60;
     private bool _isEnabled = true;
     private bool _useAdvancedJammingSchedule;
@@ -328,7 +328,7 @@ else
             _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
             if (_schedule != null)
             {
-                _snapshotRssiIntervalMinutes = _schedule.SnapshotRssiIntervalMinutes;
+                _snapshotRssiIntervalSeconds = _schedule.SnapshotRssiIntervalSeconds;
                 _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
                 _isEnabled = _schedule.IsEnabled;
                 _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
@@ -366,7 +366,7 @@ else
             DayOfWeek = 1, // Monday
             StartMinuteOfDay = 0, // 00:00
             EndMinuteOfDay = 15, // 00:15
-            SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes
+            SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds
         };
 
         _jammingWindows.Add(newWindow);
@@ -425,9 +425,9 @@ else
             }
 
             // Validate interval meets minimum
-            if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+            if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
             {
-                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumPollIntervalMinutes];
+                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumSnapshotIntervalSeconds];
                 _statusIsError = true;
                 return false;
             }
@@ -472,7 +472,7 @@ else
                 {
                     Id = Guid.NewGuid(),
                     ProviderAccountId = Id,
-                    SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes,
+                    SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds,
                     EventPollIntervalMinutes = _eventPollIntervalMinutes,
                     IsEnabled = _isEnabled,
                     UseAdvancedJammingSchedule = _useAdvancedJammingSchedule,
@@ -485,7 +485,7 @@ else
             }
             else
             {
-                _schedule.SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes;
+                _schedule.SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds;
                 _schedule.EventPollIntervalMinutes = _eventPollIntervalMinutes;
                 _schedule.IsEnabled = _isEnabled;
                 _schedule.UseAdvancedJammingSchedule = _useAdvancedJammingSchedule;
