@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -132,6 +133,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IProviderSyncRunRepository _syncRuns;
         private readonly ISnapshotSyncService _snapshotSync;
         private readonly ILogger<AccountSyncRunner> _logger;
+        private readonly ISyncActivityLog _activity;
 
         /// <summary>Creates the runner.</summary>
         public AccountSyncRunner(
@@ -139,13 +141,15 @@ namespace VideoForensics.Hosting.Services
             IProviderAccountRepository accounts,
             IProviderSyncRunRepository syncRuns,
             ISnapshotSyncService snapshotSync,
-            ILogger<AccountSyncRunner> logger)
+            ILogger<AccountSyncRunner> logger,
+            ISyncActivityLog activity)
         {
             _services = services;
             _accounts = accounts;
             _syncRuns = syncRuns;
             _snapshotSync = snapshotSync;
             _logger = logger;
+            _activity = activity;
         }
 
         /// <inheritdoc />
@@ -168,6 +172,10 @@ namespace VideoForensics.Hosting.Services
                 ? ProviderSyncRunRecorder.SnapshotsSyncType
                 : fullHistory ? ProviderSyncRunRecorder.FullSyncType : ProviderSyncRunRecorder.IncrementalSyncType;
 
+            // Console lines name the provider only, never the account GUID.
+            string provider = (await _accounts.GetAsync(accountId, CancellationToken.None))?.ProviderName ?? "Provider";
+            _activity.Append($"{provider}: {SyncLabel(fullHistory, request)} sync started");
+
             try
             {
                 outcome = await RestoreAndPullAsync(accountId, fullHistory, request, cancellationToken);
@@ -180,12 +188,25 @@ namespace VideoForensics.Hosting.Services
             catch (Exception ex)
             {
                 // Record the failure, then rethrow the original exception; recording never replaces it.
+                _activity.Append($"{provider}: sync failed: {ex.Message}");
                 await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, ex.Message, syncType);
                 throw;
             }
 
+            _activity.Append(outcome.Error is null
+                ? $"{provider}: sync finished"
+                : $"{provider}: sync failed: {outcome.Error}");
             await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, outcome.Error, syncType, outcome.Counts, outcome.SnapshotsSynced);
         }
+
+        /// <summary>Short name of the sync for the console: Everything, Events, Snapshots, or Initial for a first sync.</summary>
+        private static string SyncLabel(bool fullHistory, AccountSyncRequest? request) => request?.Type switch
+        {
+            AccountSyncType.Snapshots => "Snapshots",
+            AccountSyncType.All => "Everything",
+            AccountSyncType.Events => "Events",
+            _ => fullHistory ? "Initial" : "Events",
+        };
 
         /// <summary>A sync's failure message (null on success) and the counts its pull reported (null if it never pulled).</summary>
         private readonly record struct SyncOutcome(string? Error, EventPullResult? Counts = null, int? SnapshotsSynced = null)
@@ -251,6 +272,7 @@ namespace VideoForensics.Hosting.Services
             if (request?.Type == AccountSyncType.Snapshots)
             {
                 SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, snapshotStart, request.ToUtc, cancellationToken);
+                _activity.Append($"{initial.ProviderName}: snapshots for {snapshots.DevicesSucceeded} device(s)");
 
                 // Event counts stay null: a snapshots-only run pulled no events, so DevicesSynced/FeedsFailed would mislead.
                 return new SyncOutcome(snapshots.ErrorMessage, null, snapshots.DevicesSucceeded);
@@ -263,6 +285,7 @@ namespace VideoForensics.Hosting.Services
 
             // The pull records its own failures on the account; it does not throw for them.
             EventPullResult counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
             string? eventError = ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
@@ -279,6 +302,18 @@ namespace VideoForensics.Hosting.Services
                 : allSnapshots.ErrorMessage is null ? eventError
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
             return new SyncOutcome(error, counts, allSnapshots.DevicesSucceeded);
+        }
+
+        /// <summary>Console lines for what the pull found: discovery, events, and configuration, with any failed feeds.</summary>
+        private void LogPullCounts(string provider, EventPullResult counts)
+        {
+            _activity.Append($"{provider}: discovered {counts.LocationsSynced} location(s), {counts.DevicesSynced} device(s)");
+            _activity.Append($"{provider}: {counts.EventsSynced} event(s) synced");
+            _activity.Append($"{provider}: config read for {counts.ConfigAreasSynced} device(s)");
+            if (counts.FeedsFailed > 0)
+            {
+                _activity.Append($"{provider}: {counts.FeedsFailed} event feed(s) failed");
+            }
         }
 
         private async Task RecordErrorAsync(Guid accountId, string message, CancellationToken cancellationToken)

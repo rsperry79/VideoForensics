@@ -1,3 +1,4 @@
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Contracts;
@@ -24,6 +25,7 @@ namespace VideoForensics.WebApp.Services
         private readonly IAccountDeviceRepository _accountDevices;
         private readonly BulkValidationService _validation;
         private readonly ILogger<InitialSyncCoordinator> _logger;
+        private readonly ISyncActivityLog _activity;
 
         /// <summary>Creates the coordinator.</summary>
         public InitialSyncCoordinator(
@@ -31,13 +33,15 @@ namespace VideoForensics.WebApp.Services
             IProviderAccountRepository accounts,
             IAccountDeviceRepository accountDevices,
             BulkValidationService validation,
-            ILogger<InitialSyncCoordinator> logger)
+            ILogger<InitialSyncCoordinator> logger,
+            ISyncActivityLog activity)
         {
             _runner = runner;
             _accounts = accounts;
             _accountDevices = accountDevices;
             _validation = validation;
             _logger = logger;
+            _activity = activity;
         }
 
         /// <inheritdoc />
@@ -66,6 +70,9 @@ namespace VideoForensics.WebApp.Services
             // Media step: the same validate-all pass the manual action runs, scoped to this account's devices.
             IReadOnlyList<Device> devices = await _accountDevices.ListByProviderAccountAsync(accountId, ct);
             BulkValidationResult validation = await _validation.RunForDevicesAsync(devices, null, null, ct);
+            _activity.Append(validation.ErrorMessage is null && validation.FailedDevices == 0
+                ? $"{account.ProviderName}: validated media on {devices.Count} device(s)"
+                : $"{account.ProviderName}: media validation had {validation.FailedDevices} failed device(s)");
             if (validation.ErrorMessage is not null || validation.FailedDevices > 0)
             {
                 _logger.LogWarning(

@@ -21,6 +21,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IProviderAccountRepository> _mockAccounts = new();
         private readonly Mock<IProviderSyncRunRepository> _mockRuns = new();
         private readonly Mock<ILogger<AccountSyncRunner>> _mockLogger = new();
+        private readonly SyncActivityLog _activity = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly DateTime _lastAuth = new(2026, 10, 14, 18, 0, 0, DateTimeKind.Utc);
 
@@ -29,7 +30,8 @@ namespace VideoForensics.Hosting.Tests.Services
             _mockAccounts.Object,
             _mockRuns.Object,
             Mock.Of<ISnapshotSyncService>(),
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _activity);
 
         private ProviderAccountEntity Account() => new()
         {
@@ -98,6 +100,39 @@ namespace VideoForensics.Hosting.Tests.Services
 
             _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
             _mockAccounts.Verify(r => r.UpdateAsync(It.IsAny<ProviderAccountEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunAsync_SuccessfulEventSync_LogsStartCountsAndFinish()
+        {
+            SetupAccount(Account());
+            SetupRestore(true);
+            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new EventPullResult(DevicesSynced: 3, LocationsSynced: 1, EventsSynced: 12, ConfigAreasSynced: 3));
+
+            await CreateSut().RunAsync(_accountId, CancellationToken.None);
+
+            IReadOnlyList<string> lines = _activity.Drain();
+            Assert.Contains("Ring: Events sync started", lines);
+            Assert.Contains("Ring: discovered 1 location(s), 3 device(s)", lines);
+            Assert.Contains("Ring: 12 event(s) synced", lines);
+            Assert.Contains("Ring: config read for 3 device(s)", lines);
+            Assert.Contains("Ring: sync finished", lines);
+            // Logs carry the provider name, never the account GUID.
+            Assert.DoesNotContain(lines, line => line.Contains(_accountId.ToString("D")));
+        }
+
+        [Fact]
+        public async Task RunAsync_RestoreFails_LogsFailedFinishWithReason()
+        {
+            SetupAccount(Account());
+            SetupRestore(false);
+
+            await CreateSut().RunAsync(_accountId, CancellationToken.None);
+
+            IReadOnlyList<string> lines = _activity.Drain();
+            Assert.Contains(lines, line => line.StartsWith("Ring: sync failed: ", StringComparison.Ordinal));
+            _mockPull.Verify(p => p.PullAccountEventsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

@@ -29,6 +29,7 @@ namespace VideoForensics.WebApp.Services
 
         private readonly IVideoDownloadService _downloadService;
         private readonly ILogger<LocalDownloadProgressSource> _logger;
+        private readonly ISyncActivityLog? _syncActivity;
         private readonly TimeSpan _sampleInterval;
         private readonly ReplaySubject<DownloadProgressSnapshot> _snapshots = new(1);
         private readonly CancellationTokenSource _cancellation = new();
@@ -46,11 +47,13 @@ namespace VideoForensics.WebApp.Services
         public LocalDownloadProgressSource(
             IVideoDownloadService downloadService,
             ILogger<LocalDownloadProgressSource> logger,
-            TimeSpan? sampleInterval = null)
+            TimeSpan? sampleInterval = null,
+            ISyncActivityLog? syncActivity = null)
         {
             _downloadService = downloadService;
             _logger = logger;
             _sampleInterval = sampleInterval ?? DefaultSampleInterval;
+            _syncActivity = syncActivity;
         }
 
         /// <inheritdoc />
@@ -171,7 +174,7 @@ namespace VideoForensics.WebApp.Services
                 // Copied: the service may return a live or reused dictionary, and a later mutation would otherwise
                 // change the previous state this source compares against.
                 PreScanCounts: new Dictionary<string, int>(_downloadService.GetPreScanCounts()),
-                Activity: _downloadService.DrainActivityLog().ToArray(),
+                Activity: _downloadService.DrainActivityLog().Concat(_syncActivity?.Drain() ?? []).ToArray(),
                 LastError: _downloadService.GetLastError(),
                 RemainingReason: _downloadService.GetRemainingReason());
         }

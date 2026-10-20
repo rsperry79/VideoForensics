@@ -330,6 +330,9 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IUniviewSessionProvider, UniviewSessionProvider>();
             _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
 
+            // Sync console lines: written by the sync runner and first-sync coordinator, drained by the progress broadcaster.
+            _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Hosting.Services.SyncActivityLog>();
+
             // Provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
             // during M1): each auth service depends on Scoped repositories - a Singleton capturing
