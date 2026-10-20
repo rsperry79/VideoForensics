@@ -15,9 +15,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 table: "ProviderAccounts",
                 type: "INTEGER",
                 nullable: false,
-                // Existing accounts finished their first sync before this flag existed, so they start true and skip
-                // the validate-all catch-up. New accounts set false explicitly in code (EF always writes the value).
-                defaultValue: true);
+                defaultValue: false);
+
+            // Existing accounts finished their first sync before this flag existed, so they start true and skip the
+            // validate-all catch-up. The column default stays false (matches the model); this UPDATE is the backfill.
+            migrationBuilder.Sql("UPDATE ProviderAccounts SET InitialSyncCompleted = 1;");
         }
 
         /// <inheritdoc />

@@ -152,6 +152,9 @@
   <data name="Evidence" xml:space="preserve">
     <value>Evidence</value>
   </data>
+  <data name="Media" xml:space="preserve">
+    <value>Media</value>
+  </data>
   <data name="Cases" xml:space="preserve">
     <value>Cases</value>
   </data>
