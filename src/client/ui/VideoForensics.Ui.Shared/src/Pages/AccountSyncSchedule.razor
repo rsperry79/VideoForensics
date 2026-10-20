@@ -1,4 +1,3 @@
-@page "/accounts/{Id:guid}/schedule"
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @inject ISyncScheduleRepository SyncScheduleRepository
@@ -9,9 +8,8 @@
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountSyncSchedule> L
 
-<Breadcrumb Items="@_breadcrumbItems" />
 
-<h4 class="mb-4">@L["SyncScheduleTitle"]</h4>
+<h5 class="mb-3">@L["SyncScheduleTitle"]</h5>
 
 @if (_isLoading)
 {
@@ -168,7 +166,6 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private SyncSchedule? _schedule;
     private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
     private int _eventPollIntervalMinutes = 60;
@@ -186,7 +183,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["SyncScheduleTitle"], null) };
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
         await LoadScheduleAsync();
@@ -508,9 +504,6 @@ else
             _statusMessage = L["ScheduleSaved"];
             _statusIsError = false;
 
-            // Navigate back after a brief delay to show the success message
-            await Task.Delay(1500);
-            NavigationManager.NavigateTo($"/accounts/{Id}");
         }
         catch (Exception ex)
         {

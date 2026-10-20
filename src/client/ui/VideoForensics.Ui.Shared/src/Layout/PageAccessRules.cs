@@ -47,7 +47,6 @@ namespace VideoForensics.Ui.Shared.Layout
                 ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
                 // Account detail and schedule pages call /api/v1/accounts (SuperAdminLocal) and sync endpoints.
                 ["/accounts/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
-                ["/accounts/{Id:guid}/schedule"] = AccessPolicy.SuperAdminLocal,
                 // Account tabs: Sync and Cases read the same /api/v1/accounts data as the Details tab.
                 ["/accounts/{Id:guid}/sync"] = AccessPolicy.SuperAdminLocal,
                 ["/accounts/{Id:guid}/cases"] = AccessPolicy.SuperAdminLocal,

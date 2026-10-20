@@ -88,7 +88,6 @@ else
                 {
                     <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" Height="30px" Width="30px" />
                 }
-                <SfButton CssClass="e-primary" Content="@L["SyncSchedule"]" OnClick="GoToSyncSchedule" />
                 @if (!string.IsNullOrEmpty(Account.LastErrorMessage))
                 {
                     <SfButton CssClass="e-warning" Content="@L["Login"]" OnClick="() => _reAuthDialogVisible = true" />
@@ -175,6 +174,10 @@ else
         <div id="validate" class="mb-4">
             <h5>@L["ValidateSectionTitle"]</h5>
             <ValidateEvidence AccountId="@Id" />
+        </div>
+
+        <div id="schedule" class="mb-4">
+            <AccountSyncSchedule Id="@Id" />
         </div>
 
         <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
@@ -307,10 +310,6 @@ else
         }
     }
 
-    private void GoToSyncSchedule()
-    {
-        NavigationManager.NavigateTo($"/accounts/{Id}/schedule");
-    }
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
     {
