@@ -187,18 +187,39 @@ else
     private string? _loadError;
     private bool _isLoading = true;
     private IDisposable? _accountLinkedSubscription;
+    private volatile bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe before the initial load so a Dispose during that load still finds and releases the subscription.
+        _accountLinkedSubscription = AccountLinkedSource.AccountLinked.Subscribe(linkedId =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _ = OnAccountLinkedAsync();
+        });
         await LoadAccountsAsync();
-        _accountLinkedSubscription = AccountLinkedSource.AccountLinked.Subscribe(linkedId => _ = OnAccountLinkedAsync());
     }
 
-    private Task OnAccountLinkedAsync() => InvokeAsync(async () => { await LoadAccountsAsync(); StateHasChanged(); });
+    private Task OnAccountLinkedAsync() => InvokeAsync(async () =>
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadAccountsAsync();
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
+        _disposed = true;
         _accountLinkedSubscription?.Dispose();
+        _accountLinkedSubscription = null;
         // Stops every export polling loop.
         _disposeCts.Cancel();
         _disposeCts.Dispose();

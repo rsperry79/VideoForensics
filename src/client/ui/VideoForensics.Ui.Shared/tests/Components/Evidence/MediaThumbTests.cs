@@ -20,6 +20,21 @@ public class MediaThumbTests : BunitContext
     }
 
     /// <summary>
+    /// Why: a grid can list hundreds of items at once; native lazy loading defers each request until its tile
+    /// nears the viewport so the server's media rate limit is not hit by one burst of thumbnail requests.
+    /// </summary>
+    [Fact]
+    public void MediaThumb_Render_SetsLazyLoading()
+    {
+        var component = Render<MediaThumb>(p => p
+            .Add(x => x.Url, "https://cdn.test/a.jpg?ticket=1")
+            .Add(x => x.IsVideo, false)
+            .Add(x => x.Alt, "Front Door"));
+
+        Assert.Equal("lazy", component.Find("img").GetAttribute("loading"));
+    }
+
+    /// <summary>
     /// A video's thumbnail is the frame the server stored at import, served from the thumbnail route that the same
     /// ticket authorises. The clip itself is never loaded for a thumbnail.
     /// </summary>

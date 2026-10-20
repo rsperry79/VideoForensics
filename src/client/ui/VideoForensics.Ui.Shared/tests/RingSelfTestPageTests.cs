@@ -310,6 +310,20 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     }
 
     [Fact]
+    public async Task RingSelfTestPage_StatusAfterDispose_DoesNotFetchResult()
+    {
+        ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        var component = RenderPage();
+        await component.InvokeAsync(() => ((IAsyncDisposable)component.Instance).DisposeAsync().AsTask());
+
+        var ex = Record.Exception(() => StatusStream.OnNext(CompletedRun(RunStarted)));
+        await Task.Delay(50);
+
+        Assert.Null(ex);
+        SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public void RingSelfTestPage_CompletedFromStream_FetchesResultOnce()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));

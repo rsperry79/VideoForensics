@@ -84,6 +84,38 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task BuildEvidenceReviewAsync_WithMediaProviderEventLinks_RoundTripsIntoDomainReport()
+        {
+            var mediaId = Guid.NewGuid();
+
+            var handler = new CaptureHttpMessageHandler(async (request, ct) =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK);
+                var dto = new EvidenceReviewReportDto(
+                    DateTime.UtcNow,
+                    DateTime.UtcNow.AddDays(-1),
+                    DateTime.UtcNow,
+                    [],
+                    [],
+                    0,
+                    0,
+                    0,
+                    [new MediaProviderEventLinkDto(mediaId, "ring-evt-1")]);
+                response.Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json");
+                return response;
+            });
+
+            var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+            var service = new RemoteReportGenerationService(httpClient);
+
+            EvidenceReviewReport result = await service.BuildEvidenceReviewAsync(null, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
+
+            MediaProviderEventLink link = Assert.Single(result.MediaProviderEventLinks);
+            Assert.Equal(mediaId, link.MediaItemId);
+            Assert.Equal("ring-evt-1", link.ProviderEventId);
+        }
+
+        [Fact]
         public async Task BuildEvidenceReviewAsync_WithNullResponse_ThrowsInvalidOperationException()
         {
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>

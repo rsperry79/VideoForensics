@@ -135,6 +135,7 @@ else
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
+    private volatile bool _disposed;
     private LiveViewTelemetrySample? _latestTelemetry;
 
     protected override async Task OnInitializedAsync()
@@ -255,6 +256,7 @@ else
 
     private async Task CleanupAsync()
     {
+        _disposed = true;
         if (_isConnected && _selectedSessionId.HasValue)
         {
             try
@@ -299,13 +301,18 @@ else
         DisposeTelemetrySubscription();
         _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample =>
         {
-            if (sample.SessionId != sessionId)
+            if (_disposed || sample.SessionId != sessionId)
             {
                 return;
             }
 
             _ = InvokeAsync(() =>
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 _latestTelemetry = sample;
                 StateHasChanged();
             });

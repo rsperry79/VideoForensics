@@ -227,6 +227,7 @@ else
     private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
     private IDisposable? _thumbnailReadySubscription;
+    private volatile bool _disposed;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
     private List<EvidenceItem> _stripItems = new();
@@ -921,8 +922,18 @@ else
     /// </summary>
     private void OnThumbnailReady(VideoForensics.Core.Api.Contracts.ThumbnailReadyDto ready)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _ = InvokeAsync(async () =>
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             bool onPage = _vm?.Items.Any(i => i.Media?.Id == ready.MediaItemId) == true;
             if (!onPage)
             {
@@ -948,6 +959,7 @@ else
 
     public void Dispose()
     {
+        _disposed = true;
         if (_onScopeChangeHandler is not null)
         {
             ScopeState.OnChange -= _onScopeChangeHandler;

@@ -234,7 +234,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         #region PBKDF2 Configuration Tests
 
         [Fact]
-        public void AesEncryption_PBKDF2_Iterations_Equals_600000()
+        public void AesEncryption_PBKDF2_Iterations_Equals_750000()
         {
             // Arrange - use reflection to get the private constant
             var aesType = typeof(AesEncryption);
@@ -245,7 +245,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
 
             // Assert
             Assert.NotNull(iterationsValue);
-            Assert.Equal(600000, iterationsValue);
+            Assert.Equal(750000, iterationsValue);
         }
 
         #endregion

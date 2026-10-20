@@ -2,6 +2,7 @@ namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Reactive.Subjects;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
@@ -191,6 +192,49 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
 
         int afterDispose = ListActiveCalls();
         cut.InvokeAsync(() => _linked.OnNext(Guid.NewGuid()));
+
+        Assert.Equal(afterDispose, ListActiveCalls());
+    }
+
+    private int ListRemovedCalls() =>
+        AccountRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IProviderAccountRepository.ListRemovedAsync));
+
+    [Fact]
+    public void Accounts_DisposedDuringInitialLoad_DoesNotSubscribe()
+    {
+        // Hold the initial load open so the component is disposed while OnInitializedAsync is still awaiting it.
+        var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountEntity>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        AccountRepositoryMock
+            .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .Returns(gate.Task);
+
+        // The loading state renders a Syncfusion progress bar, which needs a render mode under bUnit.
+        SetRendererInfo(new RendererInfo("Server", true));
+        var cut = RenderPage();
+        ((IDisposable)cut.Instance).Dispose();
+
+        gate.SetResult(new List<ProviderAccountEntity>());
+
+        // The load continues after dispose; ListRemoved is its second repository call. Give the rest of the
+        // continuation (where a late subscription would be created) time to finish.
+        for (int i = 0; i < 200 && ListRemovedCalls() == 0; i++)
+        {
+            Thread.Sleep(10);
+        }
+        Thread.Sleep(200);
+
+        Assert.Equal(1, ListActiveCalls());
+        Assert.False(_linked.HasObservers);
+    }
+
+    [Fact]
+    public void Accounts_LinkedAfterDispose_DoesNotReload()
+    {
+        var cut = RenderPage();
+        ((IDisposable)cut.Instance).Dispose();
+
+        int afterDispose = ListActiveCalls();
+        _linked.OnNext(Guid.NewGuid());
 
         Assert.Equal(afterDispose, ListActiveCalls());
     }

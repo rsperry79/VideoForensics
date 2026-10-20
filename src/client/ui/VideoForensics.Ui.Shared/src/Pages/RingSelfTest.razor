@@ -409,6 +409,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
     private string? _runError;
 
     private IDisposable? _statusSubscription;
+    private volatile bool _disposed;
 
     // Identity of the last Completed run whose result was requested. A repeated Completed for the same run
     // (replay on subscribe, or a sampler re-emit) must not fetch the result again.
@@ -438,11 +439,23 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
         // Subscribe before the one-shot read so a change between the two is not missed. Sources may emit on a
         // background thread, so each emission is applied on the render thread.
         _statusSubscription = StatusSource.Status.Subscribe(status =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
             _ = InvokeAsync(async () =>
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 await ApplyStatusAsync(status);
                 StateHasChanged();
-            }));
+            });
+        });
 
         try
         {
@@ -688,6 +701,7 @@ else if (_runStatus?.Status == SelfTestRunStatus.Failed)
     ValueTask IAsyncDisposable.DisposeAsync()
     {
         // Stop applying stream emissions once the page is gone.
+        _disposed = true;
         _statusSubscription?.Dispose();
         _statusSubscription = null;
         return ValueTask.CompletedTask;

@@ -26,6 +26,7 @@ using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Infrastructure;
+using VideoForensics.WebApp.RateLimiting;
 using VideoForensics.WebApp.Services;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
@@ -243,14 +244,7 @@ builder.Services.AddRateLimiter(options =>
     _ = options.AddPolicy("media", httpContext =>
     {
         INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        string key = resolver.ResolveClientIp(httpContext);
-        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = 120,
-            Window = TimeSpan.FromMinutes(1),
-            SegmentsPerWindow = 4,
-            QueueLimit = 0
-        });
+        return MediaRateLimitPolicy.Create(httpContext, resolver);
     });
 
     // MCP HTTP endpoint rate limiting (Milestone 8): separate, more permissive policy than auth

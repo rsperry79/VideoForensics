@@ -27,13 +27,12 @@ namespace VideoForensics.Providers.Ring.Implementations
         private const int SaltSize = 16;
         /// <summary>
         /// PBKDF2 iteration count for key derivation. Must increase annually per OWASP guidance.
-        /// Current: 600,000 (2024/2025 baseline)
-        /// 2026 target: 750,000
+        /// Current: 750,000 (2026)
         /// 2027 target: 1,000,000
         /// Pattern: 25% annual increase or per updated OWASP Cryptographic Storage Cheat Sheet.
         /// See CLAUDE.md "Cryptography & Security" section and /AES_ENCRYPTION_AUDIT_REPORT.md for schedule.
         /// </summary>
-        private const int Iterations = 600000; // PBKDF2 iterations (OWASP baseline for HMAC-SHA256; raises brute-force cost)
+        private const int Iterations = 750000; // PBKDF2 iterations (OWASP baseline for HMAC-SHA256; raises brute-force cost)
 
         public string Encrypt(string plaintext)
         {

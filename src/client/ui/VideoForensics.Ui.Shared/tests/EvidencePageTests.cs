@@ -337,6 +337,25 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
             m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(unknown)), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    [Fact]
+    public async Task ThumbnailReady_AfterDispose_DoesNotFetchOrThrow()
+    {
+        var component = RenderEvidencePage();
+        component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce));
+        MediaUrlProviderMock.Invocations.Clear();
+
+        ((IDisposable)component.Instance).Dispose();
+        var ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId)));
+        await Task.Delay(50);
+
+        Assert.Null(ex);
+        MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(VideoMediaId)), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
 
 public class Evidence_Viewer_Tests : EvidencePageTestBase

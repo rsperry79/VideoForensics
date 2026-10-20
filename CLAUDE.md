@@ -1,216 +1,26 @@
 # VideoForensics Development Guidelines
 
-## Project conventions
+Detail lives in `.claude/rules/` (path-scoped, load when matching files are read), `.claude/skills/` (procedures), and `.claude/project-layout.md` (read on demand).
 
-- Every `.csproj` in this repo must reference the `Microsoft.CodeAnalysis` NuGet package, even if the project doesn't use it directly. When creating a new C# project, add `<PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />` (match the version already used by sibling projects) to its `ItemGroup` of package references.
+## Core
+- Every `.csproj` references `Microsoft.CodeAnalysis` 5.9.0 (match sibling projects).
+- Public APIs are interfaces in `Contracts/`. No vendor SDK outside service layers.
+- Every non-test change ships with tests for each new path. Write tests first (TDD).
+- Async for all I/O; async methods take `CancellationToken`.
+- Log user-facing paths (Info on success, Error on failure) with context. Expose errors via `GetLastError()`. Log account names, never raw GUIDs.
+- Validate input at API boundaries only. No secrets in code. No plaintext passwords.
+- Public interfaces get XML docs. Complex logic gets "why" comments. Breaking changes update this file and the commit message.
 
-## Core Principles
+## Workflow
+- Code work runs in a worktree forked from `wip`, never the main checkout. Procedure: skill `code-workflow`.
+- Never push to `dev` or `main`. PR and promotion rules: skill `pr-promotion`.
+- Haiku subagents write implementation files; verify their output yourself.
+- Confirm with the user before any full gate.
+- Never `git clean -X`. Never kill processes in bulk.
+- Log each failed task, build, test, or tool call to `.claude/task_failure_log.md` (format in `code-workflow`).
 
-**All public APIs must be interfaces in `Contracts/` folders.** Implement with xUnit + Moq tests for every interface contract. Use `Microsoft.Extensions.*` packages for cross-cutting concerns; avoid vendor SDK leakage outside service layers.
+## Output
+- Terse. One sentence on what changed. No trailing summaries.
 
-## Project Structure
-
-Projects live nested under `src/`, grouped by layer, not as flat top-level folders:
-
-```
-src/
-  core/Providers/Common/                     # Platform-agnostic provider contracts (Contracts/)
-  core/Providers/Common/tests/               # Contract tests
-  core/Providers/Core/                       # Base classes (e.g. BaseVideoProvider)
-  core/Providers/Core/tests/
-  providers/ring/provider/                   # Ring provider implementation
-  providers/ring/provider/tests/
-  providers/ring/auth/, common/, core/, snapshots/, utils/, video/   # Ring sub-services, each with its own project + <name>/tests/
-  providers/wyze/provider/                   # Wyze provider implementation
-  providers/wyze/provider/tests/
-  providers/wyze/auth/, common/, core/, utils/                       # Wyze sub-services, each with its own project
-  data/Common/, data/Core/, data/Database/, data/Database/Sqlite/    # Data access layer (each with its own <name>/tests/ subfolder)
-```
-
-`archive/VideoForensics/` holds the retired console app (not in the solution; kept for reference). Don't read it unless asked.
-
-## Adding a New Provider
-
-1. Do NOT create new interfaces — reuse `VideoForensics.Providers.Common.Contracts.*` (in `src/core/providers/providers-common/Contracts/`)
-2. Create `src/providers/<vendor>/provider/` with four service classes:
-   - `<Vendor>AuthService : IProviderAuthService`
-   - `<Vendor>DeviceDiscoveryService : IDeviceDiscoveryService`
-   - `<Vendor>MediaDownloadService : IMediaDownloadService`
-   - `<Vendor>EventAndConfigService : IEventAndConfigService`
-3. Implement `<Vendor>VideoProvider : BaseVideoProvider`
-4. Add comprehensive tests in a `tests/` subfolder of the project
-
-## Code Standards
-
-- **Async/await by default** for all I/O with `CancellationToken`
-- **All async methods accept `CancellationToken`** parameter
-- **No vendor SDK outside service layers** — abstract via interfaces
-- **Error handling:** log errors with context, expose via `GetLastError()` method, display to users
-- **User-facing paths:** always log (Info on success, Error on failure)
-- **Account ID logging:** when logging multi-account operations, use human-readable provider name (e.g., "Ring account") instead of GUID. Never log raw GUIDs for account identifiers; CodeQL flags these as storing sensitive data. Pass provider name to services if needed for logging context.
-- **No secrets in code** — use config/env vars/credential stores
-- **Input validation** at API boundaries only
-- **No plain-text passwords** — use provider APIs or hash + salt
-
-## Cryptography & Security
-
-### PBKDF2 Iteration Count (Credential Encryption)
-Credentials are encrypted via AES-256-CBC + PBKDF2-HMAC-SHA256. PBKDF2 iterations must increase annually per OWASP guidance to maintain brute-force resistance against hardware improvements.
-
-- **Current:** 600,000 iterations (2024/2025 baseline, per AES Encryption Audit Report)
-- **2026:** Increase to 750,000 iterations
-- **2027:** Increase to 1,000,000 iterations
-- **Pattern:** 25% annual increase thereafter
-
-**Action (January, each year):**
-1. Check OWASP Cryptographic Storage Cheat Sheet for updated guidance
-2. Update `Iterations` constant in `/src/providers/ring/auth/Implementations/AesEncryption.cs` (line 28)
-3. Update code comment with target year for next increase
-4. Add test in `AesEncryptionTests.cs` to verify new iteration count
-5. Run `dotnet test --filter "Class=AesEncryptionTests"` to confirm
-6. No credential re-encryption needed (different iterations use same PBKDF2 derivation, backward-compatible)
-7. Document in commit message: "Security: Increase PBKDF2 iterations from X to Y per OWASP 2026 guidance"
-
-**Rationale:** As hardware performance improves (GPU/ASIC), the cost to brute-force credentials increases. PBKDF2 counters this by accepting slower legitimate decryption (negligible ~100ms for single credential) vs. proportionally higher attacker cost.
-
-See `/AES_ENCRYPTION_AUDIT_REPORT.md` (Section 10, Appendix) for full schedule and checklist.
-
-## Data Requirements
-
-- **All data from provider APIs must be recorded in the database.** Do not rely on JSON blobs or ephemeral storage. Provider responses must be parsed and stored in proper database columns/tables with appropriate schema. Raw JSON is only acceptable for metadata that doesn't fit the schema or for audit trail purposes.
-- **No unstructured JSON in core domain tables** — events, devices, locations, and other business entities must have structured schemas. JSON should be limited to optional metadata fields (e.g., `MetadataJson` for provider-specific data that can't be schema-normalized).
-- **Eliminate data duplication** — do not scope entities unnecessarily to provider accounts if they represent globally unique provider resources (e.g., ProviderLocationId is globally unique per provider, not per account). Use proper normalization and junction tables for multi-account sharing.
-- **Design the schema first** — if you're storing JSON because the schema is incomplete, fix the schema instead. Every provider API response field should have a home in the database.
-
-## Testing
-
-- **Every non-test code change ships with tests covering it.** This applies to new classes, new methods, and behavior changes to existing code (e.g. new branches, fallback paths, retry logic) — not just new interfaces. "Existing tests still pass" is not sufficient proof of coverage for new behavior; if a change adds a new code path, add a test that exercises that path. Treat a change with no accompanying test as incomplete, not as a follow-up to do later.
-- **Write code TDD-style: test first, then implementation.** For new behavior (a new class, method, branch, fallback/retry path, or bugfix), write the test(s) that describe the expected behavior before writing the code that satisfies them — the test should fail for the right reason first, then the implementation makes it pass. When dispatching to a subagent, tell it to write the test(s) first, record the failing run, then implement, then confirm they pass; its report states the recorded failing run — don't dispatch "implement X" and "test X" as if testing were an afterthought tacked onto a finished implementation.
-- Location: `<Project>/tests/<Feature>Tests.cs`, in a `tests/` subfolder of the implementation project. The test project appears under the same solution folder as the implementation.
-- Framework: xUnit (v3) with Moq where mocking is actually needed — not every test project requires Moq
-- Naming: `<Class>_<Scenario>_<Expected>()`
-- Coverage: interfaces 100%, business logic >80%, integrations >70%
-- **Local test runs are scoped, not full-suite.** Locally, only run: (1) newly-added tests, and (2) existing tests for the code actually changed (the touched class/service and its direct callers/tests) — use `dotnet test --filter` to scope these rather than running a whole test project end to end. Do not re-run full, unrelated test suites locally "just to be sure" — CI catches breaks elsewhere. This applies to the lite gate too: build the touched `.csproj`s, then run only the scoped tests above, not every test in the `tests/` project.
-- Run all tests: `dotnet test` (CI does this; locally this is only for the full gate before a PR, not routine verification)
-
-## Documentation
-
-- **Public interfaces:** XML documentation comments
-- **Complex logic:** add "why" comments
-- **Non-obvious behaviors:** document assumptions
-- **Breaking changes:** update this file and commit message
-
-## Claude Communication Standards
-
-Respond to the user with **terse, direct output**:
-- One sentence on what changed (max two sentences)
-- No trailing summaries or narration
-- No hedging or verbose explanations
-- Let diffs and tool output speak for themselves
-
-## Archive and docs directories
-
-Do not read or explore files in the `docs/` directory unless explicitly asked by the user. The same rule applies to `archive/`.
-
-## Client Requirements (client/server split)
-
-Applies to any work touching `VideoForensics.MauiApp`, `VideoForensics.Ui.Shared`, `VideoForensics.Client.MCP`, or an MCP bridge process. Does not apply to `VideoForensics.WebApp` (it *is* the server). See the client/server split plan for full milestone context if one is active.
-
-- **No direct provider/data access from any client host.** A "client host" is MAUI, `VideoForensics.Client.MCP`, and any MCP bridge process. None of them may reference `providers-common`, `providers-core`, any concrete provider (Ring, etc.), or `data.common`/`data.core`/`data.database*` in their `.csproj`. They may reference `VideoForensics.Api.Contracts` (DTOs) and `VideoForensics.Hosting` (for `AddVideoForensicsClientApi` and its `Remote*` implementations) only.
-- **Interface names don't change.** `VideoForensics.Ui.Shared`'s `@inject IProviderAuthService`, `@inject IDeviceRepository`, etc. stay exactly as-is — a `Remote*` class implements the same interface a local implementation did, so DI substitution is silent and no `.razor` file needs editing for a client/server cutover.
-- **All wire calls use DTOs from `VideoForensics.Api.Contracts` and hit versioned `/api/v1/...` routes**, never a bare domain entity and never an unversioned route.
-- **Every `Remote*`/HTTP-backed class takes and forwards `CancellationToken`**, matching the interface signature it implements — no swallowing it.
-- **Auth:** every outgoing call carries the paired-device credential (bearer token), the same way as any existing `Remote*` repository — don't add a new auth mechanism per class.
-- **Local vs. Internet server address is never a client-editable setting** — only a cached Internet URL is stored client-side; the local address is always discovered fresh (e.g. via mDNS), never persisted.
-- **No stdio MCP process may bootstrap `AddVideoForensicsDataLayer()`/`AddVideoForensicsServerCore()`.** If a client-side MCP task seems to need one of those calls to work, that's a sign the task is being done wrong, not a sign to add the call back.
-- **Mapping naming convention:** DTO mapping extension methods are always `entity.ToDto()` and `dto.ToDomain()` — not `FromDto`, not a mix.
-
-## Localization (required)
-
-Every user-visible string in `VideoForensics.Ui.Shared` (pages, components, dialogs, layouts, validation and alert text) must be localized — never hard-code English literals in markup or `@code`.
-
-- Inject `IStringLocalizer<SharedResources>` (conventionally `@inject IStringLocalizer<SharedResources> L`) and use `@L["Key"]`; for page-specific text follow the existing per-page `.resx` pattern (e.g. `DeviceSignIn.resx`).
-- Add the key to the `.resx` in the same change. A new or changed page/component is incomplete until all its visible text (labels, buttons, headings, placeholders, tooltips, error messages, aria labels) comes from resources.
-- Tests that assert on text should go through the localizer or the resource key, not a duplicated English literal where practical.
-- Not user-visible, so exempt: log messages, exception messages not shown to users, route paths, CSS classes, test data.
-- Existing pages that are not yet localized (see `plans/maui-layout-theme-localization.md`) must be localized when they are next touched.
-- When dispatching a subagent to change a `VideoForensics.Ui.Shared` page, the brief must name the localization rule and list the page's existing literals to convert, so the subagent doesn't leave them in place.
-## UI Layout (Desktop-First)
-
-`VideoForensics.Ui.Shared` uses a **desktop-first layout** with resizable panels via Syncfusion's SfSplitter. This is optimized for:
-- Web app (full browser)
-- MAUI desktop (WinUI on Windows)
-
-**Mobile layout is implemented.** `Routes.razor` uses `ResponsiveLayout` as the default layout, which swaps in `MobileLayout` below 600px (JS viewport detection). Keep mobile-specific layout logic out of MainLayout: add it to `MobileLayout` or `ResponsiveLayout`, not to MainLayout.
-
-## Visual Studio MCP (`local-sdk`)
-
-This repo has a live Visual Studio instance reachable via the `local-sdk` MCP server
-(`http://localhost:3011/sdk`, registered in `.mcp.json`) with the `VideoForensics` solution
-already loaded. **Always use it when available** instead of ad-hoc grep/manual reading for the
-things it does natively:
-- Symbol navigation: `FindSymbolDefinition`, `FindSymbolUsages`, `GetMethodCallers`, `GetMethodCalls`, `GetSymbolAtLocation`, `GetInheritance` instead of grepping for a class/method by name.
-- Solution/project structure: `GetSolutionTree`, `GetProjectReferences`, `GetDocumentOutline` instead of `find`/`Glob` over `.csproj`/`.cs` files.
-- Compile errors/warnings: `GetDiagnostics`/`ErrorListGet` as a first check alongside (not instead of) `dotnet build`, since it reflects the IDE's live Roslyn analysis.
-- Refactors: `RenameSymbol` and `FormatDocument` for renames/formatting instead of hand-editing every call site.
-- Debugging a real repro: `DebugStart`/`DebugAttach`, `BreakpointSet`/`BreakpointList`/`BreakpointRemove`, `DebugContinue`/`DebugStep`, `DebugGetCallstack`/`DebugGetLocals`/`DebugEvaluate` instead of asking the user to describe what happened.
-If the server isn't connected (tools not listed / calls fail), fall back to the usual Bash/Grep/Read tools and mention that `local-sdk` was unreachable rather than silently guessing at its state.
-
-## First-Run Admin Setup
-
-On first startup with an empty database, the interactive `/setup` page (`Setup.razor` + `SetupEndpoints.cs`) is the default way to create the initial SuperAdmin account — the installing user picks their own username and password directly (no forced password change needed, since they chose it). `AuthGate.razor` redirects an unauthenticated visitor to `/setup` whenever `IOperatorRepository.IsEmptyAsync()` is true; the endpoint itself re-checks the same condition and returns 403 once any operator exists, so it can't be used to create a second SuperAdmin later.
-
-For headless/scripted deployments that can't drive a browser wizard, the legacy fixed-password seed is still available but off by default: set `VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN=true` before first startup to have `InitializeVideoForensicsDataAsync()` in `VideoForensicsHostingExtensions.cs` auto-create the account with:
-- Username: `admin`
-- Password: `ChangeMe123!` (the fixed `DefaultSuperAdminPassword` constant)
-- Role: `SuperAdmin`
-- MustChangePassword: `true` (forces password change on first login)
-
-This constant is synchronized in two places: the `DefaultSuperAdminPassword` field in `VideoForensicsHostingExtensions.cs` and in this document. If the password ever changes, update both locations. The seeding is idempotent — if any operator exists, no default account is created, and it never overrides an admin already created via `/setup`.
-
-## Syncfusion License
-
-One resolver, in `VideoForensics.Client.Core` (`SyncfusionLicenseRegistrar`). Hosting, MAUI, WebApp, and Ui.Shared tests call it; do not add another license reader.
-
-Priority: `%ProgramData%\VideoForensics\syncfusion-license.key` (IT override) > user secrets > key baked into `VideoForensics.Client.Core.dll` at CI build time.
-
-- CI: `SYNCFUSION_LICENSE_KEY` repo secret is passed to the build as `-p:SyncfusionLicenseKey` in `release-installers.yml` and `build-windows.yml`; test DLLs carry the key.
-- Developers: `dotnet user-secrets set SYNCFUSION_LICENSE_KEY <key>` in `src/client/core/VideoForensics.Client.Core/src`. No env var is read. Without a key, dev builds run unlicensed.
-
-## Branching and pull requests
-
-- **`main` only accepts pull requests from `dev`.** All work branches (feature, fix, `claude/*`) open their PRs against `dev`; `main` is updated solely by a `dev` → `main` promotion PR. The `main-source-guard` workflow (`.github/workflows/main-source-guard.yml`) fails any PR into `main` whose head is not this repo's `dev` — it must be a required status check on `main`.
-- Never open a PR from a work branch directly into `main`, and never push directly to `dev` or `main`.
-- **When the user says "PR to main"**, this is shorthand for the full two-step promotion, not a literal PR from the current branch into `main`: (1) land the current work branch into `dev` first via a PR, squash-merging it, then (2) open the `dev` → `main` promotion PR and squash-merge that too.
-- **Squash-merge every ordinary PR** (a work branch into `dev`, or the `dev` → `main` promotion) — never a merge commit, so `dev`'s and `main`'s history stay a single flattened commit per change.
-- **Exception: a `main` → `dev` reconciliation PR must use a real merge commit, never squash.** This only comes up if `main` and `dev` have genuinely diverged (e.g. `main` picked up an interim version of something `dev` later replaced) and a promotion PR shows real conflicts. Squashing a `main`-into-`dev` fix discards parent history, so git never records `main` as an ancestor of `dev` — the identical conflict then reappears on every future promotion attempt regardless of what `dev`'s content actually is, since git still diffs against the old pre-divergence merge-base. A real two-parent merge commit is the only way to permanently fix this. (Discovered when PR #82, a squashed fix for this exact scenario, didn't stop PR #72 from recomputing the same conflict — PR #84 redid it as a real merge and confirmed via `git log --format=%P` that both tips became parents.)
-
-## Instruction economy
-
-Every line here is loaded into every session, so each rule must earn its tokens.
-
-- **Enforce in code before prose.** If a rule can be checked by a build step, analyzer, test, CI check, script, or hook, build that instead of writing a paragraph about it. Keep only the residue a machine can't check.
-- **Server-side over local text.** Put behavior that can live in a CI workflow, `.editorconfig`, analyzer config, or a shared skill there, and reference it in one line.
-- **Terse rules.** One rule per bullet, imperative, no rationale unless the rule would be wrongly applied without it. Drop examples and history (e.g. past PR numbers) once the rule is clear.
-- **No duplicates.** State each rule once; link to its single home rather than restating it.
-- **Move long reference material out** of this file into a referenced file, unless it is needed on every task.
-- **Prune on every phase review:** remove rules that are obsolete, already enforced by tooling, or never triggered.
-
-## Execution workflow
-
-- **Branching model:** `dev` is the integration branch, and PRs from work branches target it. `wip` is the local development base: all code work starts from `wip`. `main` is the release branch and must never be ahead of `dev`; it only ever moves forward by merging from `dev` (a release), never receives direct commits or feature branches of its own.
-- **`wip` must never be behind `dev`.** Before starting code work, and before opening a PR from a branch that forks from `wip`, run `git fetch origin` and confirm `origin/dev` is an ancestor of `wip` (`git merge-base --is-ancestor origin/dev wip`). If it isn't, merge `dev` into `wip` (`git merge origin/dev`) before continuing. Re-check after any PR lands in `dev`, because squash merges add commits to `dev` that `wip` does not yet have.
-- **Match worktree branches by `refs/heads/<branch>` from `git worktree list --porcelain`, stripping `\r`; never by folder name.**
-- **All code work happens in a git worktree forked from `wip`.** When a plan or feature is approved, first bring `wip` up to date with `dev` (above), then create the worktree and its branch from `wip`, e.g. `git worktree add <sibling-path>/<feature> -b <feature-branch> wip`. Do all edits, commits, and builds in that worktree. Never implement work directly in the main checkout. Name the branch for the plan's feature, not the session.
-- **The main checkout's uncommitted changes stay where they are.** The worktree isolates new work from them, so don't carry them onto the new branch and don't discard them.
-- **Always delegate implementation work to Haiku 5.5 subagents (`model: "haiku"`).** The main session plans and designs only — it does not write or edit implementation files directly, even for "just one file" or when already mid-task. Dispatch each file/service change (or a small batch of related files) to a Haiku 5.5 subagent, and verify its output yourself (rebuild, run the tests, read the diff) rather than trusting its report. If a subagent reports it's blocked or confused (ambiguous existing code, can't locate a call site, etc.), resolve the ambiguity in the brief and re-dispatch.
-- **Lite gate:** the default verification step after a subagent finishes a file/service change, and after each batch of related changes within a plan. Scope is limited to what changed — no solution-wide rebuild, no package updates. Run `dotnet build` (incremental, not clean) on just the touched `.csproj` files, then `dotnet test` on just their `tests/` projects (and any other test project that references the changed code). Fix any build errors/warnings or test failures the touched projects surface before moving on. This does not require asking the user first — it's the normal build+test loop, not a gate on committing.
-- **Committing and pushing a branch (no PR yet) only requires the lite gate** to have already passed for every change being committed/pushed — do not run the full gate just to commit or push a branch.
-- **Batch and phase handoff is automatic.** When a plan's batch or phase finishes and its lite gate passes, without waiting for user confirmation: (1) commit the batch on its worktree branch; (2) confirm `wip` contains `origin/dev` (`git merge-base --is-ancestor origin/dev wip`), merging `dev` into `wip` first if not; (3) merge the batch branch into `wip` in the main checkout; (4) `git push origin wip`; (5) start the next batch in a new worktree forked from the updated `wip`. Do not push the work branch itself unless asked. Stop and report instead of continuing when: the lite gate fails, a merge conflicts, the main checkout has unrelated uncommitted changes, or the next item needs a decision only the user can make (for example, a product question or the full gate). The full gate still requires confirmation before it runs.
-- **Full gate:** run only when opening a pull request to `dev` or `main`; never for commits, pushes, or merges into `wip`. **Before running it, always ask the user for confirmation** (it's slow and touches the whole solution, not just the current change). Once confirmed: first ensure `wip` contains `dev` (see the `wip` rule above), then check the work branch is up-to-date with `wip` — if not, sync it (`git merge wip` or `git rebase wip` depending on history preference) to ensure building against the latest integration branch code; then update all outdated NuGet packages solution-wide (`dotnet list VideoForensics.sln package --outdated`, then bump every flagged `PackageReference` to its listed `Latest` version across every `.csproj` that references it — same version for the same package everywhere, never partially bump one project), then do a clean rebuild of the whole solution (`dotnet clean` + `dotnet build`, not an incremental build), fix every warning/error/notice it surfaces (not just ones touching the current change or introduced by the package bump); wait for the build to complete, then run the full test suite (`dotnet test`, not just tests for the current change) and fix any failures (do not start tests while build is still running to avoid duplicating compilation work). This local gate is a precaution that catches issues before CI runs — CI (.github/workflows/ci.yml) will also build and test on any PR to dev/main, so the full gate is about catching issues early locally, not replacing CI validation. This gate runs after the lite gate has already passed for every change in the plan, and applies to every PR, not just large ones.
-- **Never run `git clean -X`.** Delete build output by explicit path.
-- **Never kill processes in bulk** (`taskkill`, `Stop-Process` on `dotnet`). A hung test host gets reported, not killed.
-- **Check before removing a worktree:** run `git worktree list --porcelain` first; the path must be listed.
-- **Failure capture:** when a task, subagent, build, test, tool, or connector call fails, append one line to `.claude/task_failure_log.md` (`date | phase | what failed | cause | fix`) at the time it happens.
-- **Phase-end failure review (every phase):** before the phase handoff, read this phase's entries in `task_failure_log.md`. For each recurring or avoidable cause, draft the shortest single-sentence rule that would prevent it, and list the proposals in the final message. Ask the user whether to add each one here. Add only on a yes. Do not hold the handoff for the answer.
-- **Keep the failure log small:** after each review, delete entries that were resolved or promoted to a rule, and mark those covered by a rule as `(covered)`. Keep at most ~20 open entries; if over, summarize the oldest into one line each.
+## Off-limits
+- Do not read `docs/` or `archive/` unless asked.
