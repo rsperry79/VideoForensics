@@ -33,6 +33,7 @@ public abstract class OperatorGatedPageTestBase : BunitContext
     protected Mock<IProviderAccountRepository> ProviderAccountRepositoryMock { get; } = new();
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
     protected Mock<IDeviceConfigRepository> DeviceConfigRepositoryMock { get; } = new();
+    protected Mock<IDeviceTypedSettingsReader> TypedSettingsReaderMock { get; } = new();
 
     protected OperatorGatedPageTestBase()
     {
@@ -54,8 +55,12 @@ public abstract class OperatorGatedPageTestBase : BunitContext
         DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Device>());
+        TypedSettingsReaderMock
+            .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeviceTypedSettings(null, [], []));
 
         Services.AddScoped(_ => AuthServiceMock.Object);
+        Services.AddScoped(_ => TypedSettingsReaderMock.Object);
         Services.AddScoped(_ => DownloadServiceMock.Object);
         Services.AddScoped(_ => ProviderAccountRepositoryMock.Object);
         Services.AddScoped(_ => DeviceRepositoryMock.Object);

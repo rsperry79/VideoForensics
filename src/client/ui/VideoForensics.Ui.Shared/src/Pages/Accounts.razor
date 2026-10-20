@@ -1,8 +1,10 @@
 @page "/accounts"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Core.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @inject IProviderAccountRepository ProviderAccountRepository
+@inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
 @inject IStringLocalizer<Accounts> L
@@ -184,14 +186,19 @@ else
     private RemoveTarget? _removeTarget;
     private string? _loadError;
     private bool _isLoading = true;
+    private IDisposable? _accountLinkedSubscription;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAccountsAsync();
+        _accountLinkedSubscription = AccountLinkedSource.AccountLinked.Subscribe(linkedId => _ = OnAccountLinkedAsync());
     }
+
+    private Task OnAccountLinkedAsync() => InvokeAsync(async () => { await LoadAccountsAsync(); StateHasChanged(); });
 
     public void Dispose()
     {
+        _accountLinkedSubscription?.Dispose();
         // Stops every export polling loop.
         _disposeCts.Cancel();
         _disposeCts.Dispose();

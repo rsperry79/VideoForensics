@@ -157,6 +157,12 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
 
+            // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so
+            // one circuit's link never reaches another; both interfaces share one bus instance.
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.AccountLinkedBus>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedSource>(sp => sp.GetRequiredService<VideoForensics.Ui.Shared.Services.AccountLinkedBus>());
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedNotifier>(sp => sp.GetRequiredService<VideoForensics.Ui.Shared.Services.AccountLinkedBus>());
+
             // Pages/Security*.razor's self-API calls (plan §5.10/§5.12) - MAUI has no self-call
             // network-tier concern (it always talks to a remote/LAN server, never itself), so it gets
             // the plain default factory. TryAddScoped so a host that needs a different behavior could

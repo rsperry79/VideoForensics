@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 using Xunit;
@@ -91,6 +92,8 @@ public abstract class AccountsPageTestBase : BunitContext
         Services.AddScoped(_ => WebAuthnMock.Object);
         Services.AddScoped<StepUpService>();
         Services.AddScoped<RightPanelContentService>();
+        Services.AddScoped<AccountLinkedBus>();
+        Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
     }
 
     protected IRenderedComponent<Accounts> RenderPage() => Render<Accounts>();

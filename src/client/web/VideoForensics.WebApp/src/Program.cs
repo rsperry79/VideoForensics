@@ -285,6 +285,11 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
 builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.WebApp.Hubs.LiveThumbnailNotifier>());
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, VideoForensics.WebApp.Services.LocalThumbnailReadySource>();
+// Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
+// circuit's link never reaches another circuit; both interfaces share one bus instance.
+builder.Services.AddScoped<AccountLinkedBus>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedNotifier>(sp => sp.GetRequiredService<AccountLinkedBus>());
 // Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
 builder.Services.AddSnapshotProbe(builder.Configuration);
 

@@ -1,5 +1,6 @@
 @page "/accounts/add"
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using Microsoft.AspNetCore.Components
@@ -9,6 +10,7 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
+@inject IAccountLinkedNotifier AccountLinkedNotifier
 @inject IStringLocalizer<AddAccountWizard> L
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -161,6 +163,11 @@ else
                     await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
                 }
 
+                if (result.ProviderAccountId.HasValue)
+                {
+                    AccountLinkedNotifier.Publish(result.ProviderAccountId.Value);
+                }
+
                 _authSuccess = true;
                 _currentStep = 3;
                 _univiewUsername = "";
@@ -214,6 +221,8 @@ else
 
             if (result.ProviderAccountId is { } accountId)
             {
+                // Publish before the sync request so the accounts list shows the new row immediately.
+                AccountLinkedNotifier.Publish(accountId);
                 await StartInitialSyncAsync(accountId);
             }
         }
