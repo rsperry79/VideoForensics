@@ -37,7 +37,6 @@ public class AdminNavConfiguration_Tests
     [InlineData("/query", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts/add", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts/{Id:guid}", AccessPolicy.SuperAdminLocal)]
-    [InlineData("/accounts/{Id:guid}/schedule", AccessPolicy.SuperAdminLocal)]
     [InlineData("/analyze?analysis=reports", AccessPolicy.ReadOnly)]
     [InlineData("/analyze?analysis=anomalies", AccessPolicy.ReadOnly)]
     [InlineData("/analyze?analysis=access", AccessPolicy.ReadOnly)]

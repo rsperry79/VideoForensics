@@ -88,6 +88,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
 
+    protected Mock<ISyncScheduleRepository> SyncScheduleRepositoryMock { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -132,6 +134,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => LocationRepositoryMock.Object);
         Services.AddScoped(_ => DeviceRepositoryMock.Object);
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
+        // The Sync tab embeds the schedule settings, which resolve the sync-schedule repository.
+        Services.AddScoped(_ => SyncScheduleRepositoryMock.Object);
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
@@ -383,7 +387,8 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNow"], ButtonLabels(cut)));
-        Assert.Empty(cut.FindAll("#config-sync-interval"));
+        // The config sync interval lives in the schedule section, never in the sync output or controls.
+        Assert.Empty(cut.FindAll("#sync-output [id^='config-sync']"));
     }
 
     [Fact]
