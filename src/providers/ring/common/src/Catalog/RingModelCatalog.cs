@@ -16,7 +16,7 @@ public sealed class RingModelCatalog : IRingModelCatalog
     /// Data version of this catalog. Bump it whenever an entry changes so databases re-seed on the next startup
     /// (see <c>ReferenceDataSeeder</c>); a higher version is the only thing that triggers a reload.
     /// </summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     private static readonly RingModelInfo[] Entries =
     [
@@ -34,6 +34,7 @@ public sealed class RingModelCatalog : IRingModelCatalog
         new("cocoa_doorbell_v5", RingDeviceFamily.Doorbell, "Wired Doorbell 4K Pro", null, false),
         new("cocoa_doorbell_v6", RingDeviceFamily.Doorbell, "Battery Doorbell 4K Pro", null, false),
         new("doorbell_tahoe", RingDeviceFamily.Doorbell, "Wired Video Doorbell Retinal 2K", null, false),
+        new("doorbell_oyster", RingDeviceFamily.Doorbell, "Video Doorbell 4", null, false),
 
         // Cameras.
         new("stickup_cam", RingDeviceFamily.Camera, null, null, false),
@@ -47,6 +48,7 @@ public sealed class RingModelCatalog : IRingModelCatalog
         new("cocoa_camera_v2", RingDeviceFamily.Camera, null, null, false),
         new("cocoa_camera_v3", RingDeviceFamily.Camera, null, null, false),
         new("cocoa_spotlight_v2", RingDeviceFamily.Camera, "Spotlight Cam 4K Pro", null, false),
+        new("cocoa_spotlight", RingDeviceFamily.Camera, "Spotlight Cam Plus", null, false),
         new("cocoa_floodlight_v2", RingDeviceFamily.Camera, null, null, false),
         new("floodlight_v1", RingDeviceFamily.Camera, null, null, false),
         new("floodlight_v2", RingDeviceFamily.Camera, null, null, false),

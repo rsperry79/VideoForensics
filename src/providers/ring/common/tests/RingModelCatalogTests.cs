@@ -98,6 +98,35 @@ public class RingModelCatalogTests
     }
 
     [Fact]
+    public void Find_DoorbellOyster_ReturnsVideoDoorbell4()
+    {
+        // Source: dgreif/ring issue 1335, confirmed by the maintainer when the mapping was merged.
+        RingModelInfo? info = _catalog.Find("doorbell_oyster");
+
+        Assert.NotNull(info);
+        Assert.Equal(RingDeviceFamily.Doorbell, info.Family);
+        Assert.Equal("Video Doorbell 4", info.ModelName);
+    }
+
+    [Fact]
+    public void Find_CocoaSpotlight_ReturnsSpotlightCamPlus()
+    {
+        // Source: dgreif/ring issue 1335, confirmed by the maintainer when the mapping was merged.
+        RingModelInfo? info = _catalog.Find("cocoa_spotlight");
+
+        Assert.NotNull(info);
+        Assert.Equal(RingDeviceFamily.Camera, info.Family);
+        Assert.Equal("Spotlight Cam Plus", info.ModelName);
+    }
+
+    [Fact]
+    public void Version_IsBumpedForNewRows()
+    {
+        // Existing databases re-seed only when the version rises, so new rows must come with a bump.
+        Assert.Equal(2, RingModelCatalog.Version);
+    }
+
+    [Fact]
     public void All_KindsAreUnique()
     {
         var kinds = _catalog.All.Select(m => m.Kind).ToList();
