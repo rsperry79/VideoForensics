@@ -196,6 +196,12 @@ namespace VideoForensics.Hosting.Services
             _activity.Append(outcome.Error is null
                 ? $"{provider}: sync finished"
                 : $"{provider}: sync failed: {outcome.Error}");
+            // Only a clean sync moves the display timestamp. LastDownloadTimeUtc is never written here (see MarkSyncCompletedAsync).
+            if (outcome.Error is null)
+            {
+                await MarkSyncCompletedAsync(accountId, DateTime.UtcNow);
+            }
+
             await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, outcome.Error, syncType, outcome.Counts, outcome.SnapshotsSynced);
         }
 
@@ -313,6 +319,29 @@ namespace VideoForensics.Hosting.Services
             if (counts.FeedsFailed > 0)
             {
                 _activity.Append($"{provider}: {counts.FeedsFailed} event feed(s) failed");
+            }
+        }
+
+        /// <summary>
+        /// Stores when the clean sync finished, for the Last Download display. Best-effort: a failed write is logged and
+        /// swallowed so it can never turn a successful sync into a failure. Uses CancellationToken.None so it lands during shutdown.
+        /// </summary>
+        private async Task MarkSyncCompletedAsync(Guid accountId, DateTime completedUtc)
+        {
+            try
+            {
+                ProviderAccount? account = await _accounts.GetAsync(accountId, CancellationToken.None);
+                if (account is null)
+                {
+                    return;
+                }
+
+                account.LastSyncCompletedUtc = completedUtc;
+                await _accounts.UpdateAsync(account, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to record sync completion");
             }
         }
 

@@ -25,5 +25,11 @@ namespace VideoForensics.Data.Common.Entities
         /// accounts so an interrupted first sync is retried; the migration marks existing accounts true so they do not re-validate.
         /// </summary>
         public bool InitialSyncCompleted { get; set; }
+
+        /// <summary>
+        /// When the last successful sync finished. Display only (Account details, Sync tab). Kept separate from
+        /// <see cref="LastDownloadTimeUtc"/>, which is the legacy video-download watermark that sync must never move.
+        /// </summary>
+        public DateTime? LastSyncCompletedUtc { get; set; }
     }
 }
