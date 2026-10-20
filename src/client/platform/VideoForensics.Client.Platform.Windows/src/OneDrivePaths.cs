@@ -6,6 +6,7 @@ namespace VideoForensics.Client.Platform.Windows
     /// Windows-only lookups for OneDrive-synced folders and the legacy download and export locations.
     /// Moved out of the shared Client.Core <c>PathUtilities</c> so shared code carries no registry access.
     /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public static class OneDrivePaths
     {
         /// <summary>Detects the OneDrive path if available, otherwise returns UserProfile/Pictures/VideoForensics (legacy location).</summary>

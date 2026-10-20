@@ -46,6 +46,7 @@
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
     <ProjectReference Include="../../../ui/VideoForensics.Ui.Shared/src/VideoForensics.Ui.Shared.csproj" />
     <ProjectReference Include="../../../host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 
