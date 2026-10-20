@@ -44,13 +44,8 @@ namespace VideoForensics.Hosting.Services
         /// <inheritdoc />
         public async Task<Guid> QueueExportAsync(Guid accountId, bool purgeAfterExport, CancellationToken ct, string? stepUpToken = null)
         {
-            // Purge is off: the delete cascades into data the export does not yet write (snapshots, config history, case
-            // links), so an account is never deleted after an export. Export-only requests are unaffected.
-            if (purgeAfterExport)
-            {
-                throw new InvalidOperationException(IAccountExportService.PurgeDisabledMessage);
-            }
-
+            // Purge deletes only the account's own rows (its credentials, schedule, sync history and links). Locations,
+            // devices and events are shared through ProviderAccountLocation and are never deleted with the account.
             Guid jobId = Guid.NewGuid();
             _jobs[jobId] = new ExportJobStatus(jobId, accountId, ExportJobState.Queued, null, null, purgeAfterExport, _time.GetUtcNow().UtcDateTime, null);
             _latestJobByAccount[accountId] = jobId;

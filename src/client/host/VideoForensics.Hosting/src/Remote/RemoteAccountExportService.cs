@@ -27,7 +27,7 @@ namespace VideoForensics.Hosting.Remote
         {
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/accounts/provider-accounts/{accountId}/exports")
             {
-                Content = JsonContent.Create(new QueueAccountExportRequest(purgeAfterExport), options: JsonOptions)
+                Content = JsonContent.Create(new QueueAccountExportRequest(purgeAfterExport, ConfirmPurge: purgeAfterExport), options: JsonOptions)
             };
             if (stepUpToken is not null)
             {
