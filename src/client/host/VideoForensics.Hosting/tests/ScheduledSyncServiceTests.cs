@@ -77,6 +77,7 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
             public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
+            public Mock<ISnapshotSyncService> SnapshotSync { get; } = new();
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = new();
@@ -106,7 +107,8 @@ namespace VideoForensics.Hosting.Tests
                 int intervalMinutes = 30,
                 bool registerKeyed = true,
                 bool authResult = true,
-                bool initialSyncCompleted = true)
+                bool initialSyncCompleted = true,
+                DateTime? snapshotNext = null)
             {
                 var account = new ProviderAccount
                 {
@@ -123,6 +125,7 @@ namespace VideoForensics.Hosting.Tests
                     IsEnabled = true,
                     EventPollIntervalMinutes = intervalMinutes,
                     SnapshotRssiIntervalSeconds = 60,
+                    SnapshotNextRunUtc = snapshotNext ?? Now.AddHours(1),
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };
@@ -209,6 +212,7 @@ namespace VideoForensics.Hosting.Tests
                     _ = _services.AddKeyedSingleton(provider, Discovery[provider].Object);
                 }
 
+                _ = _services.AddScoped(_ => SnapshotSync.Object);
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
                 _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders });
@@ -268,6 +272,34 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_SnapshotDue_RunsSnapshotSyncAndRecordsNextSnapshotRun()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Schedules.Verify(r => r.RecordSnapshotRunAsync(account.Id, Now, Now.AddSeconds(60), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_SnapshotNotDue_DoesNotRunSnapshotSync()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(5));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
