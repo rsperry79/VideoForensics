@@ -36,3 +36,4 @@
  | repaired bytes in c1f0fff8; write with open(path,'wb') and convert to CRLF explicitly
 2026-10-20 | shell | bash heredoc with embedded quotes failed (unexpected EOF); python heredoc also failed when it contained triple quotes | quoting inside Bash heredocs | (covered) use the Write tool for new files and a script file for edits
 2026-10-20 | test | full solution run: 26 failing tests on wip (Ui.Shared Evidence, NavGroups, Ring wiring, schema default) | stale test fixtures (report mock missing ProviderEventId link, viewer ticket fetch order), missing Media resource key, unstubbed IMediaFrameExtractor, model default mismatch | fixed on fix-test-failures (ec3816fc, f7fad3c0); full solution 6620 passed
+2026-10-20 | migration | dotnet ef migrations add failed with NETSDK1004 (project.assets.json not found) in a new worktree | worktree had never been restored | dotnet restore on the sqlite project, then the migration generated
