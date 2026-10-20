@@ -36,14 +36,14 @@ namespace VideoForensics.Hosting.Tests
         /// <summary>Serves the events through the keyset API in pages of <paramref name="pageSize"/>, like the real repository.</summary>
         private void SetupEventPages(IReadOnlyList<Event> all, int pageSize = int.MaxValue)
         {
-            List<Event> ordered = all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).ToList();
+            List<Event> ordered = [.. all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id)];
             _ = _events.Setup(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ordered.Count == 0 ? (DateTime?)null : ordered[0].OccurredAtUtc);
             _ = _events.Setup(r => r.ListByDevicePageAsync(_deviceId, It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid _, DateTime? at, Guid? id, int take, CancellationToken _) =>
-                    (IReadOnlyList<Event>)ordered
+                    (IReadOnlyList<Event>)[.. ordered
                         .Where(e => at == null || e.OccurredAtUtc > at || (e.OccurredAtUtc == at && id != null && e.Id.CompareTo(id.Value) > 0))
-                        .Take(Math.Min(take, pageSize)).ToList());
+                        .Take(Math.Min(take, pageSize))]);
         }
 
         public AccountExportServiceTests()

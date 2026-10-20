@@ -28,3 +28,11 @@
 2026-10-20T12:56:16-07:00 | test | SignIn filter: 3 Evidence tests failed (GrabStill/PlaceHold/ReleaseHold ShowsSignInToast) | same failures on wip baseline, pre-existing | not fixed; investigate separately
 2026-10-20 | build | dotnet build after retargeting csproj to VideoForensics.snk | InternalsVisibleTo PublicKey values pin KoenZomers key (VideoForensics.Core.Helpers.Forensics and VideoForensics.Providers.Ring.Core friend grants); CS0281 in 2 test projects | not fixed, awaiting user decision on key scope
 2026-10-20 | build | full solution build after clean: CS0117 in AccountEndpoints.cs:196 InitialSyncCompleted; apphost copy file-lock MSB3026 | parallel build race; WebApp builds alone and full sln rebuild passes | resolved by rebuild; nullability warnings DeviceDto.cs/DeviceDetailsRepository.cs remain (not fixed)
+2026-10-20 | line endings | Python text-mode writes on Windows turned 
+ into 
+ in edited files; one was committed (RealIntegrationTests.cs on skipped-tests-audit) and the purge files were caught before commit | open(path,'w') translates 
+ to 
+, and the file already had 
+ | repaired bytes in c1f0fff8; write with open(path,'wb') and convert to CRLF explicitly
+2026-10-20 | shell | bash heredoc with embedded quotes failed (unexpected EOF); python heredoc also failed when it contained triple quotes | quoting inside Bash heredocs | (covered) use the Write tool for new files and a script file for edits
+2026-10-20 | test | full solution run: 26 failing tests on wip (Ui.Shared Evidence, NavGroups, Ring wiring, schema default) | stale test fixtures (report mock missing ProviderEventId link, viewer ticket fetch order), missing Media resource key, unstubbed IMediaFrameExtractor, model default mismatch | fixed on fix-test-failures (ec3816fc, f7fad3c0); full solution 6620 passed
