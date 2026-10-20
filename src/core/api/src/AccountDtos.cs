@@ -189,6 +189,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="EventLastRunUtc">The UTC timestamp of the most recent event poll run; null if never run.</param>
     /// <param name="SnapshotNextRunUtc">The UTC timestamp when the next snapshot/RSSI poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="SnapshotLastRunUtc">The UTC timestamp of the most recent snapshot/RSSI poll run; null if never run.</param>
+    /// <param name="SnapshotRollupIntervalMinutes">Minutes between MP4 roll-ups of snapshots into loops. Default 15.</param>
     public record SyncScheduleDto(
         Guid Id,
         Guid ProviderAccountId,
@@ -199,7 +200,8 @@ namespace VideoForensics.Core.Api.Contracts
         DateTime? EventNextRunUtc,
         DateTime? EventLastRunUtc,
         DateTime? SnapshotNextRunUtc,
-        DateTime? SnapshotLastRunUtc
+        DateTime? SnapshotLastRunUtc,
+        int SnapshotRollupIntervalMinutes = VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes
     );
 
     /// <summary>Extension methods for mapping SyncSchedule entities to/from SyncScheduleDtos.</summary>
@@ -220,7 +222,8 @@ namespace VideoForensics.Core.Api.Contracts
                 EventNextRunUtc: entity.EventNextRunUtc,
                 EventLastRunUtc: entity.EventLastRunUtc,
                 SnapshotNextRunUtc: entity.SnapshotNextRunUtc,
-                SnapshotLastRunUtc: entity.SnapshotLastRunUtc
+                SnapshotLastRunUtc: entity.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes: entity.SnapshotRollupIntervalMinutes
             );
         }
 
@@ -240,7 +243,8 @@ namespace VideoForensics.Core.Api.Contracts
                 EventNextRunUtc = dto.EventNextRunUtc,
                 EventLastRunUtc = dto.EventLastRunUtc,
                 SnapshotNextRunUtc = dto.SnapshotNextRunUtc,
-                SnapshotLastRunUtc = dto.SnapshotLastRunUtc
+                SnapshotLastRunUtc = dto.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes = dto.SnapshotRollupIntervalMinutes
             };
         }
     }
