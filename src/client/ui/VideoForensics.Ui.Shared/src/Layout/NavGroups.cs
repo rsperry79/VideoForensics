@@ -92,7 +92,6 @@ namespace VideoForensics.Ui.Shared.Layout
             new("sources", "Sources", "/accounts",
             [
                 new("Provider Accounts", "/accounts"),
-                new("Device Configuration", "/devices/config"),
                 new("Query API", "/query"),
                 new("API Tester", "/query/api-tester")
             ]),

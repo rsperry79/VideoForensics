@@ -61,6 +61,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ElevatedPollingIntervalSeconds = loadedConfig.ElevatedPollingIntervalSeconds;
                 runtimeConfig.EnableBitrateCalibration = loadedConfig.EnableBitrateCalibration;
                 runtimeConfig.CalibrationCheckIntervalMinutes = loadedConfig.CalibrationCheckIntervalMinutes;
+                runtimeConfig.DeviceOfflineThresholdSeconds = loadedConfig.DeviceOfflineThresholdSeconds;
                 runtimeConfig.CalibrationSessionDurationSeconds = loadedConfig.CalibrationSessionDurationSeconds;
                 runtimeConfig.MinCalibrationSamplesPerBucket = loadedConfig.MinCalibrationSamplesPerBucket;
                 runtimeConfig.CalibrationStalenessDays = loadedConfig.CalibrationStalenessDays;

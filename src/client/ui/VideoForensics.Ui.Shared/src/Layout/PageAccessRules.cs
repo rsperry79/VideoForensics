@@ -34,7 +34,6 @@ namespace VideoForensics.Ui.Shared.Layout
                 // Mirrors /api/v1/accounts (AccountEndpoints) and the device-config API, both SuperAdminLocal. On the WebApp
                 // these pages call repositories in-process, so this row is the only gate there.
                 ["/accounts"] = AccessPolicy.SuperAdminLocal,
-                ["/devices/config"] = AccessPolicy.SuperAdminLocal,
                 // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
                 // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
                 ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
@@ -52,6 +51,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 // Account tabs: Sync and Cases read the same /api/v1/accounts data as the Details tab.
                 ["/accounts/{Id:guid}/sync"] = AccessPolicy.SuperAdminLocal,
                 ["/accounts/{Id:guid}/cases"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocal,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
                 ["/cases/new"] = AccessPolicy.Review,
