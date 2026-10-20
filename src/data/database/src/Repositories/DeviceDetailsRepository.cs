@@ -183,8 +183,8 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 List<DeviceDetectionThreshold> storedThresholds = await db.DeviceDetectionThresholds.Where(t => t.DeviceId == deviceId).ToListAsync(ct);
                 AddWholeItemChanges(changes, deviceId, changedAtUtc, "DetectionThreshold",
-                    ToMap(storedThresholds, t => t.DetectionType, t => Text(t.Threshold)),
-                    ToMap(settings.DetectionThresholds ?? [], t => t.DetectionType, t => Text(t.Threshold)));
+                    ToMap(storedThresholds, t => t.DetectionType, t => Text(t.Threshold) ?? string.Empty),
+                    ToMap(settings.DetectionThresholds ?? [], t => t.DetectionType, t => Text(t.Threshold) ?? string.Empty));
                 db.DeviceDetectionThresholds.RemoveRange(storedThresholds);
                 foreach (DeviceDetectionThreshold row in settings.DetectionThresholds)
                 {
