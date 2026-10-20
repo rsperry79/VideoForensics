@@ -87,18 +87,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         }
 
         /// <summary>
-        /// Creates a session without authenticating (for testing session creation only). Requires
-        /// username/password, which the database never stores (only an encrypted refresh token,
-        /// per this app's no-plain-text-passwords policy) - so this always throws. Kept for callers
-        /// that already guard on <see cref="UsernamePasswordAvailable"/> first.
-        /// </summary>
-        public static Session CreateSessionWithoutAuth()
-        {
-            throw new InvalidOperationException(
-                $"Ring API username/password is never stored (only an encrypted refresh token).\n{SetupPointer}");
-        }
-
-        /// <summary>
         /// Checks if a saved refresh token is available for real integration testing.
         /// </summary>
         public static bool CredentialsAvailable()
@@ -114,16 +102,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             {
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Always false - the database never stores a raw username/password, only an encrypted
-        /// refresh token. Kept so existing tests that guard on this before calling
-        /// <see cref="CreateSessionWithoutAuth"/> continue to skip cleanly instead of failing.
-        /// </summary>
-        public static bool UsernamePasswordAvailable()
-        {
-            return false;
         }
 
         /// <summary>
