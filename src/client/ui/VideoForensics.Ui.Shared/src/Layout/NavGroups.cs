@@ -86,7 +86,6 @@ namespace VideoForensics.Ui.Shared.Layout
                         new("Jamming Analysis", "/analyze?analysis=jamming")
                     ]),
                 new("Chain of Custody", "/analyze/chain-of-custody"),
-                new("Validate Evidence", "/analyze/validate/integrity"),
                 new("Export Evidence", "/review/export")
             ]),
 

@@ -14,7 +14,6 @@ public class NavGroups_ActiveGroupFor_Tests
 
     [Theory]
     [InlineData("/analyze/chain-of-custody", "cases")]
-    [InlineData("/analyze/validate/integrity", "cases")]
     [InlineData("/analyze", "cases")]
     [InlineData("/media", "media")]
     [InlineData("/cases/123", "cases")]

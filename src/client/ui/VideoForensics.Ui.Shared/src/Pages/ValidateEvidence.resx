@@ -39,16 +39,16 @@
     <value>You are not signed in. Sign in to validate evidence.</value>
   </data>
   <data name="VerifyIntegrityTab" xml:space="preserve">
-    <value>Verify Integrity</value>
+    <value>Validate locally</value>
   </data>
   <data name="ReconcileTab" xml:space="preserve">
-    <value>Reconcile with Provider</value>
+    <value>Validate remote</value>
   </data>
   <data name="AllDevicesFilter" xml:space="preserve">
     <value>(All devices)</value>
   </data>
   <data name="VerifyButton" xml:space="preserve">
-    <value>Verify</value>
+    <value>Run local validation</value>
   </data>
   <data name="NoMediaFound" xml:space="preserve">
     <value>No media items found to verify.</value>
@@ -78,7 +78,7 @@
     <value>To:</value>
   </data>
   <data name="ReconcileButton" xml:space="preserve">
-    <value>Reconcile</value>
+    <value>Run remote validation</value>
   </data>
   <data name="NoDiscrepanciesFound" xml:space="preserve">
     <value>No discrepancies found.</value>

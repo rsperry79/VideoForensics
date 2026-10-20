@@ -58,7 +58,7 @@ public class NavGroups_Tests
         Assert.Contains("/cases/new", itemPaths);
         Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
-        Assert.Contains("/analyze/validate/integrity", itemPaths);
+        Assert.DoesNotContain("/analyze/validate/integrity", itemPaths);
         Assert.Contains("/review/export", itemPaths);
 
         // Verify Analyze is nested under Cases with its sub-items
