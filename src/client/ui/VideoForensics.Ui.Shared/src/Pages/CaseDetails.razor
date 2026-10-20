@@ -351,7 +351,7 @@ else
         try
         {
             await CaseState.ActivateAsync(_case.Id, CancellationToken.None);
-            var evidenceUrl = NavigationManager.ToAbsoluteUri("/evidence").ToString();
+            var evidenceUrl = NavigationManager.ToAbsoluteUri("/media").ToString();
             var url = CaseUrl.Merge(evidenceUrl, _case.Id);
             NavigationManager.NavigateTo(url);
         }

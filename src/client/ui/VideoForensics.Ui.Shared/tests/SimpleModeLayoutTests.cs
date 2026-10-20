@@ -116,7 +116,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
             .ReturnsAsync(new List<ForensicCase>());
         Services.AddScoped(_ => caseRepoMock.Object);
 
-        // Defaults for SimpleHome, which SimpleLayout renders at "/" and "/evidence" (empty data; SimpleHomeTests override these)
+        // Defaults for SimpleHome, which SimpleLayout renders at "/" and "/media" (empty data; SimpleHomeTests override these)
         Services.AddScoped(_ => new Mock<IEventRepository>().Object);
         Services.AddScoped(_ => new Mock<IMediaItemRepository>().Object);
         Services.AddScoped(_ => new Mock<IDeviceRepository>().Object);

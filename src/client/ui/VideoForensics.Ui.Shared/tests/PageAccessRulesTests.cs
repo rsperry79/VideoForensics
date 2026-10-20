@@ -184,19 +184,19 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_GroupWithoutSections_ReturnsSingleUntitledSection()
     {
-        var evidence = NavGroups.All.First(g => g.Key == "evidence");
+        var media = NavGroups.All.First(g => g.Key == "media");
 
-        var sections = NavGroups.SectionsFor(evidence, Ctx(OperatorRole.ReadOnly));
+        var sections = NavGroups.SectionsFor(media, Ctx(OperatorRole.ReadOnly));
 
         Assert.Single(sections);
         Assert.Null(sections[0].Title);
     }
 
     [Fact]
-    public void Evidence_GroupHasNoHiddenDatesFilterPlaceholder()
+    public void Media_GroupHasNoHiddenDatesFilterPlaceholder()
     {
-        var evidence = NavGroups.All.First(g => g.Key == "evidence");
+        var media = NavGroups.All.First(g => g.Key == "media");
 
-        Assert.DoesNotContain(evidence.Items, i => i.Path == "/evidence/dates-filter");
+        Assert.DoesNotContain(media.Items, i => i.Path == "/media/dates-filter");
     }
 }
