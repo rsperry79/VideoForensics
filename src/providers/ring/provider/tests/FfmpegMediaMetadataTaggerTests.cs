@@ -5,6 +5,7 @@ using Moq;
 using System.Diagnostics;
 using System.Reflection;
 
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -147,16 +148,20 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task TagEventIdAsync_Mp4_RoundTripsWithRealFfmpegAndFfprobe()
         {
-            if (!ToolAvailable("ffmpeg") || !ToolAvailable("ffprobe"))
+            // Same lookup the app uses (configured bin dir, bundled binary, registry PATH), so the test finds the
+            // binaries wherever the app would, not only where the bare name happens to resolve.
+            string ffmpeg = FfmpegPathResolver.Resolve(null, "ffmpeg");
+            string ffprobe = FfmpegPathResolver.Resolve(null, "ffprobe");
+            if (!ToolAvailable(ffmpeg) || !ToolAvailable(ffprobe))
             {
-                Assert.Skip("ffmpeg and ffprobe must be on PATH for this round trip.");
+                Assert.Skip("ffmpeg and ffprobe were not found by FfmpegPathResolver for this round trip.");
             }
 
             string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".mp4");
             Guid eventId = Guid.NewGuid();
             try
             {
-                using (Process generate = Process.Start(new ProcessStartInfo("ffmpeg")
+                using (Process generate = Process.Start(new ProcessStartInfo(ffmpeg)
                 {
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -168,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     Assert.Equal(0, generate.ExitCode);
                 }
 
-                var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg", ffprobePath: "ffprobe");
+                var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: ffmpeg, ffprobePath: ffprobe);
 
                 bool tagged = await tagger.TagEventIdAsync(tempFile, eventId, CancellationToken.None);
                 Guid? read = await tagger.ReadEventIdAsync(tempFile, CancellationToken.None);
