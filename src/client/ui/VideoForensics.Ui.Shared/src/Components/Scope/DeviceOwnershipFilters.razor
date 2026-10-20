@@ -60,13 +60,10 @@
     private async Task OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
-        _providerFilter = string.IsNullOrWhiteSpace(value) ? null : value;
 
-        // An account outside the newly picked provider can no longer be selected.
-        if (_accountFilter is not null && !AccountOptions.Any(a => a.Id == _accountFilter))
-        {
-            _accountFilter = null;
-        }
+        // ScopeRailRules clears an account that the newly picked provider does not offer.
+        (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(
+            _snapshot?.Accounts ?? Array.Empty<ProviderAccount>(), _accountFilter, value);
 
         await PublishAsync();
     }
@@ -74,14 +71,14 @@
     private async Task OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
-        _accountFilter = Guid.TryParse(value, out var parsed) ? parsed : null;
+        _accountFilter = ScopeRailRules.ParseAccountPick(value);
         await PublishAsync();
     }
 
     private async Task PublishAsync()
     {
         var isFiltered = _providerFilter is not null || _accountFilter is not null;
-        var visible = ScopeDeviceFilter.Filter(Devices, _snapshot?.Ownership ?? Array.Empty<DeviceOwnership>(), _providerFilter, _accountFilter);
+        var visible = ScopeRailRules.VisibleDevices(Devices, _snapshot?.Ownership ?? Array.Empty<DeviceOwnership>(), _providerFilter, _accountFilter);
         await VisibleDevicesChanged.InvokeAsync(new DeviceFilterResult(visible, isFiltered));
     }
 }
