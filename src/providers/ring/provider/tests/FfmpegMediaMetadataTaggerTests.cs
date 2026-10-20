@@ -85,6 +85,62 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
+        /// <summary>
+        /// ffmpeg picks the output muxer from the file extension, so the temp file must keep the media's
+        /// real extension; "clip.mp4.tmp" fails with "Unable to choose an output format" (exit -22).
+        /// </summary>
+        [Fact]
+        public void BuildTempPath_KeepsMediaExtension_ForFormatInference()
+        {
+            var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg");
+
+            var method = typeof(FfmpegMediaMetadataTagger).GetMethod(
+                "BuildTempPath",
+                BindingFlags.NonPublic | BindingFlags.Static,
+                null,
+                new[] { typeof(string) },
+                null);
+
+            Assert.NotNull(method);
+
+            string tmp = (string)method.Invoke(null, new object[] { Path.Combine("dir", "clip.mp4") })!;
+
+            Assert.Equal(Path.Combine("dir", "clip.tmp.mp4"), tmp);
+        }
+
+        /// <summary>
+        /// ffmpeg exits 0 for JPEG input but writes no comment bytes, so tagging must report failure
+        /// (and not start ffmpeg) rather than claim the snapshot was tagged.
+        /// </summary>
+        [Fact]
+        public async Task TagEventIdAsync_JpegMedia_ReturnsFalseAndLeavesFileUntouched()
+        {
+            string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
+            byte[] original = new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 };
+            File.WriteAllBytes(tempFile, original);
+            var logger = new Mock<ILogger>();
+            try
+            {
+                // Missing binary on purpose: if the JPEG check ran ffmpeg, the failure would show up as an error, not the warning.
+                var tagger = new FfmpegMediaMetadataTagger(logger.Object, ffmpegPath: "nonexistent-ffmpeg-binary-xyz");
+                bool result = await tagger.TagEventIdAsync(tempFile, Guid.NewGuid(), CancellationToken.None);
+
+                Assert.False(result);
+                Assert.Equal(original, File.ReadAllBytes(tempFile));
+                Assert.False(File.Exists(tempFile + ".tmp"));
+                logger.Verify(
+                    l => l.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
+        }
+
         [Fact]
         public void BuildTaggingProcessInfo_UsesArgumentList_NotArgumentsString()
         {

@@ -29,7 +29,15 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
         {
-            string tmpPath = mediaFilePath + ".tmp";
+            // Why: ffmpeg exits 0 on JPEG input but writes no comment marker, so a "success" here would be false.
+            // Report not-tagged instead and leave the snapshot untouched.
+            if (IsJpeg(mediaFilePath))
+            {
+                _logger.LogWarning("Skipping metadata tag for {Path}: ffmpeg cannot write JPEG comments", mediaFilePath);
+                return false;
+            }
+
+            string tmpPath = BuildTempPath(mediaFilePath);
             try
             {
                 var psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
@@ -70,6 +78,22 @@ namespace VideoForensics.Providers.Ring.Services
 
                 return false;
             }
+        }
+
+        private static bool IsJpeg(string mediaFilePath)
+        {
+            string ext = Path.GetExtension(mediaFilePath);
+            return ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Temp file next to the original that keeps its extension ("clip.mp4" -> "clip.tmp.mp4").
+        /// Why: ffmpeg infers the output muxer from the extension, and "clip.mp4.tmp" is rejected with exit -22.
+        /// </summary>
+        private static string BuildTempPath(string mediaFilePath)
+        {
+            string ext = Path.GetExtension(mediaFilePath);
+            return mediaFilePath[..^ext.Length] + ".tmp" + ext;
         }
 
         private ProcessStartInfo BuildTaggingProcessInfo(string mediaFilePath, Guid eventId, string tmpPath)
