@@ -1059,6 +1059,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DeviceDetectionTypes");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatureDefinition", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("DeviceFeatureDefinitions");
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceFeatures", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1264,6 +1278,47 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasIndex("DeviceId");
 
                     b.ToTable("DeviceLiveViewPresets");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceModel", b =>
+                {
+                    b.Property<string>("Kind")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Family")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Generation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Kind");
+
+                    b.HasIndex("Provider");
+
+                    b.ToTable("DeviceModels");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceModelFeature", b =>
+                {
+                    b.Property<string>("DeviceModelKind")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FeatureCode")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("DeviceModelKind", "FeatureCode");
+
+                    b.HasIndex("FeatureCode");
+
+                    b.ToTable("DeviceModelFeatures");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceMotionSnoozePreset", b =>
@@ -3215,6 +3270,22 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("PushSubscriptions");
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.ReferenceDataVersion", b =>
+                {
+                    b.Property<string>("SourceName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AppliedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("SourceName");
+
+                    b.ToTable("ReferenceDataVersions");
                 });
 
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.RingAccount", b =>
@@ -5410,6 +5481,21 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.HasOne("VideoForensics.Data.Common.Entities.DeviceHealth", null)
                         .WithMany("SupportedRpcCommands")
                         .HasForeignKey("DeviceHealthId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DeviceModelFeature", b =>
+                {
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceModel", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceModelKind")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VideoForensics.Data.Common.Entities.DeviceFeatureDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("FeatureCode")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
