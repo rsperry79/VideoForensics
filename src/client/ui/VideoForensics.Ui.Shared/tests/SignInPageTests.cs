@@ -238,7 +238,8 @@ public class SignInPageTests : BunitContext
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
 
-        // Act - submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
+        // Act - reveal the credential fields, then submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.Find("input[type='text']").Change(Username);
         component.Find("input[type='password']").Change(Password);
         await ClickButtonAsync(component, localizer["SignInButton"]);
@@ -422,9 +423,62 @@ public class SignInPageTests : BunitContext
 
         // Act & Assert
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.WaitForAssertion(() => Assert.NotNull(FindButton(component, localizer["SignInButton"])));
         Assert.DoesNotContain("Remember", component.Markup);
         Assert.DoesNotContain("Forgot", component.Markup);
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_CredentialFieldsHiddenUntilToggled()
+    {
+        // Arrange - with passkey sign-in available, username and password stay hidden behind a button
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert - hidden by default
+        Assert.Empty(component.FindAll("input[type='text']"));
+        Assert.Empty(component.FindAll("input[type='password']"));
+        Assert.NotNull(FindButton(component, localizer["UseUserNameAndPasswordButton"]));
+
+        // Act
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
+
+        // Assert - fields appear and the toggle goes away
+        component.WaitForAssertion(() =>
+        {
+            Assert.NotEmpty(component.FindAll("input[type='text']"));
+            Assert.NotEmpty(component.FindAll("input[type='password']"));
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain(localizer["UseUserNameAndPasswordButton"], labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_NormalState_ShowsRestrictedAccessNotice()
+    {
+        // Arrange
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert
+        var notice = component.Find("[data-testid='restricted-access-notice']");
+        Assert.Equal(localizer["RestrictedAccessNotice"], notice.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyUnavailable_CredentialFieldsShownWithoutToggle()
+    {
+        // Arrange - with no passkey option there is nothing to switch from, so the fields show straight away
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert
+        Assert.NotEmpty(component.FindAll("input[type='text']"));
+        Assert.NotEmpty(component.FindAll("input[type='password']"));
+        var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+        Assert.DoesNotContain(localizer["UseUserNameAndPasswordButton"], labels);
     }
 
     private static IElement FindButton(IRenderedComponent<SignIn> component, string label) =>
@@ -446,7 +500,8 @@ public class SignInPageTests : BunitContext
     {
         var component = Render<SignIn>();
         // SignIn shows a progress bar until its first-render OnAfterRenderAsync completes, then the form.
-        await component.WaitForStateAsync(() => component.FindAll("input").Count >= 2);
+        // Either the credential fields or the "Use User Name and Password" toggle is the first sign of the form.
+        await component.WaitForStateAsync(() => component.FindAll("button").Count > 0);
         return component;
     }
 
