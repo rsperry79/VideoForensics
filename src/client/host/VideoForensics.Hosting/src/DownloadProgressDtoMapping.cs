@@ -11,16 +11,17 @@ namespace VideoForensics.Hosting
         /// Note: drains the activity log, so each call consumes the lines it returns. Only the
         /// broadcast sampler should call this; it is the single consumer whose lines fan out to all clients.
         /// </summary>
-        public static DownloadProgressDto ToDownloadProgressDto(this IVideoDownloadService service)
+        public static DownloadProgressDto ToDownloadProgressDto(this IVideoDownloadService service, ISyncActivityLog? syncActivity = null)
         {
             (int index, int total, string? name) = service.GetCurrentDevice();
 
+            // Sync lines follow the download lines, so one console shows both kinds in the order they were written.
             return new DownloadProgressDto(
                 service.GetProgress().ToDto(),
                 index,
                 total,
                 name,
-                service.DrainActivityLog(),
+                service.DrainActivityLog().Concat(syncActivity?.Drain() ?? []).ToArray(),
                 service.GetPreScanCounts(),
                 service.GetLastError(),
                 service.GetRemainingReason());

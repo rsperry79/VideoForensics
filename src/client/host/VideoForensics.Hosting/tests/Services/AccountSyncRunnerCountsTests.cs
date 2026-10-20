@@ -39,7 +39,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
             new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
 
-        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
         [Fact]
         public async Task RunAsync_PullReportsCounts_RecordsCountsOnRun()
@@ -252,7 +252,7 @@ namespace VideoForensics.Hosting.Tests.Services
             services.AddKeyedScoped("Ring", (_, _) => ringPull.Object);
             services.AddScoped(_ => ringAuth.Object);
             services.AddScoped(_ => ringPull.Object);
-            var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+            var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
             await sut.RunAsync(_id, CancellationToken.None);
 

@@ -40,7 +40,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
             new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
 
-        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
         [Fact]
         public async Task RunAsync_EventsWithFromDate_PullsFromThatDate()
