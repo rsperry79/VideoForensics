@@ -47,6 +47,20 @@ public class InitialSyncCoordinatorTests
     }
 
     [Fact]
+    public async Task RunInitialSyncAsync_DispatchedFromScheduler_RunsTheSameFirstSync()
+    {
+        _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            .ReturnsAsync(new List<MediaVerificationResult>());
+        _validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+
+        await CreateSut().RunInitialSyncAsync(_accountId, CancellationToken.None);
+
+        _runner.Verify(r => r.RunInitialAsync(_accountId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.True(_account.InitialSyncCompleted);
+    }
+
+    [Fact]
     public async Task RunAsync_RunnerRecordsError_LeavesFlagFalseAndSkipsValidation()
     {
         _account.LastErrorMessage = "Saved credentials could not be restored.";

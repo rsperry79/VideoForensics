@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -190,6 +191,29 @@ namespace VideoForensics.Hosting.BackgroundServices
             if (!await budgetGuard.TryConsumeAsync(providerName, ct))
             {
                 _logger.LogDebug("Scheduled sync deferred for {ProviderName} account: provider API budget exceeded for this window", providerName);
+                return;
+            }
+
+            // First sync not finished: run it in place of the incremental pull, so its media validation step still happens.
+            // Failures stay on the account and the schedule still advances, so a broken first sync retries once per interval.
+            IInitialSyncDispatcher? initialSync = sp.GetService<IInitialSyncDispatcher>();
+            if (!account.InitialSyncCompleted && initialSync is not null)
+            {
+                try
+                {
+                    await initialSync.RunInitialSyncAsync(accountId, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Scheduled first sync failed for {ProviderName} account", providerName);
+                }
+
+                DateTime attemptedUtc = _time.GetUtcNow().UtcDateTime;
+                await scheduleRepository.RecordEventRunAsync(accountId, attemptedUtc, ScheduleCalculator.NextEventRunUtc(schedule, attemptedUtc), ct);
                 return;
             }
 

@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
 
 namespace VideoForensics.WebApp.Services
@@ -16,7 +17,7 @@ namespace VideoForensics.WebApp.Services
     /// pass over the account's devices as the media step. An account stays flagged incomplete until all three succeed, so
     /// an interrupted or partly failed first sync is picked up again by <see cref="InitialSyncResumer"/>.
     /// </summary>
-    public class InitialSyncCoordinator : IInitialSyncCoordinator
+    public class InitialSyncCoordinator : IInitialSyncCoordinator, IInitialSyncDispatcher
     {
         private readonly IAccountSyncRunner _runner;
         private readonly IProviderAccountRepository _accounts;
@@ -38,6 +39,9 @@ namespace VideoForensics.WebApp.Services
             _validation = validation;
             _logger = logger;
         }
+
+        /// <inheritdoc />
+        public Task RunInitialSyncAsync(Guid accountId, CancellationToken ct) => RunAsync(accountId, ct);
 
         /// <inheritdoc />
         public async Task RunAsync(Guid accountId, CancellationToken ct)
