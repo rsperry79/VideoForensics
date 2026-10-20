@@ -28,6 +28,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ExternalConnection">True if externally connected (wired). Null if unknown.</param>
     /// <param name="Owned">True if the device is owned by the account. Null if unknown.</param>
     /// <param name="Stolen">True if the device is flagged as stolen. Null if unknown.</param>
+    /// <param name="ProviderName">Name of the provider the device belongs to. Null if unknown.</param>
+    /// <param name="SettingsMetadataJson">Raw settings metadata JSON. Null if unknown.</param>
     public record DeviceDto(
         Guid Id,
         Guid LocationId,
