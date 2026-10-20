@@ -188,6 +188,8 @@ public abstract class EvidencePageTestBase : BunitContext
                 ReportFromUtc = FixedNowUtc.AddDays(-7),
                 ReportToUtc = FixedNowUtc,
                 MediaItems = new List<MediaItem> { ImageMedia },
+                // The page joins media to events by ProviderEventId, so the image must be linked to the event's id.
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(ImageMediaId, EventEntity.ProviderEventId) },
                 IntegrityRecords = new List<IntegrityRecord>()
             });
 
@@ -545,19 +547,15 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
     [Fact]
     public void OutOfOrderTicketCompletion_StaleFirstItemResponseDoesNotClobberSecondItem()
     {
-        // The initial page load's thumbnail fetch and the later "open the image item" fetch
-        // request the exact same single-element id set ([ImageMediaId]), so a plain argument
-        // matcher can't tell them apart - SetupSequence lets the first (thumbnail) call resolve
-        // immediately while the second (opening the item) call is held open on a TCS.
+        // The page loads thumbnails in one batched call, so the only single-id fetch for the image is the viewer's
+        // ticket request when the image is opened. Hold that fetch open on a TCS.
         var tcsImage = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
         var tcsVideo = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
 
         MediaUrlProviderMock
-            .SetupSequence(m => m.GetContentUrlsAsync(
+            .Setup(m => m.GetContentUrlsAsync(
                 It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(ImageMediaId)),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string> { [ImageMediaId] = TicketedUrl(ImageMediaId) }))
             .Returns(tcsImage.Task);
 
         MediaUrlProviderMock
