@@ -10,6 +10,41 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
     {
         private readonly StorageLocationProvider _provider = new();
 
+        #region GetDataRoot Tests
+
+        [Fact]
+        public void GetDataRoot_OnWindows_IsVideoForensicsUnderCommonApplicationData()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            string expected = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics");
+            Assert.Equal(expected, _provider.GetDataRoot());
+        }
+
+        [Fact]
+        public void GetDataRoot_OnLinux_IsVarLibVideoForensics()
+        {
+            if (!OperatingSystem.IsLinux())
+            {
+                return;
+            }
+
+            Assert.Equal("/var/lib/videoforensics", _provider.GetDataRoot());
+        }
+
+        [Fact]
+        public void GetDataRoot_IsAbsolutePath()
+        {
+            Assert.True(System.IO.Path.IsPathRooted(_provider.GetDataRoot()));
+        }
+
+        #endregion
+
         #region GetDefaultRoot Tests
 
         [Fact]

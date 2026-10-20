@@ -18,6 +18,7 @@ using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.MauiApp
 {
@@ -55,7 +56,7 @@ namespace VideoForensics.MauiApp
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
             // lands under %ProgramData%/VideoForensics/logs, matching the console app's pattern
             // (src/client/VideoForensics/Program.cs).
-            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+            string configDir = new StorageLocationProvider().GetDataRoot();
             Directory.CreateDirectory(configDir);
             string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);

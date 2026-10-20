@@ -12,6 +12,7 @@ using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 using Session = VideoForensics.Providers.Ring.Session;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Utils.SelfTest
 {
@@ -75,8 +76,7 @@ namespace VideoForensics.Utils.SelfTest
 
             // Same fixed key-ring location and DAPI protection as VideoForensics.WebApp/MauiApp -
             // must match exactly, or a refresh token saved by one host can't be decrypted by another.
-            string dataProtectionKeyPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "keys");
+            string dataProtectionKeyPath = new StorageLocationProvider().GetDefaultRoot(StorageCategory.Keys);
             _ = Directory.CreateDirectory(dataProtectionKeyPath);
             IDataProtectionBuilder dataProtectionBuilder = services.AddDataProtection()
                 .SetApplicationName("VideoForensics")
@@ -222,8 +222,7 @@ namespace VideoForensics.Utils.SelfTest
 
             // Pick output directory under ProgramData, matching LocalRingSelfTestService's pattern; must not default into the source tree
             string outputDir = options.OutputDir ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics",
+                new StorageLocationProvider().GetDataRoot(),
                 "SelfTesterResults",
                 DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'"));
             _ = Directory.CreateDirectory(outputDir);

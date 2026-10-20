@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
 using VideoForensics.Client.Core.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.Core.Licensing
 {
@@ -90,7 +91,7 @@ namespace VideoForensics.Client.Core.Licensing
         /// </summary>
         private static string? ReadSyncfusionLicenseKeyFile()
         {
-            string syncfusionLicenseKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "syncfusion-license.key");
+            string syncfusionLicenseKeyPath = Path.Combine(new StorageLocationProvider().GetDataRoot(), "syncfusion-license.key");
             return File.Exists(syncfusionLicenseKeyPath) ? NormalizeLicenseKey(File.ReadAllText(syncfusionLicenseKeyPath)) : null;
         }
 
