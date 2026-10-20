@@ -2,18 +2,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <!-- Windows-only: uses the registry. Pinned to net10.0-windows so Microsoft.Win32 APIs are not flagged as CA1416. -->
-        <TargetFramework>net10.0-windows</TargetFramework>
+        <!-- net10.0 (not net10.0-windows) so the server WebApp can reference it. Windows-only types carry
+             [SupportedOSPlatform("windows")] and are only constructed on Windows by their callers. -->
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <AssemblyName>VideoForensics.Client.Platform.Windows</AssemblyName>
         <RootNamespace>VideoForensics.Client.Platform.Windows</RootNamespace>
         <Authors>DV Victim Protection Team</Authors>
-        <Description>Windows-only client services (OneDrive and known-folder lookups) for the VideoForensics desktop client</Description>
+        <Description>Windows-only client services (OneDrive lookups, Windows Firewall rules) for the VideoForensics desktop client and server</Description>
         <Copyright>2026</Copyright>
         <PackageLicenseExpression>EPL-2.0</PackageLicenseExpression>
     </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CliWrap" Version="3.10.5" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+    </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="VideoForensics.Client.Platform.Windows.Tests" />

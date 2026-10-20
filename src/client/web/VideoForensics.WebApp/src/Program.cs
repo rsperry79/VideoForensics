@@ -372,7 +372,7 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // tier later still leaves the socket listening but firewalled (the exact bug being fixed).
 builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
     OperatingSystem.IsWindows()
-        ? new WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<WindowsFirewallRuleManager>>())
+        ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
         : new NullFirewallRuleManager());
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
