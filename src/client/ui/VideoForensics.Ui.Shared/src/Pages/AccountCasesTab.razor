@@ -1,0 +1,111 @@
+@page "/accounts/{Id:guid}/cases"
+@inherits AccountTabPageBase
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+@if (IsLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p>@StatusMessage</p>
+    }
+
+    @if (Account == null)
+    {
+        <p>@L["AccountNotFound"]</p>
+    }
+    else
+    {
+        <AccountTabs AccountId="@Id" />
+
+        <div id="attached-cases" class="mb-4">
+            <h5>@L["AttachedCasesTitle"]</h5>
+            @if (_casesError)
+            {
+                <p class="text-danger">@L["LoadListError"]</p>
+            }
+            else if (_cases is not null && _cases.Count == 0)
+            {
+                <p>@L["CasesNone"]</p>
+            }
+            else if (_cases is not null)
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@L["ColCaseType"]</th>
+                            <th>@L["ColEventDate"]</th>
+                            <th>@L["ColCreatedDate"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var caseRow in _cases)
+                        {
+                            <tr class="case-row">
+                                <td>@CaseTypeLabel(caseRow.CaseType)</td>
+                                <td data-col="event-date">@(caseRow.ScopeFromUtc?.ToLocalTime().ToString("d"))</td>
+                                <td>@caseRow.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenCase(caseRow.Id)">@L["OpenCase"]</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private List<VideoForensics.Core.Api.Contracts.AccountCaseDto>? _cases;
+    private bool _casesError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountAsync();
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["TabCases"], null) };
+        // Render the account header first; the list loads after it and doesn't hold it up.
+        StateHasChanged();
+        if (Account is not null)
+        {
+            await LoadCasesAsync();
+        }
+    }
+
+    private async Task LoadCasesAsync()
+    {
+        try
+        {
+            _cases = await GetApiAsync<List<VideoForensics.Core.Api.Contracts.AccountCaseDto>>(
+                $"api/v1/accounts/provider-accounts/{Id}/cases") ?? new();
+            _casesError = false;
+        }
+        catch
+        {
+            _cases = null;
+            _casesError = true;
+        }
+        StateHasChanged();
+    }
+
+    private void OpenCase(Guid caseId)
+    {
+        NavigationManager.NavigateTo($"/cases/{caseId}");
+    }
+
+    /// <summary>Maps the API's CaseType value to its localized label; unknown values show as Other.</summary>
+    private string CaseTypeLabel(string caseType) => caseType switch
+    {
+        "Detected" => L["CaseTypeDetected"],
+        "Suspected" => L["CaseTypeSuspected"],
+        "Manual" => L["CaseTypeManual"],
+        _ => L["CaseTypeOther"],
+    };
+}
