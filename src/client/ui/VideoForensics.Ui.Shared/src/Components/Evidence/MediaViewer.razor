@@ -25,9 +25,9 @@
             @if (MediaFormatHelper.IsImage(Item.Media?.MediaFormat))
             {
                 <!-- Image toolbar -->
-                <button class="btn btn-sm btn-outline-light" data-testid="zoom-in" @onclick="ZoomIn">+</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="zoom-out" @onclick="ZoomOut">-</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="zoom-fit" @onclick="ZoomFit">@L["ZoomFit"]</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="zoom-in" @onclick="ZoomIn">+</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="zoom-out" @onclick="ZoomOut">-</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="zoom-fit" @onclick="ZoomFit">@L["ZoomFit"]</button>
             }
             else if (MediaFormatHelper.IsVideo(Item.Media?.MediaFormat))
             {
@@ -39,12 +39,12 @@
                     <option value="1.5">1.5x</option>
                     <option value="2">2x</option>
                 </select>
-                <button class="btn btn-sm btn-outline-light" data-testid="frame-back" @onclick="FrameBack">@L["FrameBackLabel"]</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="frame-forward" @onclick="FrameForward">@L["FrameForwardLabel"]</button>
-                <button class="btn btn-sm btn-outline-light" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="frame-back" @onclick="FrameBack">@L["FrameBackLabel"]</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="frame-forward" @onclick="FrameForward">@L["FrameForwardLabel"]</button>
+                <button class="btn btn-sm btn-outline-secondary" data-testid="play-toggle" @onclick="PlayToggle">▶</button>
                 @if (CanGrabStill)
                 {
-                    <button class="btn btn-sm btn-outline-light" data-testid="grab-still" title="@L["GrabStillTitle"]" @onclick="GrabStillAsync" disabled="@(StillCaptureStatus?.InProgress == true)">@L["GrabStillLabel"]</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-testid="grab-still" title="@L["GrabStillTitle"]" @onclick="GrabStillAsync" disabled="@(StillCaptureStatus?.InProgress == true)">@L["GrabStillLabel"]</button>
                 }
             }
         </div>
@@ -101,9 +101,9 @@
 
     <!-- Footer -->
     <div class="viewer-footer">
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-prev" disabled="@(!HasPrevious)" @onclick="OnPrevious">@L["ViewerPrev"]</button>
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-next" disabled="@(!HasNext)" @onclick="OnNext">@L["ViewerNext"]</button>
-        <button class="btn btn-sm btn-outline-light" data-testid="viewer-close" @onclick="OnClose">@L["ViewerClose"]</button>
+        <button class="btn btn-sm btn-outline-secondary" data-testid="viewer-prev" disabled="@(!HasPrevious)" @onclick="OnPrevious">@L["ViewerPrev"]</button>
+        <button class="btn btn-sm btn-outline-secondary" data-testid="viewer-next" disabled="@(!HasNext)" @onclick="OnNext">@L["ViewerNext"]</button>
+        <button class="btn btn-sm btn-outline-secondary" data-testid="viewer-close" @onclick="OnClose">@L["ViewerClose"]</button>
     </div>
 </div>
 
