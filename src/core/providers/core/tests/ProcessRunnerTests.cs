@@ -21,6 +21,23 @@ namespace VideoForensics.Core.Providers.Core.Tests
             Assert.True(started.Elapsed < TimeSpan.FromSeconds(20));
         }
 
+        /// <summary>
+        /// Callers such as FfprobeMediaBitrateAnalyzer only redirect stdout. RunAsync reads both streams,
+        /// so it must enable the stderr redirect itself or Process.StandardError throws before the run starts.
+        /// </summary>
+        [Fact]
+        public async Task RunAsync_StartInfoRedirectsOnlyStdout_StillRunsAndReturnsOutput()
+        {
+            var psi = new ProcessStartInfo { FileName = "cmd", RedirectStandardOutput = true, UseShellExecute = false };
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add("echo hello");
+
+            ProcessResult result = await ProcessRunner.RunAsync(psi, TimeSpan.FromSeconds(30), CancellationToken.None);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("hello", result.StandardOutput);
+        }
+
         [Fact]
         public async Task RunAsync_ShortProcess_ReturnsExitCodeAndOutput()
         {
