@@ -1,4 +1,3 @@
-@using System.Globalization
 @using Microsoft.AspNetCore.Components.Routing
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -36,7 +35,7 @@
             </select>
 
             @* A no-match filter is not a device list, so it can't be saved to a case as one. *@
-            @if (CaseState.ActiveCase is not null && CaseState.ScopeDiffersFromCase && _role.HasValue && _role >= OperatorRole.Review && !ScopeState.Current.MatchesNoDevices)
+            @if (ScopeRailRules.ShowSaveScopeToCase(CaseState.ActiveCase is not null, CaseState.ScopeDiffersFromCase, _role, ScopeState.Current.MatchesNoDevices))
             {
                 <button type="button" class="scope-quick-range-btn" data-testid="save-scope-to-case" @onclick="OnSaveScopeToCaseClicked">@L["ScopeSaveToCase"]</button>
             }
@@ -145,8 +144,6 @@
     private const int QuickRange7DaysDaysBack = 7;
     private const int QuickRange30DaysDaysBack = 30;
 
-    private const string DateInputFormat = "yyyy-MM-dd";
-
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
     private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
     private List<ProviderAccount> _accounts = new();
@@ -166,10 +163,9 @@
 
     private DateTime TodayUtc => TimeProvider.GetUtcNow().UtcDateTime.Date;
 
-    private string FromDateValue => ScopeState.Current.FromUtc.Date.ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    private string FromDateValue => ScopeRailRules.FormatFromDate(ScopeState.Current.FromUtc);
 
-    // ToUtc is an exclusive upper bound; the picker shows the inclusive last day, so subtract one.
-    private string ToDateValue => ScopeState.Current.ToUtc.Date.AddDays(-1).ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    private string ToDateValue => ScopeRailRules.FormatToDate(ScopeState.Current.ToUtc);
 
     protected override async Task OnInitializedAsync()
     {
@@ -238,9 +234,10 @@
         // A no-match flag restored from the URL is only meaningful while a Provider/Account filter is shown.
         // This rail does not restore its filter controls from the URL, so an orphaned flag is dropped rather than
         // left blocking every page with a notice the operator cannot act on.
-        if (ScopeState.Current.MatchesNoDevices && _providerFilter is null && _accountFilter is null)
+        var scope = ScopeRailRules.ClearOrphanedNoMatch(ScopeState.Current, _providerFilter, _accountFilter);
+        if (scope != ScopeState.Current)
         {
-            ScopeState.Set(ScopeState.Current with { MatchesNoDevices = false });
+            ScopeState.Set(scope);
         }
     }
 
@@ -302,27 +299,19 @@
 
     private void RecomputeVisibleDevices()
     {
-        _visibleDevices = ScopeDeviceFilter.Filter(_devices, _ownership, _providerFilter, _accountFilter).ToList();
+        _visibleDevices = ScopeRailRules.VisibleDevices(_devices, _ownership, _providerFilter, _accountFilter).ToList();
     }
 
     private void OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        var value = e.Value?.ToString();
-        _providerFilter = string.IsNullOrWhiteSpace(value) ? null : value;
-
-        // An account outside the newly picked provider can no longer be selected.
-        if (_accountFilter is not null && !AccountOptions.Any(a => a.Id == _accountFilter))
-        {
-            _accountFilter = null;
-        }
-
+        // An account outside the newly picked provider is cleared by the rule.
+        (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(_accounts, _accountFilter, e.Value?.ToString());
         ApplyFilters();
     }
 
     private void OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        var value = e.Value?.ToString();
-        _accountFilter = Guid.TryParse(value, out var parsed) ? parsed : null;
+        _accountFilter = ScopeRailRules.ParseAccountPick(e.Value?.ToString());
         ApplyFilters();
     }
 
@@ -334,16 +323,8 @@
     {
         RecomputeVisibleDevices();
 
-        if (_providerFilter is not null || _accountFilter is not null)
-        {
-            // A filter that matches no device is recorded explicitly: an empty DeviceIds alone would mean "all devices".
-            var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
-            ScopeState.Set(ScopeState.Current with { DeviceIds = visibleIds, MatchesNoDevices = visibleIds.Count == 0 });
-        }
-        else
-        {
-            ScopeState.Set(ScopeState.Current with { MatchesNoDevices = false });
-        }
+        var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
+        ScopeState.Set(ScopeRailRules.ApplyFilters(ScopeState.Current, visibleIds, _providerFilter, _accountFilter));
     }
 
     private bool IsDeviceSelected(Guid deviceId) => ScopeState.Current.DeviceIds.Contains(deviceId);
@@ -351,46 +332,23 @@
     private void OnDeviceToggled(Guid deviceId, Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         var isChecked = e.Value is bool value && value;
-        var current = ScopeState.Current.DeviceIds;
-
-        var updated = isChecked
-            ? (current.Contains(deviceId) ? current.ToList() : current.Append(deviceId).ToList())
-            : current.Where(id => id != deviceId).ToList();
-
-        // Unchecking the last visible device under an active filter means "no device", not "all devices".
-        var filtered = _providerFilter is not null || _accountFilter is not null;
-        ScopeState.Set(ScopeState.Current with { DeviceIds = updated, MatchesNoDevices = filtered && updated.Count == 0 });
+        ScopeState.Set(ScopeRailRules.ToggleDevice(ScopeState.Current, deviceId, isChecked, _providerFilter, _accountFilter));
     }
 
     private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        if (TryParseDateInput(e.Value, out var date))
+        if (ScopeRailRules.TryParseDateInput(e.Value?.ToString(), out var date))
         {
-            ScopeState.Set(ScopeState.Current with { FromUtc = date });
+            ScopeState.Set(ScopeRailRules.SetFromDate(ScopeState.Current, date));
         }
     }
 
     private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        if (TryParseDateInput(e.Value, out var date))
+        if (ScopeRailRules.TryParseDateInput(e.Value?.ToString(), out var date))
         {
-            // The picker shows the inclusive last day; ToUtc is stored as an exclusive upper bound.
-            ScopeState.Set(ScopeState.Current with { ToUtc = date.AddDays(1) });
+            ScopeState.Set(ScopeRailRules.SetToDate(ScopeState.Current, date));
         }
-    }
-
-    private static bool TryParseDateInput(object? value, out DateTime date)
-    {
-        var text = value?.ToString();
-        if (!string.IsNullOrWhiteSpace(text) &&
-            DateTime.TryParseExact(text, DateInputFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-        {
-            date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
-            return true;
-        }
-
-        date = default;
-        return false;
     }
 
     private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -414,17 +372,16 @@
 
     private void ApplySearch()
     {
-        var normalized = string.IsNullOrWhiteSpace(_searchDraft) ? null : _searchDraft;
-        if (normalized != ScopeState.Current.Search)
+        var scope = ScopeRailRules.ApplySearch(ScopeState.Current, _searchDraft);
+        if (scope.Search != ScopeState.Current.Search)
         {
-            ScopeState.Set(ScopeState.Current with { Search = normalized });
+            ScopeState.Set(scope);
         }
     }
 
     private void OnQuickRangeClicked(int daysBack)
     {
-        var today = TodayUtc;
-        ScopeState.Set(ScopeState.Current with { FromUtc = today.AddDays(-daysBack), ToUtc = today.AddDays(1) });
+        ScopeState.Set(ScopeRailRules.ApplyQuickRange(ScopeState.Current, TodayUtc, daysBack));
     }
 
     private void OnResetClicked()
