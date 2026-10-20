@@ -99,7 +99,10 @@ namespace VideoForensics.Hosting.Tests.Services
             await CreateSut().RunAsync(_accountId, CancellationToken.None);
 
             _mockPull.Verify(p => p.PullAccountEventsAsync(_accountId, _lastAuth, It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
-            _mockAccounts.Verify(r => r.UpdateAsync(It.IsAny<ProviderAccountEntity>(), It.IsAny<CancellationToken>()), Times.Never);
+            // A clean sync writes only the display timestamp, never the legacy download watermark.
+            _mockAccounts.Verify(r => r.UpdateAsync(
+                It.Is<ProviderAccountEntity>(a => a.LastSyncCompletedUtc != null),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

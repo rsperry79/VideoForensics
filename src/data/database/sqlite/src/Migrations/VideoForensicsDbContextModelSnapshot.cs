@@ -3037,6 +3037,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<DateTime?>("LastSuccessfulAuthUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("LastSyncCompletedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("LinkedUtc")
                         .HasColumnType("TEXT");
 
