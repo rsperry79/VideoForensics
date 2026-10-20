@@ -542,8 +542,8 @@ namespace VideoForensics.WebApp.Api
         try
         {
             using IServiceScope scope = scopeFactory.CreateScope();
-            IAccountSyncRunner runner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
-            await runner.RunInitialAsync(accountId, CancellationToken.None);
+            VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
+            await coordinator.RunAsync(accountId, CancellationToken.None);
         }
         catch
         {
