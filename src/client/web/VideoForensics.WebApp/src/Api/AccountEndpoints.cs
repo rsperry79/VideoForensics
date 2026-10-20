@@ -5,6 +5,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
 using VideoForensics.WebApp.Auth;
 
@@ -390,6 +391,16 @@ namespace VideoForensics.WebApp.Api
                     try
                     {
                         using IServiceScope scope = scopeFactory.CreateScope();
+
+                        // An account whose first sync never finished gets that sync instead of an incremental pull.
+                        var accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+                        ProviderAccount? current = await accountRepository.GetAsync(id, CancellationToken.None);
+                        IInitialSyncDispatcher? initialSync = scope.ServiceProvider.GetService<IInitialSyncDispatcher>();
+                        if (current is { InitialSyncCompleted: false } && initialSync is not null)
+                        {
+                            await initialSync.RunInitialSyncAsync(id, CancellationToken.None);
+                            return;
+                        }
 
                         IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
                         if (request == null)

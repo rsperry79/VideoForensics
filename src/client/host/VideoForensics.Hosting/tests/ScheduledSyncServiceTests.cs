@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
 using VideoForensics.Hosting.Tests.Services;
@@ -74,6 +75,7 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IDeviceConfigRepository> DeviceConfigs { get; } = new();
             public Mock<ILocationRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
+            public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
@@ -103,14 +105,16 @@ namespace VideoForensics.Hosting.Tests
                 DateTime? eventLast = null,
                 int intervalMinutes = 30,
                 bool registerKeyed = true,
-                bool authResult = true)
+                bool authResult = true,
+                bool initialSyncCompleted = true)
             {
                 var account = new ProviderAccount
                 {
                     Id = Guid.NewGuid(),
                     ProviderName = provider,
                     IsActive = active,
-                    LastSuccessfulAuthUtc = Now.AddDays(-1)
+                    LastSuccessfulAuthUtc = Now.AddDays(-1),
+                    InitialSyncCompleted = initialSyncCompleted
                 };
                 var schedule = new SyncSchedule
                 {
@@ -185,6 +189,7 @@ namespace VideoForensics.Hosting.Tests
                 _ = _services.AddSingleton(Locations.Object);
                 _ = _services.AddSingleton(Budget.Object);
                 _ = _services.AddSingleton(SyncRuns.Object);
+                _ = _services.AddSingleton(InitialSync.Object);
                 _ = _services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).AddProvider(Logs));
                 foreach ((string provider, Mock<IEventAndConfigService> events) in Events)
                 {
@@ -237,6 +242,20 @@ namespace VideoForensics.Hosting.Tests
             h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Once);
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
             h.Budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_InitialSyncIncomplete_RunsInitialSyncInsteadOfPull()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, initialSyncCompleted: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.InitialSync.Verify(d => d.RunInitialSyncAsync(account.Id, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Never);
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
