@@ -1,3 +1,4 @@
+@using VideoForensics.Ui.Shared.Services.Time
 @using VideoForensics.Ui.Shared.Services.Evidence
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Resources
@@ -11,7 +12,7 @@
                     <th class="device-time-grid-corner"></th>
                     @foreach (var bucketStart in Result.BucketStartsUtc)
                     {
-                        <th class="device-time-grid-col-header" title="@bucketStart.ToString("yyyy-MM-dd HH:mm 'UTC'")">@FormatBucketHeader(bucketStart)</th>
+                        <th class="device-time-grid-col-header" title="@Zone.Format(bucketStart, "yyyy-MM-dd HH:mm")">@FormatBucketHeader(bucketStart)</th>
                     }
                 </tr>
             </thead>
@@ -46,6 +47,11 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     /// <summary>The grid to render: shared column headers plus one row per device.</summary>
     [Parameter]
     public required DeviceTimeGridResult Result { get; set; }
@@ -63,8 +69,8 @@
     public EventCallback<Guid> OnDeviceSelected { get; set; }
 
     private string FormatBucketHeader(DateTime bucketStartUtc) => Result.BucketSize <= TimeSpan.FromHours(1)
-        ? bucketStartUtc.ToString("MM-dd HH:mm")
-        : $"{bucketStartUtc:MM-dd HH:mm} (+{Result.BucketSize.TotalHours:0}h)";
+        ? Zone.Format(bucketStartUtc, "MM-dd HH:mm")
+        : $"{Zone.ToLocal(bucketStartUtc):MM-dd HH:mm} (+{Result.BucketSize.TotalHours:0}h)";
 
     /// <summary>
     /// "active" (has events or media), "gap" (empty, but sandwiched between activity - the anomaly
@@ -84,7 +90,7 @@
 
     private string CellTitle(DeviceTimeBucket bucket)
     {
-        var summary = L["GridCellSummary", bucket.StartUtc.ToString("yyyy-MM-dd HH:mm"), bucket.EventCount, bucket.SnapshotCount].Value;
+        var summary = L["GridCellSummary", Zone.Format(bucket.StartUtc, "yyyy-MM-dd HH:mm"), bucket.EventCount, bucket.SnapshotCount].Value;
         return bucket.IsGap ? L["GridCellGap", summary].Value : summary;
     }
 }

@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="BlazorLocalTime" Version="2.1.0" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.13" />
@@ -35,6 +36,7 @@
         <PackageReference Include="Syncfusion.Blazor.QueryBuilder" Version="35.1.41" />
         <PackageReference Include="Syncfusion.Blazor.Layouts" Version="35.1.41" />
         <PackageReference Include="Syncfusion.Blazor.Themes" Version="35.1.41" />
+        <PackageReference Include="TimeZoneConverter" Version="8.0.0" />
     </ItemGroup>
 
     <ItemGroup>

@@ -31,17 +31,17 @@ else
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastSuccessfulAuthLabel"]</label>
-                    <p class="form-control-plaintext">@(Account.LastSuccessfulAuthUtc?.ToString() ?? L["Never"])</p>
+                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastSuccessfulAuthUtc" Fallback="@L["Never"]" /></p>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastDownloadLabel"]</label>
-                    <p class="form-control-plaintext">@(Account.LastDownloadTimeUtc?.ToString() ?? L["Never"])</p>
+                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastDownloadTimeUtc" Fallback="@L["Never"]" /></p>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastSyncCompletedLabel"]</label>
-                    <p class="form-control-plaintext">@(Account.LastSyncCompletedUtc?.ToString() ?? L["Never"])</p>
+                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastSyncCompletedUtc" Fallback="@L["Never"]" /></p>
                 </div>
             </div>
         </div>
@@ -101,7 +101,7 @@ else
             {
                 <p class="mb-1">
                     <strong>@L["LatestSyncRunLabel"]</strong>
-                    @latest.StartedUtc.ToLocalTime().ToString("g") - @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
+                    <LocalTimeText Value="@latest.StartedUtc" Format="g" /> - @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
                 </p>
             }
             <DownloadProgressPanel IsActive="@_isSyncing" CollectionType="@SyncTypeChoiceLabel(_runningSyncType)" />
@@ -134,7 +134,7 @@ else
                         @foreach (var run in _syncRuns)
                         {
                             <tr class="sync-run-row">
-                                <td>@run.StartedUtc.ToLocalTime().ToString("g")</td>
+                                <td><LocalTimeText Value="@run.StartedUtc" Format="g" /></td>
                                 <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
                                 <td>@SyncTypeLabel(run.SyncType)</td>
                                 <td>@(SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced, L["SyncRecordsSnapshots"].Value) ?? L["SyncRecordsUnknown"].Value)</td>
@@ -153,8 +153,8 @@ else
                                         else if (_runDetail is not null)
                                         {
                                             <strong>@L["SyncDetailsTitle"]</strong>
-                                            <p class="mb-1"><strong>@L["SyncDetailsStarted"]</strong> @_runDetail.StartedUtc.ToLocalTime().ToString("g")</p>
-                                            <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> @(_runDetail.CompletedUtc?.ToLocalTime().ToString("g") ?? L["SyncNotCompleted"])</p>
+                                            <p class="mb-1"><strong>@L["SyncDetailsStarted"]</strong> <LocalTimeText Value="@_runDetail.StartedUtc" Format="g" /></p>
+                                            <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> <LocalTimeText Value="@_runDetail.CompletedUtc" Format="g" Fallback="@L["SyncNotCompleted"]" /></p>
                                             <p class="mb-1"><strong>@L["ColSyncStatus"]</strong> @(_runDetail.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</p>
                                             @if (!string.IsNullOrEmpty(_runDetail.ErrorMessage))
                                             {

@@ -9,7 +9,7 @@
 <div class="media-viewer" data-testid="media-viewer" tabindex="0" @onkeydown="HandleKeydown" @ref="_rootElement">
     <!-- Header -->
     <div class="viewer-header">
-        <span>@Item.Label · @Item.DeviceName · @Item.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</span>
+        <span>@Item.Label · @Item.DeviceName · <LocalTimeText Value="@Item.OccurredAtUtc" Format="yyyy-MM-dd HH:mm:ss" /></span>
         <span class="viewer-hash" title="@Item.Media?.Sha256Hash">
             @if (!string.IsNullOrEmpty(Item.Media?.Sha256Hash) && Item.Media.Sha256Hash.Length >= 12)
             {

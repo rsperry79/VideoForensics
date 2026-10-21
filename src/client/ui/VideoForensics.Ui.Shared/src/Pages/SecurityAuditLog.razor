@@ -43,7 +43,11 @@ else
         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
-            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+            <GridColumn Field="@nameof(SecurityAuditLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
+                <Template>
+                    <LocalTimeText Value="@((context as SecurityAuditLogEntry)!.TimestampUtc)" />
+                </Template>
+            </GridColumn>
             <GridColumn Field="@nameof(SecurityAuditLogEntry.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
             <GridColumn HeaderText="@L["ColOperatorId"]" MinWidth="100">
                 <Template>

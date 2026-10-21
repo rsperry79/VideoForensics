@@ -3,12 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:VideoForensics.MauiApp"
              xmlns:shared="clr-namespace:VideoForensics.Ui.Shared;assembly=VideoForensics.Ui.Shared"
+             xmlns:blt="clr-namespace:BlazorLocalTime;assembly=BlazorLocalTime"
              x:Class="VideoForensics.MauiApp.MainPage"
              BackgroundColor="{DynamicResource PageBackgroundColor}">
 
     <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
         <BlazorWebView.RootComponents>
             <RootComponent Selector="#app" ComponentType="{x:Type shared:Routes}" />
+            <RootComponent Selector="#local-time" ComponentType="{x:Type blt:BlazorLocalTimeProvider}" />
         </BlazorWebView.RootComponents>
     </BlazorWebView>
 

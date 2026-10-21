@@ -73,7 +73,11 @@ else
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridColumns>
             <GridColumn Field="@nameof(OperatorCredential.Label)" HeaderText="@L["ColLabel"]" MinWidth="100" />
-            <GridColumn Field="@nameof(OperatorCredential.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100" />
+            <GridColumn Field="@nameof(OperatorCredential.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
+                <Template>
+                    <LocalTimeText Value="@((context as OperatorCredential)!.CreatedAtUtc)" />
+                </Template>
+            </GridColumn>
             <GridColumn HeaderText="@L["ColStatus"]" AllowSorting="false" MinWidth="100">
                 <Template>
                     @{
@@ -97,7 +101,7 @@ else
                 <Template>
                     @{
                         var cred = (OperatorCredential)context;
-                        @(cred.LastUsedAtUtc?.ToString() ?? L["NotAvailable"].Value)
+                        <LocalTimeText Value="@cred.LastUsedAtUtc" Fallback="@L["NotAvailable"].Value" />
                     }
                 </Template>
             </GridColumn>

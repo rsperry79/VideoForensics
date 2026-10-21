@@ -44,8 +44,16 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100" />
-                <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100" />
+                <GridColumn Field="@nameof(JammingIncidentRecord.StartUtc)" HeaderText="@L["ColStart"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as JammingIncidentRecord)!.StartUtc)" />
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(JammingIncidentRecord.EndUtc)" HeaderText="@L["ColEnd"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as JammingIncidentRecord)!.EndUtc)" />
+                    </Template>
+                </GridColumn>
                 <GridColumn Field="@nameof(JammingIncidentRecord.AffectedEventCount)" HeaderText="@L["ColAffectedEvents"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColAvgDegradation"]" MinWidth="100">
                     <Template>

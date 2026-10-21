@@ -1,3 +1,4 @@
+using BlazorLocalTime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -122,6 +123,8 @@ builder.Services.AddInMemoryLogBuffer();
 builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
+// Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
+builder.Services.AddBlazorLocalTimeService();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
 

@@ -1,3 +1,4 @@
+@using BlazorLocalTime
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,6 +18,7 @@
 <body>
     <NetworkTierCapture @rendermode="InteractiveServer" />
     <Routes @rendermode="InteractiveServer" />
+    <BlazorLocalTimeProvider @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js" type="text/javascript"></script>
     <script src="js/webauthn.js"></script>

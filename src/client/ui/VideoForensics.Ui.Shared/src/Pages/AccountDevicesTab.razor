@@ -80,12 +80,12 @@ else
                                     <span class="badge bg-secondary">@L["DeviceUnknown"]</span>
                                 }
                             </td>
-                            <td>@(row.LastSeenUtc is { } seen ? seen.ToLocalTime().ToString("g") : L["Never"].Value)</td>
+                            <td><LocalTimeText Value="@row.LastSeenUtc" Format="g" Fallback="@L["Never"].Value" /></td>
                             <td class="latest-snapshot">
                                 @if (row.SnapshotUrl is not null && row.SnapshotAtUtc is { } snapAt)
                                 {
                                     <img src="@row.SnapshotUrl" alt="@L["ColLatestSnapshot"]" style="max-width: 10rem;" />
-                                    <div class="small text-muted">@snapAt.ToLocalTime().ToString("g")</div>
+                                    <div class="small text-muted"><LocalTimeText Value="@snapAt" Format="g" /></div>
                                 }
                                 else
                                 {
@@ -96,7 +96,7 @@ else
                                 @if (row.LoopUrl is not null && row.LoopAtUtc is { } loopAt)
                                 {
                                     <video src="@row.LoopUrl" controls preload="metadata" style="max-width: 14rem;"></video>
-                                    <div class="small text-muted">@loopAt.ToLocalTime().ToString("g")</div>
+                                    <div class="small text-muted"><LocalTimeText Value="@loopAt" Format="g" /></div>
                                 }
                                 else
                                 {

@@ -73,7 +73,7 @@ else
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
                     <GridColumn Field="@nameof(ChainAuditRow.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
-                    <GridColumn Field="@nameof(ChainAuditRow.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100"><Template><LocalTimeText Value="@((context as ChainAuditRow)!.TimestampUtc)" /></Template></GridColumn>
                     <GridColumn Field="@nameof(ChainAuditRow.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
                     <GridColumn Field="@nameof(ChainAuditRow.ActorType)" HeaderText="@L["ColActorType"]" MinWidth="100" />
                     <GridColumn Field="@nameof(ChainAuditRow.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />

@@ -28,7 +28,11 @@ else if (_report is not null)
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.AccessEvent.AccessedAtUtc)" HeaderText="@L["ColAccessedAt"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as AccessControlReport.AccessEvent)!.AccessedAtUtc)" />
+                    </Template>
+                </GridColumn>
                 <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
                 <GridColumn Field="@nameof(AccessControlReport.AccessEvent.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
                 <GridColumn Field="@nameof(AccessControlReport.AccessEvent.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
@@ -55,7 +59,11 @@ else if (_report is not null)
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100" />
+                <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedAtUtc)" HeaderText="@L["ColExportedAt"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as AccessControlReport.ExportEvent)!.ExportedAtUtc)" />
+                    </Template>
+                </GridColumn>
                 <GridColumn Field="@nameof(AccessControlReport.ExportEvent.ExportedByUserName)" HeaderText="@L["ColExportedBy"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColCaseReference"]" MinWidth="100">
                     <Template>

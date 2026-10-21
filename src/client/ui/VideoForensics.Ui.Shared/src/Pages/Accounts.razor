@@ -1,4 +1,5 @@
 @page "/accounts"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Core.Providers.Common.Contracts
 @using VideoForensics.Ui.Shared.Contracts
@@ -65,19 +66,26 @@ else
                                 var row = (AccountRow)context;
                                 @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
                                 {
-                                    <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n{L["ErrorAsOf", row.Account.LastErrorUtc?.ToString() ?? L["UnknownTime"]]}")">error</i>
+                                    <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n{L["ErrorAsOf", (row.Account.LastErrorUtc is { } errAt ? Zone.Format(errAt, null) : L["UnknownTime"].Value)]}")">error</i>
                                 }
                                 <span>@row.DisplayName</span>
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
-                    <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
+                    <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <LocalTimeText Value="@row.Account.LinkedUtc" />
+                            }
+                        </Template>
+                    </GridColumn>
                     <GridColumn HeaderText="@L["ColLastAuth"]">
                         <Template>
                             @{
                                 var row = (AccountRow)context;
-                                @(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")
+                                <LocalTimeText Value="@row.Account.LastSuccessfulAuthUtc" Fallback="-" />
                             }
                         </Template>
                     </GridColumn>
@@ -115,7 +123,7 @@ else
                         <Template>
                             @{
                                 var row = (AccountRow)context;
-                                @(row.Account.RemovedUtc?.ToString() ?? "-")
+                                <LocalTimeText Value="@row.Account.RemovedUtc" Fallback="-" />
                             }
                         </Template>
                     </GridColumn>
@@ -146,6 +154,11 @@ else
 </div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private sealed record RemoveTarget(Guid AccountId, bool StartAtDeleteStep);
