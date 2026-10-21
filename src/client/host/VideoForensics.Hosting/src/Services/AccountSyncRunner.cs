@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -132,6 +133,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IProviderSyncRunRepository _syncRuns;
         private readonly ISnapshotSyncService _snapshotSync;
         private readonly ILogger<AccountSyncRunner> _logger;
+        private readonly ISyncActivityLog _activity;
 
         /// <summary>Creates the runner.</summary>
         public AccountSyncRunner(
@@ -139,13 +141,15 @@ namespace VideoForensics.Hosting.Services
             IProviderAccountRepository accounts,
             IProviderSyncRunRepository syncRuns,
             ISnapshotSyncService snapshotSync,
-            ILogger<AccountSyncRunner> logger)
+            ILogger<AccountSyncRunner> logger,
+            ISyncActivityLog activity)
         {
             _services = services;
             _accounts = accounts;
             _syncRuns = syncRuns;
             _snapshotSync = snapshotSync;
             _logger = logger;
+            _activity = activity;
         }
 
         /// <inheritdoc />
@@ -168,6 +172,10 @@ namespace VideoForensics.Hosting.Services
                 ? ProviderSyncRunRecorder.SnapshotsSyncType
                 : fullHistory ? ProviderSyncRunRecorder.FullSyncType : ProviderSyncRunRecorder.IncrementalSyncType;
 
+            // Console lines name the provider only, never the account GUID.
+            string provider = (await _accounts.GetAsync(accountId, CancellationToken.None))?.ProviderName ?? "Provider";
+            _activity.Append($"{provider}: {SyncLabel(fullHistory, request)} sync started");
+
             try
             {
                 outcome = await RestoreAndPullAsync(accountId, fullHistory, request, cancellationToken);
@@ -180,12 +188,31 @@ namespace VideoForensics.Hosting.Services
             catch (Exception ex)
             {
                 // Record the failure, then rethrow the original exception; recording never replaces it.
+                _activity.Append($"{provider}: sync failed: {ex.Message}");
                 await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, ex.Message, syncType);
                 throw;
             }
 
+            _activity.Append(outcome.Error is null
+                ? $"{provider}: sync finished"
+                : $"{provider}: sync failed: {outcome.Error}");
+            // Only a clean sync moves the display timestamp. LastDownloadTimeUtc is never written here (see MarkSyncCompletedAsync).
+            if (outcome.Error is null)
+            {
+                await MarkSyncCompletedAsync(accountId, DateTime.UtcNow);
+            }
+
             await ProviderSyncRunRecorder.RecordAsync(_syncRuns, _logger, accountId, startedUtc, outcome.Error, syncType, outcome.Counts, outcome.SnapshotsSynced);
         }
+
+        /// <summary>Short name of the sync for the console: Everything, Events, Snapshots, or Initial for a first sync.</summary>
+        private static string SyncLabel(bool fullHistory, AccountSyncRequest? request) => request?.Type switch
+        {
+            AccountSyncType.Snapshots => "Snapshots",
+            AccountSyncType.All => "Everything",
+            AccountSyncType.Events => "Events",
+            _ => fullHistory ? "Initial" : "Events",
+        };
 
         /// <summary>A sync's failure message (null on success) and the counts its pull reported (null if it never pulled).</summary>
         private readonly record struct SyncOutcome(string? Error, EventPullResult? Counts = null, int? SnapshotsSynced = null)
@@ -251,6 +278,7 @@ namespace VideoForensics.Hosting.Services
             if (request?.Type == AccountSyncType.Snapshots)
             {
                 SnapshotSyncResult snapshots = await _snapshotSync.SyncAccountSnapshotsAsync(accountId, snapshotStart, request.ToUtc, cancellationToken);
+                _activity.Append($"{initial.ProviderName}: snapshots for {snapshots.DevicesSucceeded} device(s)");
 
                 // Event counts stay null: a snapshots-only run pulled no events, so DevicesSynced/FeedsFailed would mislead.
                 return new SyncOutcome(snapshots.ErrorMessage, null, snapshots.DevicesSucceeded);
@@ -258,14 +286,31 @@ namespace VideoForensics.Hosting.Services
 
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
             DateTime? historyStart = fullHistory ? DateTime.UtcNow.AddYears(-1) : null;
-            DateTime? from = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            DateTime? requestedFrom = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            if (AccountSyncRunner.WasLimited(requestedFrom, DateTime.UtcNow))
+            {
+                _activity.Append($"{initial.ProviderName}: history limited to one month per pull");
+                _logger.LogInformation("Sync start limited to one month back for {ProviderName} account", initial.ProviderName);
+            }
+            DateTime? from = AccountSyncRunner.OneMonthFloor(requestedFrom, DateTime.UtcNow);
             DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
-            EventPullResult counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            // The first sync backfills a year in one-month windows, oldest first, so a long history is pulled in bounded calls.
+            string? monthlyError = null;
+            EventPullResult counts;
+            if (fullHistory)
+            {
+                (counts, monthlyError) = await PullMonthlyAsync(eventPullService, accountId, cancellationToken);
+            }
+            else
+            {
+                counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            }
+            LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
-            string? eventError = ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+            string? eventError = monthlyError ?? ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
 
             if (request?.Type != AccountSyncType.All)
             {
@@ -279,6 +324,109 @@ namespace VideoForensics.Hosting.Services
                 : allSnapshots.ErrorMessage is null ? eventError
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
             return new SyncOutcome(error, counts, allSnapshots.DevicesSucceeded);
+        }
+        /// <summary>The end of the backfill window that starts at <paramref name="windowStart"/>: one month later, or now if that is sooner.</summary>
+        internal static DateTime NextBackfillEnd(DateTime windowStart, DateTime nowUtc)
+        {
+            DateTime end = windowStart.AddMonths(1);
+            return end > nowUtc ? nowUtc : end;
+        }
+
+        /// <summary>True when a requested start is older than one month, so the pull will be cut short. Callers report it.</summary>
+        internal static bool WasLimited(DateTime? requested, DateTime nowUtc) =>
+            requested is { } start && start < nowUtc.AddMonths(-1);
+
+        /// <summary>
+        /// No single pull reaches further back than one month: a start older than that, or no start at all, becomes one month before now.
+        /// The monthly backfill windows are already one month each, so they do not go through this.
+        /// </summary>
+        internal static DateTime OneMonthFloor(DateTime? from, DateTime nowUtc)
+        {
+            DateTime floor = nowUtc.AddMonths(-1);
+            return from is { } start && start > floor ? start : floor;
+        }
+
+
+        /// <summary>
+        /// The windows of an initial backfill: one month each, from a year ago up to now, oldest first. The last window ends at now.
+        /// </summary>
+        internal static IReadOnlyList<(DateTime From, DateTime To)> MonthlyWindows(DateTime nowUtc)
+        {
+            var windows = new List<(DateTime From, DateTime To)>();
+            DateTime start = nowUtc.AddYears(-1);
+            while (start < nowUtc)
+            {
+                DateTime end = start.AddMonths(1);
+                if (end > nowUtc)
+                {
+                    end = nowUtc;
+                }
+
+                windows.Add((start, end));
+                start = end;
+            }
+
+            return windows;
+        }
+
+        /// <summary>
+        /// Pulls the backfill one month at a time. Discovery repeats every month, so devices and locations take the largest
+        /// count rather than a sum; events and failed feeds are summed across the months.
+        /// </summary>
+        private async Task<(EventPullResult Counts, string? Error)> PullMonthlyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
+        {
+            int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            string? firstError = null;
+            foreach ((DateTime from, DateTime to) in MonthlyWindows(DateTime.UtcNow))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                EventPullResult month = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+                devices = Math.Max(devices, month.DevicesSynced);
+                locations = Math.Max(locations, month.LocationsSynced);
+                config = Math.Max(config, month.ConfigAreasSynced);
+                events += month.EventsSynced;
+                failed += month.FeedsFailed;
+
+                // A failed month records its error on the account; a later clean month clears it. Keep the first one so it is not lost.
+                firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+            }
+
+            return (new EventPullResult(devices, locations, events, config, failed), firstError);
+        }
+
+        /// <summary>Console lines for what the pull found: discovery, events, and configuration, with any failed feeds.</summary>
+        private void LogPullCounts(string provider, EventPullResult counts)
+        {
+            _activity.Append($"{provider}: discovered {counts.LocationsSynced} location(s), {counts.DevicesSynced} device(s)");
+            _activity.Append($"{provider}: {counts.EventsSynced} event(s) synced");
+            _activity.Append($"{provider}: config read for {counts.ConfigAreasSynced} device(s)");
+            if (counts.FeedsFailed > 0)
+            {
+                _activity.Append($"{provider}: {counts.FeedsFailed} event feed(s) failed");
+            }
+        }
+
+        /// <summary>
+        /// Stores when the clean sync finished, for the Last Download display. Best-effort: a failed write is logged and
+        /// swallowed so it can never turn a successful sync into a failure. Uses CancellationToken.None so it lands during shutdown.
+        /// </summary>
+        private async Task MarkSyncCompletedAsync(Guid accountId, DateTime completedUtc)
+        {
+            try
+            {
+                ProviderAccount? account = await _accounts.GetAsync(accountId, CancellationToken.None);
+                if (account is null)
+                {
+                    return;
+                }
+
+                account.LastSyncCompletedUtc = completedUtc;
+                await _accounts.UpdateAsync(account, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to record sync completion");
+            }
         }
 
         private async Task RecordErrorAsync(Guid accountId, string message, CancellationToken cancellationToken)

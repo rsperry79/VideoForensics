@@ -193,6 +193,74 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Contains("90", updatedItem.PurgeReason); // Contains retention days
         }
 
+        /// <summary>A purged video's stored thumbnail goes with the clip, so no still frame outlives its evidence.</summary>
+        [Fact]
+        public async Task PurgeExpiredAsync_DeletesThumbnailSidecarWithVideo()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "vf-purge-" + Guid.NewGuid());
+            _ = Directory.CreateDirectory(dir);
+            try
+            {
+                string clip = Path.Combine(dir, "expired.mp4");
+                string thumbnail = MediaThumbnailService.ThumbnailPathFor(clip);
+                File.WriteAllBytes(clip, new byte[] { 0x00 });
+                File.WriteAllBytes(thumbnail, new byte[] { 0x89 });
+
+                RetentionService service = CreateService();
+                DateTime cutoffDate = DateTime.UtcNow.AddDays(-_retentionDays);
+                var expiredItem = new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = Guid.NewGuid(),
+                    FileName = "expired.mp4",
+                    FilePath = clip,
+                    MediaFormat = "video/mp4",
+                    Sha256Hash = "abc123",
+                    RecordedAtUtc = cutoffDate.AddDays(-1),
+                    DownloadedAtUtc = cutoffDate.AddDays(-1),
+                    IsPurged = false
+                };
+
+                _ = _mockMediaItemRepository
+                    .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([expiredItem]);
+
+                var mockContext = new Mock<IUnitOfWorkContext>();
+                var mockMediaItemRepoInContext = new Mock<IMediaItemRepository>();
+                var mockActionLogRepoInContext = new Mock<IActionLogRepository>();
+                _ = mockContext.Setup(x => x.MediaItems).Returns(mockMediaItemRepoInContext.Object);
+                _ = mockContext.Setup(x => x.ActionLog).Returns(mockActionLogRepoInContext.Object);
+                _ = mockActionLogRepoInContext
+                    .Setup(x => x.AppendAsync(
+                        It.IsAny<string>(),
+                        It.IsAny<ActorType>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<Guid?>(),
+                        It.IsAny<string>(),
+                        It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(TestHelpers.CreateActionLogEntry());
+                _ = mockMediaItemRepoInContext
+                    .Setup(x => x.UpdateAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                _ = _mockUnitOfWork
+                    .Setup(x => x.ExecuteAsync(
+                        It.IsAny<Func<IUnitOfWorkContext, Task<bool>>>(),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(async (Func<IUnitOfWorkContext, Task<bool>> work, CancellationToken ct) =>
+                        await work(mockContext.Object));
+
+                _ = await service.PurgeExpiredAsync(CancellationToken.None);
+
+                Assert.False(File.Exists(clip));
+                Assert.False(File.Exists(thumbnail));
+            }
+            finally
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+
         [Fact]
         public async Task PurgeExpiredAsync_SkipsAlreadyPurgedItems()
         {

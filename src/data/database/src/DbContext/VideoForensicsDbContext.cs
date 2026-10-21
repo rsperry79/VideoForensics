@@ -301,6 +301,9 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets the advanced object settings of a device.</summary>
         public DbSet<DeviceAdvancedObjectSetting> DeviceAdvancedObjectSettings { get; set; }
+        public DbSet<DeviceOfflineMotionSettings> DeviceOfflineMotionSettings { get; set; }
+        public DbSet<DeviceDetectionType> DeviceDetectionTypes { get; set; }
+        public DbSet<DeviceDetectionThreshold> DeviceDetectionThresholds { get; set; }
 
         /// <summary>Gets or sets the supported RPC command rows of device health readings.</summary>
         public DbSet<DeviceHealthRpcCommand> DeviceHealthRpcCommands { get; set; }
@@ -388,6 +391,18 @@ namespace VideoForensics.Data.Database.DbContext
 
         /// <summary>Gets or sets one row per account sync attempt (manual or initial).</summary>
         public DbSet<ProviderSyncRun> ProviderSyncRuns { get; set; }
+
+        /// <summary>Gets or sets the provider device models (seeded from reference sources, for example the Ring catalog).</summary>
+        public DbSet<DeviceModel> DeviceModels { get; set; }
+
+        /// <summary>Gets or sets the feature definitions device models can have.</summary>
+        public DbSet<DeviceFeatureDefinition> DeviceFeatureDefinitions { get; set; }
+
+        /// <summary>Gets or sets the model-to-feature links (many-to-many).</summary>
+        public DbSet<DeviceModelFeature> DeviceModelFeatures { get; set; }
+
+        /// <summary>Gets or sets the loaded version of each reference-data source.</summary>
+        public DbSet<ReferenceDataVersion> ReferenceDataVersions { get; set; }
 
         /// <summary>Configures the model using entity configurations from this assembly.</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)

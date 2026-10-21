@@ -36,6 +36,12 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <summary>
+        /// Thumbnail backfill runs only on the server, next to the files, so no client endpoint exists for this query.
+        /// </summary>
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct) =>
+            throw new NotSupportedException("Videos without a thumbnail are listed by the server's own repository, not over HTTP.");
+
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
             HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items", ct);
@@ -71,6 +77,24 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
+        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct) =>
+            throw new NotSupportedException("Analysis backfill runs on the server only.");
+
+        /// <remarks>
+        /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs
+        /// on the server, where the database does the filtering; a snapshot endpoint would move this into SQL too.
+        /// </remarks>
+        public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            IReadOnlyList<MediaItem> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
+            return range
+                .Where(m => string.Equals(m.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
+                    && m.MetadataJson is not null && m.MetadataJson.Contains("\"type\":\"snapshot\"", StringComparison.Ordinal))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToList();
+        }
+
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));

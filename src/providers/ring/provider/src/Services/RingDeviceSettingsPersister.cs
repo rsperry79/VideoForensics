@@ -41,6 +41,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             Guid deviceId = device.Id;
+            await RecordUnknownKindAsync(device, details, ct);
             await _dataClient.RecordDeviceDetailsAsync(
                 deviceId,
                 null,
@@ -55,6 +56,16 @@ namespace VideoForensics.Providers.Ring.Services
                 await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details.DeviceFields, ct);
             }
             return true;
+        }
+
+        /// <summary>
+        /// Records a kind the Ring catalog does not list, so the database knows the device model exists. The family comes from
+        /// the device's Ring type. Known kinds and devices without a kind are left alone.
+        /// </summary>
+        private Task RecordUnknownKindAsync(Device device, RingDeviceDetails details, CancellationToken ct)
+        {
+            return RingModelDiscovery.RecordUnknownKindAsync(
+                _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyForType(device.Type), ct);
         }
     }
 }

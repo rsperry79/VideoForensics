@@ -28,6 +28,8 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="ExternalConnection">True if externally connected (wired). Null if unknown.</param>
     /// <param name="Owned">True if the device is owned by the account. Null if unknown.</param>
     /// <param name="Stolen">True if the device is flagged as stolen. Null if unknown.</param>
+    /// <param name="ProviderName">Name of the provider the device belongs to. Null if unknown.</param>
+    /// <param name="SettingsMetadataJson">Raw settings metadata JSON. Null if unknown.</param>
     public record DeviceDto(
         Guid Id,
         Guid LocationId,
@@ -53,7 +55,9 @@ namespace VideoForensics.Core.Api.Contracts
         string? BatteryLife = null,
         bool? ExternalConnection = null,
         bool? Owned = null,
-        bool? Stolen = null
+        bool? Stolen = null,
+        string? ProviderName = null,
+        string? SettingsMetadataJson = null
     );
 
     /// <summary>Sync status enumeration for a device.</summary>
@@ -102,7 +106,9 @@ namespace VideoForensics.Core.Api.Contracts
                 BatteryLife: entity.BatteryLife,
                 ExternalConnection: entity.ExternalConnection,
                 Owned: entity.Owned,
-                Stolen: entity.Stolen
+                Stolen: entity.Stolen,
+                ProviderName: entity.ProviderName,
+                SettingsMetadataJson: entity.SettingsMetadataJson
             );
         }
 
@@ -137,7 +143,9 @@ namespace VideoForensics.Core.Api.Contracts
                 BatteryLife = dto.BatteryLife,
                 ExternalConnection = dto.ExternalConnection,
                 Owned = dto.Owned,
-                Stolen = dto.Stolen
+                Stolen = dto.Stolen,
+                ProviderName = dto.ProviderName,
+                SettingsMetadataJson = dto.SettingsMetadataJson
             };
         }
     }

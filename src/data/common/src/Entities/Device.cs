@@ -165,5 +165,18 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Doorbot settings.chime_settings.duration.</summary>
         public int? SettingsChimeDuration { get; set; }
+
+        /// <summary>
+        /// Local kill switch for server-side snapshot capture (SnapshotCaptureService). Not a Ring setting: Ring syncs update an
+        /// existing row in place and leave it alone. A device moved to another location gets a new row, and EnsureDeviceAsync copies this flag onto it.
+        /// </summary>
+        public bool SnapshotCaptureEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Name of the provider account linked to this device's location (e.g. "Ring"). Not stored on the row: it is
+        /// read from ProviderAccountLocations when devices are listed, and null when no account is linked.
+        /// </summary>
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public string? ProviderName { get; set; }
     }
 }

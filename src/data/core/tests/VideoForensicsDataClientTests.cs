@@ -31,6 +31,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
         private readonly Mock<IMediaAnalysisService> _mockMediaAnalysis;
+        private readonly Mock<IEvidenceChangeNotifier> _mockEvidenceChangeNotifier = new();
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -66,6 +67,7 @@ namespace VideoForensics.Data.Core.Tests
                 _mockMediaItemRepository.Object,
                 _mockDeviceHealthRepository.Object,
                 _mockDeviceDetailsRepository.Object,
+                new Mock<IDeviceModelRepository>().Object,
                 _mockProviderApiErrorLogRepository.Object,
                 _mockUnitOfWork.Object,
                 _mockWatermarkService.Object,
@@ -74,7 +76,8 @@ namespace VideoForensics.Data.Core.Tests
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
                 _mockLogger.Object,
-                _mockMediaAnalysis.Object);
+                _mockMediaAnalysis.Object,
+                _mockEvidenceChangeNotifier.Object);
         }
 
         [Fact]
@@ -842,6 +845,51 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task EnsureDeviceAsync_MovedDeviceWithCaptureDisabled_CarriesDisabledFlagToNewRecord()
+        {
+            // Arrange: the operator turned snapshot capture off for this device at its old location.
+            // A move creates a new row; the flag must carry over rather than reset to the entity default (true).
+            var oldLocationId = Guid.NewGuid();
+            var newLocationId = Guid.NewGuid();
+            string providerDeviceId = "device-capture-off";
+
+            var existingDevice = new Device
+            {
+                Id = Guid.NewGuid(),
+                LocationId = oldLocationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = "Garage Camera",
+                Type = "camera",
+                IsOnline = true,
+                SnapshotCaptureEnabled = false
+            };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
+            _ = mockContext.Setup(x => x.Devices).Returns(mockDeviceRepoInContext.Object);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByLocationIdAsync(newLocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([existingDevice]);
+            _ = mockDeviceRepoInContext
+                .Setup(x => x.GetByProviderDeviceIdAsync(newLocationId, providerDeviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Device?)null);
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Device>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Device>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            // Act
+            Device result = await _dataClient.EnsureDeviceAsync(
+                newLocationId, providerDeviceId, "Garage Camera", "camera", true, ct: CancellationToken.None);
+
+            // Assert: the new record keeps the operator's capture-off choice.
+            Assert.NotEqual(existingDevice.Id, result.Id);
+            Assert.False(result.SnapshotCaptureEnabled);
+        }
+
+        [Fact]
         public async Task EnsureDeviceAsync_UnknownOnlineState_StoresNull()
         {
             // Arrange: Ring gave no connection/subscription state, so the online flag is unknown.
@@ -1509,6 +1557,26 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             Assert.Equal(currentWatermark, device.LastSuccessfulPullAtUtc);
             mockDeviceRepoInContext.Verify(x => x.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpsertEventAsync_NotifiesEvidenceChangeForTheDevice()
+        {
+            var deviceId = Guid.NewGuid();
+            var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "event-101", EventType = "motion" };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockEventRepoInContext = new Mock<IEventRepository>();
+            _ = mockEventRepoInContext.Setup(x => x.UpsertAsync(evt, It.IsAny<CancellationToken>())).ReturnsAsync(evt);
+            _ = mockContext.Setup(x => x.Events).Returns(mockEventRepoInContext.Object);
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Event>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Event>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            _ = await _dataClient.UpsertEventAsync(evt, CancellationToken.None);
+
+            _mockEvidenceChangeNotifier.Verify(n => n.EvidenceChangedAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

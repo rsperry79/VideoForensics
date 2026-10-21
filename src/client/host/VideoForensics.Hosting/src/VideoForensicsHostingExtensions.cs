@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Api.Contracts;
@@ -122,14 +123,37 @@ namespace VideoForensics.Hosting
         }
 
         /// <summary>
+        /// Registers <see cref="SnapshotCaptureService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
+        /// registers nothing. Server tier only (VideoForensics.WebApp); never call this from a client host.
+        /// </summary>
+        public static IServiceCollection AddVideoForensicsSnapshotCapture(this IServiceCollection services, IConfiguration configuration)
+        {
+            if (!configuration.GetValue("SnapshotCapture:Enabled", defaultValue: true))
+            {
+                return services;
+            }
+
+            // Keyed by provider name, like the scheduled sync. Capture needs Ring's auth (to restore a session) and its snapshot service,
+            // whether or not Ring is listed in ScheduledTasks:EnabledProviders.
+            _ = services.AddKeyedScoped<IProviderAuthService>("Ring", (provider, key) => BuildRingAuthService(provider));
+            _ = services.AddKeyedScoped<IProviderSnapshotCapture>("Ring", (provider, key) => BuildRingMediaDownloadService(provider));
+            _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
+            services.TryAddSingleton(TimeProvider.System);
+            _ = services.AddHostedService<SnapshotCaptureService>();
+            return services;
+        }
+
+        /// <summary>
         /// Builds a Ring media download service for use by multiple registration paths.
         /// </summary>
-        private static IMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider)
+        private static VideoForensics.Providers.Ring.Services.RingMediaDownloadService BuildRingMediaDownloadService(IServiceProvider provider)
         {
             return new RingMediaDownloadService(
                 provider.GetRequiredService<ILogger<RingMediaDownloadService>>(),
                 provider.GetRequiredService<ISessionProvider>(),
-                provider.GetRequiredService<IVideoForensicsDataClient>()
+                provider.GetRequiredService<IVideoForensicsDataClient>(),
+                notificationDispatcher: provider.GetService<VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher>(),
+                syncScheduleRepository: provider.GetService<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>()
             );
         }
 
@@ -258,6 +282,10 @@ namespace VideoForensics.Hosting
             _ = services.AddVideoForensicsDatabase();
             _ = services.AddVideoForensicsDataCore();
 
+            // Reference data loaded on database generation (see ReferenceDataSeeder). Registered here so every data-layer host seeds the same rows.
+            _ = services.AddSingleton<VideoForensics.Providers.Ring.Interfaces.IRingModelCatalog, VideoForensics.Providers.Ring.Catalog.RingModelCatalog>();
+            _ = services.AddSingleton<IReferenceDataSource, RingReferenceDataSource>();
+
             // App-lock (plan §5.9) is device-local and only meaningful on MAUI - every host gets
             // this no-op default; VideoForensics.MauiApp registers the real Preferences-backed
             // implementation afterward, which wins by DI's last-registration-wins rule.
@@ -301,6 +329,9 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<ISessionProvider, SessionProvider>();
             _ = services.AddSingleton<IUniviewSessionProvider, UniviewSessionProvider>();
             _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
+
+            // Sync console lines: written by the sync runner and first-sync coordinator, drained by the progress broadcaster.
+            _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Hosting.Services.SyncActivityLog>();
 
             // Provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
@@ -399,8 +430,9 @@ namespace VideoForensics.Hosting
                 IDeviceRepository deviceRepository = serviceProvider.GetRequiredService<IDeviceRepository>();
                 IIntegrityVerificationService integrityService = serviceProvider.GetRequiredService<IIntegrityVerificationService>();
                 IMediaItemRepository mediaItemRepository = serviceProvider.GetRequiredService<IMediaItemRepository>();
+                VideoForensics.Data.Core.Services.IMediaThumbnailService thumbnails = serviceProvider.GetRequiredService<VideoForensics.Data.Core.Services.IMediaThumbnailService>();
                 IProviderReconciliationService reconciliationService = serviceProvider.GetRequiredService<IProviderReconciliationService>();
-                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, reconciliationService);
+                return new EvidenceValidationOrchestrator(logger, eventAndConfigService, eventRepository, deviceRepository, integrityService, mediaItemRepository, thumbnails, reconciliationService);
             });
             _ = services.AddSingleton<IEvidenceValidationJobs, EvidenceValidationJobService>();
 
@@ -477,6 +509,8 @@ namespace VideoForensics.Hosting
             _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
+            _ = services.AddHostedService<MediaThumbnailBackfillService>();
+            _ = services.AddHostedService<JammingAnalysisBackfillService>();
 
             // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
             // orchestrator, and background services for idle timeouts and bitrate calibration.
@@ -561,6 +595,7 @@ namespace VideoForensics.Hosting
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
             _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
+            _ = services.AddScoped<ISnapshotRollupService, SnapshotRollupService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 
             return services;
@@ -689,6 +724,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<IBackupExportService, RemoteBackupExportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IBackupImportService, RemoteBackupImportService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IDeviceConfigRepository, RemoteDeviceConfigRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IDeviceTypedSettingsReader, RemoteDeviceTypedSettingsReader>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService, RemoteDeviceControlService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
@@ -735,6 +771,8 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
             _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 
             return services;
@@ -748,7 +786,7 @@ namespace VideoForensics.Hosting
         public static async Task InitializeVideoForensicsDataAsync(IServiceProvider services, ILogger logger, CancellationToken ct)
         {
             IDbContextFactory<VideoForensicsDbContext> dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
-            await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct);
+            await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct, services.GetServices<IReferenceDataSource>());
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
             // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the

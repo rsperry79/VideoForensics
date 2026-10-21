@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 using Xunit;
@@ -91,6 +92,8 @@ public abstract class AccountsPageTestBase : BunitContext
         Services.AddScoped(_ => WebAuthnMock.Object);
         Services.AddScoped<StepUpService>();
         Services.AddScoped<RightPanelContentService>();
+        Services.AddScoped<AccountLinkedBus>();
+        Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
     }
 
     protected IRenderedComponent<Accounts> RenderPage() => Render<Accounts>();
@@ -152,15 +155,14 @@ public class AccountsPage_Grid_Tests : AccountsPageTestBase
     }
 
     [Fact]
-    public void Accounts_GridRows_EachRowShowsDetailsAndRemoveButtons()
+    public void Accounts_GridRows_EachRowShowsOnlyDetailsButton()
     {
         var cut = RenderPage();
 
         var buttonTexts = cut.FindAll("#active-accounts .e-gridcontent tbody td button").Select(b => b.TextContent.Trim()).ToList();
 
         Assert.Equal(2, buttonTexts.Count(t => t == "Details"));
-        Assert.Equal(2, buttonTexts.Count(t => t == "Remove"));
-        Assert.Equal(4, buttonTexts.Count);
+        Assert.Equal(2, buttonTexts.Count);
     }
 
     [Fact]
@@ -245,7 +247,8 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         Assert.Contains("Removed accounts", cut.Markup);
         var removed = cut.Find("#removed-accounts");
         Assert.Contains("Retired Owner", removed.TextContent);
-        Assert.Contains(RemovedUtc.ToString(), removed.TextContent);
+        // Rendered in the machine zone here: no user zone is cascaded in this test.
+        Assert.Contains(RemovedUtc.ToLocalTime().ToString(), removed.TextContent);
         AccountRepositoryMock.Verify(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
@@ -257,84 +260,6 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         Assert.Contains("Ring Owner", cut.Find("#active-accounts").TextContent);
         AccountRepositoryMock.Verify(r => r.ListActiveAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         AccountRepositoryMock.Verify(r => r.ListAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public void AccountsPage_RemoveRetain_CallsRetire()
-    {
-        var cut = RenderPage();
-
-        ClickButton(cut, "Remove", "#active-accounts");
-        ClickButton(cut, "Retain data");
-
-        cut.WaitForAssertion(() =>
-            AccountRepositoryMock.Verify(r => r.RetireAsync(RingAccountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once));
-        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
-    }
-
-    [Fact]
-    public void AccountsPage_RemoveRetain_PassesStepUpTokenToRetire()
-    {
-        var cut = RenderPage();
-
-        ClickButton(cut, "Remove", "#active-accounts");
-        ClickButton(cut, "Retain data");
-
-        cut.WaitForAssertion(() =>
-            AccountRepositoryMock.Verify(r => r.RetireAsync(RingAccountId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), "step-token"), Times.Once));
-    }
-
-    [Fact]
-    public void AccountsPage_RemoveRetain_StepUpCancelled_DoesNotCallRetire()
-    {
-        WebAuthnMock.Setup(w => w.StepUpAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("cancelled"));
-        var cut = RenderPage();
-
-        ClickButton(cut, "Remove", "#active-accounts");
-        ClickButton(cut, "Retain data");
-
-        cut.WaitForAssertion(() => WebAuthnMock.Verify(w => w.StepUpAsync(It.IsAny<string>()), Times.Once));
-        cut.WaitForAssertion(() => Assert.Contains("text-danger", cut.Markup));
-        AccountRepositoryMock.Verify(r => r.RetireAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
-    }
-
-    [Fact]
-    public void AccountsPage_RemoveDeletePermanently_NoExport_CallsDelete()
-    {
-        var cut = RenderPage();
-
-        ClickButton(cut, "Remove", "#active-accounts");
-        ClickButton(cut, "Delete permanently");
-        ClickButton(cut, "Delete without export");
-
-        cut.WaitForAssertion(() =>
-            AccountRepositoryMock.Verify(r => r.DeleteAsync(RingAccountId, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once));
-        ExportServiceMock.Verify(e => e.QueueExportAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
-    }
-
-    [Fact]
-    public void AccountsPage_RemoveDeletePermanently_WithExport_QueuesExportOnlyAndKeepsAccount()
-    {
-        var jobId = Guid.NewGuid();
-        SetRemovedAccount(RingAccountId);
-        ExportServiceMock
-            .Setup(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
-            .ReturnsAsync(jobId);
-        ExportServiceMock
-            .Setup(e => e.GetStatusAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ExportJobStatus(jobId, RingAccountId, ExportJobState.Running, null, null, true, DateTime.UtcNow, null));
-
-        var cut = RenderPage();
-        ClickButton(cut, "Remove", "#active-accounts");
-        ClickButton(cut, "Delete permanently");
-        ClickButton(cut, "Export first");
-
-        cut.WaitForAssertion(() =>
-        {
-            ExportServiceMock.Verify(e => e.QueueExportAsync(RingAccountId, false, It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Once);
-            Assert.Contains("Running", cut.Find("#removed-accounts").TextContent);
-        });
-        AccountRepositoryMock.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]

@@ -25,7 +25,7 @@
 .viewer-hash {
     font-family: monospace;
     font-size: 0.75rem;
-    color: var(--bs-secondary);
+    color: var(--bs-secondary-color);
 }
 
 .viewer-toolbar {
@@ -72,8 +72,10 @@
     max-height: 100%;
 }
 
+/* Sits on the always-dark .viewer-media surface, so it uses a fixed light gray rather than a
+   theme variable: the theme's text color is dark in light mode and would vanish on #111. */
 .viewer-unavailable {
-    color: var(--bs-muted-color);
+    color: #adb5bd;
     font-size: 1.125rem;
 }
 

@@ -50,6 +50,10 @@ namespace VideoForensics.Data.Core.Tests
                 .Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
+            _ = _mockDownloadEventRepository
+                .Setup(x => x.GetByDeviceIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
             _ = _mockStorageLocationProvider
                 .Setup(x => x.GetDefaultRoot(It.IsAny<StorageCategory>()))
                 .Returns(Path.GetTempPath());
@@ -548,6 +552,86 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal(0, result.TotalItemCount);
             Assert.Equal(0, result.VerifiedItemCount);
             Assert.Empty(result.MediaItems);
+        }
+
+        [Fact]
+        public async Task BuildEvidenceReviewAsync_MediaWithDownloadEvent_ReturnsProviderEventLink()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var mediaId = Guid.NewGuid();
+            var downloadEventId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            _ = _mockMediaItemRepository
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() {
+                        Id = mediaId,
+                        DeviceId = deviceId,
+                        DownloadEventId = downloadEventId,
+                        FileName = "video1.mp4",
+                        FilePath = "/path/video1.mp4",
+                        MediaFormat = "video/mp4",
+                        Sha256Hash = "hash1",
+                        RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                        DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
+                    }
+                });
+
+            _ = _mockDownloadEventRepository
+                .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DownloadEvent>
+                {
+                    new() {
+                        Id = downloadEventId,
+                        DeviceId = deviceId,
+                        ProviderEventId = "ring-evt-1",
+                        AppVersion = "test"
+                    }
+                });
+
+            // Act
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+
+            // Assert
+            MediaProviderEventLink link = Assert.Single(result.MediaProviderEventLinks);
+            Assert.Equal(mediaId, link.MediaItemId);
+            Assert.Equal("ring-evt-1", link.ProviderEventId);
+        }
+
+        [Fact]
+        public async Task BuildEvidenceReviewAsync_MediaWithoutDownloadEvent_ReturnsNoLink()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            _ = _mockMediaItemRepository
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        DownloadEventId = null,
+                        FileName = "video1.mp4",
+                        FilePath = "/path/video1.mp4",
+                        MediaFormat = "video/mp4",
+                        Sha256Hash = "hash1",
+                        RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                        DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
+                    }
+                });
+
+            // Act
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+
+            // Assert
+            Assert.Empty(result.MediaProviderEventLinks);
         }
 
         [Fact]

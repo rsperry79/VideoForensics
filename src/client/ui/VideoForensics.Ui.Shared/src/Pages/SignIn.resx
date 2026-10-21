@@ -38,11 +38,20 @@
   <data name="UsernameLabel" xml:space="preserve">
     <value>Username</value>
   </data>
+  <data name="UseUserNameAndPasswordButton" xml:space="preserve">
+    <value>Use User Name and Password</value>
+  </data>
+  <data name="RestrictedAccessNotice" xml:space="preserve">
+    <value>Restricted access. Authorized users only.</value>
+  </data>
   <data name="PasswordLabel" xml:space="preserve">
     <value>Password</value>
   </data>
   <data name="SignInButton" xml:space="preserve">
     <value>Sign in</value>
+  </data>
+  <data name="UseAnotherPasskeyButton" xml:space="preserve">
+    <value>Use another passkey</value>
   </data>
   <data name="SignInWithPasskeyButton" xml:space="preserve">
     <value>Sign in with passkey</value>

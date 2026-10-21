@@ -338,7 +338,6 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
         {
             Id = mediaId,
             DeviceId = deviceId,
-            DownloadEventId = Guid.NewGuid(),
             FileName = "video.mp4",
             FilePath = "/path/video.mp4",
             MediaFormat = "video/mp4",
@@ -350,7 +349,7 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
 
         var testEvent = new Event
         {
-            Id = mediaItem.DownloadEventId!.Value,
+            Id = Guid.NewGuid(),
             DeviceId = deviceId,
             EventType = "Motion",
             OccurredAtUtc = new DateTime(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc),
@@ -364,10 +363,16 @@ public class EvidenceLoader_LoadAsync_Deduplication_Tests
             .Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { testEvent });
 
+        // The report service links the media item to the event's provider id; the loader joins on that.
         var mockReportService = new Mock<IReportGenerationService>();
         mockReportService
             .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EvidenceReviewReport { MediaItems = new List<MediaItem> { mediaItem }, IntegrityRecords = new List<IntegrityRecord>() });
+            .ReturnsAsync(new EvidenceReviewReport
+            {
+                MediaItems = new List<MediaItem> { mediaItem },
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(mediaId, "provider-event-1") },
+                IntegrityRecords = new List<IntegrityRecord>()
+            });
 
         var mockHoldRepo = new Mock<ILegalHoldRepository>();
 

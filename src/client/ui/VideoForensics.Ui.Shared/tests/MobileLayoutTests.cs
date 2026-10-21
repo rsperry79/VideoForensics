@@ -19,67 +19,20 @@ using VideoForensics.Ui.Shared.Services.Scope;
 /// <summary>
 /// Tests for MobileFiltersSheet component.
 /// </summary>
-public class MobileFiltersSheet_Rendering_Tests : BunitContext
+public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
 {
     public MobileFiltersSheet_Rendering_Tests()
     {
-        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
-        JSInterop.Mode = JSRuntimeMode.Loose;
-
         // Register Syncfusion services required by SfButton
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
-        // Register services needed by MobileFiltersSheet (some tests override ScopeState)
-        // Don't add ScopeState here - let each test register it as needed
-        Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
-
-        // Mock repositories
-        var caseRepoMock = new Mock<ICaseRepository>();
-        caseRepoMock
-            .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ForensicCase>());
-        Services.AddScoped(_ => caseRepoMock.Object);
-
-        var deviceRepoMock = new Mock<IDeviceRepository>();
-        deviceRepoMock
-            .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device>());
-        Services.AddScoped(_ => deviceRepoMock.Object);
-
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        // Don't add ScopeState here - let each test register it as needed (some tests override ScopeState).
+        // Base registers CaseState, PairedSessionState, case/device repositories and TimeProvider defaults.
+        RegisterDeviceRepository();
 
         Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
-
-        Services.AddSingleton(TimeProvider.System);
-    }
-
-    private static Device MakeDevice(string name) => new()
-    {
-        Id = Guid.NewGuid(),
-        LocationId = Guid.NewGuid(),
-        ProviderDeviceId = Guid.NewGuid().ToString(),
-        Name = name,
-        Type = "camera",
-    };
-
-    private Mock<IDeviceRepository> RegisterDeviceRepository(params Device[] devices)
-    {
-        var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository
-            .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(devices.ToList());
-        Services.AddScoped(_ => deviceRepository.Object);
-        return deviceRepository;
-    }
-
-    private FakeTimeProvider RegisterFakeTime(DateTime fixedUtcNow)
-    {
-        var timeProvider = new FakeTimeProvider(fixedUtcNow);
-        Services.AddSingleton<TimeProvider>(timeProvider);
-        Services.AddScoped(_ => new ScopeState(timeProvider));
-        return timeProvider;
     }
 
     [Fact]

@@ -1,0 +1,48 @@
+@using BlazorLocalTime
+@using VideoForensics.Ui.Shared.Services.Time
+@implements IDisposable
+@inject IServiceProvider Services
+<CascadingValue Value="_zone" IsFixed="false">
+    @ChildContent
+</CascadingValue>
+@code {
+    /// <summary>Page content that displays times through <c>LocalTimeText</c> or a cascaded <see cref="UserTimeZone"/>.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    // A new record per change: CascadingValue re-renders consumers when the instance changes.
+    private UserTimeZone _zone = UserTimeZone.Unavailable;
+
+    // Optional so hosts without BlazorLocalTime registered (and component tests) keep rendering in the machine zone.
+    private ILocalTimeService? _localTime;
+
+    protected override void OnInitialized()
+    {
+        _localTime = Services.GetService(typeof(ILocalTimeService)) as ILocalTimeService;
+        _zone = CurrentZone();
+        if (_localTime is not null)
+            _localTime.LocalTimeZoneChanged += OnLocalTimeZoneChanged;
+    }
+
+    private UserTimeZone CurrentZone()
+    {
+        if (_localTime is null)
+            return new UserTimeZone(TimeZoneInfo.Local);
+
+        return _localTime.IsTimeZoneInfoAvailable ? new UserTimeZone(_localTime.TimeZoneInfo) : UserTimeZone.Unavailable;
+    }
+
+    // The browser reports its zone over JS interop, which can arrive after first render.
+    private void OnLocalTimeZoneChanged(object? sender, TimeZoneChangedEventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            _zone = CurrentZone();
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        if (_localTime is not null)
+            _localTime.LocalTimeZoneChanged -= OnLocalTimeZoneChanged;
+    }
+}

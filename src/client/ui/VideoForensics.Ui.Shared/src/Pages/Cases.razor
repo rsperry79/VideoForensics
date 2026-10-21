@@ -1,4 +1,5 @@
 @page "/cases"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -54,18 +55,23 @@ else
     <ForensicGrid TItem="ForensicCase"
               DataSource="@_cases"
               OnRowSelected="@OnCaseSelected"
-              ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = c.CreatedAtUtc.ToString("u"), Updated = c.UpdatedAtUtc.ToString("u") }))">
+              ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = Zone.Format(c.CreatedAtUtc, "u"), Updated = Zone.Format(c.UpdatedAtUtc, "u") }))">
     <Columns>
         <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
         <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
         <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150" Format="@("u")"></GridColumn>
-        <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150" Format="@("u")"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCase)!.CreatedAtUtc)" Format="u" /></Template></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCase)!.UpdatedAtUtc)" Format="u" /></Template></GridColumn>
     </Columns>
     </ForensicGrid>
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private IReadOnlyList<ForensicCase>? _cases;
     private string _statusFilter = "Open";
     private bool _isLoading = true;

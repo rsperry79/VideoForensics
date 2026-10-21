@@ -1,3 +1,4 @@
+using BlazorLocalTime;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Alerts;
 
@@ -18,6 +19,7 @@ using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.MauiApp
 {
@@ -50,12 +52,13 @@ namespace VideoForensics.MauiApp
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddBlazorLocalTimeService();
             builder.Services.AddSyncfusionBlazor();
 
             // Register file-based logging - there's no console to log to in a MAUI app. Log file
             // lands under %ProgramData%/VideoForensics/logs, matching the console app's pattern
             // (src/client/VideoForensics/Program.cs).
-            string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics");
+            string configDir = new StorageLocationProvider().GetDataRoot();
             Directory.CreateDirectory(configDir);
             string logFilePath = Path.Combine(configDir, "logs", $"videoforensics-maui-{DateTime.Now:yyyy-MM-dd}.log");
             builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -156,6 +159,12 @@ namespace VideoForensics.MauiApp
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.PairedSessionState>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.WebAuthnClient>();
             builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
+
+            // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so
+            // one circuit's link never reaches another; both interfaces share one bus instance.
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.AccountLinkedBus>();
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedSource>(sp => sp.GetRequiredService<VideoForensics.Ui.Shared.Services.AccountLinkedBus>());
+            builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedNotifier>(sp => sp.GetRequiredService<VideoForensics.Ui.Shared.Services.AccountLinkedBus>());
 
             // Pages/Security*.razor's self-API calls (plan §5.10/§5.12) - MAUI has no self-call
             // network-tier concern (it always talks to a remote/LAN server, never itself), so it gets

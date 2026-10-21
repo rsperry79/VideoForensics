@@ -18,6 +18,7 @@
     <!-- mDNS service advertisement for local network discovery (plan §5.2). -->
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="5.9.0" />
+    <PackageReference Include="TimezoneDetectorCore" Version="4.1.0" />
     <!-- Web Push Notifications (RFC 8291) - push subscription management and VAPID key handling. -->
     <PackageReference Include="WebPush" Version="1.0.13" />
     <!-- WebAuthn/passkey attestation+assertion verification (plan §5.1/§6). Fido2NetLib does the
@@ -46,6 +47,7 @@
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
     <ProjectReference Include="../../../ui/VideoForensics.Ui.Shared/src/VideoForensics.Ui.Shared.csproj" />
     <ProjectReference Include="../../../host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
   </ItemGroup>
 

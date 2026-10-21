@@ -45,7 +45,15 @@ namespace VideoForensics.Core.Api.Contracts
 
     /// <summary>Request body for queueing a background export of a provider account.</summary>
     /// <param name="PurgeAfterExport">When true, the account is hard-deleted after the export file is written.</param>
-    public record QueueAccountExportRequest(bool PurgeAfterExport);
+    /// <param name="ConfirmPurge">The operator confirmed the purge in the UI. Required whenever <paramref name="PurgeAfterExport"/> is true.</param>
+    public record QueueAccountExportRequest(bool PurgeAfterExport, bool ConfirmPurge = false)
+    {
+        /// <summary>Returned when a purge is requested without the operator's confirmation.</summary>
+        public const string PurgeNotConfirmedMessage = "Purging an account needs the operator to confirm it first.";
+
+        /// <summary>The reason this request is refused, or null when it may proceed.</summary>
+        public string? ValidationError => PurgeAfterExport && !ConfirmPurge ? PurgeNotConfirmedMessage : null;
+    }
 
     /// <summary>Wire form of a background account export job's status.</summary>
     /// <param name="JobId">The job id returned when the export was queued.</param>
@@ -174,24 +182,26 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Id">Unique identifier for the sync schedule.</param>
     /// <param name="ProviderAccountId">The provider account this schedule applies to.</param>
     /// <param name="EventPollIntervalMinutes">Interval in minutes for pulling events (rule violations, motion, person detection).</param>
-    /// <param name="SnapshotRssiIntervalMinutes">Interval in minutes for pulling snapshots and RSSI data (default when no jamming window applies).</param>
+    /// <param name="SnapshotRssiIntervalSeconds">Interval in seconds for pulling snapshots and RSSI data (default when no jamming window applies).</param>
     /// <param name="IsEnabled">Indicates whether syncing is enabled for this account.</param>
     /// <param name="UseAdvancedJammingSchedule">Indicates whether the advanced jamming detection schedule is active.</param>
     /// <param name="EventNextRunUtc">The UTC timestamp when the next event poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="EventLastRunUtc">The UTC timestamp of the most recent event poll run; null if never run.</param>
     /// <param name="SnapshotNextRunUtc">The UTC timestamp when the next snapshot/RSSI poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="SnapshotLastRunUtc">The UTC timestamp of the most recent snapshot/RSSI poll run; null if never run.</param>
+    /// <param name="SnapshotRollupIntervalMinutes">Minutes between MP4 roll-ups of snapshots into loops. Default 15.</param>
     public record SyncScheduleDto(
         Guid Id,
         Guid ProviderAccountId,
         int EventPollIntervalMinutes,
-        int SnapshotRssiIntervalMinutes,
+        int SnapshotRssiIntervalSeconds,
         bool IsEnabled,
         bool UseAdvancedJammingSchedule,
         DateTime? EventNextRunUtc,
         DateTime? EventLastRunUtc,
         DateTime? SnapshotNextRunUtc,
-        DateTime? SnapshotLastRunUtc
+        DateTime? SnapshotLastRunUtc,
+        int SnapshotRollupIntervalMinutes = VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes
     );
 
     /// <summary>Extension methods for mapping SyncSchedule entities to/from SyncScheduleDtos.</summary>
@@ -206,13 +216,14 @@ namespace VideoForensics.Core.Api.Contracts
                 Id: entity.Id,
                 ProviderAccountId: entity.ProviderAccountId,
                 EventPollIntervalMinutes: entity.EventPollIntervalMinutes,
-                SnapshotRssiIntervalMinutes: entity.SnapshotRssiIntervalMinutes,
+                SnapshotRssiIntervalSeconds: entity.SnapshotRssiIntervalSeconds,
                 IsEnabled: entity.IsEnabled,
                 UseAdvancedJammingSchedule: entity.UseAdvancedJammingSchedule,
                 EventNextRunUtc: entity.EventNextRunUtc,
                 EventLastRunUtc: entity.EventLastRunUtc,
                 SnapshotNextRunUtc: entity.SnapshotNextRunUtc,
-                SnapshotLastRunUtc: entity.SnapshotLastRunUtc
+                SnapshotLastRunUtc: entity.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes: entity.SnapshotRollupIntervalMinutes
             );
         }
 
@@ -226,13 +237,14 @@ namespace VideoForensics.Core.Api.Contracts
                 Id = dto.Id,
                 ProviderAccountId = dto.ProviderAccountId,
                 EventPollIntervalMinutes = dto.EventPollIntervalMinutes,
-                SnapshotRssiIntervalMinutes = dto.SnapshotRssiIntervalMinutes,
+                SnapshotRssiIntervalSeconds = dto.SnapshotRssiIntervalSeconds,
                 IsEnabled = dto.IsEnabled,
                 UseAdvancedJammingSchedule = dto.UseAdvancedJammingSchedule,
                 EventNextRunUtc = dto.EventNextRunUtc,
                 EventLastRunUtc = dto.EventLastRunUtc,
                 SnapshotNextRunUtc = dto.SnapshotNextRunUtc,
-                SnapshotLastRunUtc = dto.SnapshotLastRunUtc
+                SnapshotLastRunUtc = dto.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes = dto.SnapshotRollupIntervalMinutes
             };
         }
     }

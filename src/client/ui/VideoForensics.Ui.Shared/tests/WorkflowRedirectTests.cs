@@ -15,7 +15,7 @@ public class WorkflowRedirect_Tests : BunitContext
         Render<WorkflowRedirect>();
 
         var nav = Services.GetRequiredService<NavigationManager>();
-        Assert.EndsWith("/evidence", nav.Uri);
+        Assert.EndsWith("/media", nav.Uri);
     }
 }
 
@@ -31,6 +31,6 @@ public class Evidence_Route_Tests
             .ToList();
 
         Assert.Contains("/", templates);
-        Assert.Contains("/evidence", templates);
+        Assert.Contains("/media", templates);
     }
 }

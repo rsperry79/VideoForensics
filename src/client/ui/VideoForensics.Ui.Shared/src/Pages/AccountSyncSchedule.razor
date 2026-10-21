@@ -1,4 +1,3 @@
-@page "/accounts/{Id:guid}/schedule"
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @inject ISyncScheduleRepository SyncScheduleRepository
@@ -9,9 +8,8 @@
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountSyncSchedule> L
 
-<Breadcrumb Items="@_breadcrumbItems" />
 
-<h4 class="mb-4">@L["SyncScheduleTitle"]</h4>
+<h5 class="mb-3">@L["SyncScheduleTitle"]</h5>
 
 @if (_isLoading)
 {
@@ -45,11 +43,15 @@ else
             <EditForm Model="this" OnValidSubmit="SaveScheduleAsync">
                 <div class="mb-3">
                     <label for="snapshot-rssi-interval">@L["SnapshotRssiIntervalLabel"]</label>
-                    <SfNumericTextBox ID="snapshot-rssi-interval" @bind-Value="_snapshotRssiIntervalMinutes" Min="1" Step="1" />
+                    <IntervalSecondsInput Id="snapshot-rssi-interval" Value="_snapshotRssiIntervalSeconds" ValueChanged="v => _snapshotRssiIntervalSeconds = v" />
                 </div>
                 <div class="mb-3">
                     <label for="event-poll-interval">@L["EventPollIntervalLabel"]</label>
                     <SfNumericTextBox ID="event-poll-interval" @bind-Value="_eventPollIntervalMinutes" Min="1" Step="1" />
+                </div>
+                <div class="mb-3">
+                    <label for="snapshot-rollup-interval">@L["SnapshotRollupIntervalLabel"]</label>
+                    <SfNumericTextBox ID="snapshot-rollup-interval" @bind-Value="_snapshotRollupIntervalMinutes" Min="1" Step="1" />
                 </div>
 
                 <div class="mb-3">
@@ -63,22 +65,22 @@ else
                 {
                     <div class="mb-3">
                         <label>@L["LastEventPoll"]</label>
-                        <p>@(_schedule.EventLastRunUtc?.ToString("g") ?? L["Never"])</p>
+                        <p><LocalTimeText Value="@_schedule.EventLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["NextEventPoll"]</label>
-                        <p>@(_schedule.EventNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
+                        <p><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["LastSnapshotPoll"]</label>
-                        <p>@(_schedule.SnapshotLastRunUtc?.ToString("g") ?? L["Never"])</p>
+                        <p><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["NextSnapshotPoll"]</label>
-                        <p>@(_schedule.SnapshotNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
+                        <p><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
                     </div>
                 }
 
@@ -135,7 +137,7 @@ else
                                                         </SfDropDownList>
                                                     </td>
                                                     <td>
-                                                        <SfNumericTextBox @bind-Value="window.SnapshotRssiIntervalMinutes" Min="1" Step="1" />
+                                                        <IntervalSecondsInput Value="window.SnapshotRssiIntervalSeconds" ValueChanged="v => window.SnapshotRssiIntervalSeconds = v" />
                                                     </td>
                                                     <td>
                                                         <SfButton type="button" IconCss="e-icons e-delete" CssClass="e-outline e-small" OnClick="@(() => RemoveWindow(window))" TrueName="@L["Remove"]" />
@@ -168,10 +170,10 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private List<(string Label, string? Url)> _breadcrumbItems = new();
     private SyncSchedule? _schedule;
-    private int _snapshotRssiIntervalMinutes = 60;
+    private int _snapshotRssiIntervalSeconds = SyncSchedule.DefaultSnapshotIntervalSeconds;
     private int _eventPollIntervalMinutes = 60;
+    private int _snapshotRollupIntervalMinutes = SyncSchedule.DefaultSnapshotRollupIntervalMinutes;
     private bool _isEnabled = true;
     private bool _useAdvancedJammingSchedule;
     private List<JammingScheduleWindow>? _jammingWindows;
@@ -186,7 +188,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["SyncScheduleTitle"], null) };
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
         await LoadScheduleAsync();
@@ -328,8 +329,9 @@ else
             _schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(Id, CancellationToken.None);
             if (_schedule != null)
             {
-                _snapshotRssiIntervalMinutes = _schedule.SnapshotRssiIntervalMinutes;
+                _snapshotRssiIntervalSeconds = _schedule.SnapshotRssiIntervalSeconds;
                 _eventPollIntervalMinutes = _schedule.EventPollIntervalMinutes;
+                _snapshotRollupIntervalMinutes = _schedule.SnapshotRollupIntervalMinutes;
                 _isEnabled = _schedule.IsEnabled;
                 _useAdvancedJammingSchedule = _schedule.UseAdvancedJammingSchedule;
                 // Create a mutable copy of jamming windows for editing
@@ -366,7 +368,7 @@ else
             DayOfWeek = 1, // Monday
             StartMinuteOfDay = 0, // 00:00
             EndMinuteOfDay = 15, // 00:15
-            SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes
+            SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds
         };
 
         _jammingWindows.Add(newWindow);
@@ -425,9 +427,9 @@ else
             }
 
             // Validate interval meets minimum
-            if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+            if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
             {
-                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumPollIntervalMinutes];
+                _statusMessage = L["IntervalMinimum", SyncSchedule.MinimumSnapshotIntervalSeconds];
                 _statusIsError = true;
                 return false;
             }
@@ -472,8 +474,9 @@ else
                 {
                     Id = Guid.NewGuid(),
                     ProviderAccountId = Id,
-                    SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes,
+                    SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds,
                     EventPollIntervalMinutes = _eventPollIntervalMinutes,
+                    SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes,
                     IsEnabled = _isEnabled,
                     UseAdvancedJammingSchedule = _useAdvancedJammingSchedule,
                     EventNextRunUtc = null,
@@ -485,8 +488,9 @@ else
             }
             else
             {
-                _schedule.SnapshotRssiIntervalMinutes = _snapshotRssiIntervalMinutes;
+                _schedule.SnapshotRssiIntervalSeconds = _snapshotRssiIntervalSeconds;
                 _schedule.EventPollIntervalMinutes = _eventPollIntervalMinutes;
+                _schedule.SnapshotRollupIntervalMinutes = _snapshotRollupIntervalMinutes;
                 _schedule.IsEnabled = _isEnabled;
                 _schedule.UseAdvancedJammingSchedule = _useAdvancedJammingSchedule;
                 // Ensure SyncScheduleId is set on windows for persistence
@@ -508,9 +512,6 @@ else
             _statusMessage = L["ScheduleSaved"];
             _statusIsError = false;
 
-            // Navigate back after a brief delay to show the success message
-            await Task.Delay(1500);
-            NavigationManager.NavigateTo($"/accounts/{Id}");
         }
         catch (Exception ex)
         {

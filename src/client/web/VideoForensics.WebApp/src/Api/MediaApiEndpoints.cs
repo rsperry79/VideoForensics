@@ -2,6 +2,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 
@@ -67,6 +68,10 @@ namespace VideoForensics.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/media/{id:guid}/content", GetContentAsync)
+                .AllowAnonymous()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/media/{id:guid}/thumbnail", GetThumbnailAsync)
                 .AllowAnonymous()
                 .RequireRateLimiting("media");
 
@@ -143,40 +148,10 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             // Resolve operator ID from claims or ticket (before checking file existence)
-            Guid? operatorId = null;
-            bool viaTicket = false;
-
-            // Try authenticated path first
-            if (context.User.Identity?.IsAuthenticated == true)
-            {
-                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-                if (Guid.TryParse(operatorIdClaim, out Guid claimedOperatorId))
-                {
-                    operatorId = claimedOperatorId;
-                }
-            }
-
-            // Fall back to ticket validation if no authenticated claim
-            if (operatorId == null)
-            {
-                operatorId = ticketService.Validate(ticket, id);
-                viaTicket = true;
-            }
-
-            // No valid auth path
+            Guid? operatorId = await ResolveAuthorizedOperatorAsync(id, ticket, ticketService, operators, context, ct);
             if (operatorId == null)
             {
                 return Results.Unauthorized();
-            }
-
-            // For ticket auth, validate operator status
-            if (viaTicket)
-            {
-                var @operator = await operators.GetAsync(operatorId.Value, ct);
-                if (@operator == null || !@operator.Active || !@operator.IsApproved)
-                {
-                    return Results.Unauthorized();
-                }
             }
 
             // Check media item exists
@@ -235,6 +210,105 @@ namespace VideoForensics.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Serves the thumbnail for a media item: the image itself for images, the stored first frame for videos.
+        /// Uses the same authentication as <see cref="GetContentAsync"/>, but does not write an access audit entry:
+        /// a gallery load requests one thumbnail per item, so auditing them would bury the full-clip views that matter.
+        /// Returns 404 when no thumbnail can be produced.
+        /// </summary>
+        public static async Task<IResult> GetThumbnailAsync(
+            Guid id,
+            string? ticket,
+            IMediaAccessTicketService ticketService,
+            IMediaItemRepository mediaItems,
+            IOperatorRepository operators,
+            IMediaStorageProvider storage,
+            IMediaThumbnailService thumbnails,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (await ResolveAuthorizedOperatorAsync(id, ticket, ticketService, operators, context, ct) == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            MediaItem? item = await mediaItems.GetAsync(id, ct);
+            if (item == null)
+            {
+                return Results.NotFound();
+            }
+
+            string? path = await thumbnails.ResolveThumbnailPathAsync(item, ct);
+            if (path == null || !await storage.ExistsAsync(path, ct))
+            {
+                return Results.NotFound();
+            }
+
+            // A video's thumbnail is always the PNG frame; an image is served in its own format.
+            string contentType = MediaThumbnailContentType(item);
+            Stream stream = await storage.OpenReadStreamAsync(path, ct);
+            return Results.Stream(stream, contentType);
+        }
+
+        private static string MediaThumbnailContentType(MediaItem item) =>
+            item.MediaFormat switch
+            {
+                "image/jpeg" or "jpg" or "jpeg" => "image/jpeg",
+                "image/png" or "png" => "image/png",
+                "video/mp4" or "mp4" => "image/png",
+                _ => "application/octet-stream"
+            };
+
+        /// <summary>
+        /// Resolves the operator behind a media request: the signed-in claim first, else the per-item ticket.
+        /// A ticket is only honoured for an operator who is still active and approved. Returns null when unauthorized.
+        /// </summary>
+        private static async Task<Guid?> ResolveAuthorizedOperatorAsync(
+            Guid id,
+            string? ticket,
+            IMediaAccessTicketService ticketService,
+            IOperatorRepository operators,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            Guid? operatorId = null;
+            bool viaTicket = false;
+
+            // Try authenticated path first
+            if (context.User.Identity?.IsAuthenticated == true)
+            {
+                string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+                if (Guid.TryParse(operatorIdClaim, out Guid claimedOperatorId))
+                {
+                    operatorId = claimedOperatorId;
+                }
+            }
+
+            // Fall back to ticket validation if no authenticated claim
+            if (operatorId == null)
+            {
+                operatorId = ticketService.Validate(ticket, id);
+                viaTicket = true;
+            }
+
+            if (operatorId == null)
+            {
+                return null;
+            }
+
+            // For ticket auth, validate operator status
+            if (viaTicket)
+            {
+                var @operator = await operators.GetAsync(operatorId.Value, ct);
+                if (@operator == null || !@operator.Active || !@operator.IsApproved)
+                {
+                    return null;
+                }
+            }
+
+            return operatorId;
         }
 
         /// <summary>

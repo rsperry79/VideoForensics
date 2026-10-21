@@ -213,7 +213,15 @@ namespace VideoForensics.Hosting.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to pull events for account");
+                // A throttle is handled and expected: log its message, not the stack.
+                if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException)
+                {
+                    _logger.LogWarning("Event pull skipped for account: {Reason}", ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Failed to pull events for account");
+                }
 
                 var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account != null)

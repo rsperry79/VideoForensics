@@ -12,6 +12,9 @@ namespace VideoForensics.WebApp.Services
         public int TotalFilesMissing { get; set; }
         public int TotalDiscrepanciesFound { get; set; }
         public int TotalDiscrepanciesFixed { get; set; }
+
+        /// <summary>Devices whose integrity check or provider reconciliation threw. Zero means every device passed.</summary>
+        public int FailedDevices { get; set; }
         public DateTime StartedAtUtc { get; set; }
         public DateTime CompletedAtUtc { get; set; }
         public string? ErrorMessage { get; set; }

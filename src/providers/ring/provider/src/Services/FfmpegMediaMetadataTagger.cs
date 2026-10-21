@@ -29,7 +29,12 @@ namespace VideoForensics.Providers.Ring.Services
 
         public async Task<bool> TagEventIdAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
         {
-            string tmpPath = mediaFilePath + ".tmp";
+            if (IsJpeg(mediaFilePath))
+            {
+                return await TagJpegAsync(mediaFilePath, eventId, ct);
+            }
+
+            string tmpPath = BuildTempPath(mediaFilePath);
             try
             {
                 var psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
@@ -72,6 +77,22 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
+        private static bool IsJpeg(string mediaFilePath)
+        {
+            string ext = Path.GetExtension(mediaFilePath);
+            return ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Temp file next to the original that keeps its extension ("clip.mp4" -> "clip.tmp.mp4").
+        /// Why: ffmpeg infers the output muxer from the extension, and "clip.mp4.tmp" is rejected with exit -22.
+        /// </summary>
+        private static string BuildTempPath(string mediaFilePath)
+        {
+            string ext = Path.GetExtension(mediaFilePath);
+            return mediaFilePath[..^ext.Length] + ".tmp" + ext;
+        }
+
         private ProcessStartInfo BuildTaggingProcessInfo(string mediaFilePath, Guid eventId, string tmpPath)
         {
             var psi = new ProcessStartInfo
@@ -97,8 +118,48 @@ namespace VideoForensics.Providers.Ring.Services
             return psi;
         }
 
+        /// <summary>
+        /// Why: ffmpeg writes no comment into JPEG output, so JPEG tagging writes the COM segment directly.
+        /// The temp file is written first and moved over the original, so a failure never leaves a half-written snapshot.
+        /// </summary>
+        private async Task<bool> TagJpegAsync(string mediaFilePath, Guid eventId, CancellationToken ct)
+        {
+            string tmpPath = BuildTempPath(mediaFilePath);
+            try
+            {
+                byte[] original = await File.ReadAllBytesAsync(mediaFilePath, ct);
+                string comment = CommentPrefix + eventId;
+                if (JpegCommentSegment.TryRead(original) == comment)
+                {
+                    return true;
+                }
+
+                byte[] tagged = JpegCommentSegment.Insert(original, comment);
+                await File.WriteAllBytesAsync(tmpPath, tagged, ct);
+                File.Move(tmpPath, mediaFilePath, overwrite: true);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception tagging JPEG {Path}", mediaFilePath);
+                if (File.Exists(tmpPath))
+                {
+                    try
+                    { File.Delete(tmpPath); }
+                    catch { }
+                }
+
+                return false;
+            }
+        }
+
         public async Task<Guid?> ReadEventIdAsync(string mediaFilePath, CancellationToken ct)
         {
+            if (IsJpeg(mediaFilePath))
+            {
+                return await ReadJpegEventIdAsync(mediaFilePath, ct);
+            }
+
             try
             {
                 var psi = BuildReadingProcessInfo(mediaFilePath);
@@ -120,6 +181,26 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Exception reading tagged metadata from {Path}", mediaFilePath);
+                return null;
+            }
+        }
+
+        private async Task<Guid?> ReadJpegEventIdAsync(string mediaFilePath, CancellationToken ct)
+        {
+            try
+            {
+                byte[] bytes = await File.ReadAllBytesAsync(mediaFilePath, ct);
+                string? comment = JpegCommentSegment.TryRead(bytes);
+
+                return comment is not null &&
+                    comment.StartsWith(CommentPrefix, StringComparison.Ordinal) &&
+                    Guid.TryParse(comment[CommentPrefix.Length..], out Guid id)
+                    ? id
+                    : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception reading JPEG comment from {Path}", mediaFilePath);
                 return null;
             }
         }

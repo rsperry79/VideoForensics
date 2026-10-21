@@ -9,6 +9,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     /// </summary>
     public class RingEndpointOptionsTests
     {
+        public RingEndpointOptionsTests()
+        {
+            RingTestHardBanIsolation.ResetForTest();
+        }
+
         [Fact]
         public void RingEndpointOptions_Defaults_MatchProductionHosts()
         {

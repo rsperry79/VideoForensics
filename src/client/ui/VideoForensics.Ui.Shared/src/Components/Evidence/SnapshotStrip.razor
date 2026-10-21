@@ -1,3 +1,4 @@
+@using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Evidence
 
 <div class="snapshot-strip" data-testid="snapshot-strip" tabindex="0" @onkeydown="HandleKeydownAsync">
@@ -12,13 +13,13 @@
                  @onclick="@(() => SelectAsync(index))">
                 @if (item.Media is not null && ThumbnailUrls.TryGetValue(item.Media.Id, out var url))
                 {
-                    <img src="@url" alt="@item.Label" />
+                    <MediaThumb Url="@url" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="@item.Label" />
                 }
                 else
                 {
                     <div class="snapshot-strip-thumb-placeholder"></div>
                 }
-                <div class="snapshot-strip-thumb-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
+                <div class="snapshot-strip-thumb-time"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /></div>
             </div>
         }
     </div>

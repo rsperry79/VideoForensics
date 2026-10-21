@@ -20,5 +20,16 @@ namespace VideoForensics.Data.Common.Entities
         public string? LastErrorMessage { get; set; }
         /// <summary>Non-null once the account was removed: data retained, no longer active or scheduled.</summary>
         public DateTime? RemovedUtc { get; set; }
+        /// <summary>
+        /// True once the account's first sync finished (discovery, config and media validation). Defaults to false for new
+        /// accounts so an interrupted first sync is retried; the migration marks existing accounts true so they do not re-validate.
+        /// </summary>
+        public bool InitialSyncCompleted { get; set; }
+
+        /// <summary>
+        /// When the last successful sync finished. Display only (Account details, Sync tab). Kept separate from
+        /// <see cref="LastDownloadTimeUtc"/>, which is the legacy video-download watermark that sync must never move.
+        /// </summary>
+        public DateTime? LastSyncCompletedUtc { get; set; }
     }
 }

@@ -21,6 +21,17 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         internal static readonly FileHardBanStateStore Store = new FileHardBanStateStore(
             Path.Combine(Path.GetTempPath(), "vf-ring-core-tests-" + Guid.NewGuid().ToString("N")));
 
+        /// <summary>
+        /// Clears the isolated store and the in-process throttle and ban state. The 429 tests add to that state, and without a reset
+        /// a later test in the run inherits a one-hour ban (the ban file is cleared too, or it would reload on the next read).
+        /// </summary>
+        internal static void ResetForTest()
+        {
+            Store.Clear();
+            // Re-pointing the cache also resets its loaded flag, so the next read comes from the isolated store, never the live app's file.
+            HttpUtility.UseHardBanStateStoreForTesting(Store);
+        }
+
         [ModuleInitializer]
         internal static void Isolate()
         {

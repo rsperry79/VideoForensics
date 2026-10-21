@@ -5,6 +5,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
 using VideoForensics.WebApp.Auth;
 
@@ -192,7 +193,8 @@ namespace VideoForensics.WebApp.Api
                     LinkedUtc = DateTime.UtcNow,
                     LastSuccessfulAuthUtc = null,
                     IsActive = true,
-                    LastDownloadTimeUtc = null
+                    LastDownloadTimeUtc = null,
+                    InitialSyncCompleted = false
                 };
                 await accounts.AddAsync(account, ct);
 
@@ -294,11 +296,10 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                // Purge is disabled (see IAccountExportService.PurgeDisabledMessage). Reject before anything is retired,
-                // so a refused request cannot leave the account retired with its credentials gone.
-                if (request.PurgeAfterExport)
+                // Reject before anything is retired, so an unconfirmed purge cannot leave the account retired.
+                if (request.ValidationError is { } validationError)
                 {
-                    return Results.BadRequest(new { error = IAccountExportService.PurgeDisabledMessage });
+                    return Results.BadRequest(new { error = validationError });
                 }
 
                 // Retire first so the scheduler stops pulling for the account before the export runs.
@@ -389,6 +390,16 @@ namespace VideoForensics.WebApp.Api
                     try
                     {
                         using IServiceScope scope = scopeFactory.CreateScope();
+
+                        // An account whose first sync never finished gets that sync instead of an incremental pull.
+                        var accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+                        ProviderAccount? current = await accountRepository.GetAsync(id, CancellationToken.None);
+                        IInitialSyncDispatcher? initialSync = scope.ServiceProvider.GetService<IInitialSyncDispatcher>();
+                        if (current is { InitialSyncCompleted: false } && initialSync is not null)
+                        {
+                            await initialSync.RunInitialSyncAsync(id, CancellationToken.None);
+                            return;
+                        }
 
                         IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
                         if (request == null)
@@ -541,8 +552,8 @@ namespace VideoForensics.WebApp.Api
         try
         {
             using IServiceScope scope = scopeFactory.CreateScope();
-            IAccountSyncRunner runner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
-            await runner.RunInitialAsync(accountId, CancellationToken.None);
+            VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
+            await coordinator.RunAsync(accountId, CancellationToken.None);
         }
         catch
         {

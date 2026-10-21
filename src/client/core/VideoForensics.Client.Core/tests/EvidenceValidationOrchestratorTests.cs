@@ -22,6 +22,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _integrityServiceMock;
         private readonly Mock<IMediaItemRepository> _mediaItemRepositoryMock;
         private readonly Mock<IProviderReconciliationService> _reconciliationServiceMock;
+        private readonly Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService> _thumbnailsMock;
         private readonly EvidenceValidationOrchestrator _orchestrator;
 
         public EvidenceValidationOrchestratorTests()
@@ -33,6 +34,7 @@ namespace VideoForensics.Client.Core.Tests
             _integrityServiceMock = new Mock<IIntegrityVerificationService>();
             _mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
             _reconciliationServiceMock = new Mock<IProviderReconciliationService>();
+            _thumbnailsMock = new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>();
 
             _orchestrator = new EvidenceValidationOrchestrator(
                 _loggerMock.Object,
@@ -41,7 +43,35 @@ namespace VideoForensics.Client.Core.Tests
                 _deviceRepositoryMock.Object,
                 _integrityServiceMock.Object,
                 _mediaItemRepositoryMock.Object,
+                _thumbnailsMock.Object,
                 _reconciliationServiceMock.Object);
+        }
+
+        /// <summary>
+        /// A manual verification run is where thumbnails that went missing are found, so every row is reconciled with
+        /// the disk, including a row whose clip is itself gone (that is exactly when its stored thumbnail name goes stale).
+        /// </summary>
+        [Fact]
+        public async Task VerifyLocalIntegrityAsync_ReconcilesThumbnailOfEveryRow()
+        {
+            var deviceId = Guid.NewGuid();
+            var item = new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = "clip.mp4",
+                FilePath = Path.Combine(Path.GetTempPath(), "vf-verify-" + Guid.NewGuid(), "clip.mp4"),
+                MediaFormat = "video/mp4",
+                Sha256Hash = "h",
+                ThumbnailPath = "clip.thumb.png",
+            };
+            _mediaItemRepositoryMock
+                .Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem> { item });
+
+            _ = await _orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
+
+            _thumbnailsMock.Verify(t => t.ReconcileThumbnailAsync(item, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

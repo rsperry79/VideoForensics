@@ -21,9 +21,9 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
 
     [Theory]
     [InlineData("/")]
-    [InlineData("/evidence")]
-    [InlineData("/Evidence")]
-    [InlineData("/evidence?x=1")]
+    [InlineData("/media")]
+    [InlineData("/Media")]
+    [InlineData("/media?x=1")]
     [InlineData("/#section")]
     public void SimpleLayout_AtHomeRoutes_ShowsSimpleHomeNotBody(string path)
     {
@@ -39,7 +39,7 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [InlineData("/chat")]
     [InlineData("/cases/42")]
     [InlineData("/settings/passkeys")]
-    [InlineData("/evidence/extra")]
+    [InlineData("/media/extra")]
     public void SimpleLayout_AtOtherRoutes_ShowsBodyNotSimpleHome(string path)
     {
         var component = RenderAt(path);

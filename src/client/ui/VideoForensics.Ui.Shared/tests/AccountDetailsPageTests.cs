@@ -82,6 +82,18 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IProviderAuthService> AuthServiceMock { get; } = new();
 
+    protected Mock<ILocationRepository> LocationRepositoryMock { get; } = new();
+
+    protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
+
+    protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
+
+    protected Mock<ISyncScheduleRepository> SyncScheduleRepositoryMock { get; } = new();
+
+    protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+
+    protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -122,6 +134,15 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => AuthServiceMock.Object);
         Services.AddScoped(_ => ForensicsConfigMock.Object);
         Services.AddScoped(_ => ForensicsConfigServiceMock.Object);
+        // The Sync tab embeds the validate panel, which resolves these when it renders.
+        Services.AddScoped(_ => LocationRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
+        // The Sync tab embeds the schedule settings, which resolve the sync-schedule repository.
+        Services.AddScoped(_ => SyncScheduleRepositoryMock.Object);
+        Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        Services.AddScoped(_ => MediaUrlProviderMock.Object);
+        Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));
@@ -140,6 +161,14 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected IRenderedComponent<AccountDetails> RenderPage() =>
         Render<AccountDetails>(p => p.Add(c => c.Id, AccountId));
+
+    /// <summary>The Sync tab: sync controls, output, history, and the last-sync timestamps.</summary>
+    protected IRenderedComponent<AccountSyncTab> RenderSync() =>
+        Render<AccountSyncTab>(p => p.Add(c => c.Id, AccountId));
+
+    /// <summary>The Cases tab: the account's attached cases.</summary>
+    protected IRenderedComponent<AccountCasesTab> RenderCases() =>
+        Render<AccountCasesTab>(p => p.Add(c => c.Id, AccountId));
 
     /// <summary>Absolute path (as the page requests it) for a sub-route of this account.</summary>
     protected static string ApiPath(string suffix) => $"/api/v1/accounts/provider-accounts/{AccountId}{suffix}";
@@ -169,7 +198,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("#sync-history .sync-run-row").Count));
         var rows = cut.FindAll("#sync-history .sync-run-row").Select(r => r.TextContent).ToList();
@@ -188,7 +217,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         Assert.Contains(Strings["ColSyncType"], cut.Find("#sync-history thead").TextContent);
@@ -208,7 +237,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -224,7 +253,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         SetJson("/sync-runs", new[] { new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true) });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -237,7 +266,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNoRuns"], cut.Find("#sync-history").TextContent));
         Assert.Empty(cut.FindAll("#sync-history .sync-run-row"));
@@ -252,7 +281,7 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
         SetJson($"/sync-runs/{runId}", new ProviderSyncRunDetailDto(runId, AccountId, started, started.AddMinutes(1), false, "Token expired"));
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
 
         cut.Find("#sync-history .sync-run-row button").Click();
@@ -265,17 +294,11 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     public void AccountDetails_SyncListFails_ShowsLoadErrorInSyncSectionOnly()
     {
         FailJson("/sync-runs");
-        var caseId = Guid.NewGuid();
-        SetJson("/cases", new[]
-        {
-            new AccountCaseDto(caseId, "CASE-1", "Porch", "Open", "Detected", null, new DateTime(2026, 9, 12, 12, 0, 0, DateTimeKind.Utc)),
-        });
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LoadListError"], cut.Find("#sync-history").TextContent));
         Assert.Contains("Ring", cut.Find(".card-title").TextContent);
-        Assert.Single(cut.FindAll("#attached-cases .case-row"));
     }
 }
 
@@ -292,7 +315,7 @@ public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
             new AccountCaseDto(Guid.NewGuid(), "CASE-1", "Porch", "Open", "Detected", scope, created),
         });
 
-        var cut = RenderPage();
+        var cut = RenderCases();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#attached-cases .case-row")));
         var row = cut.Find("#attached-cases .case-row").TextContent;
@@ -311,7 +334,7 @@ public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
             new AccountCaseDto(Guid.NewGuid(), "CASE-2", "Garage", "Open", "Manual", null, created),
         });
 
-        var cut = RenderPage();
+        var cut = RenderCases();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#attached-cases .case-row")));
         var eventCell = cut.Find("#attached-cases .case-row td[data-col='event-date']");
@@ -328,7 +351,7 @@ public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
             new AccountCaseDto(caseId, "CASE-1", "Porch", "Open", "Detected", null, new DateTime(2026, 9, 12, 12, 0, 0, DateTimeKind.Utc)),
         });
 
-        var cut = RenderPage();
+        var cut = RenderCases();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#attached-cases .case-row")));
 
         cut.Find("#attached-cases .case-row button").Click();
@@ -341,7 +364,7 @@ public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderCases();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["CasesNone"], cut.Find("#attached-cases").TextContent));
         Assert.Empty(cut.FindAll("#attached-cases .case-row"));
@@ -355,7 +378,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNow"], ButtonLabels(cut)));
         Assert.DoesNotContain("Select", ButtonLabels(cut));
@@ -367,10 +390,11 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["SyncNow"], ButtonLabels(cut)));
-        Assert.Empty(cut.FindAll("#config-sync-interval"));
+        // The config sync interval lives in the schedule section, never in the sync output or controls.
+        Assert.Empty(cut.FindAll("#sync-output [id^='config-sync']"));
     }
 
     [Fact]
@@ -378,7 +402,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForElement("#sync-range");
         Assert.Empty(cut.FindAll("#sync-custom-start, #sync-custom-end"));
@@ -389,7 +413,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForElement("#sync-range");
     }
@@ -399,7 +423,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-type").Change("Config");
 
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#sync-range")));
@@ -410,7 +434,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-range").Change("Custom");
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-custom-start")));
@@ -422,7 +446,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-range").Change("Custom");
 
         cut.WaitForAssertion(() => Assert.Equal(DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd"), cut.Find("#sync-custom-start").GetAttribute("value")));
@@ -434,7 +458,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-range").Change("Custom");
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-custom-end-hint")));
@@ -447,7 +471,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         SetEmptyLists();
         SetJson("/sync-now", new { });
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-type").Change("Events");
         cut.Find("#sync-range").Change("60");
         FindButtons(cut, Strings["SyncNow"]).Single().Click();
@@ -465,7 +489,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         SetEmptyLists();
         SetJson("/sync-now", new { });
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-range").Change("60");
         cut.WaitForElement("#sync-type").Change("Config");
         FindButtons(cut, Strings["SyncNow"]).Single().Click();
@@ -482,7 +506,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-type").Change("All");
 
         cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("#sync-range option"), o => o.GetAttribute("value") == "All"));
@@ -494,7 +518,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         SetEmptyLists();
         SetJson("/sync-now", new { });
 
-        var cut = RenderPage();
+        var cut = RenderSync();
         cut.WaitForElement("#sync-type").Change("All");
         cut.WaitForElement("#sync-range").Change("All");
         FindButtons(cut, Strings["SyncNow"]).Single().Click();
@@ -515,7 +539,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -535,7 +559,7 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#sync-history .sync-run-row")));
         string row = cut.Find("#sync-history .sync-run-row").TextContent;
@@ -554,16 +578,16 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         });
         SetJson("/cases", Array.Empty<AccountCaseDto>());
 
-        var cut = RenderPage();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LatestSyncRunLabel"], cut.Find("#sync-output").TextContent));
         Assert.Contains(Strings["SyncSucceeded"], cut.Find("#sync-output").TextContent);
     }
 
-    private static List<string> ButtonLabels(IRenderedComponent<AccountDetails> cut) =>
+    private static List<string> ButtonLabels<T>(IRenderedComponent<T> cut) where T : Microsoft.AspNetCore.Components.IComponent =>
         cut.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
 
-    private static List<AngleSharp.Dom.IElement> FindButtons(IRenderedComponent<AccountDetails> cut, string text) =>
+    private static List<AngleSharp.Dom.IElement> FindButtons<T>(IRenderedComponent<T> cut, string text) where T : Microsoft.AspNetCore.Components.IComponent =>
         cut.FindAll("button").Where(b => b.TextContent.Trim() == text).ToList();
 }
 
@@ -578,7 +602,7 @@ public class AccountDetailsPage_Localization_Tests : AccountDetailsPageTestBase
             new AccountCaseDto(Guid.NewGuid(), "CASE-1", "Porch", "Open", "Detected", null, new DateTime(2026, 9, 12, 12, 0, 0, DateTimeKind.Utc)),
         });
 
-        var cut = RenderPage();
+        var cut = RenderCases();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#attached-cases .case-row")));
         Assert.Contains(Strings["CaseTypeDetected"], cut.Find("#attached-cases .case-row").TextContent);
@@ -593,7 +617,7 @@ public class AccountDetailsPage_Localization_Tests : AccountDetailsPageTestBase
             new AccountCaseDto(Guid.NewGuid(), "CASE-3", "Shed", "Open", "SomethingNew", null, new DateTime(2026, 9, 12, 12, 0, 0, DateTimeKind.Utc)),
         });
 
-        var cut = RenderPage();
+        var cut = RenderCases();
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("#attached-cases .case-row")));
         var row = cut.Find("#attached-cases .case-row").TextContent;

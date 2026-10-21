@@ -965,14 +965,25 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.TwoFactorAuthenticationRequiredException">Thrown when the web server indicates two-factor authentication is required (HTTP 412).</exception>
         public async Task<Stream> GetLatestSnapshot(int doorbotId)
         {
-            await EnsureSessionValid();
+            HttpUtility.DownloadResult result = await GetLatestSnapshotWithStatus(doorbotId);
+            return new MemoryStream(result.Bytes);
+        }
+
+        /// <summary>
+        /// Requests the latest available snapshot from the provided doorbot and returns the real HTTP status with the body.
+        /// Unlike <see cref="GetLatestSnapshot(int)"/> this does not throw on a non-success status, so the caller can record it.
+        /// </summary>
+        /// <param name="doorbotId">ID of the doorbot to retrieve the latest available snapshot from</param>
+        /// <param name="cancellationToken">Token to cancel the request with</param>
+        /// <returns>The status, body bytes and Retry-After wait of the snapshot response</returns>
+        public async Task<HttpUtility.DownloadResult> GetLatestSnapshotWithStatus(int doorbotId, CancellationToken cancellationToken = default)
+        {
+            await EnsureSessionValid(cancellationToken);
 
             // Construct the URL where to download the latest doorbot snapshot from
             var downloadSnapshotUri = new Uri(BaseUrl, $"snapshots/image/{doorbotId}");
 
-            // Request the snapshot
-            byte[] bytes = await _httpUtility.DownloadFile(downloadSnapshotUri, AuthenticationToken);
-            return new MemoryStream(bytes);
+            return await _httpUtility.DownloadFileWithStatus(downloadSnapshotUri, AuthenticationToken, cancellationToken);
         }
 
         /// <summary>

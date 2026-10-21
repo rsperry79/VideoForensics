@@ -17,6 +17,15 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>Oldest media items that analysis has never run on (no baseline version yet), up to <paramref name="limit"/>.</summary>
+        Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct);
+
+        /// <summary>
+        /// Snapshot JPEGs of a device in [fromUtc, toUtc], oldest first. The format and snapshot marker are filtered in the
+        /// database. Files on disk are not checked here.
+        /// </summary>
+        Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct);
 
@@ -28,6 +37,9 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Lists all media items.</summary>
         Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct);
+
+        /// <summary>Lists non-purged video items whose <see cref="MediaItem.ThumbnailPath"/> is not yet set.</summary>
+        Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct);
 
         /// <summary>Adds a new media item.</summary>
         Task AddAsync(MediaItem mediaItem, CancellationToken ct);

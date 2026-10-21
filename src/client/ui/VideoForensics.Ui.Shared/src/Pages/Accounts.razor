@@ -1,8 +1,11 @@
 @page "/accounts"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Core.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @inject IProviderAccountRepository ProviderAccountRepository
+@inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
 @inject IStringLocalizer<Accounts> L
@@ -63,19 +66,26 @@ else
                                 var row = (AccountRow)context;
                                 @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
                                 {
-                                    <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n{L["ErrorAsOf", row.Account.LastErrorUtc?.ToString() ?? L["UnknownTime"]]}")">error</i>
+                                    <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n{L["ErrorAsOf", (row.Account.LastErrorUtc is { } errAt ? Zone.Format(errAt, null) : L["UnknownTime"].Value)]}")">error</i>
                                 }
                                 <span>@row.DisplayName</span>
                             }
                         </Template>
                     </GridColumn>
                     <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
-                    <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
+                    <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <LocalTimeText Value="@row.Account.LinkedUtc" />
+                            }
+                        </Template>
+                    </GridColumn>
                     <GridColumn HeaderText="@L["ColLastAuth"]">
                         <Template>
                             @{
                                 var row = (AccountRow)context;
-                                @(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")
+                                <LocalTimeText Value="@row.Account.LastSuccessfulAuthUtc" Fallback="-" />
                             }
                         </Template>
                     </GridColumn>
@@ -84,7 +94,6 @@ else
                             @{
                                 var row = (AccountRow)context;
                                 <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
-                                <SfButton Content="@L["Remove"]" OnClick="@((UIMouseEventArgs) => StartRemove(row.Account.Id, false))" CssClass="e-danger" />
                             }
                         </Template>
                     </GridColumn>
@@ -114,7 +123,7 @@ else
                         <Template>
                             @{
                                 var row = (AccountRow)context;
-                                @(row.Account.RemovedUtc?.ToString() ?? "-")
+                                <LocalTimeText Value="@row.Account.RemovedUtc" Fallback="-" />
                             }
                         </Template>
                     </GridColumn>
@@ -145,6 +154,11 @@ else
 </div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
     private sealed record RemoveTarget(Guid AccountId, bool StartAtDeleteStep);
@@ -185,14 +199,40 @@ else
     private RemoveTarget? _removeTarget;
     private string? _loadError;
     private bool _isLoading = true;
+    private IDisposable? _accountLinkedSubscription;
+    private volatile bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe before the initial load so a Dispose during that load still finds and releases the subscription.
+        _accountLinkedSubscription = AccountLinkedSource.AccountLinked.Subscribe(linkedId =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _ = OnAccountLinkedAsync();
+        });
         await LoadAccountsAsync();
     }
 
+    private Task OnAccountLinkedAsync() => InvokeAsync(async () =>
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadAccountsAsync();
+        StateHasChanged();
+    });
+
     public void Dispose()
     {
+        _disposed = true;
+        _accountLinkedSubscription?.Dispose();
+        _accountLinkedSubscription = null;
         // Stops every export polling loop.
         _disposeCts.Cancel();
         _disposeCts.Dispose();

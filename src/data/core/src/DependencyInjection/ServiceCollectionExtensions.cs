@@ -39,7 +39,16 @@ namespace VideoForensics.Data.Core.DependencyInjection
                     sp.GetRequiredService<ILogger<VideoForensics.Core.Providers.Core.FfmpegTimelineVideoBuilder>>(),
                     VideoForensics.Core.Providers.Core.FfmpegPathResolver.Resolve(null, "ffmpeg", sp.GetRequiredService<VideoForensics.Core.Providers.Common.Contracts.IFfmpegToolLocation>().BinDirectory)));
             services.AddOptions<VideoForensics.Data.Core.Services.MediaAnalysisOptions>();
+            // Snapshot timelines: the mapper has no dependencies; the service reads stored captures and drives the builder above.
+            services.TryAddSingleton<VideoForensics.Core.Providers.Common.Contracts.ISnapshotStillMapper, VideoForensics.Core.Providers.Core.SnapshotStillMapper>();
+            services.AddOptions<VideoForensics.Data.Core.Services.SnapshotTimelineOptions>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.ISnapshotTimelineService, VideoForensics.Data.Core.Services.SnapshotTimelineService>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
+            services.TryAddSingleton<VideoForensics.Data.Core.Services.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
+            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Services.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)

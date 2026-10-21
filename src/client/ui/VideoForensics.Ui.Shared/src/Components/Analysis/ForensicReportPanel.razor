@@ -62,7 +62,11 @@ else if (_report is not null)
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
             <GridPageSettings PageSize="20"></GridPageSettings>
             <GridColumns>
-                <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100" />
+                <GridColumn Field="@nameof(DeviceHealth.CapturedAtUtc)" HeaderText="@L["ColCapturedAt"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as DeviceHealth)!.CapturedAtUtc)" />
+                    </Template>
+                </GridColumn>
                 <GridColumn HeaderText="@L["ColDeviceId"]" MinWidth="100">
                     <Template>
                         @{
@@ -130,7 +134,11 @@ else if (_report is not null)
                 <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
                 <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
                 <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
-                <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+                <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as ActionLogEntry)!.TimestampUtc)" />
+                    </Template>
+                </GridColumn>
             </GridColumns>
         </SfGrid>
     }

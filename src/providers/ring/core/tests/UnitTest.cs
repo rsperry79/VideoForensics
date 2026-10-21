@@ -10,6 +10,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     {
         public async ValueTask InitializeAsync()
         {
+            if (!Mocks.RealSessionHelper.LiveTestsEnabled)
+            {
+                return;
+            }
+
             // Check if we have a refresh token to authenticate to Ring with
             if (string.IsNullOrEmpty(UnitTest.RefreshToken))
             {
@@ -169,6 +174,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task AuthenticateFailTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             try
             {
                 var session = new Session("test@test.com", "someinvalidpassword");
@@ -186,6 +192,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task AuthenticateWithRefreshTokenSuccessTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -204,6 +211,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task AuthenticateWithRefreshTokenFailTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             try
             {
                 // Request a new authenticated session based on a non existing RefreshToken
@@ -221,6 +229,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDevicesTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -238,6 +247,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDevicesUnauthenticatedTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             try
             {
                 var session = new Session("", "");
@@ -255,6 +265,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -273,6 +284,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryForSpecificDoorbotTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -305,6 +317,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryForSpecificNonExistingDoorbotTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -329,6 +342,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryWithLimitTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -349,6 +363,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryByDateSpanTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -370,6 +385,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryRecordingByIdTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -394,6 +410,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetDoorbotsHistoryRecordingByInstanceTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -418,6 +435,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task ShareRecordingTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -438,6 +456,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task DownloadLatestSnapshotTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -462,6 +481,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task UpdateSnapshotTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -482,6 +502,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetSnapshotTimestampTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -505,6 +526,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public void FlexibleStringConverterTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             // Verify the converter exists and can be instantiated
             var converter = new FlexibleStringConverter();
             Assert.NotNull(converter);
@@ -528,6 +550,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public async Task GetLocationsTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!IsSessionActive())
             {
                 return;
@@ -547,6 +570,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public void LocationIdDeserializationTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             string chimeJson = """{"id": 1, "location_id": "550e8400-e29b-41d4-a716-446655440000", "description": "test"}""";
             Entities.Chime? chime = System.Text.Json.JsonSerializer.Deserialize<Entities.Chime>(chimeJson);
 
@@ -566,6 +590,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public void ApiRawLoggerTest()
         {
+            Mocks.RealSessionHelper.RequireLive();
             // Verify that the ApiRawLogger events exist and can be subscribed to. The events are
             // raised internally by the API when making actual HTTP calls - this test only confirms
             // subscribing doesn't throw; it passes as long as it completes without an exception.

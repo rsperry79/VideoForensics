@@ -382,3 +382,133 @@ public class EventRowLoader_LoadAsync_ErrorHandling_Tests
         Assert.Contains(device1Id, result.PerDeviceErrors.Keys);
     }
 }
+
+public class EventRowLoader_LoadAsync_MediaMatching_Tests
+{
+    [Fact]
+    public async Task LoadAsync_MediaWithMatchingProviderEventId_AttachesMediaToEventRow()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var scope = new ForensicScope(
+            DeviceIds: new[] { deviceId },
+            FromUtc: new DateTime(2026, 9, 17, 0, 0, 0, DateTimeKind.Utc),
+            ToUtc: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Search: null);
+
+        var testEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            EventType = "Motion",
+            OccurredAtUtc = new DateTime(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc),
+            DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
+            ProviderEventId = "ring-evt-1",
+            MetadataJson = "{}"
+        };
+
+        var mediaItem = new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            Sha256Hash = "abc"
+        };
+
+        var mockEventRepo = new Mock<IEventRepository>();
+        mockEventRepo
+            .Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { testEvent });
+
+        // The report service owns the media-to-provider-event join; the loader matches on ProviderEventId.
+        var mockReportService = new Mock<IReportGenerationService>();
+        mockReportService
+            .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EvidenceReviewReport
+            {
+                MediaItems = new List<MediaItem> { mediaItem },
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(mediaItem.Id, "ring-evt-1") },
+                IntegrityRecords = new List<IntegrityRecord>()
+            });
+
+        var mockHoldRepo = new Mock<ILegalHoldRepository>();
+        mockHoldRepo
+            .Setup(r => r.GetActiveByMediaItemIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold>());
+
+        var loader = new EventRowLoader(mockEventRepo.Object, mockReportService.Object, mockHoldRepo.Object);
+
+        // Act
+        var result = await loader.LoadAsync(scope, new[] { deviceId }, false, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result.Rows);
+        Assert.Same(mediaItem, result.Rows[0].MediaItem);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MediaWithoutDownloadEventMatch_LeavesEventRowWithoutMedia()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var scope = new ForensicScope(
+            DeviceIds: new[] { deviceId },
+            FromUtc: new DateTime(2026, 9, 17, 0, 0, 0, DateTimeKind.Utc),
+            ToUtc: new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc),
+            Search: null);
+
+        var testEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            EventType = "Motion",
+            OccurredAtUtc = new DateTime(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc),
+            DiscoveredAtUtc = new DateTime(2026, 9, 20, 12, 5, 0, DateTimeKind.Utc),
+            ProviderEventId = "ring-evt-1",
+            MetadataJson = "{}"
+        };
+
+        var mediaItem = new MediaItem
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            MediaFormat = "mp4",
+            Sha256Hash = "abc"
+        };
+
+        var mockEventRepo = new Mock<IEventRepository>();
+        mockEventRepo
+            .Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { testEvent });
+
+        // The media item is linked to a different provider event, so nothing should match ring-evt-1.
+        var mockReportService = new Mock<IReportGenerationService>();
+        mockReportService
+            .Setup(r => r.BuildEvidenceReviewAsync(deviceId, scope.FromUtc, scope.ToUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EvidenceReviewReport
+            {
+                MediaItems = new List<MediaItem> { mediaItem },
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(mediaItem.Id, "ring-evt-other") },
+                IntegrityRecords = new List<IntegrityRecord>()
+            });
+
+        var mockHoldRepo = new Mock<ILegalHoldRepository>();
+        mockHoldRepo
+            .Setup(r => r.GetActiveByMediaItemIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LegalHold>());
+
+        var loader = new EventRowLoader(mockEventRepo.Object, mockReportService.Object, mockHoldRepo.Object);
+
+        // Act
+        var result = await loader.LoadAsync(scope, new[] { deviceId }, false, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result.Rows);
+        Assert.Null(result.Rows[0].MediaItem);
+    }
+}
+

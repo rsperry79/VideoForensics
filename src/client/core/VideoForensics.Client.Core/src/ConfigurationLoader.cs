@@ -43,6 +43,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
+                runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;
                 runtimeConfig.SmtpHost = loadedConfig.SmtpHost;
@@ -61,6 +62,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.ElevatedPollingIntervalSeconds = loadedConfig.ElevatedPollingIntervalSeconds;
                 runtimeConfig.EnableBitrateCalibration = loadedConfig.EnableBitrateCalibration;
                 runtimeConfig.CalibrationCheckIntervalMinutes = loadedConfig.CalibrationCheckIntervalMinutes;
+                runtimeConfig.DeviceOfflineThresholdSeconds = loadedConfig.DeviceOfflineThresholdSeconds;
                 runtimeConfig.CalibrationSessionDurationSeconds = loadedConfig.CalibrationSessionDurationSeconds;
                 runtimeConfig.MinCalibrationSamplesPerBucket = loadedConfig.MinCalibrationSamplesPerBucket;
                 runtimeConfig.CalibrationStalenessDays = loadedConfig.CalibrationStalenessDays;

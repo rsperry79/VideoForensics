@@ -40,12 +40,12 @@ namespace VideoForensics.Hosting.Tests.Services
         private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
             new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
 
-        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>());
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
         [Fact]
         public async Task RunAsync_EventsWithFromDate_PullsFromThatDate()
         {
-            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+            var from = DateTime.UtcNow.AddDays(-5);
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, from, null, false), CancellationToken.None);
 
@@ -62,7 +62,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             _pull.Verify(p => p.PullAccountEventsAsync(
                 _id,
-                It.Is<DateTime?>(from => from.HasValue && from.Value >= before.AddYears(-1) && from.Value <= after.AddYears(-1)),
+                It.Is<DateTime?>(from => from.HasValue && from.Value >= before.AddMonths(-1) && from.Value <= after.AddMonths(-1)),
                 It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal("Full", Assert.Single(_recorded).SyncType);

@@ -103,6 +103,7 @@
     /// <param name="TotalItemCount">Total number of media items in the report period.</param>
     /// <param name="VerifiedItemCount">Number of media items with passing integrity verification.</param>
     /// <param name="FailedVerificationCount">Number of media items with failed integrity verification.</param>
+    /// <param name="MediaProviderEventLinks">Links from media items to their provider event ids. Null when not supplied.</param>
     public record EvidenceReviewReportDto(
         DateTime GeneratedAtUtc,
         DateTime ReportFromUtc,
@@ -111,8 +112,16 @@
         IReadOnlyList<IntegrityRecordDto> IntegrityRecords,
         int TotalItemCount,
         int VerifiedItemCount,
-        int FailedVerificationCount
+        int FailedVerificationCount,
+        IReadOnlyList<MediaProviderEventLinkDto>? MediaProviderEventLinks = null
     );
+
+    /// <summary>
+    /// Data transfer object linking a media item to the provider event it was downloaded for.
+    /// </summary>
+    /// <param name="MediaItemId">The media item.</param>
+    /// <param name="ProviderEventId">The provider's event id, matching Event.ProviderEventId on the same device.</param>
+    public record MediaProviderEventLinkDto(Guid MediaItemId, string ProviderEventId);
 
     /// <summary>
     /// Data transfer object for a forensic analysis report combining evidence, health metrics, and actions.
@@ -362,7 +371,8 @@
                 IntegrityRecords: model.IntegrityRecords.Select(x => x.ToDto()).ToList().AsReadOnly(),
                 TotalItemCount: model.TotalItemCount,
                 VerifiedItemCount: model.VerifiedItemCount,
-                FailedVerificationCount: model.FailedVerificationCount
+                FailedVerificationCount: model.FailedVerificationCount,
+                MediaProviderEventLinks: model.MediaProviderEventLinks.Select(x => new MediaProviderEventLinkDto(x.MediaItemId, x.ProviderEventId)).ToList().AsReadOnly()
             );
         }
 

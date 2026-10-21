@@ -4,6 +4,7 @@ using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -211,9 +212,9 @@ namespace VideoForensics.Client.Core.Tools
                     Directory.Delete(downloadDir, recursive: true);
                 }
 
+                // Same folder AddVideoForensicsSqlite opens (StorageCategory.Database), so a reset deletes the live file.
                 string dbPath = dbPathOverride ?? Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
+                    new StorageLocationProvider().GetDefaultRoot(StorageCategory.Database),
                     "videoforensics.db");
 
                 if (File.Exists(dbPath))

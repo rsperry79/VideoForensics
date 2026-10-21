@@ -34,7 +34,11 @@ namespace VideoForensics.Core.Providers.Common.Contracts
     /// window still gets one frame. A clip's usable seconds are capped at its real video length after the offset,
     /// so the frame count matches the frames written. Declared time past a clip's real end is a gap and is not filled.
     /// </param>
-    public sealed record TimelineVideoRequest(IReadOnlyList<TimelineStill> Stills, string OutputPath, IReadOnlyList<TimelineClip>? Clips = null);
+    /// <param name="MaxHeight">
+    /// Optional cap on the output height in pixels. The aspect ratio is kept and the width scales with it. Null keeps the
+    /// source size. The per-camera 360 px timeline sets this; full-resolution builds leave it null.
+    /// </param>
+    public sealed record TimelineVideoRequest(IReadOnlyList<TimelineStill> Stills, string OutputPath, IReadOnlyList<TimelineClip>? Clips = null, int? MaxHeight = null);
 
     /// <summary>Outcome of a timeline build. ffmpeg failures are reported here, not thrown.</summary>
     /// <param name="Success">True if the MP4 was written.</param>

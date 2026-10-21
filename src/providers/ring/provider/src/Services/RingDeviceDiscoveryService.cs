@@ -180,7 +180,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations from Ring API");
+                if (ex is ThrottledException)
+                {
+                    _logger.LogWarning("Location fetch skipped: {Reason}", ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching locations from Ring API");
+                }
                 throw;
             }
             finally
@@ -507,7 +514,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
+                if (ex is ThrottledException)
+                {
+                    _logger.LogWarning("Location fetch skipped for {ProviderName} account: {Reason}", ProviderName, ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
+                }
                 throw;
             }
             finally
@@ -1015,8 +1029,23 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _syncRunTally?.AddFeedFailure();
-                _logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
+                LogFeedFailure(_logger, feed, ex);
             }
+        }
+
+        /// <summary>
+        /// Logs one failed feed. A throttle is handled and expected, so it gets a warning with its message only. Any other
+        /// failure is an error with the exception attached. Stack traces stay out of the throttle path on purpose.
+        /// </summary>
+        internal static void LogFeedFailure(ILogger logger, string feed, Exception ex)
+        {
+            if (ex is ThrottledException)
+            {
+                logger.LogWarning("Ring {Feed} sync skipped: {Reason}", feed, ex.Message);
+                return;
+            }
+
+            logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
         }
 
         /// <summary>

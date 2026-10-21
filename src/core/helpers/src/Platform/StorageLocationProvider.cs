@@ -63,6 +63,16 @@ public class StorageLocationProvider : IStorageLocationProvider
         };
     }
 
+    /// <inheritdoc />
+    public string GetDataRoot()
+    {
+        // Same root that the per-category Windows defaults hang off, so root-level files and category folders
+        // always live under one VideoForensics directory.
+        return OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics")
+            : "/var/lib/videoforensics";
+    }
+
     public string GetEffectiveRoot(StorageCategory category, string? configuredOverride)
     {
         return !string.IsNullOrWhiteSpace(configuredOverride) ? configuredOverride : GetDefaultRoot(category);

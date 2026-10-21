@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
+using System.Reactive.Subjects;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Ui.Shared.Contracts;
 using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -33,6 +36,22 @@ using Syncfusion.Blazor.Navigations;
 /// </summary>
 public abstract class EvidencePageTestBase : BunitContext
 {
+    /// <summary>Thumbnail-ready events the page under test receives; tests push through this subject.</summary>
+    protected readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReadySubject = new();
+
+    /// <summary>Fake source that forwards <see cref="ThumbnailReadySubject"/> to the page.</summary>
+    protected sealed class FakeThumbnailReadySource : VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource
+    {
+        private readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> _ready;
+
+        public FakeThumbnailReadySource(System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ready)
+        {
+            _ready = ready;
+        }
+
+        public IObservable<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReady => _ready;
+    }
+
     protected static readonly DateTime FixedNowUtc = new(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
     protected static readonly DateTime EventOccurredAtUtc = new(2026, 9, 20, 10, 0, 0, DateTimeKind.Utc);
     protected static readonly DateTime VideoRecordedAtUtc = new(2026, 9, 20, 8, 0, 0, DateTimeKind.Utc);
@@ -54,9 +73,12 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
+    /// <summary>Evidence changes the test pushes; the page sees them through IEvidenceChangedSource.</summary>
+    protected Subject<EvidenceChangedDto> EvidenceChanges { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<IEvidenceValidationService> EvidenceValidationServiceMock { get; } = new();
     protected Mock<IMediaStillCaptureService> MediaStillCaptureServiceMock { get; } = new();
+    protected Mock<ICaseRepository> CaseRepositoryMock { get; } = new();
 
     protected ScopeState ScopeState { get; }
     protected InspectorState InspectorState { get; } = new();
@@ -172,6 +194,8 @@ public abstract class EvidencePageTestBase : BunitContext
                 ReportFromUtc = FixedNowUtc.AddDays(-7),
                 ReportToUtc = FixedNowUtc,
                 MediaItems = new List<MediaItem> { ImageMedia },
+                // The page joins media to events by ProviderEventId, so the image must be linked to the event's id.
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(ImageMediaId, EventEntity.ProviderEventId) },
                 IntegrityRecords = new List<IntegrityRecord>()
             });
 
@@ -195,6 +219,7 @@ public abstract class EvidencePageTestBase : BunitContext
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
 
+        Services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
         Services.AddScoped(_ => AuthServiceMock.Object);
         Services.AddScoped(_ => DeviceRepositoryMock.Object);
         Services.AddScoped(_ => EventRepositoryMock.Object);
@@ -202,9 +227,11 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         Services.AddScoped(_ => MediaUrlProviderMock.Object);
+        Services.AddSingleton<IEvidenceChangedSource>(new EvidenceChangedSourceDouble(EvidenceChanges));
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
         Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);
+        Services.AddScoped(_ => CaseRepositoryMock.Object);
         Services.AddScoped(_ => ScopeState);
         Services.AddScoped(_ => InspectorState);
         Services.AddScoped<RightPanelContentService>();
@@ -257,12 +284,22 @@ public class Evidence_Timeline_Tests : EvidencePageTestBase
         var dayHeading = component.Find(".timeline-day-header");
         var expectedDay = DateOnly.FromDateTime(EventOccurredAtUtc).ToString("yyyy-MM-dd (ddd)");
         Assert.Contains(expectedDay, dayHeading.TextContent);
-        Assert.Contains("2 items", dayHeading.TextContent);
+        Assert.Contains("· 2 items", dayHeading.TextContent);
 
         var rows = component.FindAll(".timeline-row");
         Assert.Equal(2, rows.Count);
         Assert.Equal($"event:{EventId}", rows[0].GetAttribute("data-key"));
         Assert.Equal($"media:{VideoMediaId}", rows[1].GetAttribute("data-key"));
+    }
+
+    [Fact]
+    public void DefaultView_RowsShowThumbnails_ForImageAndVideoMedia()
+    {
+        var component = RenderEvidencePage();
+
+        var imageRowThumb = component.Find($".timeline-row[data-key='event:{EventId}'] img");
+        Assert.Equal(TicketedUrl(ImageMediaId), imageRowThumb.GetAttribute("src"));
+        Assert.Single(component.FindAll($".timeline-row[data-key='media:{VideoMediaId}'] img"));
     }
 }
 
@@ -283,6 +320,61 @@ public class Evidence_Gallery_Tests : EvidencePageTestBase
 
         var img = component.Find($".gallery-tile[data-key='event:{EventId}'] img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
+    }
+}
+
+/// <summary>
+/// A thumbnail produced while the page is open re-fetches that item's URL, so its image reloads with the new still.
+/// An event for an item the page does not show must not cause a fetch.
+/// </summary>
+public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public void ThumbnailReady_ForItemOnPage_RefetchesThatItemsUrl()
+    {
+        var component = RenderEvidencePage();
+
+        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId));
+
+        // The initial load fetches several items at once; the refresh fetches exactly this one.
+        component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(VideoMediaId)),
+                It.IsAny<CancellationToken>()),
+            Times.Once));
+    }
+
+    [Fact]
+    public async Task ThumbnailReady_ForItemNotOnPage_DoesNotFetch()
+    {
+        var component = RenderEvidencePage();
+        var unknown = Guid.NewGuid();
+
+        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(unknown));
+        await component.InvokeAsync(() => Task.CompletedTask);
+
+        MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(unknown)), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ThumbnailReady_AfterDispose_DoesNotFetchOrThrow()
+    {
+        var component = RenderEvidencePage();
+        component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce));
+        MediaUrlProviderMock.Invocations.Clear();
+
+        ((IDisposable)component.Instance).Dispose();
+        var ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId)));
+        await Task.Delay(50);
+
+        Assert.Null(ex);
+        MediaUrlProviderMock.Verify(
+            m => m.GetContentUrlsAsync(It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(VideoMediaId)), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }
 
@@ -359,7 +451,7 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     public void GridViewQueryParam_RendersGridView_TimelineAbsent()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo("/evidence?view=grid", replace: true);
+        nav.NavigateTo("/media?view=grid", replace: true);
 
         var component = RenderEvidencePage();
 
@@ -372,7 +464,7 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     public void ItemQueryParam_OpensViewerDirectly()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo($"/evidence?item=event:{EventId}", replace: true);
+        nav.NavigateTo($"/media?item=event:{EventId}", replace: true);
 
         var component = RenderEvidencePage();
 
@@ -473,19 +565,15 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
     [Fact]
     public void OutOfOrderTicketCompletion_StaleFirstItemResponseDoesNotClobberSecondItem()
     {
-        // The initial page load's thumbnail fetch and the later "open the image item" fetch
-        // request the exact same single-element id set ([ImageMediaId]), so a plain argument
-        // matcher can't tell them apart - SetupSequence lets the first (thumbnail) call resolve
-        // immediately while the second (opening the item) call is held open on a TCS.
+        // The page loads thumbnails in one batched call, so the only single-id fetch for the image is the viewer's
+        // ticket request when the image is opened. Hold that fetch open on a TCS.
         var tcsImage = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
         var tcsVideo = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
 
         MediaUrlProviderMock
-            .SetupSequence(m => m.GetContentUrlsAsync(
+            .Setup(m => m.GetContentUrlsAsync(
                 It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(ImageMediaId)),
                 It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string> { [ImageMediaId] = TicketedUrl(ImageMediaId) }))
             .Returns(tcsImage.Task);
 
         MediaUrlProviderMock
@@ -622,7 +710,7 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     private IRenderedComponent<Evidence> RenderGrid()
     {
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo("/evidence?view=grid", replace: true);
+        nav.NavigateTo("/media?view=grid", replace: true);
         return RenderEvidencePage();
     }
 
@@ -650,6 +738,25 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
 
     private static EvidenceItem FindItem(IRenderedComponent<Evidence> component, string key) =>
         component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.DataSource!.First(i => i.Key == key);
+
+    /// <summary>
+    /// Syncfusion's grid builds its context menu from ContextMenuItems and expects typed
+    /// ContextMenuItemModel entries; anonymous objects crash the grid's ContextMenu during
+    /// OnInitialized (NullReferenceException in ContextMenu.GetMenuItems), which takes the Blazor circuit down.
+    /// </summary>
+    [Fact]
+    public void GridContextMenuItems_AreTypedSyncfusionItemModels_WithStableIds()
+    {
+        var component = RenderGrid();
+
+        var items = component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.ContextMenuItems;
+
+        Assert.NotNull(items);
+        Assert.All(items, i => Assert.IsType<ContextMenuItemModel>(i));
+        Assert.Equal(
+            new[] { "details", "export", "hold", "release", "verify" },
+            items.Cast<ContextMenuItemModel>().Select(i => i.Id));
+    }
 
     [Fact]
     public async Task Export_SelectedEventWithMedia_NavigatesToReviewExportWithMediaId()
@@ -999,5 +1106,49 @@ public class Evidence_SignIn_Tests : EvidencePageTestBase
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Contains("to browse evidence.", component.Markup);
         Assert.Empty(component.FindAll(".timeline-row"));
+    }
+}
+
+public class Evidence_TimelineTone_Tests : EvidencePageTestBase
+{
+    [Fact]
+    public void PinnedEvent_RowLabelHasInCaseTone()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ForensicCase> { new() { Id = Guid.NewGuid(), CaseNumber = "manual-1", Title = "Case", CreatedBy = "op" } });
+        CaseRepositoryMock
+            .Setup(r => r.ListItemsAsync(It.IsAny<Guid>(), false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CaseItem> { new() { Id = Guid.NewGuid(), CaseId = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = EventId, Reason = "r", AddedBy = "op" } });
+
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.Contains("timeline-tone-in-case", label.ClassName);
+    }
+
+    [Fact]
+    public void UnpinnedMotionEvent_RowLabelHasMotionTone()
+    {
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.Contains("timeline-tone-motion", label.ClassName);
+        Assert.Equal(label.TextContent, label.GetAttribute("title"));
+        Assert.DoesNotContain("timeline-row-kind", component.Markup);
+        Assert.Single(component.FindAll($".timeline-row[data-key='event:{EventId}'] .timeline-row-thumb"));
+    }
+
+    [Fact]
+    public void CaseLookupThrows_EvidenceStillRendersWithoutInCaseTone()
+    {
+        CaseRepositoryMock
+            .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("case store unreachable"));
+
+        var component = RenderEvidencePage();
+
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        Assert.DoesNotContain("timeline-tone-in-case", label.ClassName);
     }
 }

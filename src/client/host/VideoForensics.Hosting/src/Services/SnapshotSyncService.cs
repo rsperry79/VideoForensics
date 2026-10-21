@@ -5,6 +5,8 @@ using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
@@ -57,17 +59,47 @@ namespace VideoForensics.Hosting.Services
                 ?? _services.GetRequiredService<IMediaDownloadService>();
             download.SetActiveProviderAccountId(accountId);
 
+            // The non-image warning is logged once per roll-up window, so the window is the account's roll-up interval.
+            ISyncScheduleRepository? schedules = _services.GetService<ISyncScheduleRepository>();
+            SyncSchedule? schedule = schedules is null ? null : await schedules.GetByProviderAccountIdAsync(accountId, cancellationToken);
+            download.SetSnapshotWarningWindow(TimeSpan.FromMinutes(schedule?.SnapshotRollupIntervalMinutes ?? SyncSchedule.DefaultSnapshotRollupIntervalMinutes));
+
+            // The offline rule belongs to the account's provider. A provider with no registered rule keeps every device,
+            // because nothing on this path can tell that it is offline.
+            IProviderDeviceStatus? deviceStatus = _services.GetKeyedService<IProviderDeviceStatus>(account.ProviderName);
+
             var targets = new List<(DeviceEntity Device, string ProviderLocationId, string LocationName)>();
             var seen = new HashSet<string>();
+            var offline = 0;
             foreach (var location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
             {
                 foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
                 {
-                    if (seen.Add(device.ProviderDeviceId))
+                    if (!seen.Add(device.ProviderDeviceId))
                     {
-                        targets.Add((device, location.ProviderLocationId, location.Name));
+                        continue;
                     }
+
+                    // Only cameras have snapshots. Chimes, base stations and range extenders are health-only devices, and their
+                    // health comes from the device health sync, so asking Ring for a snapshot would only fail.
+                    if (!SnapshotCaptureService.HasCamera(device.Type))
+                    {
+                        continue;
+                    }
+
+                    if (deviceStatus?.IsOffline(device.Type, device.IsOnline) == true)
+                    {
+                        offline++;
+                        continue;
+                    }
+
+                    targets.Add((device, location.ProviderLocationId, location.Name));
                 }
+            }
+
+            if (offline > 0)
+            {
+                _logger.LogDebug("Snapshot sync for {AccountName}: skipped {OfflineCount} offline device(s)", accountName, offline);
             }
 
             if (targets.Count == 0)

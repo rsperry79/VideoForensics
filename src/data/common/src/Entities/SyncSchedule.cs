@@ -11,20 +11,37 @@ namespace VideoForensics.Data.Common.Entities
 
         /// <summary>Interval in minutes for pulling events (e.g., rule violations, motion, person detection).
         /// This interval is independent of snapshot/RSSI polling.
-        /// Minimum floor is defined by MinimumPollIntervalMinutes (rate-limit safety measure).</summary>
+        /// Minimum floor is defined by MinimumSnapshotIntervalSeconds (rate-limit safety measure).</summary>
         public int EventPollIntervalMinutes { get; set; }
 
-        /// <summary>Interval in minutes for pulling snapshots and RSSI data.
+        /// <summary>Interval in seconds for pulling snapshots and RSSI data.
         /// This is the DEFAULT interval used when UseAdvancedJammingSchedule is false or no active jamming window applies.
-        /// Minimum floor is defined by MinimumPollIntervalMinutes (rate-limit safety measure).</summary>
-        public int SnapshotRssiIntervalMinutes { get; set; }
+        /// Minimum floor is defined by MinimumSnapshotIntervalSeconds (rate-limit safety measure).</summary>
+        public int SnapshotRssiIntervalSeconds { get; set; }
+
+        /// <summary>Spacing in seconds between snapshot requests for this account. Null means not configured: the effective
+        /// spacing is then the media pacer's current MinInterval. Raised by one second each time Ring starts a new rate-limit
+        /// incident for the account (see RingMediaDownloadService), so the stored spacing settles at a rate Ring accepts.</summary>
+        public int? SnapshotIntervalSeconds { get; set; }
+
+        /// <summary>Minutes between MP4 roll-ups of this account's snapshots into one loop. Default 15, minimum 1.</summary>
+        public int SnapshotRollupIntervalMinutes { get; set; } = DefaultSnapshotRollupIntervalMinutes;
+
+        /// <summary>When the last roll-up finished; null if no roll-up has run. Written by the roll-up job, never by the schedule form.</summary>
+        public DateTime? LastRollupUtc { get; set; }
+
+        /// <summary>
+        /// Where the scheduled backfill has reached: the start of the next month to pull. Null means the backfill has not started;
+        /// it starts a year ago. Advanced one month per successful pull until it reaches now.
+        /// </summary>
+        public DateTime? BackfillCursorUtc { get; set; }
 
         /// <summary>Indicates whether syncing is enabled for this account.</summary>
         public bool IsEnabled { get; set; }
 
         /// <summary>Indicates whether the advanced jamming detection schedule (JammingScheduleWindows) is active.
-        /// When false, only SnapshotRssiIntervalMinutes is used.
-        /// When true, JammingScheduleWindows override SnapshotRssiIntervalMinutes during their active windows.</summary>
+        /// When false, only SnapshotRssiIntervalSeconds is used.
+        /// When true, JammingScheduleWindows override SnapshotRssiIntervalSeconds during their active windows.</summary>
         public bool UseAdvancedJammingSchedule { get; set; }
 
         /// <summary>The UTC timestamp when the next event poll is scheduled to run; null if no future event poll is scheduled.</summary>
@@ -47,7 +64,19 @@ namespace VideoForensics.Data.Common.Entities
         /// Tune this value in one place if future provider quotas require adjustment.</summary>
         public const int MinimumPollIntervalMinutes = 1;
 
-        /// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
+        /// <summary>Default snapshot/RSSI interval for a newly linked account: one minute, stored in seconds.</summary>
+        public const int DefaultSnapshotIntervalSeconds = 60;
+
+        /// <summary>Default roll-up interval in minutes for snapshots into MP4 loops.</summary>
+        public const int DefaultSnapshotRollupIntervalMinutes = 15;
+
+        /// <summary>Smallest roll-up interval in minutes.</summary>
+        public const int MinimumSnapshotRollupIntervalMinutes = 1;
+
+        /// <summary>Snapshot/RSSI floor in seconds. One second is the smallest interval an operator can set.</summary>
+        public const int MinimumSnapshotIntervalSeconds = 1;
+
+/// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
         public const int DefaultEventPollIntervalMinutes = 60;
 
         /// <summary>
@@ -61,7 +90,8 @@ namespace VideoForensics.Data.Common.Entities
                 Id = Guid.NewGuid(),
                 ProviderAccountId = providerAccountId,
                 EventPollIntervalMinutes = DefaultEventPollIntervalMinutes,
-                SnapshotRssiIntervalMinutes = DefaultEventPollIntervalMinutes,
+                SnapshotRssiIntervalSeconds = DefaultSnapshotIntervalSeconds,
+                SnapshotRollupIntervalMinutes = DefaultSnapshotRollupIntervalMinutes,
                 IsEnabled = true,
                 UseAdvancedJammingSchedule = false
             };

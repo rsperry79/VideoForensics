@@ -23,6 +23,15 @@ namespace VideoForensics.Hosting.Contracts
         /// <summary>Latest-value stream of connection state.</summary>
         IObservable<ConnectionState> Connection { get; }
 
+        /// <summary>
+        /// Event stream of produced thumbnails. It is not latest-value: a subscriber sees only events that arrive after it
+        /// subscribes, so a reopened evidence view does not refetch a thumbnail it already has.
+        /// </summary>
+        IObservable<ThumbnailReadyDto> ThumbnailReady { get; }
+
+        /// <summary>Evidence-changed pushes from the hub. Events, not state: no replay.</summary>
+        IObservable<EvidenceChangedDto> EvidenceChanged { get; }
+
         /// <summary>Most recent download progress, or null before the first emission.</summary>
         DownloadProgressDto? LatestDownloadProgress { get; }
 

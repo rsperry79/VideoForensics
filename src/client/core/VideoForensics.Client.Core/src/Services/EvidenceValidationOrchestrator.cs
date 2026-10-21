@@ -20,6 +20,7 @@ namespace VideoForensics.Client.Core.Services
         private readonly Data.Common.Contracts.IDeviceRepository _deviceRepository;
         private readonly Data.Common.Contracts.IIntegrityVerificationService _integrityService;
         private readonly Data.Common.Contracts.IMediaItemRepository _mediaItemRepository;
+        private readonly Data.Core.Services.IMediaThumbnailService _thumbnails;
         private readonly Data.Core.Contracts.IProviderReconciliationService _reconciliationService;
 
         /// <summary>Retry configuration for transient provider API failures.</summary>
@@ -34,6 +35,7 @@ namespace VideoForensics.Client.Core.Services
             Data.Common.Contracts.IDeviceRepository deviceRepository,
             Data.Common.Contracts.IIntegrityVerificationService integrityService,
             Data.Common.Contracts.IMediaItemRepository mediaItemRepository,
+            Data.Core.Services.IMediaThumbnailService thumbnails,
             Data.Core.Contracts.IProviderReconciliationService reconciliationService)
         {
             _logger = logger;
@@ -42,6 +44,7 @@ namespace VideoForensics.Client.Core.Services
             _deviceRepository = deviceRepository;
             _integrityService = integrityService;
             _mediaItemRepository = mediaItemRepository;
+            _thumbnails = thumbnails;
             _reconciliationService = reconciliationService;
         }
 
@@ -100,6 +103,10 @@ namespace VideoForensics.Client.Core.Services
                                 FailureReason = passed ? null : "SHA-256 mismatch against stored hash"
                             };
                         }
+
+                        // Same run, same pass: a stored thumbnail name whose file has gone is cleared here, so the
+                        // backfill regenerates it. Runs for every row, including one whose clip is missing.
+                        await _thumbnails.ReconcileThumbnailAsync(item, ct);
 
                         results.Add(result);
                         progress?.Report(FormatResultLine(result));

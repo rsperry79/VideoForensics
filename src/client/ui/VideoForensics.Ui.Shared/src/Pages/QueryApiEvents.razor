@@ -51,7 +51,7 @@
 }
 
 <div class="card border rounded p-4 mb-4">
-    <h5 class="mt-4 mb-2">@L["Title"] · @ScopeState.Current.FromUtc:yyyy-MM-dd → @ScopeState.Current.ToUtc:yyyy-MM-dd</h5>
+    <h5 class="mt-4 mb-2">@L["Title"] · <LocalTimeText Value="@ScopeState.Current.FromUtc" Format="yyyy-MM-dd" /> → <LocalTimeText Value="@ScopeState.Current.ToUtc" Format="yyyy-MM-dd" /></h5>
     <SfButton Content="@L["GetEvents"]" OnClick="RunEventsAsync" CssClass="e-primary" Disabled="@(_eventsLoading || string.IsNullOrWhiteSpace(FilterState.DeviceId))" />
     @if (!string.IsNullOrEmpty(_eventsError))
     {
@@ -223,7 +223,11 @@
     {
         <GridColumn Field="@nameof(DeviceEvent.Id)" HeaderText="@L["ColId"]" MinWidth="100" />
         <GridColumn Field="@nameof(DeviceEvent.EventType)" HeaderText="@L["ColEventType"]" MinWidth="100" />
-        <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
+        <GridColumn Field="@nameof(DeviceEvent.Timestamp)" HeaderText="@L["ColTimestamp"]" MinWidth="100">
+            <Template>
+                <LocalTimeText Value="@((context as DeviceEvent)!.Timestamp)" />
+            </Template>
+        </GridColumn>
         <GridColumn Field="@nameof(DeviceEvent.SnapshotUrl)" HeaderText="@L["ColSnapshotUrl"]" MinWidth="100" />
     };
 

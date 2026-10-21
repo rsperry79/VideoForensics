@@ -799,7 +799,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
 
         var nav = Services.GetRequiredService<NavigationManager>();
         var path = new Uri(nav.Uri).PathAndQuery;
-        Assert.StartsWith("/evidence", path);
+        Assert.StartsWith("/media", path);
         Assert.Contains($"case={caseId:D}", path);
         Assert.NotNull(CaseState.ActiveCase);
         Assert.Equal(caseId, CaseState.ActiveCase!.Id);

@@ -33,7 +33,7 @@ namespace VideoForensics.Data.Database.Tests
                 ProviderAccountId = accountId,
                 IsEnabled = enabled,
                 EventPollIntervalMinutes = eventMinutes,
-                SnapshotRssiIntervalMinutes = snapshotMinutes,
+                SnapshotRssiIntervalSeconds = snapshotMinutes,
                 UseAdvancedJammingSchedule = advanced
             };
         }
@@ -71,7 +71,7 @@ namespace VideoForensics.Data.Database.Tests
                 DayOfWeek = 2,
                 StartMinuteOfDay = 60,
                 EndMinuteOfDay = 120,
-                SnapshotRssiIntervalMinutes = 5
+                SnapshotRssiIntervalSeconds = 5
             });
             await _repository.UpsertAsync(schedule, CancellationToken.None);
 
@@ -79,7 +79,7 @@ namespace VideoForensics.Data.Database.Tests
 
             JammingScheduleWindow window = Assert.Single(Assert.Single(result).JammingWindows);
             Assert.Equal(2, window.DayOfWeek);
-            Assert.Equal(5, window.SnapshotRssiIntervalMinutes);
+            Assert.Equal(5, window.SnapshotRssiIntervalSeconds);
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Null(row.SnapshotLastRunUtc);
             Assert.Null(row.SnapshotNextRunUtc);
             Assert.Equal(30, row.EventPollIntervalMinutes);
-            Assert.Equal(45, row.SnapshotRssiIntervalMinutes);
+            Assert.Equal(45, row.SnapshotRssiIntervalSeconds);
             Assert.True(row.IsEnabled);
             Assert.True(row.UseAdvancedJammingSchedule);
         }
@@ -118,7 +118,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(row);
             Assert.False(row.IsEnabled);
             Assert.Equal(99, row.EventPollIntervalMinutes);
-            Assert.Equal(77, row.SnapshotRssiIntervalMinutes);
+            Assert.Equal(77, row.SnapshotRssiIntervalSeconds);
         }
 
         [Fact]
@@ -138,7 +138,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Null(row.EventLastRunUtc);
             Assert.Null(row.EventNextRunUtc);
             Assert.Equal(30, row.EventPollIntervalMinutes);
-            Assert.Equal(45, row.SnapshotRssiIntervalMinutes);
+            Assert.Equal(45, row.SnapshotRssiIntervalSeconds);
             Assert.True(row.IsEnabled);
         }
 
@@ -156,6 +156,53 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.RecordSnapshotRunAsync(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddMinutes(5), CancellationToken.None);
 
             Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_NewSchedule_IsNull()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account), CancellationToken.None);
+
+            SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
+
+            Assert.NotNull(row);
+            Assert.Null(row.SnapshotIntervalSeconds);
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_ExistingRow_UpdatesOnlySnapshotIntervalSeconds()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account, eventMinutes: 30, snapshotMinutes: 45, advanced: true), CancellationToken.None);
+
+            await _repository.SetSnapshotIntervalSecondsAsync(account, 3, CancellationToken.None);
+
+            SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
+            Assert.NotNull(row);
+            Assert.Equal(3, row.SnapshotIntervalSeconds);
+            Assert.Equal(30, row.EventPollIntervalMinutes);
+            Assert.Equal(45, row.SnapshotRssiIntervalSeconds);
+            Assert.True(row.IsEnabled);
+            Assert.True(row.UseAdvancedJammingSchedule);
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_MissingRow_IsNoOp()
+        {
+            await _repository.SetSnapshotIntervalSecondsAsync(Guid.NewGuid(), 3, CancellationToken.None);
+
+            Assert.Empty(await _repository.ListEnabledAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SetSnapshotIntervalSecondsAsync_NonPositiveSeconds_ThrowsArgumentOutOfRange()
+        {
+            Guid account = Guid.NewGuid();
+            await _repository.UpsertAsync(Build(account), CancellationToken.None);
+
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => _repository.SetSnapshotIntervalSecondsAsync(account, 0, CancellationToken.None));
         }
     }
 }

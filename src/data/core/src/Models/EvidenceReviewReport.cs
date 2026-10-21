@@ -10,6 +10,9 @@ namespace VideoForensics.Data.Core.Models
         public DateTime ReportToUtc { get; set; }
         public IReadOnlyList<MediaItem> MediaItems { get; set; } = [];
         public IReadOnlyList<IntegrityRecord> IntegrityRecords { get; set; } = [];
+
+        /// <summary>Links from each media item that has a download event to that event's provider event id.</summary>
+        public IReadOnlyList<MediaProviderEventLink> MediaProviderEventLinks { get; set; } = [];
         public int TotalItemCount { get; set; }
         public int VerifiedItemCount { get; set; }
         public int FailedVerificationCount { get; set; }

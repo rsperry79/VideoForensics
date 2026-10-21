@@ -10,6 +10,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
 using VideoForensics.Hosting.Tests.Services;
@@ -74,7 +75,10 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IDeviceConfigRepository> DeviceConfigs { get; } = new();
             public Mock<ILocationRepository> Locations { get; } = new();
             public Mock<IProviderApiBudgetGuard> Budget { get; } = new();
+            public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
+            public Mock<ISnapshotSyncService> SnapshotSync { get; } = new();
+            public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = new();
@@ -84,8 +88,12 @@ namespace VideoForensics.Hosting.Tests
             public CapturingLoggerProvider Logs { get; } = new();
             public string[] EnabledProviders { get; set; } = ["Ring"];
 
+            /// <summary>Off by default, as in production: the first sync and its monthly backfill are switched off.</summary>
+            public bool InitialSyncEnabled { get; set; }
+
             private readonly ServiceCollection _services = new();
             private readonly List<SyncSchedule> _schedules = [];
+            public IReadOnlyList<SyncSchedule> ScheduleList => _schedules;
 
             public Harness()
             {
@@ -103,14 +111,18 @@ namespace VideoForensics.Hosting.Tests
                 DateTime? eventLast = null,
                 int intervalMinutes = 30,
                 bool registerKeyed = true,
-                bool authResult = true)
+                bool authResult = true,
+                bool initialSyncCompleted = true,
+                DateTime? snapshotNext = null)
             {
                 var account = new ProviderAccount
                 {
                     Id = Guid.NewGuid(),
                     ProviderName = provider,
                     IsActive = active,
-                    LastSuccessfulAuthUtc = Now.AddDays(-1)
+                    LastSuccessfulAuthUtc = Now.AddDays(-1),
+                    InitialSyncCompleted = initialSyncCompleted,
+                    LastSyncCompletedUtc = Now.AddDays(-1),
                 };
                 var schedule = new SyncSchedule
                 {
@@ -118,7 +130,9 @@ namespace VideoForensics.Hosting.Tests
                     ProviderAccountId = account.Id,
                     IsEnabled = true,
                     EventPollIntervalMinutes = intervalMinutes,
-                    SnapshotRssiIntervalMinutes = 60,
+                    SnapshotRssiIntervalSeconds = 60,
+                    SnapshotNextRunUtc = snapshotNext ?? Now.AddHours(1),
+                    LastRollupUtc = Now.AddMinutes(-1),
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };
@@ -185,6 +199,7 @@ namespace VideoForensics.Hosting.Tests
                 _ = _services.AddSingleton(Locations.Object);
                 _ = _services.AddSingleton(Budget.Object);
                 _ = _services.AddSingleton(SyncRuns.Object);
+                _ = _services.AddSingleton(InitialSync.Object);
                 _ = _services.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace).AddProvider(Logs));
                 foreach ((string provider, Mock<IEventAndConfigService> events) in Events)
                 {
@@ -204,9 +219,11 @@ namespace VideoForensics.Hosting.Tests
                     _ = _services.AddKeyedSingleton(provider, Discovery[provider].Object);
                 }
 
+                _ = _services.AddScoped(_ => SnapshotSync.Object);
+                _ = _services.AddScoped(_ => SnapshotRollup.Object);
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
-                _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders });
+                _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders, InitialSyncEnabled = InitialSyncEnabled });
                 return new ScheduledSyncService(
                     sp.GetRequiredService<IServiceScopeFactory>(),
                     options.Object,
@@ -240,6 +257,35 @@ namespace VideoForensics.Hosting.Tests
         }
 
         [Fact]
+        public async Task RunOneTickAsync_InitialSyncIncomplete_RunsInitialSyncInsteadOfPull()
+        {
+            var h = new Harness { InitialSyncEnabled = true };
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, initialSyncCompleted: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.InitialSync.Verify(d => d.RunInitialSyncAsync(account.Id, It.IsAny<CancellationToken>()), Times.Once);
+            h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Never);
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>With the first sync switched off, an account with no completed sync gets the normal incremental pull, not the first sync or the monthly backfill.</summary>
+        [Fact]
+        public async Task RunOneTickAsync_InitialSyncDisabled_DoesNotRunFirstSyncOrMonthlyBackfill()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, initialSyncCompleted: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.InitialSync.Verify(d => d.RunInitialSyncAsync(account.Id, It.IsAny<CancellationToken>()), Times.Never);
+            h.Schedules.Verify(r => r.RecordBackfillCursorAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RunOneTickAsync_DueByPastNextRun_Pulls()
         {
             var h = new Harness();
@@ -249,6 +295,86 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RollupDue_RollsUpSinceOneIntervalAgoAndRecordsRollup()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 1, ErrorMessage: null));
+            ScheduledSyncService service = h.Build();
+
+            // The harness schedule has no LastRollupUtc, so the roll-up is due and starts one interval back.
+            h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotRollup.Verify(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()), Times.Once);
+            h.Schedules.Verify(r => r.RecordRollupAsync(account.Id, Now, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RollupFails_DoesNotRecordRollup()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 0, ErrorMessage: "Cam: ffmpeg failed"));
+            h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.Schedules.Verify(r => r.RecordRollupAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RollupFailed_IsNotRetriedWithinBackoff()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 0, ErrorMessage: "Cam: ffmpeg failed"));
+            h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
+            ScheduledSyncService service = h.Build();
+
+            // Two ticks at the same time: the second falls inside the retry backoff, so the roll-up runs once.
+            await service.RunOneTickAsync(CancellationToken.None);
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotRollup.Verify(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_SnapshotDue_RunsSnapshotSyncAndRecordsNextSnapshotRun()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(-1));
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotSync.Setup(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 0, ErrorMessage: null));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(account.Id, null, null, It.IsAny<CancellationToken>()), Times.Once);
+            h.Schedules.Verify(r => r.RecordSnapshotRunAsync(account.Id, Now, Now.AddSeconds(60), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_SnapshotNotDue_DoesNotRunSnapshotSync()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", snapshotNext: Now.AddMinutes(5));
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotSync.Verify(s => s.SyncAccountSnapshotsAsync(It.IsAny<Guid>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -541,6 +667,18 @@ namespace VideoForensics.Hosting.Tests
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
             Assert.Contains(h.Logs.Lines, l => l.StartsWith("Information") && l.Contains("Ring"));
         }
+        [Fact]
+        public async Task RunOneTickAsync_ScheduledPullSucceeds_RecordsLastSyncCompleted()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.Accounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccount>(a => a.Id == account.Id && a.LastSyncCompletedUtc == Now), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+
 
         [Fact]
         public async Task RunOneTickAsync_ScheduledPullSucceeds_WritesSuccessRun()

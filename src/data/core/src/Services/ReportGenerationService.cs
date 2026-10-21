@@ -88,6 +88,22 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<IntegrityRecord> integrityRecords = await _integrityRecordRepository.GetLatestByMediaItemIdsAsync(
                     items.Select(m => m.Id), ct);
 
+                // Map each download event to its provider event id so media can be matched to event rows.
+                var providerEventIdByDownloadEventId = new Dictionary<Guid, string>();
+                foreach (Guid deviceIdForItems in items.Select(m => m.DeviceId).Distinct())
+                {
+                    IReadOnlyList<DownloadEvent> downloadEvents = await _downloadEventRepository.GetByDeviceIdAsync(deviceIdForItems, ct);
+                    foreach (DownloadEvent downloadEvent in downloadEvents)
+                    {
+                        _ = providerEventIdByDownloadEventId.TryAdd(downloadEvent.Id, downloadEvent.ProviderEventId);
+                    }
+                }
+
+                report.MediaProviderEventLinks = items
+                    .Where(m => m.DownloadEventId.HasValue && providerEventIdByDownloadEventId.ContainsKey(m.DownloadEventId.Value))
+                    .Select(m => new MediaProviderEventLink(m.Id, providerEventIdByDownloadEventId[m.DownloadEventId!.Value]))
+                    .ToList();
+
                 report.MediaItems = items;
                 report.IntegrityRecords = integrityRecords;
                 report.TotalItemCount = items.Count;

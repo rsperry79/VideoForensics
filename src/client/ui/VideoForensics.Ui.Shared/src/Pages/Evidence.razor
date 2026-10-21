@@ -1,6 +1,10 @@
 @page "/"
-@page "/evidence"
+@page "/media"
+@using VideoForensics.Ui.Shared.Services.Time
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using System.Reactive.Linq
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
@@ -31,6 +35,9 @@
 @inject IMediaStillCaptureService MediaStillCaptureService
 @inject PairedSessionState SessionState
 @inject IStringLocalizer<Evidence> L
+@inject IServiceProvider ServiceProvider
+@inject ICaseRepository CaseRepository
+@inject ILogger<Evidence> Logger
 
 <h4 class="mb-4">@L["PageTitle"]</h4>
 
@@ -125,7 +132,7 @@ else
             {
                 <div class="timeline-day-group">
                     <div class="timeline-day-header">
-                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @dayGroup.TotalCount @(dayGroup.TotalCount == 1 ? L["ItemCountOne", dayGroup.TotalCount].Value : L["ItemCountOther", dayGroup.TotalCount].Value)
+                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @(dayGroup.TotalCount == 1 ? L["ItemCountOne", dayGroup.TotalCount].Value : L["ItemCountOther", dayGroup.TotalCount].Value)
                     </div>
                     @foreach (var deviceGroup in dayGroup.Devices)
                     {
@@ -134,13 +141,14 @@ else
                             @foreach (var item in deviceGroup.Items)
                             {
                                 <div class="timeline-row" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
-                                    <div class="timeline-row-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
-                                    <div class="timeline-row-kind">@item.Kind.ToString()</div>
-                                    <div class="timeline-row-label">@item.Label</div>
-                                    @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
-                                    {
-                                        <img src="@thumbUrl" alt="" class="timeline-row-thumb" />
-                                    }
+                                    <div class="timeline-row-time"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /></div>
+                                    <div class="timeline-row-thumb-cell">
+                                        @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var rowThumbUrl))
+                                        {
+                                            <MediaThumb Url="@rowThumbUrl" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="" CssClass="timeline-row-thumb" />
+                                        }
+                                    </div>
+                                    <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)" title="@EvidenceTimelineStyle.DisplayLabel(item)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
                                 </div>
                             }
                         </div>
@@ -159,7 +167,7 @@ else
                 Columns="@GridColumns"
                 ExportFileName="evidence.csv"
                 PageSize="20"
-                ContextMenuItems="@ContextMenuItems"
+                ContextMenuItems="@_contextMenuItems"
                 ContextMenuItemClicked="@OnGridContextMenuClicked" />
         </div>
     }
@@ -169,9 +177,9 @@ else
             @foreach (var item in _vm.GalleryItems)
             {
                 <div class="gallery-tile" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
-                    @if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat) && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
+                    @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var thumbUrl))
                     {
-                        <img src="@thumbUrl" alt="@item.Label" class="gallery-tile-image" />
+                        <MediaThumb Url="@thumbUrl" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="@item.Label" CssClass="gallery-tile-image" />
                     }
                     else if (item.Media is not null && MediaFormatHelper.IsVideo(item.Media.MediaFormat))
                     {
@@ -179,7 +187,7 @@ else
                             <span class="material-icons gallery-tile-play">play_circle</span>
                         </div>
                     }
-                    <div class="gallery-tile-label">@item.OccurredAtUtc.ToString("HH:mm:ss") · @item.DeviceName</div>
+                    <div class="gallery-tile-label"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /> · @item.DeviceName</div>
                 </div>
             }
         </div>
@@ -210,6 +218,11 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<Device> _devices = new();
@@ -218,12 +231,20 @@ else
     private string? _summaryText;
     private EvidenceView _currentView = EvidenceView.Timeline;
     private IReadOnlyList<EvidenceDayGroup> _dayGroups = new List<EvidenceDayGroup>();
+    private IReadOnlySet<Guid> _pinnedIds = new HashSet<Guid>();
     private Dictionary<Guid, string> _thumbnailUrls = new();
+    /// <summary>Thumbnail links requested per call, so one call never mints tickets for the whole archive.</summary>
+    private const int ThumbnailBatchSize = 500;
     private bool _thumbnailsUnavailable;
     private string? _currentMediaUrl;
     private string? _mediaLoadError;
     private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
+    private IDisposable? _thumbnailReadySubscription;
+    private IDisposable? _evidenceChangedSubscription;
+    /// <summary>Quiet time after the last change before the page reloads, so one sync's burst of writes causes one reload.</summary>
+    private static readonly TimeSpan EvidenceReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
+    private volatile bool _disposed;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
     private List<EvidenceItem> _stripItems = new();
@@ -248,6 +269,23 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Optional: a host without thumbnail events simply never raises one, so the page must not require the source.
+        VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource? thumbnailSource =
+            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>();
+        _thumbnailReadySubscription = thumbnailSource?.ThumbnailReady.Subscribe(OnThumbnailReady);
+
+        // Optional, like the thumbnail source: a host with no realtime feed keeps the manual Refresh button.
+        VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource? evidenceSource =
+            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource>();
+        _evidenceChangedSubscription = evidenceSource?.EvidenceChanged
+            .Throttle(EvidenceReloadQuietPeriod)
+            .Subscribe(change =>
+            {
+                _ = InvokeAsync(OnEvidenceChangedAsync);
+            });
+
+        _contextMenuItems = BuildContextMenuItems();
+
         try
         {
             await SessionState.EnsureLoadedAsync();
@@ -274,6 +312,74 @@ else
         }
     }
 
+    // Collects the IDs of every event and media item pinned to a case, so timeline rows can show the in-case tone.
+    // A failure here must not hide the evidence itself: the rows just render without the in-case tone.
+    private async Task<IReadOnlySet<Guid>> LoadPinnedIdsAsync(CancellationToken ct)
+    {
+        var pinned = new HashSet<Guid>();
+        try
+        {
+            foreach (var forensicCase in await CaseRepository.ListAsync(null, ct))
+            {
+                foreach (var caseItem in await CaseRepository.ListItemsAsync(forensicCase.Id, includeRemoved: false, ct))
+                {
+                    if (caseItem.EventId is { } eventId)
+                        pinned.Add(eventId);
+                    if (caseItem.MediaItemId is { } mediaId)
+                        pinned.Add(mediaId);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load case pins for the Evidence timeline.");
+        }
+
+        return pinned;
+    }
+
+    /// <summary>
+    /// Each device's roll-up window (its account's SnapshotRollupIntervalMinutes). Repositories are resolved optionally, so a
+    /// host without them keeps the default window instead of failing the load.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, TimeSpan>> LoadSnapshotWindowsAsync()
+    {
+        var windows = new Dictionary<Guid, TimeSpan>();
+        var accounts = ServiceProvider.GetService<IProviderAccountRepository>();
+        var schedules = ServiceProvider.GetService<ISyncScheduleRepository>();
+        var locations = ServiceProvider.GetService<ILocationRepository>();
+        if (accounts is null || schedules is null || locations is null)
+        {
+            return windows;
+        }
+
+        try
+        {
+            foreach (ProviderAccount account in await accounts.ListAsync(CancellationToken.None))
+            {
+                SyncSchedule? schedule = await schedules.GetByProviderAccountIdAsync(account.Id, CancellationToken.None);
+                var window = TimeSpan.FromMinutes(schedule?.SnapshotRollupIntervalMinutes ?? SyncSchedule.DefaultSnapshotRollupIntervalMinutes);
+                foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, CancellationToken.None))
+                {
+                    foreach (Device device in await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None))
+                    {
+                        windows[device.Id] = window;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Could not read snapshot roll-up windows; using the default window.");
+        }
+
+        return windows;
+    }
+
     private async Task LoadEvidenceAsync()
     {
         try
@@ -283,8 +389,13 @@ else
             var evidenceLoader = new EvidenceLoader(eventRowLoader, MediaItemRepository);
             var result = await evidenceLoader.LoadAsync(ScopeState.Current, _devices, CancellationToken.None);
 
-            _vm = new EvidenceViewModel(result);
-            _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
+            // One snapshot per device per roll-up window, so the media view matches the loops.
+            IReadOnlyDictionary<Guid, TimeSpan> windows = await LoadSnapshotWindowsAsync();
+            Func<Guid, TimeSpan> windowFor = id => windows.TryGetValue(id, out TimeSpan w) ? w : TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes);
+            IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(SnapshotWindowThinning.Apply(result.Items, windowFor), windowFor);
+            _vm = new EvidenceViewModel(result, shown);
+            _pinnedIds = await LoadPinnedIdsAsync(CancellationToken.None);
+            _dayGroups = EvidenceTimeline.Group(_vm.Items, Zone.Zone);
             _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);
 
             // Kept as a local, mutable copy (rather than reading _vm.LoadResult.ActiveHoldsByMediaItemId
@@ -294,27 +405,30 @@ else
 
             // Update summary
             var counts = result.Counts;
-            _summaryText = $"{counts.Total} items · {counts.Events} events · {counts.Snapshots} snapshots · {counts.Videos} videos";
+            int timeLapses = result.Items.Count(i => i.IsTimeLapse);
+            _summaryText = $"{counts.Total} Items · {counts.Events} Events · {counts.Snapshots} Snapshots · {counts.Videos - timeLapses} Videos · {timeLapses} Time Lapses";
 
             // Load thumbnails
             _thumbnailsUnavailable = false;
-            var thumbIds = _vm.ThumbnailMediaIds(max: 500);
-            if (thumbIds.Count > 0)
+            // Thumbnails are requested in batches of 500 until every item has one. Each request mints tickets, so the batch
+            // size bounds a single request; the old single 500-item cap left later items without a thumbnail.
+            var thumbIds = _vm.ThumbnailMediaIds(max: int.MaxValue).Where(id => !_thumbnailUrls.ContainsKey(id)).ToList();
+            try
             {
-                try
+                for (int offset = 0; offset < thumbIds.Count; offset += ThumbnailBatchSize)
                 {
-                    var urls = await MediaUrlProvider.GetContentUrlsAsync(thumbIds, CancellationToken.None);
+                    var batch = thumbIds.Skip(offset).Take(ThumbnailBatchSize).ToList();
+                    var urls = await MediaUrlProvider.GetContentUrlsAsync(batch, CancellationToken.None);
                     foreach (var kvp in urls)
                     {
                         _thumbnailUrls[kvp.Key] = kvp.Value;
                     }
                 }
-                catch
-                {
-                    // Continue without thumbnails, but let the user know previews are degraded
-                    // rather than silently leaving every tile blank with no explanation.
-                    _thumbnailsUnavailable = true;
-                }
+            }
+            catch
+            {
+                // Continue without the rest, but let the user know previews are degraded rather than leaving tiles blank.
+                _thumbnailsUnavailable = true;
             }
 
             // Keep the snapshot strip's items/RSSI in step with the scope if a device is selected
@@ -350,7 +464,7 @@ else
         _currentView = view;
         var query = ScopeState.ToQueryString();
         var separator = string.IsNullOrEmpty(query) ? "" : "&";
-        NavigationManager.NavigateTo($"/evidence?{query}{separator}view={view.ToString().ToLowerInvariant()}", replace: true);
+        NavigationManager.NavigateTo($"/media?{query}{separator}view={view.ToString().ToLowerInvariant()}", replace: true);
     }
 
     private async Task SelectItemAsync(string key)
@@ -387,7 +501,7 @@ else
         var query = ScopeState.ToQueryString();
         var separator = string.IsNullOrEmpty(query) ? "" : "&";
         var viewParam = _currentView == EvidenceView.Timeline ? "" : $"&view={_currentView.ToString().ToLowerInvariant()}";
-        NavigationManager.NavigateTo($"/evidence?{query}{separator}item={key}{viewParam}", replace: true);
+        NavigationManager.NavigateTo($"/media?{query}{separator}item={key}{viewParam}", replace: true);
     }
 
     /// <summary>
@@ -589,7 +703,7 @@ else
             parts.Add(viewPart);
         }
         var combined = string.Join("&", parts);
-        NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/evidence" : $"/evidence?{combined}", replace: true);
+        NavigationManager.NavigateTo(string.IsNullOrEmpty(combined) ? "/media" : $"/media?{combined}", replace: true);
     }
 
     /// <summary>
@@ -670,13 +784,17 @@ else
         return EvidenceInspectorMapper.ToInspector(item, _activeHoldsByMediaItemId, _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
     }
 
-    private List<object>? ContextMenuItems => new List<object>
+    // Built once at init: Syncfusion requires typed ContextMenuItemModel entries (anonymous objects
+    // crash the grid's ContextMenu), and a per-render getter would hand the grid a new list each render.
+    private List<object> _contextMenuItems = new();
+
+    private List<object> BuildContextMenuItems() => new()
     {
-        new { Text = L["ViewDetails"], Id = "details" },
-        new { Text = L["ExportSelected"], Id = "export" },
-        new { Text = L["PlaceLegalHold"], Id = "hold" },
-        new { Text = L["ReleaseLegalHold"], Id = "release" },
-        new { Text = L["VerifyIntegrityDevice"], Id = "verify" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ViewDetails"], Id = "details" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ExportSelected"], Id = "export" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["PlaceLegalHold"], Id = "hold" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["ReleaseLegalHold"], Id = "release" },
+        new Syncfusion.Blazor.Grids.ContextMenuItemModel { Text = L["VerifyIntegrityDevice"], Id = "verify" },
     };
 
     /// <summary>
@@ -843,9 +961,9 @@ else
             <Template>
                 @{
                     var item = (EvidenceItem)context;
-                    if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat) && _thumbnailUrls.TryGetValue(item.Media.Id, out var url))
+                    if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var url))
                     {
-                        <img src="@url" alt="" style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
+                        <MediaThumb Url="@url" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="" Style="width: 48px; height: 36px; object-fit: cover; border-radius: 2px;" />
                     }
                     else if (item.Media is not null && MediaFormatHelper.IsVideo(item.Media.MediaFormat))
                     {
@@ -862,7 +980,11 @@ else
                 }
             </Template>
         </GridColumn>
-        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="@L["ColumnTime"]" Width="170px" />
+        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="@L["ColumnTime"]" Width="170px">
+            <Template>
+                <LocalTimeText Value="@((context as EvidenceItem)!.OccurredAtUtc)" />
+            </Template>
+        </GridColumn>
         <GridColumn Field="@nameof(EvidenceItem.Kind)" HeaderText="@L["ColumnKind"]" Width="120px" />
         <GridColumn Field="@nameof(EvidenceItem.Label)" HeaderText="@L["ColumnLabel"]" Width="140px" />
         <GridColumn Field="@nameof(EvidenceItem.DeviceName)" HeaderText="@L["ColumnDevice"]" Width="140px" />
@@ -900,11 +1022,68 @@ else
         return System.Net.WebUtility.UrlDecode(query.Substring(valueStart, valueEnd - valueStart));
     }
 
+    /// <summary>
+    /// A thumbnail was just produced for an item this page shows. The ticket for its content URL differs from the one
+    /// it has, so the new URL makes the image reload and show the still. The event arrives on a background thread,
+    /// so the work runs through the component's render context.
+    /// </summary>
+    /// <summary>The server reported that evidence changed. Reloads through the same path as the Refresh button.</summary>
+    private async Task OnEvidenceChangedAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadEvidenceAsync();
+    }
+
+    private void OnThumbnailReady(VideoForensics.Core.Api.Contracts.ThumbnailReadyDto ready)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            bool onPage = _vm?.Items.Any(i => i.Media?.Id == ready.MediaItemId) == true;
+            if (!onPage)
+            {
+                return;
+            }
+
+            try
+            {
+                IReadOnlyDictionary<Guid, string> urls = await MediaUrlProvider.GetContentUrlsAsync(new[] { ready.MediaItemId }, CancellationToken.None);
+                foreach (KeyValuePair<Guid, string> kvp in urls)
+                {
+                    _thumbnailUrls[kvp.Key] = kvp.Value;
+                }
+
+                StateHasChanged();
+            }
+            catch
+            {
+                // Keep the old URL. The next page load fetches it again, so one missed refresh is not an error to show.
+            }
+        });
+    }
+
     public void Dispose()
     {
+        _disposed = true;
         if (_onScopeChangeHandler is not null)
         {
             ScopeState.OnChange -= _onScopeChangeHandler;
         }
+
+        _thumbnailReadySubscription?.Dispose();
+        _evidenceChangedSubscription?.Dispose();
     }
 }

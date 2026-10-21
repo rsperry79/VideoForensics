@@ -17,6 +17,12 @@ namespace VideoForensics.Providers.Ring.Services
         private static string MaskForLog(string value) =>
             string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
         private readonly ISessionProvider _sessionProvider;
+
+        /// <summary>How long a restored session is reused before the saved credentials are used again.</summary>
+        internal static readonly TimeSpan RestoreReuseWindow = TimeSpan.FromMinutes(15);
+
+        /// <summary>When each account's session was last restored from saved credentials, keyed like <see cref="ISessionProvider"/>.</summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, DateTime> _lastRestoredUtc = new();
         private readonly ICredentialStore _credentialStore;
         private readonly ICredentialRepository _credentialRepository;
         private readonly IRingAccountRepository? _ringAccountRepository;
@@ -299,6 +305,16 @@ namespace VideoForensics.Providers.Ring.Services
             Guid? providerAccountId = null,
             CancellationToken cancellationToken = default)
         {
+            // A live session restored within the window is reused: no Ring sign-in, no database write. Sync and snapshot ticks
+            // restore before every pull, so without this each tick re-authenticated and rewrote the account row.
+            Guid reuseKey = providerAccountId ?? Guid.Empty;
+            if (_sessionProvider.GetSession(reuseKey) is { OAuthToken: not null }
+                && _lastRestoredUtc.TryGetValue(reuseKey, out DateTime lastRestoredUtc)
+                && DateTime.UtcNow - lastRestoredUtc < RestoreReuseWindow)
+            {
+                return true;
+            }
+
             try
             {
                 RingCredentials? credentials = null;
@@ -483,6 +499,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 _sessionProvider.SetSession(resolvedAccountId ?? Guid.Empty, session);
+                _lastRestoredUtc[reuseKey] = DateTime.UtcNow;
 
                 try
                 {
@@ -598,7 +615,7 @@ namespace VideoForensics.Providers.Ring.Services
                 await _ringAccountRepository.AddAsync(ringAccount, ct);
             }
 
-            _logger.LogInformation("Persisted Ring authentication for {Username}", MaskForLog(username));
+            _logger.LogDebug("Persisted Ring authentication for {Username}", MaskForLog(username));
         }
     }
 }

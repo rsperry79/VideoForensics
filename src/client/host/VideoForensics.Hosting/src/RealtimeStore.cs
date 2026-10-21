@@ -23,6 +23,9 @@ namespace VideoForensics.Hosting
         private readonly BehaviorSubject<NotificationEvent?> _urgentEvents = new(null);
         private readonly BehaviorSubject<SelfTestStatusDto?> _selfTestStatus = new(null);
         private readonly BehaviorSubject<ConnectionState?> _connection = new(null);
+        // Events, not state: no replay, so a late subscriber only hears about thumbnails produced after it subscribed.
+        private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
+        private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         // Activity lines are not state: every line must reach a drainer, so they are queued rather than latest-value.
         // The cap stops a caller that never drains from growing memory without limit; the oldest lines go first.
         private readonly Queue<string> _activityLog = new();
@@ -37,6 +40,8 @@ namespace VideoForensics.Hosting
             _hubSubscriptions.Add(hub.UrgentEvents.Subscribe(value => Publish(_urgentEvents, value)));
             _hubSubscriptions.Add(hub.SelfTestStatus.Subscribe(value => Publish(_selfTestStatus, value)));
             _hubSubscriptions.Add(hub.Connection.Subscribe(value => Publish(_connection, value)));
+            _hubSubscriptions.Add(hub.ThumbnailReady.Subscribe(value => PublishEvent(_thumbnailReady, value)));
+            _hubSubscriptions.Add(hub.EvidenceChanged.Subscribe(value => PublishEvent(_evidenceChanged, value)));
         }
 
         /// <inheritdoc />
@@ -50,6 +55,12 @@ namespace VideoForensics.Hosting
 
         /// <inheritdoc />
         public IObservable<ConnectionState> Connection => _connection.Where(v => v.HasValue).Select(v => v!.Value);
+
+        /// <inheritdoc />
+        public IObservable<ThumbnailReadyDto> ThumbnailReady => _thumbnailReady.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<EvidenceChangedDto> EvidenceChanged => _evidenceChanged.AsObservable();
 
         /// <inheritdoc />
         public DownloadProgressDto? LatestDownloadProgress => _downloadProgress.Value;
@@ -92,6 +103,21 @@ namespace VideoForensics.Hosting
             _urgentEvents.OnCompleted();
             _selfTestStatus.OnCompleted();
             _connection.OnCompleted();
+            _thumbnailReady.OnCompleted();
+            _evidenceChanged.OnCompleted();
+        }
+
+        // Event streams carry no latest value, so they are published without a BehaviorSubject. Same lock as Publish,
+        // so a hub callback arriving during Dispose is dropped rather than emitted into a completed subject.
+        private void PublishEvent<T>(Subject<T> subject, T value)
+        {
+            lock (_gate)
+            {
+                if (!_disposed)
+                {
+                    subject.OnNext(value);
+                }
+            }
         }
 
         // Buffers the activity lines and publishes the payload under one lock, so a drain never sees a payload's lines

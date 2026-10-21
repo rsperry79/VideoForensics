@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -81,6 +82,13 @@ namespace VideoForensics.Providers.Ring.Services
                             continue;
                         }
 
+                        // Ring has this account on a hard ban, so no call can succeed until it lifts. Skip the call instead of logging a failure.
+                        if (HttpUtility.GetHardBanUntilUtc() is { } bannedUntil && bannedUntil > DateTime.UtcNow)
+                        {
+                            _logger.LogDebug("Ring health skipped for account {ProviderName}: banned until {BannedUntil}", account.ProviderName, bannedUntil);
+                            continue;
+                        }
+
                         // Fetch devices for this account
                         try
                         {
@@ -95,7 +103,15 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
+                            // A throttle is a handled, expected state: log its message only, without the stack.
+                            if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException)
+                            {
+                                _logger.LogWarning("Ring health skipped for account {ProviderName}: {Reason}", account.ProviderName, ex.Message);
+                            }
+                            else
+                            {
+                                _logger.LogWarning(ex, "Failed to fetch Ring health for account {ProviderName} (non-critical)", account.ProviderName);
+                            }
                             // Continue with next account
                         }
                     }

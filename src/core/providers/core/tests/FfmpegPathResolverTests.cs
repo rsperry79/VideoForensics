@@ -193,5 +193,57 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 }
             }
         }
+
+        [Fact]
+        public void Resolve_NoConfigAndDiscoverFinds_ReturnsDiscoveredPath()
+        {
+            var executableBaseName = "test-discover-finds-xyz";
+            var expected = "C:/found/" + executableBaseName;
+
+            var result = FfmpegPathResolver.Resolve(null, executableBaseName, null, name => "C:/found/" + name);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void Resolve_NoConfigAndDiscoverReturnsNull_ReturnsBareName()
+        {
+            var executableBaseName = "test-discover-null-xyz";
+
+            var result = FfmpegPathResolver.Resolve(null, executableBaseName, null, _ => null);
+
+            Assert.Equal(executableBaseName, result);
+        }
+
+        [Fact]
+        public void Resolve_BinDirectoryHasExe_DoesNotCallDiscover()
+        {
+            var executableBaseName = "test-discover-bindir-wins";
+            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(dir);
+            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            var exePath = Path.Combine(dir, exeName);
+            File.WriteAllText(exePath, "dummy");
+            try
+            {
+                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir, _ => throw new InvalidOperationException());
+
+                Assert.Equal(exePath, result);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
+            }
+        }
+
+        [Fact]
+        public void Resolve_ConfiguredPath_DoesNotCallDiscover()
+        {
+            var configuredPath = "/explicitly/configured/ffmpeg";
+
+            var result = FfmpegPathResolver.Resolve(configuredPath, "test-discover-config-wins", null, _ => throw new InvalidOperationException());
+
+            Assert.Equal(configuredPath, result);
+        }
     }
 }

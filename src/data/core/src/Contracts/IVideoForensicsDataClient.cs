@@ -91,6 +91,12 @@ namespace VideoForensics.Data.Core.Contracts
         Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
 
         /// <summary>
+        /// Records a provider device kind the reference catalog does not list, so the database knows it exists. Does nothing when
+        /// the kind already has a row. The provider decides whether a kind is unknown; this only writes the row.
+        /// </summary>
+        Task EnsureDeviceModelAsync(string provider, string kind, string family, CancellationToken ct);
+
+        /// <summary>
         /// Upserts a device's capability, feature and alert rows and links Devices.DeviceHealthId /
         /// DeviceFeaturesId. Null capabilities/features and an empty or null alert list leave existing rows untouched.
         /// </summary>

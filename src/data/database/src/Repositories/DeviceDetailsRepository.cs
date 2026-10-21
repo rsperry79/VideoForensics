@@ -141,6 +141,70 @@ namespace VideoForensics.Data.Database.Repositories
         /// merging) means a preset or zone Ring no longer reports is removed, not left behind as a stale row.
         /// Changed children are appended to the change history in the same unit of work as the replacement.
         /// </summary>
+        /// <summary>
+        /// Replaces the typed offline-motion, detection-type and threshold rows. A null list leaves that table untouched;
+        /// an empty list clears it. Changed rows are recorded in the setting-change log; first-time population is not.
+        /// </summary>
+        private static async Task<List<DeviceSettingChange>> ReplaceTypedSettingsAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, DateTime changedAtUtc, CancellationToken ct)
+        {
+            // Stored rows are read before they are removed, so each change row compares the old state with the incoming one.
+            var changes = new List<DeviceSettingChange>();
+            if (settings.OfflineMotion != null)
+            {
+                List<DeviceOfflineMotionSettings> storedOffline = await db.DeviceOfflineMotionSettings.Where(s => s.DeviceId == deviceId).ToListAsync(ct);
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "OfflineMotion",
+                    ToMap(storedOffline, _ => "settings", OfflineMotionText),
+                    ToMap(settings.OfflineMotion, _ => "settings", OfflineMotionText));
+                db.DeviceOfflineMotionSettings.RemoveRange(storedOffline);
+                foreach (DeviceOfflineMotionSettings row in settings.OfflineMotion)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.DeviceOfflineMotionSettings.Add(row);
+                }
+            }
+
+            if (settings.DetectionTypes != null)
+            {
+                List<DeviceDetectionType> storedTypes = await db.DeviceDetectionTypes.Where(t => t.DeviceId == deviceId).ToListAsync(ct);
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "DetectionType",
+                    ToMap(storedTypes, t => t.DetectionType, DetectionTypeText),
+                    ToMap(settings.DetectionTypes, t => t.DetectionType, DetectionTypeText));
+                db.DeviceDetectionTypes.RemoveRange(storedTypes);
+                foreach (DeviceDetectionType row in settings.DetectionTypes)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.DeviceDetectionTypes.Add(row);
+                }
+            }
+
+            if (settings.DetectionThresholds != null)
+            {
+                List<DeviceDetectionThreshold> storedThresholds = await db.DeviceDetectionThresholds.Where(t => t.DeviceId == deviceId).ToListAsync(ct);
+                AddWholeItemChanges(changes, deviceId, changedAtUtc, "DetectionThreshold",
+                    ToMap(storedThresholds, t => t.DetectionType, t => Text(t.Threshold) ?? string.Empty),
+                    ToMap(settings.DetectionThresholds ?? [], t => t.DetectionType, t => Text(t.Threshold) ?? string.Empty));
+                db.DeviceDetectionThresholds.RemoveRange(storedThresholds);
+                foreach (DeviceDetectionThreshold row in settings.DetectionThresholds)
+                {
+                    row.Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id;
+                    row.DeviceId = deviceId;
+                    _ = db.DeviceDetectionThresholds.Add(row);
+                }
+            }
+
+            return changes;
+        }
+
+        /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
+        private static string OfflineMotionText(DeviceOfflineMotionSettings s) =>
+            $"subscribed={Text(s.Subscribed)};enabled={Text(s.Enabled)};maxUploadKb={Text(s.MaxUploadKb)};resolutionP={Text(s.ResolutionP)};frequencyAfterSecs={Text(s.FrequencyAfterSecs)};periodAfterSecs={Text(s.PeriodAfterSecs)}";
+
+        /// <summary>Text compared for a detection-type change: the enabled, mode, record and notification flags.</summary>
+        private static string DetectionTypeText(DeviceDetectionType t) =>
+            $"enabled={Text(t.Enabled)};mode={t.Mode};record={Text(t.Record)};notification={Text(t.Notification)}";
+
         private static async Task ReplaceSettingsChildrenAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, DateTime changedAtUtc, CancellationToken ct)
         {
             // Stored rows are read before anything is removed, so the change rows compare the old state with the incoming one.
@@ -191,6 +255,7 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             db.DeviceSettingChanges.AddRange(changes);
+            db.DeviceSettingChanges.AddRange(await ReplaceTypedSettingsAsync(db, deviceId, settings, changedAtUtc, ct));
 
             db.DeviceMotionSnoozePresets.RemoveRange(storedSnooze);
             db.DeviceLiveViewPresets.RemoveRange(storedLive);

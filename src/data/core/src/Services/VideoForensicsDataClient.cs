@@ -22,12 +22,14 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IDeviceDetailsRepository _deviceDetailsRepository;
+        private readonly IDeviceModelRepository _deviceModelRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
         private readonly IMediaAnalysisService _mediaAnalysis;
+        private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -43,6 +45,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
             IDeviceDetailsRepository deviceDetailsRepository,
+            IDeviceModelRepository deviceModelRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -51,7 +54,8 @@ namespace VideoForensics.Data.Core.Services
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
-            IMediaAnalysisService mediaAnalysis)
+            IMediaAnalysisService mediaAnalysis,
+            IEvidenceChangeNotifier? evidenceChangeNotifier = null)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -62,6 +66,7 @@ namespace VideoForensics.Data.Core.Services
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthRepository = deviceHealthRepository;
             _deviceDetailsRepository = deviceDetailsRepository;
+            _deviceModelRepository = deviceModelRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -71,6 +76,7 @@ namespace VideoForensics.Data.Core.Services
             ActionLog = actionLogRepository;
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
+            _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -100,6 +106,11 @@ namespace VideoForensics.Data.Core.Services
                 _logger.LogError(ex, "Error recording device health metric for device {DeviceId}", health.DeviceId);
                 throw;
             }
+        }
+
+        public Task EnsureDeviceModelAsync(string provider, string kind, string family, CancellationToken ct)
+        {
+            return _deviceModelRepository.EnsureDiscoveredAsync(provider, kind, family, ct);
         }
 
         public async Task RecordDeviceDetailsAsync(
@@ -275,6 +286,7 @@ namespace VideoForensics.Data.Core.Services
                     await AnalyzeSavedMediaAsync(media.Id, ct);
                 }
 
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
                 return saved;
             }
             catch (Exception ex)
@@ -296,7 +308,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async context =>
+                Event saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert the Event record itself
                     Event upserted = await context.Events.UpsertAsync(evt, ct);
@@ -360,6 +372,9 @@ namespace VideoForensics.Data.Core.Services
 
                     return upserted;
                 }, ct);
+
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
+                return saved;
             }
             catch (Exception ex)
             {
@@ -749,7 +764,9 @@ namespace VideoForensics.Data.Core.Services
                                 ApiResponseHash = apiResponseHash,
                                 TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
-                                SyncStatus = SyncStatus.Synced
+                                SyncStatus = SyncStatus.Synced,
+                                // Local operator setting, not a Ring value: carry it over so a move does not re-enable capture.
+                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled
                             };
                             ApplyDetailFields(newDevice, details);
 

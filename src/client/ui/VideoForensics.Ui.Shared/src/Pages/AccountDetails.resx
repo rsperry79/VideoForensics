@@ -56,6 +56,72 @@
   <data name="ActiveLabel" xml:space="preserve">
     <value>Active</value>
   </data>
+  <data name="AccountTabsLabel" xml:space="preserve">
+    <value>Account sections</value>
+  </data>
+  <data name="TabDetails" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="TabDevices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="DeviceOfflineAfterLabel" xml:space="preserve">
+    <value>Device offline after</value>
+  </data>
+  <data name="DeviceOfflineThresholdSaveFailed" xml:space="preserve">
+    <value>Could not save the offline threshold.</value>
+  </data>
+  <data name="DevicesNone" xml:space="preserve">
+    <value>No devices are linked to this account.</value>
+  </data>
+  <data name="ColDeviceName" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="ColDeviceStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ColDeviceLastSeen" xml:space="preserve">
+    <value>Last seen</value>
+  </data>
+  <data name="DeviceOnline" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="DeviceOffline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="DeviceUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ColLatestSnapshot" xml:space="preserve">
+    <value>Latest snapshot</value>
+  </data>
+  <data name="ColLatestLoop" xml:space="preserve">
+    <value>Latest time lapse</value>
+  </data>
+  <data name="NoSnapshotYet" xml:space="preserve">
+    <value>No snapshot yet</value>
+  </data>
+  <data name="NoLoopYet" xml:space="preserve">
+    <value>No time lapse yet</value>
+  </data>
+  <data name="ColDeviceType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="NotApplicable" xml:space="preserve">
+    <value>N/A</value>
+  </data>
+  <data name="TabCases" xml:space="preserve">
+    <value>Cases</value>
+  </data>
+  <data name="ValidateSectionTitle" xml:space="preserve">
+    <value>Validate</value>
+  </data>
+  <data name="TabSync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="LastSyncCompletedLabel" xml:space="preserve">
+    <value>Last Sync Completed</value>
+  </data>
   <data name="LastDownloadLabel" xml:space="preserve">
     <value>Last Download</value>
   </data>

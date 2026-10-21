@@ -36,14 +36,14 @@ namespace VideoForensics.Hosting.Tests
         /// <summary>Serves the events through the keyset API in pages of <paramref name="pageSize"/>, like the real repository.</summary>
         private void SetupEventPages(IReadOnlyList<Event> all, int pageSize = int.MaxValue)
         {
-            List<Event> ordered = all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).ToList();
+            List<Event> ordered = [.. all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id)];
             _ = _events.Setup(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ordered.Count == 0 ? (DateTime?)null : ordered[0].OccurredAtUtc);
             _ = _events.Setup(r => r.ListByDevicePageAsync(_deviceId, It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid _, DateTime? at, Guid? id, int take, CancellationToken _) =>
-                    (IReadOnlyList<Event>)ordered
+                    (IReadOnlyList<Event>)[.. ordered
                         .Where(e => at == null || e.OccurredAtUtc > at || (e.OccurredAtUtc == at && id != null && e.Id.CompareTo(id.Value) > 0))
-                        .Take(Math.Min(take, pageSize)).ToList());
+                        .Take(Math.Min(take, pageSize))]);
         }
 
         public AccountExportServiceTests()
@@ -113,18 +113,17 @@ namespace VideoForensics.Hosting.Tests
             return (await sut.GetStatusAsync(jobId, CancellationToken.None))!;
         }
 
-        private const string PurgeSkip = "Purge after export is disabled (see IAccountExportService.PurgeDisabledMessage); re-enable with the export-coverage guard.";
-
         [Fact]
-        public async Task AccountExportService_QueueExportAsync_WithPurge_IsRefusedAndQueuesNothing()
+        public async Task AccountExportService_QueueExportAsync_WithPurge_QueuesPurgeJob()
         {
             AccountExportService sut = CreateSut();
 
-            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                sut.QueueExportAsync(_account.Id, true, CancellationToken.None));
+            Guid jobId = await sut.QueueExportAsync(_account.Id, true, CancellationToken.None);
 
-            Assert.Equal(IAccountExportService.PurgeDisabledMessage, ex.Message);
-            Assert.Null(await sut.GetLatestStatusForAccountAsync(_account.Id, CancellationToken.None));
+            ExportJobStatus? status = await sut.GetStatusAsync(jobId, CancellationToken.None);
+            Assert.NotNull(status);
+            Assert.Equal(ExportJobState.Queued, status.State);
+            Assert.True(status.PurgeAfterExport);
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
@@ -176,7 +175,7 @@ namespace VideoForensics.Hosting.Tests
             _credentials.VerifyNoOtherCalls();
         }
 
-        [Fact(Skip = PurgeSkip)]
+        [Fact]
         public async Task AccountExportService_RunJob_PurgeAfterExport_DeletesAccountOnlyAfterSuccess()
         {
             bool fileExistedAtDelete = false;
@@ -203,7 +202,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact(Skip = PurgeSkip)]
+        [Fact]
         public async Task AccountExportService_RunJob_ExportFails_AccountIsKeptAndJobFailed()
         {
             // A regular file where the exports folder should be makes directory creation / writing fail.
@@ -219,7 +218,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact(Skip = PurgeSkip)]
+        [Fact]
         public async Task AccountExportService_RunJob_AccountMissing_FailsWithNotFound()
         {
             AccountExportService sut = CreateSut();
@@ -231,7 +230,7 @@ namespace VideoForensics.Hosting.Tests
             _accounts.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
         }
 
-        [Fact(Skip = PurgeSkip)]
+        [Fact]
         public async Task AccountExportService_RunJob_PurgeDeleteThrows_JobFailsExportFileKept()
         {
             _ = _accounts.Setup(r => r.DeleteAsync(_account.Id, It.IsAny<CancellationToken>(), It.IsAny<string?>())).ThrowsAsync(new InvalidOperationException("delete boom"));

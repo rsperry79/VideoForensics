@@ -23,6 +23,12 @@ namespace VideoForensics.Data.Common.Entities
         public bool IsPurged { get; set; }
         public DateTime? PurgedAtUtc { get; set; }
         public string? PurgeReason { get; set; }
+
+        /// <summary>
+        /// File name of the stored thumbnail, relative to the clip's own folder (e.g. "clip.thumb.png").
+        /// Null when no thumbnail exists yet, so the backfill can select exactly the rows that need one.
+        /// </summary>
+        public string? ThumbnailPath { get; set; }
         public string? MetadataJson { get; set; }
         public string? ApiSourceHash { get; set; }
 

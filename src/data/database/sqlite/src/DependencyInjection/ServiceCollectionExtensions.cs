@@ -68,8 +68,12 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             // Using a factory (not AddDbContext) for thread-safety compatibility with MAUI and concurrent access patterns.
             string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
 
+            // Split queries by default: many repository queries Include multiple collections, and the default SingleQuery
+            // produces cartesian-product result sets and EF's MultipleCollectionIncludeWarning. Split queries avoid both.
             _ = services.AddDbContextFactory<VideoForensicsDbContext>(options =>
-                options.UseSqlite(connectionString, b => b.MigrationsAssembly("VideoForensics.Data.Database.Sqlite")));
+                options.UseSqlite(connectionString, b => b
+                    .MigrationsAssembly("VideoForensics.Data.Database.Sqlite")
+                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
             _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 

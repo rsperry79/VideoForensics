@@ -1,4 +1,5 @@
 @page "/cases/{CaseId:guid}"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -55,8 +56,8 @@ else
                     <p><strong>@L["CaseNumberLabel"]</strong> @_case.CaseNumber</p>
                     <p><strong>@L["TitleLabel"]</strong> @_case.Title</p>
                     <p><strong>@L["StatusLabel"]</strong> @StatusText(_case.Status)</p>
-                    <p><strong>@L["CreatedLabel"]</strong> @_case.CreatedAtUtc:u</p>
-                    <p><strong>@L["UpdatedLabel"]</strong> @_case.UpdatedAtUtc:u</p>
+                    <p><strong>@L["CreatedLabel"]</strong> <LocalTimeText Value="@_case.CreatedAtUtc" Format="u" /></p>
+                    <p><strong>@L["UpdatedLabel"]</strong> <LocalTimeText Value="@_case.UpdatedAtUtc" Format="u" /></p>
                     @if (!string.IsNullOrEmpty(_case.Description))
                     {
                         <p><strong>@L["DescriptionLabel"]</strong> @_case.Description</p>
@@ -98,7 +99,7 @@ else
                         }
                         else
                         {
-                            <li>@(L["ScopeWindow", _case.ScopeFromUtc?.ToString("u") ?? "", _case.ScopeToUtc?.ToString("u") ?? ""])</li>
+                            <li>@(L["ScopeWindow", (_case.ScopeFromUtc is { } scopeFrom ? Zone.Format(scopeFrom, "u") : ""), (_case.ScopeToUtc is { } scopeTo ? Zone.Format(scopeTo, "u") : "")])</li>
                         }
                     </ul>
                 </div>
@@ -136,7 +137,7 @@ else
                         <GridColumn Field="@nameof(CaseItemRow.Label)" HeaderText="@L["ColumnLabel"]" Width="250"></GridColumn>
                         <GridColumn Field="@nameof(CaseItemRow.Reason)" HeaderText="@L["ColumnReason"]" Width="200"></GridColumn>
                         <GridColumn Field="@nameof(CaseItemRow.AddedBy)" HeaderText="@L["ColumnAddedBy"]" Width="120"></GridColumn>
-                        <GridColumn Field="@nameof(CaseItemRow.AddedAtUtc)" HeaderText="@L["ColumnAddedAt"]" Width="150" Format="@("u")"></GridColumn>
+                        <GridColumn Field="@nameof(CaseItemRow.AddedAtUtc)" HeaderText="@L["ColumnAddedAt"]" Width="150"><Template><LocalTimeText Value="@((context as CaseItemRow)!.AddedAtUtc)" Format="u" /></Template></GridColumn>
                         <GridColumn Field="@nameof(CaseItemRow.Integrity)" HeaderText="@L["ColumnIntegrity"]" Width="100"></GridColumn>
                     </Columns>
                 </ForensicGrid>
@@ -159,6 +160,11 @@ else
 </div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     [Parameter]
     public Guid CaseId { get; set; }
 
@@ -351,7 +357,7 @@ else
         try
         {
             await CaseState.ActivateAsync(_case.Id, CancellationToken.None);
-            var evidenceUrl = NavigationManager.ToAbsoluteUri("/evidence").ToString();
+            var evidenceUrl = NavigationManager.ToAbsoluteUri("/media").ToString();
             var url = CaseUrl.Merge(evidenceUrl, _case.Id);
             NavigationManager.NavigateTo(url);
         }

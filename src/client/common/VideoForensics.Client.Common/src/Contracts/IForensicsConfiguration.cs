@@ -29,6 +29,8 @@ namespace VideoForensics.Client.Common.Contracts
         Guid? ActiveProviderAccountId { get; set; }
         /// <summary>Toggles the periodic RSSI/device-health background sync (DeviceHealthSyncService). Default on.</summary>
         bool EnableHealthSync { get; set; }
+        /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
+        bool EnableElevatedPolling { get; set; }
         /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
         bool EnableMdnsAdvertisement { get; set; }
 
@@ -110,6 +112,8 @@ namespace VideoForensics.Client.Common.Contracts
         bool EnableBitrateCalibration { get; set; }
         /// <summary>Check interval in minutes for launching calibration sessions for under-sampled or stale buckets. Default 15.</summary>
         int CalibrationCheckIntervalMinutes { get; set; }
+        /// <summary>Seconds without a health reading before an account device counts as offline on its Devices tab. Default 300 (5 minutes).</summary>
+        int DeviceOfflineThresholdSeconds { get; set; }
         /// <summary>Duration in seconds of a single bitrate calibration session. Default 12.</summary>
         int CalibrationSessionDurationSeconds { get; set; }
         /// <summary>Minimum telemetry samples per time bucket to consider calibration complete for that bucket. Default 5.</summary>
@@ -170,6 +174,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string DownloadStartDate { get; set; } = "";
         public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
+        public bool EnableElevatedPolling { get; set; } = false;
         public bool EnableMdnsAdvertisement { get; set; } = true;
         public bool EnableUpdateCheck { get; set; } = true;
         public UpdateCheckMode UpdateMode { get; set; } = UpdateCheckMode.NotifyOnly;
@@ -197,6 +202,7 @@ namespace VideoForensics.Client.Common.Contracts
         public int ElevatedPollingIntervalSeconds { get; set; } = 45;
         public bool EnableBitrateCalibration { get; set; } = true;
         public int CalibrationCheckIntervalMinutes { get; set; } = 15;
+        public int DeviceOfflineThresholdSeconds { get; set; } = 300;
         public int CalibrationSessionDurationSeconds { get; set; } = 12;
         public int MinCalibrationSamplesPerBucket { get; set; } = 5;
         public int CalibrationStalenessDays { get; set; } = 14;

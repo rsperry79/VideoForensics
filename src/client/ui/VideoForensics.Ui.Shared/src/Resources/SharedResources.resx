@@ -152,6 +152,9 @@
   <data name="Evidence" xml:space="preserve">
     <value>Evidence</value>
   </data>
+  <data name="Media" xml:space="preserve">
+    <value>Media</value>
+  </data>
   <data name="Cases" xml:space="preserve">
     <value>Cases</value>
   </data>
@@ -718,6 +721,15 @@
   </data>
   <data name="AccountRemove_DeleteWithoutExport" xml:space="preserve">
     <value>Delete without export</value>
+  </data>
+  <data name="AccountRemove_ExportAndDelete" xml:space="preserve">
+    <value>Export and delete</value>
+  </data>
+  <data name="AccountRemove_PurgeConfirm" xml:space="preserve">
+    <value>This exports the account, then permanently deletes its own credentials, schedule and sync history. Locations, devices and events shared with other accounts are kept. Continue?</value>
+  </data>
+  <data name="AccountRemove_PurgeConfirmButton" xml:space="preserve">
+    <value>Export and delete now</value>
   </data>
   <data name="AccountRemove_Cancel" xml:space="preserve">
     <value>Cancel</value>

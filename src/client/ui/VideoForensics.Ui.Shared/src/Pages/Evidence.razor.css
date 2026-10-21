@@ -33,7 +33,7 @@
 
 ::deep .timeline-row {
     display: grid;
-    grid-template-columns: 80px 100px 1fr 64px;
+    grid-template-columns: 80px 64px 1fr;
     align-items: center;
     gap: 1rem;
     padding: 0.75rem;
@@ -46,31 +46,54 @@
     background-color: var(--hover-bg, #f5f5f5);
 }
 
-::deep .timeline-row-time {
-    font-family: monospace;
-    font-size: 0.85rem;
-}
-
-::deep .timeline-row-kind {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
-    background-color: var(--badge-bg, #e8eaf6);
-    border-radius: 3px;
-    text-align: center;
-}
-
-::deep .timeline-row-label {
-    font-size: 0.9rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+/* Fixed cell so rows with and without a thumbnail keep their labels in one column. */
 ::deep .timeline-row-thumb {
     width: 64px;
     height: 48px;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: 2px;
+}
+
+/* Same font as the rest of the row: a monospace time next to a proportional label reads as two different fonts. */
+::deep .timeline-row-time {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+}
+
+/* The label is a pill whose background is the event-type tone. Text is dark on every tone so it stays
+   readable in both themes; the pill's own background, not the theme text colour, sets contrast. */
+/* Long event-type names wrap rather than clip; min-width keeps short pills lined up in one column. */
+::deep .timeline-row-label {
+    min-width: 11rem;
+    justify-self: start;
+    max-width: 100%;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: #1b1b1b;
+    background-color: #bdbdbd;
+    overflow-wrap: anywhere;
+}
+
+::deep .timeline-row-label.timeline-tone-snapshot,
+::deep .timeline-row-label.timeline-tone-timelapse {
+    background-color: #81c784;
+}
+
+::deep .timeline-row-label.timeline-tone-motion {
+    background-color: #81c784;
+}
+
+::deep .timeline-row-label.timeline-tone-ding {
+    background-color: #90caf9;
+}
+
+::deep .timeline-row-label.timeline-tone-manual {
+    background-color: #ffd54f;
+}
+
+::deep .timeline-row-label.timeline-tone-in-case {
+    background-color: #e57373;
 }
 
 ::deep .evidence-gallery {
@@ -133,22 +156,27 @@
     max-width: 100%;
 }
 
+/* Colors use the app's --vf-* tokens (app.css) so the grid reads in both light and dark themes.
+   Tables don't inherit font-family/font-size reliably, so the grid sets them explicitly. */
 ::deep .device-time-grid table {
     border-collapse: collapse;
-    font-size: 0.8rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--vf-text-color);
 }
 
 ::deep .device-time-grid-corner {
     position: sticky;
     left: 0;
-    background: var(--surface, #fff);
+    background: var(--vf-bg-color);
     z-index: 1;
 }
 
 ::deep .device-time-grid-col-header {
     padding: 0.25rem 0.4rem;
     font-weight: 500;
-    color: var(--text-secondary, #666);
+    opacity: 0.8;
     white-space: nowrap;
     text-align: left;
 }
@@ -156,7 +184,7 @@
 ::deep .device-time-grid-row-header {
     position: sticky;
     left: 0;
-    background: var(--surface, #fff);
+    background: var(--vf-bg-color);
     padding: 0.25rem 0.75rem 0.25rem 0.25rem;
     font-weight: 500;
     text-align: left;
@@ -167,43 +195,44 @@
 
 ::deep .device-time-grid-row-header:hover,
 ::deep .device-time-grid-row-header.selected {
-    color: var(--primary, #1976d2);
+    color: #42a5f5;
 }
 
 ::deep .device-time-cell {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    border: 1px solid var(--border-color, #e0e0e0);
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border: 1px solid var(--vf-border-color);
     text-align: center;
     vertical-align: middle;
     cursor: pointer;
-    font-size: 0.65rem;
+    font-size: 0.8rem;
 }
 
 ::deep .device-time-cell-empty {
-    background-color: var(--bg-muted, #f5f5f5);
+    background-color: transparent;
 }
 
 ::deep .device-time-cell-active {
-    background-color: var(--badge-bg, #e8eaf6);
+    background-color: rgba(66, 165, 245, 0.18);
 }
 
 ::deep .device-time-cell-gap {
-    background-color: #fff3cd;
+    background-color: rgba(255, 193, 7, 0.3);
 }
 
 ::deep .device-time-marker {
     display: inline-block;
     line-height: 1;
+    font-weight: 600;
 }
 
 ::deep .device-time-marker-event {
-    color: #1976d2;
+    color: #42a5f5;
 }
 
 ::deep .device-time-marker-media {
-    color: #6a1b9a;
+    color: #ba68c8;
     margin-left: 2px;
 }
 
