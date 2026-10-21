@@ -61,9 +61,10 @@ public class EvidenceTimelineStyle_ToneClass_Tests
 
 
     [Fact]
-    public void MediaOnly_NoEvent_IsGray()
+    public void MediaOnly_NotSnapshotOrTimeLapse_IsGray()
     {
-        var item = MediaOnlyItem(Guid.NewGuid());
+        // A snapshot and a time lapse are green; other media-only items (a file, for example) stay grey.
+        var item = new EvidenceItem { Key = "file", Kind = EvidenceKind.File, OccurredAtUtc = DateTime.UtcNow, DeviceId = Guid.NewGuid(), DeviceName = "Porch" };
 
         Assert.Equal("timeline-tone-none", EvidenceTimelineStyle.ToneClass(item, NothingPinned));
     }

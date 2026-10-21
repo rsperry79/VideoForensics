@@ -55,6 +55,7 @@
 /* The label is a pill whose background is the event-type tone. Text is dark on every tone so it stays
    readable in both themes; the pill's own background, not the theme text colour, sets contrast. */
 ::deep .timeline-row-label {
+    width: 11rem;
     justify-self: start;
     max-width: 100%;
     padding: 0.25rem 0.5rem;
@@ -65,6 +66,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+::deep .timeline-row-label.timeline-tone-snapshot,
+::deep .timeline-row-label.timeline-tone-timelapse {
+    background-color: #81c784;
 }
 
 ::deep .timeline-row-label.timeline-tone-motion {

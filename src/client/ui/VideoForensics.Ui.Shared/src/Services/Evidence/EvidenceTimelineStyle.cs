@@ -11,6 +11,12 @@ public static class EvidenceTimelineStyle
     /// <summary>Tone for a motion event.</summary>
     public const string MotionTone = "timeline-tone-motion";
 
+    /// <summary>Tone for a snapshot still.</summary>
+    public const string SnapshotTone = "timeline-tone-snapshot";
+
+    /// <summary>Tone for a time lapse (a roll-up loop).</summary>
+    public const string TimeLapseTone = "timeline-tone-timelapse";
+
     /// <summary>Tone for a doorbell ding.</summary>
     public const string DingTone = "timeline-tone-ding";
 
@@ -21,7 +27,7 @@ public static class EvidenceTimelineStyle
     public const string InCaseTone = "timeline-tone-in-case";
 
     /// <summary>Label to show on the row: the item's label with its first letter capitalised.</summary>
-    public static string DisplayLabel(EvidenceItem item) => Capitalize(item.Label);
+    public static string DisplayLabel(EvidenceItem item) => TitleCase(item.Label);
 
     /// <summary>
     /// Returns the tone CSS class for a row. A case always wins, so a pinned item is red regardless of its event type.
@@ -37,7 +43,18 @@ public static class EvidenceTimelineStyle
             return InCaseTone;
         }
 
-        // Media-only items have no event, so they stay grey like "No event".
+        // Snapshots and time lapses are green; they have no event, so they are checked before the grey no-event tone.
+        if (item.Kind == EvidenceKind.Snapshot)
+        {
+            return SnapshotTone;
+        }
+
+        if (item.IsTimeLapse)
+        {
+            return TimeLapseTone;
+        }
+
+        // Other media-only items have no event, so they stay grey like "No event".
         if (item.Event is null)
         {
             return NoEventTone;
@@ -52,6 +69,14 @@ public static class EvidenceTimelineStyle
             _ => NoEventTone
         };
     }
+
+    /// <summary>
+    /// Words separated by underscores or spaces, each capitalised: "on_demand" reads "On Demand". Null or empty input is returned as-is.
+    /// </summary>
+    public static string TitleCase(string value) =>
+        string.IsNullOrEmpty(value)
+            ? value
+            : string.Join(" ", value.Split(new[] { '_', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(Capitalize));
 
     /// <summary>Upper-cases the first character and leaves the rest untouched. Null or empty input is returned as-is.</summary>
     public static string Capitalize(string value) =>
