@@ -286,14 +286,20 @@ namespace VideoForensics.Hosting.Services
 
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
             DateTime? historyStart = fullHistory ? DateTime.UtcNow.AddYears(-1) : null;
-            DateTime? from = AccountSyncRunner.OneMonthFloor(historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc, DateTime.UtcNow);
+            DateTime? requestedFrom = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            if (AccountSyncRunner.WasLimited(requestedFrom, DateTime.UtcNow))
+            {
+                _activity.Append($"{initial.ProviderName}: history limited to one month per pull");
+                _logger.LogInformation("Sync start limited to one month back for {ProviderName} account", initial.ProviderName);
+            }
+            DateTime? from = AccountSyncRunner.OneMonthFloor(requestedFrom, DateTime.UtcNow);
             DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
             // The first sync backfills a year in one-month windows, oldest first, so a long history is pulled in bounded calls.
             string? monthlyError = null;
             EventPullResult counts;
-            if (fullHistory && request is null)
+            if (fullHistory)
             {
                 (counts, monthlyError) = await PullMonthlyAsync(eventPullService, accountId, cancellationToken);
             }
@@ -319,6 +325,17 @@ namespace VideoForensics.Hosting.Services
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
             return new SyncOutcome(error, counts, allSnapshots.DevicesSucceeded);
         }
+        /// <summary>The end of the backfill window that starts at <paramref name="windowStart"/>: one month later, or now if that is sooner.</summary>
+        internal static DateTime NextBackfillEnd(DateTime windowStart, DateTime nowUtc)
+        {
+            DateTime end = windowStart.AddMonths(1);
+            return end > nowUtc ? nowUtc : end;
+        }
+
+        /// <summary>True when a requested start is older than one month, so the pull will be cut short. Callers report it.</summary>
+        internal static bool WasLimited(DateTime? requested, DateTime nowUtc) =>
+            requested is { } start && start < nowUtc.AddMonths(-1);
+
         /// <summary>
         /// No single pull reaches further back than one month: a start older than that, or no start at all, becomes one month before now.
         /// The monthly backfill windows are already one month each, so they do not go through this.

@@ -30,6 +30,12 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>When the last roll-up finished; null if no roll-up has run. Written by the roll-up job, never by the schedule form.</summary>
         public DateTime? LastRollupUtc { get; set; }
 
+        /// <summary>
+        /// Where the scheduled backfill has reached: the start of the next month to pull. Null means the backfill has not started;
+        /// it starts a year ago. Advanced one month per successful pull until it reaches now.
+        /// </summary>
+        public DateTime? BackfillCursorUtc { get; set; }
+
         /// <summary>Indicates whether syncing is enabled for this account.</summary>
         public bool IsEnabled { get; set; }
 

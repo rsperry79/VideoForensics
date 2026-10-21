@@ -99,9 +99,11 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_RequestHasNoToDate_PassesNullToPull()
         {
+            // All history backfills a month at a time from a year ago, so the first window is a year back and the next is a month on.
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, true), CancellationToken.None);
 
-            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), null, It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.Is<DateTime?>(t => t.HasValue), It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Exactly(12));
         }
 
         [Fact]

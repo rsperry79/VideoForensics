@@ -305,6 +305,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             DateTime startedUtc = _time.GetUtcNow().UtcDateTime;
             string? outcome;
             EventPullResult? counts = null;
+            bool backfillInProgress = false;
             string? syncType = null; // set once the pull's start date is known; stays null if the sync never reached the pull
 
             try
@@ -317,6 +318,11 @@ namespace VideoForensics.Hosting.BackgroundServices
                 }
                 else
                 {
+                    DateTime requestedScheduledFrom = schedule.EventLastRunUtc is { } lastRun ? lastRun - PullOverlap : account.LastSuccessfulAuthUtc ?? DateTime.MinValue;
+                    if (AccountSyncRunner.WasLimited(requestedScheduledFrom, _time.GetUtcNow().UtcDateTime))
+                    {
+                        _logger.LogInformation("Scheduled sync start limited to one month back for {ProviderName} account", providerName);
+                    }
                     DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
@@ -335,10 +341,22 @@ namespace VideoForensics.Hosting.BackgroundServices
                         deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
 
                     // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
+                    // No completed sync yet: backfill one month per tick, from the saved cursor (a year ago to start). A clean
+                    // month advances the cursor; the sync completes only once the cursor reaches now.
                     string? backfillError = null;
                     if (account.LastSyncCompletedUtc is null)
                     {
-                        (counts, backfillError) = await PullBackfillMonthlyAsync(pull, sp.GetRequiredService<IProviderAccountRepository>(), accountId, ct);
+                        DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
+                        DateTime windowStart = schedule.BackfillCursorUtc ?? nowUtc.AddYears(-1);
+                        DateTime windowEnd = AccountSyncRunner.NextBackfillEnd(windowStart, nowUtc);
+                        counts = await pull.PullAccountEventsAsync(accountId, windowStart, windowEnd, ct);
+                        backfillError = ProviderSyncRunRecorder.OutcomeAfterPull(
+                            await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
+                        if (backfillError is null)
+                        {
+                            backfillInProgress = windowEnd < nowUtc;
+                            await scheduleRepository.RecordBackfillCursorAsync(accountId, windowEnd, ct);
+                        }
                     }
                     else
                     {
@@ -363,7 +381,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
 
             // A clean scheduled pull is a completed sync, the same as a manual one, so the Sync tab's Last Sync Completed is current.
-            if (outcome is null)
+            if (outcome is null && !backfillInProgress)
             {
                 await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct);
             }
@@ -373,28 +391,6 @@ namespace VideoForensics.Hosting.BackgroundServices
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await scheduleRepository.RecordEventRunAsync(accountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
-        }
-        /// <summary>Backfills one month per pull, oldest first, from a year ago to now. Discovery counts take the largest month; events and failed feeds are summed.</summary>
-        private static async Task<(EventPullResult Counts, string? Error)> PullBackfillMonthlyAsync(
-            IEventPullService pull, IProviderAccountRepository accounts, Guid accountId, CancellationToken ct)
-        {
-            int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
-            string? firstError = null;
-            foreach ((DateTime from, DateTime to) in AccountSyncRunner.MonthlyWindows(DateTime.UtcNow))
-            {
-                ct.ThrowIfCancellationRequested();
-                EventPullResult month = await pull.PullAccountEventsAsync(accountId, from, to, ct);
-                devices = Math.Max(devices, month.DevicesSynced);
-                locations = Math.Max(locations, month.LocationsSynced);
-                config = Math.Max(config, month.ConfigAreasSynced);
-                events += month.EventsSynced;
-                failed += month.FeedsFailed;
-
-                // A failed month records its error on the account; a later clean month clears it. Keep the first one so it is not lost.
-                firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
-            }
-
-            return (new EventPullResult(devices, locations, events, config, failed), firstError);
         }
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>

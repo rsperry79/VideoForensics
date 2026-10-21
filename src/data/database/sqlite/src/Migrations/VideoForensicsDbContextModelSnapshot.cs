@@ -5335,6 +5335,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("BackfillCursorUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("EventLastRunUtc")
                         .HasColumnType("TEXT");
 
@@ -5363,6 +5366,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("SnapshotRollupIntervalMinutes")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(15);
 
