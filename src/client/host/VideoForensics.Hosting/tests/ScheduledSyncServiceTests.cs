@@ -88,6 +88,9 @@ namespace VideoForensics.Hosting.Tests
             public CapturingLoggerProvider Logs { get; } = new();
             public string[] EnabledProviders { get; set; } = ["Ring"];
 
+            /// <summary>Off by default, as in production: the first sync and its monthly backfill are switched off.</summary>
+            public bool InitialSyncEnabled { get; set; }
+
             private readonly ServiceCollection _services = new();
             private readonly List<SyncSchedule> _schedules = [];
             public IReadOnlyList<SyncSchedule> ScheduleList => _schedules;
@@ -220,7 +223,7 @@ namespace VideoForensics.Hosting.Tests
                 _ = _services.AddScoped(_ => SnapshotRollup.Object);
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
-                _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders });
+                _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders, InitialSyncEnabled = InitialSyncEnabled });
                 return new ScheduledSyncService(
                     sp.GetRequiredService<IServiceScopeFactory>(),
                     options.Object,
@@ -256,7 +259,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RunOneTickAsync_InitialSyncIncomplete_RunsInitialSyncInsteadOfPull()
         {
-            var h = new Harness();
+            var h = new Harness { InitialSyncEnabled = true };
             (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, initialSyncCompleted: false);
             ScheduledSyncService service = h.Build();
 
@@ -265,6 +268,21 @@ namespace VideoForensics.Hosting.Tests
             h.InitialSync.Verify(d => d.RunInitialSyncAsync(account.Id, It.IsAny<CancellationToken>()), Times.Once);
             h.Media["Ring"].Verify(Harness.Pulled(account.Id), Times.Never);
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, Now.AddMinutes(30), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        /// <summary>With the first sync switched off, an account with no completed sync gets the normal incremental pull, not the first sync or the monthly backfill.</summary>
+        [Fact]
+        public async Task RunOneTickAsync_InitialSyncDisabled_DoesNotRunFirstSyncOrMonthlyBackfill()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring", eventNext: null, initialSyncCompleted: false);
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.InitialSync.Verify(d => d.RunInitialSyncAsync(account.Id, It.IsAny<CancellationToken>()), Times.Never);
+            h.Schedules.Verify(r => r.RecordBackfillCursorAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+            h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

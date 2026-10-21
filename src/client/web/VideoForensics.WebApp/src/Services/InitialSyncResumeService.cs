@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Options;
+using VideoForensics.Hosting.BackgroundServices;
+
 namespace VideoForensics.WebApp.Services
 {
     /// <summary>
@@ -8,17 +11,25 @@ namespace VideoForensics.WebApp.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<InitialSyncResumeService> _logger;
+        private readonly IOptionsMonitor<ScheduledTasksOptions> _options;
 
         /// <summary>Creates the hosted service.</summary>
-        public InitialSyncResumeService(IServiceScopeFactory scopeFactory, ILogger<InitialSyncResumeService> logger)
+        public InitialSyncResumeService(IServiceScopeFactory scopeFactory, ILogger<InitialSyncResumeService> logger, IOptionsMonitor<ScheduledTasksOptions> options)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _options = options;
         }
 
         /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (!_options.CurrentValue.InitialSyncEnabled)
+            {
+                _logger.LogInformation("First sync is switched off (ScheduledTasks:InitialSyncEnabled); not resuming incomplete first syncs");
+                return;
+            }
+
             try
             {
                 using IServiceScope scope = _scopeFactory.CreateScope();

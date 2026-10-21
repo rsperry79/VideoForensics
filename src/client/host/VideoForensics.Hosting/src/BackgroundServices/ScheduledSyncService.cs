@@ -282,7 +282,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             // First sync not finished: run it in place of the incremental pull, so its media validation step still happens.
             // Failures stay on the account and the schedule still advances, so a broken first sync retries once per interval.
             IInitialSyncDispatcher? initialSync = sp.GetService<IInitialSyncDispatcher>();
-            if (!account.InitialSyncCompleted && initialSync is not null)
+            if (!account.InitialSyncCompleted && initialSync is not null && _options.CurrentValue.InitialSyncEnabled)
             {
                 try
                 {
@@ -344,7 +344,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                     // No completed sync yet: backfill one month per tick, from the saved cursor (a year ago to start). A clean
                     // month advances the cursor; the sync completes only once the cursor reaches now.
                     string? backfillError = null;
-                    if (account.LastSyncCompletedUtc is null)
+                    if (account.LastSyncCompletedUtc is null && _options.CurrentValue.InitialSyncEnabled)
                     {
                         DateTime nowUtc = _time.GetUtcNow().UtcDateTime;
                         DateTime windowStart = schedule.BackfillCursorUtc ?? nowUtc.AddYears(-1);
