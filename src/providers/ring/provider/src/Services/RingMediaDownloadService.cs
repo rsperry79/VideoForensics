@@ -1124,7 +1124,8 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     // Warn once while a device keeps returning non-images; repeats are debug until it returns a real image.
                     DateTime nowUtc = DateTime.UtcNow;
-                    if (!_snapshotNonImageWarnedUtc.TryGetValue(deviceId, out DateTime lastWarnedUtc) || nowUtc - lastWarnedUtc >= _snapshotWarningWindow)
+                    DateTime? lastWarnedUtc = _snapshotNonImageWarnedUtc.TryGetValue(deviceId, out DateTime last) ? last : null;
+                    if (ShouldWarnNonImage(lastWarnedUtc, nowUtc, _snapshotWarningWindow))
                     {
                         _snapshotNonImageWarnedUtc[deviceId] = nowUtc;
                         _logger.LogWarning("{DeviceName} returned a non-image response instead of a snapshot (device likely offline)", deviceNameForSnapshot);
@@ -1542,6 +1543,10 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingSecurityAlerts(string? Severity, List<string>? Alerts);
         private record RingCvProfile(string? Id, string? Name, double? Confidence);
         private record RingCvZone(string? Id, string? Name, double? Confidence);
+
+        /// <inheritdoc />
+        public static bool ShouldWarnNonImage(DateTime? lastWarnedUtc, DateTime nowUtc, TimeSpan window) =>
+            lastWarnedUtc is null || nowUtc - lastWarnedUtc.Value >= window;
 
         /// <inheritdoc />
         public void SetSnapshotWarningWindow(TimeSpan window)

@@ -154,6 +154,20 @@ namespace VideoForensics.WebApp.Api
                 twoFactorRequired,
             });
         }
+        /// <summary>
+        /// The passkeys offered at username sign-in: approved and active only, most recently used first. Every such passkey is
+        /// kept, so an operator with several is never locked out; the order only puts the last one used first.
+        /// </summary>
+        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials) =>
+            credentials
+                .Where(c => c.IsApproved && c.IsActive)
+                .OrderByDescending(c => c.LastUsedAtUtc ?? DateTime.MinValue)
+                .Select(c => new PublicKeyCredentialDescriptor(
+                    PublicKeyCredentialType.PublicKey,
+                    Convert.FromBase64String(c.WebAuthnCredentialId),
+                    new[] { AuthenticatorTransport.Internal }))
+                .ToList();
+
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(
             UsernameAssertionOptionsRequest request,
@@ -169,15 +183,10 @@ namespace VideoForensics.WebApp.Api
             List<PublicKeyCredentialDescriptor> allowedCredentials = [];
             if (op != null)
             {
-                // Build AllowedCredentials from approved, active credentials only
+                // Build AllowedCredentials from approved, active credentials only, most recently used first. The list still holds
+                // every credential so an operator with several passkeys is never locked out; the order only favours the last one used.
                 IReadOnlyList<OperatorCredential> opCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
-                allowedCredentials = opCredentials
-                    .Where(c => c.IsApproved && c.IsActive)
-                    .Select(c => new PublicKeyCredentialDescriptor(
-                        PublicKeyCredentialType.PublicKey,
-                        Convert.FromBase64String(c.WebAuthnCredentialId),
-                        new[] { AuthenticatorTransport.Internal }))
-                    .ToList();
+                allowedCredentials = UsernameAllowList(opCredentials);
             }
 
             AssertionOptions options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
