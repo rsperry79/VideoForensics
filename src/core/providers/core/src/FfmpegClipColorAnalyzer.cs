@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 
 namespace VideoForensics.Core.Providers.Core
 {
@@ -13,6 +14,16 @@ namespace VideoForensics.Core.Providers.Core
         /// so without the conversion a 10-bit clip would read on a 0-1023 scale and be misclassified.
         /// </summary>
         public const string FilterChain = "fps=1,format=yuv420p,signalstats,metadata=mode=print:file=-";
+
+        /// <summary>
+        /// The chain for a still image. A still has one frame, and fps=1 drops it, so the stats come out empty. Without fps the
+        /// frame is measured directly.
+        /// </summary>
+        public const string StillFilterChain = "format=yuv420p,signalstats,metadata=mode=print:file=-";
+
+        /// <summary>The filter chain for a file: stills use <see cref="StillFilterChain"/>, video uses <see cref="FilterChain"/>.</summary>
+        public static string FilterFor(string mediaFilePath) =>
+            Path.GetExtension(mediaFilePath).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".bmp" ? StillFilterChain : FilterChain;
 
         private readonly string _ffmpegPath;
 
@@ -38,7 +49,7 @@ namespace VideoForensics.Core.Providers.Core
             psi.ArgumentList.Add("-i");
             psi.ArgumentList.Add(mediaFilePath);
             psi.ArgumentList.Add("-vf");
-            psi.ArgumentList.Add(FilterChain);
+            psi.ArgumentList.Add(FilterFor(mediaFilePath));
             psi.ArgumentList.Add("-f");
             psi.ArgumentList.Add("null");
             psi.ArgumentList.Add("-");

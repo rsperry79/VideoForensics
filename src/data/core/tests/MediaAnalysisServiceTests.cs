@@ -93,6 +93,22 @@ namespace VideoForensics.Data.Core.Tests
             Assert.True(clip.JammingSuspected);
             _items.Verify(r => r.UpdateAsync(clip, It.IsAny<CancellationToken>()), Times.Once);
         }
+        [Fact]
+        public async Task AnalyzeAsync_Still_SkipsAudioAndStillEvaluatesRedFlags()
+        {
+            // A snapshot still has no audio track, so the audio analyzer is not run and its absence does not block the check.
+            MediaItem still = Clip(_deviceId, "Day", 300_000);
+            still.MediaFormat = "jpg";
+            still.FilePath = "still.jpg";
+            SetUpClip(still, Array.Empty<MediaItem>(), new MediaBitrateAnalysis(300_000, 30.0, BitrateEstimated: false),
+                new ClipColorStats(0.5, 25.0), null!);
+
+            await CreateSut().AnalyzeAsync(still.Id, CancellationToken.None);
+
+            _audio.Verify(a => a.AnalyzeAsync(It.IsAny<string>(), It.IsAny<double?>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.NotNull(still.RedFlags);
+        }
+
 
         [Fact]
         public async Task AnalyzeAsync_IrClipNotComparedWithDayBaseline()

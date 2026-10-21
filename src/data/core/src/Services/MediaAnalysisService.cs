@@ -61,6 +61,16 @@ namespace VideoForensics.Data.Core.Services
             _thumbnails = thumbnails;
             _logger = logger;
         }
+        /// <summary>
+        /// False for stills (images) and roll-up loops, which are built from images and carry no audio. Any other clip has audio.
+        /// The roll-up marker is the literal written by the roll-up service's metadata.
+        /// </summary>
+        internal static bool HasAudioTrack(MediaItem media) =>
+            !string.Equals(media.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(media.MediaFormat, "jpeg", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(media.MediaFormat, "png", StringComparison.OrdinalIgnoreCase)
+            && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
+
 
         /// <inheritdoc />
         public async Task AnalyzeAsync(Guid mediaItemId, CancellationToken ct)
@@ -77,7 +87,9 @@ namespace VideoForensics.Data.Core.Services
 
             MediaBitrateAnalysis? bitrate = await _bitrate.AnalyzeAsync(media.FilePath, media.FileSizeBytes, ct);
             ClipColorStats? color = await _color.AnalyzeAsync(media.FilePath, ct);
-            AudioClipStats? audio = await _audio.AnalyzeAsync(media.FilePath, bitrate?.DurationSeconds, ct);
+            // Stills and roll-up loops have no audio track, so the audio measurement cannot exist for them and is not required.
+            bool audioApplicable = HasAudioTrack(media);
+            AudioClipStats? audio = audioApplicable ? await _audio.AnalyzeAsync(media.FilePath, bitrate?.DurationSeconds, ct) : null;
 
             if (bitrate is not null)
             {
@@ -133,7 +145,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             // Without all three measurements the clip cannot be judged; say so rather than storing "no flags".
-            if (bitrate is null || color is null || audio is null)
+            if (bitrate is null || color is null || (audio is null && audioApplicable))
             {
                 _logger.LogWarning("Media {MediaItemId} analysis incomplete (bitrate {HasBitrate}, colour {HasColor}, audio {HasAudio}); red flags not evaluated",
                     media.Id, bitrate is not null, color is not null, audio is not null);
