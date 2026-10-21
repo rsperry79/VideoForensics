@@ -180,7 +180,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations from Ring API");
+                if (ex is ThrottledException)
+                {
+                    _logger.LogWarning("Location fetch skipped: {Reason}", ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching locations from Ring API");
+                }
                 throw;
             }
             finally
@@ -507,7 +514,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
+                if (ex is ThrottledException)
+                {
+                    _logger.LogWarning("Location fetch skipped for {ProviderName} account: {Reason}", ProviderName, ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
+                }
                 throw;
             }
             finally
