@@ -5363,7 +5363,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("SnapshotRollupIntervalMinutes")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(15);
 
                     b.Property<int>("SnapshotRssiIntervalSeconds")
                         .HasColumnType("INTEGER");
