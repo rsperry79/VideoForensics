@@ -1029,8 +1029,23 @@ namespace VideoForensics.Providers.Ring.Services
             catch (Exception ex)
             {
                 _syncRunTally?.AddFeedFailure();
-                _logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
+                LogFeedFailure(_logger, feed, ex);
             }
+        }
+
+        /// <summary>
+        /// Logs one failed feed. A throttle is handled and expected, so it gets a warning with its message only. Any other
+        /// failure is an error with the exception attached. Stack traces stay out of the throttle path on purpose.
+        /// </summary>
+        internal static void LogFeedFailure(ILogger logger, string feed, Exception ex)
+        {
+            if (ex is ThrottledException)
+            {
+                logger.LogWarning("Ring {Feed} sync skipped: {Reason}", feed, ex.Message);
+                return;
+            }
+
+            logger.LogError(ex, "Ring {Feed} sync failed; sync continues", feed);
         }
 
         /// <summary>
