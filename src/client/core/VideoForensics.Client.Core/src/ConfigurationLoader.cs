@@ -43,6 +43,7 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
                 runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
+                runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;
                 runtimeConfig.EnableEmailNotifications = loadedConfig.EnableEmailNotifications;
                 runtimeConfig.SmtpHost = loadedConfig.SmtpHost;

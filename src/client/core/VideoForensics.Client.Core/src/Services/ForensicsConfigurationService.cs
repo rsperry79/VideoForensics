@@ -151,6 +151,7 @@ namespace VideoForensics.Client.Core.Services
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
+                config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
                 config.UpdateMode = await GetEnumSetting("UpdateMode", config.UpdateMode, cancellationToken);
@@ -218,6 +219,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("UpdateMode", config.UpdateMode.ToString(), cancellationToken);

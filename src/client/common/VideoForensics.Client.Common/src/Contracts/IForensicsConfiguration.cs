@@ -29,6 +29,8 @@ namespace VideoForensics.Client.Common.Contracts
         Guid? ActiveProviderAccountId { get; set; }
         /// <summary>Toggles the periodic RSSI/device-health background sync (DeviceHealthSyncService). Default on.</summary>
         bool EnableHealthSync { get; set; }
+        /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
+        bool EnableElevatedPolling { get; set; }
         /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
         bool EnableMdnsAdvertisement { get; set; }
 
@@ -172,6 +174,7 @@ namespace VideoForensics.Client.Common.Contracts
         public string DownloadStartDate { get; set; } = "";
         public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
+        public bool EnableElevatedPolling { get; set; } = false;
         public bool EnableMdnsAdvertisement { get; set; } = true;
         public bool EnableUpdateCheck { get; set; } = true;
         public UpdateCheckMode UpdateMode { get; set; } = UpdateCheckMode.NotifyOnly;

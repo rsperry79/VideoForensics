@@ -107,9 +107,9 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             do
             {
-                if (!_config.EnableHealthSync)
+                if (!_config.EnableElevatedPolling)
                 {
-                    _logger.LogDebug("Elevated polling is disabled via configuration; skipping this tick");
+                    _logger.LogDebug("Elevated polling is off (EnableElevatedPolling); skipping this tick");
                     continue;
                 }
 
