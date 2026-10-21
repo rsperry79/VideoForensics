@@ -90,6 +90,10 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<ISyncScheduleRepository> SyncScheduleRepositoryMock { get; } = new();
 
+    protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
+
+    protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -136,6 +140,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         // The Sync tab embeds the schedule settings, which resolve the sync-schedule repository.
         Services.AddScoped(_ => SyncScheduleRepositoryMock.Object);
+        Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        Services.AddScoped(_ => MediaUrlProviderMock.Object);
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));

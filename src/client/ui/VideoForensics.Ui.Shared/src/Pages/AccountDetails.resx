@@ -92,6 +92,18 @@
   <data name="DeviceUnknown" xml:space="preserve">
     <value>Unknown</value>
   </data>
+  <data name="ColLatestSnapshot" xml:space="preserve">
+    <value>Latest snapshot</value>
+  </data>
+  <data name="ColLatestLoop" xml:space="preserve">
+    <value>Latest loop</value>
+  </data>
+  <data name="NoSnapshotYet" xml:space="preserve">
+    <value>No snapshot yet</value>
+  </data>
+  <data name="NoLoopYet" xml:space="preserve">
+    <value>No loop yet</value>
+  </data>
   <data name="TabCases" xml:space="preserve">
     <value>Cases</value>
   </data>
