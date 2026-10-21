@@ -349,6 +349,8 @@ namespace VideoForensics.Providers.Ring.Services
         // Guards _currentStatus and the per-device counters below while multiple file downloads for
         // the same device update them concurrently.
         private readonly object _statusLock = new();
+        /// <summary>Devices whose snapshot returned a non-image body and has not yet returned an image. Used to warn once, not every pull.</summary>
+        private readonly ConcurrentDictionary<string, bool> _snapshotNonImageWarned = new();
 
         // How many files are actively being fetched from Ring right now (as opposed to skipped
         // because they already exist on disk) — surfaced via DownloadStatus.ActiveConnections.
@@ -1117,7 +1119,15 @@ namespace VideoForensics.Providers.Ring.Services
                 // successful download.
                 if (!IsValidJpeg(fileName))
                 {
-                    _logger.LogWarning("Device {DeviceId} returned a non-image response instead of a snapshot (device likely offline)", deviceId);
+                    // Warn once while a device keeps returning non-images; repeats are debug until it returns a real image.
+                    if (_snapshotNonImageWarned.TryAdd(deviceId, true))
+                    {
+                        _logger.LogWarning("{DeviceName} returned a non-image response instead of a snapshot (device likely offline)", deviceNameForSnapshot);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("{DeviceName} still returns a non-image snapshot response", deviceNameForSnapshot);
+                    }
                     File.Delete(fileName);
                     _currentStatus = _currentStatus with { IsDownloading = false };
                     _activityLog.Enqueue($"[red]✗[/] {deviceNameForSnapshot}: offline/no snapshot");
@@ -1127,6 +1137,7 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
+                _ = _snapshotNonImageWarned.TryRemove(deviceId, out _);
                 long fileSize = new FileInfo(fileName).Length;
                 var mediaItemId = Guid.NewGuid();
                 bool metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize, mediaItemId);
