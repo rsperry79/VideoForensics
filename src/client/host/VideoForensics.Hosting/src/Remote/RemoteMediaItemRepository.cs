@@ -77,6 +77,20 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs
+        /// on the server, where the database does the filtering; a snapshot endpoint would move this into SQL too.
+        /// </remarks>
+        public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            IReadOnlyList<MediaItem> range = await GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, ct);
+            return range
+                .Where(m => string.Equals(m.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
+                    && m.MetadataJson is not null && m.MetadataJson.Contains("\"type\":\"snapshot\"", StringComparison.Ordinal))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToList();
+        }
+
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
         {
             string fromEscaped = Uri.EscapeDataString(fromUtc.ToString("O"));

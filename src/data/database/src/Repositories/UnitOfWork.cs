@@ -403,6 +403,15 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
         }
 
+        public Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
+                    && m.MediaFormat == "jpg" && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToList());
+        }
+
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));

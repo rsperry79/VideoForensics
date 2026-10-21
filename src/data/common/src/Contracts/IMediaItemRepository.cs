@@ -17,6 +17,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>
+        /// Snapshot JPEGs of a device in [fromUtc, toUtc], oldest first. The format and snapshot marker are filtered in the
+        /// database. Files on disk are not checked here.
+        /// </summary>
+        Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct);
 

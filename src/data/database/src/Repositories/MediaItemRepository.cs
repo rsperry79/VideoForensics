@@ -46,6 +46,22 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>
+        /// Snapshot JPEGs of a device in a window, oldest first. Format, the snapshot marker, and the time filter all run in SQL.
+        /// </summary>
+        public async Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(
+            Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .Where(m => m.DeviceId == deviceId
+                    && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
+                    && m.MediaFormat == "jpg"
+                    && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Gets a media item by SHA-256 hash.</summary>
         public async Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {

@@ -74,7 +74,7 @@ namespace VideoForensics.Hosting.Tests.Services
         };
 
         private void SetWindowRows(params MediaItem[] rows) =>
-            _media.Setup(m => m.GetByDeviceAndDateRangeAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
+            _media.Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
         private void BuildSucceeds() =>
             _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
@@ -85,7 +85,8 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             string first = WriteJpeg("a.jpg");
             string second = WriteJpeg("b.jpg");
-            SetWindowRows(Snapshot(second, From.AddMinutes(10)), Snapshot(first, From.AddMinutes(2)));
+            // The database returns rows oldest first, so the fake does too.
+            SetWindowRows(Snapshot(first, From.AddMinutes(2)), Snapshot(second, From.AddMinutes(10)));
             TimelineVideoRequest? sent = null;
             _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
@@ -117,13 +118,12 @@ namespace VideoForensics.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task RollUp_IgnoresNonSnapshotMediaAndMissingFiles()
+        public async Task RollUp_SkipsSnapshotRowsWhoseFileIsMissing()
         {
+            // The database already excludes non-snapshot media; the only check left in the service is the file on disk.
             string real = WriteJpeg("a.jpg");
-            string other = WriteJpeg("clip.jpg");
             SetWindowRows(
                 Snapshot(real, From.AddMinutes(1)),
-                Snapshot(other, From.AddMinutes(2), metadata: "{\"type\":\"event\"}"),
                 Snapshot(Path.Combine(_root, "gone.jpg"), From.AddMinutes(3)));
             TimelineVideoRequest? sent = null;
             _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
