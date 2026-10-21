@@ -37,6 +37,12 @@ namespace VideoForensics.Hosting.BackgroundServices
         private readonly ILogger<ScheduledSyncService> _logger;
         private readonly TimeProvider _time;
 
+        /// <summary>How long a failed roll-up waits before its next attempt. Keeps a broken encoder from running every tick.</summary>
+        internal static readonly TimeSpan RollupRetryBackoff = TimeSpan.FromMinutes(5);
+
+        /// <summary>Per account: the time before which a failed roll-up is not retried.</summary>
+        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = new();
+
         /// <summary>Creates the scheduler.</summary>
         public ScheduledSyncService(
             IServiceScopeFactory scopeFactory,
@@ -194,16 +200,24 @@ namespace VideoForensics.Hosting.BackgroundServices
             ProviderAccount account,
             CancellationToken ct)
         {
+            DateTimeOffset now = _time.GetUtcNow();
+            if (_rollupRetryAfter.TryGetValue(account.Id, out DateTimeOffset retryAfter) && now < retryAfter)
+            {
+                return;
+            }
+
             DateTime toUtc = _time.GetUtcNow().UtcDateTime;
             DateTime fromUtc = schedule.LastRollupUtc ?? toUtc.AddMinutes(-schedule.SnapshotRollupIntervalMinutes);
             SnapshotRollupResult result = await sp.GetRequiredService<ISnapshotRollupService>().RollUpAccountAsync(account.Id, fromUtc, toUtc, ct);
             if (result.ErrorMessage is not null)
             {
                 _logger.LogWarning("Scheduled snapshot roll-up for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
+                _rollupRetryAfter[account.Id] = now + RollupRetryBackoff;
                 return;
             }
 
             // Uses CancellationToken.None so a completed roll-up is recorded even when shutdown cancelled the tick.
+            _ = _rollupRetryAfter.Remove(account.Id);
             await scheduleRepository.RecordRollupAsync(account.Id, toUtc, CancellationToken.None);
         }
 
