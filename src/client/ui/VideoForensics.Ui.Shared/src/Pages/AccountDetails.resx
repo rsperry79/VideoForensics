@@ -104,6 +104,12 @@
   <data name="NoLoopYet" xml:space="preserve">
     <value>No time lapse yet</value>
   </data>
+  <data name="ColDeviceType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="NotApplicable" xml:space="preserve">
+    <value>N/A</value>
+  </data>
   <data name="TabCases" xml:space="preserve">
     <value>Cases</value>
   </data>

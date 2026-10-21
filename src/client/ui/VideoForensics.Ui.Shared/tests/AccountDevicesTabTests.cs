@@ -28,7 +28,7 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
 
     private Device AddDevice(string name)
     {
-        var device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = name, Name = name, Type = "camera" };
+        var device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = name, Name = name, Type = "stickup_cam" };
         DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Device> { device });
         return device;
@@ -75,6 +75,21 @@ public class AccountDevicesTabTests : AccountDetailsPageTestBase
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("td.latest-snapshot img[src='/snap.jpg']")));
         Assert.Single(cut.FindAll("td.latest-loop video[src='/loop.mp4']"));
+    }
+
+    [Fact]
+    public void NonCamera_ShowsNotApplicableForSnapshotAndLoop_AndItsReadableType()
+    {
+        SetEmptyLists();
+        var chime = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "chime", Name = "Hall Chime", Type = "chime" };
+        DeviceRepositoryMock.Setup(m => m.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { chime });
+
+        var cut = RenderDevices();
+
+        cut.WaitForAssertion(() => Assert.Contains("Chime", cut.Find("#account-devices").TextContent));
+        Assert.Equal(2, cut.FindAll("#account-devices .text-muted").Count(s => s.TextContent.Trim() == "N/A"));
+        Assert.DoesNotContain("No snapshot yet", cut.Markup);
+        Assert.DoesNotContain("No time lapse yet", cut.Markup);
     }
 
 
