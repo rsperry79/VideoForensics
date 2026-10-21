@@ -141,6 +141,12 @@ else
                             {
                                 <div class="timeline-row" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
                                     <div class="timeline-row-time"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /></div>
+                                    <div class="timeline-row-thumb-cell">
+                                        @if (item.Media is not null && _thumbnailUrls.TryGetValue(item.Media.Id, out var rowThumbUrl))
+                                        {
+                                            <MediaThumb Url="@rowThumbUrl" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="" CssClass="timeline-row-thumb" />
+                                        }
+                                    </div>
                                     <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
                                 </div>
                             }

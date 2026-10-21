@@ -33,7 +33,7 @@
 
 ::deep .timeline-row {
     display: grid;
-    grid-template-columns: 80px 1fr;
+    grid-template-columns: 80px 64px 1fr;
     align-items: center;
     gap: 1rem;
     padding: 0.75rem;
@@ -44,6 +44,14 @@
 
 ::deep .timeline-row:hover {
     background-color: var(--hover-bg, #f5f5f5);
+}
+
+/* Fixed cell so rows with and without a thumbnail keep their labels in one column. */
+::deep .timeline-row-thumb {
+    width: 64px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 2px;
 }
 
 /* Same font as the rest of the row: a monospace time next to a proportional label reads as two different fonts. */

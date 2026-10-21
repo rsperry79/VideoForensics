@@ -285,6 +285,16 @@ public class Evidence_Timeline_Tests : EvidencePageTestBase
         Assert.Equal($"event:{EventId}", rows[0].GetAttribute("data-key"));
         Assert.Equal($"media:{VideoMediaId}", rows[1].GetAttribute("data-key"));
     }
+
+    [Fact]
+    public void DefaultView_RowsShowThumbnails_ForImageAndVideoMedia()
+    {
+        var component = RenderEvidencePage();
+
+        var imageRowThumb = component.Find($".timeline-row[data-key='event:{EventId}'] img");
+        Assert.Equal(TicketedUrl(ImageMediaId), imageRowThumb.GetAttribute("src"));
+        Assert.Single(component.FindAll($".timeline-row[data-key='media:{VideoMediaId}'] img"));
+    }
 }
 
 public class Evidence_Gallery_Tests : EvidencePageTestBase
@@ -1119,7 +1129,7 @@ public class Evidence_TimelineTone_Tests : EvidencePageTestBase
         var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
         Assert.Contains("timeline-tone-motion", label.ClassName);
         Assert.DoesNotContain("timeline-row-kind", component.Markup);
-        Assert.Empty(component.FindAll(".timeline-row-thumb"));
+        Assert.Single(component.FindAll($".timeline-row[data-key='event:{EventId}'] .timeline-row-thumb"));
     }
 
     [Fact]
