@@ -50,6 +50,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies session can be created with valid credentials")]
         public void RealSession_CanBeCreatedWithCredentials()
         {
+            Mocks.RealSessionHelper.RequireLive();
             // Arrange: a session built from credentials supplied here. No network call happens until Authenticate(),
             // so this needs no saved Ring account and must never skip.
             // Act
@@ -64,6 +65,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies session authentication succeeds with valid credentials")]
         public async Task RealSession_CanAuthenticateWithValidCredentials()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -87,6 +89,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies session properties are accessible")]
         public void RealSession_PropertiesAreAccessible()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -113,6 +116,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies GetRingDevices works with authenticated session")]
         public async Task RealSession_CanGetRingDevices()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -135,6 +139,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies GetLocations works with authenticated session")]
         public async Task RealSession_CanGetLocations()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -157,6 +162,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies GetDoorbotsHistory works with authenticated session")]
         public async Task RealSession_CanGetDoorbotsHistory()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -179,6 +185,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies session remains authenticated for multiple calls")]
         public async Task RealSession_RemainsAuthenticatedAcrossMultipleCalls()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -204,6 +211,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: Verifies authentication token persists")]
         public async Task RealSession_AuthenticationTokenPersists()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());
@@ -235,6 +243,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Displays instructions for setting up real integration tests")]
         public void PrintPhase4SetupInstructions()
         {
+            Mocks.RealSessionHelper.RequireLive();
             string instructions = RealSessionHelper.GetSetupInstructions();
             Console.WriteLine(instructions);
         }

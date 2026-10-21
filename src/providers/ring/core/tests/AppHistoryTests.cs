@@ -12,6 +12,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
         public AppHistoryTests()
         {
+            RingTestHardBanIsolation.ResetForTest();
             _mockHelper = new MockSessionHelper();
             _mockSession = _mockHelper.CreateSessionWithMockHandler();
         }

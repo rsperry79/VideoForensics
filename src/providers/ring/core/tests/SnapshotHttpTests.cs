@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,8 +16,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     /// Session.GetLatestSnapshotWithStatus) with a scripted fake HttpMessageHandler. No test
     /// touches the network.
     /// </summary>
-    public class SnapshotHttpTests
+    public class SnapshotHttpTests : IDisposable
     {
+        public SnapshotHttpTests()
+        {
+            RingTestHardBanIsolation.ResetForTest();
+        }
+
         private const string FakeRefreshToken = "fake-refresh-token";
         private const string FakeAccessToken = "fake-access-token";
         private const string SnapshotPath = "/clients_api/snapshots/image/123456";
@@ -173,5 +179,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Equal(HttpStatusCode.ServiceUnavailable, result.Status);
             Assert.Empty(result.Bytes);
         }
+
+        /// <summary>xUnit disposes each test's instance after the test: clear the throttle state it may have set.</summary>
+        public void Dispose() => RingTestHardBanIsolation.ResetForTest();
     }
 }

@@ -22,6 +22,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Trait("Description", "Real API: captures the latest snapshot from the first doorbot with the saved credentials")]
         public async Task RealSnapshot_CapturesJpegFromFirstDoorbot()
         {
+            Mocks.RealSessionHelper.RequireLive();
             if (!_credentialsAvailable)
             {
                 Assert.Skip(RealSessionHelper.GetSetupInstructions());

@@ -89,8 +89,28 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         /// <summary>
         /// Checks if a saved refresh token is available for real integration testing.
         /// </summary>
+        /// <summary>
+        /// True only when the operator sets VF_RING_LIVE_TESTS=1. Live tests call the real Ring API with the saved account, so
+        /// they are never part of a normal run: each Ring call counts against the account's rate limit.
+        /// </summary>
+        public static bool LiveTestsEnabled => string.Equals(Environment.GetEnvironmentVariable("VF_RING_LIVE_TESTS"), "1", StringComparison.Ordinal);
+
+        /// <summary>Skips the calling test unless live tests are enabled.</summary>
+        public static void RequireLive()
+        {
+            if (!LiveTestsEnabled)
+            {
+                Xunit.Assert.Skip("Live Ring test: set VF_RING_LIVE_TESTS=1 to run it. It calls the real Ring API.");
+            }
+        }
+
         public static bool CredentialsAvailable()
         {
+            if (!LiveTestsEnabled)
+            {
+                return false;
+            }
+
             try
             {
                 IServiceProvider sp = ServiceProviderLazy.Value;
