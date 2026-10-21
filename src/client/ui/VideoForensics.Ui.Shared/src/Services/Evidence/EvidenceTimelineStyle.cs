@@ -11,6 +11,9 @@ public static class EvidenceTimelineStyle
     /// <summary>Tone for a motion event.</summary>
     public const string MotionTone = "timeline-tone-motion";
 
+    /// <summary>Tone for a doorbell ding.</summary>
+    public const string DingTone = "timeline-tone-ding";
+
     /// <summary>Tone for a manually started event.</summary>
     public const string ManualTone = "timeline-tone-manual";
 
@@ -45,6 +48,7 @@ public static class EvidenceTimelineStyle
         {
             "motion" => MotionTone,
             "manual" or "on_demand" => ManualTone,
+            "ding" => DingTone,
             _ => NoEventTone
         };
     }

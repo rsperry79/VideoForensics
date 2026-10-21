@@ -53,6 +53,12 @@ public class EvidenceTimelineStyle_ToneClass_Tests
         };
 
     private static readonly IReadOnlySet<Guid> NothingPinned = new HashSet<Guid>();
+    [Fact]
+    public void DingEvent_IsLightBlue()
+    {
+        Assert.Equal("timeline-tone-ding", EvidenceTimelineStyle.ToneClass(EventItem("ding"), NothingPinned));
+    }
+
 
     [Fact]
     public void MediaOnly_NoEvent_IsGray()

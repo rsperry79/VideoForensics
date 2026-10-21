@@ -383,7 +383,8 @@ else
 
             // Update summary
             var counts = result.Counts;
-            _summaryText = $"{counts.Total} items · {counts.Events} events · {counts.Snapshots} snapshots · {counts.Videos} videos";
+            int timeLapses = result.Items.Count(i => i.IsTimeLapse);
+            _summaryText = $"{counts.Total} items · {counts.Events} events · {counts.Snapshots} snapshots · {counts.Videos - timeLapses} videos · {timeLapses} time lapses";
 
             // Load thumbnails
             _thumbnailsUnavailable = false;

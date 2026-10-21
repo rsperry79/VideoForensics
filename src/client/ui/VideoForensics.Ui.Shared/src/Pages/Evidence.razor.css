@@ -71,6 +71,10 @@
     background-color: #81c784;
 }
 
+::deep .timeline-row-label.timeline-tone-ding {
+    background-color: #90caf9;
+}
+
 ::deep .timeline-row-label.timeline-tone-manual {
     background-color: #ffd54f;
 }
