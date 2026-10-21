@@ -15,6 +15,9 @@ namespace VideoForensics.WebApp.Hubs
         /// <summary>Thumbnail-ready push. Sent to every connection; the payload is the media item ID only.</summary>
         public const string ThumbnailReady = "ThumbnailReady";
 
+        /// <summary>Evidence-changed push. Sent to every connection; the payload carries the device whose evidence changed.</summary>
+        public const string EvidenceChanged = "EvidenceChanged";
+
         /// <summary>Live-view session state push. Sent only to connections subscribed to that session's group.</summary>
         public const string LiveViewSessionChanged = "LiveViewSessionChanged";
 

@@ -29,6 +29,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
         private readonly IMediaAnalysisService _mediaAnalysis;
+        private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -53,7 +54,8 @@ namespace VideoForensics.Data.Core.Services
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
-            IMediaAnalysisService mediaAnalysis)
+            IMediaAnalysisService mediaAnalysis,
+            IEvidenceChangeNotifier? evidenceChangeNotifier = null)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -74,6 +76,7 @@ namespace VideoForensics.Data.Core.Services
             ActionLog = actionLogRepository;
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
+            _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -283,6 +286,7 @@ namespace VideoForensics.Data.Core.Services
                     await AnalyzeSavedMediaAsync(media.Id, ct);
                 }
 
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
                 return saved;
             }
             catch (Exception ex)
@@ -304,7 +308,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async context =>
+                Event saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert the Event record itself
                     Event upserted = await context.Events.UpsertAsync(evt, ct);
@@ -368,6 +372,9 @@ namespace VideoForensics.Data.Core.Services
 
                     return upserted;
                 }, ct);
+
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
+                return saved;
             }
             catch (Exception ex)
             {

@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
+@using System.Reactive.Linq
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Core.Contracts
@@ -240,6 +241,9 @@ else
     private MediaStillCaptureStatus? _stillCaptureStatus;
     private System.Action? _onScopeChangeHandler;
     private IDisposable? _thumbnailReadySubscription;
+    private IDisposable? _evidenceChangedSubscription;
+    /// <summary>Quiet time after the last change before the page reloads, so one sync's burst of writes causes one reload.</summary>
+    private static readonly TimeSpan EvidenceReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
     private volatile bool _disposed;
     private DeviceTimeGridResult _deviceTimeGrid = new(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
     private Guid? _stripDeviceId;
@@ -269,6 +273,16 @@ else
         VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource? thumbnailSource =
             ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>();
         _thumbnailReadySubscription = thumbnailSource?.ThumbnailReady.Subscribe(OnThumbnailReady);
+
+        // Optional, like the thumbnail source: a host with no realtime feed keeps the manual Refresh button.
+        VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource? evidenceSource =
+            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource>();
+        _evidenceChangedSubscription = evidenceSource?.EvidenceChanged
+            .Throttle(EvidenceReloadQuietPeriod)
+            .Subscribe(change =>
+            {
+                _ = InvokeAsync(OnEvidenceChangedAsync);
+            });
 
         _contextMenuItems = BuildContextMenuItems();
 
@@ -1013,6 +1027,17 @@ else
     /// it has, so the new URL makes the image reload and show the still. The event arrives on a background thread,
     /// so the work runs through the component's render context.
     /// </summary>
+    /// <summary>The server reported that evidence changed. Reloads through the same path as the Refresh button.</summary>
+    private async Task OnEvidenceChangedAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadEvidenceAsync();
+    }
+
     private void OnThumbnailReady(VideoForensics.Core.Api.Contracts.ThumbnailReadyDto ready)
     {
         if (_disposed)
@@ -1059,5 +1084,6 @@ else
         }
 
         _thumbnailReadySubscription?.Dispose();
+        _evidenceChangedSubscription?.Dispose();
     }
 }

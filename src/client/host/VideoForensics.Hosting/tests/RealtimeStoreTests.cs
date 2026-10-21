@@ -17,12 +17,14 @@ namespace VideoForensics.Hosting.Tests
             public Subject<SelfTestStatusDto> SelfTest { get; } = new();
             public Subject<ConnectionState> State { get; } = new();
             public Subject<ThumbnailReadyDto> Thumbnails { get; } = new();
+            public Subject<EvidenceChangedDto> Evidence { get; } = new();
 
             public IObservable<DownloadProgressDto> DownloadProgress => Progress;
             public IObservable<NotificationEvent> UrgentEvents => Urgent;
             public IObservable<SelfTestStatusDto> SelfTestStatus => SelfTest;
             public IObservable<ConnectionState> Connection => State;
             public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
+            public IObservable<EvidenceChangedDto> EvidenceChanged => Evidence;
             public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
             public Task StopAsync() => Task.CompletedTask;
         }
@@ -45,6 +47,38 @@ namespace VideoForensics.Hosting.Tests
             hub.Thumbnails.OnNext(later);
 
             Assert.Equal(new[] { later }, seen);
+        }
+
+        /// <summary>An evidence change is a live signal: a subscriber gets the changes made after it subscribed, not an old one.</summary>
+        [Fact]
+        public void RealtimeStore_EvidenceChanged_ForwardsEventsWithoutReplay()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var early = new EvidenceChangedDto(Guid.NewGuid());
+            var later = new EvidenceChangedDto(Guid.NewGuid());
+            hub.Evidence.OnNext(early);
+
+            var seen = new List<EvidenceChangedDto>();
+            using IDisposable subscription = store.EvidenceChanged.Subscribe(seen.Add);
+            hub.Evidence.OnNext(later);
+
+            Assert.Equal(new[] { later }, seen);
+        }
+
+        [Fact]
+        public void RemoteEvidenceChangedSource_ForwardsStoreEvents()
+        {
+            var hub = new FakeRealtimeHub();
+            using var store = new RealtimeStore(hub);
+            var source = new RemoteEvidenceChangedSource(store);
+            var change = new EvidenceChangedDto(Guid.NewGuid());
+
+            var seen = new List<EvidenceChangedDto>();
+            using IDisposable subscription = source.EvidenceChanged.Subscribe(seen.Add);
+            hub.Evidence.OnNext(change);
+
+            Assert.Equal(new[] { change }, seen);
         }
 
         [Fact]

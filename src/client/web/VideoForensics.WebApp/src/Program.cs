@@ -288,8 +288,11 @@ if (OperatingSystem.IsWindows())
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
 builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
+builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.EvidenceChangedBus>();
 builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.WebApp.Hubs.LiveThumbnailNotifier>());
+builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IEvidenceChangeNotifier, VideoForensics.WebApp.Hubs.LiveEvidenceNotifier>());
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, VideoForensics.WebApp.Services.LocalThumbnailReadySource>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource, VideoForensics.WebApp.Services.LocalEvidenceChangedSource>();
 // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
 // circuit's link never reaches another circuit; both interfaces share one bus instance.
 builder.Services.AddScoped<AccountLinkedBus>();

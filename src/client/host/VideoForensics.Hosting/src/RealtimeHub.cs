@@ -41,6 +41,7 @@ namespace VideoForensics.Hosting
         private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
         private readonly Subject<LiveViewTelemetrySampleDto> _liveViewTelemetry = new();
         private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
+        private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         private readonly BehaviorSubject<ConnectionState> _connection = new(ConnectionState.Disconnected);
         // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
         // from inside an emission cannot deadlock on the hub's state lock.
@@ -92,6 +93,9 @@ namespace VideoForensics.Hosting
 
         /// <inheritdoc />
         public IObservable<ThumbnailReadyDto> ThumbnailReady => _thumbnailReady.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<EvidenceChangedDto> EvidenceChanged => _evidenceChanged.AsObservable();
 
         /// <summary>
         /// Live-view session state pushes ("LiveViewSessionChanged") for sessions this client subscribed to via
@@ -420,6 +424,7 @@ namespace VideoForensics.Hosting
             _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", dto => EmitLiveViewSessionChanged(dto));
             _ = connection.On<LiveViewTelemetrySampleDto>("LiveViewTelemetry", dto => EmitLiveViewTelemetry(dto));
             _ = connection.On<ThumbnailReadyDto>("ThumbnailReady", dto => Emit(_thumbnailReady, dto));
+            _ = connection.On<EvidenceChangedDto>("EvidenceChanged", dto => Emit(_evidenceChanged, dto));
 
             connection.Reconnecting += error =>
             {

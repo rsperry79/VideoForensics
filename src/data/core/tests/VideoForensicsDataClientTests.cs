@@ -31,6 +31,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IActionLogRepository> _mockActionLogRepository;
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
         private readonly Mock<IMediaAnalysisService> _mockMediaAnalysis;
+        private readonly Mock<IEvidenceChangeNotifier> _mockEvidenceChangeNotifier = new();
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -75,7 +76,8 @@ namespace VideoForensics.Data.Core.Tests
                 _mockIntegrityVerification.Object,
                 _mockActionLogRepository.Object,
                 _mockLogger.Object,
-                _mockMediaAnalysis.Object);
+                _mockMediaAnalysis.Object,
+                _mockEvidenceChangeNotifier.Object);
         }
 
         [Fact]
@@ -1555,6 +1557,26 @@ namespace VideoForensics.Data.Core.Tests
             // Assert
             Assert.Equal(currentWatermark, device.LastSuccessfulPullAtUtc);
             mockDeviceRepoInContext.Verify(x => x.UpdateAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpsertEventAsync_NotifiesEvidenceChangeForTheDevice()
+        {
+            var deviceId = Guid.NewGuid();
+            var evt = new Event { Id = Guid.NewGuid(), DeviceId = deviceId, ProviderEventId = "event-101", EventType = "motion" };
+
+            var mockContext = new Mock<IUnitOfWorkContext>();
+            var mockEventRepoInContext = new Mock<IEventRepository>();
+            _ = mockEventRepoInContext.Setup(x => x.UpsertAsync(evt, It.IsAny<CancellationToken>())).ReturnsAsync(evt);
+            _ = mockContext.Setup(x => x.Events).Returns(mockEventRepoInContext.Object);
+
+            _ = _mockUnitOfWork
+                .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<Event>>>(), It.IsAny<CancellationToken>()))
+                .Returns(async (Func<IUnitOfWorkContext, Task<Event>> work, CancellationToken ct) => await work(mockContext.Object));
+
+            _ = await _dataClient.UpsertEventAsync(evt, CancellationToken.None);
+
+            _mockEvidenceChangeNotifier.Verify(n => n.EvidenceChangedAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

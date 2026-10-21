@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
+using System.Reactive.Subjects;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Ui.Shared.Contracts;
 using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -70,6 +73,8 @@ public abstract class EvidencePageTestBase : BunitContext
     protected Mock<ILegalHoldRepository> LegalHoldRepositoryMock { get; } = new();
     protected Mock<IMediaItemRepository> MediaItemRepositoryMock { get; } = new();
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
+    /// <summary>Evidence changes the test pushes; the page sees them through IEvidenceChangedSource.</summary>
+    protected Subject<EvidenceChangedDto> EvidenceChanges { get; } = new();
     protected Mock<IDeviceHealthRepository> DeviceHealthRepositoryMock { get; } = new();
     protected Mock<IEvidenceValidationService> EvidenceValidationServiceMock { get; } = new();
     protected Mock<IMediaStillCaptureService> MediaStillCaptureServiceMock { get; } = new();
@@ -222,6 +227,7 @@ public abstract class EvidencePageTestBase : BunitContext
         Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
         Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         Services.AddScoped(_ => MediaUrlProviderMock.Object);
+        Services.AddSingleton<IEvidenceChangedSource>(new EvidenceChangedSourceDouble(EvidenceChanges));
         Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
         Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
         Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);

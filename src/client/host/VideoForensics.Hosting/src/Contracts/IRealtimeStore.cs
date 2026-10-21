@@ -29,6 +29,9 @@ namespace VideoForensics.Hosting.Contracts
         /// </summary>
         IObservable<ThumbnailReadyDto> ThumbnailReady { get; }
 
+        /// <summary>Evidence-changed pushes from the hub. Events, not state: no replay.</summary>
+        IObservable<EvidenceChangedDto> EvidenceChanged { get; }
+
         /// <summary>Most recent download progress, or null before the first emission.</summary>
         DownloadProgressDto? LatestDownloadProgress { get; }
 

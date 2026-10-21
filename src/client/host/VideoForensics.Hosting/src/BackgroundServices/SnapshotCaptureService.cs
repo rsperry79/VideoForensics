@@ -369,6 +369,12 @@ namespace VideoForensics.Hosting.BackgroundServices
                     IntegrityVerified = false,
                     MetadataJson = CaptureSnapshotMetadata,
                 }, ct);
+
+                IEvidenceChangeNotifier? evidenceChanges = sp.GetService<IEvidenceChangeNotifier>();
+                if (evidenceChanges != null)
+                {
+                    await evidenceChanges.EvidenceChangedAsync(device.Id, ct);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

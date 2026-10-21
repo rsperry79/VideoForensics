@@ -30,6 +30,7 @@ namespace VideoForensics.Hosting.Services
         private readonly ILocationRepository _locations;
         private readonly IDeviceRepository _devices;
         private readonly IMediaItemRepository _mediaItems;
+        private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly ITimelineVideoBuilder _builder;
         private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotRollupService> _logger;
@@ -40,11 +41,13 @@ namespace VideoForensics.Hosting.Services
             IMediaItemRepository mediaItems,
             ITimelineVideoBuilder builder,
             IOptions<SnapshotTimelineOptions> options,
-            ILogger<SnapshotRollupService> logger)
+            ILogger<SnapshotRollupService> logger,
+            IEvidenceChangeNotifier? evidenceChanges = null)
         {
             _locations = locations;
             _devices = devices;
             _mediaItems = mediaItems;
+            _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _builder = builder;
             _options = options;
             _logger = logger;
@@ -162,6 +165,8 @@ namespace VideoForensics.Hosting.Services
                 // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
                 MetadataJson = SnapshotRollupMarker,
             }, cancellationToken);
+
+            await _evidenceChanges.EvidenceChangedAsync(device.Id, cancellationToken);
         }
     }
 }

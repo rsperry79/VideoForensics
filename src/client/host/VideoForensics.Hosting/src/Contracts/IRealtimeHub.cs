@@ -24,6 +24,9 @@ namespace VideoForensics.Hosting.Contracts
         /// <summary>A video's thumbnail was produced on the server. Raw push, so a late subscriber gets nothing old.</summary>
         IObservable<ThumbnailReadyDto> ThumbnailReady { get; }
 
+        /// <summary>Evidence for a device changed on the server. Raw push, so a late subscriber gets nothing old.</summary>
+        IObservable<EvidenceChangedDto> EvidenceChanged { get; }
+
         /// <summary>
         /// Starts connecting to the hub. The first call connects; repeated calls while connecting or connected are no-ops.
         /// Throws if the initial connection attempt fails.
