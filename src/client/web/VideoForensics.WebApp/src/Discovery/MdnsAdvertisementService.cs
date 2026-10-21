@@ -20,75 +20,45 @@ namespace VideoForensics.WebApp.Discovery
     /// without restarting the server - the same responsiveness <c>DeviceHealthSyncService</c> gives
     /// its own toggle.
     /// </summary>
-    public class MdnsAdvertisementService : BackgroundService
+    public class MdnsAdvertisementService(
+        IForensicsConfiguration config,
+        IServer server,
+        IHostApplicationLifetime lifetime,
+        ILogger<MdnsAdvertisementService> logger) : BackgroundService
     {
         private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(15);
 
-        private readonly IForensicsConfiguration _config;
-        private readonly IServer _server;
-        private readonly IHostApplicationLifetime _lifetime;
-        private readonly ILogger<MdnsAdvertisementService> _logger;
+        private readonly IForensicsConfiguration _config = config;
+        private readonly IHostApplicationLifetime _lifetime = lifetime;
+        private readonly ILogger<MdnsAdvertisementService> _logger = logger;
 
         private MulticastService? _mdns;
+        private readonly IServer _server = server;
         private ServiceDiscovery? _serviceDiscovery;
 
-        public MdnsAdvertisementService(
-            IForensicsConfiguration config,
-            IServer server,
-            IHostApplicationLifetime lifetime,
-            ILogger<MdnsAdvertisementService> logger)
+        private int? ResolveListeningPort()
         {
-            _config = config;
-            _server = server;
-            _lifetime = lifetime;
-            _logger = logger;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            await WaitForApplicationStartedAsync(stoppingToken).ConfigureAwait(false);
-
-            using var timer = new PeriodicTimer(CheckInterval);
-            do
+            ICollection<string>? addresses = _server.Features.Get<IServerAddressesFeature>()?.Addresses;
+            if (addresses is null)
             {
-                try
-                {
-                    if (_config.EnableMdnsAdvertisement && _serviceDiscovery is null)
-                    {
-                        await StartAdvertisingAsync().ConfigureAwait(false);
-                    }
-                    else if (!_config.EnableMdnsAdvertisement && _serviceDiscovery is not null)
-                    {
-                        await StopAdvertisingAsync().ConfigureAwait(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "mDNS advertisement check failed");
-                }
-            } while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
-        }
-
-        public override async Task StopAsync(CancellationToken cancellationToken)
-        {
-            await StopAdvertisingAsync().ConfigureAwait(false);
-            await base.StopAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        private async Task WaitForApplicationStartedAsync(CancellationToken ct)
-        {
-            var startedSource = new TaskCompletionSource();
-            using CancellationTokenRegistration registration = _lifetime.ApplicationStarted.Register(() => startedSource.TrySetResult());
-            if (_lifetime.ApplicationStarted.IsCancellationRequested)
-            {
-                return;
+                return null;
             }
 
-            await startedSource.Task.WaitAsync(ct).ConfigureAwait(false);
+            foreach (string address in addresses)
+            {
+                if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
+                {
+                    return uri.Port;
+                }
+            }
+
+            return null;
         }
 
-        private async Task StartAdvertisingAsync()
+        private async Task StartAdvertisingAsync(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             int? port = ResolveListeningPort();
             if (port is null)
             {
@@ -120,7 +90,7 @@ namespace VideoForensics.WebApp.Discovery
             }
         }
 
-        private async Task StopAdvertisingAsync()
+        private async Task StopAdvertisingAsync(CancellationToken cancellationToken)
         {
             if (_serviceDiscovery is null)
             {
@@ -145,26 +115,44 @@ namespace VideoForensics.WebApp.Discovery
                 _logger.LogInformation("mDNS advertisement stopped");
             }
 
-            await Task.CompletedTask.ConfigureAwait(false);
+            await Task.CompletedTask.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        private int? ResolveListeningPort()
+        private async Task WaitForApplicationStartedAsync(CancellationToken ct)
         {
-            ICollection<string>? addresses = _server.Features.Get<IServerAddressesFeature>()?.Addresses;
-            if (addresses is null)
+            var startedSource = new TaskCompletionSource();
+            using CancellationTokenRegistration registration = _lifetime.ApplicationStarted.Register(() => startedSource.TrySetResult());
+            if (_lifetime.ApplicationStarted.IsCancellationRequested)
             {
-                return null;
+                return;
             }
 
-            foreach (string address in addresses)
+            await startedSource.Task.WaitAsync(ct).ConfigureAwait(false);
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await WaitForApplicationStartedAsync(stoppingToken).ConfigureAwait(false);
+
+            using var timer = new PeriodicTimer(CheckInterval);
+            do
             {
-                if (Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
+                try
                 {
-                    return uri.Port;
+                    if (_config.EnableMdnsAdvertisement && (_serviceDiscovery is null))
+                    {
+                        await StartAdvertisingAsync(stoppingToken).ConfigureAwait(false);
+                    }
+                    else if (!_config.EnableMdnsAdvertisement && (_serviceDiscovery is not null))
+                    {
+                        await StopAdvertisingAsync(stoppingToken).ConfigureAwait(false);
+                    }
                 }
-            }
-
-            return null;
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "mDNS advertisement check failed");
+                }
+            } while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
         }
 
         public override void Dispose()
@@ -193,6 +181,12 @@ namespace VideoForensics.WebApp.Discovery
 
             base.Dispose();
             GC.SuppressFinalize(this);
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await StopAdvertisingAsync(cancellationToken).ConfigureAwait(false);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }
