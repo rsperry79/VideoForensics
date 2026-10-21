@@ -75,8 +75,11 @@ namespace VideoForensics.WebApp.Discovery
                 _serviceDiscovery.Advertise(profile);
                 _mdns.Start();
 
-                _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
-                    Environment.MachineName, "_videoforensics._tcp.local", port.Value);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
+                        Environment.MachineName, "_videoforensics._tcp.local", port.Value);
+                }
 
                 await Task.CompletedTask.ConfigureAwait(false);
             }
