@@ -31,17 +31,17 @@ else
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastSuccessfulAuthLabel"]</label>
-                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastSuccessfulAuthUtc" Fallback="@L["Never"]" /></p>
+                    <p class="mb-0"><LocalTimeText Value="@Account.LastSuccessfulAuthUtc" Fallback="@L["Never"]" /></p>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastDownloadLabel"]</label>
-                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastDownloadTimeUtc" Fallback="@L["Never"]" /></p>
+                    <p class="mb-0"><LocalTimeText Value="@Account.LastDownloadTimeUtc" Fallback="@L["Never"]" /></p>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastSyncCompletedLabel"]</label>
-                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LastSyncCompletedUtc" Fallback="@L["Never"]" /></p>
+                    <p class="mb-0"><LocalTimeText Value="@Account.LastSyncCompletedUtc" Fallback="@L["Never"]" /></p>
                 </div>
             </div>
         </div>
