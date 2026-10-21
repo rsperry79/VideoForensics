@@ -291,13 +291,20 @@ namespace VideoForensics.Hosting.Services
 
             // The pull records its own failures on the account; it does not throw for them.
             // The first sync backfills a year in one-month windows, oldest first, so a long history is pulled in bounded calls.
-            EventPullResult counts = fullHistory && request is null
-                ? await PullMonthlyAsync(eventPullService, accountId, cancellationToken)
-                : await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            string? monthlyError = null;
+            EventPullResult counts;
+            if (fullHistory && request is null)
+            {
+                (counts, monthlyError) = await PullMonthlyAsync(eventPullService, accountId, cancellationToken);
+            }
+            else
+            {
+                counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            }
             LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
-            string? eventError = ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+            string? eventError = monthlyError ?? ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
 
             if (request?.Type != AccountSyncType.All)
             {
@@ -349,9 +356,10 @@ namespace VideoForensics.Hosting.Services
         /// Pulls the backfill one month at a time. Discovery repeats every month, so devices and locations take the largest
         /// count rather than a sum; events and failed feeds are summed across the months.
         /// </summary>
-        private async Task<EventPullResult> PullMonthlyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
+        private async Task<(EventPullResult Counts, string? Error)> PullMonthlyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
         {
             int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            string? firstError = null;
             foreach ((DateTime from, DateTime to) in MonthlyWindows(DateTime.UtcNow))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -361,9 +369,12 @@ namespace VideoForensics.Hosting.Services
                 config = Math.Max(config, month.ConfigAreasSynced);
                 events += month.EventsSynced;
                 failed += month.FeedsFailed;
+
+                // A failed month records its error on the account; a later clean month clears it. Keep the first one so it is not lost.
+                firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
             }
 
-            return new EventPullResult(devices, locations, events, config, failed);
+            return (new EventPullResult(devices, locations, events, config, failed), firstError);
         }
 
         /// <summary>Console lines for what the pull found: discovery, events, and configuration, with any failed feeds.</summary>

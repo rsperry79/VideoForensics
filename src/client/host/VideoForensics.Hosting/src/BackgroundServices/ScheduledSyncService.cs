@@ -335,14 +335,20 @@ namespace VideoForensics.Hosting.BackgroundServices
                         deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
 
                     // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
-                    counts = account.LastSyncCompletedUtc is null
-                        ? await PullBackfillMonthlyAsync(pull, accountId, ct)
-                        : await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
+                    string? backfillError = null;
+                    if (account.LastSyncCompletedUtc is null)
+                    {
+                        (counts, backfillError) = await PullBackfillMonthlyAsync(pull, sp.GetRequiredService<IProviderAccountRepository>(), accountId, ct);
+                    }
+                    else
+                    {
+                        counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
+                    }
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
                     // Same rule as the manual sync: the pull reports failures by recording them on the account.
-                    outcome = ProviderSyncRunRecorder.OutcomeAfterPull(
+                    outcome = backfillError ?? ProviderSyncRunRecorder.OutcomeAfterPull(
                         await sp.GetRequiredService<IProviderAccountRepository>().GetAsync(accountId, ct));
                 }
             }
@@ -369,9 +375,11 @@ namespace VideoForensics.Hosting.BackgroundServices
             await scheduleRepository.RecordEventRunAsync(accountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
         }
         /// <summary>Backfills one month per pull, oldest first, from a year ago to now. Discovery counts take the largest month; events and failed feeds are summed.</summary>
-        private static async Task<EventPullResult> PullBackfillMonthlyAsync(IEventPullService pull, Guid accountId, CancellationToken ct)
+        private static async Task<(EventPullResult Counts, string? Error)> PullBackfillMonthlyAsync(
+            IEventPullService pull, IProviderAccountRepository accounts, Guid accountId, CancellationToken ct)
         {
             int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            string? firstError = null;
             foreach ((DateTime from, DateTime to) in AccountSyncRunner.MonthlyWindows(DateTime.UtcNow))
             {
                 ct.ThrowIfCancellationRequested();
@@ -381,9 +389,12 @@ namespace VideoForensics.Hosting.BackgroundServices
                 config = Math.Max(config, month.ConfigAreasSynced);
                 events += month.EventsSynced;
                 failed += month.FeedsFailed;
+
+                // A failed month records its error on the account; a later clean month clears it. Keep the first one so it is not lost.
+                firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await accounts.GetAsync(accountId, ct));
             }
 
-            return new EventPullResult(devices, locations, events, config, failed);
+            return (new EventPullResult(devices, locations, events, config, failed), firstError);
         }
 
         /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>
