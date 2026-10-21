@@ -133,6 +133,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
+            INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
             try
@@ -219,10 +220,15 @@ namespace VideoForensics.Hosting.BackgroundServices
                             SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
+                        bool wentOffline = await IsNewlyOfflineAsync(healthRepository, device.Id, reading.Connected, ct);
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
+                        if (wentOffline)
+                        {
+                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                        }
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
@@ -300,6 +306,8 @@ namespace VideoForensics.Hosting.BackgroundServices
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             ISecurityAuditLogger auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
+            IDeviceHealthRepository? healthRepository = sp.GetService<IDeviceHealthRepository>();
+            INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
             try
@@ -382,10 +390,15 @@ namespace VideoForensics.Hosting.BackgroundServices
                             SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
+                        bool wentOffline = await IsNewlyOfflineAsync(healthRepository, device.Id, reading.Connected, ct);
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
+                        if (wentOffline)
+                        {
+                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                        }
                     }
 
                     if (persisted > 0)
@@ -447,6 +460,55 @@ namespace VideoForensics.Hosting.BackgroundServices
                     string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
                     _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
                 }
+            }
+        }
+
+        /// <summary>
+        /// True when the reading is offline and the newest persisted reading was online. Checked before the new
+        /// reading is written, so the alert fires on the transition rather than on every tick the device stays offline.
+        /// </summary>
+        private static async Task<bool> IsNewlyOfflineAsync(IDeviceHealthRepository? healthRepository, Guid deviceId, bool? connectedNow, CancellationToken ct)
+        {
+            // A null Connected means the provider did not say, so it is not treated as offline.
+            if (connectedNow != false)
+            {
+                return false;
+            }
+
+            // Only a host that registers no health repository gets here without one; with no history there is no transition to report.
+            if (healthRepository == null)
+            {
+                return false;
+            }
+
+            DeviceHealth? previous = await healthRepository.GetLatestAsync(deviceId, ct);
+            return previous is { IsOnline: true };
+        }
+
+        /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
+        private async Task NotifyDeviceOfflineAsync(INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            if (dispatcher == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await dispatcher.DispatchAsync(new NotificationEvent(
+                    EventType: "DeviceOffline",
+                    TimestampUtc: DateTime.UtcNow,
+                    OperatorId: null,
+                    PairedDeviceId: device.Id,
+                    SourceIp: null,
+                    Details: $"{device.Name} went offline",
+                    Audience: NotificationAudience.AdminsOnly,
+                    Severity: NoticeSeverity.Alert), ct);
+                _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical)", device.Name);
             }
         }
 
