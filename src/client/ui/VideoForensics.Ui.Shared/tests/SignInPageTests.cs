@@ -432,13 +432,13 @@ public class SignInPageTests : BunitContext
     [Fact]
     public async Task SignIn_PasskeyAvailable_CredentialFieldsHiddenUntilToggled()
     {
-        // Arrange - with passkey sign-in available, username and password stay hidden behind a button
+        // Arrange - with passkey sign-in available, the username is shown (the passkey needs it) and the password stays hidden behind a button
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
 
-        // Assert - hidden by default
-        Assert.Empty(component.FindAll("input[type='text']"));
+        // Assert - username visible by default, password hidden
+        Assert.NotEmpty(component.FindAll("input[type='text']"));
         Assert.Empty(component.FindAll("input[type='password']"));
         Assert.NotNull(FindButton(component, localizer["UseUserNameAndPasswordButton"]));
 
