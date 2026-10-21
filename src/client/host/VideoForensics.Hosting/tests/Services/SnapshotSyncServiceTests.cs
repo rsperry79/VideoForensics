@@ -38,7 +38,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
         private void AddDevices(params string[] providerIds) => _devices
             .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(providerIds.Select(id => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = id, Name = $"Cam {id}", Type = "doorbell" }).ToList());
+            .ReturnsAsync(providerIds.Select(id => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = id, Name = $"Cam {id}", Type = "doorbot" }).ToList());
 
         private void DownloadReturns(string deviceId, DownloadResult result) => _download
             .Setup(d => d.DownloadSnapshotsAsync(deviceId, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))

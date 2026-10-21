@@ -5,6 +5,7 @@ using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
@@ -69,6 +70,13 @@ namespace VideoForensics.Hosting.Services
                 foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
                 {
                     if (!seen.Add(device.ProviderDeviceId))
+                    {
+                        continue;
+                    }
+
+                    // Only cameras have snapshots. Chimes, base stations and range extenders are health-only devices, and their
+                    // health comes from the device health sync, so asking Ring for a snapshot would only fail.
+                    if (!SnapshotCaptureService.HasCamera(device.Type))
                     {
                         continue;
                     }
