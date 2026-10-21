@@ -1141,7 +1141,7 @@ namespace VideoForensics.Providers.Ring.Services
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
-                string? sha256Hash = null;
+                string sha256Hash = string.Empty;
                 if (fileSize > 0)
                 {
                     try
@@ -1159,7 +1159,8 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Record snapshot download in database
-                if (sha256Hash != null)
+                // Record even when hashing failed: the file is on disk, and a missing row would hide the snapshot from Media and the loop.
+                if (fileSize > 0)
                 {
                     try
                     {
