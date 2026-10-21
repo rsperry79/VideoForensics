@@ -314,6 +314,44 @@ else
         return pinned;
     }
 
+    /// <summary>
+    /// Each device's roll-up window (its account's SnapshotRollupIntervalMinutes). Repositories are resolved optionally, so a
+    /// host without them keeps the default window instead of failing the load.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, TimeSpan>> LoadSnapshotWindowsAsync()
+    {
+        var windows = new Dictionary<Guid, TimeSpan>();
+        var accounts = ServiceProvider.GetService<IProviderAccountRepository>();
+        var schedules = ServiceProvider.GetService<ISyncScheduleRepository>();
+        var locations = ServiceProvider.GetService<ILocationRepository>();
+        if (accounts is null || schedules is null || locations is null)
+        {
+            return windows;
+        }
+
+        try
+        {
+            foreach (ProviderAccount account in await accounts.ListAsync(CancellationToken.None))
+            {
+                SyncSchedule? schedule = await schedules.GetByProviderAccountIdAsync(account.Id, CancellationToken.None);
+                var window = TimeSpan.FromMinutes(schedule?.SnapshotRollupIntervalMinutes ?? SyncSchedule.DefaultSnapshotRollupIntervalMinutes);
+                foreach (VideoForensics.Data.Common.Entities.Location location in await locations.ListByProviderAccountIdAsync(account.Id, CancellationToken.None))
+                {
+                    foreach (Device device in await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None))
+                    {
+                        windows[device.Id] = window;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Could not read snapshot roll-up windows; using the default window.");
+        }
+
+        return windows;
+    }
+
     private async Task LoadEvidenceAsync()
     {
         try
@@ -323,7 +361,10 @@ else
             var evidenceLoader = new EvidenceLoader(eventRowLoader, MediaItemRepository);
             var result = await evidenceLoader.LoadAsync(ScopeState.Current, _devices, CancellationToken.None);
 
-            _vm = new EvidenceViewModel(result);
+            // One snapshot per device per roll-up window, so the media view matches the loops.
+            IReadOnlyDictionary<Guid, TimeSpan> windows = await LoadSnapshotWindowsAsync();
+            IReadOnlyList<EvidenceItem> shown = SnapshotWindowThinning.Apply(result.Items, id => windows.TryGetValue(id, out TimeSpan w) ? w : TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes));
+            _vm = new EvidenceViewModel(result, shown);
             _pinnedIds = await LoadPinnedIdsAsync(CancellationToken.None);
             _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
             _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);

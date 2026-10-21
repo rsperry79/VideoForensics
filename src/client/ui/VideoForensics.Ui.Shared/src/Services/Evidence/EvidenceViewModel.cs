@@ -64,8 +64,14 @@ public class EvidenceViewModel
     public EvidenceLoadResult LoadResult { get; }
 
     public EvidenceViewModel(EvidenceLoadResult loadResult)
+        : this(loadResult, loadResult.Items)
     {
-        Items = loadResult.Items;
+    }
+
+    /// <summary>Creates the view model with the items to show, which may be fewer than the loaded items (for example after snapshot thinning).</summary>
+    public EvidenceViewModel(EvidenceLoadResult loadResult, IReadOnlyList<EvidenceItem> items)
+    {
+        Items = items;
         LoadResult = loadResult;
         Selected = null;
         IsViewerOpen = false;
