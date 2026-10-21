@@ -18,6 +18,9 @@ namespace VideoForensics.Hosting.Services
     public sealed class SnapshotRollupService : ISnapshotRollupService
     {
         /// <summary>Snapshot Media rows carry this marker in their metadata (written by the Ring snapshot download).</summary>
+        /// <summary>Each camera's loop is 360 px high. Display is built later; the gap-fill builds elsewhere stay at full resolution.</summary>
+        internal const int CameraLoopHeight = 360;
+
         private const string SnapshotMetadataMarker = "\"type\":\"snapshot\"";
 
         /// <summary>Metadata written on each roll-up loop row. The Devices tab reads it to pick the latest loop.</summary>
@@ -102,7 +105,7 @@ namespace VideoForensics.Hosting.Services
             string outputPath = Path.Combine(_options.Value.SnapshotRoot, "rollups", device.Id.ToString("D"), $"{toUtc:yyyyMMddHHmmss}.mp4");
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-            TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath), cancellationToken);
+            TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);
             if (!result.Success)
             {
                 throw new InvalidOperationException(result.ErrorMessage ?? "the timeline build failed");

@@ -99,6 +99,11 @@ namespace VideoForensics.Core.Providers.Core
                 return new TimelineVideoResult(false, null, sizeError, 0);
             }
 
+            if (request.MaxHeight is { } maxHeight)
+            {
+                (width, height) = TimelineSize.Cap(width, height, maxHeight);
+            }
+
             int frameCount = segments.Sum(s => s.Seconds);
 
             string workDir = Path.Combine(Path.GetTempPath(), "timeline-" + Guid.NewGuid().ToString("N"));
@@ -495,6 +500,7 @@ namespace VideoForensics.Core.Providers.Core
         }
 
         private static int RoundUpToEven(int value) => value % 2 == 0 ? value : value + 1;
+
 
         /// <summary>
         /// Builds the ffmpeg arguments that encode one segment to a 1 fps MP4 of exactly its whole-second frame count.

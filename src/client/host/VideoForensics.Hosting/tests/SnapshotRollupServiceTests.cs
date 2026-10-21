@@ -99,6 +99,7 @@ namespace VideoForensics.Hosting.Tests.Services
             Assert.Equal(new[] { first, second }, sent!.Stills.Select(s => s.ImagePath).ToArray());
             Assert.Equal(TimeSpan.FromMinutes(8), sent.Stills[0].Hold);
             Assert.Equal(TimeSpan.FromMinutes(5), sent.Stills[1].Hold);
+            Assert.Equal(360, sent.MaxHeight);
         }
 
         [Fact]
