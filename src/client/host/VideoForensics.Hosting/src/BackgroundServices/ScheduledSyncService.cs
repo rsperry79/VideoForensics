@@ -159,6 +159,11 @@ namespace VideoForensics.Hosting.BackgroundServices
                         await RunSnapshotSyncAsync(sp, scheduleRepository, schedule, account, authService, ct);
                     }
 
+                    if (ScheduleCalculator.IsRollupDue(schedule, nowUtc))
+                    {
+                        await RunRollupAsync(sp, scheduleRepository, schedule, account, ct);
+                    }
+
                     if (!ScheduleCalculator.IsEventDue(schedule, nowUtc))
                     {
                         continue;
@@ -176,6 +181,30 @@ namespace VideoForensics.Hosting.BackgroundServices
                     _logger.LogError(ex, "Scheduled sync failed for {ProviderName} account", providerName);
                 }
             }
+        }
+
+        /// <summary>
+        /// Rolls the account's snapshots since the last roll-up into MP4 loops and records the roll-up only when every device
+        /// succeeded. A failed roll-up is retried on a later tick with a window that still starts at the last good roll-up.
+        /// </summary>
+        private async Task RunRollupAsync(
+            IServiceProvider sp,
+            ISyncScheduleRepository scheduleRepository,
+            SyncSchedule schedule,
+            ProviderAccount account,
+            CancellationToken ct)
+        {
+            DateTime toUtc = _time.GetUtcNow().UtcDateTime;
+            DateTime fromUtc = schedule.LastRollupUtc ?? toUtc.AddMinutes(-schedule.SnapshotRollupIntervalMinutes);
+            SnapshotRollupResult result = await sp.GetRequiredService<ISnapshotRollupService>().RollUpAccountAsync(account.Id, fromUtc, toUtc, ct);
+            if (result.ErrorMessage is not null)
+            {
+                _logger.LogWarning("Scheduled snapshot roll-up for {ProviderName} account finished with failures: {Error}", account.ProviderName, result.ErrorMessage);
+                return;
+            }
+
+            // Uses CancellationToken.None so a completed roll-up is recorded even when shutdown cancelled the tick.
+            await scheduleRepository.RecordRollupAsync(account.Id, toUtc, CancellationToken.None);
         }
 
         /// <summary>
