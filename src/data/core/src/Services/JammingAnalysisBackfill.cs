@@ -36,6 +36,8 @@ namespace VideoForensics.Data.Core.Services
         {
             IReadOnlyList<MediaItem> batch = await _items.ListUnanalyzedAsync(BatchSize, ct);
             int analysed = 0;
+            // Recorded times of the items actually analysed, so the log shows which part of the timeline this pass covered.
+            var analysedRecordedAt = new List<DateTime>();
             foreach (MediaItem item in batch)
             {
                 ct.ThrowIfCancellationRequested();
@@ -43,6 +45,7 @@ namespace VideoForensics.Data.Core.Services
                 {
                     await _analysis.AnalyzeAsync(item.Id, ct);
                     analysed++;
+                    analysedRecordedAt.Add(item.RecordedAtUtc);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -56,7 +59,9 @@ namespace VideoForensics.Data.Core.Services
 
             if (analysed > 0)
             {
-                _logger.LogInformation("Analysis backfill analysed {Analysed} of {Batch} unanalysed media item(s)", analysed, batch.Count);
+                _logger.LogInformation(
+                    "Analysis backfill analysed {Analysed} of {Batch} unanalysed media item(s), recorded {FromUtc:yyyy-MM-dd HH:mm} to {ToUtc:yyyy-MM-dd HH:mm} UTC",
+                    analysed, batch.Count, analysedRecordedAt.Min(), analysedRecordedAt.Max());
             }
 
             return analysed;
