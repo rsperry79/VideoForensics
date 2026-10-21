@@ -7,6 +7,7 @@
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Ui.Shared.Formatting
 @using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Ui.Shared.Services.Time
 @inject SimpleHomeBuilder Builder
 @inject IEventRepository Events
 @inject IMediaItemRepository Media
@@ -104,12 +105,21 @@
     private LoadState _state = LoadState.Loading;
     private SimpleHomeModel? _model;
 
+    // Zone the current model was built for. The browser's zone can arrive after the first load, so a change reloads.
+    private TimeZoneInfo? _loadedZone;
+
+    [CascadingParameter]
+    public UserTimeZone? UserTz { get; set; }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // Loaded after the first render (not in OnInitializedAsync) so server prerendering does not hit the repositories twice.
-        if (firstRender)
+        if (firstRender || !Equals(DisplayZone(), _loadedZone))
             await LoadAsync();
     }
+
+    // Null until the host supplies the user's zone; the builder then keeps the zone it was registered with.
+    private TimeZoneInfo? DisplayZone() => UserTz?.Zone;
 
     private async Task RetryAsync()
     {
@@ -122,7 +132,10 @@
     {
         try
         {
-            _model = await Builder.BuildAsync(Events, Media, Devices, Services.GetService<IJammingRepository>(), Window, _cts.Token);
+            var zone = DisplayZone();
+            _loadedZone = zone;
+            var builder = zone is null ? Builder : Builder.ForZone(zone);
+            _model = await builder.BuildAsync(Events, Media, Devices, Services.GetService<IJammingRepository>(), Window, _cts.Token);
             _state = LoadState.Loaded;
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)

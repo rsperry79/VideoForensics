@@ -65,22 +65,22 @@ else
                 {
                     <div class="mb-3">
                         <label>@L["LastEventPoll"]</label>
-                        <p>@(_schedule.EventLastRunUtc?.ToString("g") ?? L["Never"])</p>
+                        <p><LocalTimeText Value="@_schedule.EventLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["NextEventPoll"]</label>
-                        <p>@(_schedule.EventNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
+                        <p><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["LastSnapshotPoll"]</label>
-                        <p>@(_schedule.SnapshotLastRunUtc?.ToString("g") ?? L["Never"])</p>
+                        <p><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
                     </div>
 
                     <div class="mb-3">
                         <label>@L["NextSnapshotPoll"]</label>
-                        <p>@(_schedule.SnapshotNextRunUtc?.ToString("g") ?? L["NotAvailable"])</p>
+                        <p><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
                     </div>
                 }
 

@@ -339,7 +339,7 @@
                     {
                         <div style="margin-bottom: 1.5rem; border-left: 3px solid #0066cc; padding-left: 1rem;">
                             <div style="font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace; font-size: 0.85rem; margin-bottom: 0.5rem; color: inherit;">
-                                <strong>@httpCall.Phase.ToUpperInvariant() @httpCall.Method @httpCall.StatusCode</strong> @httpCall.Url · @httpCall.TimestampUtc.ToString("HH:mm:ss")
+                                <strong>@httpCall.Phase.ToUpperInvariant() @httpCall.Method @httpCall.StatusCode</strong> @httpCall.Url · <LocalTimeText Value="@httpCall.TimestampUtc" Format="HH:mm:ss" />
                             </div>
                             @if (!string.IsNullOrEmpty(httpCall.Body))
                             {

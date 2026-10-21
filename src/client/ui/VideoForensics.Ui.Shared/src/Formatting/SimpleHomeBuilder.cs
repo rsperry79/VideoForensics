@@ -38,6 +38,12 @@ public sealed class SimpleHomeBuilder
         _timeZone = timeZone ?? TimeZoneInfo.Local;
     }
 
+    /// <summary>
+    /// Returns a builder that shows times in <paramref name="zone"/>. Used once the signed-in user's browser zone is known,
+    /// so the Simple home reflects the user rather than the server.
+    /// </summary>
+    public SimpleHomeBuilder ForZone(TimeZoneInfo zone) => new(_timeProvider, _urlProvider, _localizer, zone);
+
     /// <summary>Builds the Simple Mode home model for the given look-back window.</summary>
     /// <param name="events">Event repository.</param>
     /// <param name="media">Media repository.</param>

@@ -34,7 +34,7 @@ else
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LinkedLabel"]</label>
-                    <p class="form-control-plaintext">@Account.LinkedUtc</p>
+                    <p class="form-control-plaintext"><LocalTimeText Value="@Account.LinkedUtc" /></p>
                 </div>
 
                 <div class="mb-3">
@@ -47,7 +47,7 @@ else
                     <div class="mb-3 p-3 border border-danger rounded" style="background-color: #fff5f5;">
                         <label class="form-label fw-bold text-danger">@L["LastErrorLabel"]</label>
                         <p class="form-control-plaintext mb-1">
-                            <strong>@L["TimeLabel"]</strong> @(Account.LastErrorUtc?.ToString() ?? L["NoValue"])
+                            <strong>@L["TimeLabel"]</strong> <LocalTimeText Value="@Account.LastErrorUtc" Fallback="@L["NoValue"]" />
                         </p>
                         <p class="form-control-plaintext">
                             <strong>@L["MessageLabel"]</strong> @(Account.LastErrorMessage ?? L["NoValue"])

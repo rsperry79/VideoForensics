@@ -18,7 +18,8 @@ public class AccountTabsTests : AccountDetailsPageTestBase
         var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LastSyncCompletedLabel"], cut.Markup));
-        Assert.Contains(Account.LastSyncCompletedUtc.Value.ToString(), cut.Markup);
+        // Rendered in the machine zone here: no user zone is cascaded in this test.
+        Assert.Contains(Account.LastSyncCompletedUtc.Value.ToLocalTime().ToString(), cut.Markup);
     }
 
     [Fact]

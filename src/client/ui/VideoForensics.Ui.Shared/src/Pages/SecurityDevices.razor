@@ -51,12 +51,16 @@ else
         <GridColumns>
             <GridColumn Field="@nameof(PairedDevice.DeviceName)" HeaderText="@L["ColDeviceName"]" MinWidth="100" />
             <GridColumn Field="@nameof(PairedDevice.Role)" HeaderText="@L["ColRole"]" MinWidth="100" />
-            <GridColumn Field="@nameof(PairedDevice.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" MinWidth="100" />
+            <GridColumn Field="@nameof(PairedDevice.PairedAtUtc)" HeaderText="@L["ColPairedAt"]" MinWidth="100">
+                <Template>
+                    <LocalTimeText Value="@((context as PairedDevice)!.PairedAtUtc)" />
+                </Template>
+            </GridColumn>
             <GridColumn HeaderText="@L["ColLastSeenUtc"]" MinWidth="100">
                 <Template>
                     @{
                         var device = (PairedDevice)context;
-                        @(device.LastSeenAtUtc?.ToString() ?? L["NotAvailable"].Value)
+                        <LocalTimeText Value="@device.LastSeenAtUtc" Fallback="@L["NotAvailable"].Value" />
                     }
                 </Template>
             </GridColumn>

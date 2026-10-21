@@ -1,0 +1,30 @@
+@using VideoForensics.Ui.Shared.Services.Time
+@using System.Globalization
+@if (Value is { } stored)
+{
+    <time datetime="@UserTimeZone.AsUtc(stored).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)">@Text(stored)</time>
+}
+else
+{
+    @Fallback
+}
+@code {
+    /// <summary>Zone supplied by <c>UserTimeZoneHost</c>. Without it, the machine's local zone is used.</summary>
+    [CascadingParameter]
+    public UserTimeZone? Zone { get; set; }
+
+    /// <summary>Stored UTC instant to display. Renders <see cref="Fallback"/> when null.</summary>
+    [Parameter]
+    public DateTime? Value { get; set; }
+
+    /// <summary>Format string applied after conversion, for example "g" or "HH:mm".</summary>
+    [Parameter]
+    public string? Format { get; set; }
+
+    /// <summary>Text shown when <see cref="Value"/> is null, for example "Never".</summary>
+    [Parameter]
+    public string? Fallback { get; set; }
+
+    private string Text(DateTime stored) =>
+        (Zone ?? new UserTimeZone(TimeZoneInfo.Local)).Format(stored, Format);
+}

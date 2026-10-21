@@ -48,8 +48,8 @@ else
                         {
                             <tr class="case-row">
                                 <td>@CaseTypeLabel(caseRow.CaseType)</td>
-                                <td data-col="event-date">@(caseRow.ScopeFromUtc?.ToLocalTime().ToString("d"))</td>
-                                <td>@caseRow.CreatedAtUtc.ToLocalTime().ToString("g")</td>
+                                <td data-col="event-date"><LocalTimeText Value="@caseRow.ScopeFromUtc" Format="d" /></td>
+                                <td><LocalTimeText Value="@caseRow.CreatedAtUtc" Format="g" /></td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenCase(caseRow.Id)">@L["OpenCase"]</button>
                                 </td>

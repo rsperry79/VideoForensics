@@ -19,7 +19,7 @@
                 {
                     <div class="snapshot-strip-thumb-placeholder"></div>
                 }
-                <div class="snapshot-strip-thumb-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
+                <div class="snapshot-strip-thumb-time"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /></div>
             </div>
         }
     </div>

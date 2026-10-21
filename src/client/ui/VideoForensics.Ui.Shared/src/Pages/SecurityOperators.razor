@@ -58,7 +58,11 @@ else
                     }
                 </Template>
             </GridColumn>
-            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100" />
+            <GridColumn Field="@nameof(Operator.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" MinWidth="100">
+                <Template>
+                    <LocalTimeText Value="@(((Operator)context).CreatedAtUtc)" Format="u" />
+                </Template>
+            </GridColumn>
             <GridColumn HeaderText="@L["ColActive"]" MinWidth="100">
                 <Template>
                     @{
@@ -135,7 +139,11 @@ else
             <GridColumns>
                 <GridColumn Field="@nameof(PendingCredentialDisplay.OperatorDisplayName)" HeaderText="@L["ColOperator"]" MinWidth="100" />
                 <GridColumn Field="@nameof(PendingCredentialDisplay.Label)" HeaderText="@L["ColCredentialLabel"]" MinWidth="100" />
-                <GridColumn Field="@nameof(PendingCredentialDisplay.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" Type="Syncfusion.Blazor.Grids.ColumnType.DateTime" Format="u" MinWidth="100" />
+                <GridColumn Field="@nameof(PendingCredentialDisplay.CreatedAtUtc)" HeaderText="@L["ColCreatedAt"]" Type="Syncfusion.Blazor.Grids.ColumnType.DateTime" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@(((PendingCredentialDisplay)context).CreatedAtUtc)" Format="u" />
+                    </Template>
+                </GridColumn>
                 <GridColumn HeaderText="" MinWidth="100">
                     <Template>
                         @{

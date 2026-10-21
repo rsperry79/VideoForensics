@@ -247,7 +247,8 @@ public class AccountsPage_RemovedAccounts_Tests : AccountsPageTestBase
         Assert.Contains("Removed accounts", cut.Markup);
         var removed = cut.Find("#removed-accounts");
         Assert.Contains("Retired Owner", removed.TextContent);
-        Assert.Contains(RemovedUtc.ToString(), removed.TextContent);
+        // Rendered in the machine zone here: no user zone is cascaded in this test.
+        Assert.Contains(RemovedUtc.ToLocalTime().ToString(), removed.TextContent);
         AccountRepositoryMock.Verify(r => r.ListRemovedAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 

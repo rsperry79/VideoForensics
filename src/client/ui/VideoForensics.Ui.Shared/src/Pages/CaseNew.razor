@@ -67,7 +67,7 @@ else
                                 }
                             </p>
                             <p class="mb-0">
-                                <strong>@L["WindowLabel"]</strong> @ScopeState.Current.FromUtc:u - @ScopeState.Current.ToUtc:u
+                                <strong>@L["WindowLabel"]</strong> <LocalTimeText Value="@ScopeState.Current.FromUtc" Format="u" /> - <LocalTimeText Value="@ScopeState.Current.ToUtc" Format="u" />
                             </p>
                         </div>
                     }

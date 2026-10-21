@@ -1,3 +1,5 @@
+using VideoForensics.Ui.Shared.Services.Time;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
@@ -347,6 +349,11 @@ namespace VideoForensics.Ui.Shared.Layout
             };
         }
 
+        [CascadingParameter]
+        public UserTimeZone? UserTz { get; set; }
+
+        private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
         private string GetRelativeTime(DateTime utcTime)
         {
             TimeSpan elapsed = DateTime.UtcNow - utcTime;
@@ -356,7 +363,7 @@ namespace VideoForensics.Ui.Shared.Layout
                 ? L["RelativeMinutesAgo", (int)elapsed.TotalMinutes].Value
                 : elapsed.TotalHours < 24
                 ? L["RelativeHoursAgo", (int)elapsed.TotalHours].Value
-                : elapsed.TotalDays < 7 ? L["RelativeDaysAgo", (int)elapsed.TotalDays].Value : utcTime.ToString("MMM d, yyyy", System.Globalization.CultureInfo.CurrentUICulture);
+                : elapsed.TotalDays < 7 ? L["RelativeDaysAgo", (int)elapsed.TotalDays].Value : Zone.ToLocal(utcTime).ToString("MMM d, yyyy", System.Globalization.CultureInfo.CurrentUICulture);
         }
 
         public void Dispose()

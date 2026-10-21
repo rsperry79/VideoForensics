@@ -74,7 +74,11 @@ else
                         }
                     </Template>
                 </GridColumn>
-                <GridColumn Field="TimestampUtc" HeaderText="@L["ColumnTimestamp"]" AllowSorting="true" Format="yyyy-MM-dd HH:mm:ss" MinWidth="100" />
+                <GridColumn Field="TimestampUtc" HeaderText="@L["ColumnTimestamp"]" AllowSorting="true" MinWidth="100">
+                    <Template>
+                        <LocalTimeText Value="@((context as Notice)!.TimestampUtc)" Format="yyyy-MM-dd HH:mm:ss" />
+                    </Template>
+                </GridColumn>
                 <GridColumn HeaderText="" Width="120px" AllowSorting="false" AllowFiltering="false">
                     <Template>
                         @{

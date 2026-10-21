@@ -1,3 +1,4 @@
+using BlazorLocalTime;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Alerts;
 
@@ -51,6 +52,7 @@ namespace VideoForensics.MauiApp
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddBlazorLocalTimeService();
             builder.Services.AddSyncfusionBlazor();
 
             // Register file-based logging - there's no console to log to in a MAUI app. Log file

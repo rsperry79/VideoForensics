@@ -1,5 +1,6 @@
 @page "/"
 @page "/media"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
@@ -139,7 +140,7 @@ else
                             @foreach (var item in deviceGroup.Items)
                             {
                                 <div class="timeline-row" data-key="@item.Key" @onclick="@(() => SelectItemAsync(item.Key))">
-                                    <div class="timeline-row-time">@item.OccurredAtUtc.ToString("HH:mm:ss")</div>
+                                    <div class="timeline-row-time"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /></div>
                                     <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
                                 </div>
                             }
@@ -179,7 +180,7 @@ else
                             <span class="material-icons gallery-tile-play">play_circle</span>
                         </div>
                     }
-                    <div class="gallery-tile-label">@item.OccurredAtUtc.ToString("HH:mm:ss") · @item.DeviceName</div>
+                    <div class="gallery-tile-label"><LocalTimeText Value="@item.OccurredAtUtc" Format="HH:mm:ss" /> · @item.DeviceName</div>
                 </div>
             }
         </div>
@@ -210,6 +211,11 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<Device> _devices = new();
@@ -366,7 +372,7 @@ else
             IReadOnlyList<EvidenceItem> shown = SnapshotWindowThinning.Apply(result.Items, id => windows.TryGetValue(id, out TimeSpan w) ? w : TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes));
             _vm = new EvidenceViewModel(result, shown);
             _pinnedIds = await LoadPinnedIdsAsync(CancellationToken.None);
-            _dayGroups = EvidenceTimeline.Group(_vm.Items, TimeZoneInfo.Utc);
+            _dayGroups = EvidenceTimeline.Group(_vm.Items, Zone.Zone);
             _deviceTimeGrid = DeviceTimeGrid.Build(ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, _devices, _vm.Items);
 
             // Kept as a local, mutable copy (rather than reading _vm.LoadResult.ActiveHoldsByMediaItemId
@@ -948,7 +954,11 @@ else
                 }
             </Template>
         </GridColumn>
-        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="@L["ColumnTime"]" Width="170px" />
+        <GridColumn Field="@nameof(EvidenceItem.OccurredAtUtc)" HeaderText="@L["ColumnTime"]" Width="170px">
+            <Template>
+                <LocalTimeText Value="@((context as EvidenceItem)!.OccurredAtUtc)" />
+            </Template>
+        </GridColumn>
         <GridColumn Field="@nameof(EvidenceItem.Kind)" HeaderText="@L["ColumnKind"]" Width="120px" />
         <GridColumn Field="@nameof(EvidenceItem.Label)" HeaderText="@L["ColumnLabel"]" Width="140px" />
         <GridColumn Field="@nameof(EvidenceItem.DeviceName)" HeaderText="@L["ColumnDevice"]" Width="140px" />
