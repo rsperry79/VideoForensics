@@ -1,29 +1,35 @@
 # Snapshot loop with 15-minute MP4 roll-up
 
-Status: step 1 done (scheduled snapshot pull). Steps 2-5 open.
+Status: all five steps built and pushed to `wip` (last change `d3d4e18a`, plan commit `0cda778b`). Not yet verified against a live Ring account.
 
 ## Decisions (user)
 
-- Snapshots are written on the schedule's snapshot interval (default 1 min, set in seconds or minutes).
+- Snapshots are written on the schedule's snapshot interval (default 1 min, entered in seconds or minutes).
 - Originals (JPEGs) are kept after roll-up. Nothing is deleted.
 - The roll-up interval is per account, in minutes, default 15, on the account's schedule.
+- The roll-up reads snapshot Media rows, not the capture table.
 
 ## Steps
 
-1. DONE: scheduled sync pulls snapshots when `IsSnapshotDue`, then records the next snapshot run.
-   Covered by `ScheduledSyncServiceTests` (due and not due). Snapshot rows land in Media through the existing `SnapshotSyncService` path.
-2. Roll-up setting: add `SyncSchedule.SnapshotRollupIntervalMinutes` (default 15, minimum 1) and `LastRollupUtc`.
-   Migration with default 15. Repository validation. DTO field. Schedule-page input (minutes only).
-3. Roll-up job in `ScheduledSyncService`: when `now >= LastRollupUtc + interval`, collect the account's snapshot
-   MediaItems since `LastRollupUtc`, sorted by RecordedAtUtc. Convert them to one MP4 with ffmpeg
-   (`FfmpegPathResolver` already exists), using each frame's real duration. Write a MediaItem with MediaFormat "mp4".
-   Keep the JPEGs. Record `LastRollupUtc`. If the roll-up fails, keep the JPEGs and retry next tick. Do not advance LastRollupUtc.
-4. "Show only the last": the account's Devices tab shows the latest snapshot per device, plus the latest MP4 loop.
-   Older snapshots stay in the database and on disk, but the UI does not list them.
-5. "Add a new one as a loop": after a roll-up, the next snapshots start a new loop, which the next roll-up picks up.
+1. DONE (`77e4ffab`): scheduled sync pulls snapshots when `IsSnapshotDue`, restoring the session first and recording the next run. Snapshot rows reach Media through `SnapshotSyncService`.
+2. DONE (`02373892`): `SyncSchedule.SnapshotRollupIntervalMinutes` (default 15, minimum 1) and `LastRollupUtc`. Migration `AddSyncScheduleSnapshotRollup` adds both (existing rows get 15). Schedule page has a minutes input.
+3. DONE (`9f8bd70c`, `8d4f8f12`): `SnapshotRollupService` builds one MP4 per device from the window's snapshot Media rows, using `ITimelineVideoBuilder`. Each frame is held until the next snapshot. `RecordRollupAsync` sets `LastRollupUtc` only when every device succeeds. A failed roll-up waits `RollupRetryBackoff` (5 min) before retrying, per account.
+4. DONE (`0d166014`): the Devices tab shows only the newest snapshot and the newest loop per device, through `LatestDeviceMedia`. Roll-up loops carry the `snapshot-rollup` marker in their metadata.
+5. DONE (`0612ee5e`, `d3d4e18a`): periodic capture also writes a snapshot Media row (full path, SHA-256, `"type":"snapshot"` marker). Capture spacing follows the schedule's effective snapshot interval. A stored `SnapshotIntervalSeconds` raised by a Ring rate-limit incident remains a floor.
 
-## Open risks
+Also done along the way:
+- `RingMediaDownloadService` records a snapshot Media row even when the SHA-256 hash fails (`daba18f2`).
 
-- ffmpeg must be present on the host; a missing binary must fail the roll-up with a clear log line, not crash the tick.
-- Ring snapshot pulls are rate-limited; the 1 s floor on the snapshot interval needs a rate-limit review before production.
-- Snapshot Media rows are only written when a SHA-256 hash is computed. Failures there are logged only (see the earlier snapshot DB finding).
+## Known gaps
+
+- Nothing has been run against a live Ring account. The end-to-end path (pull or capture, Media row, roll-up, Devices tab) is covered by unit tests only.
+- ffmpeg must be present on the host. A missing binary fails the roll-up with a logged error; it does not crash the tick.
+- The 1-second snapshot floor needs a Ring rate-limit review before production.
+- Retries are throttled to one per 5 minutes per account, but there is no cap on total retries.
+- A roll-up window only covers snapshots whose Media row exists. Snapshots dropped before a row was written are not recovered.
+
+## Risks to check on first live run
+
+- Snapshot cadence against Ring's rate limits (the 1 s floor).
+- Disk growth: JPEGs are kept, and the MP4 loops are added on top.
+- The capture spacing floor: a raised `SnapshotIntervalSeconds` keeps the form from lowering the interval until that value is reset.
