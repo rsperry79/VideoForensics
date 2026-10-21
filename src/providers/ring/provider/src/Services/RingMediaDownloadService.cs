@@ -350,7 +350,10 @@ namespace VideoForensics.Providers.Ring.Services
         // the same device update them concurrently.
         private readonly object _statusLock = new();
         /// <summary>Devices whose snapshot returned a non-image body and has not yet returned an image. Used to warn once, not every pull.</summary>
-        private readonly ConcurrentDictionary<string, bool> _snapshotNonImageWarned = new();
+        private readonly ConcurrentDictionary<string, DateTime> _snapshotNonImageWarnedUtc = new();
+
+        /// <summary>Length of the window in which a device's non-image warning is logged once. The snapshot sync sets it to the roll-up interval.</summary>
+        private TimeSpan _snapshotWarningWindow = TimeSpan.FromMinutes(15);
 
         // How many files are actively being fetched from Ring right now (as opposed to skipped
         // because they already exist on disk) — surfaced via DownloadStatus.ActiveConnections.
@@ -1120,8 +1123,10 @@ namespace VideoForensics.Providers.Ring.Services
                 if (!IsValidJpeg(fileName))
                 {
                     // Warn once while a device keeps returning non-images; repeats are debug until it returns a real image.
-                    if (_snapshotNonImageWarned.TryAdd(deviceId, true))
+                    DateTime nowUtc = DateTime.UtcNow;
+                    if (!_snapshotNonImageWarnedUtc.TryGetValue(deviceId, out DateTime lastWarnedUtc) || nowUtc - lastWarnedUtc >= _snapshotWarningWindow)
                     {
+                        _snapshotNonImageWarnedUtc[deviceId] = nowUtc;
                         _logger.LogWarning("{DeviceName} returned a non-image response instead of a snapshot (device likely offline)", deviceNameForSnapshot);
                     }
                     else
@@ -1137,7 +1142,7 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
-                _ = _snapshotNonImageWarned.TryRemove(deviceId, out _);
+                _ = _snapshotNonImageWarnedUtc.TryRemove(deviceId, out _);
                 long fileSize = new FileInfo(fileName).Length;
                 var mediaItemId = Guid.NewGuid();
                 bool metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize, mediaItemId);
@@ -1537,6 +1542,12 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingSecurityAlerts(string? Severity, List<string>? Alerts);
         private record RingCvProfile(string? Id, string? Name, double? Confidence);
         private record RingCvZone(string? Id, string? Name, double? Confidence);
+
+        /// <inheritdoc />
+        public void SetSnapshotWarningWindow(TimeSpan window)
+        {
+            _snapshotWarningWindow = window > TimeSpan.Zero ? window : TimeSpan.FromMinutes(15);
+        }
 
         public void SetActiveProviderAccountId(Guid accountId)
         {
