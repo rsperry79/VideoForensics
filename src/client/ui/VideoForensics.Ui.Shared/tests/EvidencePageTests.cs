@@ -1128,6 +1128,7 @@ public class Evidence_TimelineTone_Tests : EvidencePageTestBase
 
         var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
         Assert.Contains("timeline-tone-motion", label.ClassName);
+        Assert.Equal(label.TextContent, label.GetAttribute("title"));
         Assert.DoesNotContain("timeline-row-kind", component.Markup);
         Assert.Single(component.FindAll($".timeline-row[data-key='event:{EventId}'] .timeline-row-thumb"));
     }

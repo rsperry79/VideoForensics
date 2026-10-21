@@ -62,8 +62,9 @@
 
 /* The label is a pill whose background is the event-type tone. Text is dark on every tone so it stays
    readable in both themes; the pill's own background, not the theme text colour, sets contrast. */
+/* Long event-type names wrap rather than clip; min-width keeps short pills lined up in one column. */
 ::deep .timeline-row-label {
-    width: 11rem;
+    min-width: 11rem;
     justify-self: start;
     max-width: 100%;
     padding: 0.25rem 0.5rem;
@@ -71,9 +72,7 @@
     font-size: 0.85rem;
     color: #1b1b1b;
     background-color: #bdbdbd;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 ::deep .timeline-row-label.timeline-tone-snapshot,

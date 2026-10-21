@@ -147,7 +147,7 @@ else
                                             <MediaThumb Url="@rowThumbUrl" IsVideo="@MediaFormatHelper.IsVideo(item.Media.MediaFormat)" Alt="" CssClass="timeline-row-thumb" />
                                         }
                                     </div>
-                                    <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
+                                    <div class="timeline-row-label @EvidenceTimelineStyle.ToneClass(item, _pinnedIds)" title="@EvidenceTimelineStyle.DisplayLabel(item)">@EvidenceTimelineStyle.DisplayLabel(item)</div>
                                 </div>
                             }
                         </div>
