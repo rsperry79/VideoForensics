@@ -254,6 +254,24 @@ namespace VideoForensics.Hosting.Tests
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
+        [Fact]
+        public async Task RunOneTickAsync_ScheduleSnapshotInterval_SetsCaptureSpacing()
+        {
+            _ = _schedules.Setup(r => r.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SyncSchedule { ProviderAccountId = _accountId, SnapshotRssiIntervalSeconds = 30 });
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(20);
+            await RunTickAsync();
+            _time.Now = T0.AddSeconds(31);
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
 
         [Fact]
         public async Task RunOneTickAsync_StoredIntervalSeconds_UsesStoredInterval()

@@ -157,7 +157,11 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
 
             SyncSchedule? schedule = await sp.GetRequiredService<ISyncScheduleRepository>().GetByProviderAccountIdAsync(accountId, ct);
-            int seconds = schedule?.SnapshotIntervalSeconds is > 0 ? schedule.SnapshotIntervalSeconds.Value : DefaultIntervalSeconds;
+            // The schedule's snapshot interval (with any jamming window) sets the spacing. A stored SnapshotIntervalSeconds raised by
+            // a Ring rate-limit incident is a floor on top of it, so the adaptive back-off is never undone by the form.
+            int seconds = schedule is null
+                ? DefaultIntervalSeconds
+                : Math.Max(ScheduleCalculator.EffectiveSnapshotIntervalSeconds(schedule, _time.GetUtcNow().UtcDateTime), schedule.SnapshotIntervalSeconds ?? 0);
             TimeSpan interval = TimeSpan.FromSeconds(seconds);
 
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
