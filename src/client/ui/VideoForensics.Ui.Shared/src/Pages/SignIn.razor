@@ -52,7 +52,7 @@
                 {
                     <!-- A future provider block (e.g. external sign-in buttons) goes here, above the form fields. -->
                     <div class="d-flex flex-column gap-2">
-                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_usernameAttributes" />
                         <SfTextBox @bind-Value="_password" Placeholder="@L["PasswordLabel"]" Type="Syncfusion.Blazor.Inputs.InputType.Password" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
                         <div>
                             <SfButton Content="@(_isSigningInWithPassword ? L["SignInWaiting"] : L["SignInButton"])" OnClick="SignInWithPasswordAsync" CssClass="e-primary" Style="width:100%" Disabled="@(_isSigningInWithPassword || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))" />
@@ -64,7 +64,7 @@
                     <!-- With passkey sign-in on offer, the credential fields stay hidden until the operator asks for them. -->
                     <!-- The passkey sign-in needs the username: it is what selects this operator's passkeys. -->
                     <div id="username-passkey-entry" @onkeydown="OnUsernameKeyDownAsync">
-                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" HtmlAttributes="_usernameAttributes" />
                     </div>
                     <SfButton Content="@L["UseUserNameAndPasswordButton"]" OnClick="ShowPasswordForm" CssClass="e-outline" Style="width:100%" />
                 }
@@ -112,6 +112,8 @@
     public string? ReturnUrl { get; set; }
 
     private string _username = string.Empty;
+    /// <summary>Marks the username field as a username for password managers and passkey autofill (conditional UI).</summary>
+    private readonly Dictionary<string, object> _usernameAttributes = new() { { "autocomplete", "username webauthn" }, { "name", "username" } };
     private string _password = string.Empty;
     private bool _isSigningInWithPassword;
     private bool _isSigningInWithPasskey;

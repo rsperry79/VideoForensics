@@ -429,6 +429,15 @@ public class SignInPageTests : BunitContext
         Assert.DoesNotContain("Forgot", component.Markup);
     }
     [Fact]
+    public async Task SignIn_UsernameField_IsMarkedAsAutofillableUsername()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var component = await RenderAndWaitForFormAsync();
+
+        Assert.Equal("username webauthn", component.Find("input[name='username']").GetAttribute("autocomplete"));
+    }
+
+    [Fact]
     public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
     {
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
