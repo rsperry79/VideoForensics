@@ -36,6 +36,37 @@ namespace VideoForensics.Hosting.Tests.Services
         private ISnapshotSyncService Sut(IServiceCollection services) => new SnapshotSyncService(
             services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
 
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_ScheduleHasRollupInterval_SetsWarningWindowToIt()
+        {
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+            var schedules = new Mock<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>();
+            schedules.Setup(s => s.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.SyncSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderAccountId = _accountId,
+                    SnapshotRollupIntervalMinutes = 30,
+                });
+            var services = new ServiceCollection().AddScoped(_ => _download.Object).AddScoped(_ => schedules.Object);
+
+            _ = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(30)), Times.Once);
+        }
+
+        [Fact]
+        public async Task SyncAccountSnapshotsAsync_NoScheduleRepository_SetsWarningWindowToDefault()
+        {
+            AddDevices("1");
+            DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
+
+            _ = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+
+            _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes)), Times.Once);
+        }
+
         private void AddDevices(params string[] providerIds) => _devices
             .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(providerIds.Select(id => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = id, Name = $"Cam {id}", Type = "doorbot" }).ToList());
