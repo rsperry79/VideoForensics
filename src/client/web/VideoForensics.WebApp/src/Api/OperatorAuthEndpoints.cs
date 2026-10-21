@@ -158,10 +158,12 @@ namespace VideoForensics.WebApp.Api
         /// The passkeys offered at username sign-in: approved and active only, most recently used first. Every such passkey is
         /// kept, so an operator with several is never locked out; the order only puts the last one used first.
         /// </summary>
-        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials) =>
+        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials, bool allCredentials = false) =>
             credentials
                 .Where(c => c.IsApproved && c.IsActive)
                 .OrderByDescending(c => c.LastUsedAtUtc ?? DateTime.MinValue)
+                // Single-passkey mode offers only the most recent one; the fallback offers all of them.
+                .Take(allCredentials ? int.MaxValue : 1)
                 .Select(c => new PublicKeyCredentialDescriptor(
                     PublicKeyCredentialType.PublicKey,
                     Convert.FromBase64String(c.WebAuthnCredentialId),
@@ -174,6 +176,7 @@ namespace VideoForensics.WebApp.Api
             IOperatorRepository operators,
             IOperatorCredentialRepository credentials,
             IWebAuthnCeremonyCache ceremonyCache,
+            ILogger<Program> logger,
             IFido2 fido2,
             CancellationToken ct)
         {
@@ -186,7 +189,8 @@ namespace VideoForensics.WebApp.Api
                 // Build AllowedCredentials from approved, active credentials only, most recently used first. The list still holds
                 // every credential so an operator with several passkeys is never locked out; the order only favours the last one used.
                 IReadOnlyList<OperatorCredential> opCredentials = await credentials.ListForOperatorAsync(op.Id, ct);
-                allowedCredentials = UsernameAllowList(opCredentials);
+                allowedCredentials = UsernameAllowList(opCredentials, request.AllCredentials);
+                logger.LogInformation("Passkey sign-in options for {Username}: offering {Offered} of {Approved} approved passkey(s)", request.Username, allowedCredentials.Count, opCredentials.Count(c => c.IsApproved && c.IsActive));
             }
 
             AssertionOptions options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
@@ -200,6 +204,7 @@ namespace VideoForensics.WebApp.Api
         }
 
         private static async Task<IResult> UsernameAssertionCompleteAsync(
+            ILogger<Program> logger,
             UsernameAssertionCompleteRequest request,
             IOperatorRepository operators,
             IOperatorCredentialRepository credentials,
@@ -238,6 +243,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, null, null,
                     tierResolver.ResolveClientIp(context), "Unknown or revoked passkey", isUrgent: true, ct);
+                logger.LogWarning("Passkey sign-in rejected: the passkey returned is not an approved, active passkey of any operator");
                 return Results.Unauthorized();
             }
 
@@ -257,6 +263,7 @@ namespace VideoForensics.WebApp.Api
             {
                 await auditLog.LogAsync(SecurityAuditEventTypes.AuthFailure, credential.OperatorId, null,
                     tierResolver.ResolveClientIp(context), ex.Message, isUrgent: true, ct);
+                logger.LogWarning(ex, "Passkey sign-in failed verification: {Reason}", ex.Message);
                 return Results.Unauthorized();
             }
 
@@ -1170,7 +1177,9 @@ namespace VideoForensics.WebApp.Api
     }
 
     // Request/response DTOs
-    public record UsernameAssertionOptionsRequest(string Username);
+    /// <param name="Username">The operator signing in.</param>
+    /// <param name="AllCredentials">False offers only the most recently used passkey; true offers every approved passkey (the fallback).</param>
+    public record UsernameAssertionOptionsRequest(string Username, bool AllCredentials = false);
     public record UsernameAssertionCompleteRequest(string Nonce, JsonElement AssertionResponse, string? TwoFactorCorrelationId = null);
     public record CredentialRegisterOptionsRequest(string Label);
     public record CredentialRegisterCompleteRequest(string Nonce, JsonElement AttestationResponse, string Label);

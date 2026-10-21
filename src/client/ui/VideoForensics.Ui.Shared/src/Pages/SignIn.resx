@@ -50,6 +50,9 @@
   <data name="SignInButton" xml:space="preserve">
     <value>Sign in</value>
   </data>
+  <data name="UseAnotherPasskeyButton" xml:space="preserve">
+    <value>Use another passkey</value>
+  </data>
   <data name="SignInWithPasskeyButton" xml:space="preserve">
     <value>Sign in with passkey</value>
   </data>
