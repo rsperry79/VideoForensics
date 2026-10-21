@@ -4,6 +4,8 @@
 @inject ILocationRepository LocationRepository
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceHealthRepository DeviceHealthRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject IMediaContentUrlProvider MediaUrlProvider
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 
@@ -55,6 +57,8 @@ else
                         <th>@L["ColDeviceName"]</th>
                         <th>@L["ColDeviceStatus"]</th>
                         <th>@L["ColDeviceLastSeen"]</th>
+                        <th>@L["ColLatestSnapshot"]</th>
+                        <th>@L["ColLatestLoop"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -77,6 +81,28 @@ else
                                 }
                             </td>
                             <td>@(row.LastSeenUtc is { } seen ? seen.ToLocalTime().ToString("g") : L["Never"].Value)</td>
+                            <td class="latest-snapshot">
+                                @if (row.SnapshotUrl is not null && row.SnapshotAtUtc is { } snapAt)
+                                {
+                                    <img src="@row.SnapshotUrl" alt="@L["ColLatestSnapshot"]" style="max-width: 10rem;" />
+                                    <div class="small text-muted">@snapAt.ToLocalTime().ToString("g")</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@L["NoSnapshotYet"]</span>
+                                }
+                            </td>
+                            <td class="latest-loop">
+                                @if (row.LoopUrl is not null && row.LoopAtUtc is { } loopAt)
+                                {
+                                    <video src="@row.LoopUrl" controls preload="metadata" style="max-width: 14rem;"></video>
+                                    <div class="small text-muted">@loopAt.ToLocalTime().ToString("g")</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@L["NoLoopYet"]</span>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -87,7 +113,14 @@ else
 }
 
 @code {
-    private sealed record DeviceRow(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeenUtc);
+    private sealed record DeviceRow(
+        VideoForensics.Data.Common.Entities.Device Device,
+        DeviceUptimeStatus Status,
+        DateTime? LastSeenUtc,
+        string? SnapshotUrl,
+        DateTime? SnapshotAtUtc,
+        string? LoopUrl,
+        DateTime? LoopAtUtc);
 
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private List<DeviceRow> _devices = new();
@@ -109,7 +142,7 @@ else
         try
         {
             var now = DateTime.UtcNow;
-            var rows = new List<DeviceRow>();
+            var pending = new List<(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
             var locations = await LocationRepository.ListByProviderAccountIdAsync(Id, CancellationToken.None);
             foreach (var location in locations)
             {
@@ -123,11 +156,32 @@ else
                         health?.CapturedAtUtc,
                         now,
                         ForensicsConfig.DeviceOfflineThresholdSeconds);
-                    rows.Add(new DeviceRow(device, status, lastSeen));
+                    var recent = await MediaItemRepository.GetRecentByDeviceAsync(device.Id, RecentMediaLimit, CancellationToken.None);
+                    pending.Add((device, status, lastSeen, LatestDeviceMedia.Select(recent)));
                 }
             }
 
-            _devices = rows.OrderBy(r => r.Device.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            // One URL request for every latest item, so the tab does not ask per row.
+            var ids = pending
+                .SelectMany(p => new[] { p.Media.Snapshot?.Id, p.Media.Loop?.Id })
+                .OfType<Guid>()
+                .Distinct()
+                .ToList();
+            IReadOnlyDictionary<Guid, string> urls = ids.Count == 0
+                ? new Dictionary<Guid, string>()
+                : await MediaUrlProvider.GetContentUrlsAsync(ids, CancellationToken.None);
+
+            _devices = pending
+                .Select(p => new DeviceRow(
+                    p.Device,
+                    p.Status,
+                    p.LastSeen,
+                    p.Media.Snapshot is { } s && urls.TryGetValue(s.Id, out var su) ? su : null,
+                    p.Media.Snapshot?.RecordedAtUtc,
+                    p.Media.Loop is { } l && urls.TryGetValue(l.Id, out var lu) ? lu : null,
+                    p.Media.Loop?.RecordedAtUtc))
+                .OrderBy(r => r.Device.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             _devicesError = false;
         }
         catch
@@ -136,6 +190,9 @@ else
             _devicesError = true;
         }
     }
+
+    /// <summary>How many recent media rows to scan per device for its latest snapshot and loop.</summary>
+    private const int RecentMediaLimit = 200;
 
     private async Task OnThresholdChangedAsync(int seconds)
     {

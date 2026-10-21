@@ -20,6 +20,9 @@ namespace VideoForensics.Hosting.Services
         /// <summary>Snapshot Media rows carry this marker in their metadata (written by the Ring snapshot download).</summary>
         private const string SnapshotMetadataMarker = "\"type\":\"snapshot\"";
 
+        /// <summary>Metadata written on each roll-up loop row. The Devices tab reads it to pick the latest loop.</summary>
+        public const string SnapshotRollupMarker = "{\"type\":\"snapshot-rollup\"}";
+
         /// <summary>The loop's frames are each held at least this long; the builder rounds to whole seconds.</summary>
         private static readonly TimeSpan MinimumHold = TimeSpan.FromSeconds(1);
 
@@ -159,6 +162,8 @@ namespace VideoForensics.Hosting.Services
                 DownloadedAtUtc = DateTime.UtcNow,
                 Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
                 IntegrityVerified = false,
+                // Marks the row as a roll-up loop so the Devices tab can tell it from a Ring-downloaded MP4.
+                MetadataJson = SnapshotRollupMarker,
             }, cancellationToken);
         }
     }

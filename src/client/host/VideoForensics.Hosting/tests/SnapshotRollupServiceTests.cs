@@ -111,7 +111,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             Assert.Equal(1, result.DevicesRolledUp);
             _media.Verify(m => m.AddAsync(
-                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == To),
+                It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == To && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
