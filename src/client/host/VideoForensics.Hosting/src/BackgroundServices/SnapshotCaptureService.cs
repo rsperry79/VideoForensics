@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Collections.Concurrent;
 using System.Globalization;
 
@@ -36,6 +37,9 @@ namespace VideoForensics.Hosting.BackgroundServices
 
         /// <summary>Capture interval for an account with no stored SnapshotIntervalSeconds.</summary>
         internal const int DefaultIntervalSeconds = 60;
+
+        /// <summary>Metadata on a capture's Media row. The "snapshot" type is what the Devices tab and the roll-up look for.</summary>
+        internal const string CaptureSnapshotMetadata = "{\"type\":\"snapshot\",\"source\":\"capture\"}";
 
         /// <summary>Wait between the trigger and the read of one attempt.</summary>
         internal static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(5);
@@ -308,6 +312,12 @@ namespace VideoForensics.Hosting.BackgroundServices
                 return;
             }
 
+            if (mediaFilePath is not null)
+            {
+                // WriteImage returns a path relative to the snapshot root; Media rows hold the full path.
+                await RecordCaptureMediaAsync(sp, device, Path.Combine(_options.Value.SnapshotRoot, mediaFilePath), attemptedAt, accountName, ct);
+            }
+
             switch (status)
             {
                 case 200:
@@ -327,6 +337,41 @@ namespace VideoForensics.Hosting.BackgroundServices
         /// <summary>
         /// Writes the JPEG under SnapshotRoot\&lt;account folder&gt;\&lt;doorbotId&gt;\ and returns the path relative to SnapshotRoot. The account folder
         /// is the account GUID without dashes, the same folder the event media pull uses.
+        /// <summary>
+        /// Registers a successful capture as a snapshot Media row, so it appears on the Devices tab and joins the roll-up loop
+        /// alongside the snapshots the scheduled pull records. Best-effort: a failed write is logged and never fails the capture.
+        /// </summary>
+        private async Task RecordCaptureMediaAsync(IServiceProvider sp, Device device, string mediaFilePath, DateTimeOffset capturedAt, string accountName, CancellationToken ct)
+        {
+            try
+            {
+                byte[] hash;
+                await using (FileStream stream = File.OpenRead(mediaFilePath))
+                {
+                    hash = await SHA256.HashDataAsync(stream, ct);
+                }
+
+                await sp.GetRequiredService<IMediaItemRepository>().AddAsync(new MediaItem
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = device.Id,
+                    FileName = Path.GetFileName(mediaFilePath),
+                    FilePath = mediaFilePath,
+                    MediaFormat = "jpg",
+                    FileSizeBytes = new FileInfo(mediaFilePath).Length,
+                    RecordedAtUtc = capturedAt.UtcDateTime,
+                    DownloadedAtUtc = DateTime.UtcNow,
+                    Sha256Hash = Convert.ToHexString(hash).ToLowerInvariant(),
+                    IntegrityVerified = false,
+                    MetadataJson = CaptureSnapshotMetadata,
+                }, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Could not record the captured snapshot in Media for {DeviceName} on {AccountName}", device.Name, accountName);
+            }
+        }
+
         /// </summary>
         private string WriteImage(Guid accountId, string providerDeviceId, DateTimeOffset capturedAtUtc, byte[] image)
         {
