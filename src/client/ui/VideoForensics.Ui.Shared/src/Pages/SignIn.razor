@@ -63,7 +63,9 @@
                 {
                     <!-- With passkey sign-in on offer, the credential fields stay hidden until the operator asks for them. -->
                     <!-- The passkey sign-in needs the username: it is what selects this operator's passkeys. -->
-                    <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                    <div id="username-passkey-entry" @onkeydown="OnUsernameKeyDownAsync">
+                        <SfTextBox @bind-Value="_username" Placeholder="@L["UsernameLabel"]" FloatLabelType="Syncfusion.Blazor.Inputs.FloatLabelType.Always" />
+                    </div>
                     <SfButton Content="@L["UseUserNameAndPasswordButton"]" OnClick="ShowPasswordForm" CssClass="e-outline" Style="width:100%" />
                 }
             }
@@ -241,6 +243,15 @@
 
     /// <summary>Set after a passkey attempt fails, so the page can offer the fallback that lists every passkey.</summary>
     private bool _passkeyFailed;
+    /// <summary>Enter in the username field starts passkey sign-in: passkey is the default way in.</summary>
+    private async Task OnUsernameKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && _webAuthnAvailable && !_requiresTwoFactor && !_isSigningInWithPasskey && !string.IsNullOrWhiteSpace(_username))
+        {
+            await SignInWithPasskeyAsync();
+        }
+    }
+
 
     private async Task SignInWithPasskeyAsync(bool allCredentials = false)
     {

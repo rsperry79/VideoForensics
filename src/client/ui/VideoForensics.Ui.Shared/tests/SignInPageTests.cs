@@ -428,6 +428,32 @@ public class SignInPageTests : BunitContext
         Assert.DoesNotContain("Remember", component.Markup);
         Assert.DoesNotContain("Forgot", component.Markup);
     }
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", false))
+            .ReturnsAsync((true, (string?)null, (string?)"token", Guid.NewGuid(), "Operator"));
+        var component = await RenderAndWaitForFormAsync();
+
+        component.Find("input[type='text']").Change("sysop");
+        component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", false), Times.Once));
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_OtherKeyInUsername_DoesNotStartPasskeySignIn()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var component = await RenderAndWaitForFormAsync();
+
+        component.Find("input[type='text']").Change("sysop");
+        component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "a" });
+
+        WebAuthn.Verify(w => w.SignInWithUsernameAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
+
 
     [Fact]
     public async Task SignIn_PasskeyAvailable_CredentialFieldsHiddenUntilToggled()

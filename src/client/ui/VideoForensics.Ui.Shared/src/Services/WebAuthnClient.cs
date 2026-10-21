@@ -312,7 +312,7 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <param name="allCredentials">False offers only the most recently used passkey (the first attempt). True offers every approved passkey, for when that one is not on this device.</param>
-    public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username, bool allCredentials = false)
+    public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username, bool allCredentials = false)
         {
             using HttpClient client = CreateClient(null);
 
