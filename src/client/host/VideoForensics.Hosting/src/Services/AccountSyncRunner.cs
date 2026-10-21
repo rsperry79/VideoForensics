@@ -286,11 +286,14 @@ namespace VideoForensics.Hosting.Services
 
             // An explicit period wins; otherwise since the last successful auth. A null end date means now.
             DateTime? historyStart = fullHistory ? DateTime.UtcNow.AddYears(-1) : null;
-            DateTime? from = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
+            DateTime? from = AccountSyncRunner.OneMonthFloor(historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc, DateTime.UtcNow);
             DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
-            EventPullResult counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+            // The first sync backfills a year in one-month windows, oldest first, so a long history is pulled in bounded calls.
+            EventPullResult counts = fullHistory && request is null
+                ? await PullMonthlyAsync(eventPullService, accountId, cancellationToken)
+                : await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
             LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
@@ -308,6 +311,59 @@ namespace VideoForensics.Hosting.Services
                 : allSnapshots.ErrorMessage is null ? eventError
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
             return new SyncOutcome(error, counts, allSnapshots.DevicesSucceeded);
+        }
+        /// <summary>
+        /// No single pull reaches further back than one month: a start older than that, or no start at all, becomes one month before now.
+        /// The monthly backfill windows are already one month each, so they do not go through this.
+        /// </summary>
+        internal static DateTime OneMonthFloor(DateTime? from, DateTime nowUtc)
+        {
+            DateTime floor = nowUtc.AddMonths(-1);
+            return from is { } start && start > floor ? start : floor;
+        }
+
+
+        /// <summary>
+        /// The windows of an initial backfill: one month each, from a year ago up to now, oldest first. The last window ends at now.
+        /// </summary>
+        internal static IReadOnlyList<(DateTime From, DateTime To)> MonthlyWindows(DateTime nowUtc)
+        {
+            var windows = new List<(DateTime From, DateTime To)>();
+            DateTime start = nowUtc.AddYears(-1);
+            while (start < nowUtc)
+            {
+                DateTime end = start.AddMonths(1);
+                if (end > nowUtc)
+                {
+                    end = nowUtc;
+                }
+
+                windows.Add((start, end));
+                start = end;
+            }
+
+            return windows;
+        }
+
+        /// <summary>
+        /// Pulls the backfill one month at a time. Discovery repeats every month, so devices and locations take the largest
+        /// count rather than a sum; events and failed feeds are summed across the months.
+        /// </summary>
+        private async Task<EventPullResult> PullMonthlyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
+        {
+            int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            foreach ((DateTime from, DateTime to) in MonthlyWindows(DateTime.UtcNow))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                EventPullResult month = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+                devices = Math.Max(devices, month.DevicesSynced);
+                locations = Math.Max(locations, month.LocationsSynced);
+                config = Math.Max(config, month.ConfigAreasSynced);
+                events += month.EventsSynced;
+                failed += month.FeedsFailed;
+            }
+
+            return new EventPullResult(devices, locations, events, config, failed);
         }
 
         /// <summary>Console lines for what the pull found: discovery, events, and configuration, with any failed feeds.</summary>

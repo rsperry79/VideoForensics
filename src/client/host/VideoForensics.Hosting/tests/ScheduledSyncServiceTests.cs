@@ -118,7 +118,8 @@ namespace VideoForensics.Hosting.Tests
                     ProviderName = provider,
                     IsActive = active,
                     LastSuccessfulAuthUtc = Now.AddDays(-1),
-                    InitialSyncCompleted = initialSyncCompleted
+                    InitialSyncCompleted = initialSyncCompleted,
+                    LastSyncCompletedUtc = Now.AddDays(-1),
                 };
                 var schedule = new SyncSchedule
                 {
@@ -648,6 +649,18 @@ namespace VideoForensics.Hosting.Tests
             Assert.DoesNotContain(h.Logs.Lines, l => l.Contains(account.Id.ToString()));
             Assert.Contains(h.Logs.Lines, l => l.StartsWith("Information") && l.Contains("Ring"));
         }
+        [Fact]
+        public async Task RunOneTickAsync_ScheduledPullSucceeds_RecordsLastSyncCompleted()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.Accounts.Verify(r => r.UpdateAsync(It.Is<ProviderAccount>(a => a.Id == account.Id && a.LastSyncCompletedUtc == Now), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+
 
         [Fact]
         public async Task RunOneTickAsync_ScheduledPullSucceeds_WritesSuccessRun()

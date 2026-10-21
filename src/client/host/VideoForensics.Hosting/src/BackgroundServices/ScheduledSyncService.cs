@@ -317,9 +317,9 @@ namespace VideoForensics.Hosting.BackgroundServices
                 }
                 else
                 {
-                    DateTime? from = schedule.EventLastRunUtc is { } last
+                    DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
-                        : account.LastSuccessfulAuthUtc; // first run: same as the manual sync-now endpoint
+                        : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
 
                     syncType = ProviderSyncRunRecorder.SyncTypeFor(from);
 
@@ -334,7 +334,10 @@ namespace VideoForensics.Hosting.BackgroundServices
                         mediaService,
                         deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
 
-                    counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
+                    // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
+                    counts = account.LastSyncCompletedUtc is null && schedule.EventLastRunUtc is null
+                        ? await PullBackfillMonthlyAsync(pull, accountId, ct)
+                        : await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -353,12 +356,56 @@ namespace VideoForensics.Hosting.BackgroundServices
                 outcome = ex.Message;
             }
 
+            // A clean scheduled pull is a completed sync, the same as a manual one, so the Sync tab's Last Sync Completed is current.
+            if (outcome is null)
+            {
+                await MarkSyncCompletedAsync(sp.GetRequiredService<IProviderAccountRepository>(), accountId, _time.GetUtcNow().UtcDateTime, ct);
+            }
+
             await ProviderSyncRunRecorder.RecordAsync(sp.GetRequiredService<IProviderSyncRunRepository>(), _logger, accountId, startedUtc, outcome, syncType, counts);
 
             // Success or failure, count it as an attempt so a broken account backs off a full interval instead of hammering the provider.
             DateTime now = _time.GetUtcNow().UtcDateTime;
             await scheduleRepository.RecordEventRunAsync(accountId, now, ScheduleCalculator.NextEventRunUtc(schedule, now), ct);
         }
+        /// <summary>Backfills one month per pull, oldest first, from a year ago to now. Discovery counts take the largest month; events and failed feeds are summed.</summary>
+        private static async Task<EventPullResult> PullBackfillMonthlyAsync(IEventPullService pull, Guid accountId, CancellationToken ct)
+        {
+            int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
+            foreach ((DateTime from, DateTime to) in AccountSyncRunner.MonthlyWindows(DateTime.UtcNow))
+            {
+                ct.ThrowIfCancellationRequested();
+                EventPullResult month = await pull.PullAccountEventsAsync(accountId, from, to, ct);
+                devices = Math.Max(devices, month.DevicesSynced);
+                locations = Math.Max(locations, month.LocationsSynced);
+                config = Math.Max(config, month.ConfigAreasSynced);
+                events += month.EventsSynced;
+                failed += month.FeedsFailed;
+            }
+
+            return new EventPullResult(devices, locations, events, config, failed);
+        }
+
+        /// <summary>Stores when a clean sync finished. Best-effort: a failed write is logged and never fails the sync.</summary>
+        private async Task MarkSyncCompletedAsync(IProviderAccountRepository accounts, Guid accountId, DateTime completedUtc, CancellationToken ct)
+        {
+            try
+            {
+                ProviderAccount? account = await accounts.GetAsync(accountId, CancellationToken.None);
+                if (account is null)
+                {
+                    return;
+                }
+
+                account.LastSyncCompletedUtc = completedUtc;
+                await accounts.UpdateAsync(account, CancellationToken.None);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Could not record the completed scheduled sync");
+            }
+        }
+
 
         /// <summary>
         /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the

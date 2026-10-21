@@ -88,8 +88,8 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_RequestHasToDate_PassesToDateToPull()
         {
-            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
-            var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, from, to, false), CancellationToken.None);
 
@@ -101,14 +101,14 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, true), CancellationToken.None);
 
-            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), null, It.IsAny<CancellationToken>()), Times.Once);
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), null, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task RunAsync_SnapshotsType_SyncsSnapshotsForWindowAndSkipsEventPull()
         {
-            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
-            var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
             _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 3, DevicesSucceeded: 3, SnapshotsSaved: 3, DevicesFailed: 0, ErrorMessage: null));
 
@@ -143,8 +143,8 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllType_PullsEventsThenSnapshotsAndRecordsBothCounts()
         {
-            var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
-            var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
             var order = new List<string>();
             _pull.Setup(p => p.PullAccountEventsAsync(_id, from, to, It.IsAny<CancellationToken>()))
                 .Callback(() => order.Add("events"))
@@ -168,7 +168,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeAllHistory_RecordsFullWithBothCounts()
         {
-            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
             _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2));
