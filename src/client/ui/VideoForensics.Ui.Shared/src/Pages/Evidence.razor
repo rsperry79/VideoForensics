@@ -131,7 +131,7 @@ else
             {
                 <div class="timeline-day-group">
                     <div class="timeline-day-header">
-                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @dayGroup.TotalCount @(dayGroup.TotalCount == 1 ? L["ItemCountOne", dayGroup.TotalCount].Value : L["ItemCountOther", dayGroup.TotalCount].Value)
+                        @dayGroup.Day.ToString("yyyy-MM-dd (ddd)") · @(dayGroup.TotalCount == 1 ? L["ItemCountOne", dayGroup.TotalCount].Value : L["ItemCountOther", dayGroup.TotalCount].Value)
                     </div>
                     @foreach (var deviceGroup in dayGroup.Devices)
                     {

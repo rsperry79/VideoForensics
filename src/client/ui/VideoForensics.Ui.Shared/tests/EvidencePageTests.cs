@@ -278,7 +278,7 @@ public class Evidence_Timeline_Tests : EvidencePageTestBase
         var dayHeading = component.Find(".timeline-day-header");
         var expectedDay = DateOnly.FromDateTime(EventOccurredAtUtc).ToString("yyyy-MM-dd (ddd)");
         Assert.Contains(expectedDay, dayHeading.TextContent);
-        Assert.Contains("2 items", dayHeading.TextContent);
+        Assert.Contains("· 2 items", dayHeading.TextContent);
 
         var rows = component.FindAll(".timeline-row");
         Assert.Equal(2, rows.Count);
