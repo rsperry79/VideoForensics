@@ -226,6 +226,8 @@ else
     private IReadOnlyList<EvidenceDayGroup> _dayGroups = new List<EvidenceDayGroup>();
     private IReadOnlySet<Guid> _pinnedIds = new HashSet<Guid>();
     private Dictionary<Guid, string> _thumbnailUrls = new();
+    /// <summary>Thumbnail links requested per call, so one call never mints tickets for the whole archive.</summary>
+    private const int ThumbnailBatchSize = 500;
     private bool _thumbnailsUnavailable;
     private string? _currentMediaUrl;
     private string? _mediaLoadError;
@@ -388,23 +390,25 @@ else
 
             // Load thumbnails
             _thumbnailsUnavailable = false;
-            var thumbIds = _vm.ThumbnailMediaIds(max: 500);
-            if (thumbIds.Count > 0)
+            // Thumbnails are requested in batches of 500 until every item has one. Each request mints tickets, so the batch
+            // size bounds a single request; the old single 500-item cap left later items without a thumbnail.
+            var thumbIds = _vm.ThumbnailMediaIds(max: int.MaxValue).Where(id => !_thumbnailUrls.ContainsKey(id)).ToList();
+            try
             {
-                try
+                for (int offset = 0; offset < thumbIds.Count; offset += ThumbnailBatchSize)
                 {
-                    var urls = await MediaUrlProvider.GetContentUrlsAsync(thumbIds, CancellationToken.None);
+                    var batch = thumbIds.Skip(offset).Take(ThumbnailBatchSize).ToList();
+                    var urls = await MediaUrlProvider.GetContentUrlsAsync(batch, CancellationToken.None);
                     foreach (var kvp in urls)
                     {
                         _thumbnailUrls[kvp.Key] = kvp.Value;
                     }
                 }
-                catch
-                {
-                    // Continue without thumbnails, but let the user know previews are degraded
-                    // rather than silently leaving every tile blank with no explanation.
-                    _thumbnailsUnavailable = true;
-                }
+            }
+            catch
+            {
+                // Continue without the rest, but let the user know previews are degraded rather than leaving tiles blank.
+                _thumbnailsUnavailable = true;
             }
 
             // Keep the snapshot strip's items/RSSI in step with the scope if a device is selected
