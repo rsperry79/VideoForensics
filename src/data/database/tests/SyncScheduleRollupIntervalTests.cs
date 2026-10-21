@@ -41,6 +41,21 @@ namespace VideoForensics.Data.Database.Tests
 
             await Assert.ThrowsAsync<ArgumentException>(() => _repository.UpsertAsync(schedule, CancellationToken.None));
         }
+        [Fact]
+        public async Task RecordRollupAsync_SetsOnlyLastRollupUtc()
+        {
+            Guid account = Guid.NewGuid();
+            SyncSchedule schedule = SyncSchedule.CreateDefault(account);
+            await _repository.UpsertAsync(schedule, CancellationToken.None);
+            DateTime rolledUp = new(2026, 10, 20, 12, 15, 0, DateTimeKind.Utc);
+
+            await _repository.RecordRollupAsync(account, rolledUp, CancellationToken.None);
+
+            SyncSchedule? saved = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
+            Assert.Equal(rolledUp, saved!.LastRollupUtc);
+            Assert.Equal(15, saved.SnapshotRollupIntervalMinutes);
+        }
+
 
         [Fact]
         public async Task UpsertAsync_RollupEdited_PersistsNewInterval()

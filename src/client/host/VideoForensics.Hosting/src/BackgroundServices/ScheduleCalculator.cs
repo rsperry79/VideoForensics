@@ -34,6 +34,16 @@ namespace VideoForensics.Hosting.BackgroundServices
             return schedule.SnapshotNextRunUtc is null || schedule.SnapshotNextRunUtc.Value <= nowUtc;
         }
 
+        /// <summary>
+        /// True when a roll-up is due: never rolled up, or the roll-up interval has passed since the last one.
+        /// The first roll-up covers the last interval, so it runs one interval after the schedule starts rolling up.
+        /// </summary>
+        public static bool IsRollupDue(SyncSchedule schedule, DateTime nowUtc)
+        {
+            return schedule.LastRollupUtc is null
+                || nowUtc - schedule.LastRollupUtc.Value >= TimeSpan.FromMinutes(schedule.SnapshotRollupIntervalMinutes);
+        }
+
         /// <summary>Next snapshot/RSSI run: now plus the currently effective interval, in seconds.</summary>
         /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>
         public static DateTime NextSnapshotRunUtc(SyncSchedule schedule, DateTime nowUtc, TimeZoneInfo? timeZone = null)

@@ -202,6 +202,15 @@ namespace VideoForensics.Data.Database.Repositories
                     .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
         }
 
+        /// <summary>Updates only LastRollupUtc; a vanished row is a no-op. Never touches the form-edited interval.</summary>
+        public async Task RecordRollupAsync(Guid providerAccountId, DateTime rolledUpAtUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.LastRollupUtc, rolledUpAtUtc), ct);
+        }
+
         /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
         public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)
         {

@@ -78,6 +78,7 @@ namespace VideoForensics.Hosting.Tests
             public Mock<IInitialSyncDispatcher> InitialSync { get; } = new();
             public Mock<IProviderSyncRunRepository> SyncRuns { get; } = new();
             public Mock<ISnapshotSyncService> SnapshotSync { get; } = new();
+            public Mock<ISnapshotRollupService> SnapshotRollup { get; } = new();
             public List<ProviderSyncRun> Runs { get; } = [];
             public Dictionary<string, Mock<IEventAndConfigService>> Events { get; } = new();
             public Dictionary<string, Mock<IProviderAuthService>> Auth { get; } = new();
@@ -89,6 +90,7 @@ namespace VideoForensics.Hosting.Tests
 
             private readonly ServiceCollection _services = new();
             private readonly List<SyncSchedule> _schedules = [];
+            public IReadOnlyList<SyncSchedule> ScheduleList => _schedules;
 
             public Harness()
             {
@@ -126,6 +128,7 @@ namespace VideoForensics.Hosting.Tests
                     EventPollIntervalMinutes = intervalMinutes,
                     SnapshotRssiIntervalSeconds = 60,
                     SnapshotNextRunUtc = snapshotNext ?? Now.AddHours(1),
+                    LastRollupUtc = Now.AddMinutes(-1),
                     EventNextRunUtc = eventNext,
                     EventLastRunUtc = eventLast
                 };
@@ -213,6 +216,7 @@ namespace VideoForensics.Hosting.Tests
                 }
 
                 _ = _services.AddScoped(_ => SnapshotSync.Object);
+                _ = _services.AddScoped(_ => SnapshotRollup.Object);
                 ServiceProvider sp = _services.BuildServiceProvider();
                 var options = new Mock<IOptionsMonitor<ScheduledTasksOptions>>();
                 _ = options.Setup(o => o.CurrentValue).Returns(() => new ScheduledTasksOptions { EnabledProviders = EnabledProviders });
@@ -272,6 +276,40 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             h.Schedules.Verify(r => r.RecordEventRunAsync(account.Id, Now, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RollupDue_RollsUpSinceOneIntervalAgoAndRecordsRollup()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 1, ErrorMessage: null));
+            ScheduledSyncService service = h.Build();
+
+            // The harness schedule has no LastRollupUtc, so the roll-up is due and starts one interval back.
+            h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.SnapshotRollup.Verify(s => s.RollUpAccountAsync(account.Id, Now.AddMinutes(-15), Now, It.IsAny<CancellationToken>()), Times.Once);
+            h.Schedules.Verify(r => r.RecordRollupAsync(account.Id, Now, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_RollupFails_DoesNotRecordRollup()
+        {
+            var h = new Harness();
+            (_, ProviderAccount account) = h.AddAccount("Ring");
+            h.Auth["Ring"].Setup(a => a.RestoreFromSavedCredentialsAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            h.SnapshotRollup.Setup(s => s.RollUpAccountAsync(account.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotRollupResult(DevicesAttempted: 1, DevicesRolledUp: 0, ErrorMessage: "Cam: ffmpeg failed"));
+            h.Schedules.Setup(r => r.ListEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(h.ScheduleList.Select(s => { s.LastRollupUtc = null; return s; }).ToList());
+            ScheduledSyncService service = h.Build();
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            h.Schedules.Verify(r => r.RecordRollupAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
