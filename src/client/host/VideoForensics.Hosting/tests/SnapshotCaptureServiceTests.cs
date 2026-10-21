@@ -34,6 +34,7 @@ namespace VideoForensics.Hosting.Tests
         private readonly Mock<ILocationRepository> _locations = new();
         private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
+        private readonly Mock<IMediaItemRepository> _media = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
@@ -123,6 +124,7 @@ namespace VideoForensics.Hosting.Tests
             _ = services.AddSingleton(_locations.Object);
             _ = services.AddSingleton(_devices.Object);
             _ = services.AddSingleton(_captureRows.Object);
+            _ = services.AddSingleton(_media.Object);
             _ = services.AddSingleton(_sessions.Object);
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
@@ -177,6 +179,20 @@ namespace VideoForensics.Hosting.Tests
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             status.Verify(s => s.IsOffline("doorbot", true), Times.Once);
         }
+        [Fact]
+        public async Task RunOneTickAsync_SuccessfulCapture_RegistersSnapshotMediaRow()
+        {
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _media.Verify(m => m.AddAsync(
+                It.Is<MediaItem>(i => i.MediaFormat == "jpg" && i.MetadataJson == SnapshotCaptureService.CaptureSnapshotMetadata && i.FilePath.EndsWith(".jpg")),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
 
         [Fact]
         public async Task RunOneTickAsync_UnknownOnlineState_StillCaptures()
