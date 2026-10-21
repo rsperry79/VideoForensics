@@ -510,6 +510,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
+            _ = services.AddHostedService<JammingAnalysisBackfillService>();
 
             // Live view (Phase 6 - DI wiring). Register provider implementations (Ring, Wyze, Uniview),
             // orchestrator, and background services for idle timeouts and bitrate calibration.

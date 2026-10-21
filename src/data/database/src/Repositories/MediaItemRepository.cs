@@ -46,6 +46,17 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Oldest media that analysis has never run on. Analysis sets BaselineVersion on every result, so null means not yet analysed.</summary>
+        public async Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .Where(m => !m.IsPurged && m.BaselineVersion == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
         /// <summary>
         /// Snapshot JPEGs of a device in a window, oldest first. Format, the snapshot marker, and the time filter all run in SQL.
         /// </summary>

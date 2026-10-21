@@ -47,6 +47,7 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Services.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Services.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
 
             // IntegrityVerificationService implementation (implements IIntegrityVerificationService from Data.Common)

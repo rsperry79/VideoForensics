@@ -17,6 +17,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Gets media items by device ID within a date range.</summary>
         Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 
+        /// <summary>Oldest media items that analysis has never run on (no baseline version yet), up to <paramref name="limit"/>.</summary>
+        Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct);
+
         /// <summary>
         /// Snapshot JPEGs of a device in [fromUtc, toUtc], oldest first. The format and snapshot marker are filtered in the
         /// database. Files on disk are not checked here.

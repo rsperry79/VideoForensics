@@ -77,6 +77,10 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
+        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct) =>
+            throw new NotSupportedException("Analysis backfill runs on the server only.");
+
         /// <remarks>
         /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs
         /// on the server, where the database does the filtering; a snapshot endpoint would move this into SQL too.
