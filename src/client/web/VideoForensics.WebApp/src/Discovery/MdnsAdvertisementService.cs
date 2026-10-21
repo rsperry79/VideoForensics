@@ -46,7 +46,7 @@ namespace VideoForensics.WebApp.Discovery
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await WaitForApplicationStartedAsync(stoppingToken);
+            await WaitForApplicationStartedAsync(stoppingToken).ConfigureAwait(false);
 
             using var timer = new PeriodicTimer(CheckInterval);
             do
@@ -55,24 +55,24 @@ namespace VideoForensics.WebApp.Discovery
                 {
                     if (_config.EnableMdnsAdvertisement && _serviceDiscovery is null)
                     {
-                        await StartAdvertisingAsync();
+                        await StartAdvertisingAsync().ConfigureAwait(false);
                     }
                     else if (!_config.EnableMdnsAdvertisement && _serviceDiscovery is not null)
                     {
-                        await StopAdvertisingAsync();
+                        await StopAdvertisingAsync().ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "mDNS advertisement check failed");
                 }
-            } while (await timer.WaitForNextTickAsync(stoppingToken));
+            } while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            await StopAdvertisingAsync();
-            await base.StopAsync(cancellationToken);
+            await StopAdvertisingAsync().ConfigureAwait(false);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private async Task WaitForApplicationStartedAsync(CancellationToken ct)
@@ -84,7 +84,7 @@ namespace VideoForensics.WebApp.Discovery
                 return;
             }
 
-            await startedSource.Task.WaitAsync(ct);
+            await startedSource.Task.WaitAsync(ct).ConfigureAwait(false);
         }
 
         private async Task StartAdvertisingAsync()
@@ -108,7 +108,7 @@ namespace VideoForensics.WebApp.Discovery
                 _logger.LogInformation("mDNS advertisement started: {Instance}.{Service} on port {Port}",
                     Environment.MachineName, "_videoforensics._tcp.local", port.Value);
 
-                await Task.CompletedTask;
+                await Task.CompletedTask.ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -145,7 +145,7 @@ namespace VideoForensics.WebApp.Discovery
                 _logger.LogInformation("mDNS advertisement stopped");
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
 
         private int? ResolveListeningPort()
