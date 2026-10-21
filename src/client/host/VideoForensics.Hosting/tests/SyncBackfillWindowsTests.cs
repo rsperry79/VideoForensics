@@ -17,6 +17,15 @@ namespace VideoForensics.Hosting.Tests.Services
             Assert.Equal(windows[0].From.AddMonths(1), windows[0].To);
             Assert.Equal(12, windows.Count);
         }
+        [Fact]
+        public void MonthlyWindows_SecondWindowIsElevenMonthsAgoToTenMonthsAgo()
+        {
+            var windows = AccountSyncRunner.MonthlyWindows(Now);
+
+            Assert.Equal(Now.AddMonths(-11), windows[1].From);
+            Assert.Equal(Now.AddMonths(-10), windows[1].To);
+        }
+
 
         [Fact]
         public void MonthlyWindows_AreContiguousAndOldestFirst()

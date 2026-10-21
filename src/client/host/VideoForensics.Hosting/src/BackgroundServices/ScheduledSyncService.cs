@@ -335,7 +335,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
 
                     // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
-                    counts = account.LastSyncCompletedUtc is null && schedule.EventLastRunUtc is null
+                    counts = account.LastSyncCompletedUtc is null
                         ? await PullBackfillMonthlyAsync(pull, accountId, ct)
                         : await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     await budgetGuard.RecordCallAsync(providerName, ct);
