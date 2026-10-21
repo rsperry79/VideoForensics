@@ -1093,6 +1093,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
                 // state/details lookups below reuse it). Falls back to deviceId if unavailable.
                 string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
+                _logger.LogInformation("Snapshot starting for {DeviceName}", deviceNameForSnapshot);
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
@@ -1223,7 +1224,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(fileSize)})");
 
-                _logger.LogInformation("Downloaded latest snapshot ({Bytes} bytes) for device {DeviceId}", fileSize, deviceId);
+                _logger.LogDebug("Downloaded latest snapshot ({Bytes} bytes) for device {DeviceId}", fileSize, deviceId);
 
                 return new DownloadResult(
                     Success: true,
