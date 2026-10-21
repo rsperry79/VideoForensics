@@ -216,8 +216,20 @@ namespace VideoForensics.Providers.Ring.Services
         /// Maps a failed snapshot call to an attempt. A rate limit or hard ban is first recorded through <see cref="RecordThrottledAsync"/>,
         /// then reported as 429 with the pause the account must respect. Errors that carry no HTTP status return a null status.
         /// </summary>
+        /// <summary>
+        /// Reads a 429 that surfaced as an unexpected outcome (the snapshot update PUT reports it that way) as the rate limit it is,
+        /// so the capture path pauses the account for it. Null for every other failure.
+        /// </summary>
+        internal static ThrottledException? AsRateLimit(Exception ex)
+        {
+            return ex is UnexpectedOutcomeException { ReturnedStatusCode: HttpStatusCode.TooManyRequests }
+                ? new ThrottledException { StatusCode = HttpStatusCode.TooManyRequests }
+                : null;
+        }
+
         private async Task<SnapshotCaptureAttempt> ClassifySnapshotFailureAsync(Guid accountId, Exception ex, CancellationToken cancellationToken)
         {
+            ex = AsRateLimit(ex) ?? ex;
             switch (ex)
             {
                 case ThrottledException throttled:

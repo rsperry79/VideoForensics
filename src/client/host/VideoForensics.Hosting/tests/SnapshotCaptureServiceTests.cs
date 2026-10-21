@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -36,6 +37,7 @@ namespace VideoForensics.Hosting.Tests
         private readonly Mock<ISnapshotCaptureRepository> _captureRows = new();
         private readonly Mock<IMediaItemRepository> _media = new();
         private readonly Mock<IProviderSnapshotCapture> _capture = new();
+        private readonly Mock<IProviderApiBudgetGuard> _budget = new();
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
         private readonly List<SnapshotCapture> _rows = [];
@@ -52,6 +54,7 @@ namespace VideoForensics.Hosting.Tests
             _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" }]);
             _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _ = _captureRows.Setup(r => r.AddAsync(It.IsAny<SnapshotCapture>(), It.IsAny<CancellationToken>()))
                 .Callback<SnapshotCapture, CancellationToken>((c, _) => _rows.Add(c))
@@ -129,6 +132,7 @@ namespace VideoForensics.Hosting.Tests
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", _capture.Object);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
+            _ = services.AddSingleton(_budget.Object);
             return services.BuildServiceProvider();
         }
 
@@ -360,6 +364,33 @@ namespace VideoForensics.Hosting.Tests
             SnapshotCapture row = Assert.Single(_rows);
             Assert.Equal(second.Id, row.DeviceId);
             Assert.NotEqual(first.Id, row.DeviceId);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_BudgetExhausted_DefersCaptureWithoutCallingRing()
+        {
+            _ = AddDevice("12345");
+            _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Empty(_rows);
+        }
+
+        /// <summary>A capture is two Ring calls (the update and the image read), so the budget records both.</summary>
+        [Fact]
+        public async Task RunOneTickAsync_CaptureSucceeds_RecordsTwoCallsAgainstBudget()
+        {
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            _budget.Verify(b => b.RecordCallAsync("Ring", It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
     }
 }

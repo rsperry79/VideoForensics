@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -247,6 +248,14 @@ namespace VideoForensics.Hosting.BackgroundServices
             TickCounts counts,
             CancellationToken ct)
         {
+            // Each capture is two Ring calls, so the shared Ring budget is checked first. A busy window defers the device to a later tick.
+            IProviderApiBudgetGuard? budgetGuard = sp.GetService<IProviderApiBudgetGuard>();
+            if (budgetGuard != null && !await budgetGuard.TryConsumeAsync(RingProviderName, ct))
+            {
+                _logger.LogInformation("Snapshot capture deferred for {DeviceName} on {AccountName}: Ring API budget exhausted for this window", device.Name, accountName);
+                return;
+            }
+
             // The clock read before the provider call is the attempt time: Ring gives no capture timestamp of its own.
             DateTimeOffset attemptedAt = _time.GetUtcNow();
             SnapshotCaptureAttempt attempt;
@@ -265,6 +274,12 @@ namespace VideoForensics.Hosting.BackgroundServices
                 Hold(device.Id, interval);
                 counts.Failed++;
                 return;
+            }
+
+            if (budgetGuard != null)
+            {
+                await budgetGuard.RecordCallAsync(RingProviderName, ct);
+                await budgetGuard.RecordCallAsync(RingProviderName, ct);
             }
 
             if (attempt.ThrottlePause is { } pause)

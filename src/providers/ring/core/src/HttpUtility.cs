@@ -334,12 +334,9 @@ namespace VideoForensics.Providers.Ring
 
             if (hardBanUntil.HasValue)
             {
-                if (DateTime.UtcNow < hardBanUntil.Value)
+                if (HardBanFailure(hardBanUntil.Value, DateTime.UtcNow) is { } ban)
                 {
-                    TimeSpan remaining = hardBanUntil.Value - DateTime.UtcNow;
-                    throw new Exceptions.ThrottledException(
-                        $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
-                        isHardBan: true);
+                    throw ban;
                 }
 
                 lock (_throttleLock)
@@ -350,6 +347,24 @@ namespace VideoForensics.Providers.Ring
 
                 PersistHardBanState();
             }
+        }
+
+        /// <summary>
+        /// The failure a request gets while a hard ban runs until <paramref name="hardBanUntil"/>, or null once it has lifted.
+        /// Pure, so the ban decision can be tested without the process-wide ban state.
+        /// </summary>
+        internal static Exceptions.ThrottledException? HardBanFailure(DateTime hardBanUntil, DateTime nowUtc)
+        {
+            if (nowUtc >= hardBanUntil)
+            {
+                return null;
+            }
+
+            TimeSpan remaining = hardBanUntil - nowUtc;
+            return new Exceptions.ThrottledException(
+                $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
+
+                isHardBan: true);
         }
 
         /// <summary>
@@ -676,6 +691,8 @@ namespace VideoForensics.Providers.Ring
         /// <returns>The status, body bytes and Retry-After wait of the response</returns>
         public async Task<DownloadResult> DownloadFileWithStatus(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
         {
+            // The snapshot image read: no request while Ring holds a hard ban, so each probe does not count against the account.
+            ThrowIfHardBanned();
             // Construct the request
             var request = new HttpRequestMessage
             {
@@ -714,6 +731,8 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the actual HTTP response is different from what was expected (or, with no specific expectation, wasn't a success)</exception>
         public async Task SendRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, HttpStatusCode? expectedStatusCode, string bodyContent = null, string bearerToken = null, CancellationToken cancellationToken = default)
         {
+            // Carries the snapshot update PUT: no request while Ring holds a hard ban.
+            ThrowIfHardBanned();
             using var request = new HttpRequestMessage(httpMethod, url);
 
             // Check if the OAuth Bearer Authorization token should be added to the request
