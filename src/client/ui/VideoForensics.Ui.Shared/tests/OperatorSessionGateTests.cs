@@ -29,6 +29,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLocalization();
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
@@ -45,6 +46,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         Services.AddScoped(_ => Mock.Of<IEvidenceExportService>());
         Services.AddScoped(_ => Mock.Of<VideoForensics.Data.Common.Contracts.ICaseRepository>());
         Services.AddScoped(_ => Mock.Of<IEvidenceValidationService>());
+        Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfiguration>());
         Services.AddScoped(_ => Mock.Of<IForensicsConfigurationService>());
         Services.AddScoped(_ => Mock.Of<IServerLocationInformationService>());

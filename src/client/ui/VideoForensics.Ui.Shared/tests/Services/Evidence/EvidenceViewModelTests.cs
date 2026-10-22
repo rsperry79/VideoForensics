@@ -462,7 +462,7 @@ public class EvidenceViewModel_GalleryItems_Tests
 public class EvidenceViewModel_ThumbnailMediaIds_Tests
 {
     [Fact]
-    public void ThumbnailMediaIds_ReturnsImageMediaIdsCapped()
+    public void ThumbnailMediaIds_IncludesVideoMediaIds_SoVideosGetAThumbnail()
     {
         // Arrange
         var imageId1 = Guid.NewGuid();
@@ -505,13 +505,13 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
         var vm = new EvidenceViewModel(result);
 
         // Act
-        var ids = vm.ThumbnailMediaIds(max: 2);
+        var ids = vm.ThumbnailMediaIds(max: 3);
 
         // Assert
-        Assert.Equal(2, ids.Count);
+        Assert.Equal(3, ids.Count);
         Assert.Contains(imageId1, ids);
         Assert.Contains(imageId2, ids);
-        Assert.DoesNotContain(videoId, ids);
+        Assert.Contains(videoId, ids);
     }
 
     [Fact]

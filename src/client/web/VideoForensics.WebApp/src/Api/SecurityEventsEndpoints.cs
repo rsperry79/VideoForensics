@@ -97,7 +97,7 @@ namespace VideoForensics.WebApp.Api
             }
 
             // Log the query
-            logger.LogInformation("GetSecurityEvents: operatorId={OperatorId}, self-service={IsSelfService}, caller={CallerId}",
+            logger.LogDebug("GetSecurityEvents: operatorId={OperatorId}, self-service={IsSelfService}, caller={CallerId}",
                 targetOperatorId, isSelfService, callerId);
 
             try

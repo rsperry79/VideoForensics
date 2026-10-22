@@ -4,6 +4,7 @@ using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -207,13 +208,13 @@ namespace VideoForensics.Client.Core.Tools
 
                 if (Directory.Exists(downloadDir))
                 {
-                    _logger.LogInformation("Deleting download directory: {DownloadDir}", downloadDir);
+                    _logger.LogDebug("Deleting download directory: {DownloadDir}", downloadDir);
                     Directory.Delete(downloadDir, recursive: true);
                 }
 
+                // Same folder AddVideoForensicsSqlite opens (StorageCategory.Database), so a reset deletes the live file.
                 string dbPath = dbPathOverride ?? Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "VideoForensics",
+                    new StorageLocationProvider().GetDefaultRoot(StorageCategory.Database),
                     "videoforensics.db");
 
                 if (File.Exists(dbPath))
@@ -225,11 +226,11 @@ namespace VideoForensics.Client.Core.Tools
                     // it doesn't release the OS-level file handle.
                     if (_maintenanceService != null)
                     {
-                        _logger.LogInformation("Releasing database connections before deletion");
+                        _logger.LogDebug("Releasing database connections before deletion");
                         await _maintenanceService.ReleaseAllConnectionsAsync(ct);
                     }
 
-                    _logger.LogInformation("Deleting database: {DbPath}", dbPath);
+                    _logger.LogDebug("Deleting database: {DbPath}", dbPath);
                     File.Delete(dbPath);
 
                     // WAL mode leaves -wal/-shm sidecar files alongside the main database file;

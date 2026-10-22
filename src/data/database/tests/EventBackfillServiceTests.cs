@@ -51,7 +51,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(0, result);
             mockLogger.Verify(
                 l => l.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((state, _) => state.ToString().Contains("no DownloadEvents found")),
                     It.IsAny<Exception>(),

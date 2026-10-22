@@ -234,7 +234,7 @@ namespace VideoForensics.WebApp.Chat
                             };
                         }
 
-                        _logger.LogInformation("ChatOrchestrator: Invoking tool {ToolName}", completion.ToolName);
+                        _logger.LogDebug("ChatOrchestrator: Invoking tool {ToolName}", completion.ToolName);
                         toolsInvoked.Add(completion.ToolName);
                         _ = events.TryWrite(new ChatToolInvoked(completion.ToolName));
 
@@ -281,7 +281,7 @@ namespace VideoForensics.WebApp.Chat
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogWarning(ex, "ChatOrchestrator: Request cancelled");
+                _logger.LogError(ex, "ChatOrchestrator: Request cancelled");
                 return new ChatTurnResult
                 {
                     Reply = "The request was cancelled.",

@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
                     return false;
                 }
 
@@ -94,7 +94,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
                 return false;
             }
         }
@@ -118,7 +118,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", metadataPath);
                     return false;
                 }
 
@@ -126,7 +126,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", mediaFilePath);
                 return false;
             }
         }
@@ -157,7 +157,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // If we can parse it and get the root element, it's valid JSON
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
+                    _logger.LogDebug("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
                         metadataType, Path.GetFileName(jsonPath), fileInfo.Length);
                     return true;
                 }
@@ -169,12 +169,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
+                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", jsonPath);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
+                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", jsonPath);
                 return false;
             }
         }

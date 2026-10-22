@@ -67,7 +67,7 @@ namespace VideoForensics.WebApp.Services
                 return existing.PeerConnection;
             }
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Creating browser peer connection for session {SessionId}, connection {ConnectionId}",
                 sessionId, connectionId);
 
@@ -181,7 +181,7 @@ namespace VideoForensics.WebApp.Services
             var key = (connectionId, sessionId);
             if (_activePeers.TryRemove(key, out var entry))
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Disposing browser peer connection for session {SessionId}, connection {ConnectionId}",
                     sessionId, connectionId);
 

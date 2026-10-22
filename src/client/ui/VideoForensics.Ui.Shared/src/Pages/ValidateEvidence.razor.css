@@ -1,0 +1,10 @@
+.validate-console {
+    border: 1px solid var(--bs-border-color, #ced4da);
+    border-radius: 0.25rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+    max-height: 16rem;
+    overflow: auto;
+    padding: 0.5rem;
+    white-space: pre-wrap;
+}

@@ -46,7 +46,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.ExportRecords.Add(record);
                 db.ExportRecordItems.AddRange(items);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Export record appended: {ExportRecordId} (items: {ItemCount})",
+                _logger.LogDebug("Export record appended: {ExportRecordId} (items: {ItemCount})",
                     record.Id, items.Count);
                 return record;
             }

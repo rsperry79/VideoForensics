@@ -39,6 +39,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
             WebApplication app = builder.Build();
             app.MapAccountEndpoints();
             return app;

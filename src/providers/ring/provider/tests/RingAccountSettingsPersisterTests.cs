@@ -14,7 +14,7 @@ namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// Feeds the sanitized captures through the persister into a mocked writer, and checks the mapped graph that
-    /// reaches the writer. Expected values come from the fixtures. A failing write must only log a warning.
+    /// reaches the writer. Expected values come from the fixtures. A failing write must only log an error.
     /// </summary>
     public class RingAccountSettingsPersisterTests
     {
@@ -136,7 +136,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RingAccountSettingsPersister_PersistLocationModeAsync_WriterThrows_LogsWarningAndDoesNotThrow()
+        public async Task RingAccountSettingsPersister_PersistLocationModeAsync_WriterThrows_LogsErrorAndDoesNotThrow()
         {
             LocationMode mode = JsonSerializer.Deserialize<LocationMode>(ReadFixture("location-mode-sanitized.json"))!;
             var writer = new Mock<IRingAccountSettingsWriter>();
@@ -146,13 +146,13 @@ namespace VideoForensics.Providers.Ring.Tests
 
             await new RingAccountSettingsPersister(writer.Object, logger).PersistLocationModeAsync(mode, LocationId);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error);
         }
 
         private static RingAccountSettingsPersister CreatePersister(Mock<IRingAccountSettingsWriter> writer) =>
             new(writer.Object, new RecordingLogger());
 
-        /// <summary>Keeps each log entry's level so a test can assert a warning was written.</summary>
+        /// <summary>Keeps each log entry's level so a test can assert an error was written.</summary>
         private sealed class RecordingLogger : ILogger
         {
             public List<(LogLevel Level, string Message)> Entries { get; } = [];

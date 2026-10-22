@@ -25,21 +25,21 @@ namespace VideoForensics.Data.Core.Services
         {
             if (force)
             {
-                _logger.LogInformation("Watermark resolution forced; using requested start date {RequestedDate:O}", requestedStartDate);
+                _logger.LogDebug("Watermark resolution forced; using requested start date {RequestedDate:O}", requestedStartDate);
                 return requestedStartDate;
             }
 
             Device? device = await _deviceRepository.GetAsync(deviceId, ct);
             if (device?.LastSuccessfulPullAtUtc == null)
             {
-                _logger.LogInformation("No prior successful download found for device {DeviceId}; using requested start date {RequestedDate:O}", deviceId, requestedStartDate);
+                _logger.LogDebug("No prior successful download found for device {DeviceName}; using requested start date {RequestedDate:O}", device?.Name ?? "unknown", requestedStartDate);
                 return requestedStartDate;
             }
 
             DateTime watermarkWithBuffer = device.LastSuccessfulPullAtUtc.Value.Subtract(WatermarkBuffer);
             DateTime effectiveDate = new[] { requestedStartDate, watermarkWithBuffer }.Max();
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Watermark resolution for device {DeviceId}: last successful pull={LastSuccessful:O}, buffer={Buffer}, effective={EffectiveDate:O}",
                 deviceId,
                 device.LastSuccessfulPullAtUtc.Value,

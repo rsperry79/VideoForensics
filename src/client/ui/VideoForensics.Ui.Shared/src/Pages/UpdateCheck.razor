@@ -1,5 +1,6 @@
 @page "/settings/update-check"
 @inject NavigationManager NavigationManager
+@using VideoForensics.Ui.Shared.Services.Time
 @using VideoForensics.Client.Common.Contracts
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
@@ -148,6 +149,11 @@ else if (_state is not null)
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private bool _isChecking;
     private string? _loadError;
     private UpdateCheckState? _state;
@@ -292,8 +298,8 @@ else if (_state is not null)
 
     private string FormatTime(DateTime utcTime)
     {
-        var localTime = utcTime.ToLocalTime();
-        var now = DateTime.Now;
+        var localTime = Zone.ToLocal(utcTime);
+        var now = Zone.ToLocal(DateTime.UtcNow);
         var elapsed = now - localTime;
 
         if (elapsed.TotalSeconds < 60)

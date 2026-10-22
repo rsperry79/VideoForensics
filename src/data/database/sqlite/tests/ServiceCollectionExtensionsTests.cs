@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Data.Database.DbContext;
@@ -84,6 +85,46 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         try
                         { Directory.Delete(tempDir, recursive: true); }
                         catch { }
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void AddVideoForensicsSqlite_DefaultOptions_UsesSplitQuerySplittingBehavior()
+        {
+            // Arrange: multi-collection Includes warn under the default SingleQuery behavior, so the factory must opt in to split queries.
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dbPath = Path.Combine(tempDir, "test.db");
+            var services = new ServiceCollection();
+
+            try
+            {
+                _ = services.AddVideoForensicsSqlite(dbPath);
+                using ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
+
+                // Act
+                using VideoForensicsDbContext context = factory.CreateDbContext();
+                // FindExtension matches the exact type and the SQLite extension is internal, so scan the public base type instead.
+                RelationalOptionsExtension? relational = context.GetService<IDbContextOptions>()
+                    .Extensions.OfType<RelationalOptionsExtension>().SingleOrDefault();
+
+                // Assert
+                Assert.NotNull(relational);
+                Assert.Equal(QuerySplittingBehavior.SplitQuery, relational!.QuerySplittingBehavior);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    try
+                    {
+                        Directory.Delete(tempDir, recursive: true);
+                    }
+                    catch
+                    {
+                        // SQLite file may still be locked; cleanup is best-effort.
                     }
                 }
             }

@@ -41,7 +41,7 @@ namespace VideoForensics.Client.Core.Tools
         {
             try
             {
-                _logger.LogInformation("Recording jamming detection notification for device {deviceId}", deviceId);
+                _logger.LogDebug("Recording jamming detection notification for device {deviceId}", deviceId);
                 _ = await _jammingRepository.RecomputeStatsAsync(deviceId, ct);
                 JammingStatsSummary? stats = await _jammingRepository.GetStatsAsync(deviceId, ct);
 
@@ -117,7 +117,7 @@ namespace VideoForensics.Client.Core.Tools
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
+                        _logger.LogWarning(ex, "Failed to dispatch jamming notice for manually-recorded incident on device {deviceId} (non-critical)", deviceId);
                     }
                 }
 
@@ -193,7 +193,7 @@ namespace VideoForensics.Client.Core.Tools
                     };
                 }
 
-                _logger.LogInformation("Starting jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
+                _logger.LogDebug("Starting jamming analysis for device {deviceId} from {fromUtc} to {toUtc}",
                     deviceId, fromUtc, toUtc);
 
                 int detectedCount = await DetectAndPersistIncidentsAsync(deviceId, fromUtc, toUtc, ct);
@@ -252,7 +252,7 @@ namespace VideoForensics.Client.Core.Tools
             // the window has no established "normal" to compare against.
             if (readings.Count < 3)
             {
-                _logger.LogInformation("Insufficient RSSI history for device {deviceId} in window ({Count} reading(s)); skipping detection",
+                _logger.LogDebug("Insufficient RSSI history for device {deviceId} in window ({Count} reading(s)); skipping detection",
                     deviceId, readings.Count);
                 return 0;
             }
@@ -321,7 +321,7 @@ namespace VideoForensics.Client.Core.Tools
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
+                                    _logger.LogWarning(ex, "Failed to dispatch jamming notice for auto-detected incident on device {deviceId} (non-critical)", deviceId);
                                 }
                             }
 
@@ -333,7 +333,7 @@ namespace VideoForensics.Client.Core.Tools
                 }
             }
 
-            _logger.LogInformation("Jamming detection for device {deviceId}: baseline={Baseline:F1} dBm, {ReadingCount} reading(s) scanned, {Detected} new incident(s)",
+            _logger.LogDebug("Jamming detection for device {deviceId}: baseline={Baseline:F1} dBm, {ReadingCount} reading(s) scanned, {Detected} new incident(s)",
                 deviceId, baselineRssi, readings.Count, detected);
 
             return detected;

@@ -87,22 +87,30 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         }
 
         /// <summary>
-        /// Creates a session without authenticating (for testing session creation only). Requires
-        /// username/password, which the database never stores (only an encrypted refresh token,
-        /// per this app's no-plain-text-passwords policy) - so this always throws. Kept for callers
-        /// that already guard on <see cref="UsernamePasswordAvailable"/> first.
-        /// </summary>
-        public static Session CreateSessionWithoutAuth()
-        {
-            throw new InvalidOperationException(
-                $"Ring API username/password is never stored (only an encrypted refresh token).\n{SetupPointer}");
-        }
-
-        /// <summary>
         /// Checks if a saved refresh token is available for real integration testing.
         /// </summary>
+        /// <summary>
+        /// True only when the operator sets VF_RING_LIVE_TESTS=1. Live tests call the real Ring API with the saved account, so
+        /// they are never part of a normal run: each Ring call counts against the account's rate limit.
+        /// </summary>
+        public static bool LiveTestsEnabled => string.Equals(Environment.GetEnvironmentVariable("VF_RING_LIVE_TESTS"), "1", StringComparison.Ordinal);
+
+        /// <summary>Skips the calling test unless live tests are enabled.</summary>
+        public static void RequireLive()
+        {
+            if (!LiveTestsEnabled)
+            {
+                Xunit.Assert.Skip("Live Ring test: set VF_RING_LIVE_TESTS=1 to run it. It calls the real Ring API.");
+            }
+        }
+
         public static bool CredentialsAvailable()
         {
+            if (!LiveTestsEnabled)
+            {
+                return false;
+            }
+
             try
             {
                 IServiceProvider sp = ServiceProviderLazy.Value;
@@ -114,16 +122,6 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
             {
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Always false - the database never stores a raw username/password, only an encrypted
-        /// refresh token. Kept so existing tests that guard on this before calling
-        /// <see cref="CreateSessionWithoutAuth"/> continue to skip cleanly instead of failing.
-        /// </summary>
-        public static bool UsernamePasswordAvailable()
-        {
-            return false;
         }
 
         /// <summary>

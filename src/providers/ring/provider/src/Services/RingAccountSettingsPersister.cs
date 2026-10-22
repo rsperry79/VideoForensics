@@ -66,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Ring {Area} settings were not stored; sync continues", area);
+                _logger.LogError(ex, "Ring {Area} settings were not stored; sync continues", area);
             }
         }
     }

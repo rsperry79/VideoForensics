@@ -74,7 +74,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick");
+                _logger.LogError(ex, "Bitrate calibration tick: failed to list buckets needing calibration; skipping this tick");
                 return;
             }
 
@@ -91,7 +91,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Bitrate calibration tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Bitrate calibration tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -141,13 +141,13 @@ namespace VideoForensics.Hosting.BackgroundServices
                     // Check budget guard before calling provider
                     if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                     {
-                        _logger.LogWarning("Bitrate calibration tick: skipping device {DeviceName} - provider API budget exceeded for {ProviderName}", device.Name, providerName);
+                        _logger.LogDebug("Bitrate calibration tick: skipping device {DeviceName} - provider API budget exceeded for {ProviderName}", device.Name, providerName);
                         continue;
                     }
 
                     // Start a calibration session
                     _ = await sessionService.StartAsync(deviceId, LiveViewTriggerReason.Calibration, null, ct);
-                    _logger.LogInformation("Bitrate calibration tick: started calibration session for device {DeviceName}", device.Name);
+                    _logger.LogDebug("Bitrate calibration tick: started calibration session for device {DeviceName}", device.Name);
                 }
                 catch (Exception ex)
                 {

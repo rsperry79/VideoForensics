@@ -28,7 +28,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Notices.Add(notice);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Notice added: {NoticeId} ({EventType}, Severity: {Severity})", notice.Id, notice.EventType, notice.Severity);
+                _logger.LogDebug("Notice added: {NoticeId} ({EventType}, Severity: {Severity})", notice.Id, notice.EventType, notice.Severity);
             }
             catch (Exception ex)
             {

@@ -1,0 +1,198 @@
+@page "/settings/software-paths"
+@using VideoForensics.Ui.Shared.Services
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.Buttons
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject StepUpService StepUp
+@inject HttpClient Http
+@inject IStringLocalizer<SoftwarePaths> L
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h4 class="mb-0">@L["Title"]</h4>
+</div>
+
+<div class="alert alert-warning mb-4">@L["WarningText"]</div>
+
+@if (!SessionState.IsSignedIn)
+{
+    <div class="alert alert-info mb-4">
+        <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInPrompt"]</a> @L["SignInToManage"]
+    </div>
+}
+
+@if (_isLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else if (_authError is not null)
+{
+    <div class="alert alert-danger mb-2">@_authError</div>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    <div class="card mb-4"><div class="card-body">
+        <div class="d-flex flex-column gap-3" style="max-width: 560px;">
+            <div>
+                <label for="ffmpeg-bin-directory" class="form-label">@L["FfmpegBinDirectoryLabel"]</label>
+                <input id="ffmpeg-bin-directory" class="form-control" @bind="_ffmpegBinDirectory" disabled="@_isSaving" />
+                <small class="text-muted">@L["FfmpegBinDirectoryHelp"]</small>
+            </div>
+            <div>
+                <label for="cloudflared-path" class="form-label">@L["CloudflaredPathLabel"]</label>
+                <input id="cloudflared-path" class="form-control" @bind="_cloudflaredPath" disabled="@_isSaving" />
+                <small class="text-muted">@L["CloudflaredPathHelp"]</small>
+            </div>
+            <div>
+                <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveAsync" CssClass="e-primary save-software-paths" Disabled="@_isSaving" />
+            </div>
+        </div>
+
+        @if (_message is not null)
+        {
+            <div class="mt-3 @(_success ? "text-success" : "text-danger")">@_message</div>
+        }
+    </div></div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _success;
+    private string? _authError;
+    private string? _loadError;
+    private string? _message;
+
+    private string _ffmpegBinDirectory = "";
+    private string _cloudflaredPath = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Session state and the step-up token need IJSRuntime, which is unavailable during the static prerender pass.
+        if (firstRender)
+        {
+            await SessionState.EnsureLoadedAsync();
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _authError = null;
+        _loadError = null;
+        try
+        {
+            using var response = await Http.SendAsync(CreateRequest(HttpMethod.Get, null, null));
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                _authError = L["AuthUnauthorized"];
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _ffmpegBinDirectory = ReadString(body, "ffmpegBinDirectory");
+            _cloudflaredPath = ReadString(body, "cloudflaredPath");
+        }
+        catch (Exception ex)
+        {
+            _loadError = L["LoadFailed", ex.Message];
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _message = null;
+
+        // Changing these paths is destructive, so the step-up challenge must succeed before anything is sent.
+        string stepUpToken;
+        try
+        {
+            stepUpToken = await StepUp.GetStepUpTokenAsync();
+        }
+        catch (Exception)
+        {
+            _success = false;
+            _message = L["StepUpCancelled"];
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var body = new { ffmpegBinDirectory = _ffmpegBinDirectory, cloudflaredPath = _cloudflaredPath };
+            using var response = await Http.SendAsync(CreateRequest(HttpMethod.Post, body, stepUpToken));
+            if (!response.IsSuccessStatusCode)
+            {
+                _success = false;
+                _message = await SafeReadErrorAsync(response) ?? L["SaveFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            var saved = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _ffmpegBinDirectory = ReadString(saved, "ffmpegBinDirectory");
+            _cloudflaredPath = ReadString(saved, "cloudflaredPath");
+            _success = true;
+            _message = L["SavedMessage"];
+        }
+        catch (Exception ex)
+        {
+            _success = false;
+            _message = L["SaveFailed", ex.Message];
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // The step-up token rides on this one request only; the shared HttpClient's default headers are never touched.
+    private HttpRequestMessage CreateRequest(HttpMethod method, object? body, string? stepUpToken)
+    {
+        var request = new HttpRequestMessage(method, new Uri(NavigationManager.BaseUri + "api/v1/software-paths"));
+        if (SessionState.SessionToken is not null)
+        {
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
+        }
+
+        if (stepUpToken is not null)
+        {
+            request.Headers.Add("X-StepUp-Token", stepUpToken);
+        }
+
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        return request;
+    }
+
+    private static string ReadString(System.Text.Json.JsonElement body, string property) =>
+        body.TryGetProperty(property, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String
+            ? value.GetString() ?? ""
+            : "";
+
+    private static async Task<string?> SafeReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var doc = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            return doc is not null && doc.TryGetValue("error", out var msg) ? msg : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}

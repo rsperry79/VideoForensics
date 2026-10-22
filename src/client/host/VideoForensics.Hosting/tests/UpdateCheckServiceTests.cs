@@ -17,6 +17,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var gitHubClient = new Mock<IGitHubReleaseClient>();
             var installer = new Mock<IUpdateInstaller>();
+            _ = installer.SetupGet(i => i.PackageExtension).Returns(".exe");
 
             var services = new ServiceCollection();
             _ = services.AddSingleton(gitHubClient.Object);
@@ -155,10 +156,9 @@ namespace VideoForensics.Hosting.Tests
             (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, Mock<IUpdateInstaller> installer) =
                 CreateService(config, () => "1.0.0");
 
-            // Include both a Windows and a Debian asset so this test passes regardless of the
-            // OS it actually runs on - UpdateCheckService picks .exe on Windows and .deb
-            // elsewhere (RuntimeInformation.IsOSPlatform), and this test only cares that the
-            // installer gets invoked with whichever asset matched, not which platform matched.
+            // Include both a Windows and a Debian asset. CreateService sets the installer's PackageExtension
+            // to .exe, so the matching asset is the Windows one; this test only cares that the installer is
+            // invoked with the asset that matched.
             var windowsAsset = new GitHubReleaseAsset("VideoForensics-99.0.0.exe", "https://example.com/download.exe", 1000);
             var debianAsset = new GitHubReleaseAsset("videoforensics_99.0.0_amd64.deb", "https://example.com/download.deb", 1000);
             var release = new GitHubReleaseInfo(
@@ -173,6 +173,35 @@ namespace VideoForensics.Hosting.Tests
             await service.RunOneTickAsync(CancellationToken.None);
 
             installer.Verify(i => i.DownloadAndInvokeAsync(It.IsAny<GitHubReleaseAsset>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_InstallerPackageExtensionIsDeb_InvokesInstallerWithDebAsset()
+        {
+            // The installer decides which package format the platform uses; the service must follow it,
+            // not detect the OS itself.
+            var config = new ForensicsConfiguration
+            {
+                UpdateMode = UpdateCheckMode.AutoDownloadAndInstall,
+                ReleaseChannel = UpdateReleaseChannel.Stable
+            };
+            (UpdateCheckService service, Mock<IGitHubReleaseClient> gitHubClient, Mock<IUpdateInstaller> installer) =
+                CreateService(config, () => "1.0.0");
+            _ = installer.SetupGet(i => i.PackageExtension).Returns(".deb");
+
+            var debianAsset = new GitHubReleaseAsset("videoforensics_99.0.0_amd64.deb", "https://example.com/download.deb", 1000);
+            var release = new GitHubReleaseInfo(
+                "v99.0.0",
+                "https://github.com/rsperry79/VideoForensics/releases/tag/v99.0.0",
+                false,
+                false,
+                new[] { new GitHubReleaseAsset("VideoForensics-99.0.0.exe", "https://example.com/download.exe", 1000), debianAsset }
+            );
+            _ = gitHubClient.Setup(c => c.GetLatestReleaseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(release);
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            installer.Verify(i => i.DownloadAndInvokeAsync(debianAsset, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

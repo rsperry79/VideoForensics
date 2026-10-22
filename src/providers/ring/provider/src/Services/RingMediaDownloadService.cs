@@ -1,20 +1,23 @@
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Services;
+using VideoForensics.Providers.Ring.Exceptions;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
 
 namespace VideoForensics.Providers.Ring.Services
 {
-    public class RingMediaDownloadService : IMediaDownloadService
+    public class RingMediaDownloadService : IMediaDownloadService, IProviderSnapshotCapture
     {
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
@@ -45,9 +48,23 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        // Spaces Ring video requests. One request in flight and a minimum gap between request starts
-        // keeps an account's media pull under Ring's rate limit; set per run by SetRequestPacing.
-        private readonly MediaRequestPacer _pacer = new();
+        // Spaces Ring video requests with one pacer per provider account, so a rate limit on one account
+        // slows only that account. Each pacer starts at _baseRequestInterval (set per run by SetRequestPacing);
+        // a rate limit adds to that account's pacer, and the addition survives later SetRequestPacing calls.
+        private readonly ConcurrentDictionary<Guid, MediaRequestPacer> _pacers = new();
+        private TimeSpan _baseRequestInterval = TimeSpan.FromSeconds(1);
+
+        // Name used in rate-limit alerts. The account GUID is never shown to the user or logged.
+        private const string RingAccountDisplayName = "Ring account";
+        private readonly INotificationDispatcher? _notificationDispatcher;
+
+        // Persists the account's snapshot spacing after a new rate-limit incident. Null when the host has no schedule store.
+        private readonly ISyncScheduleRepository? _syncScheduleRepository;
+
+        // Saved SnapshotIntervalSeconds per account, used as a spacing floor that SetRequestPacing must not drop below.
+        // Loaded once per account per process (see EnsureStoredSpacingLoadedAsync); raised again after each saved incident.
+        private readonly ConcurrentDictionary<Guid, TimeSpan> _storedSpacingFloors = new();
+        private readonly ConcurrentDictionary<Guid, Lazy<Task>> _storedSpacingLoads = new();
 
         // Last Retry-After Ring asked for on a throttled video request, surfaced on DownloadResult.
         private TimeSpan? _lastRetryAfter;
@@ -58,13 +75,297 @@ namespace VideoForensics.Providers.Ring.Services
             SetMaxConcurrentDownloads(maxConcurrent);
             if (minRequestInterval >= TimeSpan.Zero)
             {
-                _pacer.MinInterval = minRequestInterval;
+                _baseRequestInterval = minRequestInterval;
+                foreach (KeyValuePair<Guid, MediaRequestPacer> entry in _pacers)
+                {
+                    entry.Value.MinInterval = ApplyStoredSpacingFloor(entry.Key, minRequestInterval + entry.Value.RateLimitPenalty);
+                }
+            }
+        }
+
+        /// <summary>Clock for pacers created after it is set. Null uses the system clock. Tests set it to drive hard-ban windows without sleeping.</summary>
+        internal Func<DateTime>? PacerClock { get; set; }
+
+        /// <summary>Returns the request pacer for one provider account, creating it on first use.</summary>
+        internal MediaRequestPacer GetPacerForAccount(Guid accountId)
+        {
+            return _pacers.GetOrAdd(accountId, _ => new MediaRequestPacer(utcNow: PacerClock, minInterval: _baseRequestInterval));
+        }
+
+        /// <summary>Records a successful media request for one account, ending that account's rate-limit incident.</summary>
+        internal void RecordMediaSuccess(Guid accountId)
+        {
+            GetPacerForAccount(accountId).MarkRequestSucceeded();
+        }
+
+        /// <summary>
+        /// Handles one 429 from Ring for <paramref name="accountId"/>: pauses that account's media requests for Retry-After
+        /// (60 seconds when absent). A new rate-limit incident also adds a second to its spacing and raises an alert naming the
+        /// account; 429s inside an ongoing incident only extend the pause. A hard ban pauses the account for 15 or 30 minutes
+        /// (see <see cref="MediaRequestPacer.RecordHardBan"/>), adds no spacing, and alerts once per ban window.
+        /// </summary>
+        internal async Task RecordThrottledAsync(Guid accountId, ThrottledException ex, CancellationToken cancellationToken)
+        {
+            MediaRequestPacer pacer = GetPacerForAccount(accountId);
+
+            if (ex.IsHardBan)
+            {
+                MediaRequestPacer.HardBanOutcome ban = pacer.RecordHardBan(ex.RetryAfter);
+                _logger.LogWarning("{AccountName} is under a hard ban from Ring; pausing media requests for {PauseMinutes} minutes",
+                    RingAccountDisplayName, ban.Pause.TotalMinutes);
+
+                if (!ban.AlertRaised)
+                {
+                    return;
+                }
+
+                await DispatchRateLimitAlertAsync(
+                    $"{RingAccountDisplayName} is under a hard ban from Ring. Media requests are paused for {ban.Pause.TotalMinutes:0} minutes.",
+                    cancellationToken);
+                return;
+            }
+
+            // Read before RecordRateLimited: that call already adds the incident's second, and the saved value must be based on the spacing before it.
+            TimeSpan spacingBeforeIncident = pacer.MinInterval;
+            bool newIncident = pacer.RecordRateLimited(ex.RetryAfter);
+            TimeSpan pause = ex.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
+            _logger.LogWarning("{AccountName} was rate limited by Ring; pausing media requests for {PauseSeconds}s and spacing them {IntervalSeconds}s apart",
+                RingAccountDisplayName, pause.TotalSeconds, pacer.MinInterval.TotalSeconds);
+
+            // Only the first 429 of an incident alerts; retries that hit 429 again while it lasts are logged, not alerted.
+            if (!newIncident)
+            {
+                return;
+            }
+
+            await SaveSnapshotIntervalAfterIncidentAsync(accountId, spacingBeforeIncident, cancellationToken);
+
+            await DispatchRateLimitAlertAsync(
+                $"{RingAccountDisplayName} was rate limited by Ring. Media requests are paused for {pause.TotalSeconds:0} seconds and spacing is now {pacer.MinInterval.TotalSeconds:0} seconds.",
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Runs one snapshot capture attempt: trigger a fresh frame, wait <paramref name="settleDelay"/>, then read the latest frame.
+        /// Both provider calls take a turn on this account's pacer, so they share its spacing and rate-limit pause with downloads.
+        /// A 429 or hard ban goes through <see cref="RecordThrottledAsync"/>, and the attempt comes back with status 429.
+        /// </summary>
+        /// <remarks>
+        /// The status of the latest-snapshot read is the real HTTP status Ring returned. A failed trigger reports the status carried by the thrown exception.
+        /// </remarks>
+        public async Task<SnapshotCaptureAttempt> CaptureAsync(Guid providerAccountId, string providerDeviceId, TimeSpan settleDelay, CancellationToken cancellationToken)
+        {
+            if (!int.TryParse(providerDeviceId, out int doorbotId))
+            {
+                throw new ArgumentException("Ring device ids are numeric.", nameof(providerDeviceId));
+            }
+
+            Session session = _sessionProvider.GetSession(providerAccountId)
+                ?? throw new InvalidOperationException("No active Ring session for this account. Restore its credentials before capturing.");
+            MediaRequestPacer pacer = GetPacerForAccount(providerAccountId);
+
+            try
+            {
+                await pacer.WaitTurnAsync(cancellationToken);
+                await session.UpdateSnapshot(doorbotId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
+            }
+
+            await Task.Delay(settleDelay, cancellationToken);
+
+            try
+            {
+                await pacer.WaitTurnAsync(cancellationToken);
+                HttpUtility.DownloadResult snapshot = await session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+                if (snapshot.Status == HttpStatusCode.TooManyRequests)
+                {
+                    // Same path as a thrown 429: record the throttle, then report 429 with the pause.
+                    return await ClassifySnapshotFailureAsync(providerAccountId,
+                        new ThrottledException { StatusCode = snapshot.Status, RetryAfter = snapshot.RetryAfter }, cancellationToken);
+                }
+
+                RecordMediaSuccess(providerAccountId);
+                return ClassifySnapshotResponse((int)snapshot.Status, snapshot.Bytes);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Maps the real HTTP status and body of a latest-snapshot read to an attempt. Only a 200 with a JPEG body carries an image;
+        /// any other status is recorded as Ring returned it, with no image.
+        /// </summary>
+        internal static SnapshotCaptureAttempt ClassifySnapshotResponse(int status, byte[] body)
+        {
+            bool isImage = status == 200 && HasJpegSignature(body);
+            return new SnapshotCaptureAttempt(status, isImage ? body : null, null);
+        }
+
+        /// <summary>True when the bytes start with the JPEG SOI marker (FF D8 FF).</summary>
+        internal static bool HasJpegSignature(byte[] body)
+        {
+            return body.Length >= 3 && body[0] == 0xFF && body[1] == 0xD8 && body[2] == 0xFF;
+        }
+
+        /// <summary>
+        /// Maps a failed snapshot call to an attempt. A rate limit or hard ban is first recorded through <see cref="RecordThrottledAsync"/>,
+        /// then reported as 429 with the pause the account must respect. Errors that carry no HTTP status return a null status.
+        /// </summary>
+        /// <summary>
+        /// Reads a 429 that surfaced as an unexpected outcome (the snapshot update PUT reports it that way) as the rate limit it is,
+        /// so the capture path pauses the account for it. Null for every other failure.
+        /// </summary>
+        internal static ThrottledException? AsRateLimit(Exception ex)
+        {
+            return ex is UnexpectedOutcomeException { ReturnedStatusCode: HttpStatusCode.TooManyRequests }
+                ? new ThrottledException { StatusCode = HttpStatusCode.TooManyRequests }
+                : null;
+        }
+
+        private async Task<SnapshotCaptureAttempt> ClassifySnapshotFailureAsync(Guid accountId, Exception ex, CancellationToken cancellationToken)
+        {
+            ex = AsRateLimit(ex) ?? ex;
+            switch (ex)
+            {
+                case ThrottledException throttled:
+                    await RecordThrottledAsync(accountId, throttled, cancellationToken);
+                    // Hard bans use the longer repeat pause, which is the safe bound when the exact ban length is not known here.
+                    TimeSpan pause = throttled.IsHardBan
+                        ? MediaRequestPacer.RepeatHardBanPause
+                        : throttled.RetryAfter ?? MediaRequestPacer.DefaultRateLimitPause;
+                    return new SnapshotCaptureAttempt(429, null, pause);
+                case UnexpectedOutcomeException outcome:
+                    return new SnapshotCaptureAttempt((int)outcome.ReturnedStatusCode, null, null);
+                case DeviceUnknownException unknown:
+                    return new SnapshotCaptureAttempt((int)(unknown.StatusCode ?? System.Net.HttpStatusCode.NotFound), null, null);
+                default:
+                    _logger.LogWarning("Snapshot capture for {AccountName} failed without an HTTP status: {ExceptionType}",
+                        RingAccountDisplayName, ex.GetType().Name);
+                    return new SnapshotCaptureAttempt(null, null, null);
+            }
+        }
+
+        /// <summary>
+        /// Saves one second more than the account's current snapshot spacing as its SnapshotIntervalSeconds. The current spacing is the
+        /// stored value when set, otherwise the pacer's spacing before this incident. Failures are logged, never thrown, so a settings
+        /// write cannot fail the download that triggered it.
+        /// </summary>
+        private async Task SaveSnapshotIntervalAfterIncidentAsync(Guid accountId, TimeSpan spacingBeforeIncident, CancellationToken cancellationToken)
+        {
+            if (_syncScheduleRepository == null)
+            {
+                return;
+            }
+
+            try
+            {
+                SyncSchedule? schedule = await _syncScheduleRepository.GetByProviderAccountIdAsync(accountId, cancellationToken);
+                int currentSeconds = schedule?.SnapshotIntervalSeconds ?? (int)Math.Ceiling(spacingBeforeIncident.TotalSeconds);
+                int raisedSeconds = currentSeconds + 1;
+                await _syncScheduleRepository.SetSnapshotIntervalSecondsAsync(accountId, raisedSeconds, cancellationToken);
+                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(raisedSeconds);
+                _logger.LogInformation("{AccountName} snapshot interval raised to {IntervalSeconds}s after a rate limit",
+                    RingAccountDisplayName, raisedSeconds);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Could not save the snapshot interval for {AccountName} after a rate limit", RingAccountDisplayName);
+            }
+        }
+
+        /// <summary>
+        /// Loads the account's saved SnapshotIntervalSeconds once per process and raises its pacer to at least that spacing, so a
+        /// restart keeps the spacing the last rate-limit incident saved. Concurrent callers share one load. A load that fails is
+        /// logged and not retried in this process; the pacer keeps its base spacing.
+        /// </summary>
+        private Task EnsureStoredSpacingLoadedAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            if (_syncScheduleRepository == null || accountId == Guid.Empty)
+            {
+                return Task.CompletedTask;
+            }
+
+            // Lazy so that when two downloads race, only the stored entry's task ever runs the repository read.
+            Lazy<Task> load = _storedSpacingLoads.GetOrAdd(accountId, _ => new Lazy<Task>(() => LoadStoredSpacingAsync(accountId, cancellationToken)));
+            return load.Value;
+        }
+
+        private async Task LoadStoredSpacingAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                SyncSchedule? schedule = await _syncScheduleRepository!.GetByProviderAccountIdAsync(accountId, cancellationToken);
+                int? storedSeconds = schedule?.SnapshotIntervalSeconds;
+                if (storedSeconds is not > 0)
+                {
+                    return;
+                }
+
+                _storedSpacingFloors[accountId] = TimeSpan.FromSeconds(storedSeconds.Value);
+                MediaRequestPacer pacer = GetPacerForAccount(accountId);
+                pacer.MinInterval = ApplyStoredSpacingFloor(accountId, pacer.MinInterval);
+                _logger.LogInformation("{AccountName} spacing restored to {IntervalSeconds}s from the saved snapshot interval",
+                    RingAccountDisplayName, storedSeconds.Value);
+            }
+            catch (OperationCanceledException)
+            {
+                // Forget the cancelled load so a later download can retry it.
+                _ = _storedSpacingLoads.TryRemove(accountId, out _);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not load the saved snapshot interval for {AccountName}; keeping base spacing", RingAccountDisplayName);
+            }
+        }
+
+        /// <summary>Returns the larger of <paramref name="spacing"/> and the account's saved floor, so a saved spacing is never lowered.</summary>
+        private TimeSpan ApplyStoredSpacingFloor(Guid accountId, TimeSpan spacing)
+        {
+            return _storedSpacingFloors.TryGetValue(accountId, out TimeSpan floor) && floor > spacing ? floor : spacing;
+        }
+
+        /// <summary>Raises the ProviderRateLimited alert with the given details. Dispatch failures are logged, never thrown.</summary>
+        private async Task DispatchRateLimitAlertAsync(string details, CancellationToken cancellationToken)
+        {
+            if (_notificationDispatcher == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _notificationDispatcher.DispatchAsync(
+                    new NotificationEvent(
+                        EventType: "ProviderRateLimited",
+                        TimestampUtc: DateTime.UtcNow,
+                        OperatorId: null,
+                        PairedDeviceId: null,
+                        SourceIp: null,
+                        Details: details,
+                        Audience: NotificationAudience.AdminsOnly,
+                        Severity: NoticeSeverity.Alert),
+                    cancellationToken);
+            }
+            catch (Exception notifEx) when (notifEx is not OperationCanceledException)
+            {
+                _logger.LogWarning(notifEx, "Failed to dispatch rate limit alert for {AccountName}", RingAccountDisplayName);
             }
         }
 
         // Guards _currentStatus and the per-device counters below while multiple file downloads for
         // the same device update them concurrently.
         private readonly object _statusLock = new();
+        /// <summary>Devices whose snapshot returned a non-image body and has not yet returned an image. Used to warn once, not every pull.</summary>
+        private readonly ConcurrentDictionary<string, DateTime> _snapshotNonImageWarnedUtc = new();
+
+        /// <summary>Length of the window in which a device's non-image warning is logged once. The snapshot sync sets it to the roll-up interval.</summary>
+        private TimeSpan _snapshotWarningWindow = TimeSpan.FromMinutes(15);
 
         // How many files are actively being fetched from Ring right now (as opposed to skipped
         // because they already exist on disk) — surfaced via DownloadStatus.ActiveConnections.
@@ -121,12 +422,15 @@ namespace VideoForensics.Providers.Ring.Services
         // Thread-safe atomic increment for peak active downloads (diagnostic tracking)
         private int _peakActiveDownloadsForBatch;
 
-        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null)
+        public RingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient, IMediaMetadataTagger? metadataTagger = null,
+            INotificationDispatcher? notificationDispatcher = null, ISyncScheduleRepository? syncScheduleRepository = null)
         {
             _logger = logger;
             _sessionProvider = sessionProvider ?? throw new ArgumentNullException(nameof(sessionProvider));
             _dataClient = dataClient ?? throw new ArgumentNullException(nameof(dataClient));
             _metadataTagger = metadataTagger ?? new FfmpegMediaMetadataTagger(logger);
+            _notificationDispatcher = notificationDispatcher;
+            _syncScheduleRepository = syncScheduleRepository;
         }
 
         public async Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate,
@@ -167,12 +471,18 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<DownloadResult> DownloadVideosAsync(string deviceId, string outputPath, DateTime startDate,
             DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
         {
+            // Hoisted above the try so the catch can log it; assigned once history is read (events carry the camera name).
+            string deviceName = deviceId;
             try
             {
-                _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
-                Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
+                Guid accountId = _cachedProviderAccountId ?? Guid.Empty;
+                // Must run before the first pacer turn so the saved spacing applies to this run's first request.
+                await EnsureStoredSpacingLoadedAsync(accountId, cancellationToken);
+
+                Session? session = _sessionProvider.GetSession(accountId);
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -188,7 +498,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // Track the latest successfully downloaded event's timestamp for watermark advancement
                 DateTime latestSuccessfulTime = startDate;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "History returned {TotalEvents} total event(s) for the account; {MatchCount} matched deviceId {DeviceId}. Sample doorbot ids in history: {Sample}",
                     events.Count, relevantEvents.Count, deviceId,
                     string.Join(", ", events.Select(e => e.Doorbot?.Id).Distinct().Take(5)));
@@ -212,13 +522,14 @@ namespace VideoForensics.Providers.Ring.Services
                 // This ensures all watermark updates within the batch operate on consistent device state.
                 (string? deviceKind, bool? deviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? deviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
+                deviceName = relevantEvents.FirstOrDefault()?.Doorbot?.Description ?? deviceId;
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceName, providerLocationId, deviceKind, deviceOnline, cancellationToken, timeZoneId: deviceDetails?.TimeZone, deviceFields: deviceDetails?.DeviceFields);
 
                 // Capture battery/connectivity telemetry once per batch (not once per event -
                 // it's the same reading for the whole run). Never fails the actual video download;
                 // this is purely so gap-analysis can later explain a gap as "battery was low" with
                 // real data instead of guessing.
-                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceGuid, cancellationToken);
+                await CaptureDeviceHealthSnapshotAsync(session, deviceId, deviceName, deviceGuid, cancellationToken);
 
                 // Cancels the in-flight batch either on real caller cancellation or the moment any
                 // one file hits a rate limit — matching the previous sequential loop's "stop on
@@ -249,7 +560,7 @@ namespace VideoForensics.Providers.Ring.Services
                         // not DownloadEvents, so an event must land here the moment it's discovered
                         // (not only once/if it's successfully downloaded) or gaps and missing-download
                         // detection have nothing to compare against.
-                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                        Guid eventDbId = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                             @event.SnapshotUrl, downloadedAtUtc: null, hash: null, rateLimitCts.Token, apiResponse: @event);
 
                         // Use the device GUID resolved at batch start; all events are for this same device
@@ -296,12 +607,15 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute hash for existing file {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -315,7 +629,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                                 if (sha256Hash != null)
                                 {
-                                    _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                    _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                         @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
                                 }
 
@@ -350,6 +664,7 @@ namespace VideoForensics.Providers.Ring.Services
                                     }
                                 }
 
+                                _logger.LogInformation("Media file {FileName} already exists ({Bytes} bytes); skipped download", SanitizeForLog(Path.GetFileName(fileName)), existingSize);
                                 _activityLog.Enqueue($"[dim]○[/] {Path.GetFileName(fileName)} ({FormatBytes(existingSize)}) already exists");
                                 return;
                             }
@@ -360,7 +675,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to check existing download for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to check existing download for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗[/] event {@event.Id}: {EscapeMarkup(ex.Message)}");
                             return;
                         }
@@ -389,8 +704,20 @@ namespace VideoForensics.Providers.Ring.Services
                                 fetchedWithoutThrottle = await ThrottleRetry.RunAsync(
                                     () => RetryWithBackoffAsync(async () =>
                                     {
-                                        await _pacer.WaitTurnAsync(rateLimitCts.Token);
-                                        await session.GetDoorbotHistoryRecording(@event, fileName);
+                                        MediaRequestPacer accountPacer = GetPacerForAccount(accountId);
+                                        await accountPacer.WaitTurnAsync(rateLimitCts.Token);
+                                        try
+                                        {
+                                            await session.GetDoorbotHistoryRecording(@event, fileName);
+                                            // A successful media request ends this account's rate-limit incident.
+                                            RecordMediaSuccess(accountId);
+                                        }
+                                        catch (ThrottledException ex)
+                                        {
+                                            // Each 429 pauses this account and slows it by a second; the rethrow keeps the existing retry handling.
+                                            await RecordThrottledAsync(accountId, ex, rateLimitCts.Token);
+                                            throw;
+                                        }
                                     }, $"video for event {@event.Id}", rateLimitCts.Token),
                                     (wait, ct) =>
                                     {
@@ -429,12 +756,15 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to compute SHA-256 hash for {FileName}", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -490,24 +820,24 @@ namespace VideoForensics.Providers.Ring.Services
                                             persons,
                                             occurrences);
 
-                                        _ = await UpsertEventRecordAsync(deviceGuid, eventIdStr, eventType, eventOccurredAtUtc,
+                                        _ = await UpsertEventRecordAsync(deviceGuid, cameraName, eventIdStr, eventType, eventOccurredAtUtc,
                                             @event.SnapshotUrl, downloadedAtUtc: DateTime.UtcNow, hash: sha256Hash, rateLimitCts.Token, apiResponse: @event);
 
                                         // Update watermark after successful DownloadEvent recording using the authoritative EventOccurredAtUtc
                                         try
                                         {
                                             await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, downloadEvent.EventOccurredAtUtc, rateLimitCts.Token);
-                                            _logger.LogInformation("Watermark advanced to {Timestamp} after recording {EventId}",
+                                            _logger.LogDebug("Watermark advanced to {Timestamp} after recording {EventId}",
                                                 downloadEvent.EventOccurredAtUtc, downloadEvent.ProviderEventId);
                                         }
                                         catch (Exception ex)
                                         {
-                                            _logger.LogWarning(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
+                                            _logger.LogError(ex, "Failed to update watermark after recording event {EventId}", downloadEvent.ProviderEventId);
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogWarning(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                                        _logger.LogError(ex, "Failed to record download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                                     }
                                 }
 
@@ -537,10 +867,12 @@ namespace VideoForensics.Providers.Ring.Services
                                     };
                                 }
 
+                                _logger.LogInformation("Downloaded media file {FileName} ({Bytes} bytes) for event {EventId}", SanitizeForLog(Path.GetFileName(fileName)), downloadedSize, eventIdStr);
                                 _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(downloadedSize)})");
                             }
                             else
                             {
+                                _logger.LogWarning("Media file {FileName} is empty or invalid", SanitizeForLog(Path.GetFileName(fileName)));
                                 _activityLog.Enqueue($"[red]✗[/] {Path.GetFileName(fileName)} empty/invalid");
                             }
                         }
@@ -550,7 +882,7 @@ namespace VideoForensics.Providers.Ring.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to download video for event {EventId}", @event.Id);
+                            _logger.LogError(ex, "Failed to download video for event {EventId}", @event.Id);
                             _activityLog.Enqueue($"[red]✗ {EscapeMarkup(Path.GetFileName(fileName))}: {EscapeMarkup(HumanizeExceptionTypeName(ex.GetType().Name))}[/]");
                             if (IsRateLimitError(ex))
                             {
@@ -590,7 +922,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception recordEx)
                                 {
-                                    _logger.LogWarning(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
+                                    _logger.LogError(recordEx, "Failed to record failed-download attempt in database for event {EventId}", eventIdStr);
                                 }
 
                                 // Persist the raw status code/body (when the exception carries one) against
@@ -616,7 +948,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 }
                                 catch (Exception apiErrorRecordEx)
                                 {
-                                    _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
+                                    _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for event {EventId}", eventIdStr);
                                 }
                             }
                         }
@@ -640,9 +972,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
-                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceId}",
-                    downloadedFiles, downloadedBytes, deviceId);
-                _logger.LogInformation("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
+                _logger.LogInformation("Downloaded {FileCount} videos ({Bytes} bytes) for device {DeviceName}",
+                    downloadedFiles, downloadedBytes, deviceName);
+                _logger.LogDebug("[DIAG] Peak concurrent downloads this batch: {Peak} (configured max: {Max}, items in batch: {ItemCount})",
                     _peakActiveDownloadsForBatch, _maxConcurrentFileDownloads, relevantEvents.Count);
                 // _logger has no provider registered in Program.cs (nothing sinks LogInformation
                 // anywhere right now), so also surface this via the activity log the UI already drains.
@@ -656,11 +988,11 @@ namespace VideoForensics.Providers.Ring.Services
                     try
                     {
                         await _dataClient.UpdateDeviceWatermarkAsync(deviceGuid, endDate, CancellationToken.None);
-                        _logger.LogInformation("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
+                        _logger.LogDebug("Advanced device watermark to batch end time {EndDate} to prevent re-scanning", endDate);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
+                        _logger.LogError(ex, "Failed to update device watermark to batch end time; next download may re-process some events");
                     }
                 }
 
@@ -715,7 +1047,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -739,7 +1071,7 @@ namespace VideoForensics.Providers.Ring.Services
             Guid? resolvedDeviceGuid = null;
             try
             {
-                _logger.LogInformation("Downloading latest snapshot for device {DeviceId}", deviceId);
+                _logger.LogDebug("Downloading latest snapshot for device {DeviceId}", deviceId);
 
                 Session? session = _sessionProvider.GetSession(_cachedProviderAccountId ?? Guid.Empty);
                 if (session == null)
@@ -772,11 +1104,13 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogInformation(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
                 }
 
-                // Get device name for consistent file naming (fallback to deviceId if unavailable)
-                string deviceNameForSnapshot = deviceId; // Snapshots don't have event data with device name, so use deviceId
+                // Snapshots carry no event data, so take the name from the device list (cached, so the
+                // state/details lookups below reuse it). Falls back to deviceId if unavailable.
+                string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
+                _logger.LogInformation("Snapshot starting for {DeviceName}", deviceNameForSnapshot);
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
@@ -800,7 +1134,18 @@ namespace VideoForensics.Providers.Ring.Services
                 // successful download.
                 if (!IsValidJpeg(fileName))
                 {
-                    _logger.LogWarning("Device {DeviceId} returned a non-image response instead of a snapshot (device likely offline)", deviceId);
+                    // Warn once while a device keeps returning non-images; repeats are debug until it returns a real image.
+                    DateTime nowUtc = DateTime.UtcNow;
+                    DateTime? lastWarnedUtc = _snapshotNonImageWarnedUtc.TryGetValue(deviceId, out DateTime last) ? last : null;
+                    if (ShouldWarnNonImage(lastWarnedUtc, nowUtc, _snapshotWarningWindow))
+                    {
+                        _snapshotNonImageWarnedUtc[deviceId] = nowUtc;
+                        _logger.LogWarning("{DeviceName} returned a non-image response instead of a snapshot (device likely offline)", deviceNameForSnapshot);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("{DeviceName} still returns a non-image snapshot response", deviceNameForSnapshot);
+                    }
                     File.Delete(fileName);
                     _currentStatus = _currentStatus with { IsDownloading = false };
                     _activityLog.Enqueue($"[red]✗[/] {deviceNameForSnapshot}: offline/no snapshot");
@@ -810,6 +1155,7 @@ namespace VideoForensics.Providers.Ring.Services
                     );
                 }
 
+                _ = _snapshotNonImageWarnedUtc.TryRemove(deviceId, out _);
                 long fileSize = new FileInfo(fileName).Length;
                 var mediaItemId = Guid.NewGuid();
                 bool metadataWritten = WriteSnapshotMetadataFile(fileName, deviceId, fileSize, mediaItemId);
@@ -821,26 +1167,30 @@ namespace VideoForensics.Providers.Ring.Services
                 // Resolve device identity and record snapshot download
                 (string? snapshotDeviceKind, bool? snapshotDeviceOnline) = await ResolveDeviceStateAsync(session, deviceId, cancellationToken);
                 RingDeviceDetails? snapshotDeviceDetails = await ResolveDeviceDetailsAsync(session, deviceId, cancellationToken);
-                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceId, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
+                Guid deviceGuid = await EnsureDeviceIdentityAsync(deviceId, deviceNameForSnapshot, providerLocationId, snapshotDeviceKind, snapshotDeviceOnline, cancellationToken, timeZoneId: snapshotDeviceDetails?.TimeZone, deviceFields: snapshotDeviceDetails?.DeviceFields);
                 resolvedDeviceGuid = deviceGuid;
 
                 // Compute SHA-256 hash for snapshot
-                string? sha256Hash = null;
+                string sha256Hash = string.Empty;
                 if (fileSize > 0)
                 {
                     try
                     {
-                        byte[] hashBytes = await SHA256.HashDataAsync(File.OpenRead(fileName), cancellationToken);
-                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        await using (FileStream hashStream = File.OpenRead(fileName))
+                        {
+                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, cancellationToken);
+                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to compute SHA-256 hash for snapshot {FileName}", SanitizeForLog(fileName));
                     }
                 }
 
                 // Record snapshot download in database
-                if (sha256Hash != null)
+                // Record even when hashing failed: the file is on disk, and a missing row would hide the snapshot from Media and the loop.
+                if (fileSize > 0)
                 {
                     try
                     {
@@ -885,7 +1235,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
+                        _logger.LogError(ex, "Failed to record snapshot download event in database for {FileName}. Download succeeded but database record was not created.", SanitizeForLog(fileName));
                     }
                 }
 
@@ -903,7 +1253,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _activityLog.Enqueue($"[green]✓[/] {Path.GetFileName(fileName)} ({FormatBytes(fileSize)})");
 
-                _logger.LogInformation("Downloaded latest snapshot ({Bytes} bytes) for device {DeviceId}", fileSize, deviceId);
+                _logger.LogDebug("Downloaded latest snapshot ({Bytes} bytes) for device {DeviceId}", fileSize, deviceId);
 
                 return new DownloadResult(
                     Success: true,
@@ -941,7 +1291,7 @@ namespace VideoForensics.Providers.Ring.Services
                     }
                     catch (Exception apiErrorRecordEx)
                     {
-                        _logger.LogWarning(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
+                        _logger.LogError(apiErrorRecordEx, "Failed to record provider API error log for snapshot download, device {DeviceId}", deviceId);
                     }
                 }
 
@@ -973,7 +1323,7 @@ namespace VideoForensics.Providers.Ring.Services
             return (json, hashHex);
         }
 
-        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string providerEventId, string eventType,
+        private async Task<Guid> UpsertEventRecordAsync(Guid deviceGuid, string deviceName, string providerEventId, string eventType,
             DateTime occurredAtUtc, string? snapshotUrl, DateTime? downloadedAtUtc, string? hash, CancellationToken ct,
             object? apiResponse = null)
         {
@@ -1017,7 +1367,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
+                _logger.LogError(ex, "Failed to upsert Events record for event {ProviderEventId}", providerEventId);
                 return Guid.Empty;
             }
         }
@@ -1152,7 +1502,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "event metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1160,7 +1510,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1206,9 +1556,50 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingCvProfile(string? Id, string? Name, double? Confidence);
         private record RingCvZone(string? Id, string? Name, double? Confidence);
 
+        /// <inheritdoc />
+        public static bool ShouldWarnNonImage(DateTime? lastWarnedUtc, DateTime nowUtc, TimeSpan window) =>
+            lastWarnedUtc is null || nowUtc - lastWarnedUtc.Value >= window;
+
+        /// <inheritdoc />
+        public void SetSnapshotWarningWindow(TimeSpan window)
+        {
+            _snapshotWarningWindow = window > TimeSpan.Zero ? window : TimeSpan.FromMinutes(15);
+        }
+
         public void SetActiveProviderAccountId(Guid accountId)
         {
             _cachedProviderAccountId = accountId;
+        }
+
+        /// <summary>
+        /// Looks up a device's display name (Description) from the cached device list. Returns null when the
+        /// list can't be fetched or the device isn't in it, so callers can fall back to the provider id.
+        /// </summary>
+        internal async Task<string?> ResolveDeviceNameAsync(Session session, string providerDeviceId, CancellationToken ct)
+        {
+            try
+            {
+                Entities.Devices? devices = await GetDevicesForHealthAsync(session, ct);
+                return FindDeviceName(devices, providerDeviceId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Could not fetch device list to resolve the name of device {DeviceId}", providerDeviceId);
+                return null;
+            }
+        }
+
+        private static string? FindDeviceName(Entities.Devices? devices, string providerDeviceId)
+        {
+            if (devices == null)
+            {
+                return null;
+            }
+
+            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
+                ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+                ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;
         }
 
         /// <summary>
@@ -1225,7 +1616,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve device {DeviceId}; recording it as Unknown with unknown online state", providerDeviceId);
                 return (null, null);
             }
 
@@ -1357,7 +1748,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// ("battery was at 8% shortly before this gap began") instead of guessing. Best-effort:
         /// any failure here is logged and swallowed, never fails the underlying video download.
         /// </summary>
-        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, Guid deviceGuid, CancellationToken ct)
+        internal async Task CaptureDeviceHealthSnapshotAsync(Session session, string providerDeviceId, string deviceName, Guid deviceGuid, CancellationToken ct)
         {
             try
             {
@@ -1367,25 +1758,28 @@ namespace VideoForensics.Providers.Ring.Services
                 Entities.DeviceHealth? health = DeviceHealthMatcher.FindDeviceHealth(devices, providerDeviceId);
                 if (health == null)
                 {
-                    _logger.LogDebug("No health telemetry available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No health telemetry available for device {DeviceName} in this run", deviceName);
                 }
                 else
                 {
                     Data.Common.Entities.DeviceHealth deviceHealth = BuildDeviceHealth(health, deviceGuid, DateTime.UtcNow);
                     _ = await _dataClient.RecordDeviceHealthAsync(deviceHealth, ct);
                     healthId = deviceHealth.Id;
-                    _logger.LogInformation("Captured health metric for device {DeviceId}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
-                        providerDeviceId, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
+                    _logger.LogDebug("Captured health metric for device {DeviceName}: battery={Battery}%, online={IsOnline}, rssi={Rssi}",
+                        deviceName, deviceHealth.BatteryPercentage, deviceHealth.IsOnline, deviceHealth.WifiSignalRssi);
                 }
 
                 RingDeviceDetails? details = RingDeviceDetailsMapper.Find(devices, providerDeviceId);
                 if (details == null)
                 {
-                    _logger.LogDebug("No device details available for device {DeviceId} in this run", providerDeviceId);
+                    _logger.LogDebug("No device details available for device {DeviceName} in this run", deviceName);
                     return;
                 }
 
                 DateTime nowUtc = DateTime.UtcNow;
+                // The download path can see a new kind before the settings sync does, so it records unknown kinds too.
+                await RingModelDiscovery.RecordUnknownKindAsync(
+                    _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyFor(devices, providerDeviceId), ct);
                 await _dataClient.RecordDeviceDetailsAsync(
                     deviceGuid,
                     healthId,
@@ -1397,7 +1791,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceId} (non-critical)", providerDeviceId);
+                _logger.LogWarning(ex, "Failed to capture device health or details for device {DeviceName} (non-critical)", deviceName);
             }
         }
 
@@ -1417,7 +1811,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
+                _logger.LogError(ex, "Could not fetch device list to resolve details for device {DeviceId}; continuing without them", providerDeviceId);
                 return null;
             }
         }
@@ -1470,7 +1864,7 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     if (startDate == _cachedHistoryStart.Value && endDate == _cachedHistoryEnd.Value)
                     {
-                        _logger.LogInformation("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
+                        _logger.LogDebug("Reusing cached doorbot history for {StartDate} to {EndDate} ({Count} events)",
                             startDate, endDate, _cachedHistoryEvents.Count);
                         return _cachedHistoryEvents;
                     }
@@ -1478,7 +1872,7 @@ namespace VideoForensics.Providers.Ring.Services
                     var filtered = _cachedHistoryEvents
                         .Where(e => e.CreatedAtDateTime.HasValue && e.CreatedAtDateTime.Value >= startDate && e.CreatedAtDateTime.Value <= endDate)
                         .ToList();
-                    _logger.LogInformation("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
+                    _logger.LogDebug("Serving {StartDate} to {EndDate} ({Count} events) from the wider cached range {CachedStart} to {CachedEnd} - no fetch needed",
                         startDate, endDate, filtered.Count, _cachedHistoryStart, _cachedHistoryEnd);
                     return filtered;
                 }
@@ -1486,7 +1880,7 @@ namespace VideoForensics.Providers.Ring.Services
                 DateTime fetchStart = _cachedHistoryStart.HasValue && _cachedHistoryStart.Value < startDate ? _cachedHistoryStart.Value : startDate;
                 DateTime fetchEnd = _cachedHistoryEnd.HasValue && _cachedHistoryEnd.Value > endDate ? _cachedHistoryEnd.Value : endDate;
 
-                _logger.LogInformation("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
+                _logger.LogDebug("Fetching doorbot history for {StartDate} to {EndDate}", fetchStart, fetchEnd);
                 List<Entities.DoorbotHistoryEvent> events = await session.GetDoorbotsHistory(fetchStart, fetchEnd);
                 _cachedHistoryEvents = events ?? [];
                 _cachedHistoryStart = fetchStart;
@@ -1547,7 +1941,7 @@ namespace VideoForensics.Providers.Ring.Services
 
                 if (!ValidateJsonSidecar(metadataPath, "snapshot metadata"))
                 {
-                    _logger.LogWarning("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
+                    _logger.LogError("Validation failed for metadata sidecar {MetadataPath}", SanitizeForLog(metadataPath));
                     return false;
                 }
 
@@ -1555,7 +1949,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
+                _logger.LogError(ex, "Failed to write metadata file for {MediaFilePath}", SanitizeForLog(mediaFilePath));
                 return false;
             }
         }
@@ -1638,7 +2032,7 @@ namespace VideoForensics.Providers.Ring.Services
                 // If we can parse it and get the root element, it's valid JSON
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    _logger.LogInformation("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
+                    _logger.LogDebug("✓ Validated {MetadataType} sidecar: {JsonPath} ({Size} bytes)",
                         SanitizeForLog(metadataType), Path.GetFileName(SanitizeForLog(jsonPath)), fileInfo.Length);
                     return true;
                 }
@@ -1650,12 +2044,12 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Invalid JSON in sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
+                _logger.LogError(ex, "Failed to validate JSON sidecar: {JsonPath}", SanitizeForLog(jsonPath));
                 return false;
             }
         }

@@ -42,19 +42,19 @@ namespace VideoForensics.WebApp.Services
                 var parts = cidrRange.Split('/');
                 if (parts.Length != 2)
                 {
-                    _logger.LogWarning("Invalid CIDR format: {CidrRange}", cidrRange);
+                    _logger.LogDebug("Invalid CIDR format in banned range");
                     return false;
                 }
 
                 if (!IPAddress.TryParse(parts[0], out var network))
                 {
-                    _logger.LogWarning("Failed to parse network address in CIDR: {CidrRange}", cidrRange);
+                    _logger.LogDebug("Failed to parse network address in CIDR");
                     return false;
                 }
 
                 if (!int.TryParse(parts[1], out var prefixLength) || prefixLength < 0 || prefixLength > (network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
                 {
-                    _logger.LogWarning("Invalid prefix length in CIDR: {CidrRange}", cidrRange);
+                    _logger.LogDebug("Invalid prefix length in CIDR");
                     return false;
                 }
 
@@ -62,7 +62,7 @@ namespace VideoForensics.WebApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking CIDR range: {CidrRange}", cidrRange);
+                _logger.LogError(ex, "Error checking CIDR range: {CidrRange}", cidrRange);
                 return false;
             }
         }

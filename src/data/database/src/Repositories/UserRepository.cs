@@ -49,7 +49,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Users.Add(user);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("User added: {UserId} ({DisplayName})", user.Id, MaskForLog(SanitizeForLog(user.DisplayName)));
+                _logger.LogDebug("User added: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
             }
             catch (Exception ex)
             {
@@ -66,11 +66,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Users.Update(user);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("User updated: {UserId}", user.Id);
+                _logger.LogDebug("User updated: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user: {UserId}", user.Id);
+                _logger.LogError(ex, "Error updating user: {DisplayName}", MaskForLog(SanitizeForLog(user.DisplayName)));
                 throw;
             }
         }
@@ -86,7 +86,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.Users.Remove(user);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("User deleted: {UserId}", userId);
+                    _logger.LogDebug("User deleted: {UserId}", userId);
                 }
             }
             catch (Exception ex)

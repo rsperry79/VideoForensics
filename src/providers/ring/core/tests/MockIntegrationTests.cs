@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
@@ -8,13 +9,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     /// Mock-based variants of integration tests. These tests don't require real Ring API credentials.
     /// They use MockHttpMessageHandler to simulate API responses.
     /// </summary>
-    public class MockIntegrationTests
+    public class MockIntegrationTests : IDisposable
     {
         private readonly MockSessionHelper? _mockHelper;
         private readonly Session? _mockSession;
 
         public MockIntegrationTests()
         {
+            RingTestHardBanIsolation.ResetForTest();
             _mockHelper = new MockSessionHelper();
             _mockSession = _mockHelper!.CreateSessionWithMockHandler();
         }
@@ -1703,6 +1705,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Assert.Equal(true, doorbot.Health.Connected);
             Assert.Equal(88, doorbot.Health.BatteryPercentage);
         }
+
+        /// <summary>xUnit disposes each test's instance after the test: clear the throttle state it may have set.</summary>
+        public void Dispose() => RingTestHardBanIsolation.ResetForTest();
     }
 }
 

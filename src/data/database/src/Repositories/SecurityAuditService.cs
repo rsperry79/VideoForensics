@@ -88,7 +88,7 @@ namespace VideoForensics.Data.Database.Repositories
 
             db.SecurityEvents.Add(securityEvent);
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Security event recorded: {EventType} for operator {OperatorId}", eventType, operatorId);
+            _logger.LogDebug("Security event recorded: {EventType} for operator {OperatorId}", eventType, operatorId);
         }
 
         private static SecurityEventDto MapToDto(SecurityEvent @event)

@@ -38,6 +38,7 @@ public class StorageLocationProvider : IStorageLocationProvider
                 StorageCategory.Reports => Path.Combine(root, "Reports"),
                 StorageCategory.Backup => Path.Combine(root, "backup"),
                 StorageCategory.Keys => Path.Combine(root, "keys"),
+                StorageCategory.Exports => Path.Combine(root, "exports"),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
             };
         }
@@ -57,8 +58,19 @@ public class StorageLocationProvider : IStorageLocationProvider
             StorageCategory.Reports => "/var/lib/videoforensics/reports",
             StorageCategory.Backup => "/var/lib/videoforensics/backup",
             StorageCategory.Keys => "/var/lib/videoforensics/keys",
+            StorageCategory.Exports => "/var/lib/videoforensics/exports",
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
+    }
+
+    /// <inheritdoc />
+    public string GetDataRoot()
+    {
+        // Same root that the per-category Windows defaults hang off, so root-level files and category folders
+        // always live under one VideoForensics directory.
+        return OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics")
+            : "/var/lib/videoforensics";
     }
 
     public string GetEffectiveRoot(StorageCategory category, string? configuredOverride)
@@ -76,6 +88,7 @@ public class StorageLocationProvider : IStorageLocationProvider
         StorageCategory.Logs => "LogsPath",
         StorageCategory.Reports => "ReportsPath",
         StorageCategory.Backup => "BackupPath",
+        StorageCategory.Exports => "ExportsPath",
         StorageCategory.Keys => null,
         _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
     };
@@ -90,6 +103,7 @@ public class StorageLocationProvider : IStorageLocationProvider
         StorageCategory.Logs => "VIDEOFORENSICS_LOGS_PATH",
         StorageCategory.Reports => "VIDEOFORENSICS_REPORTS_PATH",
         StorageCategory.Backup => "VIDEOFORENSICS_BACKUP_PATH",
+        StorageCategory.Exports => "VIDEOFORENSICS_EXPORTS_PATH",
         StorageCategory.Keys => null,
         _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
     };

@@ -49,7 +49,7 @@ namespace VideoForensics.WebApp.Api
                     BaseUrl: baseUrl ?? string.Empty
                 );
 
-                logger.LogInformation("LlmSettings: GET successful, provider={Provider}", provider ?? "(not set)");
+                logger.LogDebug("LlmSettings: GET successful, provider={Provider}", provider ?? "(not set)");
                 return Results.Ok(response);
             }
             catch (Exception ex)

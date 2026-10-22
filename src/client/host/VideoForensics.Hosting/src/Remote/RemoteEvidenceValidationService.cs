@@ -23,8 +23,16 @@ namespace VideoForensics.Hosting.Remote
             _httpClient = httpClient;
         }
 
+        /// <summary>
+        /// <paramref name="progress"/> is accepted for interface parity but not used: this call is a single
+        /// request/response over HTTP, so per-file lines cannot stream back to the caller. The server-side job
+        /// (EvidenceValidationJobService) still shows start and finish lines.
+        /// </summary>
         /// <inheritdoc />
-        public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        public async Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(
+            Guid? deviceId,
+            CancellationToken ct,
+            IProgress<string>? progress = null)
         {
             var request = new VerifyLocalIntegrityRequest(deviceId);
             string jsonContent = JsonSerializer.Serialize(request);
@@ -42,17 +50,23 @@ namespace VideoForensics.Hosting.Remote
                 MediaItemId = dto.MediaItemId,
                 FileName = dto.FileName,
                 Status = dto.Status,
-                FailureReason = dto.FailureReason
+                FailureReason = dto.FailureReason,
+                DeviceId = dto.DeviceId
             }).ToList();
         }
 
+        /// <summary>
+        /// <paramref name="progress"/> is accepted for interface parity but not used: the HTTP response arrives
+        /// only once the whole reconcile finishes, so nothing can stream per discrepancy.
+        /// </summary>
         /// <inheritdoc />
         public async Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
             Guid deviceId,
             string providerDeviceId,
             DateTime fromUtc,
             DateTime toUtc,
-            CancellationToken ct)
+            CancellationToken ct,
+            IProgress<string>? progress = null)
         {
             var request = new ReconcileWithProviderRequest(deviceId, providerDeviceId, fromUtc, toUtc);
             string jsonContent = JsonSerializer.Serialize(request);

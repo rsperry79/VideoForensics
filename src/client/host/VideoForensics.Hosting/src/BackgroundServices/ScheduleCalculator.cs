@@ -34,21 +34,31 @@ namespace VideoForensics.Hosting.BackgroundServices
             return schedule.SnapshotNextRunUtc is null || schedule.SnapshotNextRunUtc.Value <= nowUtc;
         }
 
-        /// <summary>Next snapshot/RSSI run: now plus the currently effective interval.</summary>
+        /// <summary>
+        /// True when a roll-up is due: never rolled up, or the roll-up interval has passed since the last one.
+        /// The first roll-up covers the last interval, so it runs one interval after the schedule starts rolling up.
+        /// </summary>
+        public static bool IsRollupDue(SyncSchedule schedule, DateTime nowUtc)
+        {
+            return schedule.LastRollupUtc is null
+                || nowUtc - schedule.LastRollupUtc.Value >= TimeSpan.FromMinutes(schedule.SnapshotRollupIntervalMinutes);
+        }
+
+        /// <summary>Next snapshot/RSSI run: now plus the currently effective interval, in seconds.</summary>
         /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>
         public static DateTime NextSnapshotRunUtc(SyncSchedule schedule, DateTime nowUtc, TimeZoneInfo? timeZone = null)
         {
-            return nowUtc.AddMinutes(EffectiveSnapshotIntervalMinutes(schedule, nowUtc, timeZone));
+            return nowUtc.AddSeconds(EffectiveSnapshotIntervalSeconds(schedule, nowUtc, timeZone));
         }
 
         /// <summary>
-        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>: SnapshotRssiIntervalMinutes unless
+        /// The snapshot/RSSI interval in effect at <paramref name="nowUtc"/>: SnapshotRssiIntervalSeconds unless
         /// UseAdvancedJammingSchedule is set and at least one window applies (smallest wins). Always clamped to the minimum.
         /// </summary>
         /// <param name="timeZone">Zone used to evaluate jamming windows; null means the server's local zone.</param>
-        public static int EffectiveSnapshotIntervalMinutes(SyncSchedule schedule, DateTime nowUtc, TimeZoneInfo? timeZone = null)
+        public static int EffectiveSnapshotIntervalSeconds(SyncSchedule schedule, DateTime nowUtc, TimeZoneInfo? timeZone = null)
         {
-            int interval = schedule.SnapshotRssiIntervalMinutes;
+            int interval = schedule.SnapshotRssiIntervalSeconds;
 
             if (schedule.UseAdvancedJammingSchedule && schedule.JammingWindows.Count > 0)
             {
@@ -60,9 +70,9 @@ namespace VideoForensics.Hosting.BackgroundServices
                 int? best = null;
                 foreach (JammingScheduleWindow window in schedule.JammingWindows)
                 {
-                    if (Applies(window, day, minute) && (best is null || window.SnapshotRssiIntervalMinutes < best))
+                    if (Applies(window, day, minute) && (best is null || window.SnapshotRssiIntervalSeconds < best))
                     {
-                        best = window.SnapshotRssiIntervalMinutes;
+                        best = window.SnapshotRssiIntervalSeconds;
                     }
                 }
 
@@ -72,7 +82,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 }
             }
 
-            return Math.Max(interval, SyncSchedule.MinimumPollIntervalMinutes);
+            return Math.Max(interval, SyncSchedule.MinimumSnapshotIntervalSeconds);
         }
 
         private static bool Applies(JammingScheduleWindow window, int day, int minute)

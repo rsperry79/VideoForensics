@@ -96,6 +96,12 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         void SetMaxConcurrentDownloads(int value) { }
 
         /// <summary>
+        /// The window over which a device's repeated non-image snapshot warning is logged once. The snapshot sync sets it to the
+        /// account's roll-up interval, so a device logs at most once per roll-up window. Providers without the warning ignore it.
+        /// </summary>
+        void SetSnapshotWarningWindow(TimeSpan window) { }
+
+        /// <summary>
         /// Paces provider media requests: at most <paramref name="maxConcurrent"/> downloads in flight, and at least
         /// <paramref name="minRequestInterval"/> between the starts of consecutive requests. A no-op for providers that
         /// do not rate-limit media requests.

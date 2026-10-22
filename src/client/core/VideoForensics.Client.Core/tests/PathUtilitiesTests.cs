@@ -236,40 +236,6 @@ namespace VideoForensics.Client.Core.Tests
         }
 
         [Fact]
-        public void GetOneDrivePath_ReturnsStringOrNull()
-        {
-            string? result = PathUtilities.GetOneDrivePath();
-
-            // Result can be null (no OneDrive) or a valid path
-            if (result != null)
-            {
-                Assert.NotEmpty(result);
-                Assert.True(Directory.Exists(result) || Environment.OSVersion.Platform != PlatformID.Win32NT);
-            }
-        }
-
-        [Fact]
-        public void GetOneDrivePath_IfExists_IsValidDirectory()
-        {
-            string? result = PathUtilities.GetOneDrivePath();
-
-            if (result != null)
-            {
-                // If OneDrive path is returned, it should be a valid directory (or at least a reasonable path)
-                Assert.NotEmpty(result);
-            }
-        }
-
-        [Fact]
-        public void GetOneDrivePath_Consistent()
-        {
-            string? result1 = PathUtilities.GetOneDrivePath();
-            string? result2 = PathUtilities.GetOneDrivePath();
-
-            Assert.Equal(result1, result2);
-        }
-
-        [Fact]
         public void BuildSavePath_LongLocationName_StillValid()
         {
             string basePath = @"C:\Videos";

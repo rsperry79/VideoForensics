@@ -6,6 +6,8 @@
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Ui.Shared.Services
 @using Syncfusion.Blazor.Calendars
+@using VideoForensics.Ui.Shared.Components.Scope
+@using VideoForensics.Ui.Shared.Services.Scope
 @inject PairedSessionState SessionState
 @inject IReportGenerationService ReportGenerationService
 @inject IDeviceRepository DeviceRepository
@@ -27,10 +29,12 @@ else
     <PageRightPanelContent>
         <div class="right-panel-section">
             <h6>@L["Filters"]</h6>
-            <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions"
-                Placeholder="@L["AllDevicesPlaceholder"]" class="w-100 mt-2" ValueChange="@(async (ChangeEventArgs<string, KeyValuePair<string, string>> args) => await RunReportAsync())">
-                <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-            </SfDropDownList>
+            <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
+            <SfMultiSelect TValue="string[]" TItem="KeyValuePair<string, string>" Value="@_selectedDeviceIds" ValueChanged="@OnDevicesPicked"
+                DataSource="@DeviceOptions" Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox"
+                Placeholder="@L["AllDevicesPlaceholder"]" class="w-100 mt-2">
+                <MultiSelectFieldSettings Text="Value" Value="Key"></MultiSelectFieldSettings>
+            </SfMultiSelect>
             <small class="mt-3">@L["FromLabel"]</small>
             <SfDatePicker TValue="DateTime" @bind-Value="_fromDate" ValueChange="RunReportAsync" CssClass="w-100" />
             <small class="mt-2">@L["ToLabel"]</small>
@@ -40,8 +44,14 @@ else
 
     </PageRightPanelContent>
 
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" data-testid="chain-report-error">@_error</div>
+    }
+
     @if (_report is not null)
     {
+        @* One combined verdict: the chain is verified only when every selected device's chain verifies. *@
         @if (_report.ChainIntegrityVerified)
         {
             <div class="alert alert-success">@L["ChainIntegrityVerified"]</div>
@@ -52,26 +62,27 @@ else
         }
 
         <h5 class="mt-4 mb-2">@L["AuditTrailTitle"]</h5>
-        @if (_report.AuditTrail.Count == 0)
+        @if (_auditRows.Count == 0)
         {
             <p>@L["NoAuditTrailFound"]</p>
         }
         else
         {
-            <SfGrid TValue="ActionLogEntry" DataSource="@_filteredAuditTrail" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
+            <SfGrid TValue="ChainAuditRow" DataSource="@_auditRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(ActionLogEntry.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100" />
-                    <GridColumn Field="@nameof(ActionLogEntry.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
-                    <GridColumn Field="@nameof(ActionLogEntry.ActorType)" HeaderText="@L["ColActorType"]" MinWidth="100" />
-                    <GridColumn Field="@nameof(ActionLogEntry.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
-                    <GridColumn Field="@nameof(ActionLogEntry.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.DeviceName)" HeaderText="@L["ColDevice"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.TimestampUtc)" HeaderText="@L["ColTimestamp"]" MinWidth="100"><Template><LocalTimeText Value="@((context as ChainAuditRow)!.TimestampUtc)" /></Template></GridColumn>
+                    <GridColumn Field="@nameof(ChainAuditRow.Actor)" HeaderText="@L["ColActor"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.ActorType)" HeaderText="@L["ColActorType"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.Action)" HeaderText="@L["ColAction"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(ChainAuditRow.EntityType)" HeaderText="@L["ColEntityType"]" MinWidth="100" />
                     <GridColumn HeaderText="@L["ColEntityId"]" MinWidth="100">
                         <Template>
                             @{
-                                var entry = (ActionLogEntry)context;
-                                @(entry.EntityId?.ToString("N")[..8] ?? "-")
+                                var row = (ChainAuditRow)context;
+                                @(row.EntityId?.ToString("N")[..8] ?? "-")
                             }
                         </Template>
                     </GridColumn>
@@ -85,14 +96,48 @@ else
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
-    private string _selectedDeviceId = string.Empty;
+    private string[] _selectedDeviceIds = Array.Empty<string>();
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
+
+    // The combined report: a verdict over every selected device, and one audit list with a device column.
     private ChainOfCustodyReport? _report;
-    private IEnumerable<ActionLogEntry> _filteredAuditTrail = new List<ActionLogEntry>();
+    private List<ChainAuditRow> _auditRows = new();
+    private int _reportVersion;
+    private string? _error;
+
+    /// <summary>One audit entry from any device; DeviceName is "-" for the unfiltered whole-database report.</summary>
+    private sealed record ChainAuditRow(
+        string DeviceName,
+        DateTime TimestampUtc,
+        string Actor,
+        ActorType ActorType,
+        string Action,
+        string EntityType,
+        Guid? EntityId);
+
+    // Provider/Account filters narrow the device list. With no explicit selection, a filter means every device it
+    // leaves visible; a filter that leaves none shows no report.
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private bool _isFiltered;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
-        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+        _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+
+    private async Task OnDevicesPicked(string[] selected)
+    {
+        _selectedDeviceIds = selected ?? Array.Empty<string>();
+        await RunReportAsync();
+    }
+
+    private async Task OnDeviceFilterChanged(DeviceFilterResult result)
+    {
+        _isFiltered = result.IsFiltered;
+        _visibleDevices = result.Devices.ToList();
+        var visibleIds = _visibleDevices.Select(d => d.Id.ToString()).ToHashSet();
+        _selectedDeviceIds = _selectedDeviceIds.Where(visibleIds.Contains).ToArray();
+        await RunReportAsync();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,6 +151,7 @@ else
             {
                 var devices = await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+                _visibleDevices = _devices;
                 await RunReportAsync();
             }
         }
@@ -115,14 +161,88 @@ else
         }
     }
 
+    /// <summary>Runs the report for the current selection. Overlapping runs are resolved by version: only the newest one is shown.</summary>
     private async Task RunReportAsync()
     {
-        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
-        _report = await ReportGenerationService.BuildChainOfCustodyReportAsync(
-            deviceId,
-            _fromDate,
-            _toDate,
-            CancellationToken.None);
-        _filteredAuditTrail = _report?.AuditTrail ?? new List<ActionLogEntry>();
+        int version = ++_reportVersion;
+        _error = null;
+        try
+        {
+            await RunReportCoreAsync(version);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (version == _reportVersion)
+            {
+                _error = L["ChainReportFailed", ex.Message].Value;
+                _report = null;
+                _auditRows = new List<ChainAuditRow>();
+            }
+        }
     }
+
+    private async Task RunReportCoreAsync(int version)
+    {
+        if (_selectedDeviceIds.Length == 0 && !_isFiltered)
+        {
+            // Unfiltered and nothing picked: the whole database, as before.
+            var whole = await ReportGenerationService.BuildChainOfCustodyReportAsync(null, _fromDate, _toDate, CancellationToken.None);
+            if (version != _reportVersion)
+            {
+                return;
+            }
+
+            _report = whole;
+            _auditRows = whole.AuditTrail.Select(e => ToRow("-", e)).OrderByDescending(r => r.TimestampUtc).ToList();
+            return;
+        }
+
+        // Explicit devices, or every device a filter leaves visible; a filter that leaves none has nothing to report.
+        var targets = _selectedDeviceIds.Length > 0
+            ? _visibleDevices.Where(d => _selectedDeviceIds.Contains(d.Id.ToString())).ToList()
+            : _visibleDevices;
+
+        if (targets.Count == 0)
+        {
+            _report = null;
+            _auditRows = new List<ChainAuditRow>();
+            return;
+        }
+
+        var rows = new List<ChainAuditRow>();
+        var seen = new HashSet<Guid>();
+        ChainOfCustodyReport? first = null;
+        foreach (var device in targets)
+        {
+            var report = await ReportGenerationService.BuildChainOfCustodyReportAsync(device.Id, _fromDate, _toDate, CancellationToken.None);
+            if (version != _reportVersion)
+            {
+                return; // A newer filter or date change has started; its result replaces this one.
+            }
+
+            first ??= report;
+            foreach (var entry in report.AuditTrail.Where(e => seen.Add(e.Id)))
+            {
+                rows.Add(ToRow(device.Name, entry));
+            }
+        }
+
+        // The hash chain is one chain for the whole log, so every per-device report carries the same verdict.
+        _report = new ChainOfCustodyReport
+        {
+            ChainIntegrityVerified = first!.ChainIntegrityVerified,
+            ChainVerificationStatus = first.ChainVerificationStatus,
+            AuditTrail = new List<ActionLogEntry>(),
+        };
+        _auditRows = rows.OrderByDescending(r => r.TimestampUtc).ToList();
+    }
+
+    private static ChainAuditRow ToRow(string deviceName, ActionLogEntry entry) => new(
+        deviceName,
+        entry.TimestampUtc,
+        entry.Actor,
+        entry.ActorType,
+        entry.Action,
+        entry.EntityType,
+        entry.EntityId);
 }

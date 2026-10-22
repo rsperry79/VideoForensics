@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Logging.Contracts;
@@ -20,12 +22,14 @@ namespace VideoForensics.Data.Core.Services
         private readonly IMediaItemRepository _mediaItemRepository;
         private readonly IDeviceHealthRepository _deviceHealthRepository;
         private readonly IDeviceDetailsRepository _deviceDetailsRepository;
+        private readonly IDeviceModelRepository _deviceModelRepository;
         private readonly IProviderApiErrorLogRepository _providerApiErrorLogRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWatermarkService _watermarkService;
         private readonly IActionLogger _actionLogger;
         private readonly ILogger<VideoForensicsDataClient> _logger;
         private readonly IMediaAnalysisService _mediaAnalysis;
+        private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -41,6 +45,7 @@ namespace VideoForensics.Data.Core.Services
             IMediaItemRepository mediaItemRepository,
             IDeviceHealthRepository deviceHealthRepository,
             IDeviceDetailsRepository deviceDetailsRepository,
+            IDeviceModelRepository deviceModelRepository,
             IProviderApiErrorLogRepository providerApiErrorLogRepository,
             IUnitOfWork unitOfWork,
             IWatermarkService watermarkService,
@@ -49,7 +54,8 @@ namespace VideoForensics.Data.Core.Services
             IIntegrityVerificationService integrityVerification,
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
-            IMediaAnalysisService mediaAnalysis)
+            IMediaAnalysisService mediaAnalysis,
+            IEvidenceChangeNotifier? evidenceChangeNotifier = null)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -60,6 +66,7 @@ namespace VideoForensics.Data.Core.Services
             _mediaItemRepository = mediaItemRepository;
             _deviceHealthRepository = deviceHealthRepository;
             _deviceDetailsRepository = deviceDetailsRepository;
+            _deviceModelRepository = deviceModelRepository;
             _providerApiErrorLogRepository = providerApiErrorLogRepository;
             _unitOfWork = unitOfWork;
             _watermarkService = watermarkService;
@@ -69,6 +76,7 @@ namespace VideoForensics.Data.Core.Services
             ActionLog = actionLogRepository;
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
+            _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -76,7 +84,7 @@ namespace VideoForensics.Data.Core.Services
             try
             {
                 await _deviceRepository.AddAsync(device, ct);
-                _logger.LogInformation("Device registered: {DeviceName} ({DeviceId})", device.Name, device.Id);
+                _logger.LogInformation("Device registered: {DeviceName}", device.Name);
                 _ = await _actionLogger.LogAsync("DeviceRegistered", nameof(Device), device.Id, ct: ct);
                 return device;
             }
@@ -100,6 +108,11 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
+        public Task EnsureDeviceModelAsync(string provider, string kind, string family, CancellationToken ct)
+        {
+            return _deviceModelRepository.EnsureDiscoveredAsync(provider, kind, family, ct);
+        }
+
         public async Task RecordDeviceDetailsAsync(
             Guid deviceId,
             Guid? healthId,
@@ -116,6 +129,40 @@ namespace VideoForensics.Data.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recording device details for device {DeviceId}", deviceId);
+                throw;
+            }
+        }
+
+        public async Task UpdateDeviceDetailFieldsAsync(
+            Guid deviceId,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields details,
+            CancellationToken ct)
+        {
+            try
+            {
+                _ = await _unitOfWork.ExecuteAsync<object?>(async context =>
+                {
+                    Device? device = await context.Devices.GetAsync(deviceId, ct);
+                    if (device == null)
+                    {
+                        _logger.LogDebug("Device detail fields not stored: device {DeviceId} is not in the database yet", deviceId);
+                        return null;
+                    }
+
+                    var changes = new List<DeviceSettingChange>();
+                    ApplyDetailFields(device, details, changes);
+                    await context.Devices.UpdateAsync(device, ct);
+                    if (changes.Count > 0)
+                    {
+                        // Same unit of work as the Device update: history commits or rolls back with it.
+                        await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                    }
+                    return null;
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating detail fields for device {DeviceId}", deviceId);
                 throw;
             }
         }
@@ -160,7 +207,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
+                _logger.LogError(ex, "Media analysis failed for media item {MediaItemId}", mediaItemId);
             }
         }
 
@@ -223,9 +270,11 @@ namespace VideoForensics.Data.Core.Services
                         null,
                         ct);
 
-                    _logger.LogInformation(
-                        "Download event recorded for device {DeviceId}, provider event {ProviderEventId}, success={Success}",
-                        evt.DeviceId,
+                    Device? device = await context.Devices.GetAsync(evt.DeviceId, ct);
+
+                    _logger.LogDebug(
+                        "Download event recorded for device {DeviceName}, provider event {ProviderEventId}, success={Success}",
+                        device?.Name ?? "unknown device",
                         evt.ProviderEventId,
                         evt.Success);
 
@@ -237,6 +286,7 @@ namespace VideoForensics.Data.Core.Services
                     await AnalyzeSavedMediaAsync(media.Id, ct);
                 }
 
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
                 return saved;
             }
             catch (Exception ex)
@@ -258,7 +308,7 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async context =>
+                Event saved = await _unitOfWork.ExecuteAsync(async context =>
                 {
                     // Upsert the Event record itself
                     Event upserted = await context.Events.UpsertAsync(evt, ct);
@@ -322,6 +372,9 @@ namespace VideoForensics.Data.Core.Services
 
                     return upserted;
                 }, ct);
+
+                await _evidenceChangeNotifier.EvidenceChangedAsync(evt.DeviceId, ct);
+                return saved;
             }
             catch (Exception ex)
             {
@@ -365,12 +418,12 @@ namespace VideoForensics.Data.Core.Services
                             CreatedUtc = DateTime.UtcNow
                         };
                         await context.Users.AddAsync(user, ct);
-                        _logger.LogInformation("Created new user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Created new user: {DisplayName}", displayName);
                     }
                     else
                     {
                         user = existingUser;
-                        _logger.LogInformation("Found existing user: {DisplayName} ({UserId})", displayName, user.Id);
+                        _logger.LogDebug("Found existing user: {DisplayName}", displayName);
                     }
 
                     // Try to find existing provider account
@@ -391,12 +444,12 @@ namespace VideoForensics.Data.Core.Services
                             IsActive = true
                         };
                         await context.ProviderAccounts.AddAsync(account, ct);
-                        _logger.LogInformation("Created new provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Created new provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
                     else
                     {
                         account = existingAccount;
-                        _logger.LogInformation("Found existing provider account: {Provider} for user {UserId}", providerName, user.Id);
+                        _logger.LogDebug("Found existing provider account: {Provider} for user {DisplayName}", providerName, user.DisplayName);
                     }
 
                     _ = await context.ActionLog.AppendAsync(
@@ -413,8 +466,8 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user key {ProviderUserKey}",
-                    providerName, providerUserKey);
+                _logger.LogError(ex, "Error ensuring user and account for provider {ProviderName}, user {DisplayName}",
+                    providerName, displayName);
                 throw;
             }
         }
@@ -448,13 +501,13 @@ namespace VideoForensics.Data.Core.Services
                             SyncStatus = SyncStatus.Synced
                         };
                         await context.Locations.AddAsync(location, ct);
-                        _logger.LogInformation("Created new location: {LocationName} ({LocationId})", name, location.Id);
+                        _logger.LogDebug("Created new location: {LocationName}", name);
                         await context.Locations.LinkToProviderAccountAsync(location.Id, providerAccountId, ct);
                         return location;
                     }
                     else
                     {
-                        _logger.LogInformation("Found existing location: {LocationName} ({LocationId})", existingLocation.Name, existingLocation.Id);
+                        _logger.LogDebug("Found existing location: {LocationName}", existingLocation.Name);
                         // Locations are globally unique but shared across accounts; ensure this account is linked (idempotent).
                         await context.Locations.LinkToProviderAccountAsync(existingLocation.Id, providerAccountId, ct);
                         return existingLocation;
@@ -470,72 +523,162 @@ namespace VideoForensics.Data.Core.Services
         }
 
         /// <summary>
+        /// Records one change row when a stored scalar differs from the incoming value. A null stored value is never a
+        /// change (first population of a column), and null-to-null is equal. Values are invariant-culture text so the
+        /// history reads the same regardless of the server's locale.
+        /// </summary>
+        private static void TrackScalarChange(List<DeviceSettingChange>? changes, Guid deviceId, DateTime changedAtUtc, string fieldName, object? stored, object? incoming)
+        {
+            if (changes == null || stored == null)
+            {
+                return;
+            }
+
+            string oldText = Convert.ToString(stored, CultureInfo.InvariantCulture)!;
+            string? newText = incoming == null ? null : Convert.ToString(incoming, CultureInfo.InvariantCulture);
+            if (oldText == newText)
+            {
+                return;
+            }
+
+            changes.Add(new DeviceSettingChange
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FieldName = fieldName,
+                OldValue = oldText,
+                NewValue = newText,
+                ChangedAtUtc = changedAtUtc
+            });
+        }
+
+        /// <summary>
         /// Copies provider detail fields onto a device row. A null <paramref name="details"/> is a no-op so a
         /// sync that carries no detail fields never blanks values already on record; a non-null one overwrites
         /// every column, so a field the provider no longer reports is stored as null.
+        /// When <paramref name="changes"/> is supplied, each scalar whose stored value actually changes is appended to it
+        /// BEFORE the overwrite, so the caller persists the history in the same transaction. Pass null on create paths.
         /// </summary>
-        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details)
+        private static void ApplyDetailFields(Device device, VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields? details, List<DeviceSettingChange>? changes = null)
         {
             if (details == null)
             {
                 return;
             }
 
+            DateTime changedAtUtc = DateTime.UtcNow;
+
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingDeviceId), device.RingDeviceId, details.RingDeviceId);
             device.RingDeviceId = details.RingDeviceId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingKind), device.RingKind, details.RingKind);
             device.RingKind = details.RingKind;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.FirmwareVersion), device.FirmwareVersion, details.FirmwareVersion);
             device.FirmwareVersion = details.FirmwareVersion;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Latitude), device.Latitude, details.Latitude);
             device.Latitude = details.Latitude;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Longitude), device.Longitude, details.Longitude);
             device.Longitude = details.Longitude;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Address), device.Address, details.Address);
             device.Address = details.Address;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Subscribed), device.Subscribed, details.Subscribed);
             device.Subscribed = details.Subscribed;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SubscribedMotions), device.SubscribedMotions, details.SubscribedMotions);
             device.SubscribedMotions = details.SubscribedMotions;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryLife), device.BatteryLife, details.BatteryLife);
             device.BatteryLife = details.BatteryLife;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ExternalConnection), device.ExternalConnection, details.ExternalConnection);
             device.ExternalConnection = details.ExternalConnection;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Owned), device.Owned, details.Owned);
             device.Owned = details.Owned;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.Stolen), device.Stolen, details.Stolen);
             device.Stolen = details.Stolen;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableVod), device.EnableVod, details.EnableVod);
             device.EnableVod = details.EnableVod;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ExposureControl), device.ExposureControl, details.ExposureControl);
             device.ExposureControl = details.ExposureControl;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionSnoozePresetProfile), device.MotionSnoozePresetProfile, details.MotionSnoozePresetProfile);
             device.MotionSnoozePresetProfile = details.MotionSnoozePresetProfile;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LiveViewPresetProfile), device.LiveViewPresetProfile, details.LiveViewPresetProfile);
             device.LiveViewPresetProfile = details.LiveViewPresetProfile;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSensitivity1), device.PirSensitivity1, details.PirSensitivity1);
             device.PirSensitivity1 = details.PirSensitivity1;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.VodSuspended), device.VodSuspended, details.VodSuspended);
             device.VodSuspended = details.VodSuspended;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DoorbellVolume), device.DoorbellVolume, details.DoorbellVolume);
             device.DoorbellVolume = details.DoorbellVolume;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.VodStatus), device.VodStatus, details.VodStatus);
             device.VodStatus = details.VodStatus;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.AdvancedMotionDetectionEnabled), device.AdvancedMotionDetectionEnabled, details.AdvancedMotionDetectionEnabled);
             device.AdvancedMotionDetectionEnabled = details.AdvancedMotionDetectionEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.AdvancedMotionDetectionHumanOnlyMode), device.AdvancedMotionDetectionHumanOnlyMode, details.AdvancedMotionDetectionHumanOnlyMode);
             device.AdvancedMotionDetectionHumanOnlyMode = details.AdvancedMotionDetectionHumanOnlyMode;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableAudioRecording), device.EnableAudioRecording, details.EnableAudioRecording);
             device.EnableAudioRecording = details.EnableAudioRecording;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.EnableWhiteLeds), device.EnableWhiteLeds, details.EnableWhiteLeds);
             device.EnableWhiteLeds = details.EnableWhiteLeds;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.ChimeVolume), device.ChimeVolume, details.ChimeVolume);
             device.ChimeVolume = details.ChimeVolume;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DingAudioUserId), device.DingAudioUserId, details.DingAudioUserId);
             device.DingAudioUserId = details.DingAudioUserId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DingAudioId), device.DingAudioId, details.DingAudioId);
             device.DingAudioId = details.DingAudioId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionAudioUserId), device.MotionAudioUserId, details.MotionAudioUserId);
             device.MotionAudioUserId = details.MotionAudioUserId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionAudioId), device.MotionAudioId, details.MotionAudioId);
             device.MotionAudioId = details.MotionAudioId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.DoNotDisturbSecondsLeft), device.DoNotDisturbSecondsLeft, details.DoNotDisturbSecondsLeft);
             device.DoNotDisturbSecondsLeft = details.DoNotDisturbSecondsLeft;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LightBrightness), device.LightBrightness, details.LightBrightness);
             device.LightBrightness = details.LightBrightness;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerId), device.OwnerId, details.OwnerId);
             device.OwnerId = details.OwnerId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerFirstName), device.OwnerFirstName, details.OwnerFirstName);
             device.OwnerFirstName = details.OwnerFirstName;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerLastName), device.OwnerLastName, details.OwnerLastName);
             device.OwnerLastName = details.OwnerLastName;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.OwnerEmail), device.OwnerEmail, details.OwnerEmail);
             device.OwnerEmail = details.OwnerEmail;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingType), device.RingType, details.RingType);
             device.RingType = details.RingType;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.RingRingId), device.RingRingId, details.RingRingId);
             device.RingRingId = details.RingRingId;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryLife2), device.BatteryLife2, details.BatteryLife2);
             device.BatteryLife2 = details.BatteryLife2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage), device.BatteryVoltage, details.BatteryVoltage);
             device.BatteryVoltage = details.BatteryVoltage;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.BatteryVoltage2), device.BatteryVoltage2, details.BatteryVoltage2);
             device.BatteryVoltage2 = details.BatteryVoltage2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LedStatus), device.LedStatus, details.LedStatus);
             device.LedStatus = details.LedStatus;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SirenSecondsRemaining), device.SirenSecondsRemaining, details.SirenSecondsRemaining);
             device.SirenSecondsRemaining = details.SirenSecondsRemaining;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightMode), device.NightMode, details.NightMode);
             device.NightMode = details.NightMode;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionSnoozeJson), device.MotionSnoozeJson, details.MotionSnoozeJson);
             device.MotionSnoozeJson = details.MotionSnoozeJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsMetadataJson), device.SettingsMetadataJson, details.SettingsMetadataJson);
             device.SettingsMetadataJson = details.SettingsMetadataJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.LightSettingsMetadataJson), device.LightSettingsMetadataJson, details.LightSettingsMetadataJson);
             device.LightSettingsMetadataJson = details.LightSettingsMetadataJson;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity1), device.PirSettingsSensitivity1, details.PirSettingsSensitivity1);
             device.PirSettingsSensitivity1 = details.PirSettingsSensitivity1;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity2), device.PirSettingsSensitivity2, details.PirSettingsSensitivity2);
             device.PirSettingsSensitivity2 = details.PirSettingsSensitivity2;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsSensitivity3), device.PirSettingsSensitivity3, details.PirSettingsSensitivity3);
             device.PirSettingsSensitivity3 = details.PirSettingsSensitivity3;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsZoneEnable), device.PirSettingsZoneEnable, details.PirSettingsZoneEnable);
             device.PirSettingsZoneEnable = details.PirSettingsZoneEnable;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.PirSettingsZoneMask), device.PirSettingsZoneMask, details.PirSettingsZoneMask);
             device.PirSettingsZoneMask = details.PirSettingsZoneMask;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.NightModeOn), device.NightModeOn, details.NightModeOn);
             device.NightModeOn = details.NightModeOn;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.MotionDetectionEnabled), device.MotionDetectionEnabled, details.MotionDetectionEnabled);
             device.MotionDetectionEnabled = details.MotionDetectionEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeType), device.SettingsChimeType, details.SettingsChimeType);
             device.SettingsChimeType = details.SettingsChimeType;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeEnabled), device.SettingsChimeEnabled, details.SettingsChimeEnabled);
             device.SettingsChimeEnabled = details.SettingsChimeEnabled;
+            TrackScalarChange(changes, device.Id, changedAtUtc, nameof(Device.SettingsChimeDuration), device.SettingsChimeDuration, details.SettingsChimeDuration);
             device.SettingsChimeDuration = details.SettingsChimeDuration;
         }
 
@@ -588,7 +731,7 @@ namespace VideoForensics.Data.Core.Services
                         };
                         ApplyDetailFields(device, details);
                         await context.Devices.AddAsync(device, ct);
-                        _logger.LogInformation("Created new device: {DeviceName} ({DeviceId})", name, device.Id);
+                        _logger.LogInformation("Created new device: {DeviceName}", name);
                         return device;
                     }
                     else
@@ -621,7 +764,9 @@ namespace VideoForensics.Data.Core.Services
                                 ApiResponseHash = apiResponseHash,
                                 TimeZoneId = timeZoneId,
                                 LastSyncedUtc = DateTime.UtcNow,
-                                SyncStatus = SyncStatus.Synced
+                                SyncStatus = SyncStatus.Synced,
+                                // Local operator setting, not a Ring value: carry it over so a move does not re-enable capture.
+                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled
                             };
                             ApplyDetailFields(newDevice, details);
 
@@ -635,7 +780,17 @@ namespace VideoForensics.Data.Core.Services
                         }
 
                         // Update device properties if it exists in the same location
-                        existingDevice.Name = name;
+                        // Callers fall back to the provider device ID as the name when a name lookup
+                        // fails; don't let that placeholder overwrite a real stored name.
+                        bool incomingNameIsId = name == providerDeviceId || name == existingDevice.Id.ToString();
+                        bool storedNameIsReal = !string.IsNullOrWhiteSpace(existingDevice.Name)
+                            && existingDevice.Name != providerDeviceId
+                            && existingDevice.Name != existingDevice.Id.ToString();
+                        if (!(incomingNameIsId && storedNameIsReal))
+                        {
+                            existingDevice.Name = name;
+                        }
+
                         existingDevice.Type = type;
                         existingDevice.IsOnline = isOnline;
                         // Only overwrite the stored time zone when this sync actually carries one, so a
@@ -645,9 +800,21 @@ namespace VideoForensics.Data.Core.Services
                             existingDevice.TimeZoneId = timeZoneId;
                         }
 
-                        ApplyDetailFields(existingDevice, details);
+                        // Same guard as TimeZoneId: a sync that carries no response hash keeps the stored one.
+                        if (!string.IsNullOrWhiteSpace(apiResponseHash))
+                        {
+                            existingDevice.ApiResponseHash = apiResponseHash;
+                        }
+
+                        var changes = new List<DeviceSettingChange>();
+                        ApplyDetailFields(existingDevice, details, changes);
                         await context.Devices.UpdateAsync(existingDevice, ct);
-                        _logger.LogInformation("Found and updated existing device: {DeviceName} ({DeviceId})", existingDevice.Name, existingDevice.Id);
+                        if (changes.Count > 0)
+                        {
+                            // Same unit of work as the Device update: history commits or rolls back with it.
+                            await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
+                        }
+                        _logger.LogDebug("Found and updated existing device: {DeviceName}", existingDevice.Name);
                         return existingDevice;
                     }
                 }, ct);
@@ -679,14 +846,14 @@ namespace VideoForensics.Data.Core.Services
                         {
                             device.LastSuccessfulPullAtUtc = latestSuccessfulPullTime;
                             await context.Devices.UpdateAsync(device, ct);
-                            _logger.LogInformation("Advanced watermark for device {DeviceId} to {Timestamp}",
-                                deviceId, latestSuccessfulPullTime);
+                            _logger.LogDebug("Advanced watermark for device {DeviceName} to {Timestamp}",
+                                device.Name, latestSuccessfulPullTime);
                         }
                         else
                         {
                             _logger.LogDebug(
-                                "Skipped watermark update for device {DeviceId}: {Timestamp} is not newer than current watermark {Current}",
-                                deviceId, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
+                                "Skipped watermark update for device {DeviceName}: {Timestamp} is not newer than current watermark {Current}",
+                                device.Name, latestSuccessfulPullTime, device.LastSuccessfulPullAtUtc.Value);
                         }
                     }
                     else
@@ -711,12 +878,12 @@ namespace VideoForensics.Data.Core.Services
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(providerAccountId, ct);
                 if (account?.LastDownloadTimeUtc.HasValue == true)
                 {
-                    _logger.LogInformation("Account {AccountId} last download at {Timestamp}", providerAccountId, account.LastDownloadTimeUtc.Value);
+                    _logger.LogDebug("Account {AccountName} last download at {Timestamp}", account.ProviderName, account.LastDownloadTimeUtc.Value);
                     return account.LastDownloadTimeUtc.Value;
                 }
 
                 DateTime defaultStart = DateTime.UtcNow.AddDays(-181);
-                _logger.LogInformation("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
+                _logger.LogDebug("Account {AccountId} has no download history; defaulting to 181 days ago: {DefaultStart}", providerAccountId, defaultStart);
                 return defaultStart;
             }
             catch (Exception ex)
@@ -739,8 +906,8 @@ namespace VideoForensics.Data.Core.Services
                         {
                             account.LastDownloadTimeUtc = latestDownloadTime;
                             await context.ProviderAccounts.UpdateAsync(account, ct);
-                            _logger.LogInformation("Advanced account download watermark for account {AccountId} to {Timestamp}",
-                                providerAccountId, latestDownloadTime);
+                            _logger.LogDebug("Advanced account download watermark for account {AccountName} to {Timestamp}",
+                                account.ProviderName, latestDownloadTime);
                         }
                     }
                     else

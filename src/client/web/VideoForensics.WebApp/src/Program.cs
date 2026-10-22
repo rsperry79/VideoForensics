@@ -1,3 +1,4 @@
+using BlazorLocalTime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +13,7 @@ using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.WebApp.Services.CircuitGuards;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
@@ -26,6 +28,7 @@ using VideoForensics.WebApp.Components;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Infrastructure;
+using VideoForensics.WebApp.RateLimiting;
 using VideoForensics.WebApp.Services;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
@@ -120,6 +123,8 @@ builder.Services.AddInMemoryLogBuffer();
 builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
+// Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
+builder.Services.AddBlazorLocalTimeService();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options => options.DetailedErrors = builder.Environment.IsDevelopment());
 
@@ -243,14 +248,7 @@ builder.Services.AddRateLimiter(options =>
     _ = options.AddPolicy("media", httpContext =>
     {
         INetworkTierResolver resolver = httpContext.RequestServices.GetRequiredService<INetworkTierResolver>();
-        string key = resolver.ResolveClientIp(httpContext);
-        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = 120,
-            Window = TimeSpan.FromMinutes(1),
-            SegmentsPerWindow = 4,
-            QueueLimit = 0
-        });
+        return MediaRateLimitPolicy.Create(httpContext, resolver);
     });
 
     // MCP HTTP endpoint rate limiting (Milestone 8): separate, more permissive policy than auth
@@ -281,8 +279,34 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
+// Windows update installer (downloads the release .exe and launches it with /passive). AddVideoForensicsServerCore
+// registers the Debian default first, so this registration comes after it and wins.
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+}
+// Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
+// own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
+builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
+builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.EvidenceChangedBus>();
+builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.WebApp.Hubs.LiveThumbnailNotifier>());
+builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IEvidenceChangeNotifier, VideoForensics.WebApp.Hubs.LiveEvidenceNotifier>());
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, VideoForensics.WebApp.Services.LocalThumbnailReadySource>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource, VideoForensics.WebApp.Services.LocalEvidenceChangedSource>();
+// Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
+// circuit's link never reaches another circuit; both interfaces share one bus instance.
+builder.Services.AddScoped<AccountLinkedBus>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedNotifier>(sp => sp.GetRequiredService<AccountLinkedBus>());
+// Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
+builder.Services.AddSnapshotProbe(builder.Configuration);
+
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
+
+// Server-side Ring snapshot capture per enabled device (on by default; SnapshotCapture:Enabled=false turns it off).
+builder.Services.AddVideoForensicsSnapshotCapture(builder.Configuration);
+builder.Services.AddVideoForensicsAccountExport();
 
 // Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
 builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
@@ -317,6 +341,13 @@ builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, Video
 
 // Bulk validation service for running full validation across all devices.
 builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
+
+// First sync: runner, then validate-all as the media step, flagged complete only on full success.
+builder.Services.AddScoped<VideoForensics.WebApp.Services.InitialSyncCoordinator>();
+builder.Services.AddScoped<VideoForensics.WebApp.Services.IInitialSyncCoordinator>(sp => sp.GetRequiredService<VideoForensics.WebApp.Services.InitialSyncCoordinator>());
+builder.Services.AddScoped<VideoForensics.WebApp.Services.InitialSyncResumer>();
+builder.Services.AddHostedService<VideoForensics.WebApp.Services.InitialSyncResumeService>();
+builder.Services.AddScoped<VideoForensics.Hosting.Contracts.IInitialSyncDispatcher>(sp => sp.GetRequiredService<VideoForensics.WebApp.Services.InitialSyncCoordinator>());
 
 // Embedded MCP-backed chat assistant: server-side implementation of IChatService that drives
 // an LLM tool-use loop against this app's own forensic analysis tools.
@@ -355,7 +386,7 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // tier later still leaves the socket listening but firewalled (the exact bug being fixed).
 builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
     OperatingSystem.IsWindows()
-        ? new WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<WindowsFirewallRuleManager>>())
+        ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
         : new NullFirewallRuleManager());
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
@@ -396,9 +427,11 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LeftPanelContentService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
+builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
 builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
@@ -487,6 +520,7 @@ app.MapRemoteAccessEndpoints();
 app.MapNotificationEndpoints();
 app.MapEvidenceEndpoints();
 app.MapNetworkSettingsEndpoints();
+app.MapSoftwarePathsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
@@ -496,6 +530,7 @@ app.MapAuthMethodEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
+app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();
@@ -509,6 +544,7 @@ app.MapUpdateCheckEndpoints();
 app.MapPushEndpoints();
 app.MapChatEndpoints();
 app.MapLlmSettingsEndpoints();
+app.MapSnapshotProbeEndpoints();
 
 // MCP (Model Context Protocol) HTTP endpoint for forensic analysis tools (Milestone 8)
 // Gated with paired-device authorization (matching other API endpoints)

@@ -292,7 +292,7 @@ namespace VideoForensics.Core.Logging.Tests
             // Assert - verify Serilog ILogger.LogInformation was called with structured data
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
@@ -333,7 +333,7 @@ namespace VideoForensics.Core.Logging.Tests
             // Assert - verify logger was called (structured enrichment happens via LogContext internally)
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
@@ -373,7 +373,7 @@ namespace VideoForensics.Core.Logging.Tests
             // Assert - verify BOTH Serilog and repository were called (dual-write)
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
@@ -422,7 +422,7 @@ namespace VideoForensics.Core.Logging.Tests
             // Serilog should have been called before repository failed
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),

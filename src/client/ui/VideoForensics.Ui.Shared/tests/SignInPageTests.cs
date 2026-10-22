@@ -238,7 +238,8 @@ public class SignInPageTests : BunitContext
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
 
-        // Act - submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
+        // Act - reveal the credential fields, then submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.Find("input[type='text']").Change(Username);
         component.Find("input[type='password']").Change(Password);
         await ClickButtonAsync(component, localizer["SignInButton"]);
@@ -397,16 +398,20 @@ public class SignInPageTests : BunitContext
     }
 
     [Fact]
-    public async Task SignIn_PasskeyAvailable_PasskeyButtonIsOutlineStyle()
+    public async Task SignIn_PasskeyAvailable_PasskeyButtonIsActivePrimary()
     {
-        // Arrange - the passkey button is secondary to the password sign-in, so it renders outlined
+        // Arrange - the passkey button is a full primary button, not an outlined one that reads as disabled
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         var component = await RenderAndWaitForFormAsync();
 
         // Act & Assert
         component.WaitForAssertion(() =>
-            Assert.Contains("e-outline", FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList));
+        {
+            var classes = FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList;
+            Assert.Contains("e-primary", classes);
+            Assert.DoesNotContain("e-outline", classes);
+        });
     }
 
     [Fact]
@@ -418,9 +423,97 @@ public class SignInPageTests : BunitContext
 
         // Act & Assert
         var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.WaitForAssertion(() => Assert.NotNull(FindButton(component, localizer["SignInButton"])));
         Assert.DoesNotContain("Remember", component.Markup);
         Assert.DoesNotContain("Forgot", component.Markup);
+    }
+    [Fact]
+    public async Task SignIn_UsernameField_IsMarkedAsAutofillableUsername()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var component = await RenderAndWaitForFormAsync();
+
+        Assert.Equal("username webauthn", component.Find("input[name='username']").GetAttribute("autocomplete"));
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", false))
+            .ReturnsAsync((true, (string?)null, (string?)"token", Guid.NewGuid(), "Operator"));
+        var component = await RenderAndWaitForFormAsync();
+
+        component.Find("input[type='text']").Change("sysop");
+        component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", false), Times.Once));
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_OtherKeyInUsername_DoesNotStartPasskeySignIn()
+    {
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var component = await RenderAndWaitForFormAsync();
+
+        component.Find("input[type='text']").Change("sysop");
+        component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "a" });
+
+        WebAuthn.Verify(w => w.SignInWithUsernameAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+    }
+
+
+    [Fact]
+    public async Task SignIn_PasskeyAvailable_CredentialFieldsHiddenUntilToggled()
+    {
+        // Arrange - with passkey sign-in available, the username is shown (the passkey needs it) and the password stays hidden behind a button
+        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert - username visible by default, password hidden
+        Assert.NotEmpty(component.FindAll("input[type='text']"));
+        Assert.Empty(component.FindAll("input[type='password']"));
+        Assert.NotNull(FindButton(component, localizer["UseUserNameAndPasswordButton"]));
+
+        // Act
+        await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
+
+        // Assert - fields appear and the toggle goes away
+        component.WaitForAssertion(() =>
+        {
+            Assert.NotEmpty(component.FindAll("input[type='text']"));
+            Assert.NotEmpty(component.FindAll("input[type='password']"));
+            var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+            Assert.DoesNotContain(localizer["UseUserNameAndPasswordButton"], labels);
+        });
+    }
+
+    [Fact]
+    public async Task SignIn_NormalState_ShowsRestrictedAccessNotice()
+    {
+        // Arrange
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert
+        var notice = component.Find("[data-testid='restricted-access-notice']");
+        Assert.Equal(localizer["RestrictedAccessNotice"], notice.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task SignIn_PasskeyUnavailable_CredentialFieldsShownWithoutToggle()
+    {
+        // Arrange - with no passkey option there is nothing to switch from, so the fields show straight away
+        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        var component = await RenderAndWaitForFormAsync();
+
+        // Assert
+        Assert.NotEmpty(component.FindAll("input[type='text']"));
+        Assert.NotEmpty(component.FindAll("input[type='password']"));
+        var labels = component.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+        Assert.DoesNotContain(localizer["UseUserNameAndPasswordButton"], labels);
     }
 
     private static IElement FindButton(IRenderedComponent<SignIn> component, string label) =>
@@ -442,7 +535,8 @@ public class SignInPageTests : BunitContext
     {
         var component = Render<SignIn>();
         // SignIn shows a progress bar until its first-render OnAfterRenderAsync completes, then the form.
-        await component.WaitForStateAsync(() => component.FindAll("input").Count >= 2);
+        // Either the credential fields or the "Use User Name and Password" toggle is the first sign of the form.
+        await component.WaitForStateAsync(() => component.FindAll("button").Count > 0);
         return component;
     }
 

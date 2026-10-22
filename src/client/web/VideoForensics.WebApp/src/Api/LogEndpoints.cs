@@ -12,6 +12,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
+using Microsoft.Extensions.Primitives;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -31,7 +32,7 @@ namespace VideoForensics.WebApp.Api
         private const int DefaultLimit = 500;
         private const int MaxLimit = 2000;
 
-        private static readonly string[] ValidLogLevels = { "Trace", "Debug", "Information", "Warning", "Error", "Critical" };
+        private static readonly string[] ValidLogLevels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
         private static readonly JsonSerializerOptions SseJson = new(JsonSerializerDefaults.Web);
 
         public static void MapLogEndpoints(this WebApplication app)
@@ -67,7 +68,7 @@ namespace VideoForensics.WebApp.Api
             int clampedLimit = ClampLimit(query.Limit);
 
             // Fetch one extra entry so truncation can be reported without a second pass.
-            var snapshot = buffer.GetSnapshot(NullIfEmpty(query.MinLevel), NullIfEmpty(query.Search), query.AfterSequence, clampedLimit + 1);
+            List<LogRecord> snapshot = buffer.GetSnapshot(NullIfEmpty(query.MinLevel), NullIfEmpty(query.Search), query.AfterSequence, clampedLimit + 1);
 
             bool truncated = snapshot.Count > clampedLimit;
             var entries = snapshot.Take(clampedLimit).Select(r => r.ToDto()).ToList();
@@ -116,7 +117,7 @@ namespace VideoForensics.WebApp.Api
             int clampedLimit = ClampLimit(limit ?? 0);
 
             // Last-Event-ID is what a reconnecting EventSource sends; it wins over the query value.
-            if (context.Request.Headers.TryGetValue("Last-Event-ID", out var lastEventId)
+            if (context.Request.Headers.TryGetValue("Last-Event-ID", out StringValues lastEventId)
                 && long.TryParse(lastEventId.ToString(), out long parsedId))
             {
                 afterSequence = parsedId;
@@ -131,7 +132,7 @@ namespace VideoForensics.WebApp.Api
                 isUrgent: false,
                 ct);
 
-            var (backlog, live) = buffer.SubscribeWithBacklog(NullIfEmpty(minLevel), NullIfEmpty(search), afterSequence, clampedLimit, ct);
+            (IReadOnlyList<LogRecord>? backlog, IAsyncEnumerable<LogRecord>? live) = buffer.SubscribeWithBacklog(NullIfEmpty(minLevel), NullIfEmpty(search), afterSequence, clampedLimit, ct);
             return new LogStreamResult(backlog, live, streamOptions.Value.HeartbeatInterval, ct);
         }
 
@@ -145,7 +146,7 @@ namespace VideoForensics.WebApp.Api
 
         private static Guid? ExtractOperatorId(HttpContext context)
         {
-            var operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
+            string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             return Guid.TryParse(operatorIdClaim, out Guid operatorId) ? operatorId : null;
         }
 
@@ -194,7 +195,9 @@ namespace VideoForensics.WebApp.Api
                         try
                         {
                             if (!await next.WaitAsync(_heartbeat, _ct))
+                            {
                                 break;
+                            }
                         }
                         catch (TimeoutException)
                         {

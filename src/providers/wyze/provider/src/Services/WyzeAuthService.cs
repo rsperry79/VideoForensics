@@ -39,7 +39,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Authenticating with Wyze API for user: {Username}", MaskForLog(username));
+                _logger.LogDebug("Authenticating with Wyze API for user: {Username}", MaskForLog(username));
 
                 // TODO: Implement Wyze authentication
                 // - Call Wyze API with credentials
@@ -78,7 +78,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Refreshing Wyze API token");
+                _logger.LogDebug("Refreshing Wyze API token");
 
                 // TODO: Implement token refresh
                 // - Use refresh token to get new access token

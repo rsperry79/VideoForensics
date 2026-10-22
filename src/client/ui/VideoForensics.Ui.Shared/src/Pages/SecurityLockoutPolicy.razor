@@ -144,8 +144,8 @@ else
                                     }
                                 </td>
                                 <td>@ban.Reason</td>
-                                <td>@ban.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
-                                <td>@(ban.ExpiresAtUtc is { } expires ? expires.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) : L["BannedIpsNeverExpires"].Value)</td>
+                                <td><LocalTimeText Value="@ban.CreatedAtUtc" Format="yyyy-MM-dd HH:mm" /></td>
+                                <td><LocalTimeText Value="@ban.ExpiresAtUtc" Format="yyyy-MM-dd HH:mm" Fallback="@L["BannedIpsNeverExpires"].Value" /></td>
                                 <td>
                                     @if (_pendingUnbanId == ban.Id)
                                     {

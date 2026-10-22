@@ -22,11 +22,11 @@
     <NavLink class="btn btn-outline-secondary" href="/query/api-tester">@SharedL["API Tester"]</NavLink>
 </div>
 
-<div class="d-flex flex-wrap gap-2 mb-4">
-    <a class="btn btn-outline-primary" href="/query/devices">@L["Devices"]</a>
-    <a class="btn btn-outline-primary" href="/query/events">@L["Events"]</a>
-    <a class="btn btn-outline-primary" href="/query/config">@L["Config"]</a>
-</div>
+<ul class="nav nav-tabs mb-4" data-testid="query-api-tabs">
+    <li class="nav-item"><NavLink class="nav-link" href="/query/devices">@L["Devices"]</NavLink></li>
+    <li class="nav-item"><NavLink class="nav-link" href="/query/events">@L["Events"]</NavLink></li>
+    <li class="nav-item"><NavLink class="nav-link" href="/query/config">@L["Config"]</NavLink></li>
+</ul>
 
 <div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>

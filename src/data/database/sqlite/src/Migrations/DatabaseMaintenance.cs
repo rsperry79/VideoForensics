@@ -37,7 +37,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 var connection = db.Database.GetDbConnection() as SqliteConnection;
                 if (connection?.DataSource == null)
                 {
-                    logger.LogInformation("Database maintenance: not a file-based database, skipping diagnosis.");
+                    logger.LogDebug("Database maintenance: not a file-based database, skipping diagnosis.");
                     return diagnosis;
                 }
 
@@ -51,7 +51,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     diagnosis.NeedsWalCheckpoint = walSize > WalSizeThresholdBytes;
                     if (diagnosis.NeedsWalCheckpoint)
                     {
-                        logger.LogInformation("Database maintenance: WAL file is {WalSizeMB:F1}MB (threshold: 100KB)", walSize / 1024.0 / 1024.0);
+                        logger.LogDebug("Database maintenance: WAL file is {WalSizeMB:F1}MB (threshold: 100KB)", walSize / 1024.0 / 1024.0);
                     }
                 }
 
@@ -63,7 +63,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     diagnosis.NeedsReindex = dbSize > DbSizeThresholdBytes;
                     if (diagnosis.NeedsReindex)
                     {
-                        logger.LogInformation("Database maintenance: Database is {DbSizeMB:F1}MB (threshold: 5MB)", dbSize / 1024.0 / 1024.0);
+                        logger.LogDebug("Database maintenance: Database is {DbSizeMB:F1}MB (threshold: 5MB)", dbSize / 1024.0 / 1024.0);
                     }
                 }
 
@@ -81,13 +81,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     diagnosis.NeedsTimedMaintenance = hoursSinceLastMaintenance > MaintenanceIntervalHours;
                     if (diagnosis.NeedsTimedMaintenance)
                     {
-                        logger.LogInformation("Database maintenance: Last maintenance was {Hours:F1} hours ago (threshold: 24h)", hoursSinceLastMaintenance);
+                        logger.LogDebug("Database maintenance: Last maintenance was {Hours:F1} hours ago (threshold: 24h)", hoursSinceLastMaintenance);
                     }
                 }
                 else
                 {
                     diagnosis.NeedsTimedMaintenance = true;
-                    logger.LogInformation("Database maintenance: No maintenance history found, will perform maintenance.");
+                    logger.LogDebug("Database maintenance: No maintenance history found, will perform maintenance.");
                 }
 
                 // 4. Profile query performance (quick test)
@@ -103,7 +103,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Database maintenance diagnosis failed, will proceed with full maintenance.");
+                logger.LogError(ex, "Database maintenance diagnosis failed, will proceed with full maintenance.");
                 diagnosis.ShouldMaintain = true; // Conservative: run maintenance on diagnosis failure
                 return diagnosis;
             }
@@ -123,7 +123,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             if (!diagnosis.ShouldMaintain)
             {
-                logger.LogInformation("Database maintenance: Database health is good, skipping maintenance. (WAL: {WalMB:F1}MB, DB: {DbMB:F1}MB, Query: {QueryMs:F0}ms, Last: {HoursSince:F1}h ago)",
+                logger.LogDebug("Database maintenance: Database health is good, skipping maintenance. (WAL: {WalMB:F1}MB, DB: {DbMB:F1}MB, Query: {QueryMs:F0}ms, Last: {HoursSince:F1}h ago)",
                     diagnosis.WalSizeBytes / 1024.0 / 1024.0,
                     diagnosis.DatabaseSizeBytes / 1024.0 / 1024.0,
                     diagnosis.QueryMs,
@@ -145,7 +145,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // 1. Checkpoint WAL file (flush pending writes to main DB)
                 if (diagnosis.NeedsWalCheckpoint)
                 {
-                    logger.LogInformation("Database maintenance: checkpointing WAL ({WalMB:F1}MB)...", diagnosis.WalSizeBytes / 1024.0 / 1024.0);
+                    logger.LogDebug("Database maintenance: checkpointing WAL ({WalMB:F1}MB)...", diagnosis.WalSizeBytes / 1024.0 / 1024.0);
                     command.CommandText = "PRAGMA wal_checkpoint(PASSIVE);";
                     _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // 2. Reindex to rebuild corrupted or fragmented indexes
                 if (diagnosis.NeedsReindex)
                 {
-                    logger.LogInformation("Database maintenance: reindexing ({DbMB:F1}MB database)...", diagnosis.DatabaseSizeBytes / 1024.0 / 1024.0);
+                    logger.LogDebug("Database maintenance: reindexing ({DbMB:F1}MB database)...", diagnosis.DatabaseSizeBytes / 1024.0 / 1024.0);
                     command.CommandText = "REINDEX;";
                     _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
@@ -161,7 +161,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // 3. Optimize query plans
                 if (diagnosis.NeedsOptimization)
                 {
-                    logger.LogInformation("Database maintenance: optimizing queries ({QueryMs:F0}ms baseline)...", diagnosis.QueryMs);
+                    logger.LogDebug("Database maintenance: optimizing queries ({QueryMs:F0}ms baseline)...", diagnosis.QueryMs);
                     command.CommandText = "PRAGMA optimize;";
                     _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
@@ -169,7 +169,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // 4. Analyze table statistics for query planner
                 if (diagnosis.NeedsTimedMaintenance || diagnosis.NeedsOptimization)
                 {
-                    logger.LogInformation("Database maintenance: analyzing statistics...");
+                    logger.LogDebug("Database maintenance: analyzing statistics...");
                     command.CommandText = "ANALYZE;";
                     _ = await command.ExecuteScalarAsync(cancellationToken);
                 }
@@ -180,7 +180,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Database maintenance failed (non-fatal) - performance may be degraded.");
+                logger.LogError(ex, "Database maintenance failed (non-fatal) - performance may be degraded.");
             }
         }
 

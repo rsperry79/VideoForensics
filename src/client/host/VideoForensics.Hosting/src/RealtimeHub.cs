@@ -40,6 +40,8 @@ namespace VideoForensics.Hosting
         private readonly Subject<SelfTestStatusDto> _selfTestStatus = new();
         private readonly Subject<LiveViewSessionDto> _liveViewSessionChanged = new();
         private readonly Subject<LiveViewTelemetrySampleDto> _liveViewTelemetry = new();
+        private readonly Subject<ThumbnailReadyDto> _thumbnailReady = new();
+        private readonly Subject<EvidenceChangedDto> _evidenceChanged = new();
         private readonly BehaviorSubject<ConnectionState> _connection = new(ConnectionState.Disconnected);
         // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
         // from inside an emission cannot deadlock on the hub's state lock.
@@ -88,6 +90,12 @@ namespace VideoForensics.Hosting
 
         /// <inheritdoc />
         public IObservable<ConnectionState> Connection => _connection.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<ThumbnailReadyDto> ThumbnailReady => _thumbnailReady.AsObservable();
+
+        /// <inheritdoc />
+        public IObservable<EvidenceChangedDto> EvidenceChanged => _evidenceChanged.AsObservable();
 
         /// <summary>
         /// Live-view session state pushes ("LiveViewSessionChanged") for sessions this client subscribed to via
@@ -181,7 +189,7 @@ namespace VideoForensics.Hosting
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // The caller gave up. Do not start a background retry on their behalf.
-                _logger.LogInformation("Live hub start was cancelled before connecting");
+                _logger.LogDebug("Live hub start was cancelled before connecting");
                 Publish(ConnectionState.Disconnected);
                 throw;
             }
@@ -195,7 +203,7 @@ namespace VideoForensics.Hosting
                 {
                     if (_stopping)
                     {
-                        _logger.LogInformation("Live hub initial connection failed after stop was requested; not retrying");
+                        _logger.LogDebug("Live hub initial connection failed after stop was requested; not retrying");
                         Publish(ConnectionState.Disconnected);
                         return;
                     }
@@ -204,7 +212,7 @@ namespace VideoForensics.Hosting
                     Publish(ConnectionState.Reconnecting);
                 }
 
-                _logger.LogWarning(ex, "Live hub initial connection failed; retrying with backoff");
+                _logger.LogError(ex, "Live hub initial connection failed; retrying with backoff");
                 _ = ReconnectLoopAsync(lifetimeToken);
                 return;
             }
@@ -214,7 +222,7 @@ namespace VideoForensics.Hosting
             {
                 if (_stopping)
                 {
-                    _logger.LogInformation("Live hub connect completed after stop was requested; not reporting Connected");
+                    _logger.LogDebug("Live hub connect completed after stop was requested; not reporting Connected");
                     Publish(ConnectionState.Disconnected);
                     return;
                 }
@@ -283,7 +291,7 @@ namespace VideoForensics.Hosting
                 return;
             }
 
-            _logger.LogWarning(error, "Live hub connection closed unexpectedly; reconnecting with backoff");
+            _logger.LogError(error, "Live hub connection closed unexpectedly; reconnecting with backoff");
             Publish(ConnectionState.Reconnecting);
             _ = ReconnectLoopAsync(_lifetime.Token);
         }
@@ -325,7 +333,7 @@ namespace VideoForensics.Hosting
             _liveViewTelemetry.OnCompleted();
             _connection.OnCompleted();
             lifetime.Dispose();
-            _logger.LogInformation("Live hub disposed");
+            _logger.LogDebug("Live hub disposed");
         }
 
         // Fire-and-forget entry point. Any exception escaping the loop body would otherwise be unobserved, so it is
@@ -378,7 +386,7 @@ namespace VideoForensics.Hosting
                 catch (Exception ex)
                 {
                     attempt++;
-                    _logger.LogWarning(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
+                    _logger.LogError(ex, "Live hub reconnect attempt {Attempt} failed; retrying in {DelaySeconds}s", attempt, delay.TotalSeconds);
                 }
             }
         }
@@ -415,10 +423,12 @@ namespace VideoForensics.Hosting
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
             _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", dto => EmitLiveViewSessionChanged(dto));
             _ = connection.On<LiveViewTelemetrySampleDto>("LiveViewTelemetry", dto => EmitLiveViewTelemetry(dto));
+            _ = connection.On<ThumbnailReadyDto>("ThumbnailReady", dto => Emit(_thumbnailReady, dto));
+            _ = connection.On<EvidenceChangedDto>("EvidenceChanged", dto => Emit(_evidenceChanged, dto));
 
             connection.Reconnecting += error =>
             {
-                _logger.LogWarning(error, "Live hub connection lost; reconnecting");
+                _logger.LogError(error, "Live hub connection lost; reconnecting");
                 Publish(ConnectionState.Reconnecting);
                 return Task.CompletedTask;
             };
@@ -503,7 +513,7 @@ namespace VideoForensics.Hosting
         /// </remarks>
         internal async Task HandleReconnectedAsync()
         {
-            _logger.LogInformation("Live hub reconnected");
+            _logger.LogDebug("Live hub reconnected");
             Publish(ConnectionState.Connected);
             await ReplaySubscriptionsAsync(CurrentLifetimeToken());
         }
@@ -539,7 +549,7 @@ namespace VideoForensics.Hosting
                 }
 
                 // The session id is not logged: it is a GUID, and only the failure matters here.
-                _logger.LogWarning(ex, "Live hub rejected a live-view subscription; it will not be replayed");
+                _logger.LogError(ex, "Live hub rejected a live-view subscription; it will not be replayed");
             }
         }
 

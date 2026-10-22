@@ -68,7 +68,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Live view idle timeout tick: failed to list active sessions; skipping this tick");
+                _logger.LogError(ex, "Live view idle timeout tick: failed to list active sessions; skipping this tick");
                 return;
             }
 

@@ -21,6 +21,7 @@ public class LiveViewPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLocalization();
+        ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         Services.AddLogging();
         Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
 

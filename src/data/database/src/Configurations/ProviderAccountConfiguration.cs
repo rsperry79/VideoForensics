@@ -19,6 +19,10 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(pa => pa.LastErrorMessage)
                 .HasMaxLength(2000);
 
+            // Same default as the model's CLR value: new accounts start incomplete. Existing rows are backfilled by the migration.
+            _ = builder.Property(pa => pa.InitialSyncCompleted)
+                .HasDefaultValue(false);
+
             _ = builder.HasIndex(pa => new { pa.UserId, pa.ProviderName })
                 .IsUnique();
 

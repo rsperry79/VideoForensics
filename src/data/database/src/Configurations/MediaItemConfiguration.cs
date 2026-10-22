@@ -40,6 +40,9 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(m => m.PurgeReason)
                 .HasMaxLength(256);
 
+            _ = builder.Property(m => m.ThumbnailPath)
+                .HasMaxLength(260);
+
             _ = builder.HasIndex(m => m.Sha256Hash);
 
             _ = builder.HasIndex(m => m.DeviceId);

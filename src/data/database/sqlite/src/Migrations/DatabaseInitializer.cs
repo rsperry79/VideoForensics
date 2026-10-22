@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging;
 
 using System.Data.Common;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.ReferenceData;
 
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
@@ -17,19 +19,22 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <param name="factory">The DbContext factory.</param>
         /// <param name="logger">The logger for recording initialization status.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="referenceSources">Versioned reference data to load after migrations (for example the Ring model catalog). Null or empty loads nothing.</param>
         /// <returns>A task representing the asynchronous initialization.</returns>
         /// <remarks>
         /// This method performs the following steps:
         /// 1. Checks for pending migrations and backs up the database if needed (pre-migration backup gap).
         /// 2. Applies any pending migrations using MigrateAsync.
-        /// 3. Enables WAL (Write-Ahead Logging) mode for improved concurrency.
-        /// 4. Runs PRAGMA integrity_check to detect database corruption and logs the result.
+        /// 3. Loads reference sources whose version is ahead of the stored version (ReferenceDataSeeder).
+        /// 4. Enables WAL (Write-Ahead Logging) mode for improved concurrency.
+        /// 5. Runs PRAGMA integrity_check to detect database corruption and logs the result.
         /// Failures during migration are logged and rethrown to prevent continuing into a broken application.
         /// </remarks>
         public static async Task InitializeAsync(
             IDbContextFactory<VideoForensicsDbContext> factory,
             ILogger logger,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            IEnumerable<IReferenceDataSource>? referenceSources = null)
         {
             try
             {
@@ -65,6 +70,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
                 // Apply migrations
                 await db.Database.MigrateAsync(cancellationToken);
+
+                // Reference data follows the schema: only sources ahead of their stored version are written.
+                await ReferenceDataSeeder.SeedAsync(factory, referenceSources ?? [], cancellationToken);
 
                 // Enable WAL mode for better concurrency
                 _ = await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
@@ -113,7 +121,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             {
                 // Log backup failure but don't fail initialization if backup fails
                 // The user should be aware, but we proceed with caution
-                logger.LogWarning(ex, "Failed to create pre-migration backup. Proceeding with migration anyway.");
+                logger.LogError(ex, "Failed to create pre-migration backup. Proceeding with migration anyway.");
             }
 
             await Task.CompletedTask;
@@ -153,7 +161,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 string? result = await command.ExecuteScalarAsync(cancellationToken) as string;
                 if (result == "ok")
                 {
-                    logger.LogInformation("Database integrity check passed.");
+                    logger.LogDebug("Database integrity check passed.");
                 }
                 else
                 {

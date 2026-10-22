@@ -1,15 +1,19 @@
-@page "/analyze/validate/integrity"
-@page "/analyze/validate/reconcile"
+@implements IDisposable
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Ui.Shared.Services.Scope
 @using Syncfusion.Blazor.Calendars
 @inject PairedSessionState SessionState
-@inject IEvidenceValidationService EvidenceValidationService
+@inject IEvidenceValidationJobs EvidenceValidationJobs
 @inject IDeviceRepository DeviceRepository
+@inject ILocationRepository LocationRepository
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ValidateEvidence> L
+
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -20,41 +24,57 @@
 else if (!_isAuthenticated)
 {
     <div class="alert alert-info">
-        @L["NotSignedInMessage"] <a href="@NavigationManager.SignInPathWithReturnUrl()">Sign in</a>
+        @L["NotSignedInMessage"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignInLink"]</a>
     </div>
 }
 else
 {
     <div class="d-flex flex-row gap-2 mb-4">
-        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='() => _activeTab = "integrity"' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-flat")' />
-        <SfButton Content="@L["ReconcileTab"]" OnClick='() => _activeTab = "reconcile"' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-flat")' />
+        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='(_ => SelectTabAsync("integrity"))' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-flat")' />
+        <SfButton Content="@L["ReconcileTab"]" OnClick='(_ => SelectTabAsync("reconcile"))' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-flat")' />
     </div>
 
     @if (_activeTab == "integrity")
     {
         <PageRightPanelContent>
             <div class="right-panel-section">
+                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
                 <span>@L["AllDevicesFilter"]</span>
-                <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["AllDevicesFilter"]">
-                    <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
-                </SfDropDownList>
+                <SfMultiSelect TValue="string[]" TItem="KeyValuePair<string,string>" Value="@_integrityDeviceIds" ValueChanged="@OnIntegrityDevicesPicked"
+                    DataSource="@DeviceOptions" Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["AllDevicesFilter"]">
+                    <MultiSelectFieldSettings Text="Value" Value="Key"></MultiSelectFieldSettings>
+                </SfMultiSelect>
             </div>
         </PageRightPanelContent>
 
-        <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" />
-
-        @if (_verificationResults is not null)
+        <SfButton Content="@L["VerifyButton"]" OnClick="VerifyIntegrityAsync" CssClass="e-primary mb-4" Disabled="@IsRunning(EvidenceValidationJobKind.Integrity)" />
+        @if (_verifyError is not null)
         {
-            @if (_verificationResults.Count == 0)
+            <div class="alert alert-danger" data-testid="verify-error">@_verifyError</div>
+        }
+
+        @RenderConsole(EvidenceValidationJobKind.Integrity)
+
+        @if (JobFor(EvidenceValidationJobKind.Integrity) is { State: EvidenceValidationJobState.Succeeded } integrityJob)
+        {
+            @if (integrityJob.IntegrityResults is null || integrityJob.IntegrityResults.Count == 0)
             {
                 <span>@L["NoMediaFound"]</span>
             }
             else
             {
-                <SfGrid TValue="MediaVerificationResult" DataSource="@_filteredVerificationResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+                <SfGrid TValue="MediaVerificationResult" DataSource="@integrityJob.IntegrityResults" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
+                        <GridColumn HeaderText="@L["ColDevice"]" MinWidth="100">
+                            <Template>
+                                @{
+                                    var result = (MediaVerificationResult)context;
+                                    @(result.DeviceId is { } id ? DeviceNameOf(id) : "-")
+                                }
+                            </Template>
+                        </GridColumn>
                         <GridColumn Field="@nameof(MediaVerificationResult.FileName)" HeaderText="@L["ColFileName"]" MinWidth="100" />
                         <GridColumn HeaderText="@L["ColStatus"]" MinWidth="100">
                             <Template>
@@ -74,6 +94,7 @@ else
     {
         <PageRightPanelContent>
             <div class="right-panel-section">
+                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
                 <span>@L["SelectDeviceFilter"]</span>
                 <SfDropDownList TValue="string" TItem="KeyValuePair<string,string>" @bind-Value="_selectedDeviceId" DataSource="@DeviceOptions" Placeholder="@L["SelectDeviceFilter"]">
                     <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
@@ -93,17 +114,19 @@ else
             </div>
         </PageRightPanelContent>
 
-        <SfButton Content="@L["ReconcileButton"]" OnClick="ReconcileAsync" CssClass="e-primary mb-4" />
+        <SfButton Content="@L["ReconcileButton"]" OnClick="ReconcileAsync" CssClass="e-primary mb-4" Disabled="@IsRunning(EvidenceValidationJobKind.Reconcile)" />
 
-        @if (_discrepancies is not null)
+        @RenderConsole(EvidenceValidationJobKind.Reconcile)
+
+        @if (JobFor(EvidenceValidationJobKind.Reconcile) is { State: EvidenceValidationJobState.Succeeded } reconcileJob)
         {
-            @if (_discrepancies.Count == 0)
+            @if (reconcileJob.Discrepancies is null || reconcileJob.Discrepancies.Count == 0)
             {
                 <span>@L["NoDiscrepanciesFound"]</span>
             }
             else
             {
-                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@_filteredDiscrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
+                <SfGrid TValue="ReconciliationDiscrepancy" DataSource="@reconcileJob.Discrepancies" AllowPaging="true" AllowSorting="true" AllowFiltering="true" AllowResizing="true">
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
                     <GridPageSettings PageSize="20"></GridPageSettings>
                     <GridColumns>
@@ -120,6 +143,9 @@ else
 }
 
 @code {
+    // Polling cadence for a running job; the job runs server-side, so the page only mirrors its state.
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
+
     private bool _isLoading = true;
     private bool _isAuthenticated;
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
@@ -128,32 +154,82 @@ else
     private DateTime _fromDate = DateTime.UtcNow.AddDays(-90).Date;
     private DateTime _toDate = DateTime.UtcNow.Date;
     private string _activeTab = "integrity";
-    private IReadOnlyList<MediaVerificationResult>? _verificationResults;
-    private IReadOnlyList<ReconciliationDiscrepancy>? _discrepancies;
-    private IEnumerable<MediaVerificationResult> _filteredVerificationResults = new List<MediaVerificationResult>();
-    private IEnumerable<ReconciliationDiscrepancy> _filteredDiscrepancies = new List<ReconciliationDiscrepancy>();
+
+    // Latest job snapshot per kind; a kind is absent until it has been started or reattached.
+    private readonly Dictionary<EvidenceValidationJobKind, EvidenceValidationJob?> _jobs = new();
+    private readonly HashSet<EvidenceValidationJobKind> _polling = new();
+    private readonly CancellationTokenSource _disposeCts = new();
+
+
+    private EvidenceValidationJobKind ActiveKind =>
+        _activeTab == "reconcile" ? EvidenceValidationJobKind.Reconcile : EvidenceValidationJobKind.Integrity;
+
+    // Provider/Account filters narrow the device picker. Switching tabs recreates the filter controls, so the
+    // visible list is reset to every device to keep the page and its controls in step.
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private bool _isFiltered;
+    private string[] _integrityDeviceIds = Array.Empty<string>();
+    private string? _verifyError;
 
     private IEnumerable<KeyValuePair<string, string>> DeviceOptions =>
-        _devices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+        _visibleDevices.Select(d => new KeyValuePair<string, string>(d.Id.ToString(), d.Name));
+
+    private Task OnDeviceFilterChanged(DeviceFilterResult result)
+    {
+        _isFiltered = result.IsFiltered;
+        _visibleDevices = result.Devices.ToList();
+        // Drop any chosen integrity device the filter now hides.
+        var visibleIds = _visibleDevices.Select(d => d.Id.ToString()).ToHashSet();
+        _integrityDeviceIds = _integrityDeviceIds.Where(visibleIds.Contains).ToArray();
+
+        // The reconcile tab still picks one device; clear it when the filter hides it.
+        if (!_visibleDevices.Any(d => d.Id.ToString() == _selectedDeviceId))
+        {
+            _selectedDeviceId = string.Empty;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// The account whose devices this panel validates. Null validates every device. An account's devices are passed
+    /// explicitly, never as "all", so a validate run cannot reach another account's media.
+    /// </summary>
+    [Parameter]
+    public Guid? AccountId { get; set; }
+
+    private async Task<IReadOnlyList<VideoForensics.Data.Common.Entities.Device>> ListAccountDevicesAsync(Guid accountId)
+    {
+        var locations = await LocationRepository.ListByProviderAccountIdAsync(accountId, CancellationToken.None);
+        var devices = new List<VideoForensics.Data.Common.Entities.Device>();
+        foreach (var location in locations)
+        {
+            devices.AddRange(await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None));
+        }
+
+        return devices;
+    }
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _activeTab = NavigationManager.Uri.Contains("reconcile", StringComparison.OrdinalIgnoreCase)
-                ? "reconcile"
-                : "integrity";
+            _activeTab = "integrity";
 
             await SessionState.EnsureLoadedAsync();
             _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
-                var devices = await DeviceRepository.ListAsync(CancellationToken.None);
+                // Scoped to one account when embedded on its Sync tab; otherwise every device.
+                var devices = AccountId is { } accountId
+                    ? await ListAccountDevicesAsync(accountId)
+                    : await DeviceRepository.ListAsync(CancellationToken.None);
                 _devices = devices.ToList();
+                _visibleDevices = _devices;
 
-                // Deliberately NOT auto-run on load, unlike the read-only report pages: verifying
-                // hashes every media file's bytes from disk, which is expensive across a whole
-                // library (thousands of files) - it must be an explicit, on-demand action.
+                // Reattach to whatever job is already running or finished for the active tab. Nothing is
+                // auto-started: verifying hashes every media file's bytes, so it stays an explicit action.
+                await ReattachAsync(ActiveKind);
             }
         }
         finally
@@ -162,12 +238,62 @@ else
         }
     }
 
+    private async Task SelectTabAsync(string tab)
+    {
+        _activeTab = tab;
+
+        // Each tab builds its own filter controls, so they start at "all" on every switch. The page's device state
+        // resets with them, and so does the integrity selection, which would otherwise outlive the filter it was made under.
+        _visibleDevices = _devices;
+        _isFiltered = false;
+        _integrityDeviceIds = Array.Empty<string>();
+        if (_isAuthenticated)
+        {
+            await ReattachAsync(ActiveKind);
+        }
+    }
+
     private async Task VerifyIntegrityAsync()
     {
-        Guid? deviceId = Guid.TryParse(_selectedDeviceId, out var parsed) ? parsed : null;
-        _verificationResults = await EvidenceValidationService.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
-        _filteredVerificationResults = _verificationResults ?? new List<MediaVerificationResult>();
+        _verifyError = null;
+        try
+        {
+            await VerifyIntegrityCoreAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A conflicting run or a failed request must reach the operator, not fail the page.
+            _verifyError = L["VerifyFailed", ex.Message].Value;
+        }
     }
+
+    private async Task VerifyIntegrityCoreAsync()
+    {
+        // One job covers the chosen devices. With nothing chosen, a filter covers every device it leaves visible,
+        // and no filter covers every device. A filter that leaves no device verifies nothing.
+        IReadOnlyList<Guid>? targets = _integrityDeviceIds.Length > 0
+            ? _visibleDevices.Where(d => _integrityDeviceIds.Contains(d.Id.ToString())).Select(d => d.Id).ToList()
+            : _isFiltered || AccountId is not null ? _visibleDevices.Select(d => d.Id).ToList() : null;
+
+        if (targets is { Count: 0 })
+        {
+            return;
+        }
+
+        var job = targets is null
+            ? await EvidenceValidationJobs.StartIntegrityAsync(null, CancellationToken.None)
+            : await EvidenceValidationJobs.StartIntegrityForDevicesAsync(targets, CancellationToken.None);
+        Track(EvidenceValidationJobKind.Integrity, job);
+    }
+
+    private Task OnIntegrityDevicesPicked(string[] selected)
+    {
+        _integrityDeviceIds = selected ?? Array.Empty<string>();
+        return Task.CompletedTask;
+    }
+
+    private string DeviceNameOf(Guid deviceId) =>
+        _devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? deviceId.ToString("D")[..8];
 
     private async Task ReconcileAsync()
     {
@@ -176,14 +302,105 @@ else
             return;
         }
 
-        _discrepancies = await EvidenceValidationService.ReconcileWithProviderAsync(
+        var job = await EvidenceValidationJobs.StartReconcileAsync(
             deviceId,
             _providerDeviceId,
             _fromDate,
             _toDate,
             CancellationToken.None);
-        _filteredDiscrepancies = _discrepancies ?? new List<ReconciliationDiscrepancy>();
+        Track(EvidenceValidationJobKind.Reconcile, job);
     }
+
+    private async Task ReattachAsync(EvidenceValidationJobKind kind)
+    {
+        var job = await EvidenceValidationJobs.GetLatestAsync(kind, _disposeCts.Token);
+        Track(kind, job);
+    }
+
+    private void Track(EvidenceValidationJobKind kind, EvidenceValidationJob? job)
+    {
+        _jobs[kind] = job;
+        if (job is { State: EvidenceValidationJobState.Running } && _polling.Add(kind))
+        {
+            // Fire-and-forget by design: the loop ends on its own when the job stops running or the page is disposed.
+            _ = PollWhileRunningAsync(kind);
+        }
+    }
+
+    private async Task PollWhileRunningAsync(EvidenceValidationJobKind kind)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(PollInterval, _disposeCts.Token);
+
+                EvidenceValidationJob? job;
+                try
+                {
+                    job = await EvidenceValidationJobs.GetLatestAsync(kind, _disposeCts.Token);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Transient read failure: keep the last snapshot and retry on the next tick.
+                    job = _jobs.GetValueOrDefault(kind);
+                }
+
+                _jobs[kind] = job;
+                await InvokeAsync(StateHasChanged);
+
+                if (job is not { State: EvidenceValidationJobState.Running })
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page left: stop polling quietly.
+        }
+        finally
+        {
+            _polling.Remove(kind);
+        }
+    }
+
+    private EvidenceValidationJob? JobFor(EvidenceValidationJobKind kind) =>
+        _jobs.GetValueOrDefault(kind);
+
+    private bool IsRunning(EvidenceValidationJobKind kind) =>
+        JobFor(kind) is { State: EvidenceValidationJobState.Running };
+
+    private RenderFragment RenderConsole(EvidenceValidationJobKind kind) => @<div>
+        @if (JobFor(kind) is { } job)
+        {
+            <div class="validate-job mb-4">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <strong>@L["ConsoleLabel"]</strong>
+                    @if (job.State == EvidenceValidationJobState.Running)
+                    {
+                        <span class="badge bg-info text-dark">@L["JobRunningStatus"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@L["JobFinishedStatus"]</span>
+                    }
+                </div>
+                <div class="validate-console" role="log" aria-live="polite" aria-label="@L["ConsoleLabel"]">
+                    @foreach (var line in job.Log)
+                    {
+                        <div>@line</div>
+                    }
+                </div>
+                @if (job.State == EvidenceValidationJobState.Failed)
+                {
+                    <div class="alert alert-danger mt-2 mb-0" role="alert">
+                        <strong>@L["JobFailedLabel"]</strong> @job.ErrorMessage
+                    </div>
+                }
+            </div>
+        }
+    </div>;
 
     private static string StatusColor(string status) => status switch
     {
@@ -192,4 +409,9 @@ else
         "missing" => "goldenrod",
         _ => "black",
     };
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+    }
 }

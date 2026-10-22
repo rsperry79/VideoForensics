@@ -41,7 +41,6 @@ namespace VideoForensics.WebApp.Api
 
             ExportResult result = await exportService.ExportEvidenceAsync(
                 request.CaseId,
-                request.OutputDirectory,
                 request.RecipientDescription,
                 request.Passphrase,
                 ct);
@@ -59,9 +58,87 @@ namespace VideoForensics.WebApp.Api
             return Results.Ok(result.ToDto());
         }
 
+        /// <summary>Starts (or joins the running) local integrity job and returns its snapshot.</summary>
+        public static async Task<IResult> StartIntegrityJobAsync(
+            StartIntegrityJobRequest request,
+            IEvidenceValidationJobs jobs,
+            CancellationToken ct)
+        {
+            // A non-empty device list starts one job over those devices; otherwise the single-device form applies.
+            try
+            {
+                EvidenceValidationJob job = request.DeviceIds is { Count: > 0 } deviceIds
+                    ? await jobs.StartIntegrityForDevicesAsync(deviceIds, ct)
+                    : await jobs.StartIntegrityAsync(request.DeviceId, ct);
+                return Results.Ok(job.ToDto());
+            }
+            catch (InvalidOperationException ex)
+            {
+                // A different device set is already being verified; the caller must wait for that run.
+                return Results.Conflict(ex.Message);
+            }
+        }
+
+        /// <summary>Starts (or joins the running) provider reconciliation job and returns its snapshot.</summary>
+        public static async Task<IResult> StartReconcileJobAsync(
+            StartReconcileJobRequest request,
+            IEvidenceValidationJobs jobs,
+            CancellationToken ct)
+        {
+            EvidenceValidationJob job = await jobs.StartReconcileAsync(
+                request.DeviceId,
+                request.ProviderDeviceId,
+                request.FromUtc,
+                request.ToUtc,
+                ct);
+            return Results.Ok(job.ToDto());
+        }
+
+        /// <summary>
+        /// Returns the latest job of the given kind ("integrity" or "reconcile"). 400 for an unknown kind,
+        /// 404 when no job of that kind has run.
+        /// </summary>
+        public static async Task<IResult> GetLatestJobAsync(
+            string kind,
+            IEvidenceValidationJobs jobs,
+            CancellationToken ct)
+        {
+            EvidenceValidationJobKind parsedKind;
+            if (string.Equals(kind, "integrity", StringComparison.OrdinalIgnoreCase))
+            {
+                parsedKind = EvidenceValidationJobKind.Integrity;
+            }
+            else if (string.Equals(kind, "reconcile", StringComparison.OrdinalIgnoreCase))
+            {
+                parsedKind = EvidenceValidationJobKind.Reconcile;
+            }
+            else
+            {
+                return Results.BadRequest("Job kind must be 'integrity' or 'reconcile'.");
+            }
+
+            EvidenceValidationJob? job = await jobs.GetLatestAsync(parsedKind, ct);
+            return job is null ? Results.NotFound() : Results.Ok(job.ToDto());
+        }
+
         public static void MapEvidenceEndpoints(this WebApplication app)
         {
             RouteGroupBuilder group = app.MapGroup("/api/v1/evidence").RequireAuthorization();
+
+            _ = group.MapPost("/jobs/integrity", StartIntegrityJobAsync)
+            .RequireRateLimiting("media")
+            .WithSummary("Start integrity job")
+            .WithDescription("Starts a local file integrity check as an app-lifetime job, or returns the one already running. Poll the latest-job route for progress.");
+
+            _ = group.MapPost("/jobs/reconcile", StartReconcileJobAsync)
+            .RequireRateLimiting("media")
+            .WithSummary("Start reconcile job")
+            .WithDescription("Starts a provider reconciliation as an app-lifetime job, or returns the one already running. Poll the latest-job route for progress.");
+
+            _ = group.MapGet("/jobs/{kind}/latest", GetLatestJobAsync)
+            .RequireRateLimiting("media")
+            .WithSummary("Get latest evidence validation job")
+            .WithDescription("Returns the latest job of kind 'integrity' or 'reconcile'. Returns 404 when none has run.");
 
             _ = group.MapPost("/verify-local-integrity", async (
                 VerifyLocalIntegrityRequest request,
@@ -134,12 +211,10 @@ namespace VideoForensics.WebApp.Api
 
     /// <summary>Request to export one case's reports and evidence to an archive.</summary>
     /// <param name="CaseId">The case to export. Required; <see cref="Guid.Empty"/> is rejected.</param>
-    /// <param name="OutputDirectory">Output directory for the archive.</param>
     /// <param name="RecipientDescription">Description of the archive recipient/purpose.</param>
     /// <param name="Passphrase">Optional passphrase for AES-256 encryption.</param>
     public record ExportEvidenceRequest(
         Guid CaseId,
-        string OutputDirectory,
         string? RecipientDescription,
         string? Passphrase
     );
@@ -160,7 +235,8 @@ namespace VideoForensics.WebApp.Api
                 MediaItemId: result.MediaItemId,
                 FileName: result.FileName,
                 Status: result.Status,
-                FailureReason: result.FailureReason
+                FailureReason: result.FailureReason,
+                DeviceId: result.DeviceId
             );
         }
 
@@ -172,6 +248,21 @@ namespace VideoForensics.WebApp.Api
                 FieldName: entity.FieldName,
                 StoredValue: entity.StoredValue,
                 ProviderValue: entity.ProviderValue
+            );
+        }
+
+        public static EvidenceValidationJobDto ToDto(this EvidenceValidationJob job)
+        {
+            return new EvidenceValidationJobDto(
+                Id: job.Id,
+                Kind: job.Kind.ToString(),
+                State: job.State.ToString(),
+                StartedUtc: job.StartedUtc,
+                CompletedUtc: job.CompletedUtc,
+                Log: job.Log,
+                IntegrityResults: job.IntegrityResults?.Select(r => r.ToDto()).ToList(),
+                Discrepancies: job.Discrepancies?.Select(d => d.ToDto()).ToList(),
+                ErrorMessage: job.ErrorMessage
             );
         }
 

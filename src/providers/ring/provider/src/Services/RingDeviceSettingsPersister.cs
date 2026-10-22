@@ -9,6 +9,7 @@ namespace VideoForensics.Providers.Ring.Services
     /// <summary>
     /// Writes one device's settings graph (presets, zones, advanced object settings, features and alerts) through the same
     /// mapper and data-client writer the download path uses in <c>RingMediaDownloadService.CaptureDeviceHealthSnapshotAsync</c>.
+    /// When the details carry the scalar detail fields, the device's scalar columns are written too (with setting-change history).
     /// The device row must already exist; a device the database does not hold yet is skipped, not created here.
     /// Capabilities are not written: the settings endpoint does not carry the audio flag they are built from, so writing them
     /// from it would clear values the download path stored.
@@ -40,6 +41,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             Guid deviceId = device.Id;
+            await RecordUnknownKindAsync(device, details, ct);
             await _dataClient.RecordDeviceDetailsAsync(
                 deviceId,
                 null,
@@ -48,7 +50,22 @@ namespace VideoForensics.Providers.Ring.Services
                 RingDeviceDetailsMapper.ToAlerts(details, deviceId),
                 ct,
                 RingDeviceDetailsMapper.ToSettingsChildren(details.DeviceFields, deviceId));
+            // The scalar columns come from the same details the child rows were built from; a null field set writes nothing.
+            if (details.DeviceFields != null)
+            {
+                await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details.DeviceFields, ct);
+            }
             return true;
+        }
+
+        /// <summary>
+        /// Records a kind the Ring catalog does not list, so the database knows the device model exists. The family comes from
+        /// the device's Ring type. Known kinds and devices without a kind are left alone.
+        /// </summary>
+        private Task RecordUnknownKindAsync(Device device, RingDeviceDetails details, CancellationToken ct)
+        {
+            return RingModelDiscovery.RecordUnknownKindAsync(
+                _dataClient, details.DeviceFields?.RingKind, RingModelDiscovery.FamilyForType(device.Type), ct);
         }
     }
 }

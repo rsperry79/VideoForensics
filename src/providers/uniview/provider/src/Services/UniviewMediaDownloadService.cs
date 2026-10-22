@@ -13,6 +13,8 @@ namespace VideoForensics.Providers.Uniview.Services;
 /// </summary>
 public class UniviewMediaDownloadService : IMediaDownloadService
 {
+    private const string ProviderName = "Uniview";
+
     private readonly ILogger<UniviewMediaDownloadService> _logger;
     private readonly IUniviewSessionProvider _sessionProvider;
     private readonly Func<UniviewClient, int, string, CancellationToken, Task> _liveSnapshotCapture;
@@ -59,13 +61,13 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogInformation("Downloading videos for account {AccountId}, device {DeviceId} from {StartDate} to {EndDate}",
-                providerAccountId, deviceId, startDate, endDate);
+            _logger.LogDebug("Downloading videos for {ProviderName} account, device {DeviceId} from {StartDate} to {EndDate}",
+                ProviderName, deviceId, startDate, endDate);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client is null)
             {
-                _logger.LogError("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                _logger.LogWarning("Not authenticated: Client is null for {ProviderName} account", ProviderName);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -74,7 +76,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             // Parse device id to channel number (expect numeric or "channel:<num>" format)
             if (!TryParseChannelNumber(deviceId, out int channel))
             {
-                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                _logger.LogWarning("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: $"Invalid device id: {deviceId}");
@@ -113,7 +115,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}",
+                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
                         monthStart.ToString("yyyy-MM"), channel);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
@@ -131,7 +133,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 };
             }
 
-            _logger.LogInformation("Found {SegmentCount} segments across all months for channel {Channel}",
+            _logger.LogDebug("Found {SegmentCount} segments across all months for channel {Channel}",
                 allSegments.Count, channel);
 
             int filesDownloaded = 0;
@@ -228,7 +230,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to download segment {Begin:O} for channel {Channel}",
+                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
                         segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
@@ -251,7 +253,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading videos for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogError(ex, "Error downloading videos for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -277,13 +279,13 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogInformation("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
+            _logger.LogDebug("Downloading videos for device {DeviceId} from {StartDate} to {EndDate}",
                 deviceId, startDate, endDate);
 
             UniviewClient? client = _sessionProvider.GetClient();
             if (client is null)
             {
-                _logger.LogError("Not authenticated: Client is null");
+                _logger.LogWarning("Not authenticated: Client is null");
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -292,7 +294,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             // Parse device id to channel number (expect numeric or "channel:<num>" format)
             if (!TryParseChannelNumber(deviceId, out int channel))
             {
-                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                _logger.LogWarning("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: $"Invalid device id: {deviceId}");
@@ -331,7 +333,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}",
+                    _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}",
                         monthStart.ToString("yyyy-MM"), channel);
                     _activityLog.Enqueue($"✗ Failed to query {monthStart:yyyy-MM}: {ex.Message}");
                     // Continue to next month rather than failing the whole batch
@@ -349,7 +351,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 };
             }
 
-            _logger.LogInformation("Found {SegmentCount} segments across all months for channel {Channel}",
+            _logger.LogDebug("Found {SegmentCount} segments across all months for channel {Channel}",
                 allSegments.Count, channel);
 
             int filesDownloaded = 0;
@@ -446,7 +448,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to download segment {Begin:O} for channel {Channel}",
+                    _logger.LogError(ex, "Failed to download segment {Begin:O} for channel {Channel}",
                         segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(fileName)}: {ex.GetType().Name}");
                     // Continue with next segment rather than failing the whole batch
@@ -498,12 +500,12 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogInformation("Requesting live snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogDebug("Requesting live snapshot for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
 
             UniviewClient? client = _sessionProvider.GetClient(providerAccountId);
             if (client is null)
             {
-                _logger.LogError("Not authenticated: Client is null for account {AccountId}", providerAccountId);
+                _logger.LogWarning("Not authenticated: Client is null for {ProviderName} account", ProviderName);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -512,7 +514,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             // Parse device id to channel number
             if (!TryParseChannelNumber(deviceId, out int channel))
             {
-                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                _logger.LogWarning("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: $"Invalid device id: {deviceId}");
@@ -581,8 +583,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                           "Live snapshot only (Uniview device has no historical snapshot API)";
                 _activityLog.Enqueue(msg);
 
-                _logger.LogInformation("Downloaded live snapshot ({Bytes} bytes) for account {AccountId}, device {DeviceId}",
-                    fileSize, providerAccountId, deviceId);
+                _logger.LogDebug("Downloaded live snapshot ({Bytes} bytes) for {ProviderName} account, device {DeviceId}",
+                    fileSize, ProviderName, deviceId);
 
                 return new DownloadResult(
                     Success: true,
@@ -598,7 +600,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error capturing snapshot for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+                _logger.LogError(ex, "Error capturing snapshot for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
                 lock (_statusLock)
                 {
                     _currentStatus = _currentStatus with { IsDownloading = false };
@@ -612,7 +614,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for account {AccountId}, device {DeviceId}", providerAccountId, deviceId);
+            _logger.LogError(ex, "Error in DownloadSnapshotsAsync for {ProviderName} account, device {DeviceId}", ProviderName, deviceId);
             lock (_statusLock)
             {
                 _currentStatus = _currentStatus with { IsDownloading = false };
@@ -639,12 +641,12 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     {
         try
         {
-            _logger.LogInformation("Requesting live snapshot for device {DeviceId}", deviceId);
+            _logger.LogDebug("Requesting live snapshot for device {DeviceId}", deviceId);
 
             UniviewClient? client = _sessionProvider.GetClient();
             if (client is null)
             {
-                _logger.LogError("Not authenticated: Client is null");
+                _logger.LogWarning("Not authenticated: Client is null");
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: "Download failed: not authenticated");
@@ -653,7 +655,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             // Parse device id to channel number
             if (!TryParseChannelNumber(deviceId, out int channel))
             {
-                _logger.LogError("Invalid device id: {DeviceId}", deviceId);
+                _logger.LogWarning("Invalid device id: {DeviceId}", deviceId);
                 return new DownloadResult(
                     Success: false,
                     ErrorMessage: $"Invalid device id: {deviceId}");
@@ -722,7 +724,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                           "Live snapshot only (Uniview device has no historical snapshot API)";
                 _activityLog.Enqueue(msg);
 
-                _logger.LogInformation("Downloaded live snapshot ({Bytes} bytes) for device {DeviceId}",
+                _logger.LogDebug("Downloaded live snapshot ({Bytes} bytes) for device {DeviceId}",
                     fileSize, deviceId);
 
                 return new DownloadResult(
@@ -817,7 +819,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
+                _logger.LogError(ex, "Failed to list segments for month {Month}, channel {Channel}", from.ToString("yyyy-MM"), channel);
                 _activityLog.Enqueue($"✗ Failed to query {from:yyyy-MM}: {ex.Message}");
             }
         }
@@ -896,7 +898,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
+                    _logger.LogError(ex, "Failed to capture snapshot from segment {Begin:O} for channel {Channel}", target.Segment.Begin, channel);
                     _activityLog.Enqueue($"✗ {Path.GetFileName(jpg)}: {ex.GetType().Name}");
                 }
                 finally
@@ -916,7 +918,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
             }
         }
 
-        _logger.LogInformation("Captured {Count} windowed snapshots ({Bytes} bytes) for device {DeviceId}", filesDownloaded, bytesDownloaded, deviceId);
+        _logger.LogDebug("Captured {Count} windowed snapshots ({Bytes} bytes) for device {DeviceId}", filesDownloaded, bytesDownloaded, deviceId);
         return new DownloadResult(
             Success: true,
             FilesDownloaded: filesDownloaded,

@@ -79,7 +79,25 @@ public class MediaViewer_Image_Tests : BunitContext
 
         // Assert
         var header = component.Find(".viewer-header");
-        Assert.Contains("2024-01-15 14:30:00 UTC", header.TextContent);
+        // No user zone cascaded here, so the machine zone is used.
+        Assert.Contains(item.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"), header.TextContent);
+        Assert.DoesNotContain("UTC", header.TextContent);
+    }
+
+    [Fact]
+    public void Renders_Header_InUserTimeZone()
+    {
+        var plus9 = TimeZoneInfo.CreateCustomTimeZone("test-plus9", TimeSpan.FromHours(9), "test-plus9", "test-plus9");
+        var item = CreateImageItem();
+
+        var component = Render<MediaViewer>(parameters => parameters
+            .AddCascadingValue(new VideoForensics.Ui.Shared.Services.Time.UserTimeZone(plus9))
+            .Add(p => p.Item, item)
+            .Add(p => p.ContentUrl, "https://example.com/image.jpg")
+            .Add(p => p.HasPrevious, false)
+            .Add(p => p.HasNext, false));
+
+        Assert.Contains("2024-01-15 23:30:00", component.Find(".viewer-header").TextContent);
     }
 
     [Fact]

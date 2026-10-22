@@ -22,6 +22,11 @@ namespace VideoForensics.Core.Providers.Core
             using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
             limit.CancelAfter(timeout);
 
+            // Why: both streams are read below, and Process.StandardError throws unless the redirect was set before Start.
+            // Callers often set only one of them, so enable both here.
+            startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
+
             using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {startInfo.FileName}.");
             using CancellationTokenRegistration kill = limit.Token.Register(() => KillTree(process));
 

@@ -1,11 +1,16 @@
 @page "/accounts"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Core.Providers.Common.Contracts
+@using VideoForensics.Ui.Shared.Contracts
 @using VideoForensics.Ui.Shared.Layout.RightPanel
 @inject IProviderAccountRepository ProviderAccountRepository
+@inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
+@inject IAccountExportService ExportService
 @inject IStringLocalizer<Accounts> L
 @inject NavigationManager NavigationManager
+@implements IDisposable
 
 <h4 class="mb-4">@L["Title"]</h4>
 
@@ -17,7 +22,21 @@
             Mode="Syncfusion.Blazor.DropDowns.VisualMode.CheckBox" Placeholder="@L["FilterProviders"]">
         </SfMultiSelect>
     </div>
+    <div class="right-panel-section">
+        <small style="font-weight: bold;">@L["FilterAccount"]</small>
+        <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>" Value="@_accountFilterValue" DataSource="@AccountFilterOptions"
+            Placeholder="@L["AllAccounts"]" data-testid="accounts-account-filter"
+            ValueChange="@((ChangeEventArgs<string, KeyValuePair<string, string>> args) => OnAccountFilterChanged(args))">
+            <DropDownListFieldSettings Text="Value" Value="Key"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
 </PageRightPanelContent>
+
+@if (_removeTarget is { } target)
+{
+    <AccountRemovePanel AccountId="@target.AccountId" StartAtDeleteStep="@target.StartAtDeleteStep"
+                        OnCompleted="OnRemoveCompletedAsync" OnCancelled="OnRemoveCancelled" />
+}
 
 @if (_isLoading)
 {
@@ -25,49 +44,109 @@
 }
 else
 {
-    @if (_rows.Count == 0)
+    @if (_loadError is not null)
     {
-        <p>@L["NoAccountsLinked"]</p>
+        <p class="text-danger">@_loadError</p>
     }
-    else
-    {
-        <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true" AutoFit="true">
-            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
-            <GridPageSettings PageSize="20"></GridPageSettings>
-            <GridColumns>
-                <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]">
-                    <Template>
-                        @{
-                            var row = (AccountRow)context;
-                            @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
-                            {
-                                <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n(as of {row.Account.LastErrorUtc?.ToString() ?? L["UnknownTime"]})")">error</i>
+
+    <div id="active-accounts">
+        @if (_rows.Count == 0)
+        {
+            <p>@L["NoAccountsLinked"]</p>
+        }
+        else
+        {
+            <SfGrid TValue="AccountRow" DataSource="@_filteredRows" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowResizing="true" AutoFit="true">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.CheckBox"></GridFilterSettings>
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                @if (!string.IsNullOrEmpty(row.Account.LastErrorMessage))
+                                {
+                                    <i class="material-icons" style="color: #d32f2f; cursor: help; vertical-align: middle;" title="@($"{row.Account.LastErrorMessage}\n{L["ErrorAsOf", (row.Account.LastErrorUtc is { } errAt ? Zone.Format(errAt, null) : L["UnknownTime"].Value)]}")">error</i>
+                                }
+                                <span>@row.DisplayName</span>
                             }
-                            <span>@row.DisplayName</span>
-                        }
-                    </Template>
-                </GridColumn>
-                <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
-                <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]" />
-                <GridColumn HeaderText="@L["ColLastAuth"]">
-                    <Template>
-                        @{
-                            var row = (AccountRow)context;
-                            @(row.Account.LastSuccessfulAuthUtc?.ToString() ?? "-")
-                        }
-                    </Template>
-                </GridColumn>
-                <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
-                    <Template>
-                        @{
-                            var row = (AccountRow)context;
-                            <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
-                        }
-                    </Template>
-                </GridColumn>
-            </GridColumns>
-        </SfGrid>
-    }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
+                    <GridColumn Field="Account.LinkedUtc" HeaderText="@L["ColLinked"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <LocalTimeText Value="@row.Account.LinkedUtc" />
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColLastAuth"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <LocalTimeText Value="@row.Account.LastSuccessfulAuthUtc" Fallback="-" />
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <SfButton Content="@L["Details"]" OnClick="@((UIMouseEventArgs) => GoToAccountDetailsAsync(row.Account.Id))" CssClass="e-info" />
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+
+    <h5 class="mt-4">@L["RemovedAccountsTitle"]</h5>
+    <div id="removed-accounts">
+        @foreach (var done in _exports.Values.Where(e => e.State == ExportJobState.Succeeded && !e.FromServer))
+        {
+            <p class="text-success">@L["ExportSucceededNotice", done.DisplayName, done.FilePath ?? "-"]</p>
+        }
+        @if (_removedRows.Count == 0)
+        {
+            <p>@L["NoRemovedAccounts"]</p>
+        }
+        else
+        {
+            <SfGrid TValue="AccountRow" DataSource="@_filteredRemovedRows" AllowSorting="true" AllowPaging="true" AllowResizing="true" AutoFit="true">
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    <GridColumn Field="DisplayName" HeaderText="@L["ColDisplayName"]" />
+                    <GridColumn Field="Account.ProviderName" HeaderText="@L["ColProvider"]" />
+                    <GridColumn HeaderText="@L["ColRemoved"]">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <LocalTimeText Value="@row.Account.RemovedUtc" Fallback="-" />
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="@L["ColExportStatus"]" AllowSorting="false">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                @ExportStatusText(row.Account.Id)
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" AllowSorting="false">
+                        <Template>
+                            @{
+                                var row = (AccountRow)context;
+                                <SfButton Content="@L["DeletePermanently"]" OnClick="@((UIMouseEventArgs) => StartRemove(row.Account.Id, true))" CssClass="e-danger" />
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
 }
 
 <div class="mt-4">
@@ -75,50 +154,113 @@ else
 </div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
 
+    private sealed record RemoveTarget(Guid AccountId, bool StartAtDeleteStep);
+
+    private sealed class ExportTrack
+    {
+        public ExportTrack(string displayName, bool fromServer = false)
+        {
+            DisplayName = displayName;
+            FromServer = fromServer;
+        }
+
+        /// <summary>True when the track came from the server lookup on load rather than an export started in this session.</summary>
+        public bool FromServer { get; }
+
+        public string DisplayName { get; }
+        public ExportJobState State { get; set; } = ExportJobState.Queued;
+        public string? FilePath { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
+
+    // About an hour at the poll interval; a job still running after that is reported instead of polled forever.
+    private const int MaxPollTicks = 1200;
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly Dictionary<Guid, ExportTrack> _exports = new();
+    private readonly HashSet<Guid> _pollingJobs = new();
+
     private List<AccountRow> _rows = new();
+    private List<AccountRow> _removedRows = new();
     private List<string> _providerNames = new();
     private string[] _selectedProviders = Array.Empty<string>();
+    private string _accountFilterValue = string.Empty;
     private IEnumerable<AccountRow> _filteredRows = new List<AccountRow>();
+    private IEnumerable<AccountRow> _filteredRemovedRows = new List<AccountRow>();
+    private RemoveTarget? _removeTarget;
+    private string? _loadError;
     private bool _isLoading = true;
+    private IDisposable? _accountLinkedSubscription;
+    private volatile bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe before the initial load so a Dispose during that load still finds and releases the subscription.
+        _accountLinkedSubscription = AccountLinkedSource.AccountLinked.Subscribe(linkedId =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _ = OnAccountLinkedAsync();
+        });
         await LoadAccountsAsync();
+    }
+
+    private Task OnAccountLinkedAsync() => InvokeAsync(async () =>
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await LoadAccountsAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _accountLinkedSubscription?.Dispose();
+        _accountLinkedSubscription = null;
+        // Stops every export polling loop.
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
     }
 
     private async Task LoadAccountsAsync()
     {
-        _isLoading = true;
+        _loadError = null;
         try
         {
-            var accounts = await ProviderAccountRepository.ListAsync(CancellationToken.None);
-            var rows = new List<AccountRow>();
-            foreach (var account in accounts)
-            {
-                string displayName = account.ProviderName;
-                try
-                {
-                    var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
-                    if (user is not null)
-                    {
-                        displayName = user.DisplayName;
-                    }
-                }
-                catch
-                {
-                    // Fall back to ProviderName if user lookup fails for any reason.
-                }
-
-                rows.Add(new AccountRow(account, displayName));
-            }
-
-            _rows = rows;
-            _providerNames = rows.Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
-            // Every provider is selected by default so the grid starts with all accounts visible.
-            _selectedProviders = _providerNames.ToArray();
+            var active = await ProviderAccountRepository.ListActiveAsync(CancellationToken.None);
+            var removed = await ProviderAccountRepository.ListRemovedAsync(CancellationToken.None);
+            _rows = await BuildRowsAsync(active);
+            _removedRows = await BuildRowsAsync(removed);
+            await RefreshExportStatusesAsync();
+            var previous = new HashSet<string>(_providerNames, StringComparer.OrdinalIgnoreCase);
+            _providerNames = _rows.Concat(_removedRows).Select(r => r.Account.ProviderName).Distinct().OrderBy(n => n).ToList();
+            // Every provider is selected by default so the grids start with all accounts visible; providers that appear later are selected too.
+            _selectedProviders = _selectedProviders
+                .Where(p => _providerNames.Contains(p))
+                .Concat(_providerNames.Where(p => !previous.Contains(p)))
+                .Distinct()
+                .ToArray();
             ApplyProviderFilter();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _loadError = L["ErrorLoadingAccounts", ex.Message];
         }
         finally
         {
@@ -126,16 +268,220 @@ else
         }
     }
 
+    /// <summary>Reads the server's latest export job per removed account and resumes polling for any still queued or running.</summary>
+    private async Task RefreshExportStatusesAsync()
+    {
+        foreach (AccountRow row in _removedRows)
+        {
+            try
+            {
+                ExportJobStatus? latest = await ExportService.GetLatestStatusForAccountAsync(row.Account.Id, _disposeCts.Token);
+                if (latest is null)
+                {
+                    continue;
+                }
+
+                if (!_exports.TryGetValue(row.Account.Id, out ExportTrack? track))
+                {
+                    track = new ExportTrack(row.DisplayName, fromServer: true);
+                    _exports[row.Account.Id] = track;
+                }
+
+                track.State = latest.State;
+                track.FilePath = latest.FilePath;
+                track.ErrorMessage = latest.ErrorMessage;
+                if (latest.State is ExportJobState.Queued or ExportJobState.Running && _pollingJobs.Add(latest.JobId))
+                {
+                    _ = PollExportAsync(row.Account.Id, latest.JobId, _disposeCts.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Page disposed.
+            }
+            catch
+            {
+                // A failed lookup leaves the row without a status rather than failing the whole page.
+            }
+        }
+    }
+
+    private async Task<List<AccountRow>> BuildRowsAsync(IEnumerable<VideoForensics.Data.Common.Entities.ProviderAccount> accounts)
+    {
+        var rows = new List<AccountRow>();
+        foreach (var account in accounts)
+        {
+            string displayName = account.ProviderName;
+            try
+            {
+                var user = await UserRepository.GetAsync(account.UserId, CancellationToken.None);
+                if (user is not null)
+                {
+                    displayName = user.DisplayName;
+                }
+            }
+            catch
+            {
+                // Fall back to ProviderName if user lookup fails for any reason.
+            }
+
+            rows.Add(new AccountRow(account, displayName));
+        }
+
+        return rows;
+    }
+
     private void OnProvidersChanged(string[] selected)
     {
         _selectedProviders = selected ?? Array.Empty<string>();
+
+        // An account from a provider that is no longer selected can't stay as the filter.
+        if (AccountFilterOptions.All(o => o.Key != _accountFilterValue))
+        {
+            _accountFilterValue = string.Empty;
+        }
+
         ApplyProviderFilter();
     }
 
     private void ApplyProviderFilter()
     {
         var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
-        _filteredRows = _rows.Where(r => selected.Contains(r.Account.ProviderName)).ToList();
+        var accountId = Guid.TryParse(_accountFilterValue, out var parsed) ? parsed : (Guid?)null;
+        bool Keep(AccountRow r) =>
+            selected.Contains(r.Account.ProviderName) && (accountId is null || r.Account.Id == accountId);
+
+        _filteredRows = _rows.Where(Keep).ToList();
+        _filteredRemovedRows = _removedRows.Where(Keep).ToList();
+    }
+
+    /// <summary>Accounts offered by the Account filter: only those of the providers currently selected.</summary>
+    private IEnumerable<KeyValuePair<string, string>> AccountFilterOptions
+    {
+        get
+        {
+            var selected = new HashSet<string>(_selectedProviders, StringComparer.OrdinalIgnoreCase);
+            return _rows
+                .Where(r => selected.Contains(r.Account.ProviderName))
+                .Select(r => new KeyValuePair<string, string>(r.Account.Id.ToString(), r.DisplayName));
+        }
+    }
+
+    private void OnAccountFilterChanged(ChangeEventArgs<string, KeyValuePair<string, string>> args)
+    {
+        _accountFilterValue = args.Value ?? string.Empty;
+        ApplyProviderFilter();
+    }
+
+    private void StartRemove(Guid accountId, bool startAtDeleteStep)
+    {
+        _removeTarget = new RemoveTarget(accountId, startAtDeleteStep);
+    }
+
+    private void OnRemoveCancelled()
+    {
+        _removeTarget = null;
+    }
+
+    private async Task OnRemoveCompletedAsync(AccountRemovePanel.RemoveResult result)
+    {
+        _removeTarget = null;
+        if (result.Outcome == AccountRemovePanel.RemoveOutcome.ExportQueued && result.ExportJobId is { } jobId)
+        {
+            string name = _rows.Concat(_removedRows).FirstOrDefault(r => r.Account.Id == result.AccountId)?.DisplayName ?? result.AccountId.ToString();
+            _exports[result.AccountId] = new ExportTrack(name);
+            // Fire-and-forget by design: the UI must not block while the server exports; the loop ends on a terminal state or dispose.
+            if (_pollingJobs.Add(jobId))
+            {
+                _ = PollExportAsync(result.AccountId, jobId, _disposeCts.Token);
+            }
+        }
+
+        await LoadAccountsAsync();
+    }
+
+    private async Task PollExportAsync(Guid accountId, Guid jobId, CancellationToken ct)
+    {
+        _ = _pollingJobs.Add(jobId);
+        try
+        {
+            using var timer = new PeriodicTimer(PollInterval);
+            int ticks = 0;
+            do
+            {
+                ExportJobStatus? status = await ExportService.GetStatusAsync(jobId, ct);
+                if (_exports.TryGetValue(accountId, out ExportTrack? track))
+                {
+                    if (status is null)
+                    {
+                        // The server no longer knows this job (for example after a restart). Stop rather than poll forever.
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportStatusLost"].Value;
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+
+                    track.State = status.State;
+                    track.FilePath = status.FilePath;
+                    track.ErrorMessage = status.ErrorMessage;
+                    if (status.State is ExportJobState.Succeeded or ExportJobState.Failed)
+                    {
+                        // The server purges the account after a successful export, so refresh both tables.
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadAccountsAsync();
+                            StateHasChanged();
+                        });
+                        return;
+                    }
+
+                    if (++ticks >= MaxPollTicks)
+                    {
+                        track.State = ExportJobState.Failed;
+                        track.ErrorMessage = L["ExportPollTimedOut"].Value;
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            while (await timer.WaitForNextTickAsync(ct));
+        }
+        catch (OperationCanceledException)
+        {
+            // Page disposed.
+        }
+        catch (Exception ex)
+        {
+            if (_exports.TryGetValue(accountId, out ExportTrack? track))
+            {
+                track.State = ExportJobState.Failed;
+                track.ErrorMessage = ex.Message;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        finally
+        {
+            _ = _pollingJobs.Remove(jobId);
+        }
+    }
+
+    private string ExportStatusText(Guid accountId)
+    {
+        if (!_exports.TryGetValue(accountId, out ExportTrack? track))
+        {
+            return "-";
+        }
+
+        return track.State switch
+        {
+            ExportJobState.Queued => L["ExportStatus_Queued"],
+            ExportJobState.Running => L["ExportStatus_Running"],
+            ExportJobState.Succeeded => L["ExportStatus_Succeeded", track.FilePath ?? "-"],
+            ExportJobState.Failed => L["ExportStatus_Failed", track.ErrorMessage ?? L["ExportFailedUnknownError"]],
+            _ => L["ExportStatus_Unknown"],
+        };
     }
 
     private void GoToAddAccount()

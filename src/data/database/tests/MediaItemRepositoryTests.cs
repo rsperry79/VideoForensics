@@ -42,6 +42,37 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("abc123def456", retrieved.Sha256Hash);
         }
 
+        /// <summary>
+        /// The backfill relies on this query to select only the rows it must act on: unthumbnailed, non-purged videos.
+        /// Images, rows that already have a thumbnail, and purged clips must all be excluded.
+        /// </summary>
+        [Fact]
+        public async Task ListVideosWithoutThumbnailAsync_ReturnsOnlyUnthumbnailedVideos()
+        {
+            MediaItem wanted = TestDataBuilder.BuildMediaItem(Guid.NewGuid(), null, "a.mp4", "hash-wanted");
+            wanted.MediaFormat = "video/mp4";
+
+            MediaItem alreadyHasThumbnail = TestDataBuilder.BuildMediaItem(Guid.NewGuid(), null, "b.mp4", "hash-thumb");
+            alreadyHasThumbnail.MediaFormat = "video/mp4";
+            alreadyHasThumbnail.ThumbnailPath = "b.thumb.png";
+
+            MediaItem still = TestDataBuilder.BuildMediaItem(Guid.NewGuid(), null, "c.jpg", "hash-still");
+            still.MediaFormat = "image/jpeg";
+
+            MediaItem purged = TestDataBuilder.BuildMediaItem(Guid.NewGuid(), null, "d.mp4", "hash-purged");
+            purged.MediaFormat = "video/mp4";
+            purged.IsPurged = true;
+
+            foreach (MediaItem item in new[] { wanted, alreadyHasThumbnail, still, purged })
+            {
+                await _repository.AddAsync(item, CancellationToken.None);
+            }
+
+            IReadOnlyList<MediaItem> result = await _repository.ListVideosWithoutThumbnailAsync(CancellationToken.None);
+
+            Assert.Equal(new[] { wanted.Id }, result.Select(m => m.Id).ToArray());
+        }
+
         [Fact]
         public async Task MediaItemRepository_GetByHash_FindsItem()
         {

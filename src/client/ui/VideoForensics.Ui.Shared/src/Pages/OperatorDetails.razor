@@ -1,4 +1,5 @@
 @page "/settings/operators/{Id:guid}"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Services
@@ -55,7 +56,7 @@ else
 
         <div class="mb-3">
             <label class="form-label">@L["CreatedAt"]</label>
-            <div>@_operator.CreatedAtUtc.ToString("u")</div>
+            <div><LocalTimeText Value="@_operator.CreatedAtUtc" Format="u" /></div>
         </div>
 
         <div class="mb-3">
@@ -91,7 +92,7 @@ else
             <div>
                 @if (_operator.LockedOutUntilUtc.HasValue && _operator.LockedOutUntilUtc.Value > DateTime.UtcNow)
                 {
-                    <span style="color: var(--bs-danger);">@L["StatusLockedOut", _operator.LockedOutUntilUtc.Value.ToString("u")]</span>
+                    <span style="color: var(--bs-danger);">@L["StatusLockedOut", Zone.Format(_operator.LockedOutUntilUtc.Value, "u")]</span>
                 }
                 else
                 {
@@ -194,6 +195,11 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     [Parameter]
     public Guid Id { get; set; }
 

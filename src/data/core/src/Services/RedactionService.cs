@@ -20,14 +20,14 @@ namespace VideoForensics.Data.Core.Services
         {
             if (level == RedactionLevel.None)
             {
-                _logger.LogInformation("No redaction applied (level=None)");
+                _logger.LogDebug("No redaction applied (level=None)");
                 return reportDto;
             }
 
             // Create a deep clone of the DTO
             T cloned = DeepClone(reportDto);
 
-            _logger.LogInformation("Redacting report of type {ReportType} with level {RedactionLevel}",
+            _logger.LogDebug("Redacting report of type {ReportType} with level {RedactionLevel}",
                 typeof(T).Name, level);
 
             // Apply redaction based on level

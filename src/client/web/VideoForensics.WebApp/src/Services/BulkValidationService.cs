@@ -37,6 +37,28 @@ namespace VideoForensics.WebApp.Services
             DateTime? toUtcOverride,
             CancellationToken ct)
         {
+            IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
+            return await RunForDevicesAsync(devices, fromUtcOverride, toUtcOverride, ct);
+        }
+
+        /// <summary>
+        /// The validate-all pass over a given set of devices. Shared by the manual "validate all" action and the
+        /// first sync of an account, so both run the same integrity check and reconciliation.
+        /// </summary>
+        /// <remarks>
+        /// A device that fails is counted in <see cref="BulkValidationResult.FailedDevices"/> and the pass continues
+        /// with the next device. Callers that need every device to succeed (the first sync) must check that count.
+        /// </remarks>
+        /// <param name="devices">Devices to validate.</param>
+        /// <param name="fromUtcOverride">Override default start date (default: 90 days ago).</param>
+        /// <param name="toUtcOverride">Override default end date (default: today).</param>
+        /// <param name="ct">Cancellation token.</param>
+        public async Task<BulkValidationResult> RunForDevicesAsync(
+            IReadOnlyList<Device> devices,
+            DateTime? fromUtcOverride,
+            DateTime? toUtcOverride,
+            CancellationToken ct)
+        {
             var result = new BulkValidationResult
             {
                 StartedAtUtc = DateTime.UtcNow,
@@ -47,6 +69,7 @@ namespace VideoForensics.WebApp.Services
                 TotalFilesMissing = 0,
                 TotalDiscrepanciesFound = 0,
                 TotalDiscrepanciesFixed = 0,
+                FailedDevices = 0,
                 ErrorMessage = null
             };
 
@@ -57,21 +80,19 @@ namespace VideoForensics.WebApp.Services
                 DateTime toUtc = toUtcOverride ?? DateTime.UtcNow;
 
                 _logger.LogInformation(
-                    "Starting bulk validation across all devices from {FromUtc} to {ToUtc}",
-                    fromUtc, toUtc);
+                    "Starting bulk validation across {DeviceCount} device(s) from {FromUtc} to {ToUtc}",
+                    devices.Count, fromUtc, toUtc);
 
-                // Get all devices
-                IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
                 result.TotalDevicesScanned = devices.Count;
 
-                _logger.LogInformation("Found {DeviceCount} device(s) to validate", devices.Count);
+                _logger.LogDebug("Found {DeviceCount} device(s) to validate", devices.Count);
 
                 // Process each device
                 foreach (Device device in devices)
                 {
                     try
                     {
-                        _logger.LogInformation("Validating device {DeviceId} ({DeviceName})", device.Id, device.Name);
+                        _logger.LogDebug("Validating device {DeviceName}", device.Name);
 
                         // Step 1: Verify local integrity
                         IReadOnlyList<MediaVerificationResult> integrityResults =
@@ -82,9 +103,9 @@ namespace VideoForensics.WebApp.Services
                         result.TotalFilesFailed += integrityResults.Count(r => r.Status == "failed");
                         result.TotalFilesMissing += integrityResults.Count(r => r.Status == "missing");
 
-                        _logger.LogInformation(
-                            "Device {DeviceId}: {Verified} verified, {Failed} failed, {Missing} missing",
-                            device.Id,
+                        _logger.LogDebug(
+                            "Device {DeviceName}: {Verified} verified, {Failed} failed, {Missing} missing",
+                            device.Name,
                             integrityResults.Count(r => r.Status == "verified"),
                             integrityResults.Count(r => r.Status == "failed"),
                             integrityResults.Count(r => r.Status == "missing"));
@@ -110,38 +131,41 @@ namespace VideoForensics.WebApp.Services
                                 {
                                     result.TotalDiscrepanciesFixed += discrepancies.Count;
                                     _logger.LogInformation(
-                                        "Device {DeviceId}: {DiscrepancyCount} discrepancies found and auto-fixed",
-                                        device.Id, discrepancies.Count);
+                                        "Device {DeviceName}: {DiscrepancyCount} discrepancies found and auto-fixed",
+                                        device.Name, discrepancies.Count);
                                 }
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex,
-                                    "Provider reconciliation failed for device {DeviceId} ({ProviderDeviceId})",
-                                    device.Id, device.ProviderDeviceId);
-                                // Continue with next device rather than failing entire bulk operation
+                                // Reconciliation is part of the validate-all pass, so its failure fails this device.
+                                result.FailedDevices++;
+                                _logger.LogError(ex,
+                                    "Provider reconciliation failed for device {DeviceName}",
+                                    device.Name);
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("Device {DeviceId} has no provider device ID; skipping reconciliation", device.Id);
+                            _logger.LogWarning("Device {DeviceName} has no provider device ID; skipping reconciliation", device.Name);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Validation failed for device {DeviceId}", device.Id);
+                        result.FailedDevices++;
+                        _logger.LogError(ex, "Validation failed for device {DeviceName}", device.Name);
                         // Continue with next device rather than failing entire bulk operation
                     }
                 }
 
                 _logger.LogInformation(
-                    "Bulk validation completed: {Devices} device(s), {Verified} files verified, {Intact} intact, {Failed} failed, {Missing} missing, {Discrepancies} discrepancies found",
+                    "Bulk validation completed: {Devices} device(s), {Verified} files verified, {Intact} intact, {Failed} failed, {Missing} missing, {Discrepancies} discrepancies found, {FailedDevices} device(s) failed",
                     result.TotalDevicesScanned,
                     result.TotalFilesVerified,
                     result.TotalFilesIntact,
                     result.TotalFilesFailed,
                     result.TotalFilesMissing,
-                    result.TotalDiscrepanciesFound);
+                    result.TotalDiscrepanciesFound,
+                    result.FailedDevices);
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 @page "/settings/logs"
 @inject NavigationManager NavigationManager
+@using VideoForensics.Ui.Shared.Services.Time
 @using System.Collections.Concurrent
 @using System.Globalization
 @using Microsoft.Extensions.DependencyInjection
@@ -110,6 +111,11 @@ else if (_sessionChecked)
 }
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private const int MaxRows = 2000;
     private const string ModulePath = "./_content/VideoForensics.Ui.Shared/js/server-logs.js";
     private static readonly string[] Levels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
@@ -523,8 +529,8 @@ else if (_sessionChecked)
     private static string FormatUtc(LogEntry e)
         => e.TimestampUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " UTC";
 
-    private static string FormatLocal(LogEntry e)
-        => e.TimestampUtc.ToLocalTime().ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+    private string FormatLocal(LogEntry e)
+        => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
     private static string ShortCategory(string category)
     {

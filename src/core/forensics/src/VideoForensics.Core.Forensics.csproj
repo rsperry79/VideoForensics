@@ -8,7 +8,7 @@
         <!-- Strong names are not validated on .NET (Core); this assembly is signed for legacy reasons but
              references unsigned assemblies (VideoForensics.Data.Common), which is harmless. -->
         <NoWarn>$(NoWarn);CS8002</NoWarn>
-        <AssemblyOriginatorKeyFile>../../../../KoenZomers.RingApi.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile>../../../../VideoForensics.snk</AssemblyOriginatorKeyFile>
         <AssemblyName>VideoForensics.Core.Forensics</AssemblyName>
         <Company>Koen Zomers</Company>
         <Authors>Koen Zomers</Authors>
@@ -22,7 +22,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="../../../../KoenZomers.RingApi.snk" Link="KoenZomers.RingApi.snk" />
+        <None Include="../../../../VideoForensics.snk" Link="VideoForensics.snk" />
     </ItemGroup>
 
     <ItemGroup>

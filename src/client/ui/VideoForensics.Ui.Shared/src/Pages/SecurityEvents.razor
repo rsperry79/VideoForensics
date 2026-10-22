@@ -99,7 +99,7 @@ else
                             }
                         </td>
                         <td>@evt.IpAddress</td>
-                        <td>@evt.OccurredAtUtc.ToString("u")</td>
+                        <td><LocalTimeText Value="@evt.OccurredAtUtc" Format="u" /></td>
                         <td>@evt.Reason</td>
                     </tr>
                 }

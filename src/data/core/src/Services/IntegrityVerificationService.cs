@@ -30,7 +30,7 @@ namespace VideoForensics.Data.Core.Services
             {
                 if (!File.Exists(filePath))
                 {
-                    _logger.LogError("File not found for hashing: {FilePath}", filePath);
+                    _logger.LogDebug("File not found for hashing: {FilePath}", filePath);
                     throw new FileNotFoundException($"File not found: {filePath}");
                 }
 
@@ -38,7 +38,7 @@ namespace VideoForensics.Data.Core.Services
                 byte[] hash = await SHA256.HashDataAsync(fileStream, ct);
                 string hashHex = Convert.ToHexString(hash).ToLowerInvariant();
 
-                _logger.LogInformation("Computed SHA-256 for {FilePath}: {Hash}", filePath, hashHex);
+                _logger.LogDebug("Computed SHA-256 for {FilePath}: {Hash}", filePath, hashHex);
                 return hashHex;
             }
             catch (Exception ex)
@@ -69,7 +69,7 @@ namespace VideoForensics.Data.Core.Services
                 string currentHash = await ComputeHashAsync(mediaItem.FilePath, ct);
                 bool passed = currentHash.Equals(mediaItem.Sha256Hash, StringComparison.OrdinalIgnoreCase);
 
-                _logger.LogInformation(
+                _logger.Log(passed ? LogLevel.Debug : LogLevel.Warning,
                     "Verification {Result} for {FilePath}: stored={StoredHash}, current={CurrentHash}",
                     passed ? "passed" : "FAILED",
                     mediaItem.FilePath,

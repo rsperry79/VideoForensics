@@ -53,7 +53,17 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            return await db.Devices.ToListAsync(ct);
+            List<Device> devices = await db.Devices.ToListAsync(ct);
+
+            // One lookup for all locations rather than one per device.
+            List<(Guid LocationId, string ProviderName)> links = (await db.ProviderAccountLocations
+                .AsNoTracking()
+                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
+                .ToListAsync(ct))
+                .Select(x => (x.LocationId, x.ProviderName))
+                .ToList();
+            DeviceProviderNames.Assign(devices, links);
+            return devices;
         }
 
         /// <summary>Adds a new device.</summary>
@@ -64,7 +74,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Add(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device added: {DeviceId} ({DeviceName})", device.Id, device.Name);
+                _logger.LogDebug("Device added: {DeviceName}", device.Name);
             }
             catch (Exception ex)
             {
@@ -81,11 +91,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Devices.Update(device);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device updated: {DeviceId}", device.Id);
+                _logger.LogDebug("Device updated: {DeviceName}", device.Name);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device: {DeviceId}", device.Id);
+                _logger.LogError(ex, "Error updating device: {DeviceName}", device.Name);
                 throw;
             }
         }
@@ -94,19 +104,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task UpdateLastSuccessfulPullAsync(Guid deviceId, DateTime pulledAtUtc, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = null;
             try
             {
-                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
                 if (device != null)
                 {
                     device.LastSuccessfulPullAtUtc = pulledAtUtc;
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Device watermark updated: {DeviceId} ({PulledAtUtc})", deviceId, pulledAtUtc);
+                    _logger.LogDebug("Device watermark updated: {DeviceName} ({PulledAtUtc})", device.Name, pulledAtUtc);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating device watermark: {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error updating device watermark: {DeviceName}", device?.Name ?? "unknown device");
                 throw;
             }
         }
@@ -115,19 +126,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task DeleteAsync(Guid deviceId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Device? device = null;
             try
             {
-                Device? device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
+                device = await db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, ct);
                 if (device != null)
                 {
                     _ = db.Devices.Remove(device);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Device deleted: {DeviceId}", deviceId);
+                    _logger.LogDebug("Device deleted: {DeviceName}", device.Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting device: {DeviceId}", deviceId);
+                _logger.LogError(ex, "Error deleting device: {DeviceName}", device?.Name ?? "unknown device");
                 throw;
             }
         }

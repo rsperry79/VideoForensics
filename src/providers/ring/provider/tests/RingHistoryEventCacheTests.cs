@@ -21,7 +21,7 @@ namespace VideoForensics.Providers.Ring.Tests
         /// </summary>
         private class TestSession : Session
         {
-            public TestSession() : base("test@example.com", "password") { }
+            public TestSession(string username = "test@example.com") : base(username, "password") { }
 
             public override async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate, long? doorbotId = null)
             {
@@ -145,12 +145,12 @@ namespace VideoForensics.Providers.Ring.Tests
             // This indirectly verifies that metadata was preserved through concurrent requests
             // and that the composite entry stored both events and metadata
             Assert.True(
-                cache.IsCached(expectedStart, expectedEnd),
+                cache.IsCached(session, expectedStart, expectedEnd),
                 "Cache metadata was not preserved - IsCached returned false for the widened range");
 
             // Also verify a sub-range is cached (widening worked)
             Assert.True(
-                cache.IsCached(baseDate, baseDate.AddDays(20)),
+                cache.IsCached(session, baseDate, baseDate.AddDays(20)),
                 "Sub-range not cached - widening metadata lost or corrupted");
 
             memoryCache.Dispose();
@@ -233,11 +233,11 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert: The cache should now report the extended range as cached
             // This verifies the composite entry was updated with new boundaries
-            Assert.True(cache.IsCached(baseDate, baseDate.AddDays(40)),
+            Assert.True(cache.IsCached(session, baseDate, baseDate.AddDays(40)),
                 "Extended range should be cached after widening request");
 
             // Also verify the original range is still cached
-            Assert.True(cache.IsCached(baseDate, baseDate.AddDays(20)),
+            Assert.True(cache.IsCached(session, baseDate, baseDate.AddDays(20)),
                 "Original range should still be cached");
 
             memoryCache.Dispose();
@@ -253,7 +253,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
             // Act & Assert
-            Assert.False(cache.IsCached(baseDate, baseDate.AddDays(10)));
+            Assert.False(cache.IsCached(new TestSession(), baseDate, baseDate.AddDays(10)));
 
             memoryCache.Dispose();
         }
@@ -305,7 +305,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             Assert.True(
-                cache.IsCached(d, d.AddDays(40)),
+                cache.IsCached(session, d, d.AddDays(40)),
                 "The widened end (D+40) was not preserved: a slower, narrower fetch overwrote the wider cached range");
             Assert.NotEmpty(yResult);
 

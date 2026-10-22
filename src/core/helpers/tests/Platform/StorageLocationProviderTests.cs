@@ -10,6 +10,41 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
     {
         private readonly StorageLocationProvider _provider = new();
 
+        #region GetDataRoot Tests
+
+        [Fact]
+        public void GetDataRoot_OnWindows_IsVideoForensicsUnderCommonApplicationData()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            string expected = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "VideoForensics");
+            Assert.Equal(expected, _provider.GetDataRoot());
+        }
+
+        [Fact]
+        public void GetDataRoot_OnLinux_IsVarLibVideoForensics()
+        {
+            if (!OperatingSystem.IsLinux())
+            {
+                return;
+            }
+
+            Assert.Equal("/var/lib/videoforensics", _provider.GetDataRoot());
+        }
+
+        [Fact]
+        public void GetDataRoot_IsAbsolutePath()
+        {
+            Assert.True(System.IO.Path.IsPathRooted(_provider.GetDataRoot()));
+        }
+
+        #endregion
+
         #region GetDefaultRoot Tests
 
         [Fact]
@@ -80,6 +115,38 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         {
             string result = _provider.GetDefaultRoot(StorageCategory.Keys);
             Assert.NotEmpty(result);
+        }
+
+        [Fact]
+        public void GetDefaultRoot_Exports_UsesExportsFolder()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                using Microsoft.Win32.RegistryKey? existing = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(StorageLocationProvider.RegistryKey);
+                if (existing?.GetValue("ExportsPath") != null)
+                {
+                    return; // A real override is configured on this machine; default-path assertion doesn't apply.
+                }
+
+                string windowsResult = _provider.GetDefaultRoot(StorageCategory.Exports);
+                Assert.Equal("exports", System.IO.Path.GetFileName(windowsResult));
+                Assert.Contains("VideoForensics", windowsResult);
+                return;
+            }
+
+            Assert.Equal("/var/lib/videoforensics/exports", _provider.GetDefaultRoot(StorageCategory.Exports));
+        }
+
+        [Fact]
+        public void GetRegistryValueName_Exports_ReturnsExportsPath()
+        {
+            Assert.Equal("ExportsPath", StorageLocationProvider.GetRegistryValueName(StorageCategory.Exports));
+        }
+
+        [Fact]
+        public void GetEnvironmentVariableName_Exports_ReturnsExportsPathVariable()
+        {
+            Assert.Equal("VIDEOFORENSICS_EXPORTS_PATH", StorageLocationProvider.GetEnvironmentVariableName(StorageCategory.Exports));
         }
 
         [Fact]

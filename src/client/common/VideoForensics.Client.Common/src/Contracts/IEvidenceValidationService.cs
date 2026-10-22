@@ -9,6 +9,9 @@ namespace VideoForensics.Client.Common.Contracts
         public required string FileName { get; set; }
         public required string Status { get; set; } // "verified", "failed", "missing"
         public string? FailureReason { get; set; }
+
+        /// <summary>Device the file belongs to. Set by the job that verified it; null when the run covered all devices without tagging.</summary>
+        public Guid? DeviceId { get; set; }
     }
 
     /// <summary>Service for validating evidence files (local integrity + provider reconciliation).</summary>
@@ -19,8 +22,16 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         /// <param name="deviceId">Device to verify (null = all devices).</param>
         /// <param name="ct">Cancellation token.</param>
+        /// <param name="progress">
+        /// Optional sink for live log lines: one "FileName: checking" line before each file is hashed and one
+        /// "FileName: Status" line after. Null (the default) reports nothing. Implementations that cannot stream
+        /// may ignore it.
+        /// </param>
         /// <returns>List of verification results per device/file.</returns>
-        Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(Guid? deviceId, CancellationToken ct);
+        Task<IReadOnlyList<MediaVerificationResult>> VerifyLocalIntegrityAsync(
+            Guid? deviceId,
+            CancellationToken ct,
+            IProgress<string>? progress = null);
 
         /// <summary>
         /// Reconciles stored events against the provider's current record, detecting changes/deletions.
@@ -30,12 +41,17 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="fromUtc">Start of date range to reconcile.</param>
         /// <param name="toUtc">End of date range to reconcile.</param>
         /// <param name="ct">Cancellation token.</param>
+        /// <param name="progress">
+        /// Optional sink receiving one line per discrepancy as it is detected. Null (the default) reports nothing.
+        /// Implementations that cannot stream may ignore it.
+        /// </param>
         /// <returns>List of discrepancies found (persisted via IProviderReconciliationService).</returns>
         Task<IReadOnlyList<ReconciliationDiscrepancy>> ReconcileWithProviderAsync(
             Guid deviceId,
             string providerDeviceId,
             DateTime fromUtc,
             DateTime toUtc,
-            CancellationToken ct);
+            CancellationToken ct,
+            IProgress<string>? progress = null);
     }
 }

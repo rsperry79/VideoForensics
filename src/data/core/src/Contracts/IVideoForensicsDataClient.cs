@@ -91,6 +91,12 @@ namespace VideoForensics.Data.Core.Contracts
         Task<DeviceHealth> RecordDeviceHealthAsync(DeviceHealth health, CancellationToken ct);
 
         /// <summary>
+        /// Records a provider device kind the reference catalog does not list, so the database knows it exists. Does nothing when
+        /// the kind already has a row. The provider decides whether a kind is unknown; this only writes the row.
+        /// </summary>
+        Task EnsureDeviceModelAsync(string provider, string kind, string family, CancellationToken ct);
+
+        /// <summary>
         /// Upserts a device's capability, feature and alert rows and links Devices.DeviceHealthId /
         /// DeviceFeaturesId. Null capabilities/features and an empty or null alert list leave existing rows untouched.
         /// </summary>
@@ -102,6 +108,15 @@ namespace VideoForensics.Data.Core.Contracts
             IReadOnlyList<DeviceAlerts>? alerts,
             CancellationToken ct,
             DeviceSettingsChildren? settings = null);
+
+        /// <summary>
+        /// Writes a device's scalar detail columns and records one setting-change row per value that changed, in one transaction.
+        /// Identity, name, type, location and the response hash are left untouched. A device that is not stored yet is skipped.
+        /// </summary>
+        Task UpdateDeviceDetailFieldsAsync(
+            Guid deviceId,
+            VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields details,
+            CancellationToken ct);
 
         /// <summary>Records a failed provider API call's status code/response body against the event it was attempting to download, for diagnosing why an event is unavailable (e.g. deleted vs. never available).</summary>
         Task RecordProviderApiErrorAsync(ProviderApiErrorLog entry, CancellationToken ct);

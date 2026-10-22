@@ -14,9 +14,8 @@ public class NavGroups_ActiveGroupFor_Tests
 
     [Theory]
     [InlineData("/analyze/chain-of-custody", "cases")]
-    [InlineData("/analyze/validate/integrity", "cases")]
-    [InlineData("/analyze", "evidence")]
-    [InlineData("/evidence", "evidence")]
+    [InlineData("/analyze", "cases")]
+    [InlineData("/media", "media")]
     [InlineData("/cases/123", "cases")]
     public void ActiveGroupFor_MostSpecificItemWins_SelectsExpectedGroup(string currentPath, string expectedKey)
     {
@@ -26,11 +25,11 @@ public class NavGroups_ActiveGroupFor_Tests
     }
 
     [Fact]
-    public void ActiveGroupFor_QueryItemMatches_SelectsEvidence()
+    public void ActiveGroupFor_QueryItemMatches_SelectsCases()
     {
         NavGroup group = NavGroups.ActiveGroupFor(NavGroups.All, AdminCtx, "/analyze", "?analysis=reports");
 
-        Assert.Equal("evidence", group.Key);
+        Assert.Equal("cases", group.Key);
     }
 
     [Fact]

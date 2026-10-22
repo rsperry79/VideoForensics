@@ -58,7 +58,7 @@ namespace VideoForensics.Core.Logging.Services
             using (LogContext.PushProperty("EntityType", entityType))
             using (LogContext.PushProperty("EntityId", entityId))
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Action logged: {Action} on {EntityType}",
                     action,
                     entityType);

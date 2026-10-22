@@ -2,6 +2,7 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Data.Common.Entities
 @using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Services.Analysis
 @using VideoForensics.Ui.Shared.Services.Scope
 @inject IReportGenerationService ReportGenerationService
 @inject IStringLocalizer<SignalAnomalyPanel> L
@@ -29,7 +30,11 @@ else if (_report is not null)
             <SfGrid TValue="SignalAnomalyReport.SignalAnomaly" DataSource="@deviceFindings.Anomalies" AllowPaging="true" AllowSorting="true" AllowResizing="true">
                 <GridPageSettings PageSize="20"></GridPageSettings>
                 <GridColumns>
-                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100" />
+                    <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.OccurredAtUtc)" HeaderText="@L["ColOccurredAt"]" MinWidth="100">
+                        <Template>
+                            <LocalTimeText Value="@((context as SignalAnomalyReport.SignalAnomaly)!.OccurredAtUtc)" />
+                        </Template>
+                    </GridColumn>
                     <GridColumn Field="@nameof(SignalAnomalyReport.SignalAnomaly.AnomalyType)" HeaderText="@L["ColAnomalyType"]" MinWidth="100" />
                     <GridColumn HeaderText="@L["ColDescription"]" MinWidth="100">
                         <Template>
@@ -70,18 +75,12 @@ else if (_report is not null)
                 <GridColumn Field="@nameof(SignalAnomalyReport.JammingSummaryEntry.MaxDegradationDb)" HeaderText="@L["ColMaxDegradation"]" MinWidth="100" />
                 <GridColumn HeaderText="@L["ColFirstIncident"]" MinWidth="100">
                     <Template>
-                        @{
-                            var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
-                            @(jamming.FirstIncidentUtc?.ToString() ?? L["NotAvailable"].Value)
-                        }
+                        <LocalTimeText Value="@((context as SignalAnomalyReport.JammingSummaryEntry)!.FirstIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
                     </Template>
                 </GridColumn>
                 <GridColumn HeaderText="@L["ColLastIncident"]" MinWidth="100">
                     <Template>
-                        @{
-                            var jamming = (SignalAnomalyReport.JammingSummaryEntry)context;
-                            @(jamming.LastIncidentUtc?.ToString() ?? L["NotAvailable"].Value)
-                        }
+                        <LocalTimeText Value="@((context as SignalAnomalyReport.JammingSummaryEntry)!.LastIncidentUtc)" Fallback="@L["NotAvailable"].Value" />
                     </Template>
                 </GridColumn>
             </GridColumns>
@@ -119,23 +118,21 @@ else if (_report is not null)
 
         try
         {
-            Guid? deviceId = Scope.IncludesAllDevices
-                ? null
-                : Scope.DeviceIds.Count == 1 ? Scope.DeviceIds.First() : null;
-
-            // SignalAnomalyPanel handles single device or all devices
-            // Multiple devices would need merging logic
-            if (Scope.DeviceIds.Count > 1)
+            // All devices is one server call; each explicit device is requested and the results are merged.
+            if (Scope.IncludesAllDevices)
             {
-                _error = "Select a single device (or all) for this analysis";
-                return;
+                _report = await ReportGenerationService.BuildSignalAnomalyReportAsync(null, Scope.FromUtc, Scope.ToUtc, CancellationToken.None);
             }
+            else
+            {
+                var reports = new List<SignalAnomalyReport>();
+                foreach (var deviceId in Scope.DeviceIds)
+                {
+                    reports.Add(await ReportGenerationService.BuildSignalAnomalyReportAsync(deviceId, Scope.FromUtc, Scope.ToUtc, CancellationToken.None));
+                }
 
-            _report = await ReportGenerationService.BuildSignalAnomalyReportAsync(
-                deviceId,
-                Scope.FromUtc,
-                Scope.ToUtc,
-                CancellationToken.None);
+                _report = reports.Count == 0 ? null : AnalysisReportMerge.Merge(reports);
+            }
 
             _lastLoadedScope = Scope;
         }

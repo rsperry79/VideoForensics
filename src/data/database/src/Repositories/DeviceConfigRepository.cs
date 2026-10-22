@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.DeviceConfigSnapshots.Add(snapshot);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Device config snapshot appended: {SnapshotId} (device: {DeviceId})",
+                _logger.LogDebug("Device config snapshot appended: {SnapshotId} (device: {DeviceId})",
                     snapshot.Id, snapshot.DeviceId);
                 return snapshot;
             }

@@ -107,9 +107,9 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             do
             {
-                if (!_config.EnableHealthSync)
+                if (!_config.EnableElevatedPolling)
                 {
-                    _logger.LogDebug("Elevated polling is disabled via configuration; skipping this tick");
+                    _logger.LogDebug("Elevated polling is off (EnableElevatedPolling); skipping this tick");
                     continue;
                 }
 
@@ -133,6 +133,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             IDeviceRepository deviceRepository = sp.GetRequiredService<IDeviceRepository>();
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IDeviceHealthRepository healthRepository = sp.GetRequiredService<IDeviceHealthRepository>();
+            INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
             try
@@ -141,7 +142,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Health sync tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Health sync tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -166,7 +167,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // silent absence that a viewer could mistake for "confirmed no incidents".
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Health sync tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -219,10 +220,15 @@ namespace VideoForensics.Hosting.BackgroundServices
                             SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
+                        bool wentOffline = await IsNewlyOfflineAsync(healthRepository, device.Id, reading.Connected, ct);
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
+                        if (wentOffline)
+                        {
+                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                        }
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try
@@ -251,8 +257,8 @@ namespace VideoForensics.Hosting.BackgroundServices
                                                 device.Id,
                                                 TimeSpan.FromMinutes(_config.ElevatedPollingWindowMinutes));
                                             _logger.LogInformation(
-                                                "Health sync tick: device {DeviceId} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
-                                                device.Id, degradation);
+                                                "Health sync tick: device {DeviceName} RSSI degraded by {Degradation:F1} dB; entering elevated polling window",
+                                                device.Name, degradation);
                                         }
                                     }
                                 }
@@ -261,11 +267,11 @@ namespace VideoForensics.Hosting.BackgroundServices
                         catch (Exception ex)
                         {
                             // Non-critical: don't let degradation check failure break the main tick
-                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceId} failed (non-critical)", device.Id);
+                            _logger.LogWarning(ex, "Health sync tick: degradation check for device {DeviceName} failed (non-critical)", device.Name);
                         }
                     }
 
-                    _logger.LogInformation(
+                    _logger.LogDebug(
                         "Health sync tick: {SourceType} returned {ReadingCount} reading(s), persisted {PersistedCount} metric(s)",
                         healthSource.GetType().Name, readings.Count, persisted);
                 }
@@ -300,6 +306,8 @@ namespace VideoForensics.Hosting.BackgroundServices
             IVideoForensicsDataClient dataClient = sp.GetRequiredService<IVideoForensicsDataClient>();
             IProviderApiBudgetGuard budgetGuard = sp.GetRequiredService<IProviderApiBudgetGuard>();
             ISecurityAuditLogger auditLog = sp.GetRequiredService<ISecurityAuditLogger>();
+            IDeviceHealthRepository? healthRepository = sp.GetService<IDeviceHealthRepository>();
+            INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
 
             IReadOnlyList<VideoForensics.Data.Common.Entities.Device> devices;
             try
@@ -308,7 +316,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Elevated polling tick: failed to list devices; skipping this tick");
+                _logger.LogError(ex, "Elevated polling tick: failed to list devices; skipping this tick");
                 return;
             }
 
@@ -323,7 +331,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                 // Budget-guard the elevated tick's provider calls like the base tick does.
                 if (!await budgetGuard.TryConsumeAsync(providerName, ct))
                 {
-                    _logger.LogWarning("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
+                    _logger.LogDebug("Elevated polling tick: skipping {ProviderName} - provider API budget exceeded for this window", providerName);
                     continue;
                 }
 
@@ -382,15 +390,20 @@ namespace VideoForensics.Hosting.BackgroundServices
                             SupportedRpcCommands = (reading.SupportedRpcCommands ?? []).Select((c, i) => new DeviceHealthRpcCommand { Id = Guid.NewGuid(), Position = i, Command = c }).ToList()
                         };
 
+                        bool wentOffline = await IsNewlyOfflineAsync(healthRepository, device.Id, reading.Connected, ct);
                         _ = await dataClient.RecordDeviceHealthAsync(health, ct);
                         // Point Devices.DeviceHealthId at the newest reading so the device row reflects its latest health.
                         await dataClient.RecordDeviceDetailsAsync(device.Id, health.Id, null, null, null, ct);
                         persisted++;
+                        if (wentOffline)
+                        {
+                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                        }
                     }
 
                     if (persisted > 0)
                     {
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "Elevated polling tick: {SourceType} persisted {PersistedCount} metric(s) for elevated device(s)",
                             healthSource.GetType().Name, persisted);
                     }
@@ -432,7 +445,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                         {
                             // Active session exists: promote to sustained mode.
                             _ = await liveViewService.PromoteToSustainedAsync(activeSession.Id, "Jamming confirmed during elevated polling window", ct);
-                            _logger.LogInformation(
+                            _logger.LogDebug(
                                 "Elevated polling tick: jamming confirmed for device {DeviceId}; promoted session {SessionId} to sustained mode",
                                 deviceId, activeSession.Id);
                         }
@@ -444,8 +457,58 @@ namespace VideoForensics.Hosting.BackgroundServices
                 catch (Exception ex)
                 {
                     // Isolate per-device failures: one device's issue doesn't break others.
-                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceId} (non-critical)", deviceId);
+                    string deviceName = devices.FirstOrDefault(d => d.Id == deviceId)?.Name ?? "unknown device";
+                    _logger.LogWarning(ex, "Elevated polling tick: jamming analysis/live view management failed for device {DeviceName} (non-critical)", deviceName);
                 }
+            }
+        }
+
+        /// <summary>
+        /// True when the reading is offline and the newest persisted reading was online. Checked before the new
+        /// reading is written, so the alert fires on the transition rather than on every tick the device stays offline.
+        /// </summary>
+        private static async Task<bool> IsNewlyOfflineAsync(IDeviceHealthRepository? healthRepository, Guid deviceId, bool? connectedNow, CancellationToken ct)
+        {
+            // A null Connected means the provider did not say, so it is not treated as offline.
+            if (connectedNow != false)
+            {
+                return false;
+            }
+
+            // Only a host that registers no health repository gets here without one; with no history there is no transition to report.
+            if (healthRepository == null)
+            {
+                return false;
+            }
+
+            DeviceHealth? previous = await healthRepository.GetLatestAsync(deviceId, ct);
+            return previous is { IsOnline: true };
+        }
+
+        /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
+        private async Task NotifyDeviceOfflineAsync(INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            if (dispatcher == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await dispatcher.DispatchAsync(new NotificationEvent(
+                    EventType: "DeviceOffline",
+                    TimestampUtc: DateTime.UtcNow,
+                    OperatorId: null,
+                    PairedDeviceId: device.Id,
+                    SourceIp: null,
+                    Details: $"{device.Name} went offline",
+                    Audience: NotificationAudience.AdminsOnly,
+                    Severity: NoticeSeverity.Alert), ct);
+                _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Health sync: failed to dispatch offline alert for device {DeviceName} (non-critical)", device.Name);
             }
         }
 

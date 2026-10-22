@@ -134,7 +134,7 @@ namespace VideoForensics.Providers.Ring
             string config = jsonSerializer.Serialize(conf, Pretty);
 
             System.IO.File.WriteAllText(SavedSettingsFile, config);
-            log.LogInformation("Settings saved to {settingsFile}", SavedSettingsFile);
+            log.LogDebug("Settings saved to {settingsFile}", SavedSettingsFile);
         }
 
         /// <summary>
@@ -168,12 +168,12 @@ namespace VideoForensics.Providers.Ring
                 lock (rawApiLogLock)
                 {
                     System.IO.File.AppendAllText(logPath, line + Environment.NewLine, Utf8NoBom);
-                    log.LogInformation("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
+                    log.LogDebug("RawApiResponse {method} {url} {statusCode}", SanitizeForLog(entry.method), SanitizeForLog(entry.url), entry.statusCode);
                 }
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write raw API response log entry");
+                log.LogError(exe, "Failed to write raw API response log entry");
             }
         }
 
@@ -205,7 +205,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write session debug log entry");
+                log.LogError(exe, "Failed to write session debug log entry");
             }
         }
 
@@ -232,11 +232,11 @@ namespace VideoForensics.Providers.Ring
                 string pretty = jsonSerializer.Serialize(doc, Pretty);
 
                 System.IO.File.WriteAllText(filePath, pretty, Utf8NoBom);
-                log.LogInformation("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
+                log.LogDebug("RingEventsBatch {fileName} written", Path.GetFileName(filePath));
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write ring events batch log file");
+                log.LogError(exe, "Failed to write ring events batch log file");
             }
         }
 
@@ -326,7 +326,7 @@ namespace VideoForensics.Providers.Ring
                             string token = await reporter.PromptTwoFactorCodeAsync();
                             if (!string.IsNullOrEmpty(token))
                             {
-                                log.LogInformation("2FA token received");
+                                log.LogDebug("2FA token received");
                             }
 
                             return token;
@@ -607,7 +607,7 @@ namespace VideoForensics.Providers.Ring
                     catch (Exception ex)
                     {
                         reporter.Warning($"Failed to fetch locations from API: {ex.Message}");
-                        log.LogWarning(ex, "Failed to fetch location list from API");
+                        log.LogError(ex, "Failed to fetch location list from API");
                     }
 
                     // Fall back to config-supplied names for any location the API didn't cover
@@ -816,7 +816,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -828,7 +828,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -840,7 +840,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot(d.Id, fileName);
+                        _ = await GetSnapshot(d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -852,7 +852,7 @@ namespace VideoForensics.Providers.Ring
                     if (d?.Id != null && !string.IsNullOrEmpty(d.Description))
                     {
                         fileName = string.Format(fileNameFormat, d.Description);
-                        _ = await GetSnapshot((int)d.Id, fileName);
+                        _ = await GetSnapshot((int)d.Id, d.Description, fileName);
                     }
                 }
             }
@@ -860,7 +860,7 @@ namespace VideoForensics.Providers.Ring
             return true;
 
         }
-        internal async Task<bool> GetSnapshot(int doorbotId, string fileName)
+        internal async Task<bool> GetSnapshot(int doorbotId, string deviceName, string fileName)
         {
             try
             {
@@ -873,7 +873,7 @@ namespace VideoForensics.Providers.Ring
             catch (Exception exe)
             {
                 reporter.Warning($"Failed to download snapshot for device {doorbotId}: {exe.Message}");
-                log.LogError(exe, $"Failed to download snapshot for device {doorbotId}");
+                log.LogError(exe, $"Failed to download snapshot for device {deviceName}");
                 return false;
             }
         }
@@ -1020,7 +1020,7 @@ namespace VideoForensics.Providers.Ring
             }
             catch (Exception ex)
             {
-                log.LogWarning(ex, "Failed to write metadata sidecar for {filename}", filename);
+                log.LogError(ex, "Failed to write metadata sidecar for {filename}", filename);
                 // Don't throw - metadata failure shouldn't block the download process
             }
         }
@@ -1127,7 +1127,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
+                log.LogDebug($"Loaded {loadedEventIds.Count} previously failed event IDs from existing report");
             }
             catch (Exception exe)
             {
@@ -1175,11 +1175,11 @@ namespace VideoForensics.Providers.Ring
                 string json = jsonSerializer.Serialize(ding, Pretty);
 
                 System.IO.File.WriteAllText(filePath, json, Utf8NoBom);
-                log.LogInformation("PerEventJson {fileName} written", Path.GetFileName(filePath));
+                log.LogDebug("PerEventJson {fileName} written", Path.GetFileName(filePath));
             }
             catch (Exception exe)
             {
-                log.LogWarning(exe, "Failed to write per-event JSON log file");
+                log.LogError(exe, "Failed to write per-event JSON log file");
             }
         }
 
@@ -1192,7 +1192,7 @@ namespace VideoForensics.Providers.Ring
                 // Skip if already recorded
                 if (loadedEventIds.Contains(eventId))
                 {
-                    log.LogInformation($"Skipping duplicate failure record for EventId {eventId}");
+                    log.LogDebug($"Skipping duplicate failure record for EventId {ding.Doorbot?.Description}");
                     return;
                 }
 
@@ -1214,7 +1214,7 @@ namespace VideoForensics.Providers.Ring
 
                 newFailures.Add(failure);
                 _ = loadedEventIds.Add(eventId); // Mark as recorded for this session
-                log.LogInformation($"Recorded failed download for EventId {eventId}: {errorDesc}");
+                log.LogDebug($"Recorded failed download for EventId {ding.Doorbot.Description}");
             }
             catch (Exception exe)
             {
@@ -1338,7 +1338,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Appended {rows.Count} camera health entries to {tsvPath}");
+                log.LogDebug($"Appended {rows.Count} camera health entries to {tsvPath}");
             }
             catch (Exception exe)
             {
@@ -1407,7 +1407,7 @@ namespace VideoForensics.Providers.Ring
                     }
                 }
 
-                log.LogInformation($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
+                log.LogDebug($"Tracked {rows.Count} event telemetry entries to {tsvPath}");
             }
             catch (Exception exe)
             {

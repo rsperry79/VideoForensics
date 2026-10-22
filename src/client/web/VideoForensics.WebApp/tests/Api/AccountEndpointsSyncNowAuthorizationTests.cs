@@ -120,6 +120,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddScoped(_ => Mock.Of<IProviderAccountRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<ICaseRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<IProviderSyncRunRepository>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddScoped(_ => Mock.Of<IRingAccountSyncState>());
 
             WebApplication app = builder.Build();

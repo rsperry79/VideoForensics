@@ -1,0 +1,33 @@
+@* Thumbnail for an evidence media item. Images are their own thumbnail; a video's thumbnail is the frame the
+   server stored at import, served from the thumbnail route for the same ticket. *@
+<img src="@ThumbnailSrc" alt="@Alt" class="@CssClass" style="@Style" loading="lazy" />
+
+@code {
+    /// <summary>Ticketed content URL for the media item.</summary>
+    [Parameter, EditorRequired]
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>True for video media, whose thumbnail is a stored frame rather than the file.</summary>
+    [Parameter]
+    public bool IsVideo { get; set; }
+
+    /// <summary>Accessible label for the thumbnail.</summary>
+    [Parameter]
+    public string? Alt { get; set; }
+
+    /// <summary>Optional CSS class applied to the rendered element.</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    /// <summary>Optional inline style applied to the rendered element (for fixed-size grid cells).</summary>
+    [Parameter]
+    public string? Style { get; set; }
+
+    /// <summary>
+    /// Why: the thumbnail route shares the content ticket, so no second ticket request is needed. Clients never
+    /// load the clip itself just to show a poster.
+    /// </summary>
+    private string ThumbnailSrc => IsVideo
+        ? VideoForensics.Core.Api.Contracts.MediaContentRoutes.ThumbnailUrlFromContentUrl(Url)
+        : Url;
+}

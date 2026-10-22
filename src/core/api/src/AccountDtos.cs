@@ -29,6 +29,7 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="LastDownloadTimeUtc">Timestamp of the last batch download completion for this account, used as the default start time for the next download. Null if never downloaded.</param>
     /// <param name="LastErrorUtc">Timestamp of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
     /// <param name="LastErrorMessage">Description of the most recent failure surfaced to operators (e.g. credential decryption failure). Null if no error or cleared on next successful operation.</param>
+    /// <param name="RemovedUtc">When the account was retired (soft-removed); null while it is active.</param>
     public record ProviderAccountDto(
         Guid Id,
         Guid UserId,
@@ -38,8 +39,65 @@ namespace VideoForensics.Core.Api.Contracts
         bool IsActive,
         DateTime? LastDownloadTimeUtc,
         DateTime? LastErrorUtc,
-        string? LastErrorMessage
+        string? LastErrorMessage,
+        DateTime? RemovedUtc = null
     );
+
+    /// <summary>Request body for queueing a background export of a provider account.</summary>
+    /// <param name="PurgeAfterExport">When true, the account is hard-deleted after the export file is written.</param>
+    /// <param name="ConfirmPurge">The operator confirmed the purge in the UI. Required whenever <paramref name="PurgeAfterExport"/> is true.</param>
+    public record QueueAccountExportRequest(bool PurgeAfterExport, bool ConfirmPurge = false)
+    {
+        /// <summary>Returned when a purge is requested without the operator's confirmation.</summary>
+        public const string PurgeNotConfirmedMessage = "Purging an account needs the operator to confirm it first.";
+
+        /// <summary>The reason this request is refused, or null when it may proceed.</summary>
+        public string? ValidationError => PurgeAfterExport && !ConfirmPurge ? PurgeNotConfirmedMessage : null;
+    }
+
+    /// <summary>Wire form of a background account export job's status.</summary>
+    /// <param name="JobId">The job id returned when the export was queued.</param>
+    /// <param name="AccountId">The provider account being exported.</param>
+    /// <param name="State">Lifecycle state name (Queued, Running, Succeeded, Failed).</param>
+    /// <param name="FilePath">Final export file path once written; null before that.</param>
+    /// <param name="ErrorMessage">Failure reason when the state is Failed.</param>
+    /// <param name="PurgeAfterExport">Whether the account is hard-deleted after a successful export.</param>
+    /// <param name="CreatedUtc">When the job was queued.</param>
+    /// <param name="CompletedUtc">When the job reached Succeeded or Failed.</param>
+    public record ExportJobDto(
+        Guid JobId,
+        Guid AccountId,
+        string State,
+        string? FilePath,
+        string? ErrorMessage,
+        bool PurgeAfterExport,
+        DateTime CreatedUtc,
+        DateTime? CompletedUtc
+    );
+
+    /// <summary>Extension methods for mapping export job statuses to/from <see cref="ExportJobDto"/>.</summary>
+    public static class ExportJobDtoMapping
+    {
+        /// <summary>Converts an export job status to its wire DTO.</summary>
+        public static ExportJobDto ToDto(this VideoForensics.Client.Common.Contracts.ExportJobStatus entity)
+        {
+            return new ExportJobDto(entity.JobId, entity.AccountId, entity.State.ToString(), entity.FilePath, entity.ErrorMessage, entity.PurgeAfterExport, entity.CreatedUtc, entity.CompletedUtc);
+        }
+
+        /// <summary>Converts an export job DTO back to the domain status.</summary>
+        public static VideoForensics.Client.Common.Contracts.ExportJobStatus ToDomain(this ExportJobDto dto)
+        {
+            return new VideoForensics.Client.Common.Contracts.ExportJobStatus(
+                dto.JobId,
+                dto.AccountId,
+                Enum.TryParse(dto.State, true, out VideoForensics.Client.Common.Contracts.ExportJobState state) ? state : VideoForensics.Client.Common.Contracts.ExportJobState.Failed,
+                dto.FilePath,
+                dto.ErrorMessage,
+                dto.PurgeAfterExport,
+                dto.CreatedUtc,
+                dto.CompletedUtc);
+        }
+    }
 
     /// <summary>Extension methods for mapping User entities to/from UserDtos.</summary>
     public static class UserDtoMapping
@@ -91,7 +149,8 @@ namespace VideoForensics.Core.Api.Contracts
                 IsActive: entity.IsActive,
                 LastDownloadTimeUtc: entity.LastDownloadTimeUtc,
                 LastErrorUtc: entity.LastErrorUtc,
-                LastErrorMessage: entity.LastErrorMessage
+                LastErrorMessage: entity.LastErrorMessage,
+                RemovedUtc: entity.RemovedUtc
             );
         }
 
@@ -110,7 +169,8 @@ namespace VideoForensics.Core.Api.Contracts
                 IsActive = dto.IsActive,
                 LastDownloadTimeUtc = dto.LastDownloadTimeUtc,
                 LastErrorUtc = dto.LastErrorUtc,
-                LastErrorMessage = dto.LastErrorMessage
+                LastErrorMessage = dto.LastErrorMessage,
+                RemovedUtc = dto.RemovedUtc
             };
         }
     }
@@ -122,24 +182,26 @@ namespace VideoForensics.Core.Api.Contracts
     /// <param name="Id">Unique identifier for the sync schedule.</param>
     /// <param name="ProviderAccountId">The provider account this schedule applies to.</param>
     /// <param name="EventPollIntervalMinutes">Interval in minutes for pulling events (rule violations, motion, person detection).</param>
-    /// <param name="SnapshotRssiIntervalMinutes">Interval in minutes for pulling snapshots and RSSI data (default when no jamming window applies).</param>
+    /// <param name="SnapshotRssiIntervalSeconds">Interval in seconds for pulling snapshots and RSSI data (default when no jamming window applies).</param>
     /// <param name="IsEnabled">Indicates whether syncing is enabled for this account.</param>
     /// <param name="UseAdvancedJammingSchedule">Indicates whether the advanced jamming detection schedule is active.</param>
     /// <param name="EventNextRunUtc">The UTC timestamp when the next event poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="EventLastRunUtc">The UTC timestamp of the most recent event poll run; null if never run.</param>
     /// <param name="SnapshotNextRunUtc">The UTC timestamp when the next snapshot/RSSI poll is scheduled to run; null if no future poll is scheduled.</param>
     /// <param name="SnapshotLastRunUtc">The UTC timestamp of the most recent snapshot/RSSI poll run; null if never run.</param>
+    /// <param name="SnapshotRollupIntervalMinutes">Minutes between MP4 roll-ups of snapshots into loops. Default 15.</param>
     public record SyncScheduleDto(
         Guid Id,
         Guid ProviderAccountId,
         int EventPollIntervalMinutes,
-        int SnapshotRssiIntervalMinutes,
+        int SnapshotRssiIntervalSeconds,
         bool IsEnabled,
         bool UseAdvancedJammingSchedule,
         DateTime? EventNextRunUtc,
         DateTime? EventLastRunUtc,
         DateTime? SnapshotNextRunUtc,
-        DateTime? SnapshotLastRunUtc
+        DateTime? SnapshotLastRunUtc,
+        int SnapshotRollupIntervalMinutes = VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes
     );
 
     /// <summary>Extension methods for mapping SyncSchedule entities to/from SyncScheduleDtos.</summary>
@@ -154,13 +216,14 @@ namespace VideoForensics.Core.Api.Contracts
                 Id: entity.Id,
                 ProviderAccountId: entity.ProviderAccountId,
                 EventPollIntervalMinutes: entity.EventPollIntervalMinutes,
-                SnapshotRssiIntervalMinutes: entity.SnapshotRssiIntervalMinutes,
+                SnapshotRssiIntervalSeconds: entity.SnapshotRssiIntervalSeconds,
                 IsEnabled: entity.IsEnabled,
                 UseAdvancedJammingSchedule: entity.UseAdvancedJammingSchedule,
                 EventNextRunUtc: entity.EventNextRunUtc,
                 EventLastRunUtc: entity.EventLastRunUtc,
                 SnapshotNextRunUtc: entity.SnapshotNextRunUtc,
-                SnapshotLastRunUtc: entity.SnapshotLastRunUtc
+                SnapshotLastRunUtc: entity.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes: entity.SnapshotRollupIntervalMinutes
             );
         }
 
@@ -174,13 +237,14 @@ namespace VideoForensics.Core.Api.Contracts
                 Id = dto.Id,
                 ProviderAccountId = dto.ProviderAccountId,
                 EventPollIntervalMinutes = dto.EventPollIntervalMinutes,
-                SnapshotRssiIntervalMinutes = dto.SnapshotRssiIntervalMinutes,
+                SnapshotRssiIntervalSeconds = dto.SnapshotRssiIntervalSeconds,
                 IsEnabled = dto.IsEnabled,
                 UseAdvancedJammingSchedule = dto.UseAdvancedJammingSchedule,
                 EventNextRunUtc = dto.EventNextRunUtc,
                 EventLastRunUtc = dto.EventLastRunUtc,
                 SnapshotNextRunUtc = dto.SnapshotNextRunUtc,
-                SnapshotLastRunUtc = dto.SnapshotLastRunUtc
+                SnapshotLastRunUtc = dto.SnapshotLastRunUtc,
+                SnapshotRollupIntervalMinutes = dto.SnapshotRollupIntervalMinutes
             };
         }
     }

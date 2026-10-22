@@ -334,12 +334,9 @@ namespace VideoForensics.Providers.Ring
 
             if (hardBanUntil.HasValue)
             {
-                if (DateTime.UtcNow < hardBanUntil.Value)
+                if (HardBanFailure(hardBanUntil.Value, DateTime.UtcNow) is { } ban)
                 {
-                    TimeSpan remaining = hardBanUntil.Value - DateTime.UtcNow;
-                    throw new Exceptions.ThrottledException(
-                        $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.Value.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
-                        isHardBan: true);
+                    throw ban;
                 }
 
                 lock (_throttleLock)
@@ -350,6 +347,24 @@ namespace VideoForensics.Providers.Ring
 
                 PersistHardBanState();
             }
+        }
+
+        /// <summary>
+        /// The failure a request gets while a hard ban runs until <paramref name="hardBanUntil"/>, or null once it has lifted.
+        /// Pure, so the ban decision can be tested without the process-wide ban state.
+        /// </summary>
+        internal static Exceptions.ThrottledException? HardBanFailure(DateTime hardBanUntil, DateTime nowUtc)
+        {
+            if (nowUtc >= hardBanUntil)
+            {
+                return null;
+            }
+
+            TimeSpan remaining = hardBanUntil - nowUtc;
+            return new Exceptions.ThrottledException(
+                $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
+
+                isHardBan: true);
         }
 
         /// <summary>
@@ -627,13 +642,57 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>
+        /// The HTTP status Ring returned for a download, with the body bytes and any Retry-After wait.
+        /// </summary>
+        /// <param name="Status">The real HTTP status code of the response.</param>
+        /// <param name="Bytes">The response body, whatever the status.</param>
+        /// <param name="RetryAfter">The Retry-After wait from the response, when present.</param>
+        public sealed record DownloadResult(HttpStatusCode Status, byte[] Bytes, TimeSpan? RetryAfter);
+
+        /// <summary>
         /// Downloads the file from the provided Url
         /// </summary>
         /// <param name="url">Url to download the file from</param>
         /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
         /// <returns>Byte array with the file download</returns>
+        /// <exception cref="Exceptions.ThrottledException">Thrown when Ring responds with HTTP 429. Carries the Retry-After wait.</exception>
+        /// <exception cref="Exceptions.DownloadFailedException">Thrown for any other non-2xx response, so an error page is never returned as file data.</exception>
         public async Task<byte[]> DownloadFile(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
         {
+            DownloadResult result = await DownloadFileWithStatus(url, bearerToken, cancellationToken);
+
+            if (result.Status == (HttpStatusCode)429)
+            {
+                throw new Exceptions.ThrottledException { StatusCode = result.Status, RetryAfter = result.RetryAfter };
+            }
+
+            if (!IsSuccessStatus(result.Status))
+            {
+                throw new Exceptions.DownloadFailedException(url.ToString()) { StatusCode = result.Status };
+            }
+
+            return result.Bytes;
+        }
+
+        /// <summary>
+        /// True for HTTP 2xx status codes.
+        /// </summary>
+        private static bool IsSuccessStatus(HttpStatusCode status)
+        {
+            int code = (int)status;
+            return code >= 200 && code <= 299;
+        }
+
+        /// <summary>
+        /// Downloads the file from the provided Url and returns the real HTTP status alongside the body. Does not throw on non-success statuses.
+        /// </summary>
+        /// <param name="url">Url to download the file from</param>
+        /// <param name="bearerToken">Bearer token to authenticate the request with. Leave out to not authenticate the session.</param>
+        /// <returns>The status, body bytes and Retry-After wait of the response</returns>
+        public async Task<DownloadResult> DownloadFileWithStatus(Uri url, string bearerToken = null, CancellationToken cancellationToken = default)
+        {
+            // The snapshot image read: no request while Ring holds a hard ban, so each probe does not count against the account.
+            ThrowIfHardBanned();
             // Construct the request
             var request = new HttpRequestMessage
             {
@@ -658,7 +717,7 @@ namespace VideoForensics.Providers.Ring
             using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
             byte[] bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             ApiRawLogger.Raise("GET", url.ToString(), (int)response.StatusCode, $"<binary content, {bytes.Length} bytes>");
-            return bytes;
+            return new DownloadResult(response.StatusCode, bytes, ParseRetryAfter(response));
         }
 
         /// <summary>
@@ -672,6 +731,8 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.UnexpectedOutcomeException">Thrown if the actual HTTP response is different from what was expected (or, with no specific expectation, wasn't a success)</exception>
         public async Task SendRequestWithExpectedStatusOutcome(Uri url, HttpMethod httpMethod, HttpStatusCode? expectedStatusCode, string bodyContent = null, string bearerToken = null, CancellationToken cancellationToken = default)
         {
+            // Carries the snapshot update PUT: no request while Ring holds a hard ban.
+            ThrowIfHardBanned();
             using var request = new HttpRequestMessage(httpMethod, url);
 
             // Check if the OAuth Bearer Authorization token should be added to the request

@@ -38,7 +38,7 @@ namespace VideoForensics.Hosting
             // half over is worth a heads-up independent of whether Ring has rejected anything yet.
             if (recentCount >= BudgetCeiling / 2)
             {
-                _logger.LogWarning("Provider API call volume for {ProviderName} is unusually high: {Count}/{Ceiling} in the current window.",
+                _logger.LogDebug("Provider API call volume for {ProviderName} is unusually high: {Count}/{Ceiling} in the current window.",
                     providerName, recentCount, BudgetCeiling);
             }
 

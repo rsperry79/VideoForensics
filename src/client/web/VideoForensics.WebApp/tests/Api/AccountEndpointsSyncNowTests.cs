@@ -59,7 +59,8 @@ namespace VideoForensics.WebApp.Tests.Api
                     UserId = Guid.NewGuid(),
                     ProviderName = "Ring",
                     LinkedUtc = DateTime.UtcNow,
-                    IsActive = true
+                    IsActive = true,
+                    InitialSyncCompleted = true
                 });
 
             _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()))
@@ -80,6 +81,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
             _ = builder.Services.AddSingleton(_runner.Object);
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
+            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddSingleton(_syncState.Object);
 
             // The account routes require SuperAdmin on the Local tier; the test scheme always signs in such an operator.

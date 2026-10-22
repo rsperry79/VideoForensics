@@ -1,3 +1,5 @@
+using System.Net;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -317,6 +319,192 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert - no exception thrown
             Assert.True(true);
+        }
+
+        private sealed class StubRingHandler : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.ToString() ?? string.Empty;
+                HttpContent content;
+                if (url.Contains("snapshots/image", StringComparison.Ordinal))
+                {
+                    content = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+                }
+                else if (url.Contains("oauth", StringComparison.OrdinalIgnoreCase))
+                {
+                    content = new StringContent("{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", System.Text.Encoding.UTF8, "application/json");
+                }
+                else
+                {
+                    content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_SuccessfulDownload_ReleasesFileHandle()
+        {
+            // Arrange - a real session over a stub handler so a snapshot file is actually written and hashed
+            var session = new Session("testuser", "testpass", new StubRingHandler(), null, null);
+            _ = await session.Authenticate();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
+            ILogger logger = new Mock<ILogger>().Object;
+            var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            string folder = Path.Combine(Path.GetTempPath(), "ring_handle_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                // Act
+                _ = await service.DownloadSnapshotsAsync("12345", folder, DateTime.Now.AddDays(-1), DateTime.Now);
+
+                // Assert - the downloaded file was written, and deleting the folder (no retry) must not hit a locked file
+                Assert.NotEmpty(Directory.GetFiles(folder, "*.jpg"));
+                Exception? ex = Record.Exception(() => Directory.Delete(folder, recursive: true));
+                Assert.Null(ex);
+            }
+            finally
+            {
+                if (Directory.Exists(folder))
+                {
+                    try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+                }
+            }
+        }
+
+        private const string VideoEventCreatedAt = "2026-10-17T12:00:00Z";
+
+        private sealed class StubVideoHistoryHandler : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.ToString() ?? string.Empty;
+                string body;
+                if (url.Contains("oauth", StringComparison.OrdinalIgnoreCase))
+                {
+                    body = "{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}";
+                }
+                else if (url.Contains("share/download", StringComparison.Ordinal))
+                {
+                    body = "{\"url\":\"https://recordings.example.test/rec.mp4\"}";
+                }
+                else if (url.Contains("history", StringComparison.Ordinal))
+                {
+                    // First page has the one event; any older_than page is empty so paging terminates.
+                    body = url.Contains("older_than", StringComparison.Ordinal)
+                        ? "[]"
+                        : "[{\"id\":987654,\"created_at\":\"" + VideoEventCreatedAt + "\",\"kind\":\"motion\",\"doorbot\":{\"id\":12345,\"description\":\"cam\"}}]";
+                }
+                else
+                {
+                    body = "{}";
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+                });
+            }
+        }
+
+        private sealed class StubVideoDownloader : IVideoDownloader
+        {
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3, 4 }));
+
+            public async Task DownloadToFileAsync(string url, string saveAsPath)
+            {
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(saveAsPath)!);
+                await File.WriteAllBytesAsync(saveAsPath, new byte[] { 0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70 });
+            }
+        }
+
+        private static async Task<(RingMediaDownloadService Service, Session Session)> CreateVideoServiceAsync()
+        {
+            var session = new Session("testuser", "testpass", new StubVideoHistoryHandler(), new StubVideoDownloader(), null);
+            _ = await session.Authenticate();
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
+            ILogger logger = new Mock<ILogger>().Object;
+            var dataClientMock = new Mock<IVideoForensicsDataClient>();
+            _ = dataClientMock.Setup(d => d.EnsureLocationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "loc", Name = "loc" });
+            _ = dataClientMock.Setup(d => d.EnsureDeviceAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device { Id = Guid.NewGuid(), ProviderDeviceId = "12345", Name = "cam", Type = "doorbell" });
+            var tagger = new Mock<IMediaMetadataTagger>();
+            _ = tagger.Setup(t => t.TagEventIdAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClientMock.Object, tagger.Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            return (service, session);
+        }
+
+        private static void TryDeleteFolder(string folder)
+        {
+            if (Directory.Exists(folder))
+            {
+                try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_NewVideo_ReleasesFileHandle()
+        {
+            // Arrange - history returns one event; the stub downloader writes a non-empty mp4, which the service then hashes
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vhandle_new_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the file was newly written, and deleting the folder (no retry) must not hit a locked file
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.NotEmpty(Directory.GetFiles(folder, "*.mp4"));
+                Exception? ex = Record.Exception(() => Directory.Delete(folder, recursive: true));
+                Assert.Null(ex);
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_ExistingVideoOnDisk_ReleasesFileHandle()
+        {
+            // Arrange - pre-create the exact file the service computes for the event so the existing-file hash path runs
+            (RingMediaDownloadService service, _) = await CreateVideoServiceAsync();
+            string folder = Path.Combine(Path.GetTempPath(), "ring_vhandle_existing_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(folder);
+            string existingFile = Path.Combine(folder,
+                MediaFileNamer.FormatMediaFileName("cam", DateTime.Parse(VideoEventCreatedAt), "motion", "mp4"));
+            byte[] existingBytes = new byte[] { 9, 9, 9, 9 };
+            await File.WriteAllBytesAsync(existingFile, existingBytes);
+
+            try
+            {
+                // Act
+                DownloadResult result = await service.DownloadVideosAsync("12345", folder, DateTime.Now.AddDays(-30), DateTime.Now.AddDays(1));
+
+                // Assert - the pre-existing file was kept (not redownloaded), and the folder can be deleted without a locked file
+                Assert.True(result.Success, result.ErrorMessage);
+                Assert.Equal(existingBytes, await File.ReadAllBytesAsync(existingFile));
+                Exception? ex = Record.Exception(() => Directory.Delete(folder, recursive: true));
+                Assert.Null(ex);
+            }
+            finally
+            {
+                TryDeleteFolder(folder);
+            }
         }
 
         [Fact]
@@ -685,6 +873,23 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task RingMediaDownloadService_Snapshot_UsesDeviceNameNotId()
+        {
+            var service = new RingMediaDownloadService(new Mock<ILogger>().Object, new Mock<ISessionProvider>().Object, new Mock<IVideoForensicsDataClient>().Object);
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(new Entities.Devices
+            {
+                Doorbots = [new Entities.Doorbot { Id = 123, Description = "Front Door" }]
+            });
+
+            string? known = await service.ResolveDeviceNameAsync(session.Object, "123", CancellationToken.None);
+            string? unknown = await service.ResolveDeviceNameAsync(session.Object, "999", CancellationToken.None);
+
+            Assert.Equal("Front Door", known);
+            Assert.Null(unknown);
+        }
+
+        [Fact]
         public async Task CaptureDeviceHealthSnapshotAsync_WritesHealthTelemetryAndDeviceDetails()
         {
             var dataClient = new Mock<IVideoForensicsDataClient>();
@@ -713,7 +918,7 @@ namespace VideoForensics.Providers.Ring.Tests
             });
             Guid deviceGuid = Guid.NewGuid();
 
-            await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", deviceGuid, CancellationToken.None);
+            await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", "Test Camera", deviceGuid, CancellationToken.None);
 
             dataClient.Verify(d => d.RecordDeviceHealthAsync(It.Is<VideoForensics.Data.Common.Entities.DeviceHealth>(h =>
                 h.DeviceId == deviceGuid
@@ -765,6 +970,218 @@ namespace VideoForensics.Providers.Ring.Tests
             dataClient.Verify(d => d.EnsureDeviceAsync(
                 It.IsAny<Guid>(), "123", "Front Door", "doorbell", false,
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_SuccessfulDownload_LogsInformationWithFileName()
+        {
+            string outputPath = CreateTempOutputDirectory();
+            try
+            {
+                var logger = new RecordingLogger();
+                RingMediaDownloadService service = await CreateAuthenticatedDownloadServiceAsync(logger, EventCreatedAtUtc);
+
+                _ = await service.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+
+                string fileName = Path.GetFileName(Assert.Single(Directory.GetFiles(outputPath, "*.mp4")));
+                Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Information
+                    && entry.Message.StartsWith("Downloaded media file", StringComparison.Ordinal)
+                    && entry.Message.Contains(fileName, StringComparison.Ordinal));
+            }
+            finally
+            {
+                DeleteOutputDirectory(outputPath);
+            }
+        }
+
+        [Fact]
+        public async Task DownloadVideosAsync_FileAlreadyOnDisk_LogsInformationSkip()
+        {
+            string outputPath = CreateTempOutputDirectory();
+            try
+            {
+                // First run downloads the file so the second run finds it already present on disk.
+                RingMediaDownloadService firstRun = await CreateAuthenticatedDownloadServiceAsync(new RecordingLogger(), EventCreatedAtUtc);
+                _ = await firstRun.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+                string fileName = Path.GetFileName(Assert.Single(Directory.GetFiles(outputPath, "*.mp4")));
+
+                var logger = new RecordingLogger();
+                RingMediaDownloadService secondRun = await CreateAuthenticatedDownloadServiceAsync(logger, EventCreatedAtUtc);
+                _ = await secondRun.DownloadVideosAsync(DownloadDeviceId, outputPath, DownloadStart(), DownloadEnd());
+
+                Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Information
+                    && entry.Message.StartsWith("Media file", StringComparison.Ordinal)
+                    && entry.Message.Contains(fileName, StringComparison.Ordinal)
+                    && entry.Message.Contains("already exists", StringComparison.Ordinal));
+            }
+            finally
+            {
+                DeleteOutputDirectory(outputPath);
+            }
+        }
+
+        private const string DownloadDeviceId = "86401464";
+
+        // Fixed for the run so both passes of a test name the file identically (the name embeds the second).
+        private static readonly DateTime EventCreatedAtUtc = DateTime.UtcNow.AddHours(-1);
+
+        private static DateTime DownloadStart() => DateTime.UtcNow.AddDays(-7);
+
+        private static DateTime DownloadEnd() => DateTime.UtcNow.AddDays(1);
+
+        private static string CreateTempOutputDirectory()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "rmds-" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(path);
+            return path;
+        }
+
+        /// <summary>
+        /// Deletes the output folder, retrying briefly. The service's SHA-256 check opens files with File.OpenRead
+        /// without disposing the stream, so a just-written recording can still be locked when the test finishes.
+        /// </summary>
+        private static void DeleteOutputDirectory(string path)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    Directory.Delete(path, recursive: true);
+                    return;
+                }
+                catch (IOException) when (attempt < 20)
+                {
+                    Thread.Sleep(100);
+                }
+                catch (IOException)
+                {
+                    // Still locked after retries: leave the temp folder for the OS rather than failing the test.
+                    return;
+                }
+            }
+        }
+
+        /// <summary>Builds a service whose session serves one recent motion event for the device and a fake recording.</summary>
+        private static async Task<RingMediaDownloadService> CreateAuthenticatedDownloadServiceAsync(ILogger logger, DateTime eventCreatedAtUtc)
+        {
+            var session = new Session("user@example.com", "password", new DownloadStubHandler(HistoryJson(eventCreatedAtUtc)), new WritingVideoDownloader());
+            await session.Authenticate();
+
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
+
+            var dataClient = new Mock<IVideoForensicsDataClient>();
+            _ = dataClient.Setup(d => d.EnsureLocationAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Location { Id = Guid.NewGuid(), ProviderLocationId = "default", Name = "default" });
+            _ = dataClient.Setup(d => d.EnsureDeviceAsync(
+                    It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
+                    It.IsAny<DeviceDetailFields?>()))
+                .ReturnsAsync(new VideoForensics.Data.Common.Entities.Device
+                {
+                    Id = Guid.NewGuid(),
+                    LocationId = Guid.NewGuid(),
+                    ProviderDeviceId = DownloadDeviceId,
+                    Name = "Front Door",
+                    Type = "doorbell",
+                    IsOnline = true
+                });
+
+            var service = new RingMediaDownloadService(logger, sessionProvider.Object, dataClient.Object, new Mock<IMediaMetadataTagger>().Object);
+            service.SetActiveProviderAccountId(Guid.NewGuid());
+            return service;
+        }
+
+        private static string HistoryJson(DateTime createdAtUtc) => $$$"""
+            [{"id":123,"created_at":"{{{createdAtUtc:O}}}","answered":false,"events":[],"kind":"motion",
+            "favorite":false,"snapshot_url":"","recording":{"status":"ready"},"duration":41,
+            "doorbot":{"id":86401464,"description":"Front Door","type":"doorbell_graham_cracker"}}]
+            """;
+
+        private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body, HttpRequestMessage request) =>
+            new(status) { Content = new StringContent(body), RequestMessage = request };
+
+        /// <summary>Answers OAuth, one history event, and a recording URL; everything else is a 404.</summary>
+        private sealed class DownloadStubHandler : HttpMessageHandler
+        {
+            private readonly string _historyJson;
+
+            public DownloadStubHandler(string historyJson) => _historyJson = historyJson;
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                string url = request.RequestUri?.ToString() ?? string.Empty;
+                if (url.StartsWith("https://oauth.ring.com/", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK,
+                        "{\"access_token\":\"SESSION-TOKEN-NEVER-STORED\",\"refresh_token\":\"refresh\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", request));
+                }
+
+                if (url.Contains("/ring_devices", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK,
+                        "{\"doorbots\":[{\"id\":86401464,\"description\":\"Front Door\",\"kind\":\"doorbell_graham_cracker\"}],\"authorized_doorbots\":[],\"stickup_cams\":[],\"base_stations\":[],\"chimes\":[]}",
+                        request));
+                }
+
+                if (url.Contains("/share/download", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK, "{\"url\":\"https://cdn.example.test/recording.mp4\"}", request));
+                }
+
+                if (url.Contains("/history", StringComparison.Ordinal))
+                {
+                    // Only the first page carries the event; a paged follow-up (older_than) is empty so pagination ends.
+                    string query = request.RequestUri?.Query ?? string.Empty;
+                    string body = query.Contains("older_than", StringComparison.Ordinal) ? "[]" : _historyJson;
+                    return Task.FromResult(JsonResponse(HttpStatusCode.OK, body, request));
+                }
+
+                return Task.FromResult(JsonResponse(HttpStatusCode.NotFound, "{\"error\":\"Not found\"}", request));
+            }
+        }
+
+        /// <summary>Writes a small fake recording so the download produces a non-empty file.</summary>
+        private sealed class WritingVideoDownloader : IVideoDownloader
+        {
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream());
+
+            public Task DownloadToFileAsync(string url, string saveAsPath) =>
+                File.WriteAllBytesAsync(saveAsPath, new byte[] { 1, 2, 3, 4 });
+        }
+
+        /// <summary>Keeps each log entry's level and formatted text so a test can assert on it.</summary>
+        private sealed class RecordingLogger : ILogger
+        {
+            private readonly object _gate = new();
+            private readonly List<(LogLevel Level, string Message)> _entries = [];
+
+            public IReadOnlyList<(LogLevel Level, string Message)> Entries
+            {
+                get
+                {
+                    lock (_gate)
+                    {
+                        return _entries.ToArray();
+                    }
+                }
+            }
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                lock (_gate)
+                {
+                    _entries.Add((logLevel, exception == null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"));
+                }
+            }
         }
     }
 }

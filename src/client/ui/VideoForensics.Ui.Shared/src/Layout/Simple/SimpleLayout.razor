@@ -71,7 +71,7 @@
     private bool IsHomeRoute()
     {
         var path = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
-        return path.Length == 0 || string.Equals(path, "/evidence", StringComparison.OrdinalIgnoreCase);
+        return path.Length == 0 || string.Equals(path, "/media", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

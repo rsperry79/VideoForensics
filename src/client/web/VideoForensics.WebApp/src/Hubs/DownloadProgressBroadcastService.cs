@@ -52,7 +52,7 @@ namespace VideoForensics.WebApp.Hubs
                     using IServiceScope scope = _scopeFactory.CreateScope();
                     IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
 
-                    DownloadProgressDto payload = downloadService.ToDownloadProgressDto();
+                    DownloadProgressDto payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

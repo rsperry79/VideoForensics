@@ -11,6 +11,25 @@ namespace VideoForensics.Client.Core.Tests
     public class ConfigurationLoaderTests
     {
         [Fact]
+        public async Task LoadAndApplyAsync_PropagatesExportsLocation()
+        {
+            var loadedConfig = new ForensicsConfiguration
+            {
+                ExportsLocation = "exports-path",
+            };
+
+            var configService = new Mock<IForensicsConfigurationService>();
+            _ = configService.Setup(s => s.LoadConfigurationAsync("", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(loadedConfig);
+
+            var runtimeConfig = new ForensicsConfiguration();
+
+            await ConfigurationLoader.LoadAndApplyAsync(configService.Object, runtimeConfig, NullLogger.Instance, CancellationToken.None);
+
+            Assert.Equal("exports-path", runtimeConfig.ExportsLocation);
+        }
+
+        [Fact]
         public async Task LoadAndApplyAsync_PropagatesAllSixLocationProperties()
         {
             var loadedConfig = new ForensicsConfiguration

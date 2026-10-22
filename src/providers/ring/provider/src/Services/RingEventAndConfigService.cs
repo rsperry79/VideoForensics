@@ -7,6 +7,7 @@ namespace VideoForensics.Providers.Ring.Services
 {
     public class RingEventAndConfigService : IEventAndConfigService
     {
+        private const string ProviderName = "Ring";
         private readonly ILogger _logger;
         private readonly ISessionProvider _sessionProvider;
 
@@ -29,7 +30,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Fetching events for device from {StartDate} to {EndDate}",
+                _logger.LogDebug("Fetching events for device from {StartDate} to {EndDate}",
                     startDate, endDate);
 
 #pragma warning disable CS0618
@@ -57,7 +58,7 @@ namespace VideoForensics.Providers.Ring.Services
                     ))
                     .ToList() ?? [];
 
-                _logger.LogInformation("Found {EventCount} events for device {DeviceId}", deviceEvents.Count, SanitizeForLog(deviceId));
+                _logger.LogDebug("Found {EventCount} events for device {DeviceId}", deviceEvents.Count, SanitizeForLog(deviceId));
                 return deviceEvents.AsReadOnly();
             }
             catch (Exception ex)
@@ -71,7 +72,7 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Fetching configuration for device {DeviceId}", deviceId);
+                _logger.LogDebug("Fetching configuration for device {DeviceId}", deviceId);
 
 #pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
@@ -85,7 +86,7 @@ namespace VideoForensics.Providers.Ring.Services
                 Debug.Assert(session != null, "Session must not be null after null check");
                 if (!long.TryParse(deviceId, out long doorbotId))
                 {
-                    _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
+                    _logger.LogError("Invalid device ID format: {DeviceId}", deviceId);
                     return null;
                 }
 
@@ -110,9 +111,9 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Updating configuration for device {DeviceId}", deviceId);
+                _logger.LogDebug("Updating configuration for device {DeviceId}", deviceId);
 
-                _logger.LogWarning("Device configuration update not fully implemented for Ring provider");
+                _logger.LogDebug("Device configuration update not fully implemented for Ring provider");
                 return true;
             }
             catch (Exception ex)
@@ -133,13 +134,13 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Fetching events for device {DeviceId} from {StartDate} to {EndDate} for account {AccountId}",
-                    SanitizeForLog(deviceId), startDate, endDate, providerAccountId);
+                _logger.LogDebug("Fetching events for device {DeviceId} from {StartDate} to {EndDate} for {ProviderName} account",
+                    SanitizeForLog(deviceId), startDate, endDate, ProviderName);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for {ProviderName} account: Session is null", ProviderName);
                     return new List<DeviceEvent>().AsReadOnly();
                 }
 
@@ -157,12 +158,12 @@ namespace VideoForensics.Providers.Ring.Services
                     ))
                     .ToList() ?? [];
 
-                _logger.LogInformation("Found {EventCount} events for device {DeviceId} for account {AccountId}", deviceEvents.Count, SanitizeForLog(deviceId), providerAccountId);
+                _logger.LogDebug("Found {EventCount} events for device {DeviceId} for {ProviderName} account", deviceEvents.Count, SanitizeForLog(deviceId), ProviderName);
                 return deviceEvents.AsReadOnly();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching events for device {DeviceId} for account {AccountId}", SanitizeForLog(deviceId), providerAccountId);
+                _logger.LogError(ex, "Error fetching events for device {DeviceId} for {ProviderName} account", SanitizeForLog(deviceId), ProviderName);
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -174,18 +175,18 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Fetching configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogDebug("Fetching configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
 
                 Session? session = _sessionProvider.GetSession(providerAccountId);
                 if (session == null)
                 {
-                    _logger.LogError("Not authenticated for account {AccountId}: Session is null", providerAccountId);
+                    _logger.LogError("Not authenticated for {ProviderName} account: Session is null", ProviderName);
                     return null;
                 }
 
                 if (!long.TryParse(deviceId, out long doorbotId))
                 {
-                    _logger.LogWarning("Invalid device ID format: {DeviceId}", deviceId);
+                    _logger.LogError("Invalid device ID format: {DeviceId}", deviceId);
                     return null;
                 }
 
@@ -201,7 +202,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogError(ex, "Error fetching configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
                 return null;
             }
         }
@@ -213,14 +214,14 @@ namespace VideoForensics.Providers.Ring.Services
         {
             try
             {
-                _logger.LogInformation("Updating configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogDebug("Updating configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
 
-                _logger.LogWarning("Device configuration update not fully implemented for Ring provider");
+                _logger.LogDebug("Device configuration update not fully implemented for Ring provider");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating configuration for device {DeviceId} for account {AccountId}", deviceId, providerAccountId);
+                _logger.LogError(ex, "Error updating configuration for device {DeviceId} for {ProviderName} account", deviceId, ProviderName);
                 return false;
             }
         }

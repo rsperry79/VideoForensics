@@ -44,11 +44,11 @@ namespace VideoForensics.Hosting
                     ProviderAccountId = null  // will be added in a future task
                 };
                 await _noticeRepository.AddAsync(notice, ct);
-                _logger.LogInformation("Persisted notification event {EventType} to notice repository", notificationEvent.EventType);
+                _logger.LogDebug("Persisted notification event {EventType} to notice repository", notificationEvent.EventType);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to persist notice event {EventType} to database (non-critical, continuing with provider dispatch)", notificationEvent.EventType);
+                _logger.LogWarning(ex, "Failed to persist notice event {EventType} to database (non-critical, continuing with provider dispatch)", notificationEvent.EventType);
             }
 
             foreach (INotificationProvider provider in _providers)
@@ -62,7 +62,7 @@ namespace VideoForensics.Hosting
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Notification provider {Provider} failed to send event {EventType}", provider.Name, notificationEvent.EventType);
+                    _logger.LogWarning(ex, "Notification provider {Provider} failed to send event {EventType}", provider.Name, notificationEvent.EventType);
                 }
             }
         }

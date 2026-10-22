@@ -16,6 +16,7 @@ namespace VideoForensics.Providers.Ring.Services
     /// </summary>
     public class RingLiveViewProvider : ILiveViewCapableProvider
     {
+        private const string ProviderName = "Ring";
         private readonly ISessionProvider _sessionProvider;
         private readonly ILogger<RingLiveViewProvider> _logger;
 
@@ -43,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Services
                 throw new ArgumentException($"Invalid Ring doorbot ID '{providerDeviceId}'. Expected a numeric ID.", nameof(providerDeviceId));
             }
 
-            _logger.LogInformation("Starting Ring live view for doorbot {DoorbotId} with account {AccountId}", doorbotId, accountId);
+            _logger.LogDebug("Starting Ring live view for doorbot {DoorbotId} with {ProviderName} account", doorbotId, ProviderName);
 
             try
             {

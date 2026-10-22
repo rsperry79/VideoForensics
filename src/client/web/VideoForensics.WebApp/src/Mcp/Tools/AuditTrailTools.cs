@@ -28,7 +28,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetAuditTrailSummary: location={LocationId}", locationId);
+            Logger.LogDebug("GetAuditTrailSummary: location={LocationId}", locationId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetAuditTrailSummaryAsync(locationId, cancellationToken);
         }
@@ -41,7 +41,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetAccessHistoryPaginated: evidence={EvidenceId}, page={PageNumber}/{PageSize}",
+            Logger.LogDebug("GetAccessHistoryPaginated: evidence={EvidenceId}, page={PageNumber}/{PageSize}",
                 evidenceId, pageNumber, pageSize);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetAccessHistoryPaginatedAsync(evidenceId, pageNumber, pageSize, cancellationToken);
@@ -55,7 +55,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetExportHistoryCursor: location={LocationId}, cursor={Cursor}, pageSize={PageSize}",
+            Logger.LogDebug("GetExportHistoryCursor: location={LocationId}, cursor={Cursor}, pageSize={PageSize}",
                 locationId, cursor ?? "null", pageSize);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetExportHistoryCursorAsync(locationId, cursor, pageSize, cancellationToken);
@@ -67,7 +67,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("VerifyChainOfCustody: location={LocationId}", locationId);
+            Logger.LogDebug("VerifyChainOfCustody: location={LocationId}", locationId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.VerifyChainOfCustodyAsync(locationId, cancellationToken);
         }
@@ -78,7 +78,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("FlagUnauthorizedAccess: location={LocationId}", locationId);
+            Logger.LogDebug("FlagUnauthorizedAccess: location={LocationId}", locationId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.FlagUnauthorizedAccessAsync(locationId, cancellationToken);
         }
@@ -89,7 +89,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetExportHistory: location={LocationId}", locationId);
+            Logger.LogDebug("GetExportHistory: location={LocationId}", locationId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.GetExportHistoryAsync(locationId, cancellationToken);
         }
@@ -100,7 +100,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid exportId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("VerifyExportIntegrity: exportId={ExportId}", exportId);
+            Logger.LogDebug("VerifyExportIntegrity: exportId={ExportId}", exportId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _auditTrailRepository.VerifyExportIntegrityAsync(exportId, cancellationToken);
         }

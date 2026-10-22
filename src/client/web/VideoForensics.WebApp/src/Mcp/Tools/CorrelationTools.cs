@@ -21,7 +21,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetCorrelationSummary: location={LocationId}", locationId);
+            Logger.LogDebug("GetCorrelationSummary: location={LocationId}", locationId);
             return await _correlationRepository.GetCorrelationSummaryAsync(locationId, cancellationToken);
         }
 
@@ -33,7 +33,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetHealthRelatedGapsPaginated: location={LocationId}, page={PageNumber}/{PageSize}",
+            Logger.LogDebug("GetHealthRelatedGapsPaginated: location={LocationId}, page={PageNumber}/{PageSize}",
                 locationId, pageNumber, pageSize);
             return await _correlationRepository.GetHealthRelatedGapsPaginatedAsync(locationId, pageNumber, pageSize, cancellationToken);
         }
@@ -48,7 +48,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             int pageSize = 1000,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetEventHealthCorrelationCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
+            Logger.LogDebug("GetEventHealthCorrelationCursor: device={DeviceId}, cursor={Cursor}, pageSize={PageSize}",
                 deviceId, cursor ?? "null", pageSize);
             return await _correlationRepository.GetEventHealthCorrelationCursorAsync(deviceId, fromUtc, toUtc, cursor, pageSize, cancellationToken);
         }
@@ -59,7 +59,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("AnalyzeSyncHealth: location={LocationId}", locationId);
+            Logger.LogDebug("AnalyzeSyncHealth: location={LocationId}", locationId);
             return await _correlationRepository.AnalyzeSyncHealthAsync(locationId, cancellationToken);
         }
 
@@ -69,7 +69,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid locationId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("IdentifyHealthRelatedGaps: location={LocationId}", locationId);
+            Logger.LogDebug("IdentifyHealthRelatedGaps: location={LocationId}", locationId);
             return await _correlationRepository.IdentifyHealthRelatedGapsAsync(locationId, cancellationToken);
         }
 
@@ -79,7 +79,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid deviceId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("AnalyzeDeviceReliability: device={DeviceId}", deviceId);
+            Logger.LogDebug("AnalyzeDeviceReliability: device={DeviceId}", deviceId);
             return await _correlationRepository.AnalyzeDeviceReliabilityAsync(deviceId, cancellationToken);
         }
     }

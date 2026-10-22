@@ -28,7 +28,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             DateTime toUtc,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("RunJammingDetection: device={DeviceId}, from={FromUtc}, to={ToUtc}", deviceId, fromUtc, toUtc);
+            Logger.LogDebug("RunJammingDetection: device={DeviceId}, from={FromUtc}, to={ToUtc}", deviceId, fromUtc, toUtc);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             return await _orchestrator.AnalyzeJammingAsync(deviceId, fromUtc, toUtc, cancellationToken);
         }
@@ -45,7 +45,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             string? notes = null,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("RecordJammingIncident: device={DeviceId}", deviceId);
+            Logger.LogDebug("RecordJammingIncident: device={DeviceId}", deviceId);
             await _authorizer.RequireAsync(VideoForensicsPolicies.Admin);
             (bool success, string? message, JammingIncidentRecord? record) = await _orchestrator.RecordJammingIncidentAsync(
                 deviceId, startUtc, endUtc, affectedEventCount, averageDegradationDb, confidence, notes, cancellationToken);
@@ -58,7 +58,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             Guid deviceId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetJammingStats: device={DeviceId}", deviceId);
+            Logger.LogDebug("GetJammingStats: device={DeviceId}", deviceId);
             (bool _, JammingStatsSummary? stats) = await _orchestrator.GetJammingStatsAsync(deviceId, cancellationToken);
             return stats;
         }
@@ -71,7 +71,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             DateTime? toUtc = null,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("GetJammingIncidents: device={DeviceId}", deviceId);
+            Logger.LogDebug("GetJammingIncidents: device={DeviceId}", deviceId);
             (bool _, IReadOnlyList<JammingIncidentRecord>? incidents) = await _orchestrator.GetJammingIncidentsAsync(deviceId, fromUtc, toUtc, cancellationToken);
             return incidents ?? [];
         }

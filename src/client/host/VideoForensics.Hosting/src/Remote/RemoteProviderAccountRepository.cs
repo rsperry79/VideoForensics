@@ -23,6 +23,14 @@ namespace VideoForensics.Hosting.Remote
             _httpClient = httpClient;
         }
 
+        private static void AddStepUpHeader(HttpRequestMessage request, string? stepUpToken)
+        {
+            if (stepUpToken is not null)
+            {
+                request.Headers.Add("X-StepUp-Token", stepUpToken);
+            }
+        }
+
         /// <inheritdoc />
         public async Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
         {
@@ -79,6 +87,25 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
+        public async Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/accounts/provider-accounts/removed", ct);
+            _ = response.EnsureSuccessStatusCode();
+            List<ProviderAccountDto>? dtos = await response.Content.ReadFromJsonAsync<List<ProviderAccountDto>>(JsonOptions, ct);
+            return (dtos ?? []).Select(x => x.ToDomain()).ToList();
+        }
+
+        /// <inheritdoc />
+        /// <remarks>The server stamps the removal time itself, so <paramref name="removedUtc"/> is not sent.</remarks>
+        public async Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/accounts/provider-accounts/{accountId}/retire");
+            AddStepUpHeader(request, stepUpToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+            _ = response.EnsureSuccessStatusCode();
+        }
+
+        /// <inheritdoc />
         public async Task AddAsync(ProviderAccount account, CancellationToken ct)
         {
             var request = new
@@ -106,9 +133,11 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public async Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public async Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
-            HttpResponseMessage response = await _httpClient.DeleteAsync($"/api/v1/accounts/provider-accounts/{accountId}", ct);
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/accounts/provider-accounts/{accountId}");
+            AddStepUpHeader(request, stepUpToken);
+            HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
             _ = response.EnsureSuccessStatusCode();
         }
 

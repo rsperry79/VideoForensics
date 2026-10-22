@@ -1,0 +1,75 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Ui.Shared.Pages
+@inject IStringLocalizer<AccountSyncSchedule> L
+
+<div class="d-flex gap-2 align-items-center">
+    <input id="@Id" type="number" class="form-control" style="max-width: 9rem;"
+           min="@_minimumInUnit" step="1" value="@_displayValue" @onchange="OnNumberChanged" />
+    <select class="form-select" style="width: auto;" aria-label="@L["IntervalUnitLabel"]" @onchange="OnUnitChanged">
+        <option value="@IntervalUnit.Seconds" selected="@(_unit == IntervalUnit.Seconds)">@L["IntervalUnitSeconds"]</option>
+        <option value="@IntervalUnit.Minutes" selected="@(_unit == IntervalUnit.Minutes)">@L["IntervalUnitMinutes"]</option>
+    </select>
+</div>
+
+@code {
+    /// <summary>Unit the operator sees. The value itself is always stored in seconds.</summary>
+    private enum IntervalUnit
+    {
+        Seconds,
+        Minutes,
+    }
+
+    private const int SecondsPerMinute = 60;
+
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>The interval in seconds. This is what gets saved.</summary>
+    [Parameter]
+    public int Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    /// <summary>Smallest accepted value, in seconds.</summary>
+    [Parameter]
+    public int MinimumSeconds { get; set; } = 1;
+
+    private IntervalUnit _unit = IntervalUnit.Minutes;
+    private bool _unitChosen;
+
+    /// <summary>
+    /// Opens in minutes when the stored value is a whole number of minutes (the 1-minute default shows as "1 minutes"),
+    /// otherwise in seconds, so no value is ever shown rounded.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (!_unitChosen)
+        {
+            _unit = Value > 0 && Value % SecondsPerMinute == 0 ? IntervalUnit.Minutes : IntervalUnit.Seconds;
+        }
+    }
+
+    private int _minimumInUnit => _unit == IntervalUnit.Minutes ? Math.Max(1, MinimumSeconds / SecondsPerMinute) : MinimumSeconds;
+
+    private int _displayValue => _unit == IntervalUnit.Minutes ? Value / SecondsPerMinute : Value;
+
+    private async Task OnNumberChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int entered))
+        {
+            return;
+        }
+
+        long seconds = _unit == IntervalUnit.Minutes ? (long)entered * SecondsPerMinute : entered;
+        // Clamp into int range; anything the floor rejects is caught by the page's validation before saving.
+        Value = (int)Math.Clamp(seconds, int.MinValue, int.MaxValue);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private void OnUnitChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _unitChosen = true;
+        _unit = e.Value?.ToString() == nameof(IntervalUnit.Minutes) ? IntervalUnit.Minutes : IntervalUnit.Seconds;
+    }
+}

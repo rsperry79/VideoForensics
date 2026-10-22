@@ -28,11 +28,13 @@ namespace VideoForensics.Providers.Ring.Tests
         public IActionLogRepository ActionLog { get; set; } = null!;
         public IEventRepository Events { get; set; } = null!;
         public IDeviceConfigRepository DeviceConfig { get; set; } = null!;
+        public IDeviceSettingChangeRepository DeviceSettingChanges { get; set; } = null!;
         public IProviderReconciliationRepository ProviderReconciliation { get; set; } = null!;
         public IExportRecordRepository ExportRecords { get; set; } = null!;
         public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
         public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
         public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
+        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
     }
 
     public class BackupImportOrchestratorTests

@@ -114,7 +114,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
-        public async Task RingAccountSettingsSync_GetLocationsAsync_GroupsFetchFails_LogsWarningAndStillWritesOtherFetches()
+        public async Task RingAccountSettingsSync_GetLocationsAsync_GroupsFetchFails_LogsErrorAndStillWritesOtherFetches()
         {
             var handler = CreateHandler();
             handler.Routes[GroupsUrl] = (HttpStatusCode.InternalServerError, "{}");
@@ -123,7 +123,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error);
             writer.Verify(w => w.ReplaceLightGroupSetAsync(It.IsAny<LightGroupSet>(), It.IsAny<CancellationToken>()), Times.Never);
             writer.Verify(w => w.ReplaceProfileAsync(It.IsAny<RingAccountProfile>(), It.IsAny<CancellationToken>()), Times.Once);
             writer.Verify(w => w.ReplaceRingtonesAsync(AccountId, It.IsAny<IReadOnlyList<RingAccountRingtone>>(), It.IsAny<RingAccountRingtoneDefaults>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -142,7 +142,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             _ = await SyncAsync(handler, writer, logger);
 
-            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Information);
+            Assert.Contains(logger.Entries, e => e.Level == LogLevel.Debug);
             Assert.DoesNotContain(logger.Entries, e => e.Level == LogLevel.Warning);
             writer.Verify(w => w.ReplaceLocationModeAsync(It.IsAny<RingLocationMode>(), It.IsAny<CancellationToken>()), Times.Never);
             writer.Verify(w => w.ReplaceLightGroupSetAsync(It.IsAny<LightGroupSet>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -231,7 +231,7 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         /// <summary>
-        /// Keeps each log entry's level and text so a test can assert a warning, an information entry, or no token text.
+        /// Keeps each log entry's level and text so a test can assert an error, an information entry, or no token text.
         /// Thread-safe and snapshot-based: the sync's fire-and-forget metadata task logs on this same instance.
         /// </summary>
         private sealed class RecordingLogger : ILogger

@@ -12,7 +12,6 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
     {
         public Task<ExportResult> ExportEvidenceAsync(
             Guid caseId,
-            string outputDirectory,
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,
@@ -29,7 +28,7 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
                 throw new UnauthorizedAccessException(gate.StepUpDenial());
             }
 
-            return inner.ExportEvidenceAsync(caseId, outputDirectory, recipientDescription, passphrase, ct, stepUpToken);
+            return inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
         }
     }
 }

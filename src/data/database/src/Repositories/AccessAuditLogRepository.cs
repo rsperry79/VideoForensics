@@ -47,9 +47,9 @@ namespace VideoForensics.Data.Database.Repositories
                 _ = db.AccessAuditLogs.Add(entry);
                 _ = await db.SaveChangesAsync(ct);
 
-                _logger.LogInformation(
-                    "Recorded evidence access: EvidenceId={EvidenceId}, UserId={UserId}, Action={Action}, IpAddress={IpAddress}",
-                    evidenceId, userId, action, ipAddress);
+                _logger.LogDebug(
+                    "Recorded evidence access: EvidenceId={EvidenceId}, Action={Action}",
+                    evidenceId, action);
 
                 return entry;
             }

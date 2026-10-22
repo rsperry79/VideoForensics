@@ -117,7 +117,10 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         bool? SettingsChimeEnabled = null,
         int? SettingsChimeDuration = null,
         IReadOnlyList<DeviceZoneDetail>? Zones = null,
-        IReadOnlyList<AdvancedObjectSettingDetail>? AdvancedObjectSettings = null
+        IReadOnlyList<AdvancedObjectSettingDetail>? AdvancedObjectSettings = null,
+        OfflineMotionDetail? OfflineMotion = null,
+        IReadOnlyList<DetectionTypeDetail>? DetectionTypes = null,
+        IReadOnlyList<DetectionThresholdDetail>? DetectionThresholds = null
     );
 
     /// <summary>
@@ -135,6 +138,15 @@ namespace VideoForensics.Core.Providers.Common.Contracts
 
     /// <summary>One advanced object setting (e.g. human_detection_confidence) with its day and night values.</summary>
     public sealed record AdvancedObjectSettingDetail(string SettingKey, double? Day, double? Night);
+
+    /// <summary>Ring offline_motion_event_settings: how motion recorded while offline is uploaded and sampled.</summary>
+    public sealed record OfflineMotionDetail(bool? Subscribed, bool? Enabled, int? MaxUploadKb, int? ResolutionP, int? FrequencyAfterSecs, int? PeriodAfterSecs);
+
+    /// <summary>One cv_settings.detection_types entry (e.g. "human") with its mode and output flags.</summary>
+    public sealed record DetectionTypeDetail(string DetectionType, bool? Enabled, string? Mode, bool? Record, bool? Notification);
+
+    /// <summary>One numeric cv_settings.threshold entry for a detection type.</summary>
+    public sealed record DetectionThresholdDetail(string DetectionType, double Threshold);
 
     /// <summary>An advanced motion zone (zone1..zone3) as Ring reports it. Vertices are listed in Ring order.</summary>
     public sealed record AdvancedMotionZoneDetail(string ZoneKey, string? Name, int? State, IReadOnlyList<AdvancedMotionZoneVertexDetail> Vertices);

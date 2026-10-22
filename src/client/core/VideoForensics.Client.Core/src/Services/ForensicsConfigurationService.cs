@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
@@ -9,11 +11,25 @@ namespace VideoForensics.Client.Core.Services
     {
         private readonly ILogger<ForensicsConfigurationService> _logger;
         private readonly IAppSettingRepository _settingRepository;
+        private readonly IFfmpegToolLocation? _ffmpegToolLocation;
+        private readonly Func<string?> _discoverBinDirectory;
+        private readonly Func<string?> _discoverCloudflaredPath;
 
-        public ForensicsConfigurationService(ILogger<ForensicsConfigurationService> logger, IAppSettingRepository settingRepository)
+        /// <param name="ffmpegToolLocation">Optional holder that consumers read the ffmpeg bin directory from; kept in sync on load and save.</param>
+        /// <param name="discoverBinDirectory">Optional discovery used on first run when FfmpegBinDirectory is empty. Defaults to <see cref="FfmpegBinDirectoryLocator.DiscoverDefault"/>.</param>
+        /// <param name="discoverCloudflaredPath">Optional discovery used when CloudflaredPath is empty. Defaults to finding "cloudflared" via <see cref="FfmpegBinDirectoryLocator.DiscoverDefaultExecutable"/>.</param>
+        public ForensicsConfigurationService(
+            ILogger<ForensicsConfigurationService> logger,
+            IAppSettingRepository settingRepository,
+            IFfmpegToolLocation? ffmpegToolLocation = null,
+            Func<string?>? discoverBinDirectory = null,
+            Func<string?>? discoverCloudflaredPath = null)
         {
             _logger = logger;
             _settingRepository = settingRepository ?? throw new ArgumentNullException(nameof(settingRepository));
+            _ffmpegToolLocation = ffmpegToolLocation;
+            _discoverBinDirectory = discoverBinDirectory ?? FfmpegBinDirectoryLocator.DiscoverDefault;
+            _discoverCloudflaredPath = discoverCloudflaredPath ?? (() => FfmpegBinDirectoryLocator.DiscoverDefaultExecutable("cloudflared"));
         }
 
         public async Task<IForensicsConfiguration> LoadConfigurationAsync(string configPath, CancellationToken cancellationToken = default)
@@ -29,12 +45,84 @@ namespace VideoForensics.Client.Core.Services
                 _logger.LogError(ex, "Failed to load configuration from database, using defaults");
             }
 
+            await EnsureFfmpegBinDirectoryAsync(config, cancellationToken);
+            await EnsureCloudflaredPathAsync(config, cancellationToken);
+
+            if (_ffmpegToolLocation != null)
+            {
+                _ffmpegToolLocation.BinDirectory = config.FfmpegBinDirectory;
+            }
+
             return config;
         }
 
         public async Task SaveConfigurationAsync(IForensicsConfiguration config, CancellationToken cancellationToken = default)
         {
             await SaveToDatabaseAsync(config, cancellationToken);
+
+            if (_ffmpegToolLocation != null)
+            {
+                _ffmpegToolLocation.BinDirectory = config.FfmpegBinDirectory;
+            }
+        }
+
+        /// <summary>
+        /// First run (or cleared setting): discovers the directory holding ffmpeg and ffprobe and persists only that key.
+        /// Never throws, so a discovery failure cannot break configuration loading.
+        /// </summary>
+        private async Task EnsureFfmpegBinDirectoryAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
+        {
+            if (!string.IsNullOrWhiteSpace(config.FfmpegBinDirectory))
+            {
+                return;
+            }
+
+            try
+            {
+                var discovered = _discoverBinDirectory();
+                if (discovered == null)
+                {
+                    _logger.LogWarning("ffmpeg/ffprobe not found in the app directory or PATH; set FfmpegBinDirectory");
+                    return;
+                }
+
+                config.FfmpegBinDirectory = discovered;
+                await _settingRepository.SetAsync("FfmpegBinDirectory", discovered, cancellationToken);
+                _logger.LogInformation("Found ffmpeg in {Directory}; saved as FfmpegBinDirectory", discovered);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ffmpeg bin directory discovery failed; set FfmpegBinDirectory");
+            }
+        }
+
+        /// <summary>
+        /// Discovers cloudflared when CloudflaredPath is empty and persists only that key. Never throws.
+        /// </summary>
+        private async Task EnsureCloudflaredPathAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
+        {
+            if (!string.IsNullOrWhiteSpace(config.CloudflaredPath))
+            {
+                return;
+            }
+
+            try
+            {
+                var discovered = _discoverCloudflaredPath();
+                if (discovered == null)
+                {
+                    _logger.LogInformation("cloudflared not found in the app directory or PATH; set CloudflaredPath to enable Remote Access tunnels");
+                    return;
+                }
+
+                config.CloudflaredPath = discovered;
+                await _settingRepository.SetAsync("CloudflaredPath", discovered, cancellationToken);
+                _logger.LogInformation("Found cloudflared at {Path}; saved as CloudflaredPath", discovered);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "cloudflared discovery failed; set CloudflaredPath");
+            }
         }
 
         private async Task LoadFromDatabaseAsync(ForensicsConfiguration config, CancellationToken cancellationToken)
@@ -50,6 +138,7 @@ namespace VideoForensics.Client.Core.Services
                 config.ReportOutputFormat = await GetStringSetting("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 config.DownloadLocation = await GetStringSetting("DownloadLocation", config.DownloadLocation, cancellationToken);
                 config.QueryExportLocation = await GetStringSetting("QueryExportLocation", config.QueryExportLocation, cancellationToken);
+                config.ExportsLocation = await GetStringSetting("ExportsLocation", config.ExportsLocation, cancellationToken);
                 config.DatabaseLocation = await GetStringSetting("DatabaseLocation", config.DatabaseLocation, cancellationToken);
                 config.TempDownloadLocation = await GetStringSetting("TempDownloadLocation", config.TempDownloadLocation, cancellationToken);
                 config.LogsLocation = await GetStringSetting("LogsLocation", config.LogsLocation, cancellationToken);
@@ -62,6 +151,7 @@ namespace VideoForensics.Client.Core.Services
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
+                config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
                 config.EnableUpdateCheck = await GetBoolSetting("EnableUpdateCheck", config.EnableUpdateCheck, cancellationToken);
                 config.UpdateMode = await GetEnumSetting("UpdateMode", config.UpdateMode, cancellationToken);
@@ -78,6 +168,8 @@ namespace VideoForensics.Client.Core.Services
                 config.InternetServerUrl = await GetStringSetting("InternetServerUrl", config.InternetServerUrl, cancellationToken);
                 config.UniviewNvrHost = await GetStringSetting("UniviewNvrHost", config.UniviewNvrHost, cancellationToken);
                 config.UniviewFfmpegPath = await GetStringSetting("UniviewFfmpegPath", config.UniviewFfmpegPath, cancellationToken);
+                config.FfmpegBinDirectory = await GetStringSetting("FfmpegBinDirectory", config.FfmpegBinDirectory, cancellationToken);
+                config.CloudflaredPath = await GetStringSetting("CloudflaredPath", config.CloudflaredPath, cancellationToken);
                 config.EnableLiveView = await GetBoolSetting("EnableLiveView", config.EnableLiveView, cancellationToken);
                 config.LiveViewIdleTimeoutMinutes = await GetIntSetting("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes, cancellationToken);
                 config.LiveViewTelemetrySampleIntervalSeconds = await GetIntSetting("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds, cancellationToken);
@@ -87,6 +179,7 @@ namespace VideoForensics.Client.Core.Services
                 config.ElevatedPollingIntervalSeconds = await GetIntSetting("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds, cancellationToken);
                 config.EnableBitrateCalibration = await GetBoolSetting("EnableBitrateCalibration", config.EnableBitrateCalibration, cancellationToken);
                 config.CalibrationCheckIntervalMinutes = await GetIntSetting("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes, cancellationToken);
+                config.DeviceOfflineThresholdSeconds = await GetIntSetting("DeviceOfflineThresholdSeconds", config.DeviceOfflineThresholdSeconds, cancellationToken);
                 config.CalibrationSessionDurationSeconds = await GetIntSetting("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds, cancellationToken);
                 config.MinCalibrationSamplesPerBucket = await GetIntSetting("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket, cancellationToken);
                 config.CalibrationStalenessDays = await GetIntSetting("CalibrationStalenessDays", config.CalibrationStalenessDays, cancellationToken);
@@ -113,6 +206,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
                 await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("ExportsLocation", config.ExportsLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("DatabaseLocation", config.DatabaseLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? "", cancellationToken);
@@ -125,6 +219,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
                 await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableUpdateCheck", config.EnableUpdateCheck.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("UpdateMode", config.UpdateMode.ToString(), cancellationToken);
@@ -141,6 +236,8 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("CloudflaredPath", config.CloudflaredPath ?? "", cancellationToken);
                 await _settingRepository!.SetAsync("EnableLiveView", config.EnableLiveView.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds.ToString(), cancellationToken);
@@ -150,6 +247,7 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("ElevatedPollingIntervalSeconds", config.ElevatedPollingIntervalSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableBitrateCalibration", config.EnableBitrateCalibration.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationCheckIntervalMinutes", config.CalibrationCheckIntervalMinutes.ToString(), cancellationToken);
+                await _settingRepository!.SetAsync("DeviceOfflineThresholdSeconds", config.DeviceOfflineThresholdSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationSessionDurationSeconds", config.CalibrationSessionDurationSeconds.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("MinCalibrationSamplesPerBucket", config.MinCalibrationSamplesPerBucket.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("CalibrationStalenessDays", config.CalibrationStalenessDays.ToString(), cancellationToken);

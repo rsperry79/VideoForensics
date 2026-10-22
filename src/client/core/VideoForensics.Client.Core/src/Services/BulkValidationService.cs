@@ -47,28 +47,28 @@ namespace VideoForensics.Client.Core.Services
                 DateTime fromUtc = fromUtcOverride ?? DateTime.Today.AddDays(-90);
                 DateTime toUtc = toUtcOverride ?? DateTime.Today;
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Starting bulk validation run: {FromUtc} to {ToUtc}",
                     fromUtc, toUtc);
 
                 // Fetch all devices
                 IReadOnlyList<Device> devices = await _deviceRepository.ListAsync(ct);
-                _logger.LogInformation("Found {DeviceCount} device(s) to validate", devices.Count);
+                _logger.LogDebug("Found {DeviceCount} device(s) to validate", devices.Count);
 
                 // Validate each device
                 foreach (Device device in devices)
                 {
                     if (string.IsNullOrWhiteSpace(device.ProviderDeviceId))
                     {
-                        _logger.LogDebug("Skipping device {DeviceId} ({DeviceName}) - no ProviderDeviceId", device.Id, device.Name);
+                        _logger.LogDebug("Skipping device {DeviceName} - no ProviderDeviceId", device.Name);
                         continue;
                     }
 
                     try
                     {
-                        _logger.LogInformation(
-                            "Validating device {DeviceId} ({DeviceName}) with provider ID {ProviderDeviceId}",
-                            device.Id, device.Name, device.ProviderDeviceId);
+                        _logger.LogDebug(
+                            "Validating device {DeviceName}",
+                            device.Name);
 
                         IReadOnlyList<ReconciliationDiscrepancy> discrepancies = await _evidenceValidationService.ReconcileWithProviderAsync(
                             device.Id,
@@ -89,9 +89,9 @@ namespace VideoForensics.Client.Core.Services
                         result.NewEventsInserted += newEventCount;
                         result.MetadataUpdated += metadataChangedCount;
 
-                        _logger.LogInformation(
-                            "Device {DeviceId} ({DeviceName}): validated with {DiscrepancyCount} discrepancy(ies)",
-                            device.Id, device.Name, discrepancies.Count);
+                        _logger.LogDebug(
+                            "Device {DeviceName}: validated with {DiscrepancyCount} discrepancy(ies)",
+                            device.Name, discrepancies.Count);
                     }
                     catch (Exception ex)
                     {

@@ -1,10 +1,12 @@
 @page "/cases"
+@using VideoForensics.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Ui.Shared.Components.Inspector
 @using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Layout.LeftPanel
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Cases
 @using VideoForensics.Ui.Shared.Services.Inspector
@@ -15,25 +17,24 @@
 @inject InspectorState InspectorState
 @inject IStringLocalizer<Cases> L
 
-<div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
-    <div style="overflow: auto;">
-        <h4 class="mb-4">@L["CasesTitle"]</h4>
+    <h4 class="mb-4">@L["CasesTitle"]</h4>
 
 <PageRightPanelContent>
+    <ScopeRail />
     <div class="right-panel-section">
-        <small style="font-weight: bold;">@L["FilterStatus"]</small>
-        <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" aria-label="@L["FilterStatus"]" data-testid="case-status-filter">
-            <option value="">@L["FilterAll"]</option>
-            <option value="Open">@L["FilterOpen"]</option>
-            <option value="Closed">@L["FilterClosed"]</option>
-        </select>
+    <small style="font-weight: bold;">@L["FilterStatus"]</small>
+    <select @bind="_statusFilter" @bind:after="LoadCases" class="form-select" aria-label="@L["FilterStatus"]" data-testid="case-status-filter">
+        <option value="">@L["FilterAll"]</option>
+        <option value="Open">@L["FilterOpen"]</option>
+        <option value="Closed">@L["FilterClosed"]</option>
+    </select>
     </div>
 </PageRightPanelContent>
 
 <div class="mb-3 d-flex gap-2">
     @if (SessionState.OperatorId.HasValue && Enum.TryParse(SessionState.Role, out OperatorRole role) && role >= OperatorRole.Review)
     {
-        <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">@L["NewCase"]</button>
+    <button class="btn btn-primary" @onclick="NavigateToNewCase" data-testid="new-case">@L["NewCase"]</button>
     }
 </div>
 
@@ -52,25 +53,25 @@ else if (_cases is null || _cases.Count == 0)
 else
 {
     <ForensicGrid TItem="ForensicCase"
-                  DataSource="@_cases"
-                  OnRowSelected="@OnCaseSelected"
-                  ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = c.CreatedAtUtc.ToString("u"), Updated = c.UpdatedAtUtc.ToString("u") }))">
-        <Columns>
-            <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150" Format="@("u")"></GridColumn>
-            <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150" Format="@("u")"></GridColumn>
-        </Columns>
+              DataSource="@_cases"
+              OnRowSelected="@OnCaseSelected"
+              ToInspector="@(c => new InspectorModel(c.CaseNumber, new { CaseNumber = c.CaseNumber, Title = c.Title, Status = c.Status.ToString(), Created = Zone.Format(c.CreatedAtUtc, "u"), Updated = Zone.Format(c.UpdatedAtUtc, "u") }))">
+    <Columns>
+        <GridColumn Field="@nameof(ForensicCase.CaseNumber)" HeaderText="@L["ColumnCaseNumber"]" Width="120"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.Title)" HeaderText="@L["ColumnTitle"]" Width="250"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.Status)" HeaderText="@L["ColumnStatus"]" Width="100"></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.CreatedAtUtc)" HeaderText="@L["ColumnCreated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCase)!.CreatedAtUtc)" Format="u" /></Template></GridColumn>
+        <GridColumn Field="@nameof(ForensicCase.UpdatedAtUtc)" HeaderText="@L["ColumnUpdated"]" Width="150"><Template><LocalTimeText Value="@((context as ForensicCase)!.UpdatedAtUtc)" Format="u" /></Template></GridColumn>
+    </Columns>
     </ForensicGrid>
 }
-    </div>
-    <div style="overflow: auto;">
-        <ScopeRail />
-    </div>
-</div>
 
 @code {
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
+
     private IReadOnlyList<ForensicCase>? _cases;
     private string _statusFilter = "Open";
     private bool _isLoading = true;

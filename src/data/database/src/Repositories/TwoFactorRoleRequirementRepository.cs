@@ -62,7 +62,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 // Insert new row
                 _ = db.TwoFactorRoleRequirements.Add(requirement);
-                _logger.LogInformation("Two-factor role requirement created: {Role}", requirement.Role);
+                _logger.LogDebug("Two-factor role requirement created: {Role}", requirement.Role);
             }
             else
             {
@@ -71,7 +71,7 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 existing.UpdatedByOperatorId = requirement.UpdatedByOperatorId;
 
-                _logger.LogInformation("Two-factor role requirement updated: {Role}", requirement.Role);
+                _logger.LogDebug("Two-factor role requirement updated: {Role}", requirement.Role);
             }
 
             _ = await db.SaveChangesAsync(ct);

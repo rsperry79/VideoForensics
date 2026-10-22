@@ -243,7 +243,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
                 "api/v1/auth/webauthn/username-assertion-options",
-                new { Username = username });
+                new { Username = username, AllCredentials = true });
 
             if (!optionsResponse.IsSuccessStatusCode)
             {
@@ -311,13 +311,14 @@ namespace VideoForensics.Ui.Shared.Services
             return text.Length > 500 ? text[..500] : text;
         }
 
-        public async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username)
+        /// <param name="allCredentials">False offers only the most recently used passkey (the first attempt). True offers every approved passkey, for when that one is not on this device.</param>
+    public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username, bool allCredentials = false)
         {
             using HttpClient client = CreateClient(null);
 
             HttpResponseMessage optionsResponse = await client.PostAsJsonAsync(
                 "api/v1/auth/webauthn/username-assertion-options",
-                new { Username = username });
+                new { Username = username, AllCredentials = allCredentials });
 
             if (!optionsResponse.IsSuccessStatusCode)
             {

@@ -8,6 +8,12 @@ using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Core.Helpers.Platform;
 
+// Aliased: importing the whole providers-common namespace makes `Device` ambiguous with Data.Common.Entities.Device.
+using INotificationDispatcher = VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher;
+using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
+using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
+using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
+
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
@@ -23,10 +29,13 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<IIntegrityRecordRepository> _mockIntegrityRecordRepository;
         private readonly Mock<ILogger<ReportGenerationService>> _mockLogger;
         private readonly Mock<IStorageLocationProvider> _mockStorageLocationProvider;
+        private readonly Mock<INotificationDispatcher> _mockNotificationDispatcher;
         private readonly ReportGenerationService _service;
 
         public ReportGenerationServiceTests()
         {
+            _mockNotificationDispatcher = new Mock<INotificationDispatcher>();
+
             _mockMediaItemRepository = new Mock<IMediaItemRepository>();
             _mockDeviceRepository = new Mock<IDeviceRepository>();
             _mockDownloadEventRepository = new Mock<IDownloadEventRepository>();
@@ -39,6 +48,10 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockIntegrityRecordRepository
                 .Setup(x => x.GetLatestByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
+
+            _ = _mockDownloadEventRepository
+                .Setup(x => x.GetByDeviceIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync([]);
 
             _ = _mockStorageLocationProvider
@@ -58,7 +71,8 @@ namespace VideoForensics.Data.Core.Tests
                 _mockJammingRepository.Object,
                 _mockIntegrityRecordRepository.Object,
                 _mockLogger.Object,
-                _mockStorageLocationProvider.Object);
+                _mockStorageLocationProvider.Object,
+                _mockNotificationDispatcher.Object);
         }
 
         [Fact]
@@ -378,6 +392,89 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task BuildChainOfCustodyReportAsync_WithFailedChainVerification_DispatchesAlertNotice()
+        {
+            // Arrange
+            _ = _mockActionLogRepository
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ActionLogEntry>());
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            // Act
+            _ = await _service.BuildChainOfCustodyReportAsync(
+                null,
+                DateTime.UtcNow.AddDays(-7),
+                DateTime.UtcNow,
+                CancellationToken.None);
+
+            // Assert
+            _mockNotificationDispatcher.Verify(
+                d => d.DispatchAsync(
+                    It.Is<NotificationEvent>(e =>
+                        e.EventType == "ChainOfCustodyIntegrityFailed" &&
+                        e.Severity == NoticeSeverity.Alert &&
+                        e.Audience == NotificationAudience.AdminsOnly),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task BuildChainOfCustodyReportAsync_WithValidChain_DoesNotDispatchNotice()
+        {
+            // Arrange
+            _ = _mockActionLogRepository
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ActionLogEntry>());
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            // Act
+            _ = await _service.BuildChainOfCustodyReportAsync(
+                null,
+                DateTime.UtcNow.AddDays(-7),
+                DateTime.UtcNow,
+                CancellationToken.None);
+
+            // Assert
+            _mockNotificationDispatcher.Verify(
+                d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task BuildChainOfCustodyReportAsync_WhenNotificationDispatchThrows_StillReturnsFailedReport()
+        {
+            // Arrange
+            _ = _mockActionLogRepository
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ActionLogEntry>());
+
+            _ = _mockActionLogRepository
+                .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            _ = _mockNotificationDispatcher
+                .Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("channel down"));
+
+            // Act
+            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+                null,
+                DateTime.UtcNow.AddDays(-7),
+                DateTime.UtcNow,
+                CancellationToken.None);
+
+            // Assert
+            Assert.False(result.ChainIntegrityVerified);
+            Assert.Equal("Chain integrity check failed", result.ChainVerificationStatus);
+        }
+
+        [Fact]
         public async Task WriteReportAsync_WithJsonFormat_WritesJsonFile()
         {
             // Arrange
@@ -455,6 +552,86 @@ namespace VideoForensics.Data.Core.Tests
             Assert.Equal(0, result.TotalItemCount);
             Assert.Equal(0, result.VerifiedItemCount);
             Assert.Empty(result.MediaItems);
+        }
+
+        [Fact]
+        public async Task BuildEvidenceReviewAsync_MediaWithDownloadEvent_ReturnsProviderEventLink()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var mediaId = Guid.NewGuid();
+            var downloadEventId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            _ = _mockMediaItemRepository
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() {
+                        Id = mediaId,
+                        DeviceId = deviceId,
+                        DownloadEventId = downloadEventId,
+                        FileName = "video1.mp4",
+                        FilePath = "/path/video1.mp4",
+                        MediaFormat = "video/mp4",
+                        Sha256Hash = "hash1",
+                        RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                        DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
+                    }
+                });
+
+            _ = _mockDownloadEventRepository
+                .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DownloadEvent>
+                {
+                    new() {
+                        Id = downloadEventId,
+                        DeviceId = deviceId,
+                        ProviderEventId = "ring-evt-1",
+                        AppVersion = "test"
+                    }
+                });
+
+            // Act
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+
+            // Assert
+            MediaProviderEventLink link = Assert.Single(result.MediaProviderEventLinks);
+            Assert.Equal(mediaId, link.MediaItemId);
+            Assert.Equal("ring-evt-1", link.ProviderEventId);
+        }
+
+        [Fact]
+        public async Task BuildEvidenceReviewAsync_MediaWithoutDownloadEvent_ReturnsNoLink()
+        {
+            // Arrange
+            var deviceId = Guid.NewGuid();
+            var fromUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var toUtc = new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+            _ = _mockMediaItemRepository
+                .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MediaItem>
+                {
+                    new() {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        DownloadEventId = null,
+                        FileName = "video1.mp4",
+                        FilePath = "/path/video1.mp4",
+                        MediaFormat = "video/mp4",
+                        Sha256Hash = "hash1",
+                        RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                        DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
+                    }
+                });
+
+            // Act
+            EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
+
+            // Assert
+            Assert.Empty(result.MediaProviderEventLinks);
         }
 
         [Fact]

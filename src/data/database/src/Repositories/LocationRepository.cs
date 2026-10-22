@@ -37,6 +37,17 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <summary>Lists the provider accounts linked to a location (any provider).</summary>
+        public async Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.LocationId == locationId)
+                .Join(db.ProviderAccounts.AsNoTracking(), l => l.ProviderAccountId, pa => pa.Id, (l, pa) => pa)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Links a location to a provider account; no-op if the link already exists.</summary>
         public async Task LinkToProviderAccountAsync(Guid locationId, Guid providerAccountId, CancellationToken ct)
         {
@@ -54,7 +65,7 @@ namespace VideoForensics.Data.Database.Repositories
                 ProviderAccountId = providerAccountId
             });
             _ = await db.SaveChangesAsync(ct);
-            _logger.LogInformation("Location {LocationId} linked to provider account {ProviderAccountId}", locationId, providerAccountId);
+            _logger.LogDebug("Location {LocationId} linked to provider account {ProviderAccountId}", locationId, providerAccountId);
         }
 
         /// <summary>Gets a location by provider location ID (globally unique).</summary>
@@ -94,7 +105,7 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Add(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location added: {LocationId} ({LocationName})", location.Id, location.Name);
+                _logger.LogDebug("Location added: {LocationName}", location.Name);
             }
             catch (Exception ex)
             {
@@ -111,11 +122,11 @@ namespace VideoForensics.Data.Database.Repositories
             {
                 _ = db.Locations.Update(location);
                 _ = await db.SaveChangesAsync(ct);
-                _logger.LogInformation("Location updated: {LocationId}", location.Id);
+                _logger.LogDebug("Location updated: {LocationName}", location.Name);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating location: {LocationId}", location.Id);
+                _logger.LogError(ex, "Error updating location: {LocationName}", location.Name);
                 throw;
             }
         }
@@ -124,19 +135,20 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task DeleteAsync(Guid locationId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Location? location = null;
             try
             {
-                Location? location = await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
+                location = await db.Locations.FirstOrDefaultAsync(l => l.Id == locationId, ct);
                 if (location != null)
                 {
                     _ = db.Locations.Remove(location);
                     _ = await db.SaveChangesAsync(ct);
-                    _logger.LogInformation("Location deleted: {LocationId}", locationId);
+                    _logger.LogDebug("Location deleted: {LocationName}", location.Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting location: {LocationId}", locationId);
+                _logger.LogError(ex, "Error deleting location: {LocationName}", location?.Name ?? "unknown location");
                 throw;
             }
         }

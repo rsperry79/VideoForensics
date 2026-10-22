@@ -8,6 +8,12 @@ using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Core.Helpers.Platform;
 
+// Aliased: importing the whole providers-common namespace makes `Device` ambiguous with Data.Common.Entities.Device.
+using INotificationDispatcher = VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher;
+using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
+using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
+using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
+
 namespace VideoForensics.Data.Core.Services
 {
     /// <summary>Service for generating forensic analysis reports from stored evidence data.</summary>
@@ -22,6 +28,12 @@ namespace VideoForensics.Data.Core.Services
         private readonly IIntegrityRecordRepository _integrityRecordRepository;
         private readonly ILogger<ReportGenerationService> _logger;
         private readonly IStorageLocationProvider _storageLocationProvider;
+        private readonly INotificationDispatcher? _notificationDispatcher;
+
+        // Chain-failure alert throttle. Per service instance, so one circuit's fan-out of per-device reports alerts once.
+        private readonly object _chainAlertGate = new();
+        private DateTime _lastChainAlertUtc = DateTime.MinValue;
+        private static readonly TimeSpan ChainAlertWindow = TimeSpan.FromHours(1);
 
         public ReportGenerationService(
             IMediaItemRepository mediaItemRepository,
@@ -32,8 +44,10 @@ namespace VideoForensics.Data.Core.Services
             IJammingRepository jammingRepository,
             IIntegrityRecordRepository integrityRecordRepository,
             ILogger<ReportGenerationService> logger,
-            IStorageLocationProvider storageLocationProvider)
+            IStorageLocationProvider storageLocationProvider,
+            INotificationDispatcher? notificationDispatcher = null)
         {
+            _notificationDispatcher = notificationDispatcher;
             _mediaItemRepository = mediaItemRepository;
             _deviceRepository = deviceRepository;
             _downloadEventRepository = downloadEventRepository;
@@ -74,13 +88,29 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<IntegrityRecord> integrityRecords = await _integrityRecordRepository.GetLatestByMediaItemIdsAsync(
                     items.Select(m => m.Id), ct);
 
+                // Map each download event to its provider event id so media can be matched to event rows.
+                var providerEventIdByDownloadEventId = new Dictionary<Guid, string>();
+                foreach (Guid deviceIdForItems in items.Select(m => m.DeviceId).Distinct())
+                {
+                    IReadOnlyList<DownloadEvent> downloadEvents = await _downloadEventRepository.GetByDeviceIdAsync(deviceIdForItems, ct);
+                    foreach (DownloadEvent downloadEvent in downloadEvents)
+                    {
+                        _ = providerEventIdByDownloadEventId.TryAdd(downloadEvent.Id, downloadEvent.ProviderEventId);
+                    }
+                }
+
+                report.MediaProviderEventLinks = items
+                    .Where(m => m.DownloadEventId.HasValue && providerEventIdByDownloadEventId.ContainsKey(m.DownloadEventId.Value))
+                    .Select(m => new MediaProviderEventLink(m.Id, providerEventIdByDownloadEventId[m.DownloadEventId!.Value]))
+                    .ToList();
+
                 report.MediaItems = items;
                 report.IntegrityRecords = integrityRecords;
                 report.TotalItemCount = items.Count;
                 report.VerifiedItemCount = items.Count(m => m.IntegrityVerified);
                 report.FailedVerificationCount = integrityRecords.Count(r => !r.Passed);
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Built evidence review report: {TotalCount} items, {VerifiedCount} verified",
                     report.TotalItemCount,
                     report.VerifiedItemCount);
@@ -122,7 +152,7 @@ namespace VideoForensics.Data.Core.Services
                 report.EvidenceItems = items;
                 report.Summary = $"Forensic analysis report covering {items.Count} media items from {fromUtc:O} to {toUtc:O}";
 
-                _logger.LogInformation("Built forensic analysis report: {ItemCount} items", items.Count);
+                _logger.LogDebug("Built forensic analysis report: {ItemCount} items", items.Count);
             }
             catch (Exception ex)
             {
@@ -190,7 +220,7 @@ namespace VideoForensics.Data.Core.Services
 
                 report.AnomaliesByDevice = anomaliesList;
                 report.JammingByDevice = jammingList;
-                _logger.LogInformation("Built signal anomaly report for {DeviceCount} devices", devices.Count);
+                _logger.LogDebug("Built signal anomaly report for {DeviceCount} devices", devices.Count);
             }
             catch (Exception ex)
             {
@@ -218,6 +248,7 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
+                    .Where(a => IsForDevice(a, deviceId))
                     .ToList();
 
                 var accessEvents = filteredActions
@@ -233,7 +264,7 @@ namespace VideoForensics.Data.Core.Services
                     .ToList();
 
                 report.AccessEvents = accessEvents;
-                _logger.LogInformation("Built access control report: {ActionCount} actions", accessEvents.Count);
+                _logger.LogDebug("Built access control report: {ActionCount} actions", accessEvents.Count);
             }
             catch (Exception ex)
             {
@@ -261,19 +292,26 @@ namespace VideoForensics.Data.Core.Services
                 IReadOnlyList<ActionLogEntry> allActions = await _actionLogRepository.ListAsync(ct);
                 var filteredActions = allActions
                     .Where(a => a.TimestampUtc >= fromUtc && a.TimestampUtc <= toUtc)
+                    .Where(a => IsForDevice(a, deviceId))
                     .OrderBy(a => a.TimestampUtc)
                     .ToList();
 
                 report.AuditTrail = filteredActions;
 
+                // The hash chain is one chain for the whole log, so the verdict is global whatever device is asked for.
                 bool chainIsValid = await _actionLogRepository.VerifyChainIntegrityAsync(ct);
                 report.ChainIntegrityVerified = chainIsValid;
                 report.ChainVerificationStatus = chainIsValid ? "Valid hash chain" : "Chain integrity check failed";
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Built chain of custody report: {ActionCount} actions, chain valid={ChainValid}",
                     filteredActions.Count,
                     chainIsValid);
+
+                if (!chainIsValid)
+                {
+                    await DispatchChainIntegrityAlertAsync(ct);
+                }
             }
             catch (Exception ex)
             {
@@ -281,6 +319,67 @@ namespace VideoForensics.Data.Core.Services
             }
 
             return report;
+        }
+
+        /// <summary>
+        /// Whether an audit entry belongs to a device's trail. Entries about the device itself match by id; other
+        /// entries match when their details name the device. A null device keeps every entry.
+        /// </summary>
+        private static bool IsForDevice(ActionLogEntry entry, Guid? deviceId)
+        {
+            if (deviceId is not { } id)
+            {
+                return true;
+            }
+
+            if (entry.EntityId == id)
+            {
+                return true;
+            }
+
+            return entry.DetailsJson?.Contains(id.ToString("D"), StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
+        /// <summary>
+        /// Raises an Alert-severity notice so a broken audit chain shows in the notices bell.
+        /// Failures are isolated: a notification problem must never suppress the report itself.
+        /// </summary>
+        private async Task DispatchChainIntegrityAlertAsync(CancellationToken ct)
+        {
+            if (_notificationDispatcher == null)
+            {
+                return;
+            }
+
+            // Every report build re-checks the chain, so a broken chain would alert on each refresh. Alert at most once per window.
+            lock (_chainAlertGate)
+            {
+                if (DateTime.UtcNow - _lastChainAlertUtc < ChainAlertWindow)
+                {
+                    return;
+                }
+
+                _lastChainAlertUtc = DateTime.UtcNow;
+            }
+
+            try
+            {
+                await _notificationDispatcher.DispatchAsync(
+                    new NotificationEvent(
+                        EventType: "ChainOfCustodyIntegrityFailed",
+                        TimestampUtc: DateTime.UtcNow,
+                        OperatorId: null,
+                        PairedDeviceId: null,
+                        SourceIp: null,
+                        Details: "Chain of custody integrity check failed: the audit trail hash chain does not verify.",
+                        Audience: NotificationAudience.AdminsOnly,
+                        Severity: NoticeSeverity.Alert),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch chain of custody integrity alert (non-critical)");
+            }
         }
 
         public async Task WriteReportAsync(object reportDto, string format, CancellationToken ct)

@@ -1604,14 +1604,14 @@ namespace VideoForensics.WebApp.Tests
                 "UsernameAssertionCompleteAsync",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                 null,
-                [typeof(UsernameAssertionCompleteRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
+                [typeof(ILogger<Program>), typeof(UsernameAssertionCompleteRequest), typeof(IOperatorRepository), typeof(IOperatorCredentialRepository), typeof(ISessionTokenService),
                  typeof(IWebAuthnCeremonyCache), typeof(ITwoFactorPendingAuthCache), typeof(ISecurityAuditLogger), typeof(INetworkTierResolver),
                  typeof(INotificationDispatcher), typeof(HttpContext), typeof(IFido2), typeof(CancellationToken)],
                 null);
             Assert.NotNull(method);
 
             return (Task<IResult>)method!.Invoke(null,
-                [request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
+                [Microsoft.Extensions.Logging.Abstractions.NullLogger<Program>.Instance, request, operators, credentials, sessionTokens, ceremonyCache, twoFactorPendingAuthCache, auditLog, tierResolver,
                  null, context, fido2, CancellationToken.None])!;
         }
 

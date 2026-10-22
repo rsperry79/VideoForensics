@@ -83,4 +83,7 @@
   <data name="FailedToCreateCase" xml:space="preserve">
     <value>Failed to create case: {0}</value>
   </data>
+  <data name="ScopeMatchesNoDevices" xml:space="preserve">
+    <value>No devices match the current filter, so this case won't take the current device scope.</value>
+  </data>
 </root>

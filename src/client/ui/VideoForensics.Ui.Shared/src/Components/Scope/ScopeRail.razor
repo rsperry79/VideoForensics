@@ -1,4 +1,3 @@
-@using System.Globalization
 @using Microsoft.AspNetCore.Components.Routing
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -11,6 +10,7 @@
 @using VideoForensics.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 @inject IDeviceRepository DeviceRepository
+@inject DeviceOwnershipService OwnershipService
 @inject ICaseRepository CaseRepository
 @inject CaseState CaseState
 @inject PairedSessionState SessionState
@@ -34,7 +34,8 @@
                 }
             </select>
 
-            @if (CaseState.ActiveCase is not null && CaseState.ScopeDiffersFromCase && _role.HasValue && _role >= OperatorRole.Review)
+            @* A no-match filter is not a device list, so it can't be saved to a case as one. *@
+            @if (ScopeRailRules.ShowSaveScopeToCase(CaseState.ActiveCase is not null, CaseState.ScopeDiffersFromCase, _role, ScopeState.Current.MatchesNoDevices))
             {
                 <button type="button" class="scope-quick-range-btn" data-testid="save-scope-to-case" @onclick="OnSaveScopeToCaseClicked">@L["ScopeSaveToCase"]</button>
             }
@@ -55,16 +56,35 @@
         }
         else
         {
+            <div class="scope-section" data-testid="scope-provider-account">
+                <div class="scope-section-label">@L["ScopeProvider"]</div>
+                <select class="scope-case-select" data-testid="scope-provider-filter" aria-label="@L["ScopeProvider"]" @onchange="OnProviderPicked">
+                    <option value="" selected="@(_providerFilter is null)">@L["ScopeAllProviders"]</option>
+                    @foreach (var provider in _providerNames)
+                    {
+                        <option value="@provider" selected="@(_providerFilter == provider)">@provider</option>
+                    }
+                </select>
+                <div class="scope-section-label">@L["ScopeAccount"]</div>
+                <select class="scope-case-select" data-testid="scope-account-filter" aria-label="@L["ScopeAccount"]" @onchange="OnAccountPicked">
+                    <option value="" selected="@(_accountFilter is null)">@L["ScopeAllAccounts"]</option>
+                    @foreach (var account in AccountOptions)
+                    {
+                        <option value="@account.Id" selected="@(_accountFilter == account.Id)">@_accountNames.GetValueOrDefault(account.Id, account.ProviderName)</option>
+                    }
+                </select>
+            </div>
+
             <div class="scope-section">
                 <div class="scope-section-label">@L["ScopeDevices"]</div>
-                @if (_devices.Count == 0)
+                @if (_visibleDevices.Count == 0)
                 {
                     <div class="scope-hint">@L["ScopeNoDevices"]</div>
                 }
                 else
                 {
                     <div class="scope-device-list">
-                        @foreach (var device in _devices)
+                        @foreach (var device in _visibleDevices)
                         {
                             <label class="scope-device-item">
                                 <input type="checkbox"
@@ -124,9 +144,14 @@
     private const int QuickRange7DaysDaysBack = 7;
     private const int QuickRange30DaysDaysBack = 30;
 
-    private const string DateInputFormat = "yyyy-MM-dd";
-
     private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+    private List<ProviderAccount> _accounts = new();
+    private Dictionary<Guid, string> _accountNames = new();
+    private IReadOnlyList<DeviceOwnership> _ownership = Array.Empty<DeviceOwnership>();
+    private IReadOnlyList<string> _providerNames = Array.Empty<string>();
+    private string? _providerFilter;
+    private Guid? _accountFilter;
     private bool _devicesLoaded = false;
     private bool _deviceLoadError = false;
     private string _searchDraft = string.Empty;
@@ -138,10 +163,9 @@
 
     private DateTime TodayUtc => TimeProvider.GetUtcNow().UtcDateTime.Date;
 
-    private string FromDateValue => ScopeState.Current.FromUtc.Date.ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    private string FromDateValue => ScopeRailRules.FormatFromDate(ScopeState.Current.FromUtc);
 
-    // ToUtc is an exclusive upper bound; the picker shows the inclusive last day, so subtract one.
-    private string ToDateValue => ScopeState.Current.ToUtc.Date.AddDays(-1).ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    private string ToDateValue => ScopeRailRules.FormatToDate(ScopeState.Current.ToUtc);
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,6 +178,11 @@
         {
             _deviceLoadError = true;
             _devicesLoaded = true;
+        }
+
+        if (!_deviceLoadError)
+        {
+            await LoadOwnershipAsync();
         }
 
         try
@@ -201,6 +230,15 @@
     {
         var uri = new Uri(Nav.Uri);
         ScopeState.ApplyQueryString(uri.Query);
+
+        // A no-match flag restored from the URL is only meaningful while a Provider/Account filter is shown.
+        // This rail does not restore its filter controls from the URL, so an orphaned flag is dropped rather than
+        // left blocking every page with a notice the operator cannot act on.
+        var scope = ScopeRailRules.ClearOrphanedNoMatch(ScopeState.Current, _providerFilter, _accountFilter);
+        if (scope != ScopeState.Current)
+        {
+            ScopeState.Set(scope);
+        }
     }
 
     private async Task ApplyCaseFromUrlAsync()
@@ -243,49 +281,74 @@
         }
     }
 
+    /// <summary>
+    /// Loads the provider accounts and their locations so devices can be narrowed by provider and account.
+    /// A failure leaves the filters empty and every device visible rather than hiding the device list.
+    /// </summary>
+    private async Task LoadOwnershipAsync()
+    {
+        var snapshot = await OwnershipService.LoadAsync(_devices, CancellationToken.None);
+        _accounts = snapshot.Accounts.ToList();
+        _accountNames = snapshot.AccountNames.ToDictionary(kv => kv.Key, kv => kv.Value);
+        _ownership = snapshot.Ownership;
+        _providerNames = snapshot.ProviderNames;
+        RecomputeVisibleDevices();
+    }
+
+    private IEnumerable<ProviderAccount> AccountOptions => ScopeDeviceFilter.AccountsForProvider(_accounts, _providerFilter);
+
+    private void RecomputeVisibleDevices()
+    {
+        _visibleDevices = ScopeRailRules.VisibleDevices(_devices, _ownership, _providerFilter, _accountFilter).ToList();
+    }
+
+    private void OnProviderPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        // An account outside the newly picked provider is cleared by the rule.
+        (_providerFilter, _accountFilter) = ScopeRailRules.ApplyProviderPick(_accounts, _accountFilter, e.Value?.ToString());
+        ApplyFilters();
+    }
+
+    private void OnAccountPicked(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _accountFilter = ScopeRailRules.ParseAccountPick(e.Value?.ToString());
+        ApplyFilters();
+    }
+
+    /// <summary>
+    /// Recomputes the visible device list and, while a provider or account filter is active, scopes the
+    /// investigation to exactly the visible devices. Clearing the filters keeps the current device selection.
+    /// </summary>
+    private void ApplyFilters()
+    {
+        RecomputeVisibleDevices();
+
+        var visibleIds = _visibleDevices.Select(d => d.Id).ToList();
+        ScopeState.Set(ScopeRailRules.ApplyFilters(ScopeState.Current, visibleIds, _providerFilter, _accountFilter));
+    }
+
     private bool IsDeviceSelected(Guid deviceId) => ScopeState.Current.DeviceIds.Contains(deviceId);
 
     private void OnDeviceToggled(Guid deviceId, Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         var isChecked = e.Value is bool value && value;
-        var current = ScopeState.Current.DeviceIds;
-
-        var updated = isChecked
-            ? (current.Contains(deviceId) ? current.ToList() : current.Append(deviceId).ToList())
-            : current.Where(id => id != deviceId).ToList();
-
-        ScopeState.Set(ScopeState.Current with { DeviceIds = updated });
+        ScopeState.Set(ScopeRailRules.ToggleDevice(ScopeState.Current, deviceId, isChecked, _providerFilter, _accountFilter));
     }
 
     private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        if (TryParseDateInput(e.Value, out var date))
+        if (ScopeRailRules.TryParseDateInput(e.Value?.ToString(), out var date))
         {
-            ScopeState.Set(ScopeState.Current with { FromUtc = date });
+            ScopeState.Set(ScopeRailRules.SetFromDate(ScopeState.Current, date));
         }
     }
 
     private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        if (TryParseDateInput(e.Value, out var date))
+        if (ScopeRailRules.TryParseDateInput(e.Value?.ToString(), out var date))
         {
-            // The picker shows the inclusive last day; ToUtc is stored as an exclusive upper bound.
-            ScopeState.Set(ScopeState.Current with { ToUtc = date.AddDays(1) });
+            ScopeState.Set(ScopeRailRules.SetToDate(ScopeState.Current, date));
         }
-    }
-
-    private static bool TryParseDateInput(object? value, out DateTime date)
-    {
-        var text = value?.ToString();
-        if (!string.IsNullOrWhiteSpace(text) &&
-            DateTime.TryParseExact(text, DateInputFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-        {
-            date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
-            return true;
-        }
-
-        date = default;
-        return false;
     }
 
     private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -309,17 +372,16 @@
 
     private void ApplySearch()
     {
-        var normalized = string.IsNullOrWhiteSpace(_searchDraft) ? null : _searchDraft;
-        if (normalized != ScopeState.Current.Search)
+        var scope = ScopeRailRules.ApplySearch(ScopeState.Current, _searchDraft);
+        if (scope.Search != ScopeState.Current.Search)
         {
-            ScopeState.Set(ScopeState.Current with { Search = normalized });
+            ScopeState.Set(scope);
         }
     }
 
     private void OnQuickRangeClicked(int daysBack)
     {
-        var today = TodayUtc;
-        ScopeState.Set(ScopeState.Current with { FromUtc = today.AddDays(-daysBack), ToUtc = today.AddDays(1) });
+        ScopeState.Set(ScopeRailRules.ApplyQuickRange(ScopeState.Current, TodayUtc, daysBack));
     }
 
     private void OnResetClicked()

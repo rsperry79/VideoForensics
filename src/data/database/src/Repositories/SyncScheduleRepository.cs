@@ -40,10 +40,17 @@ namespace VideoForensics.Data.Database.Repositories
                     nameof(schedule));
             }
 
-            if (schedule.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+            if (schedule.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
             {
                 throw new ArgumentException(
-                    $"SnapshotRssiIntervalMinutes ({schedule.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    $"SnapshotRssiIntervalSeconds ({schedule.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                    nameof(schedule));
+            }
+
+            if (schedule.SnapshotRollupIntervalMinutes < SyncSchedule.MinimumSnapshotRollupIntervalMinutes)
+            {
+                throw new ArgumentException(
+                    $"SnapshotRollupIntervalMinutes ({schedule.SnapshotRollupIntervalMinutes}) must be >= {SyncSchedule.MinimumSnapshotRollupIntervalMinutes}",
                     nameof(schedule));
             }
 
@@ -80,10 +87,10 @@ namespace VideoForensics.Data.Database.Repositories
                             nameof(schedule));
                     }
 
-                    if (window.SnapshotRssiIntervalMinutes < SyncSchedule.MinimumPollIntervalMinutes)
+                    if (window.SnapshotRssiIntervalSeconds < SyncSchedule.MinimumSnapshotIntervalSeconds)
                     {
                         throw new ArgumentException(
-                            $"Window SnapshotRssiIntervalMinutes ({window.SnapshotRssiIntervalMinutes}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
+                            $"Window SnapshotRssiIntervalSeconds ({window.SnapshotRssiIntervalSeconds}) must be >= {SyncSchedule.MinimumPollIntervalMinutes}",
                             nameof(schedule));
                     }
                 }
@@ -99,7 +106,8 @@ namespace VideoForensics.Data.Database.Repositories
                 if (existing != null)
                 {
                     existing.EventPollIntervalMinutes = schedule.EventPollIntervalMinutes;
-                    existing.SnapshotRssiIntervalMinutes = schedule.SnapshotRssiIntervalMinutes;
+                    existing.SnapshotRssiIntervalSeconds = schedule.SnapshotRssiIntervalSeconds;
+                    existing.SnapshotRollupIntervalMinutes = schedule.SnapshotRollupIntervalMinutes;
                     existing.IsEnabled = schedule.IsEnabled;
                     existing.UseAdvancedJammingSchedule = schedule.UseAdvancedJammingSchedule;
                     existing.EventNextRunUtc = schedule.EventNextRunUtc;
@@ -126,12 +134,12 @@ namespace VideoForensics.Data.Database.Repositories
 
                 _ = await db.SaveChangesAsync(ct);
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogInformation("Sync schedule upserted for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogDebug("Sync schedule upserted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
             }
             catch (Exception ex)
             {
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
-                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", schedule.ProviderAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -148,13 +156,13 @@ namespace VideoForensics.Data.Database.Repositories
                     _ = db.SyncSchedules.Remove(schedule);
                     _ = await db.SaveChangesAsync(ct);
                     var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                    _logger.LogInformation("Sync schedule deleted for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
+                    _logger.LogDebug("Sync schedule deleted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)
             {
                 var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
-                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderAccountId} ({ProviderName})", providerAccountId, account?.ProviderName ?? "unknown");
+                _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
         }
@@ -192,5 +200,39 @@ namespace VideoForensics.Data.Database.Repositories
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(ss => ss.SnapshotLastRunUtc, ranAtUtc)
                     .SetProperty(ss => ss.SnapshotNextRunUtc, nextRunUtc), ct);
-        }    }
+        }
+
+        /// <summary>Updates only BackfillCursorUtc; a vanished row is a no-op.</summary>
+        public async Task RecordBackfillCursorAsync(Guid providerAccountId, DateTime? cursorUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.BackfillCursorUtc, cursorUtc), ct);
+        }
+
+        /// <summary>Updates only LastRollupUtc; a vanished row is a no-op. Never touches the form-edited interval.</summary>
+        public async Task RecordRollupAsync(Guid providerAccountId, DateTime rolledUpAtUtc, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(ss => ss.LastRollupUtc, rolledUpAtUtc), ct);
+        }
+
+        /// <summary>Updates only SnapshotIntervalSeconds; a vanished row is a no-op.</summary>
+        public async Task SetSnapshotIntervalSecondsAsync(Guid providerAccountId, int seconds, CancellationToken ct)
+        {
+            if (seconds < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "SnapshotIntervalSeconds must be at least 1.");
+            }
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.SyncSchedules
+                .Where(ss => ss.ProviderAccountId == providerAccountId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(ss => ss.SnapshotIntervalSeconds, (int?)seconds), ct);
+        }
+    }
 }

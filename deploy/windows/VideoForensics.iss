@@ -284,7 +284,7 @@ var
   AdminSetupPage: TInputQueryWizardPage;
   NetworkBindingPage: TInputOptionWizardPage;
   ProgramDataRoot: String;
-  DefaultDatabasePath, DefaultMediaPath, DefaultTempDownloadPath, DefaultLogsPath, DefaultReportsPath, DefaultBackupPath: String;
+  DefaultDatabasePath, DefaultMediaPath, DefaultTempDownloadPath, DefaultLogsPath, DefaultReportsPath, DefaultBackupPath, DefaultExportsPath: String;
   { 0 = keep data in place (safe default), 1 = back up then delete, 2 = delete without backup. Set
     once in InitializeUninstall, acted on in CurUninstallStepChanged(usPostUninstall). Never
     defaults to a destructive value - any unexpected/interrupted dialog result falls back to 0. }
@@ -447,7 +447,7 @@ end;
 { Resolves the current Reports/Media paths the same way the registry-write logic in
   CurStepChanged does - Simple mode: SimpleRoot + subfolder; Advanced mode: DataDirPage.Values at
   the same indices used everywhere else in this script (Database=0/Media=1/TempDownload=2/
-  Logs=3/Reports=4/Backup=5). }
+  Logs=3/Reports=4/Backup=5/Exports=6). }
 function GetResolvedReportsPath(): String;
 begin
   if StorageModePage.SelectedValueIndex = 0 then
@@ -647,8 +647,9 @@ begin
   DefaultLogsPath := ProgramDataRoot + '\Logs';
   DefaultReportsPath := ProgramDataRoot + '\Reports';
   DefaultBackupPath := ProgramDataRoot + '\backup';
+  DefaultExportsPath := ProgramDataRoot + '\exports';
 
-  { Storage mode choice - most installs only ever need one folder; the six-field Advanced page
+  { Storage mode choice - most installs only ever need one folder; the seven-field Advanced page
     below is for the minority who want to split data across drives. Only meaningful on a fresh
     install: changing it on an upgrade would silently orphan existing data at the old location
     rather than moving it, so ShouldSkipPage hides all three of these pages on upgrades. }
@@ -663,7 +664,7 @@ begin
 
   SimpleDirPage := CreateInputDirPage(StorageModePage.ID,
     'Data Location', 'Where should VideoForensics store its data?',
-    'Database, media, logs, reports, and backups will each be organized into their own subfolder ' +
+    'Database, media, logs, reports, backups, and exports will each be organized into their own subfolder ' +
     'under this location.',
     False, '');
   SimpleDirPage.Add('Data folder:');
@@ -682,6 +683,7 @@ begin
   DataDirPage.Add('Logs:');
   DataDirPage.Add('Reports:');
   DataDirPage.Add('Backups:');
+  DataDirPage.Add('Exports:');
 
   DataDirPage.Values[0] := DefaultDatabasePath;
   DataDirPage.Values[1] := DefaultMediaPath;
@@ -689,6 +691,7 @@ begin
   DataDirPage.Values[3] := DefaultLogsPath;
   DataDirPage.Values[4] := DefaultReportsPath;
   DataDirPage.Values[5] := DefaultBackupPath;
+  DataDirPage.Values[6] := DefaultExportsPath;
 
   { Optional initial SuperAdmin account. Leaving both fields blank (the default - nothing
     pre-filled) skips this entirely; the app's own /setup page handles it in the browser instead.
@@ -839,10 +842,11 @@ begin
           RegWriteStringValue(HKLM, DataRegistryKey, 'LogsPath', SimpleRoot + '\Logs');
           RegWriteStringValue(HKLM, DataRegistryKey, 'ReportsPath', SimpleRoot + '\Reports');
           RegWriteStringValue(HKLM, DataRegistryKey, 'BackupPath', SimpleRoot + '\backup');
+          RegWriteStringValue(HKLM, DataRegistryKey, 'ExportsPath', SimpleRoot + '\exports');
         end;
 
         { Ensure every resolved path exists and is writable by the service account before the
-          service starts - unconditional for all 6, not just ones the user edited: even the
+          service starts - unconditional for all 7, not just ones the user edited: even the
           untouched default might not exist yet on a truly fresh machine. }
         EnsureDataPathReady(SimpleRoot + '\Database');
         EnsureDataPathReady(SimpleRoot + '\media');
@@ -850,6 +854,7 @@ begin
         EnsureDataPathReady(SimpleRoot + '\Logs');
         EnsureDataPathReady(SimpleRoot + '\Reports');
         EnsureDataPathReady(SimpleRoot + '\backup');
+        EnsureDataPathReady(SimpleRoot + '\exports');
       end
       else
       begin
@@ -865,14 +870,17 @@ begin
           RegWriteStringValue(HKLM, DataRegistryKey, 'ReportsPath', DataDirPage.Values[4]);
         if (Trim(DataDirPage.Values[5]) <> '') and (DataDirPage.Values[5] <> DefaultBackupPath) then
           RegWriteStringValue(HKLM, DataRegistryKey, 'BackupPath', DataDirPage.Values[5]);
+        if (Trim(DataDirPage.Values[6]) <> '') and (DataDirPage.Values[6] <> DefaultExportsPath) then
+          RegWriteStringValue(HKLM, DataRegistryKey, 'ExportsPath', DataDirPage.Values[6]);
 
-        { Same "unconditional for all 6" reasoning as the Simple-mode branch above. }
+        { Same "unconditional for all 7" reasoning as the Simple-mode branch above. }
         EnsureDataPathReady(DataDirPage.Values[0]);
         EnsureDataPathReady(DataDirPage.Values[1]);
         EnsureDataPathReady(DataDirPage.Values[2]);
         EnsureDataPathReady(DataDirPage.Values[3]);
         EnsureDataPathReady(DataDirPage.Values[4]);
         EnsureDataPathReady(DataDirPage.Values[5]);
+        EnsureDataPathReady(DataDirPage.Values[6]);
       end;
 
       { Fresh-install case: the custom path (if any) is now resolved and ready, so it's safe to

@@ -182,7 +182,7 @@ namespace VideoForensics.Data.Database.Repositories
             int completenessScore = (int)completeness.CompletenessPercentage;
             int score = Math.Max(0, completenessScore - tamperingPenalty);
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Integrity score for {LocationId}: {Score}% (Completeness={Completeness}%, Tampering Indicators={TamperingCount})",
                 locationId, score, completenessScore, tampering.Count);
 

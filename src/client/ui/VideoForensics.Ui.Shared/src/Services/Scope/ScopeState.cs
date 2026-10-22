@@ -5,7 +5,16 @@ namespace VideoForensics.Ui.Shared.Services.Scope;
 /// <summary>
 /// Represents the global investigation scope: devices, time window, and search query.
 /// </summary>
-public sealed record ForensicScope(IReadOnlyList<Guid> DeviceIds, DateTime FromUtc, DateTime ToUtc, string? Search)
+/// <param name="MatchesNoDevices">
+/// True when a provider/account filter leaves no device. An empty <see cref="DeviceIds"/> means "all devices",
+/// so this flag is what keeps an empty filter result from widening to every device.
+/// </param>
+public sealed record ForensicScope(
+    IReadOnlyList<Guid> DeviceIds,
+    DateTime FromUtc,
+    DateTime ToUtc,
+    string? Search,
+    bool MatchesNoDevices = false)
 {
     /// <summary>
     /// Creates a default scope with no devices, last 7 days, and no search.
@@ -20,7 +29,7 @@ public sealed record ForensicScope(IReadOnlyList<Guid> DeviceIds, DateTime FromU
     /// <summary>
     /// True if no specific devices are selected (all devices included).
     /// </summary>
-    public bool IncludesAllDevices => DeviceIds.Count == 0;
+    public bool IncludesAllDevices => DeviceIds.Count == 0 && !MatchesNoDevices;
 
     /// <summary>
     /// Custom equality that properly compares DeviceIds by sequence equality.
@@ -35,7 +44,8 @@ public sealed record ForensicScope(IReadOnlyList<Guid> DeviceIds, DateTime FromU
         return DeviceIds.SequenceEqual(other.DeviceIds)
             && FromUtc == other.FromUtc
             && ToUtc == other.ToUtc
-            && Search == other.Search;
+            && Search == other.Search
+            && MatchesNoDevices == other.MatchesNoDevices;
     }
 
     /// <summary>
@@ -51,6 +61,7 @@ public sealed record ForensicScope(IReadOnlyList<Guid> DeviceIds, DateTime FromU
         hash.Add(FromUtc);
         hash.Add(ToUtc);
         hash.Add(Search);
+        hash.Add(MatchesNoDevices);
         return hash.ToHashCode();
     }
 }
@@ -110,6 +121,11 @@ public class ScopeState
             var deviceStr = string.Join(",", Current.DeviceIds.Select(g => g.ToString("D")));
             parts.Add($"devices={deviceStr}");
         }
+        else if (Current.MatchesNoDevices)
+        {
+            // An empty devices list means "all"; "none" keeps a no-match filter from widening on reload.
+            parts.Add("devices=none");
+        }
 
         // From date
         var defaultScope = ForensicScope.Default(_timeProvider.GetUtcNow().DateTime);
@@ -153,6 +169,7 @@ public class ScopeState
         }
 
         var deviceIds = new List<Guid>();
+        var matchesNoDevices = false;
         DateTime? fromUtc = null;
         DateTime? toUtc = null;
         string? search = null;
@@ -169,7 +186,11 @@ public class ScopeState
             var key = pair.Substring(0, eqIndex);
             var value = HttpUtility.UrlDecode(pair.Substring(eqIndex + 1));
 
-            if (key == "devices" && !string.IsNullOrWhiteSpace(value))
+            if (key == "devices" && value == "none")
+            {
+                matchesNoDevices = true;
+            }
+            else if (key == "devices" && !string.IsNullOrWhiteSpace(value))
             {
                 var parts = value.Split(',');
                 foreach (var part in parts)
@@ -205,7 +226,8 @@ public class ScopeState
             DeviceIds: deviceIds,
             FromUtc: fromUtc ?? Current.FromUtc,
             ToUtc: toUtc ?? Current.ToUtc,
-            Search: search ?? Current.Search);
+            Search: search ?? Current.Search,
+            MatchesNoDevices: matchesNoDevices);
 
         var oldCurrent = Current;
         Set(newScope);
@@ -227,6 +249,9 @@ public class ScopeState
         // Trim search to null if blank
         var search = string.IsNullOrWhiteSpace(scope.Search) ? null : scope.Search;
 
-        return new ForensicScope(distinctDevices, from, to, search);
+        // The no-match flag only means something while no device is listed; a listed device wins.
+        var matchesNoDevices = scope.MatchesNoDevices && distinctDevices.Count == 0;
+
+        return new ForensicScope(distinctDevices, from, to, search, matchesNoDevices);
     }
 }

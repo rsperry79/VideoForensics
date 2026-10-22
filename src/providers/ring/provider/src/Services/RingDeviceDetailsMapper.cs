@@ -84,6 +84,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static DeviceDetailFields ToDeviceFields(Doorbot d)
         {
+            TypedSettingDetails typed = RingDeviceSettingGroupParser.Parse(d.Settings?.AdditionalFields);
             return new DeviceDetailFields(
                 RingDeviceId: d.DeviceId,
                 RingKind: d.Kind,
@@ -109,7 +110,10 @@ namespace VideoForensics.Providers.Ring.Services
                 SettingsChimeType: ToInt(d.Settings?.ChimeSettings?.Type),
                 SettingsChimeEnabled: d.Settings?.ChimeSettings?.Enable,
                 SettingsChimeDuration: ToInt(d.Settings?.ChimeSettings?.Duration),
-                SettingsMetadataJson: ExtraJson(d.Settings?.AdditionalFields),
+                SettingsMetadataJson: RingDeviceSettingGroupParser.RemainderJson(d.Settings?.AdditionalFields),
+                OfflineMotion: typed.OfflineMotion,
+                DetectionTypes: typed.DetectionTypes,
+                DetectionThresholds: typed.Thresholds,
                 Zones: ToZoneSettingsDetails(d.ZoneSettings),
                 AdvancedObjectSettings: ToObjectSettingDetails(d.Settings?.AdvancedObjectSettings));
         }
@@ -121,6 +125,7 @@ namespace VideoForensics.Providers.Ring.Services
         public static DeviceDetailFields ToDeviceFields(StickupCam s)
         {
             StickupCamSettings? st = s.Settings;
+            TypedSettingDetails typed = RingDeviceSettingGroupParser.Parse(st?.AdditionalFields);
             return new DeviceDetailFields(
                 RingDeviceId: s.DeviceId,
                 RingKind: s.Kind,
@@ -162,7 +167,10 @@ namespace VideoForensics.Providers.Ring.Services
                 SirenSecondsRemaining: ToInt(s.SirenStatus?.SecondsRemaining),
                 NightMode: ToInt(s.NightMode),
                 MotionSnoozeJson: RawJson(s.MotionSnooze),
-                SettingsMetadataJson: ExtraJson(st?.AdditionalFields),
+                SettingsMetadataJson: RingDeviceSettingGroupParser.RemainderJson(st?.AdditionalFields),
+                OfflineMotion: typed.OfflineMotion,
+                DetectionTypes: typed.DetectionTypes,
+                DetectionThresholds: typed.Thresholds,
                 LightSettingsMetadataJson: ExtraJson(st?.LightSettings?.AdditionalFields),
                 PirSettingsSensitivity1: ToInt(st?.PirSettings?.Sensitivity1),
                 PirSettingsSensitivity2: ToInt(st?.PirSettings?.Sensitivity2),
@@ -251,7 +259,43 @@ namespace VideoForensics.Providers.Ring.Services
                 .Select(s => new DeviceAdvancedObjectSetting { Id = Guid.NewGuid(), DeviceId = deviceId, SettingKey = s.SettingKey, Day = s.Day, Night = s.Night })
                 .ToList();
 
-            return new DeviceSettingsChildren(snooze, live, zones, zoneRows, objectRows);
+            // Typed settings come only from doorbots and stickup cams. Chimes do not supply them, so their rows stay untouched (null).
+            List<DeviceOfflineMotionSettings>? offlineRows = null;
+            List<DeviceDetectionType>? detectionRows = null;
+            List<DeviceDetectionThreshold>? thresholdRows = null;
+            if (fields.DetectionTypes != null)
+            {
+                offlineRows = fields.OfflineMotion == null
+                    ? []
+                    : [new DeviceOfflineMotionSettings
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        Subscribed = fields.OfflineMotion.Subscribed,
+                        Enabled = fields.OfflineMotion.Enabled,
+                        MaxUploadKb = fields.OfflineMotion.MaxUploadKb,
+                        ResolutionP = fields.OfflineMotion.ResolutionP,
+                        FrequencyAfterSecs = fields.OfflineMotion.FrequencyAfterSecs,
+                        PeriodAfterSecs = fields.OfflineMotion.PeriodAfterSecs,
+                    }];
+                detectionRows = fields.DetectionTypes
+                    .Select(t => new DeviceDetectionType
+                    {
+                        Id = Guid.NewGuid(),
+                        DeviceId = deviceId,
+                        DetectionType = t.DetectionType,
+                        Enabled = t.Enabled,
+                        Mode = t.Mode,
+                        Record = t.Record,
+                        Notification = t.Notification,
+                    })
+                    .ToList();
+                thresholdRows = (fields.DetectionThresholds ?? [])
+                    .Select(t => new DeviceDetectionThreshold { Id = Guid.NewGuid(), DeviceId = deviceId, DetectionType = t.DetectionType, Threshold = t.Threshold })
+                    .ToList();
+            }
+
+            return new DeviceSettingsChildren(snooze, live, zones, zoneRows, objectRows, offlineRows, detectionRows, thresholdRows);
         }
 
         /// <summary>Builds the feature row, or null when the device has no features object.</summary>

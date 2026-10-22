@@ -26,7 +26,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Downloading Wyze videos for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Downloading Wyze videos for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
                 // TODO: Implement video download
@@ -57,7 +57,7 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             try
             {
-                _logger.LogInformation("Downloading Wyze snapshots for device {DeviceId} from {StartDate} to {EndDate}",
+                _logger.LogDebug("Downloading Wyze snapshots for device {DeviceId} from {StartDate} to {EndDate}",
                     deviceId, startDate, endDate);
 
                 // TODO: Implement snapshot download

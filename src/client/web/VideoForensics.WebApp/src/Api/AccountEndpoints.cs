@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
 using VideoForensics.WebApp.Auth;
 
@@ -124,6 +126,13 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("List active provider accounts")
                 .WithDescription("Retrieves all active provider accounts.");
 
+            // Declared before the "{id:guid}" routes; the guid constraint already keeps "removed" from colliding.
+            _ = group.MapGet("/provider-accounts/removed", async (IProviderAccountRepository accounts, CancellationToken ct) =>
+                Results.Ok((await accounts.ListRemovedAsync(ct)).Select(x => x.ToDto())))
+                .RequireRateLimiting("media")
+                .WithSummary("List removed provider accounts")
+                .WithDescription("Retrieves provider accounts that were retired (soft-removed) and still retain their data.");
+
             _ = group.MapGet("/provider-accounts/{id:guid}/cases", async (Guid id, ICaseRepository cases, CancellationToken ct) =>
                 Results.Ok((await cases.ListForProviderAccountAsync(id, ct)).Select(x => x.ToDto())))
                 .RequireRateLimiting("media")
@@ -184,7 +193,8 @@ namespace VideoForensics.WebApp.Api
                     LinkedUtc = DateTime.UtcNow,
                     LastSuccessfulAuthUtc = null,
                     IsActive = true,
-                    LastDownloadTimeUtc = null
+                    LastDownloadTimeUtc = null,
+                    InitialSyncCompleted = false
                 };
                 await accounts.AddAsync(account, ct);
 
@@ -220,6 +230,12 @@ namespace VideoForensics.WebApp.Api
                     account.LastDownloadTimeUtc = request.LastDownloadTimeUtc.Value;
                 }
 
+                // A removed account keeps its data for the record but must never be switched back to active.
+                if (account.RemovedUtc != null && request.IsActive)
+                {
+                    return Results.Conflict("Account has been removed and cannot be reactivated.");
+                }
+
                 account.IsActive = request.IsActive;
 
                 await accounts.UpdateAsync(account, ct);
@@ -245,6 +261,82 @@ namespace VideoForensics.WebApp.Api
                 .WithSummary("Delete a provider account")
                 .WithDescription("Deletes a provider account link.");
 
+            _ = group.MapPost("/provider-accounts/{id:guid}/retire", async (Guid id, IProviderAccountRepository accounts, CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Idempotent: an already-removed account is returned unchanged rather than re-stamped.
+                if (account.RemovedUtc == null)
+                {
+                    await accounts.RetireAsync(id, DateTime.UtcNow, ct);
+                    account = await accounts.GetAsync(id, ct) ?? account;
+                }
+
+                return Results.Ok(account.ToDto());
+            })
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .RequireRateLimiting("media")
+                .WithSummary("Retire a provider account")
+                .WithDescription("Soft-removes the account: syncing stops but its data is kept. Idempotent.");
+
+            _ = group.MapPost("/provider-accounts/{id:guid}/exports", async (
+                Guid id,
+                QueueAccountExportRequest request,
+                IProviderAccountRepository accounts,
+                IAccountExportService exports,
+                CancellationToken ct) =>
+            {
+                ProviderAccount? account = await accounts.GetAsync(id, ct);
+                if (account == null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Reject before anything is retired, so an unconfirmed purge cannot leave the account retired.
+                if (request.ValidationError is { } validationError)
+                {
+                    return Results.BadRequest(new { error = validationError });
+                }
+
+                // Retire first so the scheduler stops pulling for the account before the export runs.
+                if (request.PurgeAfterExport && account.RemovedUtc == null)
+                {
+                    await accounts.RetireAsync(id, DateTime.UtcNow, ct);
+                }
+
+                Guid jobId = await exports.QueueExportAsync(id, request.PurgeAfterExport, ct);
+                ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);
+                ExportJobDto dto = status?.ToDto()
+                    ?? new ExportJobDto(jobId, id, ExportJobState.Queued.ToString(), null, null, request.PurgeAfterExport, DateTime.UtcNow, null);
+                return Results.Accepted($"/api/v1/accounts/exports/{jobId}", dto);
+            })
+                .AddEndpointFilter<StepUpEndpointFilter>()
+                .RequireRateLimiting("media")
+                .WithSummary("Export a provider account")
+                .WithDescription("Queues a background export of the account's data, optionally purging the account afterwards.");
+
+            _ = group.MapGet("/provider-accounts/{id:guid}/export-status", async (Guid id, IAccountExportService exports, CancellationToken ct) =>
+            {
+                ExportJobStatus? status = await exports.GetLatestStatusForAccountAsync(id, ct);
+                return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get the latest export job for an account")
+                .WithDescription("Returns the most recently queued export job for the account, or 404 when none is known (including after a server restart).");
+
+            _ = group.MapGet("/exports/{jobId:guid}", async (Guid jobId, IAccountExportService exports, CancellationToken ct) =>
+            {
+                ExportJobStatus? status = await exports.GetStatusAsync(jobId, ct);
+                return status == null ? Results.NotFound() : Results.Ok(status.ToDto());
+            })
+                .RequireRateLimiting("media")
+                .WithSummary("Get account export job status")
+                .WithDescription("Returns the status of a queued export job, or 404 when unknown (including after a server restart).");
+
             _ = group.MapPost("/provider-accounts/{id:guid}/initial-sync", async (
                 Guid id,
                 IProviderAccountRepository accounts,
@@ -256,7 +348,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }
@@ -287,7 +379,7 @@ namespace VideoForensics.WebApp.Api
                     return Results.NotFound();
                 }
 
-                if (!account.IsActive)
+                if (!account.IsActive || account.RemovedUtc != null)
                 {
                     return Results.Conflict("Account is no longer active");
                 }
@@ -298,6 +390,16 @@ namespace VideoForensics.WebApp.Api
                     try
                     {
                         using IServiceScope scope = scopeFactory.CreateScope();
+
+                        // An account whose first sync never finished gets that sync instead of an incremental pull.
+                        var accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+                        ProviderAccount? current = await accountRepository.GetAsync(id, CancellationToken.None);
+                        IInitialSyncDispatcher? initialSync = scope.ServiceProvider.GetService<IInitialSyncDispatcher>();
+                        if (current is { InitialSyncCompleted: false } && initialSync is not null)
+                        {
+                            await initialSync.RunInitialSyncAsync(id, CancellationToken.None);
+                            return;
+                        }
 
                         IAccountSyncRunner syncRunner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
                         if (request == null)
@@ -450,8 +552,8 @@ namespace VideoForensics.WebApp.Api
         try
         {
             using IServiceScope scope = scopeFactory.CreateScope();
-            IAccountSyncRunner runner = scope.ServiceProvider.GetRequiredService<IAccountSyncRunner>();
-            await runner.RunInitialAsync(accountId, CancellationToken.None);
+            VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
+            await coordinator.RunAsync(accountId, CancellationToken.None);
         }
         catch
         {

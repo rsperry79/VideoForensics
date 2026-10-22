@@ -174,7 +174,8 @@ namespace VideoForensics.Hosting.Remote
                 IntegrityRecords = dto.IntegrityRecords.Select(x => x.ToDomain()).ToList().AsReadOnly(),
                 TotalItemCount = dto.TotalItemCount,
                 VerifiedItemCount = dto.VerifiedItemCount,
-                FailedVerificationCount = dto.FailedVerificationCount
+                FailedVerificationCount = dto.FailedVerificationCount,
+                MediaProviderEventLinks = (dto.MediaProviderEventLinks ?? []).Select(x => new MediaProviderEventLink(x.MediaItemId, x.ProviderEventId)).ToList().AsReadOnly()
             };
         }
 

@@ -64,8 +64,14 @@ public class EvidenceViewModel
     public EvidenceLoadResult LoadResult { get; }
 
     public EvidenceViewModel(EvidenceLoadResult loadResult)
+        : this(loadResult, loadResult.Items)
     {
-        Items = loadResult.Items;
+    }
+
+    /// <summary>Creates the view model with the items to show, which may be fewer than the loaded items (for example after snapshot thinning).</summary>
+    public EvidenceViewModel(EvidenceLoadResult loadResult, IReadOnlyList<EvidenceItem> items)
+    {
+        Items = items;
         LoadResult = loadResult;
         Selected = null;
         IsViewerOpen = false;
@@ -78,7 +84,7 @@ public class EvidenceViewModel
         Items.Where(i => i.HasViewableMedia).ToList().AsReadOnly();
 
     /// <summary>
-    /// Media IDs for images among Items (up to max, in order).
+    /// Media IDs with a thumbnail among Items (images, plus videos for their first frame), up to max, in order.
     /// </summary>
     public IReadOnlyList<Guid> ThumbnailMediaIds(int max = 500)
     {
@@ -90,7 +96,7 @@ public class EvidenceViewModel
                 break;
             }
 
-            if (item.Media is not null && MediaFormatHelper.IsImage(item.Media.MediaFormat))
+            if (item.Media is not null && (MediaFormatHelper.IsImage(item.Media.MediaFormat) || MediaFormatHelper.IsVideo(item.Media.MediaFormat)))
             {
                 ids.Add(item.Media.Id);
             }

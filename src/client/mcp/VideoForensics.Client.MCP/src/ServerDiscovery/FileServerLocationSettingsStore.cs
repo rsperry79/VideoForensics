@@ -1,4 +1,5 @@
 using VideoForensics.Hosting.ServerDiscovery;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Client.MCP.ServerDiscovery
 {
@@ -15,9 +16,7 @@ namespace VideoForensics.Client.MCP.ServerDiscovery
 
         public FileServerLocationSettingsStore(string? storageDirectory = null)
         {
-            _storageDirectory = storageDirectory ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "VideoForensics");
+            _storageDirectory = storageDirectory ?? new StorageLocationProvider().GetDataRoot();
             _cachedUrlFilePath = Path.Combine(_storageDirectory, "mcp-server-url.txt");
         }
 

@@ -110,7 +110,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.DoesNotContain(writes, w => w.DeviceId == BackDoorGuid);
 
             (LogLevel Level, string Message) warning = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Warning, warning.Level);
+            Assert.Equal(LogLevel.Debug, warning.Level);
             Assert.DoesNotContain("api.ring.com", warning.Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("devices/1002", warning.Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(AccessToken, warning.Message, StringComparison.Ordinal);
@@ -131,7 +131,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Contains(writes, w => w.DeviceId == FrontDoorGuid);
             Assert.Contains(writes, w => w.DeviceId == BackDoorGuid);
             (LogLevel Level, string Message) info = Assert.Single(logger.Entries, e => e.Message.Contains("Garage Cam", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Information, info.Level);
+            Assert.Equal(LogLevel.Debug, info.Level);
         }
 
         [Fact]
@@ -199,7 +199,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(0, state.MarkCount);
             Assert.Null(state.LastConfigSyncUtc);
             (LogLevel Level, string Message) skipped = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Information, skipped.Level);
+            Assert.Equal(LogLevel.Debug, skipped.Level);
         }
 
         [Fact]

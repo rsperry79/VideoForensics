@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Core.Services
 
         public async Task<StorageSettings> GetStatusAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Retrieving storage settings status");
+            _logger.LogDebug("Retrieving storage settings status");
 
             // Load current configuration to get any overrides
             IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync("", cancellationToken);
@@ -57,7 +57,7 @@ namespace VideoForensics.Data.Core.Services
                 categories.Add(status);
             }
 
-            _logger.LogInformation("Storage settings status retrieved: {CategoryCount} categories", categories.Count);
+            _logger.LogDebug("Storage settings status retrieved: {CategoryCount} categories", categories.Count);
             return new StorageSettings(categories);
         }
 
@@ -97,7 +97,7 @@ namespace VideoForensics.Data.Core.Services
                     try
                     {
                         await MoveDirectoryContentsAsync(currentPath, request.NewRootPath, cancellationToken);
-                        _logger.LogInformation("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
+                        _logger.LogDebug("Successfully moved {Category} from {OldPath} to {NewPath}", request.Category, currentPath, request.NewRootPath);
                     }
                     catch (Exception ex)
                     {
@@ -112,7 +112,7 @@ namespace VideoForensics.Data.Core.Services
                 try
                 {
                     await _configurationService.SaveConfigurationAsync(config, cancellationToken);
-                    _logger.LogInformation("Storage category {Category} configuration persisted to {NewPath}", request.Category, request.NewRootPath);
+                    _logger.LogDebug("Storage category {Category} configuration persisted to {NewPath}", request.Category, request.NewRootPath);
                 }
                 catch (Exception ex)
                 {
@@ -141,6 +141,7 @@ namespace VideoForensics.Data.Core.Services
                 StorageCategory.Logs => config.LogsLocation,
                 StorageCategory.Reports => config.ReportsLocation,
                 StorageCategory.Backup => config.QueryExportLocation,
+                StorageCategory.Exports => config.ExportsLocation,
                 StorageCategory.Keys => null, // Keys never has an override
                 _ => null
             };
@@ -167,6 +168,9 @@ namespace VideoForensics.Data.Core.Services
                     break;
                 case StorageCategory.Backup:
                     config.QueryExportLocation = newPath;
+                    break;
+                case StorageCategory.Exports:
+                    config.ExportsLocation = newPath;
                     break;
                 case StorageCategory.Keys:
                     // Keys cannot be relocated, no override set
@@ -203,7 +207,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to compute directory size for {Path}", path);
+                _logger.LogError(ex, "Failed to compute directory size for {Path}", path);
                 return 0;
             }
         }
@@ -223,7 +227,7 @@ namespace VideoForensics.Data.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to compute free space for {Path}", path);
+                _logger.LogError(ex, "Failed to compute free space for {Path}", path);
                 return 0;
             }
         }
@@ -269,7 +273,7 @@ namespace VideoForensics.Data.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete empty directory {Path}", dir.FullName);
+                    _logger.LogError(ex, "Failed to delete empty directory {Path}", dir.FullName);
                 }
             }
         }

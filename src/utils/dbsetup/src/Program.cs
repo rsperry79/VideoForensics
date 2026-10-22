@@ -79,7 +79,7 @@ Console.WriteLine($"Creating/migrating database at: {effectivePath}");
 
 try
 {
-    await DatabaseInitializer.InitializeAsync(factory, logger, CancellationToken.None);
+    await DatabaseInitializer.InitializeAsync(factory, logger, CancellationToken.None, provider.GetServices<IReferenceDataSource>());
     Console.WriteLine("Database is up to date.");
 }
 catch (Exception ex)

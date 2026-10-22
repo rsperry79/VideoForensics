@@ -22,7 +22,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetLight(long doorbotId, bool on, CancellationToken cancellationToken = default)
+        public virtual async Task SetLight(long doorbotId, bool on, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -41,7 +41,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetSiren(long doorbotId, bool on, int? durationSeconds = null, CancellationToken cancellationToken = default)
+        public virtual async Task SetSiren(long doorbotId, bool on, int? durationSeconds = null, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -86,7 +86,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetVolume(long doorbotId, int volume, string deviceName, CancellationToken cancellationToken = default)
+        public virtual async Task SetVolume(long doorbotId, int volume, string deviceName, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -109,7 +109,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetMotionDetection(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
+        public virtual async Task SetMotionDetection(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -168,7 +168,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetDoNotDisturb(long chimeId, int seconds, CancellationToken cancellationToken = default)
+        public virtual async Task SetDoNotDisturb(long chimeId, int seconds, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 
@@ -191,7 +191,7 @@ namespace VideoForensics.Providers.Ring
         /// <exception cref="Exceptions.SessionNotAuthenticatedException">Thrown when there's no OAuth token, or the OAuth token has expired and there is no valid refresh token.</exception>
         /// <exception cref="Exceptions.ThrottledException">Thrown when the web server indicates too many requests have been made (HTTP 429).</exception>
         /// <exception cref="Exceptions.DeviceUnknownException">Thrown when the web server indicates the requested Ring device was not found (HTTP 404).</exception>
-        public async Task SetNightMode(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
+        public virtual async Task SetNightMode(long doorbotId, bool enabled, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 

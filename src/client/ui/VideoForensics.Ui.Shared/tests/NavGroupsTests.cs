@@ -17,40 +17,30 @@ public class NavGroups_Tests
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "evidence", "cases", "sources", "admin" }, groupKeys);
+        Assert.Equal(new[] { "media", "cases", "sources", "admin" }, groupKeys);
     }
 
     [Fact]
-    public void Evidence_GroupHasCorrectProperties()
+    public void Media_GroupHasCorrectProperties()
     {
-        var group = NavGroups.All.First(g => g.Key == "evidence");
-        Assert.Equal("Evidence", group.Text);
-        Assert.Equal("/evidence", group.Path);
+        var group = NavGroups.All.First(g => g.Key == "media");
+        Assert.Equal("Media", group.Text);
+        Assert.Equal("/media", group.Path);
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/evidence", itemPaths);
+        Assert.Contains("/media", itemPaths);
         Assert.DoesNotContain("/collect", itemPaths);
-        Assert.Contains("/analyze", itemPaths);
+        Assert.DoesNotContain("/analyze", itemPaths);
         Assert.Contains("/chat", itemPaths);
-
-        // Verify Analyze is nested under Evidence with its sub-items
-        var analyzeItem = group.Items.FirstOrDefault(i => i.Path == "/analyze");
-        Assert.NotNull(analyzeItem);
-        Assert.NotNull(analyzeItem.Children);
-        var analyzeChildPaths = analyzeItem.Children.Select(c => c.Path).ToList();
-        Assert.Contains("/analyze?analysis=reports", analyzeChildPaths);
-        Assert.Contains("/analyze?analysis=anomalies", analyzeChildPaths);
-        Assert.Contains("/analyze?analysis=access", analyzeChildPaths);
-        Assert.Contains("/analyze?analysis=jamming", analyzeChildPaths);
     }
 
     [Fact]
-    public void Evidence_GroupNoLongerHasEventGrid()
+    public void Media_GroupNoLongerHasEventGrid()
     {
-        // The Events page ("Event Grid") was retired in phase 8: its actions moved to Evidence's
+        // The Events page ("Event Grid") was retired in phase 8: its actions moved to Media's
         // Grid context menu and Inspector (see EvidenceActions/EvidenceInspectorMapper), and the
         // old /events route now just redirects (see EventsRedirect).
-        var group = NavGroups.All.First(g => g.Key == "evidence");
+        var group = NavGroups.All.First(g => g.Key == "media");
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.DoesNotContain("/events", itemPaths);
         Assert.DoesNotContain(group.Items, i => i.Text == "Event Grid");
@@ -66,22 +56,33 @@ public class NavGroups_Tests
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/cases", itemPaths);
         Assert.Contains("/cases/new", itemPaths);
+        Assert.Contains("/analyze", itemPaths);
         Assert.Contains("/analyze/chain-of-custody", itemPaths);
-        Assert.Contains("/analyze/validate/integrity", itemPaths);
+        Assert.DoesNotContain("/analyze/validate/integrity", itemPaths);
         Assert.Contains("/review/export", itemPaths);
+
+        // Verify Analyze is nested under Cases with its sub-items
+        var analyzeItem = group.Items.FirstOrDefault(i => i.Path == "/analyze");
+        Assert.NotNull(analyzeItem);
+        Assert.NotNull(analyzeItem.Children);
+        var analyzeChildPaths = analyzeItem.Children.Select(c => c.Path).ToList();
+        Assert.Contains("/analyze?analysis=reports", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=anomalies", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=access", analyzeChildPaths);
+        Assert.Contains("/analyze?analysis=jamming", analyzeChildPaths);
     }
 
     [Fact]
-    public void Analyze_NoLongerTopLevel_NestedUnderEvidence()
+    public void Analyze_NoLongerInMedia_NestedUnderCases()
     {
-        // Analyze was moved from a top-level group to be nested under Evidence (phase 1 consolidation).
+        // Analyze moved from the Media group to be nested under Cases.
         // Verify it doesn't exist as a top-level group anymore.
         var analyzeGroup = NavGroups.All.FirstOrDefault(g => g.Key == "analyze");
         Assert.Null(analyzeGroup);
 
-        // Verify it exists as a nested item under Evidence instead
-        var evidenceGroup = NavGroups.All.First(g => g.Key == "evidence");
-        var analyzeItem = evidenceGroup.Items.First(i => i.Path == "/analyze");
+        // Verify it exists as a nested item under Cases instead
+        var casesGroup = NavGroups.All.First(g => g.Key == "cases");
+        var analyzeItem = casesGroup.Items.First(i => i.Path == "/analyze");
         Assert.Equal("Analyze", analyzeItem.Text);
         Assert.NotNull(analyzeItem.Children);
     }
@@ -95,7 +96,7 @@ public class NavGroups_Tests
 
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.Contains("/accounts", itemPaths);
-        Assert.Contains("/devices/config", itemPaths);
+        Assert.DoesNotContain("/devices/config", itemPaths);
         Assert.Contains("/query", itemPaths);
         Assert.Contains("/query/api-tester", itemPaths);
         Assert.DoesNotContain("/tools/ring-selftest", itemPaths);

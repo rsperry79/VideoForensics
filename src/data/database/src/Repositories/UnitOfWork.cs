@@ -42,7 +42,7 @@ namespace VideoForensics.Data.Database.Repositories
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
-                _logger.LogInformation("Unit of work committed successfully");
+                _logger.LogDebug("Unit of work committed successfully");
                 return result;
             }
             catch (Exception ex)
@@ -78,11 +78,17 @@ namespace VideoForensics.Data.Database.Repositories
         public IActionLogRepository ActionLog => new UnitOfWorkActionLogRepository(_db, _logger);
         public IEventRepository Events => new UnitOfWorkEventRepository(_db, _logger);
         public IDeviceConfigRepository DeviceConfig => new UnitOfWorkDeviceConfigRepository(_db, _logger);
+        public IDeviceSettingChangeRepository DeviceSettingChanges => new UnitOfWorkDeviceSettingChangeRepository(_db, _logger);
         public IProviderReconciliationRepository ProviderReconciliation => new UnitOfWorkProviderReconciliationRepository(_db, _logger);
         public IExportRecordRepository ExportRecords => new UnitOfWorkExportRecordRepository(_db, _logger);
         public IAccessAuditLogRepository AccessAuditLogs => new UnitOfWorkAccessAuditLogRepository(_db, _logger);
         public IExportAuditRecordRepository ExportAuditRecords => new UnitOfWorkExportAuditRecordRepository(_db, _logger);
         public IDetectionEntityProvider DetectionEntities => new DetectionEntityProvider(_db, _logger);
+
+        public async Task SaveChangesAsync(CancellationToken ct)
+        {
+            _ = await _db.SaveChangesAsync(ct);
+        }
     }
 
     // Internal repository implementations for unit of work (using fixed context, no factory pattern)
@@ -153,7 +159,27 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive).ToList());
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.IsActive && pa.RemovedUtc == null).ToList());
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccounts.AsNoTracking().Where(pa => pa.RemovedUtc != null).AsEnumerable().OrderByDescending(pa => pa.RemovedUtc).ToList());
+        }
+
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
+        {
+            ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
+            if (account == null || account.RemovedUtc != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            account.RemovedUtc = removedUtc;
+            account.IsActive = false;
+            _db.SyncSchedules.RemoveRange(_db.SyncSchedules.Where(s => s.ProviderAccountId == accountId));
+            _db.Credentials.RemoveRange(_db.Credentials.Where(c => c.ProviderAccountId == accountId));
+            return Task.CompletedTask;
         }
 
         public Task AddAsync(ProviderAccount account, CancellationToken ct)
@@ -168,7 +194,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.CompletedTask;
         }
         public Task UpdateAsync(ProviderAccount account, CancellationToken ct) { _ = _db.ProviderAccounts.Update(account); return Task.CompletedTask; }
-        public Task DeleteAsync(Guid accountId, CancellationToken ct)
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
         {
             ProviderAccount? account = _db.ProviderAccounts.FirstOrDefault(pa => pa.Id == accountId);
             if (account != null)
@@ -217,6 +243,16 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<Location?> GetAsync(Guid locationId, CancellationToken ct)
         {
             return Task.FromResult(_db.Locations.AsNoTracking().FirstOrDefault(l => l.Id == locationId));
+        }
+
+        /// <summary>Lists the provider accounts linked to a location (any provider).</summary>
+        public Task<IReadOnlyList<ProviderAccount>> ListProviderAccountsForLocationAsync(Guid locationId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<ProviderAccount>)_db.ProviderAccountLocations
+                .AsNoTracking()
+                .Where(l => l.LocationId == locationId)
+                .Join(_db.ProviderAccounts.AsNoTracking(), l => l.ProviderAccountId, pa => pa.Id, (l, pa) => pa)
+                .ToList());
         }
 
         /// <summary>Lists the locations linked to a provider account.</summary>
@@ -310,7 +346,15 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            return Task.FromResult((IReadOnlyList<Device>)_db.Devices.AsNoTracking().ToList());
+            List<Device> devices = _db.Devices.AsNoTracking().ToList();
+            List<(Guid LocationId, string ProviderName)> links = _db.ProviderAccountLocations
+                .AsNoTracking()
+                .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
+                .AsEnumerable()
+                .Select(x => (x.LocationId, x.ProviderName))
+                .ToList();
+            DeviceProviderNames.Assign(devices, links);
+            return Task.FromResult((IReadOnlyList<Device>)devices);
         }
 
         public Task AddAsync(Device device, CancellationToken ct) { _ = _db.Devices.Add(device); return Task.CompletedTask; }
@@ -359,6 +403,24 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc).ToList());
         }
 
+        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.BaselineVersion == null)
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<MediaItem>> GetSnapshotsByDeviceAndDateRangeAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => m.DeviceId == deviceId && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc
+                    && m.MediaFormat == "jpg" && m.MetadataJson != null && m.MetadataJson.Contains("\"type\":\"snapshot\""))
+                .OrderBy(m => m.RecordedAtUtc)
+                .ToList());
+        }
+
         public Task<MediaItem?> GetByHashAsync(string sha256Hash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.Sha256Hash == sha256Hash));
@@ -368,6 +430,13 @@ namespace VideoForensics.Data.Database.Repositories
         public Task<MediaItem?> GetByApiSourceHashAsync(string apiSourceHash, CancellationToken ct)
         {
             return Task.FromResult(_db.MediaItems.AsNoTracking().FirstOrDefault(m => m.ApiSourceHash == apiSourceHash));
+        }
+
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.ThumbnailPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .ToList());
         }
 
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
@@ -660,6 +729,24 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<DateTime?> GetEarliestOccurredAtUtcAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult(_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).Min(e => (DateTime?)e.OccurredAtUtc));
+        }
+
+        public Task<IReadOnlyList<Event>> ListByDevicePageAsync(Guid deviceId, DateTime? afterOccurredAtUtc, Guid? afterId, int take, CancellationToken ct)
+        {
+            IQueryable<Event> query = _db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId);
+            if (afterOccurredAtUtc.HasValue)
+            {
+                DateTime at = afterOccurredAtUtc.Value;
+                Guid id = afterId ?? Guid.Empty;
+                query = query.Where(e => e.OccurredAtUtc > at || (e.OccurredAtUtc == at && e.Id.CompareTo(id) > 0));
+            }
+
+            return Task.FromResult((IReadOnlyList<Event>)query.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Take(take).ToList());
+        }
+
         public Task<IReadOnlyList<Event>> ListUnansweredOrFlaggedAsync(Guid deviceId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<Event>)_db.Events.AsNoTracking().Where(e => e.DeviceId == deviceId).ToList());
@@ -770,6 +857,29 @@ namespace VideoForensics.Data.Database.Repositories
             }
 
             return Task.CompletedTask;
+        }
+    }
+
+    internal class UnitOfWorkDeviceSettingChangeRepository : IDeviceSettingChangeRepository
+    {
+        private readonly VideoForensicsDbContext _db;
+        private readonly ILogger _logger;
+
+        public UnitOfWorkDeviceSettingChangeRepository(VideoForensicsDbContext db, ILogger logger) { _db = db; _logger = logger; }
+
+        // Synchronous add on the transaction's DbContext: the rows commit with the Device update that produced them.
+        public Task AddRangeAsync(IEnumerable<DeviceSettingChange> changes, CancellationToken ct)
+        {
+            _db.DeviceSettingChanges.AddRange(changes);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<DeviceSettingChange>> ListByDeviceAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<DeviceSettingChange>)_db.DeviceSettingChanges.AsNoTracking()
+                .Where(dsc => dsc.DeviceId == deviceId)
+                .OrderByDescending(dsc => dsc.ChangedAtUtc)
+                .ToList());
         }
     }
 

@@ -15,6 +15,14 @@ html[data-theme="dark"] body {
     --vf-input-text: #ffffff;
 }
 
+/* Bootstrap's .card is hard-coded white, but the Syncfusion dark theme (bootstrap5-dark.css) sets
+   checkbox labels to white. In dark mode the cards must go dark too, or those labels vanish. */
+html[data-theme="dark"] .card {
+    background-color: var(--vf-input-bg);
+    color: var(--vf-text-color);
+    border-color: var(--vf-border-color);
+}
+
 html, body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

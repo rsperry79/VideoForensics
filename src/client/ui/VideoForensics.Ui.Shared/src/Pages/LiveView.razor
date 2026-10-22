@@ -9,6 +9,8 @@
 @using VideoForensics.Ui.Shared.Services
 @implements IAsyncDisposable
 
+@using VideoForensics.Ui.Shared.Components.Scope
+@using VideoForensics.Ui.Shared.Services.Scope
 @inject ILiveViewSessionService LiveViewSessionService
 @inject ILiveViewSessionSource LiveViewSessionSource
 @inject IDeviceRepository DeviceRepository
@@ -35,6 +37,7 @@ else
         <div class="right-panel-section">
             <small>@L["Title"]</small>
             <div class="d-flex flex-column gap-2">
+                <DeviceOwnershipFilters Devices="_devices" VisibleDevicesChanged="OnDeviceFilterChanged" />
                 <SfDropDownList TValue="string" TItem="KeyValuePair<string, string>"
                     @bind-Value="_selectedDeviceIdStr"
                     DataSource="@(DeviceOptions.ToList())"
@@ -106,11 +109,33 @@ else
     private Guid? _selectedSessionId;
     private string? _error;
     private Dictionary<string, string> DeviceOptions { get; set; } = new();
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private List<VideoForensics.Data.Common.Entities.Device> _visibleDevices = new();
+
+    private static Dictionary<string, string> BuildDeviceOptions(IEnumerable<VideoForensics.Data.Common.Entities.Device> devices) =>
+        devices
+            .ToDictionary(d => d.Id.ToString(), d => d.Name ?? $"Device {d.ProviderDeviceId}")
+            .OrderBy(kv => kv.Value)
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+    /// <summary>Narrows the device picker to the Provider/Account filter. A selection that the filter hides is cleared.</summary>
+    private Task OnDeviceFilterChanged(DeviceFilterResult result)
+    {
+        _visibleDevices = result.Devices.ToList();
+        DeviceOptions = BuildDeviceOptions(_visibleDevices);
+        if (_selectedDeviceIdStr is not null && !DeviceOptions.ContainsKey(_selectedDeviceIdStr))
+        {
+            _selectedDeviceIdStr = null;
+        }
+
+        return Task.CompletedTask;
+    }
 
     private object? _hubConnection;
     private IJSObjectReference? _jsModule;
     private readonly LiveViewActivationWaiter _activationWaiter = new();
     private IDisposable? _telemetrySubscription;
+    private volatile bool _disposed;
     private LiveViewTelemetrySample? _latestTelemetry;
 
     protected override async Task OnInitializedAsync()
@@ -122,10 +147,9 @@ else
         {
             // Load available devices
             var devices = await DeviceRepository.ListAsync(System.Threading.CancellationToken.None);
-            DeviceOptions = devices
-                .ToDictionary(d => d.Id.ToString(), d => d.Name ?? $"Device {d.ProviderDeviceId}")
-                .OrderBy(kv => kv.Value)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            _devices = devices.ToList();
+            _visibleDevices = _devices;
+            DeviceOptions = BuildDeviceOptions(_visibleDevices);
 
             // Load JavaScript module
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
@@ -232,6 +256,7 @@ else
 
     private async Task CleanupAsync()
     {
+        _disposed = true;
         if (_isConnected && _selectedSessionId.HasValue)
         {
             try
@@ -265,7 +290,7 @@ else
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Could not leave the live-view push group for a session");
+            Logger.LogError(ex, "Could not leave the live-view push group for a session");
         }
     }
 
@@ -276,13 +301,18 @@ else
         DisposeTelemetrySubscription();
         _telemetrySubscription = LiveViewSessionSource.Telemetry.Subscribe(sample =>
         {
-            if (sample.SessionId != sessionId)
+            if (_disposed || sample.SessionId != sessionId)
             {
                 return;
             }
 
             _ = InvokeAsync(() =>
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 _latestTelemetry = sample;
                 StateHasChanged();
             });

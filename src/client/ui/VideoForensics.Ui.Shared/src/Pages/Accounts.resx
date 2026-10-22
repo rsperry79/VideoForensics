@@ -62,4 +62,64 @@
   <data name="UnknownTime" xml:space="preserve">
     <value>unknown</value>
   </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RemovedAccountsTitle" xml:space="preserve">
+    <value>Removed accounts</value>
+  </data>
+  <data name="NoRemovedAccounts" xml:space="preserve">
+    <value>No removed accounts.</value>
+  </data>
+  <data name="ColRemoved" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="ColExportStatus" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="ColActions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="DeletePermanently" xml:space="preserve">
+    <value>Delete permanently</value>
+  </data>
+  <data name="ExportStatus_Queued" xml:space="preserve">
+    <value>Queued</value>
+  </data>
+  <data name="ExportStatus_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="ExportStatus_Succeeded" xml:space="preserve">
+    <value>Succeeded: {0}</value>
+  </data>
+  <data name="ExportStatus_Failed" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="ExportStatus_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ExportFailedUnknownError" xml:space="preserve">
+    <value>unknown error</value>
+  </data>
+  <data name="ErrorLoadingAccounts" xml:space="preserve">
+    <value>Error loading accounts: {0}</value>
+  </data>
+  <data name="ErrorAsOf" xml:space="preserve">
+    <value>(as of {0})</value>
+  </data>
+  <data name="ExportSucceededNotice" xml:space="preserve">
+    <value>Export of {0} saved to {1}</value>
+  </data>
+  <data name="FilterAccount" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AllAccounts" xml:space="preserve">
+    <value>All accounts</value>
+  </data>
+  <data name="ExportStatusLost" xml:space="preserve">
+    <value>The export is no longer tracked by the server (it may have restarted). Check the exports folder.</value>
+  </data>
+  <data name="ExportPollTimedOut" xml:space="preserve">
+    <value>The export has not finished after an hour. Check the server logs.</value>
+  </data>
 </root>

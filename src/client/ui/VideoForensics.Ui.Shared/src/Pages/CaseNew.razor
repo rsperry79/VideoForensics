@@ -46,9 +46,13 @@ else
                 </div>
 
                 <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="useCurrentScope" @bind="_useCurrentScope" />
+                    <input type="checkbox" class="form-check-input" id="useCurrentScope" @bind="_useCurrentScope" disabled="@ScopeState.Current.MatchesNoDevices" />
                     <label class="form-check-label" for="useCurrentScope">@L["UseCurrentScope"]</label>
-                    @if (_useCurrentScope)
+                    @if (ScopeState.Current.MatchesNoDevices)
+                    {
+                        <div class="small text-muted">@L["ScopeMatchesNoDevices"]</div>
+                    }
+                    @if (_useCurrentScope && !ScopeState.Current.MatchesNoDevices)
                     {
                         <div class="mt-2 p-2 bg-light border rounded">
                             <p class="mb-1">
@@ -63,7 +67,7 @@ else
                                 }
                             </p>
                             <p class="mb-0">
-                                <strong>@L["WindowLabel"]</strong> @ScopeState.Current.FromUtc:u - @ScopeState.Current.ToUtc:u
+                                <strong>@L["WindowLabel"]</strong> <LocalTimeText Value="@ScopeState.Current.FromUtc" Format="u" /> - <LocalTimeText Value="@ScopeState.Current.ToUtc" Format="u" />
                             </p>
                         </div>
                     }
@@ -111,9 +115,11 @@ else
 
         try
         {
-            var scopeFromUtc = _useCurrentScope ? ScopeState.Current.FromUtc : (DateTime?)null;
-            var scopeToUtc = _useCurrentScope ? ScopeState.Current.ToUtc : (DateTime?)null;
-            var deviceIds = _useCurrentScope ? ScopeState.Current.DeviceIds : new List<Guid>();
+            // A no-match filter contributes no scope: an empty device list here would mean "all devices".
+            var useScope = _useCurrentScope && !ScopeState.Current.MatchesNoDevices;
+            var scopeFromUtc = useScope ? ScopeState.Current.FromUtc : (DateTime?)null;
+            var scopeToUtc = useScope ? ScopeState.Current.ToUtc : (DateTime?)null;
+            var deviceIds = useScope ? ScopeState.Current.DeviceIds : new List<Guid>();
 
             var createdCase = await CaseRepository.CreateAsync(
                 null,

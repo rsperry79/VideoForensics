@@ -116,7 +116,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             // Assert - verify LogInformation was called, but NOT with the raw username
             mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
                     It.IsAny<Exception>(),
@@ -139,7 +139,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             // Assert - verify LogInformation was called, but NOT with the raw username
             mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => !v.ToString()!.Contains(testUsername)),
                     It.IsAny<Exception>(),

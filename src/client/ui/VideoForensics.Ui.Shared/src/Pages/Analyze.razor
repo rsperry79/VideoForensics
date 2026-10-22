@@ -4,6 +4,8 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Ui.Shared.Components.Analysis
 @using VideoForensics.Ui.Shared.Layout
+@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Ui.Shared.Components.Scope
 @using VideoForensics.Ui.Shared.Services
 @using VideoForensics.Ui.Shared.Services.Scope
 @inject PairedSessionState SessionState
@@ -27,45 +29,61 @@ else if (!_isAuthenticated)
 }
 else
 {
-    <div class="mb-3">
+    <PageRightPanelContent>
+        <ScopeRail />
+    </PageRightPanelContent>
+
+    <ul class="nav nav-tabs mb-3" role="tablist" data-testid="analysis-tabs">
         @if (CanOpen("reports"))
         {
-            <button class="btn @(_activeAnalysis == "reports" ? "btn-primary active" : "btn-outline-primary")"
-                    @onclick="@(() => SelectAnalysis("reports"))" data-testid="analysis-reports">
-                Reports
-            </button>
+            <li class="nav-item" role="presentation">
+                <button type="button" role="tab" class="@TabClass("reports")" aria-selected="@IsActive("reports")"
+                        @onclick="@(() => SelectAnalysis("reports"))" data-testid="analysis-reports">
+                    @L["TabReports"]
+                </button>
+            </li>
         }
         @if (CanOpen("anomalies"))
         {
-            <button class="btn @(_activeAnalysis == "anomalies" ? "btn-primary active" : "btn-outline-primary")"
-                    @onclick="@(() => SelectAnalysis("anomalies"))" data-testid="analysis-anomalies">
-                Signal Anomalies
-            </button>
+            <li class="nav-item" role="presentation">
+                <button type="button" role="tab" class="@TabClass("anomalies")" aria-selected="@IsActive("anomalies")"
+                        @onclick="@(() => SelectAnalysis("anomalies"))" data-testid="analysis-anomalies">
+                    @L["TabSignalAnomalies"]
+                </button>
+            </li>
         }
         @if (CanOpen("access"))
         {
-            <button class="btn @(_activeAnalysis == "access" ? "btn-primary active" : "btn-outline-primary")"
-                    @onclick="@(() => SelectAnalysis("access"))" data-testid="analysis-access">
-                Access Control
-            </button>
+            <li class="nav-item" role="presentation">
+                <button type="button" role="tab" class="@TabClass("access")" aria-selected="@IsActive("access")"
+                        @onclick="@(() => SelectAnalysis("access"))" data-testid="analysis-access">
+                    @L["TabAccessControl"]
+                </button>
+            </li>
         }
         @if (CanOpen("jamming"))
         {
-            <button class="btn @(_activeAnalysis == "jamming" ? "btn-primary active" : "btn-outline-primary")"
-                    @onclick="@(() => SelectAnalysis("jamming"))" data-testid="analysis-jamming">
-                Jamming Analysis
-            </button>
+            <li class="nav-item" role="presentation">
+                <button type="button" role="tab" class="@TabClass("jamming")" aria-selected="@IsActive("jamming")"
+                        @onclick="@(() => SelectAnalysis("jamming"))" data-testid="analysis-jamming">
+                    @L["TabJammingAnalysis"]
+                </button>
+            </li>
         }
-    </div>
+    </ul>
 
     <div class="mb-3 p-3 bg-light">
         <small class="text-muted">
-            Scope: @ScopeState.Current.DeviceIds.Count device(s) selected |
-            @ScopeState.Current.FromUtc.ToShortDateString() to @ScopeState.Current.ToUtc.ToShortDateString()
+            @L["ScopeSummary", ScopeState.Current.DeviceIds.Count, ScopeState.Current.FromUtc.ToShortDateString(), ScopeState.Current.ToUtc.ToShortDateString()]
         </small>
     </div>
 
-    @if (_activeAnalysis == "reports")
+    @if (ScopeState.Current.MatchesNoDevices)
+    {
+        // A filter that matches no device has nothing to analyze; the panels would otherwise treat it as all devices.
+        <div class="alert alert-info" data-testid="no-devices-match">@L["NoDevicesMatchFilter"]</div>
+    }
+    else if (_activeAnalysis == "reports")
     {
         <ForensicReportPanel Scope="ScopeState.Current" Devices="_devices" />
     }
@@ -136,6 +154,10 @@ else
     }
 
     private static readonly string[] AnalysisTabs = ["reports", "anomalies", "access", "jamming"];
+
+    private string TabClass(string analysis) => _activeAnalysis == analysis ? "nav-link active" : "nav-link";
+
+    private string IsActive(string analysis) => _activeAnalysis == analysis ? "true" : "false";
 
     /// <summary>Whether the operator may open an analysis tab; the rule for each tab is in <see cref="PageAccessRules"/>.</summary>
     private bool CanOpen(string analysis) =>

@@ -1,0 +1,222 @@
+@page "/accounts/{Id:guid}/devices"
+@inherits AccountTabPageBase
+@using VideoForensics.Ui.Shared.Services.Devices
+@inject ILocationRepository LocationRepository
+@inject IDeviceRepository DeviceRepository
+@inject IDeviceHealthRepository DeviceHealthRepository
+@inject IMediaItemRepository MediaItemRepository
+@inject IMediaContentUrlProvider MediaUrlProvider
+@inject IForensicsConfiguration ForensicsConfig
+@inject IForensicsConfigurationService ForensicsConfigService
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+@if (IsLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p>@StatusMessage</p>
+    }
+
+    @if (Account == null)
+    {
+        <p>@L["AccountNotFound"]</p>
+    }
+    else
+    {
+        <AccountTabs AccountId="@Id" />
+
+        <div class="mb-4">
+            <label class="form-label fw-bold" for="device-offline-threshold">@L["DeviceOfflineAfterLabel"]</label>
+            <IntervalSecondsInput Id="device-offline-threshold" Value="ForensicsConfig.DeviceOfflineThresholdSeconds"
+                                  ValueChanged="OnThresholdChangedAsync" MinimumSeconds="1" />
+            @if (_thresholdSaveFailed)
+            {
+                <p class="text-danger mb-0 mt-1">@L["DeviceOfflineThresholdSaveFailed"]</p>
+            }
+        </div>
+
+        @if (_devicesError)
+        {
+            <p class="text-danger">@L["LoadListError"]</p>
+        }
+        else if (_devices.Count == 0)
+        {
+            <p>@L["DevicesNone"]</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+            <table class="table table-sm" id="account-devices">
+                <thead>
+                    <tr>
+                        <th>@L["ColDeviceName"]</th>
+                        <th>@L["ColDeviceStatus"]</th>
+                        <th>@L["ColDeviceType"]</th>
+                        <th>@L["ColDeviceLastSeen"]</th>
+                        <th>@L["ColLatestSnapshot"]</th>
+                        <th>@L["ColLatestLoop"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _devices)
+                    {
+                        <tr class="device-row">
+                            <td>@row.Device.Name</td>
+                            <td>@DeviceTypeNames.Display(row.Device.Type)</td>
+                            <td>
+                                @if (row.Status == DeviceUptimeStatus.Online)
+                                {
+                                    <span class="badge bg-success">@L["DeviceOnline"]</span>
+                                }
+                                else if (row.Status == DeviceUptimeStatus.Offline)
+                                {
+                                    <span class="badge bg-danger" data-testid="device-offline-warning">@L["DeviceOffline"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@L["DeviceUnknown"]</span>
+                                }
+                            </td>
+                            <td><LocalTimeText Value="@row.LastSeenUtc" Format="g" Fallback="@L["Never"].Value" /></td>
+                            <td class="latest-snapshot">
+                                @if (!DeviceTypeNames.IsCamera(row.Device.Type))
+                                {
+                                    <span class="text-muted">@L["NotApplicable"]</span>
+                                }
+                                else if (row.SnapshotUrl is not null && row.SnapshotAtUtc is { } snapAt)
+                                {
+                                    <img src="@row.SnapshotUrl" alt="@L["ColLatestSnapshot"]" style="max-width: 10rem;" />
+                                    <div class="small text-muted"><LocalTimeText Value="@snapAt" Format="g" /></div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@L["NoSnapshotYet"]</span>
+                                }
+                            </td>
+                            <td class="latest-loop">
+                                @if (!DeviceTypeNames.IsCamera(row.Device.Type))
+                                {
+                                    <span class="text-muted">@L["NotApplicable"]</span>
+                                }
+                                else if (row.LoopUrl is not null && row.LoopAtUtc is { } loopAt)
+                                {
+                                    <video src="@row.LoopUrl" controls preload="metadata" style="max-width: 14rem;"></video>
+                                    <div class="small text-muted"><LocalTimeText Value="@loopAt" Format="g" /></div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@L["NoLoopYet"]</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+    }
+}
+
+@code {
+    private sealed record DeviceRow(
+        VideoForensics.Data.Common.Entities.Device Device,
+        DeviceUptimeStatus Status,
+        DateTime? LastSeenUtc,
+        string? SnapshotUrl,
+        DateTime? SnapshotAtUtc,
+        string? LoopUrl,
+        DateTime? LoopAtUtc);
+
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private List<DeviceRow> _devices = new();
+    private bool _devicesError;
+    private bool _thresholdSaveFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountAsync();
+        _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["TabDevices"], null) };
+        if (Account is not null)
+        {
+            await LoadDevicesAsync();
+        }
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var pending = new List<(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
+            var locations = await LocationRepository.ListByProviderAccountIdAsync(Id, CancellationToken.None);
+            foreach (var location in locations)
+            {
+                foreach (var device in await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None))
+                {
+                    var health = await DeviceHealthRepository.GetLatestAsync(device.Id, CancellationToken.None);
+                    DateTime? lastSeen = health is null ? null : DeviceUptime.LastSeenUtc(health.LastHeartbeatUtc, health.CapturedAtUtc);
+                    var status = DeviceUptime.Evaluate(
+                        health?.IsOnline,
+                        health?.LastHeartbeatUtc,
+                        health?.CapturedAtUtc,
+                        now,
+                        ForensicsConfig.DeviceOfflineThresholdSeconds);
+                    var recent = await MediaItemRepository.GetRecentByDeviceAsync(device.Id, RecentMediaLimit, CancellationToken.None);
+                    pending.Add((device, status, lastSeen, LatestDeviceMedia.Select(recent)));
+                }
+            }
+
+            // One URL request for every latest item, so the tab does not ask per row.
+            var ids = pending
+                .SelectMany(p => new[] { p.Media.Snapshot?.Id, p.Media.Loop?.Id })
+                .OfType<Guid>()
+                .Distinct()
+                .ToList();
+            IReadOnlyDictionary<Guid, string> urls = ids.Count == 0
+                ? new Dictionary<Guid, string>()
+                : await MediaUrlProvider.GetContentUrlsAsync(ids, CancellationToken.None);
+
+            _devices = pending
+                .Select(p => new DeviceRow(
+                    p.Device,
+                    p.Status,
+                    p.LastSeen,
+                    p.Media.Snapshot is { } s && urls.TryGetValue(s.Id, out var su) ? su : null,
+                    p.Media.Snapshot?.RecordedAtUtc,
+                    p.Media.Loop is { } l && urls.TryGetValue(l.Id, out var lu) ? lu : null,
+                    p.Media.Loop?.RecordedAtUtc))
+                .OrderBy(r => r.Device.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _devicesError = false;
+        }
+        catch
+        {
+            _devices = new();
+            _devicesError = true;
+        }
+    }
+
+    /// <summary>How many recent media rows to scan per device for its latest snapshot and loop.</summary>
+    private const int RecentMediaLimit = 200;
+
+    private async Task OnThresholdChangedAsync(int seconds)
+    {
+        ForensicsConfig.DeviceOfflineThresholdSeconds = seconds;
+        _thresholdSaveFailed = false;
+        try
+        {
+            await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
+        }
+        catch
+        {
+            _thresholdSaveFailed = true;
+        }
+
+        await LoadDevicesAsync();
+    }
+}

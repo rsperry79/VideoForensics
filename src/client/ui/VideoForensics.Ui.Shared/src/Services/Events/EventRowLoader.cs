@@ -76,13 +76,26 @@ public class EventRowLoader
                         scope.ToUtc,
                         ct);
 
-                    var mediaByDownloadEventId = report.MediaItems
-                        .Where(m => m.DownloadEventId.HasValue)
-                        .ToDictionary(m => m.DownloadEventId!.Value);
+                    // Media is joined to events by ProviderEventId, not Event.Id: the report's links carry the
+                    // provider event id per media item, and Event and DownloadEvent share ProviderEventId per device.
+                    var providerEventIdByMediaItemId = new Dictionary<Guid, string>();
+                    foreach (var link in report.MediaProviderEventLinks)
+                    {
+                        providerEventIdByMediaItemId.TryAdd(link.MediaItemId, link.ProviderEventId);
+                    }
+
+                    var mediaByProviderEventId = new Dictionary<string, MediaItem>();
+                    foreach (var media in report.MediaItems)
+                    {
+                        if (providerEventIdByMediaItemId.TryGetValue(media.Id, out var providerEventId))
+                        {
+                            mediaByProviderEventId.TryAdd(providerEventId, media);
+                        }
+                    }
 
                     foreach (var row in rows)
                     {
-                        if (mediaByDownloadEventId.TryGetValue(row.Event.Id, out var mediaItem))
+                        if (mediaByProviderEventId.TryGetValue(row.Event.ProviderEventId, out var mediaItem))
                         {
                             row.MediaItem = mediaItem;
                         }

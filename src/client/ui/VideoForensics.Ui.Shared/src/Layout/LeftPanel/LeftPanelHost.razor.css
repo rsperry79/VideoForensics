@@ -1,0 +1,7 @@
+/* Sits below the nav items inside .splitter-left-nav; the pane itself already scrolls. */
+.left-panel-content {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--rz-border-color, #e0e0e0);
+    min-width: 0;
+}
