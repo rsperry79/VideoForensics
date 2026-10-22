@@ -37,6 +37,54 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$licenseClientProject = Join-Path $PSScriptRoot '..\src\client\core\VideoForensics.Client.Core\src\VideoForensics.Client.Core.csproj'
+
+<#
+.SYNOPSIS
+Copies the Syncfusion license key from the developer's user secrets to the ProgramData location the app reads first.
+
+.DESCRIPTION
+The key is never placed in the install folder, and its value is never printed. The file is rewritten only when it
+is missing or different. Without a key the app runs unlicensed, so a missing secret is reported as a warning.
+#>
+function Sync-SyncfusionLicenseKey {
+    [CmdletBinding()]
+    param([switch]$WhatIf)
+
+    $secretName = 'SYNCFUSION_LICENSE_KEY'
+    $targetDirectory = Join-Path $env:ProgramData 'VideoForensics'
+    $targetFile = Join-Path $targetDirectory 'syncfusion-license.key'
+
+    $userSecretsId = ([xml](Get-Content -Raw $licenseClientProject)).Project.PropertyGroup.UserSecretsId |
+        Where-Object { $_ } | Select-Object -First 1
+    $secretsFile = Join-Path $env:APPDATA "Microsoft\UserSecrets\$userSecretsId\secrets.json"
+    if (-not $userSecretsId -or -not (Test-Path $secretsFile)) {
+        Write-Warning "No user secrets found for Client.Core; the app will run unlicensed unless $targetFile exists."
+        return
+    }
+
+    $key = (Get-Content -Raw $secretsFile | ConvertFrom-Json).$secretName
+    if ([string]::IsNullOrWhiteSpace($key)) {
+        Write-Warning "$secretName is not set in user secrets; the app will run unlicensed unless $targetFile exists."
+        return
+    }
+
+    $current = if (Test-Path $targetFile) { (Get-Content -Raw $targetFile).Trim() } else { $null }
+    if ($current -eq $key.Trim()) {
+        Write-Host "Syncfusion license key already current at $targetFile"
+        return
+    }
+
+    if ($WhatIf) {
+        Write-Host "Dry run: would write the Syncfusion license key to $targetFile"
+        return
+    }
+
+    New-Item -ItemType Directory -Force -Path $targetDirectory | Out-Null
+    [IO.File]::WriteAllText($targetFile, $key.Trim(), [Text.UTF8Encoding]::new($false))
+    Write-Host "Wrote the Syncfusion license key to $targetFile"
+}
+
 $project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.WebApp.csproj'
 $project = (Resolve-Path $project).Path
 $stage = Join-Path $env:TEMP ('vf-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -47,6 +95,8 @@ Write-Host "Publishing $project ($Configuration) to $stage"
 dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 if (-not (Test-Path (Join-Path $stage $exeName))) { throw "Publish did not produce $exeName." }
+
+Sync-SyncfusionLicenseKey -WhatIf:$WhatIfPreference
 
 # robocopy exit codes 0-7 mean success; 8 and above mean a copy failed.
 $robocopyArgs = @(
