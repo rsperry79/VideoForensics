@@ -49,6 +49,11 @@ namespace VideoForensics.Data.Common.Entities
         public const string CertificateFingerprintMismatch = nameof(CertificateFingerprintMismatch);
         public const string TunnelStarted = nameof(TunnelStarted);
         public const string TunnelStopped = nameof(TunnelStopped);
+        public const string CloudflareApiTokenConfigured = nameof(CloudflareApiTokenConfigured);
+        public const string CloudflareTunnelConfigured = nameof(CloudflareTunnelConfigured);
+        public const string CloudflareDisconnected = nameof(CloudflareDisconnected);
+        public const string InternetServerUrlChanged = nameof(InternetServerUrlChanged);
+        public const string CertificateIssued = nameof(CertificateIssued);
         public const string ProviderRateLimitHit = nameof(ProviderRateLimitHit);
         public const string ProviderApiVolumeAnomaly = nameof(ProviderApiVolumeAnomaly);
         public const string EvidenceExported = nameof(EvidenceExported);
@@ -100,6 +105,11 @@ namespace VideoForensics.Data.Common.Entities
             [CertificateFingerprintMismatch] = true,
             [TunnelStarted] = true,
             [TunnelStopped] = true,
+            [CloudflareApiTokenConfigured] = true,
+            [CloudflareTunnelConfigured] = true,
+            [CloudflareDisconnected] = true,
+            [InternetServerUrlChanged] = true,
+            [CertificateIssued] = true,
             [ProviderRateLimitHit] = true,
             [ProviderApiVolumeAnomaly] = true,
             [EvidenceExported] = true,

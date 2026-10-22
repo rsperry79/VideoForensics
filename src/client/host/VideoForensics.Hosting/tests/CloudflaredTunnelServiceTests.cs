@@ -1,8 +1,10 @@
-using Microsoft.Extensions.Logging;
+using CloudflaredKit;
+using CloudflaredKit.Models;
+
+using Microsoft.Extensions.Options;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 
 using Xunit;
@@ -11,89 +13,93 @@ namespace VideoForensics.Hosting.Tests
 {
     public class CloudflaredTunnelServiceTests
     {
-        [Fact]
-        public void ResolveExecutablePath_WithNoBundledBinaryOrPath_ReturnsBareCloudflaredName()
-        {
-            // Guards against the executable name resolver silently drifting from "cloudflared"
-            // (e.g. a typo like "cloudflare") which would make IsInstalledAsync() always report
-            // not-installed even when a bundled/PATH binary exists.
-            var candidatePath = Path.Combine(AppContext.BaseDirectory, ExecutableFileName());
-            Assert.False(File.Exists(candidatePath), "Test assumes no bundled cloudflared binary is present");
-
-            var result = CreateService(null).ResolveExecutablePath();
-
-            Assert.Equal("cloudflared", result);
-        }
+        private const string ValidToken = "test-permanent-tunnel-token";
 
         [Fact]
-        public void ResolveExecutablePath_ConfiguredPath_UsesConfiguredPath()
+        public async Task StartPermanentTunnelAsync_ValidToken_StoresTokenAndReportsRunning()
         {
-            // The configured CloudflaredPath must win over bare-name PATH lookup, and it is read
-            // live from IForensicsConfiguration so a path set in the UI takes effect without a restart.
-            var configuredPath = Path.Combine(Path.GetTempPath(), "vf-cloudflared-" + Guid.NewGuid().ToString("N") + ExecutableFileName());
-            File.WriteAllText(configuredPath, "dummy");
-            try
-            {
-                var result = CreateService(configuredPath).ResolveExecutablePath();
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            var cache = new Mock<IOptionsMonitorCache<CloudflaredOptions>>();
+            var service = new CloudflaredTunnelService(cloudflared.Object, cache.Object);
 
-                Assert.Equal(configuredPath, result);
-            }
-            finally
-            {
-                File.Delete(configuredPath);
-            }
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
+
+            cache.Verify(c => c.TryAdd(Options.DefaultName, It.Is<CloudflaredOptions>(o => o.TunnelToken == ValidToken)), Times.Once);
+            TunnelState state = service.GetState();
+            Assert.Equal(TunnelKind.Named, state.Kind);
+            Assert.Equal(TunnelStatus.Running, state.Status);
+            Assert.Null(state.ErrorMessage);
         }
 
         [Fact]
-        public void ResolveExecutablePath_WithBundledBinaryNextToApp_ReturnsFullPathToBundledBinary()
+        public async Task StartPermanentTunnelAsync_CalledWhileRunning_DoesNotStartAgain()
         {
-            // This is the exact mechanism that makes cloudflared "detected" without a PATH
-            // dependency: a copy of the executable placed next to the app's own binary
-            // (AppContext.BaseDirectory) must take precedence over a bare PATH lookup.
-            var candidatePath = Path.Combine(AppContext.BaseDirectory, ExecutableFileName());
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
 
-            try
-            {
-                File.WriteAllText(candidatePath, "dummy");
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
 
-                var result = CreateService(null).ResolveExecutablePath();
-
-                Assert.Equal(candidatePath, result);
-            }
-            finally
-            {
-                if (File.Exists(candidatePath))
-                {
-                    File.Delete(candidatePath);
-                }
-            }
+            cloudflared.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(TunnelStatus.Running, service.GetState().Status);
         }
 
         [Fact]
-        public void CloudflaredTunnelService_SanitizesLogOutput_WhenArgumentsContainNewlines()
+        public async Task StopAsync_AfterStart_StopsProcessAndReportsStopped()
         {
-            // Arrange: Create a mock logger
-            var mockLogger = new Mock<ILogger<CloudflaredTunnelService>>();
-            var service = CreateService(null, mockLogger);
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            _ = cloudflared.Setup(c => c.StopAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None);
 
-            // Act: StartQuickTunnelAsync would normally log the arguments, but this test
-            // verifies that if arguments contain newlines, they are sanitized before logging
-            // to prevent log forging. Since StartQuickTunnelAsync is async and fire-and-forget,
-            // we just verify that the service can be instantiated and methods can be called
-            // with newlines in the arguments without throwing an exception.
-            var task = service.StartQuickTunnelAsync(5000, CancellationToken.None);
+            await service.StopAsync(CancellationToken.None);
 
-            // Assert: The task should complete without error
-            Assert.NotNull(task);
+            cloudflared.Verify(c => c.StopAsync(It.IsAny<CancellationToken>()), Times.Once);
+            TunnelState state = service.GetState();
+            Assert.Equal(TunnelStatus.Stopped, state.Status);
+            Assert.Equal(TunnelKind.None, state.Kind);
+            Assert.Null(state.PublicUrl);
         }
 
-        private static CloudflaredTunnelService CreateService(string? configuredPath, Mock<ILogger<CloudflaredTunnelService>>? logger = null)
+        [Fact]
+        public async Task StartPermanentTunnelAsync_ProcessFails_ReportsFailedWithMessageAndRethrows()
         {
-            var config = new Mock<IForensicsConfiguration>();
-            _ = config.SetupGet(c => c.CloudflaredPath).Returns(configuredPath);
-            return new CloudflaredTunnelService((logger ?? new Mock<ILogger<CloudflaredTunnelService>>()).Object, config.Object);
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("cloudflared exited with code 1"));
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
+
+            TunnelState state = service.GetState();
+            Assert.Equal(TunnelStatus.Failed, state.Status);
+            Assert.Equal("cloudflared exited with code 1", state.ErrorMessage);
         }
 
-        private static string ExecutableFileName() => OperatingSystem.IsWindows() ? "cloudflared.exe" : "cloudflared";
+        [Fact]
+        public async Task StartPermanentTunnelAsync_Cancelled_ReturnsToStoppedNotStarting()
+        {
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
+
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None));
+
+            Assert.Equal(TunnelStatus.Stopped, service.GetState().Status);
+        }
+
+        [Fact]
+        public async Task StartPermanentTunnelAsync_EmptyToken_ThrowsWithoutStarting()
+        {
+            var cloudflared = new Mock<ICloudflaredService>();
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
+
+            _ = await Assert.ThrowsAnyAsync<ArgumentException>(() => service.StartPermanentTunnelAsync("  ", CancellationToken.None));
+
+            cloudflared.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(TunnelStatus.Stopped, service.GetState().Status);
+        }
     }
 }

@@ -248,18 +248,6 @@ jobs:
           Write-Host "Cleaning up temporary directory"
           Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 
-      - name: Download and bundle cloudflared binary
-        shell: pwsh
-        # Cloudflare publishes cloudflared.exe as a direct GitHub release asset, not via winget/choco
-        # by default, so - same as FFmpeg above - we bundle a copy next to the app binary rather than
-        # depend on the user installing it system-wide. CloudflaredTunnelService.ResolveExecutablePath()
-        # (via FfmpegPathResolver) prefers this bundled copy over a bare PATH lookup.
-        run: |
-          $cloudflaredUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-          Write-Host "Downloading cloudflared from $cloudflaredUrl"
-          Invoke-WebRequest -Uri $cloudflaredUrl -OutFile "publish-win\cloudflared.exe" -ErrorAction Stop
-          Write-Host "Bundled cloudflared.exe successfully"
-
       - name: Compile Inno Setup installer
         shell: pwsh
         run: |

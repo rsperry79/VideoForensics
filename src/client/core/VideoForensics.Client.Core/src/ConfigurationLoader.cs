@@ -53,6 +53,15 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.SmtpFromAddress = loadedConfig.SmtpFromAddress;
                 runtimeConfig.NotificationRecipientEmail = loadedConfig.NotificationRecipientEmail;
                 runtimeConfig.ConfiguredNetworkTier = loadedConfig.ConfiguredNetworkTier;
+                // These were missing, so a restart dropped the saved Internet address (and with it the passkey RP ID).
+                runtimeConfig.InternetServerUrl = loadedConfig.InternetServerUrl;
+                runtimeConfig.FfmpegBinDirectory = loadedConfig.FfmpegBinDirectory;
+                runtimeConfig.UniviewNvrHost = loadedConfig.UniviewNvrHost;
+                runtimeConfig.UniviewFfmpegPath = loadedConfig.UniviewFfmpegPath;
+                runtimeConfig.ReleaseChannel = loadedConfig.ReleaseChannel;
+                runtimeConfig.EnableUpdateCheck = loadedConfig.EnableUpdateCheck;
+                runtimeConfig.UpdateCheckIntervalHours = loadedConfig.UpdateCheckIntervalHours;
+                runtimeConfig.UpdateMode = loadedConfig.UpdateMode;
                 runtimeConfig.EnableLiveView = loadedConfig.EnableLiveView;
                 runtimeConfig.LiveViewIdleTimeoutMinutes = loadedConfig.LiveViewIdleTimeoutMinutes;
                 runtimeConfig.LiveViewTelemetrySampleIntervalSeconds = loadedConfig.LiveViewTelemetrySampleIntervalSeconds;

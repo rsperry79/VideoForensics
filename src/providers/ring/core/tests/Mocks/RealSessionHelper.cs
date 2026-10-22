@@ -86,31 +86,26 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                     $"Credentials restored but no session was established.\n{SetupPointer}");
         }
 
-        /// <summary>
-        /// Checks if a saved refresh token is available for real integration testing.
-        /// </summary>
-        /// <summary>
-        /// True only when the operator sets VF_RING_LIVE_TESTS=1. Live tests call the real Ring API with the saved account, so
-        /// they are never part of a normal run: each Ring call counts against the account's rate limit.
-        /// </summary>
-        public static bool LiveTestsEnabled => string.Equals(Environment.GetEnvironmentVariable("VF_RING_LIVE_TESTS"), "1", StringComparison.Ordinal);
+        // Probed once per test process: restoring a session calls the Ring API, so every live test must not repeat it.
+        private static readonly Lazy<bool> CredentialsPresent = new(ProbeSavedCredentials);
 
-        /// <summary>Skips the calling test unless live tests are enabled.</summary>
+        /// <summary>
+        /// True when the database holds usable Ring credentials. Live tests run whenever this is true and skip
+        /// otherwise, so no environment variable is needed to enable them.
+        /// </summary>
+        public static bool CredentialsAvailable() => CredentialsPresent.Value;
+
+        /// <summary>Skips the calling test when no Ring credentials are saved in the database.</summary>
         public static void RequireLive()
         {
-            if (!LiveTestsEnabled)
+            if (!CredentialsAvailable())
             {
-                Xunit.Assert.Skip("Live Ring test: set VF_RING_LIVE_TESTS=1 to run it. It calls the real Ring API.");
+                Xunit.Assert.Skip("No Ring credentials in the database. " + SetupPointer);
             }
         }
 
-        public static bool CredentialsAvailable()
+        private static bool ProbeSavedCredentials()
         {
-            if (!LiveTestsEnabled)
-            {
-                return false;
-            }
-
             try
             {
                 IServiceProvider sp = ServiceProviderLazy.Value;

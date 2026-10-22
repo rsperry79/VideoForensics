@@ -39,16 +39,9 @@ namespace VideoForensics.WebApp.Tests
             return dir;
         }
 
-        private string CreateCloudflaredFile()
+        private static (ForensicsConfiguration Config, Mock<IForensicsConfigurationService> ConfigService, Mock<ISecurityAuditLogger> AuditLog) CreateMocks(string? ffmpegDir = null)
         {
-            var path = Path.Combine(_root, "cloudflared" + Ext);
-            File.WriteAllText(path, "dummy");
-            return path;
-        }
-
-        private static (ForensicsConfiguration Config, Mock<IForensicsConfigurationService> ConfigService, Mock<ISecurityAuditLogger> AuditLog) CreateMocks(string? ffmpegDir = null, string? cloudflaredPath = null)
-        {
-            var config = new ForensicsConfiguration { FfmpegBinDirectory = ffmpegDir, CloudflaredPath = cloudflaredPath };
+            var config = new ForensicsConfiguration { FfmpegBinDirectory = ffmpegDir };
 
             var configService = new Mock<IForensicsConfigurationService>();
             _ = configService.Setup(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -84,7 +77,7 @@ namespace VideoForensics.WebApp.Tests
             var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
             var missing = Path.Combine(_root, "does-not-exist");
 
-            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(missing, null), config, configService, auditLog);
+            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(missing), config, configService, auditLog);
 
             var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
@@ -94,66 +87,50 @@ namespace VideoForensics.WebApp.Tests
         }
 
         [Fact]
-        public async Task SetSoftwarePathsAsync_ValidPaths_SavesAndAudits()
+        public async Task SetSoftwarePathsAsync_ValidPath_SavesAndAudits()
         {
-            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin", cloudflaredPath: null);
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
             var binDir = CreateBinDirectory();
-            var cloudflared = CreateCloudflaredFile();
 
-            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(binDir, cloudflared), config, configService, auditLog);
+            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(binDir), config, configService, auditLog);
 
             var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.Equal(binDir, config.FfmpegBinDirectory);
-            Assert.Equal(cloudflared, config.CloudflaredPath);
             configService.Verify(cs => cs.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
             auditLog.Verify(al => al.LogAsync(
                 SecurityAuditEventTypes.SoftwarePathsChanged,
                 It.IsAny<Guid?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<string>(),
-                It.Is<string>(d => d.Contains("C:\\old\\bin") && d.Contains(binDir) && d.Contains(cloudflared)),
+                It.Is<string>(d => d.Contains("C:\\old\\bin") && d.Contains(binDir)),
                 true,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task SetSoftwarePathsAsync_EmptyValues_ClearsSettings()
+        public async Task SetSoftwarePathsAsync_EmptyValue_ClearsSetting()
         {
-            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin", cloudflaredPath: "C:\\old\\cloudflared.exe");
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
 
-            IResult result = await InvokeAsync(new SetSoftwarePathsRequest("", ""), config, configService, auditLog);
+            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(""), config, configService, auditLog);
 
             var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.True(string.IsNullOrEmpty(config.FfmpegBinDirectory));
-            Assert.True(string.IsNullOrEmpty(config.CloudflaredPath));
             configService.Verify(cs => cs.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task SetSoftwarePathsAsync_RelativeCloudflaredPath_ReturnsBadRequestAndChangesNothing()
-        {
-            var (config, configService, auditLog) = CreateMocks(cloudflaredPath: @"C:\old\cloudflared.exe");
-
-            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(null, "cloudflared.exe"), config, configService, auditLog);
-
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
-            Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
-            Assert.Equal(@"C:\old\cloudflared.exe", config.CloudflaredPath);
-            configService.Verify(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
         public async Task SetSoftwarePathsAsync_SaveFails_RestoresPreviousValuesAndRethrows()
         {
-            var (config, configService, auditLog) = CreateMocks(ffmpegDir: @"C:\old\bin", cloudflaredPath: null);
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: @"C:\old\bin");
             var binDir = CreateBinDirectory();
             _ = configService.Setup(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new IOException("disk full"));
 
             _ = await Assert.ThrowsAsync<IOException>(() =>
-                InvokeAsync(new SetSoftwarePathsRequest(binDir, null), config, configService, auditLog));
+                InvokeAsync(new SetSoftwarePathsRequest(binDir), config, configService, auditLog));
 
             // The shared config must not keep a value that was never persisted.
             Assert.Equal(@"C:\old\bin", config.FfmpegBinDirectory);

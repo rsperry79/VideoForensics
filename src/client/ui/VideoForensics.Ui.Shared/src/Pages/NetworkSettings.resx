@@ -170,4 +170,148 @@
   <data name="RemoteAccessStopFailed" xml:space="preserve">
     <value>Stop failed: {0}</value>
   </data>
+  <data name="ConfiguredAddressLabel" xml:space="preserve">
+    <value>Configured address:</value>
+  </data>
+  <data name="NotConfiguredText" xml:space="preserve">
+    <value>Not configured</value>
+  </data>
+  <data name="PasskeyAddressNotice" xml:space="preserve">
+    <value>This tunnel address must be configured as the passkey address before adding a passkey.</value>
+  </data>
+  <data name="UsePasskeyAddressButton" xml:space="preserve">
+    <value>Use this address for passkeys</value>
+  </data>
+  <data name="PasskeyAddressSaved" xml:space="preserve">
+    <value>Tunnel address saved. Restart the server before registering a passkey.</value>
+  </data>
+  <data name="WizardHeading" xml:space="preserve">
+    <value>Cloudflare setup</value>
+  </data>
+  <data name="WizardHideButton" xml:space="preserve">
+    <value>Hide setup</value>
+  </data>
+  <data name="WizardShowButton" xml:space="preserve">
+    <value>Show Cloudflare setup</value>
+  </data>
+  <data name="WizardStepIndicator" xml:space="preserve">
+    <value>Step {0} of {1}</value>
+  </data>
+  <data name="WizardStep1Title" xml:space="preserve">
+    <value>Enter your Cloudflare Account API token.</value>
+  </data>
+  <data name="WizardApiTokenHelp" xml:space="preserve">
+    <value>The token is validated against Cloudflare, stored encrypted, and never shown again.</value>
+  </data>
+  <data name="WizardApiTokenLabel" xml:space="preserve">
+    <value>Cloudflare Account API token</value>
+  </data>
+  <data name="WizardValidateButton" xml:space="preserve">
+    <value>Validate token</value>
+  </data>
+  <data name="WizardValidatingButton" xml:space="preserve">
+    <value>Validating...</value>
+  </data>
+  <data name="WizardTokenValidated" xml:space="preserve">
+    <value>Token accepted. {0} domain(s) available.</value>
+  </data>
+  <data name="WizardStep2Title" xml:space="preserve">
+    <value>Choose the hostname and domain for this server.</value>
+  </data>
+  <data name="WizardStep2Help" xml:space="preserve">
+    <value>Only domains returned by your Cloudflare token can be selected.</value>
+  </data>
+  <data name="WizardHostnameLabel" xml:space="preserve">
+    <value>Hostname</value>
+  </data>
+  <data name="WizardDomainLabel" xml:space="preserve">
+    <value>Domain</value>
+  </data>
+  <data name="WizardDomainPlaceholder" xml:space="preserve">
+    <value>Select a domain</value>
+  </data>
+  <data name="WizardFqdnPreview" xml:space="preserve">
+    <value>Public address: https://{0}</value>
+  </data>
+  <data name="WizardBackButton" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="WizardNextButton" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="WizardStep3Title" xml:space="preserve">
+    <value>Enter the permanent Cloudflare tunnel token.</value>
+  </data>
+  <data name="WizardTunnelTokenHelp" xml:space="preserve">
+    <value>Create a permanent tunnel in the Cloudflare dashboard and paste its token. The token is stored encrypted and never shown again.</value>
+  </data>
+  <data name="WizardTunnelTokenLabel" xml:space="preserve">
+    <value>Cloudflare tunnel token</value>
+  </data>
+  <data name="WizardSaveButton" xml:space="preserve">
+    <value>Save configuration</value>
+  </data>
+  <data name="WizardSavingButton" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="WizardSavedMessage" xml:space="preserve">
+    <value>Configuration saved.</value>
+  </data>
+  <data name="WizardUnknownError" xml:space="preserve">
+    <value>The request failed.</value>
+  </data>
+  <data name="WizardStep4Title" xml:space="preserve">
+    <value>Start the permanent tunnel.</value>
+  </data>
+  <data name="WizardSavedAddress" xml:space="preserve">
+    <value>Configured address: {0}</value>
+  </data>
+  <data name="StartTunnelButton" xml:space="preserve">
+    <value>Start tunnel</value>
+  </data>
+  <data name="StartingTunnelButton" xml:space="preserve">
+    <value>Starting...</value>
+  </data>
+  <data name="WizardCreateTunnelButton" xml:space="preserve">
+    <value>Create tunnel automatically</value>
+  </data>
+  <data name="WizardCreatingButton" xml:space="preserve">
+    <value>Creating tunnel...</value>
+  </data>
+  <data name="WizardCreateTunnelHelp" xml:space="preserve">
+    <value>Or create the tunnel, its routing and the DNS record through the Cloudflare API. The API token needs these permissions: Account, Cloudflare Tunnel, Edit; Zone, DNS, Edit; Zone, Zone, Read. The account must own the selected domain.</value>
+  </data>
+  <data name="WizardTunnelCreatedMessage" xml:space="preserve">
+    <value>Tunnel created and configuration saved.</value>
+  </data>
+  <data name="DisconnectButton" xml:space="preserve">
+    <value>Disconnect Cloudflare</value>
+  </data>
+  <data name="ConfirmDisconnectButton" xml:space="preserve">
+    <value>Confirm disconnect: this deletes the stored Cloudflare tokens</value>
+  </data>
+  <data name="CurrentConfigHeading" xml:space="preserve">
+    <value>Current configuration</value>
+  </data>
+  <data name="NetworkTierLabel" xml:space="preserve">
+    <value>Network tier</value>
+  </data>
+  <data name="RpIdLabel" xml:space="preserve">
+    <value>Passkey RP ID</value>
+  </data>
+  <data name="PasskeyOriginsLabel" xml:space="preserve">
+    <value>Passkey origins</value>
+  </data>
+  <data name="ApiTokenLabel" xml:space="preserve">
+    <value>Cloudflare API token</value>
+  </data>
+  <data name="TunnelTokenLabel" xml:space="preserve">
+    <value>Cloudflare tunnel token</value>
+  </data>
+  <data name="SavedText" xml:space="preserve">
+    <value>Saved</value>
+  </data>
+  <data name="NotSavedText" xml:space="preserve">
+    <value>Not saved</value>
+  </data>
 </root>

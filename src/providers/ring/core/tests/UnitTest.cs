@@ -10,7 +10,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     {
         public async ValueTask InitializeAsync()
         {
-            if (!Mocks.RealSessionHelper.LiveTestsEnabled)
+            if (!Mocks.RealSessionHelper.CredentialsAvailable())
             {
                 return;
             }

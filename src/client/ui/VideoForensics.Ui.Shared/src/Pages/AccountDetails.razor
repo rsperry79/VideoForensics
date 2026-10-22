@@ -3,6 +3,7 @@
 @using VideoForensics.Ui.Shared.Services
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
+@inject IMultiProviderAuthService MultiProviderAuthService
 
 <Breadcrumb Items="@_breadcrumbItems" />
 
@@ -44,14 +45,37 @@ else
 
                 @if (Account.LastErrorUtc.HasValue || !string.IsNullOrEmpty(Account.LastErrorMessage))
                 {
-                    <div class="mb-3 p-3 border border-danger rounded" style="background-color: #fff5f5;">
+                    <div class="mb-3 p-3 border border-danger rounded" role="alert" style="background-color: #fff5f5; color: #842029;">
+                        <h6 class="fw-bold text-danger">@L["CredentialErrorTitle"]</h6>
+                        <p class="mb-2">@L["CredentialRecoveryMessage"]</p>
                         <label class="form-label fw-bold text-danger">@L["LastErrorLabel"]</label>
                         <p class="mb-1">
                             <strong>@L["TimeLabel"]</strong> <LocalTimeText Value="@Account.LastErrorUtc" Fallback="@L["NoValue"]" />
                         </p>
                         <p class="mb-0">
-                            <strong>@L["MessageLabel"]</strong> @(Account.LastErrorMessage ?? L["NoValue"])
+                            <strong>@L["MessageLabel"]</strong> @L["CredentialRecoveryMessage"]
                         </p>
+                    </div>
+                }
+
+                <div class="mb-3 d-flex gap-2 align-items-center" style="color: #212529;">
+                    <SfButton CssClass="e-warning" Content="@(_validationBusy ? L["Validating"] : L["ValidateCredential"])" OnClick="ValidateCredentialAsync" Disabled="@_validationBusy" />
+                    <SfButton CssClass="e-outline" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                    @if (!string.IsNullOrEmpty(_credentialStatus))
+                    {
+                        <span role="status">@_credentialStatus</span>
+                    }
+                </div>
+
+                @if (_showReauthentication)
+                {
+                    <div class="mb-3 p-3 border rounded" style="color: #212529;">
+                        <h6>@L["ReauthenticateHeading"]</h6>
+                        <p>@L["ReauthenticatePrompt"]</p>
+                        <AuthForm IdPrefix="account-reauth" SubmitLabel="@L["Reauthenticate"]"
+                                  InitialEmail="@AccountEmail"
+                                  AvailableProviders="@(new[] { Account.ProviderName })"
+                                  OnAuthenticated="HandleReauthenticationAsync" />
                     </div>
                 }
             </div>
@@ -74,10 +98,66 @@ else
     private List<(string Label, string? Url)> _breadcrumbItems = new();
     private bool _confirmingRemove;
     private bool _isBusy;
+    private bool _validationBusy;
+    private bool _showReauthentication;
+    private string? _credentialStatus;
 
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], null) };
+        await LoadAccountAsync();
+    }
+
+    private void ShowReauthentication()
+    {
+        _credentialStatus = null;
+        _showReauthentication = true;
+    }
+
+    private async Task ValidateCredentialAsync()
+    {
+        if (Account is null)
+        {
+            return;
+        }
+
+        _validationBusy = true;
+        _credentialStatus = null;
+        try
+        {
+            bool valid = await MultiProviderAuthService.GetService(Account.ProviderName)
+                .RestoreFromSavedCredentialsAsync(Account.Id, CancellationToken.None);
+            _credentialStatus = valid ? L["CredentialValid"] : L["CredentialInvalidReauthenticate"];
+            if (valid)
+            {
+                await LoadAccountAsync();
+            }
+            else
+            {
+                _showReauthentication = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _credentialStatus = L["CredentialValidationFailed"];
+            _showReauthentication = true;
+        }
+        finally
+        {
+            _validationBusy = false;
+        }
+    }
+
+    private async Task HandleReauthenticationAsync(AuthResult result)
+    {
+        if (result.ProviderAccountId != Id)
+        {
+            _credentialStatus = L["ReauthenticationWrongAccount"];
+            return;
+        }
+
+        _showReauthentication = false;
+        _credentialStatus = L["CredentialValid"];
         await LoadAccountAsync();
     }
 
