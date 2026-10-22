@@ -43,7 +43,8 @@ $stage = Join-Path $env:TEMP ('vf-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss
 $exeName = 'VideoForensics.WebApp.exe'
 
 Write-Host "Publishing $project ($Configuration) to $stage"
-dotnet publish $project -c $Configuration -o $stage
+# Self-contained: the build carries its own .NET runtime, so the production machine needs no .NET install.
+dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 if (-not (Test-Path (Join-Path $stage $exeName))) { throw "Publish did not produce $exeName." }
 
