@@ -80,7 +80,7 @@ namespace VideoForensics.WebApp.Services
             AcmeAccountState? account = await _store.GetAccountAsync(ct).ConfigureAwait(true);
             var publisher = new CloudflareDnsChallengePublisher(_cloudflare, apiToken, zone.Id);
 
-            _logger.LogInformation("Requesting a {Environment} certificate for {Host}", useStaging ? "staging" : "production", internetUrl.Host);
+            _logger.LogInformation("Requesting a {Environment}  ertificate for {Host}", useStaging ? "staging" : "production", internetUrl.Host);
             IssuedCertificate issued = await _issuer.IssueAsync(internetUrl.Host, email, account, useStaging, publisher, ct).ConfigureAwait(true);
 
             await _store.SaveAccountAsync(new AcmeAccountState(issued.AccountKeyPem), ct).ConfigureAwait(true);
