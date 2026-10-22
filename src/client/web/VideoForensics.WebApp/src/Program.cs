@@ -72,6 +72,8 @@ Directory.CreateDirectory(logsDir);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.WebApp")
     // Text format: human-readable with structured properties appended

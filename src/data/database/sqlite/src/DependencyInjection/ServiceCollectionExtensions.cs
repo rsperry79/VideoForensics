@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -70,10 +71,12 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 
             // Split queries by default: many repository queries Include multiple collections, and the default SingleQuery
             // produces cartesian-product result sets and EF's MultipleCollectionIncludeWarning. Split queries avoid both.
-            _ = services.AddDbContextFactory<VideoForensicsDbContext>(options =>
+            // SQL command messages are logged at Debug, not Information, so they stay out of every build's normal output.
+            _ = services.AddDbContextFactory<VideoForensicsDbContext>((sp, options) =>
                 options.UseSqlite(connectionString, b => b
                     .MigrationsAssembly("VideoForensics.Data.Database.Sqlite")
-                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+                    .UseLoggerFactory(new EfCommandLogLevelLoggerFactory(sp.GetRequiredService<ILoggerFactory>())));
 
             _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 
