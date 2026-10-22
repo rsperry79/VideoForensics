@@ -441,14 +441,14 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
     {
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", false))
+        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", true))
             .ReturnsAsync((true, (string?)null, (string?)"token", Guid.NewGuid(), "Operator"));
         var component = await RenderAndWaitForFormAsync();
 
         component.Find("input[type='text']").Change("sysop");
         component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
 
-        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", false), Times.Once));
+        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", true), Times.Once));
     }
 
     [Fact]

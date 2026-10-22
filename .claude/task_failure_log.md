@@ -29,7 +29,8 @@
 2026-10-20 | build | dotnet build after retargeting csproj to VideoForensics.snk | InternalsVisibleTo PublicKey values pin KoenZomers key (VideoForensics.Core.Helpers.Forensics and VideoForensics.Providers.Ring.Core friend grants); CS0281 in 2 test projects | not fixed, awaiting user decision on key scope
 2026-10-20 | build | full solution build after clean: CS0117 in AccountEndpoints.cs:196 InitialSyncCompleted; apphost copy file-lock MSB3026 | parallel build race; WebApp builds alone and full sln rebuild passes | resolved by rebuild; nullability warnings DeviceDto.cs/DeviceDetailsRepository.cs remain (not fixed)
 2026-10-20 | line endings | Python text-mode writes on Windows turned 
- into 
+ into 
+
  in edited files; one was committed (RealIntegrationTests.cs on skipped-tests-audit) and the purge files were caught before commit | open(path,'w') translates 
  to 
 , and the file already had 
@@ -40,3 +41,4 @@
 2026-10-21 | build | new test used DeviceHealthReading with only Connected named; build failed on required Rssi, WifiName, FirmwareVersion | positional record has required parameters without defaults | (covered) pass every required parameter, as DeviceHealthSyncServiceTests does
 2026-10-21 | test | 4 existing RunElevatedTickAsync tests failed: no IDeviceHealthRepository registered | GetRequiredService added to the elevated tick setup, which those test containers do not register | fixed: GetService (nullable) with a null guard in IsNewlyOfflineAsync
 2026-10-21 | test | Ring core suite failures: live Ring tests (UnitTest, RealIntegrationTests, RealSnapshotIntegrationTests) ran by default, got 429s, and built an in-process ban that failed later tests | live tests needed opt-in; ModuleInitializer isolation (RingTestHardBanIsolation) never runs in this MTP test host | fixed: live tests skip unless VF_RING_LIVE_TESTS=1; test classes reset the isolated store in their constructors and 429 classes reset on Dispose
+2026-10-21 | runtime | 'Create tunnel automatically' returned 'Authentication error' | zones GET returned 200 but POST accounts/{id}/cfd_tunnel returned 403; token lacks Account > Cloudflare Tunnel > Edit for that account (confirmed from log) | errors now name the failing step; help text lists the three required permissions

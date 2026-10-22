@@ -91,9 +91,6 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         string? FfmpegBinDirectory { get; set; }
 
-        /// <summary>Explicit path to the cloudflared executable used for Remote Access tunnels. Null or empty means discover it (app directory, then PATH).</summary>
-        string? CloudflaredPath { get; set; }
-
         /// <summary>Toggles on-demand live view sessions for cameras. Default on.</summary>
         bool EnableLiveView { get; set; }
         /// <summary>Idle timeout for active (non-sustained) live view sessions in minutes. Default 5.</summary>
@@ -192,7 +189,6 @@ namespace VideoForensics.Client.Common.Contracts
         public string? UniviewNvrHost { get; set; }
         public string? UniviewFfmpegPath { get; set; }
         public string? FfmpegBinDirectory { get; set; }
-        public string? CloudflaredPath { get; set; }
         public bool EnableLiveView { get; set; } = true;
         public int LiveViewIdleTimeoutMinutes { get; set; } = 5;
         public int LiveViewTelemetrySampleIntervalSeconds { get; set; } = 2;

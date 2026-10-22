@@ -38,7 +38,7 @@ namespace VideoForensics.WebApp.Infrastructure
         public static IReadOnlyList<ListenEndpoint> ResolveListenEndpoints(IConfiguration configuration)
         {
             var endpoints = ParseUrls(configuration)
-                .Where(u => u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps)
+                .Where(u => string.Compare(u.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) == 0 || string.Compare(u.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) == 0)
                 .Select(u => new ListenEndpoint(u.Scheme, u.Port))
                 .ToList();
             return endpoints.Count > 0 ? endpoints : new[] { new ListenEndpoint("http", DefaultPort) };
@@ -52,9 +52,52 @@ namespace VideoForensics.WebApp.Infrastructure
         /// <returns>A case-sensitive set of origins such as "https://localhost:7004".</returns>
         public static IReadOnlySet<string> ResolveAllowedOrigins(IConfiguration configuration)
         {
-            return new HashSet<string>(
+            var origins = new HashSet<string>(
                 ResolveListenEndpoints(configuration).Select(e => $"{e.Scheme}://localhost:{e.Port}"),
                 StringComparer.Ordinal);
+
+            // A reverse proxy/tunnel has a public origin that is not a Kestrel listen
+            // address. Keep it explicit rather than trusting Host headers blindly.
+            string? configuredOrigins = configuration["WebAuthn:Origins"];
+            if (!string.IsNullOrWhiteSpace(configuredOrigins))
+            {
+                foreach (string origin in configuredOrigins.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri)
+                        && (string.Compare(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) == 0 || string.Compare(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) == 0)
+                        && string.IsNullOrEmpty(uri.AbsolutePath.Trim('/')))
+                    {
+                        origins.Add(uri.GetLeftPart(UriPartial.Authority));
+                    }
+                }
+            }
+
+            return origins;
+        }
+
+        /// <summary>
+        /// Resolves the WebAuthn relying-party id. An explicit <c>WebAuthn:RpId</c> wins; otherwise the host of the
+        /// configured Internet address is used, so passkeys match the tunnel host; otherwise <c>localhost</c>.
+        /// </summary>
+        /// <param name="configuration">The application configuration.</param>
+        /// <param name="configuredInternetUrl">The saved Internet address (e.g. https://video.example.com), if any.</param>
+        /// <returns>The RP id, a bare host name with no scheme, port or trailing dot.</returns>
+        public static string ResolveRpId(IConfiguration configuration, string? configuredInternetUrl = null)
+        {
+            if (configuration["WebAuthn:RpId"]?.Trim().TrimEnd('.')
+                        is { Length: > 0 } configured)
+            {
+                return configured;
+            }
+
+            if (Uri.TryCreate(configuredInternetUrl, UriKind.Absolute, out Uri? internetUrl)
+                && internetUrl.Scheme == Uri.UriSchemeHttps
+                && internetUrl.Host.Length > 0)
+            {
+                return internetUrl.Host;
+            }
+
+            return "localhost";
         }
 
         /// <summary>
@@ -65,7 +108,7 @@ namespace VideoForensics.WebApp.Infrastructure
         /// <returns>The HTTP port.</returns>
         public static int ResolveHttpPort(IConfiguration configuration)
         {
-            return ResolveListenEndpoints(configuration).FirstOrDefault(e => e.Scheme == "http")?.Port ?? DefaultPort;
+            return ResolveListenEndpoints(configuration).FirstOrDefault(e => string.Compare(e.Scheme, "http", StringComparison.Ordinal) == 0)?.Port ?? DefaultPort;
         }
 
         /// <summary>

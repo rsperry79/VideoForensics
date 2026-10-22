@@ -1,18 +1,24 @@
-using System.Linq;
 
 using Microsoft.EntityFrameworkCore;
+
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Core.Api.Contracts;
+using System.Linq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Licensing;
 using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Forensics.Implementations;
+using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Telemetry.Configuration;
 using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
@@ -27,16 +33,12 @@ using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Hosting.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
 using VideoForensics.Providers.Wyze.Services;
-using VideoForensics.Core.Forensics.Interfaces;
-using VideoForensics.Core.Forensics.Implementations;
 
 namespace VideoForensics.Hosting
 {
@@ -329,6 +331,14 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<ISessionProvider, SessionProvider>();
             _ = services.AddSingleton<IUniviewSessionProvider, UniviewSessionProvider>();
             _ = services.AddSingleton<ICredentialStore>(new CredentialStore());
+            // Scoped, not Singleton: CloudflareTokenStore reads IAppSettingRepository, which is Scoped.
+            // A Singleton here is the same captive-dependency bug as the services above.
+            _ = services.AddScoped<ICloudflareTokenStore, CloudflareTokenStore>();
+            _ = services.AddHttpClient<ICloudflareApiClient, CloudflareApiClient>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.cloudflare.com/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
 
             // Sync console lines: written by the sync runner and first-sync coordinator, drained by the progress broadcaster.
             _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Hosting.Services.SyncActivityLog>();

@@ -46,7 +46,8 @@
              VideoForensicsHostingExtensions.cs) are provided as standalone packages. The
              version-conflict concern documented on the FrameworkReference does not apply here since that
              FrameworkReference is conditioned off whenever these packages are on. -->
-        <PackageReference Include="CliWrap" Version="3.10.5" />
+        <PackageReference Include="Certes" Version="4.1.0" />
+        <PackageReference Include="CloudflaredKit" Version="0.1.2" />
         <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
         <PackageReference Include="MailKit" Version="4.18.1" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />

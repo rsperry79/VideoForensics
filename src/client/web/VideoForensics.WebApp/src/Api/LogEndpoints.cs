@@ -1,18 +1,20 @@
-using System.Globalization;
-using System.Buffers;
-using System.Net.ServerSentEvents;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using VideoForensics.Core.Api.Contracts;
+using Microsoft.Extensions.Primitives;
+
+using System.Buffers;
+using System.Globalization;
+using System.Net.ServerSentEvents;
+using System.Text.Json;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
-using Microsoft.Extensions.Primitives;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -213,6 +215,12 @@ namespace VideoForensics.WebApp.Api
                 catch (OperationCanceledException)
                 {
                     // Client went away; disposing the enumerator above unsubscribes from the buffer.
+                }
+                catch (NotSupportedException)
+                {
+                    // Some async-enumerator implementations throw from DisposeAsync after the response
+                    // has been canceled. The client is already gone; do not turn normal stream teardown
+                    // into an unhandled request exception.
                 }
             }
 

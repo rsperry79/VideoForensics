@@ -53,12 +53,6 @@
   <data name="FfmpegBinDirectoryHelp" xml:space="preserve">
     <value>Folder that contains ffmpeg. Leave empty to use the default lookup.</value>
   </data>
-  <data name="CloudflaredPathLabel" xml:space="preserve">
-    <value>cloudflared path</value>
-  </data>
-  <data name="CloudflaredPathHelp" xml:space="preserve">
-    <value>Full path to the cloudflared executable. Leave empty to use the default lookup.</value>
-  </data>
   <data name="SaveButton" xml:space="preserve">
     <value>Save</value>
   </data>

@@ -1,7 +1,14 @@
-using BlazorLocalTime;
+using CloudflaredKit;
+
+using Fido2NetLib;
+
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 
 using Serilog;
 
@@ -9,27 +16,41 @@ using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
 
-using VideoForensics.Core.Logging.DependencyInjection;
-using VideoForensics.WebApp.Services.CircuitGuards;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
+
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Logging.DependencyInjection;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Services;
+using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Hosting.Services;
+using VideoForensics.Ui.Shared;
+using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Ui.Shared.Formatting;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Ui.Shared.Services.Cases;
+using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Ui.Shared.Services.QueryApi;
+using VideoForensics.Ui.Shared.Services.Scope;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
+using VideoForensics.WebApp.Chat;
 using VideoForensics.WebApp.Components;
+using VideoForensics.WebApp.Contracts;
 using VideoForensics.WebApp.Discovery;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Infrastructure;
+using VideoForensics.WebApp.Mcp;
+using VideoForensics.WebApp.Mcp.Tools;
 using VideoForensics.WebApp.RateLimiting;
 using VideoForensics.WebApp.Services;
+using VideoForensics.WebApp.Services.CircuitGuards;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -81,35 +102,39 @@ builder.Host.UseWindowsService(options => options.ServiceName = "VideoForensics"
 // unchanged (UseSystemd is a no-op on non-Linux platforms and when not running under systemd).
 builder.Host.UseSystemd();
 
-var listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
+IReadOnlyList<ListenEndpoint> listenEndpoints = ServerAddressResolver.ResolveListenEndpoints(builder.Configuration);
+
+// The certificate Kestrel presents on https listeners. Filled by LetsEncryptRenewalService; empty until then,
+// in which case Kestrel falls back to its default certificate.
+var certificateHolder = new CertificateHolder();
 builder.WebHost.ConfigureKestrel(options =>
 {
-    foreach (var endpoint in listenEndpoints)
+    foreach (ListenEndpoint endpoint in listenEndpoints)
     {
-    // https endpoints get TLS via the ASP.NET development certificate; http endpoints stay plain.
-    void ConfigureHttps(Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions listenOptions)
-    {
-        if (endpoint.Scheme == "https")
+        // https endpoints get TLS via the ASP.NET development certificate; http endpoints stay plain.
+        void ConfigureHttps(ListenOptions listenOptions)
         {
-            listenOptions.UseHttps();
+            if (string.Compare(endpoint.Scheme, "https", StringComparison.Ordinal) == 0)
+            {
+                listenOptions.UseHttps(https => https.ServerCertificateSelector = (_, _) => certificateHolder.Current);
+            }
         }
-    }
 
-    if (configuredNetworkTier == NetworkTier.Local)
-    {
-        // Loopback only - genuinely unreachable from the LAN or internet at the socket level, not
-        // merely discouraged by application logic. A device on the same network cannot even open a
-        // TCP connection, let alone attempt to pair.
-        options.ListenLocalhost(endpoint.Port, ConfigureHttps);
-    }
-    else
-    {
-        // Network and Internet both listen on every interface - the plan's own §5.3 note on the
-        // Cloudflare Tunnel already establishes that "Internet" exposure comes from cloudflared
-        // forwarding to localhost, not from Kestrel itself binding to a public address, so there is
-        // no separate wider bind for Internet beyond what Network already needs for LAN reachability.
-        options.ListenAnyIP(endpoint.Port, ConfigureHttps);
-    }
+        if (configuredNetworkTier == NetworkTier.Local)
+        {
+            // Loopback only - genuinely unreachable from the LAN or internet at the socket level, not
+            // merely discouraged by application logic. A device on the same network cannot even open a
+            // TCP connection, let alone attempt to pair.
+            options.ListenLocalhost(endpoint.Port, ConfigureHttps);
+        }
+        else
+        {
+            // Network and Internet both listen on every interface - the plan's own §5.3 note on the
+            // Cloudflare Tunnel already establishes that "Internet" exposure comes from cloudflared
+            // forwarding to localhost, not from Kestrel itself binding to a public address, so there is
+            // no separate wider bind for Internet beyond what Network already needs for LAN reachability.
+            options.ListenAnyIP(endpoint.Port, ConfigureHttps);
+        }
     }
 });
 
@@ -120,7 +145,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Information);
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-builder.Logging.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: true, enableSyslog: true);
+builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true);
 
 // Add services to the container.
 // Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
@@ -138,13 +163,37 @@ builder.Services.AddSyncfusionBlazor();
 // instead, which is a configuration concern for that work, not this registration.
 builder.Services.AddFido2(options =>
 {
-    options.RPID = "localhost";
     options.RPName = "VideoForensics";
     options.Origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
 });
 
+// The RP ID follows the Internet address the operator configured, so passkeys registered through the
+// tunnel match its host. This runs when the options are first read, after the saved configuration loads.
+// Fido2 is built per scope from the saved Internet address. The options registered above are shared and
+// their RP ID was never seen by the endpoints (they kept "localhost"), so the RP ID is set here directly.
+builder.Services.AddScoped<IFido2>(sp =>
+{
+    IForensicsConfiguration forensics = sp.GetRequiredService<IForensicsConfiguration>();
+    var origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
+    if (Uri.TryCreate(forensics.InternetServerUrl, UriKind.Absolute, out Uri? internetUrl))
+    {
+        origins.Add(internetUrl.GetLeftPart(UriPartial.Authority));
+    }
+
+    return new Fido2(new Fido2Configuration
+    {
+        RPID = ServerAddressResolver.ResolveRpId(builder.Configuration, forensics.InternetServerUrl),
+        RPName = "VideoForensics",
+        Origins = origins,
+    });
+});
+
+builder.Services.AddOptions<Fido2Configuration>()
+    .Configure<IForensicsConfiguration>((options, forensics) =>
+        options.RPID = ServerAddressResolver.ResolveRpId(builder.Configuration, forensics.InternetServerUrl));
+
 builder.Services.AddAuthentication(PairedDeviceAuthenticationDefaults.SchemeName)
-    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, PairedDeviceAuthenticationHandler>(
+    .AddScheme<AuthenticationSchemeOptions, PairedDeviceAuthenticationHandler>(
         PairedDeviceAuthenticationDefaults.SchemeName, _ => { });
 
 builder.Services.AddAuthorization(options => options.AddVideoForensicsPolicies());
@@ -175,11 +224,12 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
 // DPAPI encrypts the key-ring file at rest but is Windows-only (this app is platform-agnostic -
 // see PlatformDirectoryService/CredentialEncryptionFactory for the same Windows/other-OS split).
-// On Linux/macOS the key-ring falls back to ASP.NET Core's unencrypted-on-disk default, protected
-// only by filesystem permissions on the ProgramData-equivalent directory above.
+// The WebApp may run interactively during development and as LocalSystem in production. Use
+// machine scope so a key ring created by one of those identities remains usable by the service.
+// Access to the key directory is still restricted by its filesystem ACL.
 if (OperatingSystem.IsWindows())
 {
-    _ = dataProtectionBuilder.ProtectKeysWithDpapi();
+    _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -192,17 +242,17 @@ builder.Services.AddSingleton<ILiveConnectionTracker, LiveConnectionTracker>();
 // later in this file (AddVideoForensicsServerCore) uses TryAddSingleton for the no-op publisher, so this
 // registration must come first to win; Replace also guarantees a single descriptor for this interface.
 builder.Services.Replace(ServiceDescriptor.Singleton<ILiveViewTelemetryPublisher, LiveViewTelemetryBroadcastService>());
-builder.Services.AddSingleton<VideoForensics.Hosting.Contracts.IDownloadProgressChangeDetector, VideoForensics.Hosting.DownloadProgressChangeDetector>();
-builder.Services.Configure<VideoForensics.WebApp.Services.BrowserLiveViewOptions>(
-    builder.Configuration.GetSection(VideoForensics.WebApp.Services.BrowserLiveViewOptions.SectionName));
+builder.Services.AddSingleton<IDownloadProgressChangeDetector, DownloadProgressChangeDetector>();
+builder.Services.Configure<BrowserLiveViewOptions>(
+    builder.Configuration.GetSection(BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
 // Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, VideoForensics.WebApp.Services.LocalDownloadProgressSource>();
+builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, VideoForensics.WebApp.Services.LocalSelfTestStatusSource>();
+builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
 // The LiveView page resolves this in both hosts. The WebApp has no live push channel, so it reports disconnected and the page polls.
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, VideoForensics.WebApp.Services.LocalLiveViewSessionSource>();
+builder.Services.AddScoped<ILiveViewSessionSource, LocalLiveViewSessionSource>();
 builder.Services.AddSingleton<ISelfTestStatusChangeDetector, SelfTestStatusChangeDetector>();
 builder.Services.AddHostedService<SelfTestStatusBroadcastService>();
 builder.Services.AddScoped<INotificationProvider, SignalRNotificationProvider>();
@@ -287,17 +337,17 @@ if (OperatingSystem.IsWindows())
 }
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
-builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.ThumbnailReadyBus>();
-builder.Services.AddSingleton<VideoForensics.WebApp.Hubs.EvidenceChangedBus>();
-builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IMediaThumbnailNotifier, VideoForensics.WebApp.Hubs.LiveThumbnailNotifier>());
-builder.Services.Replace(ServiceDescriptor.Singleton<VideoForensics.Data.Core.Services.IEvidenceChangeNotifier, VideoForensics.WebApp.Hubs.LiveEvidenceNotifier>());
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, VideoForensics.WebApp.Services.LocalThumbnailReadySource>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource, VideoForensics.WebApp.Services.LocalEvidenceChangedSource>();
+builder.Services.AddSingleton<ThumbnailReadyBus>();
+builder.Services.AddSingleton<EvidenceChangedBus>();
+builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
+builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
+builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
+builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
 // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
 // circuit's link never reaches another circuit; both interfaces share one bus instance.
 builder.Services.AddScoped<AccountLinkedBus>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IAccountLinkedNotifier>(sp => sp.GetRequiredService<AccountLinkedBus>());
+builder.Services.AddScoped<IAccountLinkedSource>(sp => sp.GetRequiredService<AccountLinkedBus>());
+builder.Services.AddScoped<IAccountLinkedNotifier>(sp => sp.GetRequiredService<AccountLinkedBus>());
 // Probe-only snapshot endpoints; registers nothing unless SnapshotProbe:Enabled and SnapshotProbe:Token are set.
 builder.Services.AddSnapshotProbe(builder.Configuration);
 
@@ -309,25 +359,25 @@ builder.Services.AddVideoForensicsSnapshotCapture(builder.Configuration);
 builder.Services.AddVideoForensicsAccountExport();
 
 // Media analysis settings (hemisphere for season buckets), from the MediaAnalysis configuration section.
-builder.Services.Configure<VideoForensics.Data.Core.Services.MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
+builder.Services.Configure<MediaAnalysisOptions>(builder.Configuration.GetSection("MediaAnalysis"));
 
 // Forensics query repositories (Phases 1-4) - MCP tools (Milestone 8 HTTP hosting)
-_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ITimelineRepository, VideoForensics.Data.Database.Repositories.TimelineRepository>();
-_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IIntegrityRepository, VideoForensics.Data.Database.Repositories.IntegrityRepository>();
-_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.ICorrelationRepository, VideoForensics.Data.Database.Repositories.CorrelationRepository>();
-_ = builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IAuditTrailRepository, VideoForensics.Data.Database.Repositories.AuditTrailRepository>();
+_ = builder.Services.AddScoped<ITimelineRepository, TimelineRepository>();
+_ = builder.Services.AddScoped<IIntegrityRepository, IntegrityRepository>();
+_ = builder.Services.AddScoped<ICorrelationRepository, CorrelationRepository>();
+_ = builder.Services.AddScoped<IAuditTrailRepository, AuditTrailRepository>();
 
 // LLM API key store for the embedded MCP chat assistant - stores LLM provider config
 // (API key, model, base URL) encrypted via the existing ICredentialEncryptionProvider abstraction.
-_ = builder.Services.AddScoped<VideoForensics.Hosting.ILlmApiKeyStore, VideoForensics.Hosting.LlmApiKeyStore>();
+_ = builder.Services.AddScoped<ILlmApiKeyStore, LlmApiKeyStore>();
 
 // MCP Tool classes (Phases 0.5-4) - Milestone 8 HTTP hosting
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.SecurityEventTools>();
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.TimelineTools>();
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.IntegrityTools>();
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.CorrelationTools>();
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.AuditTrailTools>();
-_ = builder.Services.AddScoped<VideoForensics.WebApp.Mcp.Tools.JammingTools>();
+_ = builder.Services.AddScoped<SecurityEventTools>();
+_ = builder.Services.AddScoped<TimelineTools>();
+_ = builder.Services.AddScoped<IntegrityTools>();
+_ = builder.Services.AddScoped<CorrelationTools>();
+_ = builder.Services.AddScoped<AuditTrailTools>();
+_ = builder.Services.AddScoped<JammingTools>();
 
 // MCP Server: HTTP transport, attribute-discovered tools (Milestone 8)
 _ = builder.Services
@@ -337,21 +387,21 @@ _ = builder.Services
 
 // WebApp-specific service for handling 2FA authentication attempts: stores credentials in memory
 // during the two-factor flow, with automatic 5-minute expiry.
-builder.Services.AddSingleton<VideoForensics.WebApp.Api.IAuthAttemptCache, VideoForensics.WebApp.Api.AuthAttemptCache>();
+builder.Services.AddSingleton<IAuthAttemptCache, AuthAttemptCache>();
 
 // Bulk validation service for running full validation across all devices.
-builder.Services.AddScoped<VideoForensics.WebApp.Services.BulkValidationService>();
+builder.Services.AddScoped<BulkValidationService>();
 
 // First sync: runner, then validate-all as the media step, flagged complete only on full success.
-builder.Services.AddScoped<VideoForensics.WebApp.Services.InitialSyncCoordinator>();
-builder.Services.AddScoped<VideoForensics.WebApp.Services.IInitialSyncCoordinator>(sp => sp.GetRequiredService<VideoForensics.WebApp.Services.InitialSyncCoordinator>());
-builder.Services.AddScoped<VideoForensics.WebApp.Services.InitialSyncResumer>();
-builder.Services.AddHostedService<VideoForensics.WebApp.Services.InitialSyncResumeService>();
-builder.Services.AddScoped<VideoForensics.Hosting.Contracts.IInitialSyncDispatcher>(sp => sp.GetRequiredService<VideoForensics.WebApp.Services.InitialSyncCoordinator>());
+builder.Services.AddScoped<InitialSyncCoordinator>();
+builder.Services.AddScoped<IInitialSyncCoordinator>(sp => sp.GetRequiredService<InitialSyncCoordinator>());
+builder.Services.AddScoped<InitialSyncResumer>();
+builder.Services.AddHostedService<InitialSyncResumeService>();
+builder.Services.AddScoped<IInitialSyncDispatcher>(sp => sp.GetRequiredService<InitialSyncCoordinator>());
 
 // Embedded MCP-backed chat assistant: server-side implementation of IChatService that drives
 // an LLM tool-use loop against this app's own forensic analysis tools.
-builder.Services.AddScoped<VideoForensics.Data.Common.Contracts.IChatService, VideoForensics.WebApp.Chat.ChatOrchestrator>();
+builder.Services.AddScoped<IChatService, ChatOrchestrator>();
 
 // Geo-IP and threat-intelligence blocking services for login pipeline
 // GeoIP lookup service using MaxMind GeoLite2 database (stored in the main data directory)
@@ -377,7 +427,19 @@ builder.Services.AddHostedService<MdnsAdvertisementService>();
 // Cloudflare Tunnel management for the Remote Access screen (plan §5.3) - a singleton since it
 // wraps at most one managed cloudflared child process for the whole app, not a per-request or
 // per-circuit concern.
+// The tunnel token is supplied at runtime by CloudflaredTunnelService (via the options cache) before
+// StartAsync runs, so the empty default configuration here never starts a TryCloudflare quick tunnel.
+builder.Services.AddTryCloudflare(_ => { });
 builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelService>();
+
+// Trusted certificate for the Internet hostname, issued through Let's Encrypt DNS-01 with the stored
+// Cloudflare token. Acme:UseStaging (default true) keeps issuance on the staging CA until it is switched off.
+builder.Services.AddSingleton(certificateHolder);
+builder.Services.AddSingleton<IAcmeCertificateIssuer, CertesAcmeCertificateIssuer>();
+builder.Services.AddScoped<ILetsEncryptCertificateStore, LetsEncryptCertificateStore>();
+builder.Services.AddScoped<LetsEncryptCertificateManager>();
+builder.Services.AddHostedService<LetsEncryptRenewalService>();
+builder.Services.AddHostedService<CloudflareTunnelAutostart>();
 
 // Windows Firewall rule management (plan §5.2) - when the configured network tier is widened
 // beyond Local at runtime via Settings > Network Access, this ensures the corresponding inbound
@@ -386,8 +448,8 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // tier later still leaves the socket listening but firewalled (the exact bug being fixed).
 builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
     OperatingSystem.IsWindows()
-        ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
-        : new NullFirewallRuleManager());
+        ? (new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>()))
+        : (new NullFirewallRuleManager()));
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
@@ -416,7 +478,7 @@ builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdm
 // build their own self-HTTP clients through this factory instead of a raw `new HttpClient { ... }` -
 // same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
 // DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
+builder.Services.AddScoped<ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();
@@ -427,18 +489,18 @@ builder.Services.AddScoped<WebPushClient>();
 builder.Services.AddScoped<LayoutPreferencesState>();
 builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.LeftPanelContentService>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+builder.Services.AddScoped<LeftPanelContentService>();
+builder.Services.AddScoped<InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.ScopeState>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.DeviceOwnershipService>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Services.Cases.CaseState>();
+builder.Services.AddScoped<ScopeState>();
+builder.Services.AddScoped<DeviceOwnershipService>();
+builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
+builder.Services.AddScoped<CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
-builder.Services.AddScoped<VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder>(sp => new VideoForensics.Ui.Shared.Formatting.SimpleHomeBuilder(
+builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(
     sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>(),
-    sp.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>()));
+    sp.GetRequiredService<IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>()));
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
@@ -453,19 +515,32 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // WebFileDialogService/ExportDownloadTokenStore); folder selection for import's "media root" goes through
 // a shared in-app directory browser instead (see IDirectoryBrowserService), since it works identically on
 // both hosts (both run on the same local machine as the user in this app's deployment model).
-builder.Services.AddSingleton<VideoForensics.WebApp.Services.ExportDownloadTokenStore>();
-builder.Services.AddScoped<IFileDialogService, VideoForensics.WebApp.Services.WebFileDialogService>();
+builder.Services.AddSingleton<ExportDownloadTokenStore>();
+builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope
-builder.Services.AddSingleton<VideoForensics.Client.Common.Contracts.ISystemVersionProvider, VideoForensics.Hosting.Services.SystemVersionService>();
+builder.Services.AddSingleton<ISystemVersionProvider, SystemVersionService>();
 
-    // Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
-    // they wrap, so each decorator wraps the final registration.
-    builder.Services.AddCircuitOperatorGuards();
-    builder.Services.AddScoped<VideoForensics.WebApp.Contracts.IMcpCallerAuthorizer, VideoForensics.WebApp.Mcp.McpCallerAuthorizer>();
+// Server-side checks for privileged in-process calls made from the Blazor circuit. Registered after every service
+// they wrap, so each decorator wraps the final registration.
+builder.Services.AddCircuitOperatorGuards();
+builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
-    WebApplication app = builder.Build();
+WebApplication app = builder.Build();
+
+// The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
+// keep the RP ID on the saved address for the current request.
+app.Use(async (context, next) =>
+{
+    // Resolved from the request scope, not the root provider: the Fido2 instance the endpoints use reads its
+    // options from this scope, so updating the root instance never reached it (rpId stayed "localhost").
+    WebAuthnOriginPolicy.Apply(
+        context,
+        context.RequestServices.GetRequiredService<IOptions<Fido2Configuration>>().Value,
+        context.RequestServices.GetRequiredService<IForensicsConfiguration>());
+    await next();
+});
 
 // DB init + Events backfill + persisted-config load, in that order - see
 // VideoForensicsHostingExtensions.InitializeVideoForensicsDataAsync. Unlike the MCP server, a Web
@@ -562,6 +637,6 @@ app.MapRazorComponents<App>()
     // MapRazorComponents only discovers routes in App's own assembly and every RCL page 404s
     // at the ASP.NET Core routing level (confirmed by actually running the app: GET / returned
     // a real HTTP 404, not a rendered Blazor "not found" page, which is what tipped this off).
-    .AddAdditionalAssemblies(typeof(VideoForensics.Ui.Shared.Routes).Assembly);
+    .AddAdditionalAssemblies(typeof(Routes).Assembly);
 
 app.Run();

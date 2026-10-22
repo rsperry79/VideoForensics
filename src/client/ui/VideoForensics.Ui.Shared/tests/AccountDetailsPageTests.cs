@@ -1,14 +1,18 @@
 namespace VideoForensics.Ui.Shared.Tests;
 
-using System.Net;
-using System.Reactive.Linq;
-using System.Text.Json;
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
+
 using Moq;
+
+using System.Net;
+using System.Reactive.Linq;
+using System.Text.Json;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -17,7 +21,9 @@ using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
+
 using Xunit;
+
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
 /// <summary>
@@ -82,6 +88,8 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IProviderAuthService> AuthServiceMock { get; } = new();
 
+    protected Mock<IMultiProviderAuthService> MultiProviderAuthServiceMock { get; } = new();
+
     protected Mock<ILocationRepository> LocationRepositoryMock { get; } = new();
 
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
@@ -132,6 +140,7 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         Services.AddScoped(_ => accountRepository.Object);
         Services.AddScoped(_ => userRepository.Object);
         Services.AddScoped(_ => AuthServiceMock.Object);
+        Services.AddScoped(_ => MultiProviderAuthServiceMock.Object);
         Services.AddScoped(_ => ForensicsConfigMock.Object);
         Services.AddScoped(_ => ForensicsConfigServiceMock.Object);
         // The Sync tab embeds the validate panel, which resolves these when it renders.
@@ -633,7 +642,22 @@ public class AccountDetailsPage_Localization_Tests : AccountDetailsPageTestBase
 
         var cut = RenderPage();
 
-        cut.WaitForAssertion(() => Assert.Contains("Token expired", cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains(Strings["CredentialRecoveryMessage"], cut.Markup));
         Assert.Contains(Strings["NoValue"], cut.Find(".border-danger").TextContent);
+        Assert.DoesNotContain("Token expired", cut.Markup);
+    }
+
+    [Fact]
+    public void AccountDetails_CredentialError_ShowsCleanRecoveryAlertWithoutRawException()
+    {
+        Account.LastErrorMessage = "Failed to decrypt stored credential: Error occurred during a cryptographic operation.";
+        SetEmptyLists();
+
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Contains(Strings["CredentialRecoveryMessage"], cut.Markup));
+        Assert.Contains("role=\"alert\"", cut.Markup);
+        Assert.Contains(Strings["Reauthenticate"], cut.Markup);
+        Assert.DoesNotContain("Error occurred during a cryptographic operation", cut.Markup);
     }
 }

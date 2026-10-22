@@ -43,11 +43,6 @@ else
                 <small class="text-muted">@L["FfmpegBinDirectoryHelp"]</small>
             </div>
             <div>
-                <label for="cloudflared-path" class="form-label">@L["CloudflaredPathLabel"]</label>
-                <input id="cloudflared-path" class="form-control" @bind="_cloudflaredPath" disabled="@_isSaving" />
-                <small class="text-muted">@L["CloudflaredPathHelp"]</small>
-            </div>
-            <div>
                 <SfButton Content="@(_isSaving ? L["SavingButton"] : L["SaveButton"])" OnClick="SaveAsync" CssClass="e-primary save-software-paths" Disabled="@_isSaving" />
             </div>
         </div>
@@ -68,7 +63,6 @@ else
     private string? _message;
 
     private string _ffmpegBinDirectory = "";
-    private string _cloudflaredPath = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -98,7 +92,6 @@ else
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
             _ffmpegBinDirectory = ReadString(body, "ffmpegBinDirectory");
-            _cloudflaredPath = ReadString(body, "cloudflaredPath");
         }
         catch (Exception ex)
         {
@@ -130,7 +123,7 @@ else
         _isSaving = true;
         try
         {
-            var body = new { ffmpegBinDirectory = _ffmpegBinDirectory, cloudflaredPath = _cloudflaredPath };
+            var body = new { ffmpegBinDirectory = _ffmpegBinDirectory };
             using var response = await Http.SendAsync(CreateRequest(HttpMethod.Post, body, stepUpToken));
             if (!response.IsSuccessStatusCode)
             {
@@ -141,7 +134,6 @@ else
 
             var saved = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
             _ffmpegBinDirectory = ReadString(saved, "ffmpegBinDirectory");
-            _cloudflaredPath = ReadString(saved, "cloudflaredPath");
             _success = true;
             _message = L["SavedMessage"];
         }
