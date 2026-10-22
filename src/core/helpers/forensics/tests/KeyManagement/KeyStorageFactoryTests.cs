@@ -66,15 +66,6 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             _ = Assert.IsType<TpmKeyStorageProvider>(provider);
         }
 
-        [Fact]
-        public void CreateTpmProvider_AlwaysReturnsFalseForIsAvailable()
-        {
-            // Act
-            IKeyStorageProvider provider = KeyStorageFactory.CreateTpmProvider();
-
-            // Assert
-            Assert.False(provider.IsAvailable);
-        }
 
         [Fact]
         public void CreateDpapiProvider_Always_ReturnsDpapiProvider()
@@ -179,16 +170,22 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
         public async Task ProviderPriority_PrefersTpmIfAvailable()
         {
             // This test documents the expected behavior:
-            // The factory tries TPM first, but since it's not available in test,
-            // it falls back to the next available provider (File-Based)
+            // The factory tries TPM first and takes it when it is usable (an elevated process on a machine with
+            // a TPM), otherwise it falls back to the next available provider.
 
             // Act
             IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
             // Assert
-            // TPM is not available on most test machines, so we get File-Based
             Assert.True(provider.IsAvailable);
-            Assert.NotEqual("TPM 2.0", provider.ProviderName);
+            if (new TpmKeyStorageProvider().IsAvailable)
+            {
+                Assert.Equal("TPM 2.0", provider.ProviderName);
+            }
+            else
+            {
+                Assert.NotEqual("TPM 2.0", provider.ProviderName);
+            }
         }
     }
 }

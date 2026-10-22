@@ -16,9 +16,12 @@ using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
 
+using System.Security.Cryptography.X509Certificates;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
 
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -227,9 +230,19 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // The WebApp may run interactively during development and as LocalSystem in production. Use
 // machine scope so a key ring created by one of those identities remains usable by the service.
 // Access to the key directory is still restricted by its filesystem ACL.
+// When the TPM is usable, the key ring is encrypted to a TPM-held certificate, so only this machine's TPM can
+// decrypt it. Otherwise DPAPI (machine scope) protects it.
 if (OperatingSystem.IsWindows())
 {
-    _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
+    if (tpmCertificate is not null)
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate);
+    }
+    else
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    }
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
