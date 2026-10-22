@@ -1,8 +1,9 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
-namespace VideoForensics.Core.Api.Tests
+namespace VideoForensics.Core.Api.Contracts.Tests
 {
     /// <summary>DeviceDto carries the linked provider name in both directions.</summary>
     public class DeviceDtoProviderNameTests

@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services;
+namespace VideoForensics.Ui.Shared.Services.DeviceConfig;
 
 /// <summary>
 /// Provider-type filtering for the device configuration page. Devices with no linked provider account have a

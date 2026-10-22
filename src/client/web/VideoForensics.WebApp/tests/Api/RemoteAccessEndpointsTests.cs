@@ -5,7 +5,7 @@ using VideoForensics.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.WebApp.Tests.Api
 {
     public class RemoteAccessEndpointsTests
     {

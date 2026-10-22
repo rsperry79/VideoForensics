@@ -2,9 +2,8 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using VideoForensics.Providers.Ring;
 
-namespace VideoForensics.Providers.Ring.Provider.Tests
+namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// Points the hard-ban store at a per-process temp directory before any test runs. The health source now skips calls

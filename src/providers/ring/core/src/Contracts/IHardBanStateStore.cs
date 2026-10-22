@@ -1,6 +1,6 @@
 using System;
 
-namespace VideoForensics.Providers.Ring
+namespace VideoForensics.Providers.Ring.Contracts
 {
     /// <summary>
     /// Persists the Ring hard-ban expiry so it survives process restarts. Implementations must not

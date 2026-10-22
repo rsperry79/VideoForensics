@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Providers.Ring.Contracts;
 
 namespace VideoForensics.Providers.Ring
 {
