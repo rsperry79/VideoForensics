@@ -44,7 +44,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                 .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyPath));
             if (OperatingSystem.IsWindows())
             {
-                _ = dataProtectionBuilder.ProtectKeysWithDpapi();
+                _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
             }
 
             _ = services.AddVideoForensicsDataLayer();

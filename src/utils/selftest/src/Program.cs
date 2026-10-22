@@ -87,7 +87,7 @@ namespace VideoForensics.Utils.SelfTest
             // permissions on the ProgramData-equivalent directory above.
             if (OperatingSystem.IsWindows())
             {
-                _ = dataProtectionBuilder.ProtectKeysWithDpapi();
+                _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
             }
 
             if (endpoints is not null)
