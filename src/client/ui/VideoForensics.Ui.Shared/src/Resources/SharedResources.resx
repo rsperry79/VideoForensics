@@ -164,6 +164,9 @@
   <data name="Admin" xml:space="preserve">
     <value>Admin</value>
   </data>
+  <data name="Signal history" xml:space="preserve">
+    <value>Signal history</value>
+  </data>
   <data name="Chat Assistant" xml:space="preserve">
     <value>Chat Assistant</value>
   </data>

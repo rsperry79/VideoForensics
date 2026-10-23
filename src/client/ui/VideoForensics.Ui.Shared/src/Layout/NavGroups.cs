@@ -70,6 +70,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             new("media", "Media", "/media",
             [
                 new("Media", "/media"),
+                new("Signal history", "/signal-history"),
                 new("Chat Assistant", "/chat")
             ]),
 
@@ -232,4 +233,4 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             return items;
         }
     }
-}
+}
