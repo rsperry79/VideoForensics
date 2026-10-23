@@ -27,9 +27,9 @@ namespace VideoForensics.Core.Providers.Core
     /// </list>
     /// Overlapping clips resolve to the one that starts first; the later clip is trimmed to start where the earlier
     /// one ends. Declared windows are used for placement, so a part of a declared window past the clip's real end is a
-    /// gap: it still cuts stills, and the gap is filled with black frames like any other uncovered time.
+    /// gap: it still cuts stills, and the gap is filled with gray frames like any other uncovered time.
     /// Stills are true to time: each shows until the next still is captured, or for its hold if that comes first.
-    /// Uncovered time of a second or more between covered segments is filled with black frames, so the video runs in real time.
+    /// Uncovered time of a second or more between covered segments is filled with gray frames, so the video runs in real time.
     /// </para>
     /// </summary>
     public sealed class FfmpegTimelineVideoBuilder : ITimelineVideoBuilder
@@ -278,7 +278,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // OrderBy is stable, so equal start times keep their insertion order.
-            // Fill every gap of a second or more between covered time with black frames, so the video runs in real time.
+            // Fill every gap of a second or more between covered time with gray frames, so the video runs in real time.
             // A shorter gap is dropped, like a cut-off remainder. Leading and trailing time is not filled.
             var ordered = items.OrderBy(i => i.Start).ToList();
             var result = new List<Segment>(ordered.Count);
@@ -522,7 +522,7 @@ namespace VideoForensics.Core.Providers.Core
             else
             {
                 args.AddRange(segment.SourcePath is null
-                    ? new[] { "-f", "lavfi", "-i", $"color=c=black:s={width}x{height}:r=1", "-t", seconds }
+                    ? new[] { "-f", "lavfi", "-i", $"color=c=gray:s={width}x{height}:r=1", "-t", seconds }
                     : new[] { "-loop", "1", "-i", segment.SourcePath, "-t", seconds });
             }
 
@@ -541,7 +541,7 @@ namespace VideoForensics.Core.Providers.Core
         /// encoder setup, so stream copy is valid.
         /// </summary>
         /// <summary>
-        /// The output seconds that are black gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
+        /// The output seconds that are gray gap fill, as half-open ranges "start:end" joined by commas, or empty when there are
         /// none. The file records these so a viewer can tell gap-filled time from captured stills and clips.
         /// </summary>
         private static string GapRanges(IReadOnlyList<Segment> segments)

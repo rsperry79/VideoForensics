@@ -219,7 +219,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             Assert.False(IsRed(frames[1]), $"frame 1 should be clip A, not the still, was {frames[1]}");
             for (int gap = 2; gap <= 7; gap++)
             {
-                Assert.True(frames[gap].R < 32 && frames[gap].G < 32 && frames[gap].B < 32, $"frame {gap} should be black gap fill, was {frames[gap]}");
+                Assert.True(IsGray(frames[gap]), $"frame {gap} should be gray gap fill, was {frames[gap]}");
             }
 
             Assert.True(IsRed(frames[8]), $"frame 8 should be the still tail, was {frames[8]}");
@@ -318,6 +318,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
         private static bool IsRed((byte R, byte G, byte B) c)
         {
             return c.R > 200 && c.G < 60 && c.B < 60;
+        }
+
+        // Missing time is drawn as mid gray (#808080), not black, so a gap reads as "no image" rather than a dark frame.
+        private static bool IsGray((byte R, byte G, byte B) c)
+        {
+            return c.R is > 112 and < 144 && c.G is > 112 and < 144 && c.B is > 112 and < 144;
         }
 
         private static bool IsBlue((byte R, byte G, byte B) c)
