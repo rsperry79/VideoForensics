@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace VideoForensics.Providers.Ring
 {
@@ -7,6 +8,9 @@ namespace VideoForensics.Providers.Ring
     /// </summary>
     public class RawApiCall
     {
+        /// <summary>1-based count of Ring API calls made by this process, in the order they completed.</summary>
+        public long Sequence { get; set; }
+
         public DateTime Timestamp { get; set; }
         public string Method { get; set; }
         public string Url { get; set; }
@@ -53,10 +57,16 @@ namespace VideoForensics.Providers.Ring
         public static event Action<ApiLifecycleEvent> OnEvent;
         public static event Action<RingEventsBatch> OnRingEvents;
 
+        private static long _callCount;
+
+        /// <summary>Number of Ring API calls this process has made. Read it with <see cref="Interlocked.Read(ref long)"/> semantics; it is thread-safe.</summary>
+        public static long CallCount => Interlocked.Read(ref _callCount);
+
         internal static void Raise(string method, string url, int statusCode, string body)
         {
             OnRawResponse?.Invoke(new RawApiCall
             {
+                Sequence = Interlocked.Increment(ref _callCount),
                 Timestamp = DateTime.UtcNow,
                 Method = method,
                 Url = url,

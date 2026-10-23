@@ -1,5 +1,6 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Ui.Shared.Services.DeviceSettings;
+
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;

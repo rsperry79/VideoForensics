@@ -1,16 +1,18 @@
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
 {
     public class RingAuthService : IProviderAuthService
     {
         private const string ProviderName = "Ring";
+        private const string CredentialDecryptionErrorMessage = "Stored provider credential could not be decrypted. Reauthentication is required.";
 
         private readonly ILogger _logger;
 
@@ -348,7 +350,7 @@ namespace VideoForensics.Providers.Ring.Services
                             {
                                 await _providerAccountRepository.RecordErrorAsync(
                                     providerAccountId.Value,
-                                    $"Failed to decrypt stored credential: {ex.Message}",
+                                    CredentialDecryptionErrorMessage,
                                     cancellationToken);
                             }
                             catch (Exception recordEx)

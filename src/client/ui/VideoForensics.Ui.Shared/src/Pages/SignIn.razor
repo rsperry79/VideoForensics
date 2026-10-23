@@ -148,7 +148,7 @@
         try
         {
             var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId, twoFactorMethods) =
-                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
+                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password, _webAuthnAvailable);
 
             if (!success)
             {
@@ -255,7 +255,9 @@
     }
 
 
-    private async Task SignInWithPasskeyAsync(bool allCredentials = false)
+    // Offers every approved passkey on the first attempt. Offering only the most recently used one kept
+    // sending the same passkey, which can belong to another relying party, so the browser never found a match.
+    private async Task SignInWithPasskeyAsync(bool allCredentials = true)
     {
         _isSigningInWithPasskey = true;
         _passkeyFailed = false;

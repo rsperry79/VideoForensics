@@ -172,7 +172,7 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_TwoFactorRequired_ShowsNoErrorText()
     {
         // Arrange - a failed attempt first, so a stale error exists when the two-factor response arrives
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
             .ReturnsAsync((false, "Wrong password", null, default(Guid), "", false, false, false, null, Array.Empty<string>()));
         var component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
@@ -316,7 +316,7 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_TwoFactorRequired_UsePasskeyHiddenWhenMethodMissing()
     {
         // Arrange - the server accepts no second factor this client knows, so there is nothing to offer as "Use passkey"
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
             .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, "corr-123", Array.Empty<string>()));
         var component = await RenderAndWaitForFormAsync();
 
@@ -441,14 +441,14 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
     {
         WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", false))
+        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", true))
             .ReturnsAsync((true, (string?)null, (string?)"token", Guid.NewGuid(), "Operator"));
         var component = await RenderAndWaitForFormAsync();
 
         component.Find("input[type='text']").Change("sysop");
         component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
 
-        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", false), Times.Once));
+        component.WaitForAssertion(() => WebAuthn.Verify(w => w.SignInWithUsernameAsync("sysop", true), Times.Once));
     }
 
     [Fact]
@@ -521,13 +521,13 @@ public class SignInPageTests : BunitContext
 
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
             .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey, false, null, Array.Empty<string>()));
     }
 
     private void SetupTwoFactorRequired(string correlationId)
     {
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password))
+        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
             .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, correlationId, new[] { "passkey" }));
     }
 

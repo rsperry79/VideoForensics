@@ -166,10 +166,29 @@ namespace VideoForensics.WebApp.Api
             // Routes that need more than ReadOnly add their own stricter policy on top instead.
             RouteGroupBuilder credentialGroup = app.MapGroup("/api/devices-management/operator-credentials").RequireAuthorization(VideoForensicsPolicies.ReadOnly);
 
+            // Each row carries the operator's name. The page shows a name, and the credential itself only has the operator id.
             _ = credentialGroup.MapGet("/pending", async (
                 IOperatorCredentialRepository credentials,
+                IOperatorRepository operators,
                 CancellationToken ct) =>
-                Results.Ok(await credentials.ListPendingApprovalAsync(ct)))
+            {
+                IReadOnlyList<OperatorCredential> pending = await credentials.ListPendingApprovalAsync(ct);
+                var rows = new List<object>(pending.Count);
+                foreach (OperatorCredential credential in pending)
+                {
+                    Operator? owner = await operators.GetAsync(credential.OperatorId, ct);
+                    rows.Add(new
+                    {
+                        id = credential.Id,
+                        operatorId = credential.OperatorId,
+                        operatorDisplayName = owner?.DisplayName ?? owner?.Username ?? "(unknown operator)",
+                        label = credential.Label,
+                        createdAtUtc = credential.CreatedAtUtc,
+                    });
+                }
+
+                return Results.Ok(rows);
+            })
             .RequireAuthorization(VideoForensicsPolicies.Admin)
             .RequireRateLimiting("auth");
 

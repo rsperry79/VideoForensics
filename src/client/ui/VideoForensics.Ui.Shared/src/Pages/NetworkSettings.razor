@@ -92,82 +92,136 @@ else
             <SfButton Content="@L["RefreshButton"]" OnClick="LoadRemoteAccessStatusAsync" Disabled="@_isRemoteAccessLoading" CssClass="e-flat" />
         </div>
 
-        @if (!_cloudflaredInstalled)
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column gap-2">
+                    <span>
+                        @L["StatusLabel"] <span class="badge @GetTunnelBadgeClass()">@_tunnelStatus</span>
+                    </span>
+                    <span>@L["ConfiguredAddressLabel"] @(_configuredUrl ?? L["NotConfiguredText"])</span>
+                    <div class="border rounded p-3">
+                        <strong class="d-block mb-2">@L["CurrentConfigHeading"]</strong>
+                        <div class="row small g-1">
+                            <div class="col-sm-4 text-muted">@L["NetworkTierLabel"]</div><div class="col-sm-8">@_networkTier</div>
+                            <div class="col-sm-4 text-muted">@L["RpIdLabel"]</div><div class="col-sm-8"><code>@_rpId</code></div>
+                            <div class="col-sm-4 text-muted">@L["PasskeyOriginsLabel"]</div><div class="col-sm-8"><code>@string.Join(", ", _passkeyOrigins)</code></div>
+                            <div class="col-sm-4 text-muted">@L["ApiTokenLabel"]</div><div class="col-sm-8">@(_cloudflareAuthenticated ? L["SavedText"] : L["NotSavedText"])</div>
+                            <div class="col-sm-4 text-muted">@L["TunnelTokenLabel"]</div><div class="col-sm-8">@(_tunnelConfigured ? L["SavedText"] : L["NotSavedText"])</div>
+                        </div>
+                    </div>
+                    @if (_tunnelPublicUrl is not null)
+                    {
+                        <span>@L["PublicUrlLabel"] <a href="@_tunnelPublicUrl" target="_blank" rel="noopener">@_tunnelPublicUrl</a></span>
+                        <div class="alert alert-info mt-2">
+                            @L["PasskeyAddressNotice"]
+                            <SfButton Content="@L["UsePasskeyAddressButton"]" OnClick="ConfigurePasskeyOriginAsync" Disabled="@_isTunnelActing" CssClass="e-primary e-small ms-2" />
+                        </div>
+                    }
+                    @if (_tunnelErrorMessage is not null)
+                    {
+                        <span class="text-danger">@_tunnelErrorMessage</span>
+                    }
+                    @if (_tunnelStatus is "Running" or "Starting")
+                    {
+                        <div style="width: fit-content;">
+                            <SfButton Content="@L["StopTunnelButton"]" OnClick="StopTunnelAsync" CssClass="e-danger" />
+                        </div>
+                    }
+                    @if (_tunnelConfigured)
+                    {
+                        <div style="width: fit-content;">
+                            <SfButton Content="@(_confirmDisconnect ? L["ConfirmDisconnectButton"] : L["DisconnectButton"])" OnClick="DisconnectAsync" CssClass="e-flat" />
+                        </div>
+                    }
+                    @if (_tunnelRecentLogLines.Count > 0)
+                    {
+                        <small class="mt-2">@L["RecentLogLabel"]</small>
+                        <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _tunnelRecentLogLines)</pre>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (_wizardVisible)
         {
-            <div class="alert alert-danger mb-4">
-                <code>cloudflared</code> @L["CloudflaredNotFoundPrefix"]
-                <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener">@L["CloudflaredDownloadLink"]</a>
-                @L["CloudflaredNotFoundSuffix"]
+            <div class="card border-primary mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>@L["WizardHeading"]</strong>
+                        <SfButton Content="@L["WizardHideButton"]" OnClick="() => _wizardVisible = false" CssClass="e-flat e-small" />
+                    </div>
+                    <small class="text-muted d-block mb-3">@L["WizardStepIndicator", _wizardStep, WizardStepCount]</small>
+
+                    @switch (_wizardStep)
+                    {
+                        case 1:
+                            <p class="mb-1">@L["WizardStep1Title"]</p>
+                            <small class="text-muted d-block mb-2">@L["WizardApiTokenHelp"]</small>
+                            <input type="password" class="form-control mb-2" style="max-width: 420px;" autocomplete="off" aria-label="@L["WizardApiTokenLabel"]" placeholder="@L["WizardApiTokenLabel"]" @bind="_apiToken" />
+                            <div>
+                                <SfButton Content="@(_isWizardBusy ? L["WizardValidatingButton"] : L["WizardValidateButton"])" OnClick="ValidateApiTokenAsync" Disabled="@(_isWizardBusy || string.IsNullOrWhiteSpace(_apiToken))" CssClass="e-primary" />
+                            </div>
+                            break;
+
+                        case 2:
+                            <p class="mb-1">@L["WizardStep2Title"]</p>
+                            <small class="text-muted d-block mb-2">@L["WizardStep2Help"]</small>
+                            <div class="d-flex flex-row gap-2 align-items-end flex-wrap mb-2">
+                                <div>
+                                    <label class="form-label mb-1">@L["WizardHostnameLabel"]</label>
+                                    <input class="form-control" style="max-width: 180px;" placeholder="video" @bind="_hostnamePrefix" />
+                                </div>
+                                <span class="pb-2">.</span>
+                                <div>
+                                    <label class="form-label mb-1">@L["WizardDomainLabel"]</label>
+                                    <SfDropDownList TValue="string" TItem="string" @bind-Value="_selectedDomain" DataSource="@_zones" Placeholder="@L["WizardDomainPlaceholder"]" Style="max-width: 260px;" />
+                                </div>
+                            </div>
+                            @if (BuildFqdn() is string previewFqdn)
+                            {
+                                <small class="d-block mb-2">@L["WizardFqdnPreview", previewFqdn]</small>
+                            }
+                            <div class="d-flex gap-2">
+                                <SfButton Content="@L["WizardBackButton"]" OnClick="() => _wizardStep = 1" CssClass="e-flat" />
+                                <SfButton Content="@L["WizardNextButton"]" OnClick="() => _wizardStep = 3" Disabled="@(BuildFqdn() is null)" CssClass="e-primary" />
+                            </div>
+                            break;
+
+                        case 3:
+                            <p class="mb-1">@L["WizardStep3Title"]</p>
+                            <small class="text-muted d-block mb-2">@L["WizardTunnelTokenHelp"]</small>
+                            <input type="password" class="form-control mb-2" style="max-width: 420px;" autocomplete="off" aria-label="@L["WizardTunnelTokenLabel"]" placeholder="@L["WizardTunnelTokenLabel"]" @bind="_tunnelToken" />
+                            <div class="d-flex gap-2 flex-wrap">
+                                <SfButton Content="@L["WizardBackButton"]" OnClick="() => _wizardStep = 2" CssClass="e-flat" />
+                                <SfButton Content="@(_isWizardBusy ? L["WizardSavingButton"] : L["WizardSaveButton"])" OnClick="SaveTunnelConfigurationAsync" Disabled="@(_isWizardBusy || string.IsNullOrWhiteSpace(_tunnelToken))" CssClass="e-primary" />
+                            </div>
+                            <small class="text-muted d-block mt-3 mb-2">@L["WizardCreateTunnelHelp"]</small>
+                            <SfButton Content="@(_isWizardBusy ? L["WizardCreatingButton"] : L["WizardCreateTunnelButton"])" OnClick="ProvisionTunnelAsync" Disabled="@(_isWizardBusy || BuildFqdn() is null)" CssClass="e-primary" />
+                            break;
+
+                        default:
+                            <p class="mb-1">@L["WizardStep4Title"]</p>
+                            <small class="d-block mb-2">@L["WizardSavedAddress", _configuredUrl ?? L["NotConfiguredText"]]</small>
+                            <div class="d-flex gap-2">
+                                <SfButton Content="@L["WizardBackButton"]" OnClick="() => _wizardStep = 3" CssClass="e-flat" />
+                                @if (_tunnelStatus is "Stopped" or "Failed")
+                                {
+                                    <SfButton Content="@(_isTunnelActing ? L["StartingTunnelButton"] : L["StartTunnelButton"])" OnClick="StartTunnelAsync" Disabled="@(_isTunnelActing || !_tunnelConfigured)" CssClass="e-primary" />
+                                }
+                            </div>
+                            break;
+                    }
+                </div>
             </div>
         }
         else
         {
-            <div class="card mb-4">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-column gap-2">
-                        <span>
-                            @L["StatusLabel"] <span class="badge @GetTunnelBadgeClass()">@_tunnelStatus</span>
-                            @if (_tunnelKind != "None")
-                            {
-                                <span>(@_tunnelKind)</span>
-                            }
-                        </span>
-                        @if (_tunnelPublicUrl is not null)
-                        {
-                            <span>@L["PublicUrlLabel"] <a href="@_tunnelPublicUrl" target="_blank" rel="noopener">@_tunnelPublicUrl</a></span>
-                        }
-                        @if (_tunnelErrorMessage is not null)
-                        {
-                            <span>@_tunnelErrorMessage</span>
-                        }
-                        @if (_tunnelStatus is "Running" or "Starting")
-                        {
-                            <div style="width: fit-content;">
-                                <SfButton Content="@L["StopTunnelButton"]" OnClick="StopTunnelAsync" CssClass="e-danger" />
-                            </div>
-                        }
-                        @if (_tunnelRecentLogLines.Count > 0)
-                        {
-                            <small class="mt-2">@L["RecentLogLabel"]</small>
-                            <pre style="max-height: 200px; overflow-y: auto; background: var(--rz-base-100); padding: 8px; font-size: 0.75rem;">@string.Join("\n", _tunnelRecentLogLines)</pre>
-                        }
-                    </div>
-                </div>
-            </div>
+            <SfButton Content="@L["WizardShowButton"]" OnClick="() => _wizardVisible = true" CssClass="e-primary mb-4" />
+        }
 
-            @if (_tunnelStatus is "Stopped" or "Failed")
-            {
-                <h6 class="mt-4 mb-2">@L["QuickTunnelHeading"]</h6>
-                <div class="card mb-4">
-                    <div class="card-body p-4">
-                        <span class="mb-2 d-block">
-                            @L["QuickTunnelDescription"]
-                        </span>
-                        <SfButton Content="@(_isTunnelActing ? L["StartingQuickTunnelButton"] : L["StartQuickTunnelButton"])" OnClick="StartQuickTunnelAsync" Disabled="@_isTunnelActing" CssClass="e-primary" />
-                    </div>
-                </div>
-
-                <h6 class="mt-4 mb-2">@L["NamedTunnelHeading"]</h6>
-                <div class="card mb-4">
-                    <div class="card-body p-4">
-                        <span class="mb-2 d-block">
-                            @L["NamedTunnelDescription"]
-                        </span>
-                        @if (_namedTunnels.Count == 0)
-                        {
-                            <small>@L["NoNamedTunnels"]</small>
-                        }
-                        else
-                        {
-                            <div class="d-flex flex-row gap-2 align-items-center">
-                                <label>@L["TunnelLabel"]</label>
-                                <SfDropDownList TValue="string" TItem="string" @bind-Value="_selectedNamedTunnel" DataSource="@_namedTunnels" Placeholder="@L["SelectTunnelPlaceholder"]" Style="max-width: 260px;" />
-                                <SfButton Content="@(_isTunnelActing ? L["StartingNamedTunnelButton"] : L["StartNamedTunnelButton"])" OnClick="StartNamedTunnelAsync" Disabled="@(_isTunnelActing || _selectedNamedTunnel is null)" CssClass="e-primary" />
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
+        @if (_wizardMessage is not null)
+        {
+            <div class="alert @(_wizardSucceeded ? "alert-success" : "alert-danger") mb-4">@_wizardMessage</div>
         }
 
         @if (_tunnelActionError is not null)
@@ -179,6 +233,8 @@ else
 
 @code {
     private sealed record NetworkTierOption(string Text, NetworkTier Value);
+
+    private const int WizardStepCount = 4;
 
     private bool _isLoading = true;
     private bool _isSaving;
@@ -205,14 +261,30 @@ else
     private string? _remoteAccessLoadError;
     private string? _tunnelActionError;
 
-    private bool _cloudflaredInstalled;
-    private string _tunnelKind = "None";
     private string _tunnelStatus = "Stopped";
+    private bool _tunnelConfigured;
+    private string? _configuredUrl;
+    private string _networkTier = "";
+    private string _rpId = "";
+    private string[] _passkeyOrigins = Array.Empty<string>();
+    private bool _cloudflareAuthenticated;
     private string? _tunnelPublicUrl;
     private string? _tunnelErrorMessage;
     private List<string> _tunnelRecentLogLines = new();
-    private List<string> _namedTunnels = new();
-    private string? _selectedNamedTunnel;
+
+    // Setup wizard. Tokens are bound to inputs only long enough to submit them, then cleared; the
+    // page never renders a token value back.
+    private bool _wizardVisible = true;
+    private int _wizardStep = 1;
+    private bool _isWizardBusy;
+    private string? _wizardMessage;
+    private bool _wizardSucceeded;
+    private string? _apiToken;
+    private string? _tunnelToken;
+    private string? _hostnamePrefix;
+    private string? _selectedDomain;
+    private List<string> _zones = new();
+    private bool _confirmDisconnect;
 
     private string GetTunnelBadgeClass() => _tunnelStatus switch
     {
@@ -222,9 +294,187 @@ else
         _ => "bg-light text-dark"
     };
 
+    // Builds hostname-prefix + "." + selected-domain, or null while either part is missing or invalid.
+    private string? BuildFqdn()
+    {
+        string prefix = (_hostnamePrefix ?? string.Empty).Trim().ToLowerInvariant();
+        string domain = (_selectedDomain ?? string.Empty).Trim().TrimEnd('.').ToLowerInvariant();
+        if (prefix.Length == 0 || domain.Length == 0 || !_zones.Contains(_selectedDomain!))
+        {
+            return null;
+        }
+
+        return $"{prefix}.{domain}";
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    private async Task ValidateApiTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_apiToken))
+        {
+            return;
+        }
+
+        _isWizardBusy = true;
+        _wizardMessage = null;
+        try
+        {
+            HttpResponseMessage response = await CreateClient().PostAsJsonAsync("api/remote-access/token", new { apiToken = _apiToken.Trim() });
+            if (!response.IsSuccessStatusCode)
+            {
+                SetWizardError(await SafeReadErrorAsync(response) ?? response.ReasonPhrase);
+                return;
+            }
+
+            _zones = await ReadZoneNamesAsync(response);
+            _apiToken = null;
+            _selectedDomain = _zones.FirstOrDefault();
+            _wizardStep = 2;
+            _wizardMessage = L["WizardTokenValidated", _zones.Count];
+            _wizardSucceeded = true;
+        }
+        catch (Exception ex)
+        {
+            SetWizardError(ex.Message);
+        }
+        finally
+        {
+            _isWizardBusy = false;
+        }
+    }
+
+    private async Task ProvisionTunnelAsync()
+    {
+        string? fqdn = BuildFqdn();
+        if (fqdn is null)
+        {
+            return;
+        }
+
+        if (SessionState.SessionToken is null)
+        {
+            SetWizardError(L["RemoteAccessSignInRequired"]);
+            return;
+        }
+
+        _isWizardBusy = true;
+        _wizardMessage = null;
+        try
+        {
+            // Creating a tunnel changes public DNS, so it needs a fresh passkey assertion like starting one.
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+
+            var body = new { hostnamePrefix = _hostnamePrefix!.Trim(), domain = _selectedDomain! };
+            HttpResponseMessage response = await client.PostAsJsonAsync("api/remote-access/tunnel/provision", body);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetWizardError(await SafeReadErrorAsync(response) ?? response.ReasonPhrase);
+                return;
+            }
+
+            _tunnelToken = null;
+            _wizardStep = WizardStepCount;
+            _wizardMessage = L["WizardTunnelCreatedMessage"];
+            _wizardSucceeded = true;
+            await LoadRemoteAccessStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            SetWizardError(ex.Message);
+        }
+        finally
+        {
+            _isWizardBusy = false;
+        }
+    }
+
+    // First click arms the disconnect, second click performs it, so a stray click cannot remove the tokens.
+    private async Task DisconnectAsync()
+    {
+        if (!_confirmDisconnect)
+        {
+            _confirmDisconnect = true;
+            return;
+        }
+
+        _confirmDisconnect = false;
+        _tunnelActionError = null;
+        try
+        {
+            var response = await CreateClient().PostAsync("api/remote-access/disconnect", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _tunnelActionError = await SafeReadErrorAsync(response) ?? L["RemoteAccessStopFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _zones = new List<string>();
+            _selectedDomain = null;
+            _hostnamePrefix = null;
+            _wizardVisible = true;
+            await LoadRemoteAccessStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _tunnelActionError = L["RemoteAccessStopFailed", ex.Message];
+        }
+    }
+
+    private async Task SaveTunnelConfigurationAsync()
+    {
+        string? fqdn = BuildFqdn();
+        if (fqdn is null || string.IsNullOrWhiteSpace(_tunnelToken))
+        {
+            return;
+        }
+
+        _isWizardBusy = true;
+        _wizardMessage = null;
+        try
+        {
+            var body = new { tunnelToken = _tunnelToken.Trim(), hostnamePrefix = _hostnamePrefix!.Trim(), domain = _selectedDomain! };
+            HttpResponseMessage response = await CreateClient().PostAsJsonAsync("api/remote-access/tunnel", body);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetWizardError(await SafeReadErrorAsync(response) ?? response.ReasonPhrase);
+                return;
+            }
+
+            _tunnelToken = null;
+            _wizardStep = WizardStepCount;
+            _wizardMessage = L["WizardSavedMessage"];
+            _wizardSucceeded = true;
+            await LoadRemoteAccessStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            SetWizardError(ex.Message);
+        }
+        finally
+        {
+            _isWizardBusy = false;
+        }
+    }
+
+    private void SetWizardError(string? message)
+    {
+        _wizardMessage = message ?? L["WizardUnknownError"];
+        _wizardSucceeded = false;
+    }
+
+    private static async Task<List<string>> ReadZoneNamesAsync(HttpResponseMessage response)
+    {
+        System.Text.Json.JsonElement body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        return body.GetProperty("zones").EnumerateArray()
+            .Select(zone => zone.GetProperty("name").GetString() ?? string.Empty)
+            .Where(name => name.Length > 0)
+            .ToList();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -388,21 +638,30 @@ else
 
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-            _cloudflaredInstalled = body.GetProperty("installed").GetBoolean();
-            _tunnelKind = body.GetProperty("kind").GetString() ?? "None";
+            bool authenticated = body.GetProperty("cloudflareAuthenticated").GetBoolean();
+            _tunnelConfigured = body.GetProperty("tunnelConfigured").GetBoolean();
+            _configuredUrl = NullableString(body, "configuredUrl");
+            _cloudflareAuthenticated = body.GetProperty("cloudflareAuthenticated").GetBoolean();
+            _networkTier = body.GetProperty("networkTier").GetString() ?? "";
+            _rpId = body.GetProperty("rpId").GetString() ?? "";
+            _passkeyOrigins = body.GetProperty("passkeyOrigins").EnumerateArray().Select(e => e.GetString() ?? "").ToArray();
             _tunnelStatus = body.GetProperty("status").GetString() ?? "Stopped";
-            _tunnelPublicUrl = body.GetProperty("publicUrl").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("publicUrl").GetString();
-            _tunnelErrorMessage = body.GetProperty("errorMessage").ValueKind == System.Text.Json.JsonValueKind.Null ? null : body.GetProperty("errorMessage").GetString();
+            _tunnelPublicUrl = NullableString(body, "publicUrl");
+            _tunnelErrorMessage = NullableString(body, "errorMessage");
             _tunnelRecentLogLines = body.GetProperty("recentLogLines").EnumerateArray().Select(e => e.GetString() ?? "").ToList();
 
-            if (_cloudflaredInstalled && _tunnelStatus is "Stopped" or "Failed")
+            // Resume the wizard where the saved configuration leaves off.
+            if (_tunnelConfigured)
             {
-                var namedResponse = await client.GetAsync("api/remote-access/named-tunnels");
-                if (namedResponse.IsSuccessStatusCode)
-                {
-                    _namedTunnels = (await namedResponse.Content.ReadFromJsonAsync<List<string>>()) ?? new();
-                    _selectedNamedTunnel = _namedTunnels.FirstOrDefault();
-                }
+                _wizardStep = WizardStepCount;
+            }
+            else if (authenticated)
+            {
+                await LoadZonesAsync(client);
+            }
+            else
+            {
+                _wizardStep = 1;
             }
         }
         catch (Exception ex)
@@ -415,19 +674,52 @@ else
         }
     }
 
-    private async Task StartQuickTunnelAsync()
+    private async Task LoadZonesAsync(HttpClient client)
     {
-        await RunTunnelStepUpGatedActionAsync("api/remote-access/quick-tunnel/start", null);
+        HttpResponseMessage zonesResponse = await client.GetAsync("api/remote-access/zones");
+        if (!zonesResponse.IsSuccessStatusCode)
+        {
+            _wizardStep = 1;
+            SetWizardError(await SafeReadErrorAsync(zonesResponse) ?? zonesResponse.ReasonPhrase);
+            return;
+        }
+
+        _zones = await ReadZoneNamesAsync(zonesResponse);
+        _selectedDomain ??= _zones.FirstOrDefault();
+        _wizardStep = 2;
     }
 
-    private async Task StartNamedTunnelAsync()
+    private static string? NullableString(System.Text.Json.JsonElement body, string property)
     {
-        if (_selectedNamedTunnel is null)
+        System.Text.Json.JsonElement value = body.GetProperty(property);
+        return value.ValueKind == System.Text.Json.JsonValueKind.Null ? null : value.GetString();
+    }
+
+    private async Task ConfigurePasskeyOriginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_tunnelPublicUrl))
         {
             return;
         }
 
-        await RunTunnelStepUpGatedActionAsync("api/remote-access/named-tunnel/start", new { name = _selectedNamedTunnel });
+        try
+        {
+            HttpResponseMessage response = await CreateClient().PostAsJsonAsync(
+                "api/network-settings/internet-url", new { internetServerUrl = _tunnelPublicUrl });
+            response.EnsureSuccessStatusCode();
+            _message = L["PasskeyAddressSaved"];
+            _success = true;
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+            _success = false;
+        }
+    }
+
+    private async Task StartTunnelAsync()
+    {
+        await RunTunnelStepUpGatedActionAsync("api/remote-access/start", null);
     }
 
     private async Task RunTunnelStepUpGatedActionAsync(string url, object? body)

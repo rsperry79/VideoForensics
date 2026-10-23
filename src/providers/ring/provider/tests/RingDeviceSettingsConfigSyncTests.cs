@@ -4,6 +4,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Moq;
 
+using VideoForensics.Core.Providers.Common;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;

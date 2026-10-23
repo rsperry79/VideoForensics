@@ -33,7 +33,7 @@
     <!-- systemd integration on Linux (plan: allows app to run as a systemd service; no-op on other platforms). -->
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.13" />
     <!-- MCP (Model Context Protocol) HTTP hosting over ASP.NET Core (Milestone 8 client/server split) -->
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <!-- GeoIP lookup using MaxMind GeoLite2 database for country-based login blocking. -->
     <PackageReference Include="MaxMind.GeoIP2" Version="6.1.0" />
     <PackageReference Include="System.Reactive" Version="7.0.0" />

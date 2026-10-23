@@ -156,7 +156,11 @@ namespace VideoForensics.Ui.Shared.Services
         /// or create a passkey with <see cref="CreatePasskeyLoginAsync"/>. Every other field is then default.
         /// </summary>
         public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password)
-            => PostPasswordLoginAsync("api/v1/auth/login/password", username, password);
+            => SignInWithPasswordAsync(username, password, passkeyAvailable: true);
+
+        /// <param name="passkeyAvailable">False when this device cannot run a passkey ceremony, so a local sign-in may skip the passkey second factor.</param>
+        public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password, bool passkeyAvailable)
+            => PostPasswordLoginAsync("api/v1/auth/login/password", username, password, passkeyAvailable);
 
         /// <summary>
         /// Password sign-in that issues a LIMITED passkey-setup session (only passkey registration is accepted).
@@ -165,13 +169,13 @@ namespace VideoForensics.Ui.Shared.Services
         public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> CreatePasskeyLoginAsync(string username, string password)
             => PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
 
-        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> PostPasswordLoginAsync(string path, string username, string password)
+        private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> PostPasswordLoginAsync(string path, string username, string password, bool passkeyAvailable = true)
         {
             using HttpClient client = CreateClient(null);
 
             HttpResponseMessage response = await client.PostAsJsonAsync(
                 path,
-                new { Username = username, Password = password });
+                new { Username = username, Password = password, PasskeyAvailable = passkeyAvailable });
 
             if (!response.IsSuccessStatusCode)
             {
