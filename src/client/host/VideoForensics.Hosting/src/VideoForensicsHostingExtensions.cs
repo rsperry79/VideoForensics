@@ -139,6 +139,9 @@ namespace VideoForensics.Client.Hosting
             services.TryAddSingleton(TimeProvider.System);
             _ = services.AddHostedService<SnapshotCaptureService>();
 
+            // Daily trim of operational tables (error rows, call log, telemetry). Audit tables are not pruned.
+            _ = services.AddHostedService<OperationalLogPruneService>();
+
             // Loops beat into ThreadHeartbeats; the watchdog logs any loop that stops ticking for five minutes.
             services.TryAddSingleton<ThreadHeartbeats>();
             _ = services.AddHostedService(sp => new ThreadWatchdogService(

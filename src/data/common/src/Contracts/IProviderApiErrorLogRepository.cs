@@ -13,5 +13,8 @@ namespace VideoForensics.Data.Common.Contracts
 
         /// <summary>Gets every recorded failure for a given device (used for snapshot failures, which have no EventId).</summary>
         Task<IReadOnlyList<ProviderApiErrorLog>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct);
+
+        /// <summary>Deletes error rows older than <paramref name="age"/>. Returns how many were removed. Operational rows only; audit tables are not pruned.</summary>
+        Task<int> PruneOlderThanAsync(TimeSpan age, CancellationToken ct);
     }
 }

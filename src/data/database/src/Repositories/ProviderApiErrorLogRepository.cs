@@ -40,5 +40,14 @@ namespace VideoForensics.Data.Database.Repositories
                 .OrderBy(e => e.OccurredAtUtc)
                 .ToListAsync(ct);
         }
+
+        public async Task<int> PruneOlderThanAsync(TimeSpan age, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            DateTime cutoff = DateTime.UtcNow - age;
+            return await db.ProviderApiErrorLogs
+                .Where(e => e.OccurredAtUtc < cutoff)
+                .ExecuteDeleteAsync(ct);
+        }
     }
 }
