@@ -1,10 +1,10 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// The update release channel (Stable or Testing). Readable by any Admin so the update page

@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Result of loading evidence items for a forensic scope.

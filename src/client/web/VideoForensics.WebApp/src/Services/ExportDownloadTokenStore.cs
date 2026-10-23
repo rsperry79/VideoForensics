@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Maps a short-lived, single-use opaque token to a server-side export archive file path, so the

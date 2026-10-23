@@ -5,12 +5,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Dialogs;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Dialogs;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class FolderBrowserDialog_Tests : BunitContext
 {

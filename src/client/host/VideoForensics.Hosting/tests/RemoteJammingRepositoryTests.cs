@@ -7,9 +7,9 @@ using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteJammingRepositoryTests
     {
@@ -267,7 +267,7 @@ namespace VideoForensics.Hosting.Tests
             var services = new ServiceCollection();
             _ = services.AddLogging();
             _ = services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.PairedSessionState>();
             _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -282,7 +282,7 @@ namespace VideoForensics.Hosting.Tests
             var services = new ServiceCollection();
             _ = services.AddLogging();
             _ = services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.PairedSessionState>();
             _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
             using IServiceScope scope = provider.CreateScope();

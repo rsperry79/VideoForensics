@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Ui.Shared.Layout
+namespace VideoForensics.Client.Ui.Shared.Layout
 {
     /// <summary>
     /// A single left-nav item within a top-level tab group. Who may see it comes from <see cref="PageAccessRules"/>;

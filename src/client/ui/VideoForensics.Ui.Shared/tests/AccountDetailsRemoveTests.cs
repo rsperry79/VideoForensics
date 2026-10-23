@@ -15,15 +15,15 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts/{id} remove flow. The Accounts grid no longer has a Remove button, so the
 /// remove panel is reached from the details page's "Remove Account" button.

@@ -1,12 +1,12 @@
 using Moq;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Services;
+namespace VideoForensics.Client.WebApp.Tests.Services;
 
 public class InitialSyncResumerTests
 {

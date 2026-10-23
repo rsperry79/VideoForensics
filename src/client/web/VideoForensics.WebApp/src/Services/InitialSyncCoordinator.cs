@@ -1,10 +1,10 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>Runs an account's first sync and marks it complete only when every stage succeeded.</summary>
     public interface IInitialSyncCoordinator

@@ -1,7 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Extension methods for mapping update-check DTOs to/from domain types.</summary>
     public static class UpdateCheckStateMappingExtensions

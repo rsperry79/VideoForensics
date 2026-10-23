@@ -1,6 +1,6 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>
     /// Makes provider discovery return one location and its devices, and makes the repositories return the same stored

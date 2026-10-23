@@ -11,14 +11,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
-using VideoForensics.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Pipeline tests for the probe-only snapshot endpoints under /api/v1/probe. Requests run through an
@@ -258,7 +258,7 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task SessionSnapshotProbeBackend_NoSession_ThrowsUnavailable()
         {
             var sessions = new Mock<ISessionProvider>();
-            _ = sessions.Setup(s => s.GetSession(AccountId)).Returns((VideoForensics.Providers.Ring.Session?)null);
+            _ = sessions.Setup(s => s.GetSession(AccountId)).Returns((Providers.Ring.Session?)null);
             var backend = new SessionSnapshotProbeBackend(sessions.Object);
 
             _ = await Assert.ThrowsAsync<SnapshotProbeSessionUnavailableException>(

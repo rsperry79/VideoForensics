@@ -10,12 +10,12 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// ChainOfCustody reads the server database only, so its gate is the paired operator session
 /// (PairedSessionState), not whether a provider (Ring) account is linked.

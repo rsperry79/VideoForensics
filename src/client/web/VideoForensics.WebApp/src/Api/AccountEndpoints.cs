@@ -1,12 +1,14 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// User and provider account management (plan §5): listing users and provider accounts,
@@ -549,7 +551,7 @@ namespace VideoForensics.WebApp.Api
             try
             {
                 using IServiceScope scope = scopeFactory.CreateScope();
-                VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
+                IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<IInitialSyncCoordinator>();
                 await coordinator.RunAsync(accountId, CancellationToken.None);
             }
             catch

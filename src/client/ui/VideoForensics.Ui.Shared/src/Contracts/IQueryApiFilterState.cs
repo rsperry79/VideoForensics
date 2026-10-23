@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Contracts;
+namespace VideoForensics.Client.Ui.Shared.Contracts;
 
 /// <summary>
 /// Circuit-scoped selection shared by the Query API subpages (Devices, Events) so a chosen location or device

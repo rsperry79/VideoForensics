@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 using System.Text.Json;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Issues and validates short-lived, media-specific access tickets for use in URL query strings.

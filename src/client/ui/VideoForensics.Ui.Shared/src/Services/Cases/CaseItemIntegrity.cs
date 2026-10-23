@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Cases;
+namespace VideoForensics.Client.Ui.Shared.Services.Cases;
 
 /// <summary>
 /// Describes the integrity status of a pinned case item compared to its current state.

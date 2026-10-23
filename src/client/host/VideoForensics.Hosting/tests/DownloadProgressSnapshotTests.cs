@@ -1,7 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class DownloadProgressSnapshotTests
     {
@@ -33,7 +33,7 @@ namespace VideoForensics.Hosting.Tests
             _ = service.Setup(s => s.GetLastError()).Returns("boom");
             _ = service.Setup(s => s.GetRemainingReason()).Returns("Rate limited");
 
-            Core.Api.Contracts.DownloadProgressDto dto = service.Object.ToDownloadProgressSnapshot();
+            VideoForensics.Core.Api.Contracts.DownloadProgressDto dto = service.Object.ToDownloadProgressSnapshot();
 
             Assert.Empty(dto.Activity);
             Assert.Equal(status.ToDto(), dto.Progress);

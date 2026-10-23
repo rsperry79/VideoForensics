@@ -17,15 +17,15 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts page tests: repository and auth mocks, the real
 /// <see cref="AccountSelectionState"/> / <see cref="PairedSessionState"/> over the bUnit JS runtime,
@@ -228,7 +228,7 @@ public class AccountsPage_ErrorTooltip_Tests : AccountsPageTestBase
     [Fact]
     public void Accounts_ErrorWithoutTimestamp_TooltipUsesLocalizedUnknownTime()
     {
-        IStringLocalizer<Accounts> strings = Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Pages.Accounts>>();
+        IStringLocalizer<Accounts> strings = Services.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Client.Ui.Shared.Pages.Accounts>>();
         var userId = Guid.NewGuid();
         _ = AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))

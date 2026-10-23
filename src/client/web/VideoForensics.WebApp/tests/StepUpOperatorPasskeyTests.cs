@@ -1,9 +1,9 @@
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Covers the step-up credential decision for POST /api/v1/auth/webauthn/stepup-complete.

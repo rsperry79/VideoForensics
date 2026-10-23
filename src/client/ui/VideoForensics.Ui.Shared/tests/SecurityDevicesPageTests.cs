@@ -9,12 +9,12 @@ using System.Net;
 using System.Text;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Device-level pairing UI (generate QR / pairing URL) is removed from SecurityDevices.razor.
 /// The paired-devices list and revoke UI must remain. See Pair.razor for the retained code.

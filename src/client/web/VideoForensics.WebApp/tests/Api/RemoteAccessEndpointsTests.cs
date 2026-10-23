@@ -2,12 +2,12 @@ using Microsoft.Extensions.Configuration;
 
 using Moq;
 
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class RemoteAccessEndpointsTests
     {

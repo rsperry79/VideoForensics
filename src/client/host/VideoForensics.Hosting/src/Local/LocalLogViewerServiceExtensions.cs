@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 
-namespace VideoForensics.Hosting.Local
+namespace VideoForensics.Client.Hosting.Local
 {
     /// <summary>Registers the in-process log viewer for hosts that read their own logs without HTTP (MAUI).</summary>
     public static class LocalLogViewerServiceExtensions

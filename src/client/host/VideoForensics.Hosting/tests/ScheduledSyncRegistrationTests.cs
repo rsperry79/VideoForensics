@@ -4,9 +4,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class ScheduledSyncRegistrationTests
     {

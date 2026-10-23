@@ -14,16 +14,16 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Records every account id the add-account wizard publishes.</summary>
 internal sealed class RecordingAccountLinkedNotifier : IAccountLinkedNotifier
 {

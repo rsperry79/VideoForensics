@@ -6,12 +6,12 @@ using Microsoft.Extensions.Localization;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the result message shown after a manual "Check now" on the update page.
 /// </summary>

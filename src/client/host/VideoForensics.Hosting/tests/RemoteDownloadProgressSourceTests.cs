@@ -1,11 +1,11 @@
 using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteDownloadProgressSourceTests
     {

@@ -4,11 +4,11 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Restoring the saved left-nav collapse state on a circuit reconnect. The Syncfusion splitter's JS
 /// widget may not be initialised yet, so the imperative CollapseAsync call can throw a JSException.

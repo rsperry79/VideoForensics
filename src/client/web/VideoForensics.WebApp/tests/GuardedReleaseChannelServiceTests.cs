@@ -4,16 +4,16 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Services;
-using VideoForensics.WebApp.Services.CircuitGuards;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 
 public class GuardedReleaseChannelServiceTests
 {

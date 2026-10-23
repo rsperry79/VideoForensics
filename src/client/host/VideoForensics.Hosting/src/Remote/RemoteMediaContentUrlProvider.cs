@@ -4,7 +4,7 @@ using System.Text.Json;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IMediaContentUrlProvider"/> that requests media access tickets

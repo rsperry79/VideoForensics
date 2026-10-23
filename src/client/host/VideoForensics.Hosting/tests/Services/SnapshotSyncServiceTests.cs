@@ -4,12 +4,12 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>Snapshot sync fetches snapshots for every device of an account through the provider-neutral download contract.</summary>
     public class SnapshotSyncServiceTests

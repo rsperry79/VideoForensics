@@ -1,6 +1,6 @@
 using Microsoft.JSInterop;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Circuit-scoped, device-local (NOT per-operator) collapse state for the docked layout's left

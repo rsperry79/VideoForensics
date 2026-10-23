@@ -13,12 +13,12 @@ using System.Net;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for SecurityEvents page tests: mocked <see cref="ISecurityEventsService"/> and
 /// <see cref="IAdminOperatorService"/>, and a default signed-out <see cref="PairedSessionState"/>

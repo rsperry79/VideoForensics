@@ -7,13 +7,13 @@ using Moq;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Hubs;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LiveHubSnapshotTests
     {

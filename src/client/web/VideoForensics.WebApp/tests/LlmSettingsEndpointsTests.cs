@@ -6,13 +6,13 @@ using Moq;
 
 using System.Reflection;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// xUnit tests for LlmSettingsEndpoints covering GET/POST for LLM provider configuration.

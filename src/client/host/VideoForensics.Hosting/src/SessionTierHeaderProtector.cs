@@ -4,7 +4,7 @@ using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Header name(s) used to carry a Blazor Server circuit's real network tier across a self-HTTP call back into this same process (see <see cref="ISessionTierHeaderProtector"/>).</summary>
     public static class SessionTierHeaderNames
@@ -33,7 +33,7 @@ namespace VideoForensics.Hosting
     /// bind the header to, so it carries an explicit "this is a pre-auth call" marker (a null
     /// <c>operatorId</c>) instead - never silently reusing <see cref="Guid.Empty"/>, which could be
     /// confused with a real (if invalid) operator id. <c>RequestTierResolver</c>
-    /// (VideoForensics.WebApp) is the caller-side rule for when a pre-auth vs. operator-bound payload
+    /// (VideoForensics.Client.WebApp) is the caller-side rule for when a pre-auth vs. operator-bound payload
     /// is acceptable for a given kind of request.
     /// </summary>
     public interface ISessionTierHeaderProtector

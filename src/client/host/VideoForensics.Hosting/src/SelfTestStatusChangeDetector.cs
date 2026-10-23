@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Value-based comparison for <see cref="SelfTestStatusDto"/> send-on-change.

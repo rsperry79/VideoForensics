@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Contract for a per-process in-memory cache that stores authentication attempt state

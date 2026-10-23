@@ -6,7 +6,7 @@ using Moq;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Registers the provider-account, location and user repositories that <c>ScopeRail</c> resolves for its
 /// Provider and Account filters. Tests that render the rail (directly or via a page) call this once.
@@ -45,6 +45,6 @@ internal static class ScopeOwnershipTestDoubles
         _ = services.AddScoped(_ => accountRepository.Object);
         _ = services.AddScoped(_ => locationRepository.Object);
         _ = services.AddScoped(_ => userRepository.Object);
-        _ = services.AddScoped<VideoForensics.Ui.Shared.Services.Scope.DeviceOwnershipService>();
+        _ = services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.DeviceOwnershipService>();
     }
 }

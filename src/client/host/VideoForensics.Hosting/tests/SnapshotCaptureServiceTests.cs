@@ -8,13 +8,13 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class SnapshotCaptureServiceTests : IDisposable
     {

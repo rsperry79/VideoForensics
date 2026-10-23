@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>Applies a culture change to the current logical flow. See ThemePreferenceService for callers.</summary>
     public interface ICultureSwitcher

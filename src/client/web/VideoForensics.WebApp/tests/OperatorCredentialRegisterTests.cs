@@ -1,9 +1,9 @@
-using VideoForensics.WebApp.Api;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class OperatorCredentialRegisterTests
     {

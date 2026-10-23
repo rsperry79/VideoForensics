@@ -1,8 +1,8 @@
-using VideoForensics.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Formatting;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class ChatToolsFormatterTests
 {

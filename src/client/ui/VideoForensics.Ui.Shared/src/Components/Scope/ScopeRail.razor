@@ -1,13 +1,13 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
-@using VideoForensics.Ui.Shared.Services
-@using VideoForensics.Ui.Shared.Services.Cases
-@using VideoForensics.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Cases
+@using VideoForensics.Client.Ui.Shared.Services.Scope
 @implements IAsyncDisposable
 @inject ScopeState ScopeState
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Resources
 @inject IStringLocalizer<SharedResources> L
 @inject IDeviceRepository DeviceRepository
 @inject DeviceOwnershipService OwnershipService

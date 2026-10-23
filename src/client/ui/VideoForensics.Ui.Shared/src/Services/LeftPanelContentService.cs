@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Circuit-scoped slot for page-specific content rendered in the left navigation pane, below the

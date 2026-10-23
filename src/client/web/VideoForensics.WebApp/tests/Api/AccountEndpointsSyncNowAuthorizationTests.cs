@@ -7,14 +7,14 @@ using Microsoft.Extensions.Hosting;
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Authorization metadata for the accounts routes: every accounts route, including sync-now and config sync,
@@ -118,7 +118,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddScoped(_ => Mock.Of<IProviderAccountRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<ICaseRepository>());
             _ = builder.Services.AddScoped(_ => Mock.Of<IProviderSyncRunRepository>());
-            _ = builder.Services.AddScoped(_ => Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
+            _ = builder.Services.AddScoped(_ => Mock.Of<Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddScoped(_ => Mock.Of<IRingAccountSyncState>());
 
             WebApplication app = builder.Build();

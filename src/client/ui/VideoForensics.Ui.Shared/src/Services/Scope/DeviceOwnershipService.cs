@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>What the Provider and Account filters need to know about the operator's provider accounts.</summary>
 /// <param name="Accounts">Every provider account, in repository order.</param>

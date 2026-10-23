@@ -1,9 +1,8 @@
-
-using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for <see cref="NavPathMatcher"/>, the pure helper extracted from
 /// MainLayout/MobileLayout's PathMatches so nav-highlight logic for query-string nav items

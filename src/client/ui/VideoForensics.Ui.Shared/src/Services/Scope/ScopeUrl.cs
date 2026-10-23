@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>
 /// Helper for merging scope query strings with existing URIs, preserving unrelated query keys and fragments.

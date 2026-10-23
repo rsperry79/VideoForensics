@@ -3,13 +3,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// <see cref="RequestTierResolver"/> is the single place both an ALREADY-authenticated request's

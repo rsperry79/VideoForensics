@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Localization;
 
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Evaluates the same <see cref="PageAccessRules"/> the UI uses, but on the server and from validated state:

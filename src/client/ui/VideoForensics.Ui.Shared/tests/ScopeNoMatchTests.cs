@@ -1,9 +1,8 @@
-
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>A filter that matches no device must stay "no devices", never widen to "all devices".</summary>
 public class ScopeState_NoMatch_Tests
 {

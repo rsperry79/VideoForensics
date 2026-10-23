@@ -1,9 +1,9 @@
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Operator security event query endpoints (Phase 0.5).

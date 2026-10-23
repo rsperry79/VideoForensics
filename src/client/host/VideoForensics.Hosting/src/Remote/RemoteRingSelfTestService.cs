@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IRingSelfTestService"/> that calls the server's self-test API endpoints

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Detects viewport width and provides notifications when the viewport changes between

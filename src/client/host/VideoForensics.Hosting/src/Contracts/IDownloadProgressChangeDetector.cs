@@ -1,6 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Decides whether a sampled download-progress payload needs to be pushed to connected clients.

@@ -3,9 +3,9 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>The device-list integrity start sends every device in one request and reads back per-device results.</summary>
     public class RemoteEvidenceValidationJobsDeviceListTests

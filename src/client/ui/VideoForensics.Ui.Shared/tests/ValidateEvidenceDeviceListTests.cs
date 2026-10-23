@@ -9,14 +9,14 @@ using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
-using ValidateEvidencePage = VideoForensics.Ui.Shared.Pages.ValidateEvidence;
+using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Verify starts one integrity job over every device the filter leaves visible.</summary>
 public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
 {

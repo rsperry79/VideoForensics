@@ -6,10 +6,10 @@ using Microsoft.JSInterop;
 using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Extensions;
-using VideoForensics.Ui.Shared.Services.Time;
+using VideoForensics.Client.Ui.Shared.Extensions;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
-namespace VideoForensics.Ui.Shared.Layout
+namespace VideoForensics.Client.Ui.Shared.Layout
 {
     public partial class MainLayout : IDisposable
     {

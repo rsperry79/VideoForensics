@@ -3,7 +3,7 @@ using CloudflaredKit.Models;
 
 using Microsoft.Extensions.Options;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class CloudflaredTunnelServiceTests
     {

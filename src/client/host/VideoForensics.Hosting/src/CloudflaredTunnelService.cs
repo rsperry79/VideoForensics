@@ -2,7 +2,7 @@ using CloudflaredKit;
 
 using Microsoft.Extensions.Options;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     public enum TunnelKind
     {

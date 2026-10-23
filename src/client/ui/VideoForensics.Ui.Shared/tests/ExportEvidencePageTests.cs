@@ -9,12 +9,12 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The export page is attached to a case: it exports that case's reports and evidence, never an unscoped set.</summary>
 public class ExportEvidencePageTests : CasesPagesTestBase
 {

@@ -15,14 +15,14 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Exercises the real routing and authorization of the chat endpoints (including the SSE stream)

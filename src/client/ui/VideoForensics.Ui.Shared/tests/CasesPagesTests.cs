@@ -12,17 +12,17 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Components.Scope;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Components.Scope;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for Cases/CaseNew/CaseDetails page tests: repository mocks, a real
 /// <see cref="ScopeState"/> and <see cref="CaseState"/> wired to the same

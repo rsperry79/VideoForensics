@@ -1,14 +1,14 @@
 using System.Net;
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Services;
 
 using WebPush;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Sends urgent security events (plan §5.6) via Web Push API (RFC 8291) to subscribed browser/mobile clients.
@@ -49,7 +49,7 @@ namespace VideoForensics.WebApp.Hubs
             try
             {
                 // Get target subscriptions based on audience
-                IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription> targetSubscriptions =
+                IReadOnlyList<Data.Common.Entities.PushSubscription> targetSubscriptions =
                     await ResolveTargetSubscriptionsAsync(notificationEvent.Audience, ct);
 
                 if (targetSubscriptions.Count == 0)
@@ -154,7 +154,7 @@ namespace VideoForensics.WebApp.Hubs
         /// All targets every subscription, mirroring the SignalR provider's fan-out to all clients.
         /// Per-operator preference filtering (PushEnabled, MinimumSeverity) is applied later in SendAsync.
         /// </summary>
-        internal async Task<IReadOnlyList<VideoForensics.Data.Common.Entities.PushSubscription>> ResolveTargetSubscriptionsAsync(
+        internal async Task<IReadOnlyList<Data.Common.Entities.PushSubscription>> ResolveTargetSubscriptionsAsync(
             NotificationAudience audience,
             CancellationToken ct)
         {

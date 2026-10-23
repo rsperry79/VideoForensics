@@ -1,9 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Provides media content URLs (for img/video src attributes) for the local WebApp by issuing

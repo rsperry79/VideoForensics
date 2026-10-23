@@ -3,13 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class FailedLoginIpTrackerTests
     {

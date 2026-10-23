@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Short-lived server-side cache bridging a WebAuthn ceremony's two HTTP round-trips (options ->

@@ -4,11 +4,11 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Extensions;
+using VideoForensics.Client.Ui.Shared.Extensions;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class NavigationManagerExtensionsTests : BunitContext
 {

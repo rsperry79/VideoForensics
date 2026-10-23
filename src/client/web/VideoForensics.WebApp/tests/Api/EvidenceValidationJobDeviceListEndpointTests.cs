@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api;
+namespace VideoForensics.Client.WebApp.Tests.Api;
 /// <summary>A device-list integrity request starts one job over those devices; a single-device request is unchanged.</summary>
 public class EvidenceValidationJobDeviceListEndpointTests
 {

@@ -7,12 +7,12 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class MediaViewer_Image_Tests : BunitContext
 {
@@ -93,7 +93,7 @@ public class MediaViewer_Image_Tests : BunitContext
         EvidenceItem item = CreateImageItem();
 
         IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
-            .AddCascadingValue(new VideoForensics.Ui.Shared.Services.Time.UserTimeZone(plus9))
+            .AddCascadingValue(new VideoForensics.Client.Ui.Shared.Services.Time.UserTimeZone(plus9))
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)

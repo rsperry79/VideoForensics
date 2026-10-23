@@ -4,13 +4,13 @@ using Microsoft.Extensions.Options;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>The roll-up: stills from the window's snapshot Media rows, one MP4 per device, a Media row for each loop, and failures reported.</summary>
     public class SnapshotRollupServiceTests : IDisposable

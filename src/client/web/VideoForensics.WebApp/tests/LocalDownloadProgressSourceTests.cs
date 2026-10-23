@@ -2,13 +2,13 @@
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LocalDownloadProgressSourceTests
     {

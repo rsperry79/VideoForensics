@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Obtains the step-up token a destructive or system change needs. A passkey session confirms with a passkey

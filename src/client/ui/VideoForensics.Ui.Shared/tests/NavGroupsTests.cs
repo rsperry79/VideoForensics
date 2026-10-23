@@ -2,11 +2,11 @@
 using System.Reflection;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class NavGroups_Tests
 {

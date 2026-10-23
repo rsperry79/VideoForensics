@@ -14,15 +14,15 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for Analyze.razor + its four Components/Analysis panels: a signed-in auth
 /// service, an empty device list by default, a real <see cref="ScopeState"/>, a
@@ -51,7 +51,7 @@ public abstract class AnalyzePageTestBase : BunitContext
 
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();

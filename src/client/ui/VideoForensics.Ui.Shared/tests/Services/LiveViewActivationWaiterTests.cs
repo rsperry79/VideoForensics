@@ -2,12 +2,12 @@ using System.Diagnostics;
 using System.Reactive.Subjects;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services
+namespace VideoForensics.Client.Ui.Shared.Tests.Services
 {
     public class LiveViewActivationWaiterTests
     {

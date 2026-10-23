@@ -1,8 +1,8 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// UI-facing status of an in-flight or completed "grab still with hash" capture, shown by
-/// <see cref="VideoForensics.Ui.Shared.Components.Evidence.MediaViewer"/>. Owned by the page
+/// <see cref="VideoForensics.Client.Ui.Shared.Components.Evidence.MediaViewer"/>. Owned by the page
 /// hosting the viewer (e.g. Evidence.razor), which calls the capture service and updates this
 /// after each attempt.
 /// </summary>

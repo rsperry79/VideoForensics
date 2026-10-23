@@ -13,12 +13,12 @@ using System.Threading.Channels;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// TimeProvider whose timers only fire when a test says so, keyed by the exact delay the page asked for
 /// (render throttle 100 ms, search debounce 300 ms, backoff 1 s/2 s/...), so a test fires one kind of timer
@@ -240,7 +240,7 @@ public abstract class ServerLogsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => session);
     }
 
-    protected static LogEntry Entry(long seq, string level = "Information", string? message = null, string? exception = null, string category = "VideoForensics.Hosting.Remote.Thing")
+    protected static LogEntry Entry(long seq, string level = "Information", string? message = null, string? exception = null, string category = "VideoForensics.Client.Hosting.Remote.Thing")
     {
         return new(seq, new DateTimeOffset(2026, 9, 25, 10, 0, 0, TimeSpan.Zero).AddMilliseconds(seq), level, category, message ?? $"message {seq}", exception);
     }
@@ -736,7 +736,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     [Fact]
     public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndUtcTooltip()
     {
-        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Error", "boom", category: "VideoForensics.Hosting.Remote.Thing"));
+        Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Error", "boom", category: "VideoForensics.Client.Hosting.Remote.Thing"));
         IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
 
@@ -745,7 +745,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
         Assert.Equal("Error", page.Find("[data-testid='log-level-badge']").TextContent.Trim());
         IElement category = page.Find("[data-testid='log-category']");
         Assert.Equal("Thing", category.TextContent.Trim());
-        Assert.Equal("VideoForensics.Hosting.Remote.Thing", category.GetAttribute("title"));
+        Assert.Equal("VideoForensics.Client.Hosting.Remote.Thing", category.GetAttribute("title"));
         Assert.Contains("2026-09-25 10:00:00.001 UTC", page.Find("[data-testid='log-time']").GetAttribute("title"));
     }
 

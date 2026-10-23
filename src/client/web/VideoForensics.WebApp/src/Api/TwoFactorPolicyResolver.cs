@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Helper for resolving the effective two-factor authentication requirement for an operator,

@@ -4,14 +4,15 @@ using System.Net;
 using System.Net.Sockets;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for active banned IP ranges (manual and system auto-bans): list and unban.

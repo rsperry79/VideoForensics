@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
 
-namespace VideoForensics.Hosting.Local
+namespace VideoForensics.Client.Hosting.Local
 {
     /// <summary>
     /// In-process <see cref="ILogViewerService"/> that reads the host's own <see cref="InMemoryLogBuffer"/>, so MAUI

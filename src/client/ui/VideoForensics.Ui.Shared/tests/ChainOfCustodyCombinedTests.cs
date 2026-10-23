@@ -12,14 +12,14 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Filtering to several devices yields one combined audit list and one verdict covering all of them.</summary>
 public class ChainOfCustody_Combined_Tests : BunitContext
 {

@@ -4,20 +4,20 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.WebApp.Tests.Services
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// The first sync against a real database: seeded Ring account, location and camera, the real runner, coordinator and

@@ -2,10 +2,10 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="ISelfTestStatusSource"/> for the WebApp, which runs self-tests in-process and has no realtime hub

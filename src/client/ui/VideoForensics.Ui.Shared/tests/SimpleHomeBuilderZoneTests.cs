@@ -2,11 +2,12 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>The Simple home shows timeline times in the signed-in user's zone, not the zone the builder was created with.</summary>
 public class SimpleHomeBuilderZoneTests

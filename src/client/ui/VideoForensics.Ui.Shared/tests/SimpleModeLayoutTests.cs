@@ -12,20 +12,20 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Formatting;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Layout.Mobile;
-using VideoForensics.Ui.Shared.Layout.Simple;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout.Mobile;
+using VideoForensics.Client.Ui.Shared.Layout.Simple;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for SimpleLayout component rendering and mode switching behavior.
 /// Covers simple-mode specific layout, responsiveness, and component composition.
@@ -90,7 +90,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
 
         // Register ILegalHoldRepository and IEvidenceValidationService mocks (needed by InspectorPanel)
         _ = Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
-        _ = Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
+        _ = Services.AddScoped(_ => new Mock<IEvidenceValidationService>().Object);
 
         // Register ICultureSwitcher mock
         var cultureSwitcherMock = new Mock<ICultureSwitcher>();
@@ -142,7 +142,7 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         _ = Services.AddScoped(_ => forensicsConfigMock.Object);
 
         // Register IForensicsConfigurationService mock
-        _ = Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IForensicsConfigurationService>().Object);
+        _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
 
         // Register ThemePreferenceService with all its dependencies
         _ = Services.AddScoped(sp =>

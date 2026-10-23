@@ -1,11 +1,11 @@
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Components;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// The snapshot interval is stored in seconds. The input shows it in minutes when it is a whole number of minutes,
 /// lets the operator switch the unit, and always reports the value back in seconds.

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Keeps one snapshot per device per roll-up window on the media view. Windows are aligned to the clock (the window

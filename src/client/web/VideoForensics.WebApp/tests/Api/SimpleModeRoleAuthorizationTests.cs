@@ -6,14 +6,14 @@ using Moq;
 
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api;
+namespace VideoForensics.Client.WebApp.Tests.Api;
 /// <summary>
 /// Tests for ChatEndpoints authorization, validation, and simple-mode specific chat flows.
 /// Covers role-based access control (ReadOnly role) and message/history validation constraints.

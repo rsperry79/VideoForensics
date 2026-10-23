@@ -1,9 +1,9 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Devices;
+using VideoForensics.Client.Ui.Shared.Services.Devices;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class LatestDeviceMediaTests
 {

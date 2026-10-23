@@ -6,15 +6,15 @@ using Moq;
 
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Mcp.Tools;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Mcp.Tools;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 /// <summary>
 /// The MCP tools run with baseline paired-device auth, so each tool that needs more must stop the call itself. The
 /// repositories and orchestrator are null on purpose: a denied caller has to stop before any of them is used, so a

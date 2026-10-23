@@ -8,16 +8,16 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Scope;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Scope;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>An account whose filter matches no device must mark the scope as no-match, not as all devices.</summary>
 public class ScopeRail_NoMatch_Tests : BunitContext
 {

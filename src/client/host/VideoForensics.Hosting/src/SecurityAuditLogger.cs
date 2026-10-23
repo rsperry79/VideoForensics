@@ -5,7 +5,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Persists the entry, then fans it out to <see cref="INotificationDispatcher"/> if urgent

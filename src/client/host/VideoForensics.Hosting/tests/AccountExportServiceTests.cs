@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Entities;
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public sealed class AccountExportServiceTests : IDisposable
     {

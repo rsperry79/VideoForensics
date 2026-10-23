@@ -7,13 +7,13 @@ using Moq;
 
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Chat;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Chat;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 
 /// <summary>Tests for ChatOrchestrator - the server-side MCP chat loop orchestrator.</summary>
 public class ChatOrchestrator_Tests

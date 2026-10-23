@@ -4,13 +4,13 @@ using Moq;
 
 using System.Threading.RateLimiting;
 
+using VideoForensics.Client.WebApp.RateLimiting;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.RateLimiting;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class MediaRateLimitPolicyTests
     {

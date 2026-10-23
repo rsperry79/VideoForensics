@@ -1,6 +1,6 @@
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="DelegatingHandler"/>, used only by <see cref="SelfHttpServiceExtensions"/>, that
@@ -12,7 +12,7 @@ namespace VideoForensics.WebApp.Services
     /// SessionNetworkContext's doc comment).
     ///
     /// Two flavors of header, both bound to the current request's <see cref="_bearerToken"/> (never
-    /// to the client-cached <see cref="Ui.Shared.Services.PairedSessionState.OperatorId"/> directly, so it
+    /// to the client-cached <see cref="Shared.Services.PairedSessionState.OperatorId"/> directly, so it
     /// cannot be replayed against a different operator's request):
     /// - When <see cref="_bearerToken"/> re-validates to a real session, an OPERATOR-BOUND header (see
     ///   <see cref="ISessionTierHeaderProtector.Protect"/>) - the existing behavior, used by

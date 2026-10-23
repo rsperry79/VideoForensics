@@ -6,20 +6,20 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Services;
-using VideoForensics.WebApp.Services.CircuitGuards;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 /// <summary>Builds the server-side circuit state the gate reads: an open or closed circuit, a token, and a tier.</summary>
 internal sealed class CircuitFixture
 {
@@ -306,7 +306,7 @@ public class CircuitGuardRegistration_Tests
         _ = services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
         _ = services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
         _ = services.AddScoped(_ => new Mock<IJammingRepository>().Object);
-        _ = services.AddScoped(_ => new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>().Object);
+        _ = services.AddScoped(_ => new Mock<Core.Contracts.IConfigToolsOrchestrator>().Object);
         _ = services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
         var gate = new Mock<ICircuitOperatorGate>();
@@ -507,10 +507,10 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_HealthSync_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
         (bool success, _) = await guarded.SetHealthSyncAsync(new Mock<IForensicsConfiguration>().Object, false);
 
@@ -523,11 +523,11 @@ public class GuardedConfigToolsOrchestrator_Tests
     {
         // Factory reset is destructive and has no HTTP endpoint, so the server check is the only one. A denied call
         // returns a failed result rather than throwing, so the page can show why.
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
         _ = gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("Only a SuperAdmin on this computer can do this.");
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
         (bool success, string? message) = await guarded.FactoryResetAsync();
 
@@ -539,12 +539,12 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_Retention_AdminAllowed_CallsInner()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         _ = inner.Setup(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, "ok"));
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
         (bool success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
 
@@ -555,10 +555,10 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_Retention_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
         (bool success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
 

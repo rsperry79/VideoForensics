@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Extensions
+namespace VideoForensics.Client.Ui.Shared.Extensions
 {
     public static class NavigationManagerExtensions
     {

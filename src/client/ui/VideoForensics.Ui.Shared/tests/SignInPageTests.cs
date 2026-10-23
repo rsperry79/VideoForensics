@@ -10,12 +10,12 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers where SignIn.razor sends a user after a successful username/password sign-in:
 /// a forced password change comes first, then a user with no operator-bound passkey is sent to

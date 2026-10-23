@@ -1,8 +1,8 @@
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.WebApp.Hubs;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="IThumbnailReadySource"/> for the WebApp, whose Blazor circuits run in the same process as the thumbnail

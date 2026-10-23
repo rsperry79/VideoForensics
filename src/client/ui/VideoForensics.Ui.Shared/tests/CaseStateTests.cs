@@ -4,12 +4,13 @@ using System.Reflection;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class CaseState_Tests
 {

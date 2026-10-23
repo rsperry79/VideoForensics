@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Decision logic for the evidence-management actions moved over from the retired Events page

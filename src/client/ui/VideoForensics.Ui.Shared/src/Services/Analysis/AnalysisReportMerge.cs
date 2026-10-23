@@ -1,6 +1,6 @@
 using VideoForensics.Data.Core.Models;
 
-namespace VideoForensics.Ui.Shared.Services.Analysis;
+namespace VideoForensics.Client.Ui.Shared.Services.Analysis;
 
 /// <summary>
 /// Combines per-device analysis reports into one report. The server builds each report for a single device (or

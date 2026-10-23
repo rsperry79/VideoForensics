@@ -6,11 +6,11 @@ using System.Net.Http.Json;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Pages;
+namespace VideoForensics.Client.Ui.Shared.Pages;
 /// <summary>
 /// Shared state for the account pages (Details, Sync, Cases): loads the account and its user, and makes the
 /// paired-device authenticated GET calls. Each tab is its own routed page, so each loads the account itself.

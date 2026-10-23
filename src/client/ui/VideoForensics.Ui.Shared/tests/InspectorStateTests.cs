@@ -1,9 +1,8 @@
-
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class InspectorState_Show_Tests
 {

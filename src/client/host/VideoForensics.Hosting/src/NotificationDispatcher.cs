@@ -4,7 +4,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Fans an urgent security event out to every enabled <see cref="INotificationProvider"/>

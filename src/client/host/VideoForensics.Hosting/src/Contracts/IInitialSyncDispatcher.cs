@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Runs an account's first sync in place of a normal sync while its <c>InitialSyncCompleted</c> flag is false. The

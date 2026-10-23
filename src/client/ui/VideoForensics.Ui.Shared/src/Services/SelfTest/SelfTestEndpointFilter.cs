@@ -1,6 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Ui.Shared.Services.SelfTest;
+namespace VideoForensics.Client.Ui.Shared.Services.SelfTest;
 
 /// <summary>Which group an endpoint belongs to on the API Tester page.</summary>
 public enum SelfTestCategory

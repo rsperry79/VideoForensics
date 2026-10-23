@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>A single directory entry surfaced by <see cref="IDirectoryBrowserService"/>.</summary>
     public sealed record DirectoryEntry(string Name, string FullPath);

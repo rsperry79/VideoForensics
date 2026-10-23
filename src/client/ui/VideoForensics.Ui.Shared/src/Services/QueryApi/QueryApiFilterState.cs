@@ -1,6 +1,6 @@
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Ui.Shared.Services.QueryApi;
+namespace VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
 /// <summary>
 /// Default <see cref="IQueryApiFilterState"/>. Registered scoped (one instance per circuit), like <see cref="Scope.ScopeState"/>.

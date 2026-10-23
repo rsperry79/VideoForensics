@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public sealed class EvidenceValidationJobServiceTests
     {

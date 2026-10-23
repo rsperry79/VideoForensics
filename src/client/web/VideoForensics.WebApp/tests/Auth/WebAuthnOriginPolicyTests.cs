@@ -1,13 +1,14 @@
-using VideoForensics.WebApp.Auth;
 using Fido2NetLib;
 
 using Microsoft.AspNetCore.Http;
 
 using VideoForensics.Client.Common.Contracts;
 
+using VideoForensics.Client.WebApp.Auth;
+
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Auth
+namespace VideoForensics.Client.WebApp.Tests.Auth
 {
     public class WebAuthnOriginPolicyTests
     {

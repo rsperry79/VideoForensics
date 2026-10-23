@@ -6,15 +6,15 @@ using Moq;
 using System.Reflection;
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Cross-account security-event queries require SuperAdmin + Local tier (plan §5.10). This must
@@ -109,7 +109,7 @@ namespace VideoForensics.WebApp.Tests
         }
 
 #pragma warning disable CS1998
-        private static async IAsyncEnumerable<VideoForensics.Data.Common.Contracts.SecurityEventDto> EmptyEvents()
+        private static async IAsyncEnumerable<Data.Common.Contracts.SecurityEventDto> EmptyEvents()
         {
             yield break;
         }

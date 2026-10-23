@@ -8,12 +8,12 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the "Display mode" section of OperatorDetails.razor. The page's own operator fetch uses a
 /// raw HttpClient that cannot succeed under bUnit, so these also prove the section does not depend on

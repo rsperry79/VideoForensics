@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Devices;
+namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 
 /// <summary>Readable names for provider device types, and which types are cameras (only cameras have snapshots and time lapses).</summary>
 public static class DeviceTypeNames

@@ -1,6 +1,6 @@
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>Only camera types have snapshots. Chimes, base stations and range extenders are health-only.</summary>
     public class CameraTypeTests

@@ -7,12 +7,12 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the device-label prefill on MyPasskeys: the name field starts with a browser/OS label
 /// (for example "Chrome on Windows") and never overwrites text the operator already typed.

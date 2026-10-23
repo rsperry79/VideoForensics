@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Maps keyboard inputs to media viewer actions.

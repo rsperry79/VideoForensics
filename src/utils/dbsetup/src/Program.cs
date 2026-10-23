@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
 // VideoForensics.Utils.DbSetup: creates/migrates the VideoForensics SQLite database at a specified path,
 // without needing to start the full server. Intended for provisioning a database ahead of first

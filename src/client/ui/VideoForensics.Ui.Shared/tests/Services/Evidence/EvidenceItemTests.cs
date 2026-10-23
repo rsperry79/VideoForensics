@@ -1,10 +1,9 @@
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class EvidenceItem_Label_Tests
 {

@@ -31,7 +31,7 @@ namespace VideoForensics.Client.Common.Contracts
         bool EnableHealthSync { get; set; }
         /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
         bool EnableElevatedPolling { get; set; }
-        /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.WebApp - console/MCP have no pairing API to advertise.</summary>
+        /// <summary>Toggles LAN mDNS advertisement of this server (_videoforensics._tcp.local, plan §5.2) so a pairing client can find it without typing an IP. Default on. Only meaningful on VideoForensics.Client.WebApp - console/MCP have no pairing API to advertise.</summary>
         bool EnableMdnsAdvertisement { get; set; }
 
         /// <summary>Toggles the periodic update-check background service. Default on.</summary>

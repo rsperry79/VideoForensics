@@ -5,10 +5,10 @@ using Microsoft.Extensions.Options;
 using SIPSorcery.Net;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Services;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// SignalR hub for browser-side WebRTC video streaming. Coordinates the SDP offer/answer

@@ -6,10 +6,10 @@ using System.Collections.Concurrent;
 using System.Net;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RealtimeHubTests
     {

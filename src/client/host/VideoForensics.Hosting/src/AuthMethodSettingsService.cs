@@ -1,8 +1,8 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Implementation of <see cref="IAuthMethodSettingsService"/> - manages auth method settings

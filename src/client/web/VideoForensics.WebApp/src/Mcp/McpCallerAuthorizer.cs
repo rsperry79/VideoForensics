@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 
 using System.Security.Claims;
 
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
 
-namespace VideoForensics.WebApp.Mcp
+namespace VideoForensics.Client.WebApp.Mcp
 {
     /// <summary>
     /// Evaluates the server's own authorization policies against the caller of the current MCP request. A request

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default implementation of server connectivity state for hosts where connectivity is always OK

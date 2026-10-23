@@ -1,9 +1,9 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>A roll-up loop (snapshots built into an MP4) is labelled Time Lapse; other videos stay Video.</summary>
 public class EvidenceTimeLapseLabelTests

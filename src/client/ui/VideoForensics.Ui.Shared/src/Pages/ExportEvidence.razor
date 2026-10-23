@@ -1,5 +1,5 @@
 @page "/review/export"
-@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Contracts
 @using VideoForensics.Data.Common.Entities
@@ -10,7 +10,7 @@
 @inject StepUpService StepUp
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<ExportEvidence> L
-@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
+@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
 
 <Breadcrumb Items="@_breadcrumbItems" />
 

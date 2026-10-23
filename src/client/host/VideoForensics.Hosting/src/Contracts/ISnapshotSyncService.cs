@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>What one snapshot sync did for an account.</summary>
     /// <param name="DevicesAttempted">Devices a snapshot was requested for.</param>

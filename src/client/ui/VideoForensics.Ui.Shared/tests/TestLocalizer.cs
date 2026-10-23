@@ -2,9 +2,9 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Resources;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>
 /// Builds a real <see cref="IStringLocalizer{SharedResources}"/> backed by the shipped SharedResources.resx,

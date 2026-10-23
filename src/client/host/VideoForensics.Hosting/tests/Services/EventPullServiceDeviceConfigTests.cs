@@ -4,7 +4,7 @@ using VideoForensics.Data.Common.Entities;
 using DeviceConfigEntity = VideoForensics.Data.Common.Entities.DeviceConfigSnapshot;
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>
     /// Verifies that the device configuration fetched during a sync is persisted as a snapshot, so it is never discarded.

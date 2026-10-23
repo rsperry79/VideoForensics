@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>A device's link to the provider account that can see it, via the device's location.</summary>
 public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName);

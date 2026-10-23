@@ -1,12 +1,12 @@
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// The account page is split into tabs: Details (account card and remove), Sync (sync controls, last-sync times,
 /// history) and Cases. Each tab is its own routed page, and the tab bar links between them.
@@ -54,8 +54,8 @@ public class AccountTabsTests : AccountDetailsPageTestBase
     [InlineData("/accounts/{Id:guid}/cases")]
     public void AccountTabRoutes_AreSuperAdminLocalLikeDetails(string route)
     {
-        Assert.True(VideoForensics.Ui.Shared.Layout.PageAccessRules.TryGetPolicy(route, out AccessPolicy policy));
-        Assert.Equal(VideoForensics.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal, policy);
+        Assert.True(VideoForensics.Client.Ui.Shared.Layout.PageAccessRules.TryGetPolicy(route, out AccessPolicy policy));
+        Assert.Equal(VideoForensics.Client.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal, policy);
     }
 
     [Fact]

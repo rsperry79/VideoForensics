@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Infrastructure
+namespace VideoForensics.Client.WebApp.Infrastructure
 {
     /// <summary>
     /// Resolves the actual listening port from ASPNETCORE_URLS/urls configuration,

@@ -4,11 +4,11 @@ using Bunit;
 using Moq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The Devices tab: one row per device with its uptime status, and a warning when it has gone quiet.</summary>
 public class AccountDevicesTabTests : AccountDetailsPageTestBase
 {

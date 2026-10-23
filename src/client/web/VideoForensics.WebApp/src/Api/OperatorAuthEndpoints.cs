@@ -8,14 +8,14 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Operator (human user) authentication endpoints for username-first passwordless and password-based login (plan Â§5.11/Â§5.12).
@@ -631,7 +631,7 @@ namespace VideoForensics.WebApp.Api
         private static async Task<PasswordCheck> VerifyPasswordAsync(
             LoginPasswordRequest request,
             IOperatorRepository operators,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             ISessionTierHeaderProtector headerProtector,
@@ -829,7 +829,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,
@@ -946,7 +946,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,

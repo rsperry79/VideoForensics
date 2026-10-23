@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>Implements ILlmChatProvider for OpenAI Chat Completions API and OpenAI-compatible endpoints (vLLM, Ollama, etc.)
     /// with tool-use support via function calling.</summary>

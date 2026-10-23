@@ -4,12 +4,12 @@ using Microsoft.Extensions.Hosting;
 
 using Moq;
 
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Regression guard for the root-provider resolution of the scoped <see cref="IEventPullService"/>.

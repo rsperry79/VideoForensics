@@ -6,11 +6,11 @@ using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class DeviceHealthSyncServiceTests
     {

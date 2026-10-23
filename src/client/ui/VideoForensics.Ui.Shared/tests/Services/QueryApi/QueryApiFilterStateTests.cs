@@ -1,10 +1,9 @@
-
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.QueryApi;
 
 public class QueryApiFilterState_Tests
 {

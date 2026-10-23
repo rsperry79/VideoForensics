@@ -3,9 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class SnapshotCaptureRegistrationTests
     {

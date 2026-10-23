@@ -10,12 +10,12 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the setup prompt on MyPasskeys: SignIn sends a user with no passkey to /settings/passkeys?setup=true,
 /// and the page shows the prompt only when that query flag is present.

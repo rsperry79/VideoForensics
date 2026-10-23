@@ -6,7 +6,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IJammingRepository"/> that calls the server's Minimal API

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Hides the snapshots that a Time Lapse stands in for, in the media view only. A Time Lapse covers the window that ends at

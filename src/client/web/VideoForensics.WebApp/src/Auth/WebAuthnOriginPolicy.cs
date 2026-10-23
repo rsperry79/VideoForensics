@@ -2,7 +2,7 @@ using Fido2NetLib;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.WebApp.Auth;
+namespace VideoForensics.Client.WebApp.Auth;
 
 internal static class WebAuthnOriginPolicy
 {

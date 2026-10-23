@@ -3,11 +3,11 @@ using Bunit;
 
 using Microsoft.AspNetCore.Components;
 
-using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class PageAccessRouteView_Tests : NavComponentTestBase
 {

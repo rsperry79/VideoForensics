@@ -4,11 +4,11 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Pages.Redirects;
+using VideoForensics.Client.Ui.Shared.Pages.Redirects;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// The retired Events page's old route now redirects to Evidence's Grid view, preserving the
 /// global forensic scope's query keys (devices/from/to/q - see ScopeState) so a bookmarked or

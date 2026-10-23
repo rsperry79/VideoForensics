@@ -1,9 +1,10 @@
 using System.Security.Cryptography.X509Certificates;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
 
     /// <summary>

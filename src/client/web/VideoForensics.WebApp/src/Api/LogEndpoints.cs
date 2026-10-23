@@ -7,13 +7,14 @@ using System.Net.ServerSentEvents;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>Tunables for the log SSE stream.</summary>
     public sealed class LogStreamOptions

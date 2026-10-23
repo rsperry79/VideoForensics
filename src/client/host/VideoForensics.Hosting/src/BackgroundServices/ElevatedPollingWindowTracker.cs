@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Tracks elevated polling windows for devices. When a device's RSSI degrades significantly,

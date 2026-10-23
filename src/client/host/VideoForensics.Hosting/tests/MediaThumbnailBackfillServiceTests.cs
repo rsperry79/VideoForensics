@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Hosting.Tests;
+namespace VideoForensics.Client.Hosting.Tests;
 
 public class MediaThumbnailBackfillServiceTests
 {

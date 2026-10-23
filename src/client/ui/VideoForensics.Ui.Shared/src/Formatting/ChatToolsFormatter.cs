@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Formatting;
+namespace VideoForensics.Client.Ui.Shared.Formatting;
 
 /// <summary>
 /// Formats chat tool invocation metadata for display in the UI.

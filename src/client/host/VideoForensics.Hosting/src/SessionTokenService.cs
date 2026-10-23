@@ -4,7 +4,7 @@ using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Which kind of credential produced this session, and therefore how PairedDeviceAuthenticationHandler must re-validate it on every request.</summary>
     public enum CredentialKind

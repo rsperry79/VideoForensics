@@ -17,10 +17,10 @@ namespace VideoForensics.Core.Logging.Services
 
         private readonly int _capacity;
         private readonly List<LogRecord> _entries;
-        private readonly object _syncRoot = new();
+        private readonly Lock _syncRoot = new();
         private long _nextSequence = 1;
         private bool _disposed;
-        private Subscriber[] _subscribers = Array.Empty<Subscriber>();
+        private Subscriber[] _subscribers = [];
 
         /// <summary>
         /// Gets the highest sequence number currently in the buffer.
@@ -52,7 +52,7 @@ namespace VideoForensics.Core.Logging.Services
             }
 
             _capacity = capacity;
-            _entries = [with(capacity)];
+            _entries = new List<LogRecord>(capacity);
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace VideoForensics.Core.Logging.Services
 
                 _disposed = true;
                 toComplete = _subscribers;
-                _subscribers = Array.Empty<Subscriber>();
+                _subscribers = [];
             }
 
             foreach (Subscriber subscriber in toComplete)
@@ -216,7 +216,7 @@ namespace VideoForensics.Core.Logging.Services
             subscriber.Complete();
         }
 
-        private sealed class Subscriber
+        private sealed class Subscriber(string? minLevel, string? search, long? afterSequence)
         {
             private const int ChannelCapacity = 1000;
 
@@ -229,16 +229,9 @@ namespace VideoForensics.Core.Logging.Services
                     AllowSynchronousContinuations = false
                 });
 
-            private readonly string? _minLevel;
-            private readonly string? _search;
-            private readonly long? _afterSequence;
-
-            public Subscriber(string? minLevel, string? search, long? afterSequence)
-            {
-                _minLevel = minLevel;
-                _search = search;
-                _afterSequence = afterSequence;
-            }
+            private readonly string? _minLevel = minLevel;
+            private readonly string? _search = search;
+            private readonly long? _afterSequence = afterSequence;
 
             public CancellationTokenRegistration CancellationRegistration { get; set; }
 

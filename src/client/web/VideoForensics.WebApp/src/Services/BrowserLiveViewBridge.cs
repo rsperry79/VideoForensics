@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Manages browser-side WebRTC peer connections that bridge RTP packets from a Ring camera

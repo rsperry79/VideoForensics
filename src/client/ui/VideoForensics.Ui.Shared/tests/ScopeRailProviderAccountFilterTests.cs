@@ -7,14 +7,14 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Scope;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The rail's Provider and Account filters narrow the device list and scope the investigation to it.</summary>
 public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
 {

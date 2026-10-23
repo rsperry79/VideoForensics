@@ -2,10 +2,10 @@ using System.Reactive.Linq;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// <see cref="ILiveViewSessionSource"/> over <see cref="RealtimeHub"/>. It maps each

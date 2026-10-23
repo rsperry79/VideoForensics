@@ -2,10 +2,10 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RealtimeStoreTests
     {

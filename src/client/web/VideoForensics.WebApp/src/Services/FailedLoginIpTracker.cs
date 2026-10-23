@@ -5,9 +5,9 @@ using System.Net;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// In-memory, per-process implementation of <see cref="IFailedLoginIpTracker"/>. Counting state is

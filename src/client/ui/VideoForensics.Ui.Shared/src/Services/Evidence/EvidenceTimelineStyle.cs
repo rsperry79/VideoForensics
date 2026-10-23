@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Display rules for a row on the Evidence timeline: the label text and the colour tone that marks what kind of item it is.

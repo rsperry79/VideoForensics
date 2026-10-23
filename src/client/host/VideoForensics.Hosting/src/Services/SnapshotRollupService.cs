@@ -7,11 +7,11 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Rolls an account's snapshots up into one MP4 loop per device. The stills are the snapshot JPEGs that the scheduled

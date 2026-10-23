@@ -18,16 +18,17 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Exercises the real routing, authorization policy, and rate-limiting of the operator UI-mode endpoints
@@ -106,7 +107,7 @@ namespace VideoForensics.WebApp.Tests
             // Other routes mapped by MapDeviceManagementEndpoints need these resolvable, or endpoint construction throws at startup.
             _ = builder.Services.AddSingleton(new Mock<IPairedDeviceRepository>().Object);
             _ = builder.Services.AddSingleton(new Mock<IOperatorCredentialRepository>().Object);
-            _ = builder.Services.AddSingleton(new Mock<VideoForensics.WebApp.Hubs.ILiveConnectionTracker>().Object);
+            _ = builder.Services.AddSingleton(new Mock<ILiveConnectionTracker>().Object);
             _ = builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
             _ = builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();

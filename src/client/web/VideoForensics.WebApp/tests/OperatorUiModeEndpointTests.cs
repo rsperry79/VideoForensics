@@ -7,15 +7,16 @@ using System.Reflection;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class OperatorUiModeEndpointTests
     {
@@ -312,7 +313,7 @@ namespace VideoForensics.WebApp.Tests
             IOperatorPreferencesRepository preferences,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
+            MethodInfo? method = typeof(DeviceManagementEndpoints)
                 .GetMethod("GetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -339,7 +340,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
+            MethodInfo? method = typeof(DeviceManagementEndpoints)
                 .GetMethod("SetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,

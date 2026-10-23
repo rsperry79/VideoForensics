@@ -8,11 +8,12 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
 
+using VideoForensics.Client.WebApp.Infrastructure;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Infrastructure;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.WebApp.Chat;
 
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>
     /// Server-side implementation of IChatService that drives an LLM tool-use loop against

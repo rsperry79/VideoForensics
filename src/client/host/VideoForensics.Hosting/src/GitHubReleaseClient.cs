@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Thrown when the GitHub API rejects a request because the rate limit is exhausted.

@@ -4,11 +4,11 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// <see cref="DefaultSelfApiHttpClientFactory"/> must reproduce, byte for byte, the behavior every
 /// <c>Pages/Security*.razor</c> page's own private <c>CreateClient()</c> had before this abstraction

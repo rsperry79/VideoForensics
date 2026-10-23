@@ -1,9 +1,9 @@
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards writing a device-config snapshot, which the Device Configuration page makes in-process. Matches the

@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Extensions;
-using VideoForensics.Ui.Shared.Services.Time;
+using VideoForensics.Client.Ui.Shared.Extensions;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
-namespace VideoForensics.Ui.Shared.Layout.Mobile
+namespace VideoForensics.Client.Ui.Shared.Layout.Mobile
 {
     public partial class MobileLayout : IDisposable
     {

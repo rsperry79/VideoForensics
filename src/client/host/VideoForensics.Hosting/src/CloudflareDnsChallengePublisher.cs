@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Publishes DNS-01 challenge records through the Cloudflare API for one zone. The API token and zone id

@@ -7,13 +7,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Jamming is per device: several scoped devices are each analyzed and their incidents combined.</summary>
 public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
 {

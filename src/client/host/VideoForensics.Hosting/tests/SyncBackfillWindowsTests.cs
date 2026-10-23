@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>The first sync backfills forward from a year ago, one month at a time, oldest first, ending at now.</summary>
     public class SyncBackfillWindowsTests

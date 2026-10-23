@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Events;
+namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
 /// Represents a single row in the Events grid, combining an event with its associated media item.

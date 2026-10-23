@@ -1,8 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards the in-process evidence export that the Export Evidence page runs. The HTTP export also requires

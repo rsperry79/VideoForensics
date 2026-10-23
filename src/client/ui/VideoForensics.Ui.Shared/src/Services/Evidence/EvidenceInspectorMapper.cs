@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Maps EvidenceItem to InspectorModel for display in the inspector panel.

@@ -1,10 +1,9 @@
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class CaseItemIntegrity_Tests
 {

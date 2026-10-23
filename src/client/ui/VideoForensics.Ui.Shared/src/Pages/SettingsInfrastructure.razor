@@ -1,7 +1,7 @@
 @page "/settings/infrastructure"
 @using VideoForensics.Client.Core.Tools
 @using Microsoft.Extensions.Localization
-@inject VideoForensics.Ui.Shared.Services.PairedSessionState SessionState
+@inject VideoForensics.Client.Ui.Shared.Services.PairedSessionState SessionState
 @inject IForensicsConfiguration Config
 @inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
@@ -72,9 +72,9 @@ else
 }
 
 @code {
-    private bool CanLocalAdmin => VideoForensics.Ui.Shared.Layout.PageAccessRules.Allows(
-        VideoForensics.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal,
-        VideoForensics.Ui.Shared.Layout.NavContext.FromSession(SessionState, appLockSupported: false));
+    private bool CanLocalAdmin => VideoForensics.Client.Ui.Shared.Layout.PageAccessRules.Allows(
+        VideoForensics.Client.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal,
+        VideoForensics.Client.Ui.Shared.Layout.NavContext.FromSession(SessionState, appLockSupported: false));
 
     private bool _isLoading = true;
     private bool _isAuthenticated;

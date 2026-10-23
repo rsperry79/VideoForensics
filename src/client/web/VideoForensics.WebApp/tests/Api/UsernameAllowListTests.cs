@@ -1,11 +1,11 @@
 using Fido2NetLib.Objects;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api;
+namespace VideoForensics.Client.WebApp.Tests.Api;
 
 /// <summary>Username sign-in offers approved, active passkeys, most recently used first, and keeps all of them.</summary>
 public class UsernameAllowListTests

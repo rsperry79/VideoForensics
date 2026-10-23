@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>One WiFi RSSI reading at a point in time, for plotting.</summary>
 public sealed record RssiSample(DateTime TimestampUtc, int Rssi);

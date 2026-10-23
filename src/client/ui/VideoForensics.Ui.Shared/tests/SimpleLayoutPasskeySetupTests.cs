@@ -4,13 +4,13 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Layout.Simple;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Layout.Simple;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the Simple layout during a limited passkey-setup session: the chat panel and the plain-language
 /// home are hidden, while the routed passkey page still renders.

@@ -1,8 +1,8 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Services.Cases;
+namespace VideoForensics.Client.Ui.Shared.Services.Cases;
 
 /// <summary>
 /// Circuit-scoped state for the active forensic case and its scope management.

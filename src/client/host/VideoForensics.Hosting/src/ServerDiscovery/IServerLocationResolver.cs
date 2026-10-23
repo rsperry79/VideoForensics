@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.ServerDiscovery
+namespace VideoForensics.Client.Hosting.ServerDiscovery
 {
     /// <summary>
     /// Resolves the server address using local mDNS discovery, with fallback to a cached Internet URL.

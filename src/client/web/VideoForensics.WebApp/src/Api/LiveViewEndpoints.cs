@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Live-view session REST API: lets client hosts drive <see cref="ILiveViewSessionService"/> through

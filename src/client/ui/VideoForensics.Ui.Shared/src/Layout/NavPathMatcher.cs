@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Layout
+namespace VideoForensics.Client.Ui.Shared.Layout
 {
     /// <summary>
     /// Pure, testable logic for deciding whether a nav item's target path is the "active" one for

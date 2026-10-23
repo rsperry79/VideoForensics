@@ -1,9 +1,9 @@
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards the provider-account writes that the Accounts and account-wizard pages make in-process. Reads stay open

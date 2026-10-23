@@ -5,11 +5,11 @@ using Moq;
 
 using System.Net;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// <see cref="WebAuthnClient"/> must send its calls through the client
 /// <see cref="ISelfApiHttpClientFactory.CreateClient(string?)"/> returns, not a raw

@@ -6,10 +6,10 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Ui.Shared.Formatting;
+namespace VideoForensics.Client.Ui.Shared.Formatting;
 
 /// <summary>
 /// Builds the plain-language Simple Mode home (timeline plus evidence list) from stored data.

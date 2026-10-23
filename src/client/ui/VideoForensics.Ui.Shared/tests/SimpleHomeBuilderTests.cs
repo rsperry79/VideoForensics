@@ -5,11 +5,12 @@ using System.Globalization;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class SimpleHomeBuilderTests
 {

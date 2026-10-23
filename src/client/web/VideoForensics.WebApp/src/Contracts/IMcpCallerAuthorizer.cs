@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Contracts
+namespace VideoForensics.Client.WebApp.Contracts
 {
     /// <summary>
     /// Checks an MCP tool call's caller against a server authorization policy. MCP requests carry only baseline

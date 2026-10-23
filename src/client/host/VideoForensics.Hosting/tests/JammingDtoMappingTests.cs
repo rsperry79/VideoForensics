@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class JammingDtoMappingTests
     {

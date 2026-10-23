@@ -1,10 +1,11 @@
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Chat API endpoints for the embedded MCP-backed assistant (Milestone 8).

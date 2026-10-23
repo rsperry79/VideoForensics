@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:VideoForensics.Client.MauiApp"
+             xmlns:shared="clr-namespace:VideoForensics.Client.Ui.Shared;assembly=VideoForensics.Client.Ui.Shared"
+             xmlns:blt="clr-namespace:BlazorLocalTime;assembly=BlazorLocalTime"
+             x:Class="VideoForensics.Client.MauiApp.MainPage"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
+
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+        <BlazorWebView.RootComponents>
+            <RootComponent Selector="#app" ComponentType="{x:Type shared:Routes}" />
+            <RootComponent Selector="#local-time" ComponentType="{x:Type blt:BlazorLocalTimeProvider}" />
+        </BlazorWebView.RootComponents>
+    </BlazorWebView>
+
+</ContentPage>

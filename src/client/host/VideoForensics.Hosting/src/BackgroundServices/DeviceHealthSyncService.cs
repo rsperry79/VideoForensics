@@ -9,7 +9,7 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Periodically polls every registered IProviderHealthSource (Ring today; more providers later,
@@ -19,7 +19,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// (JammingToolsOrchestrator) have RSSI history to analyze even between actual video downloads,
     /// see the plan's §3.
     ///
-    /// Registered in server-tier hosts only (console, MCP, VideoForensics.WebApp) - never MAUI: a
+    /// Registered in server-tier hosts only (console, MCP, VideoForensics.Client.WebApp) - never MAUI: a
     /// health source calls a provider's API directly, and per §1's "only the server pulls from any
     /// provider" rule, no client host may do that.
     ///
@@ -118,7 +118,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
-        /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
+        /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             using IServiceScope scope = _scopeFactory.CreateScope();

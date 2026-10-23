@@ -3,11 +3,11 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>The manual sync honours the sync type and date range the account page asked for.</summary>
     public class AccountSyncRunnerRequestTests

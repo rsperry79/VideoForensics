@@ -11,15 +11,15 @@ using Syncfusion.Blazor.DropDowns;
 using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared scenario setup for RingSelfTest page tests. Call A carries two HTTP calls (a JSON
 /// "test"-phase call and a truncated, non-JSON "restore"-phase call); call B carries none.
@@ -130,11 +130,11 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         _ = Services.AddLogging();
         _ = Services.AddScoped(_ => InspectorState);
         _ = Services.AddLocalization();
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelContentService>();
         // The page checks the operator's tier before offering destructive endpoints. These tests exercise those
         // endpoints, so they run as a SuperAdmin on the Local tier.
-        _ = Services.AddScoped(sp => new VideoForensics.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
-        PairedSessionState session = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
+        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
         session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin").GetAwaiter().GetResult();
         session.SetServerSessionKind(localTier: true, passkeySession: false);
 
@@ -480,7 +480,7 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     /// </summary>
     private IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> Panel(IRenderedComponent<RingSelfTest> page)
     {
-        RightPanelContentService slot = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
         Assert.NotNull(slot.Content);
         return Render(slot.Content!);
     }

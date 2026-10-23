@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 using System.Net;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class CappedBackoffRetryPolicyTests
     {

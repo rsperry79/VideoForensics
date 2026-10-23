@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     public enum ThemeMode
     {

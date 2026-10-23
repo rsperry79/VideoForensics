@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Devices;
+namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 
 /// <summary>Whether a device is reachable right now, as shown on an account's Devices tab.</summary>
 public enum DeviceUptimeStatus

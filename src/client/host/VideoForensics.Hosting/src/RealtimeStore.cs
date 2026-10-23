@@ -4,9 +4,9 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Singleton latest-value store. It subscribes to each <see cref="IRealtimeHub"/> stream once, at construction,

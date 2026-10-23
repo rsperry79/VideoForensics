@@ -6,11 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The case page links to the case-scoped export page.</summary>
 public class CaseDetailsExportEntryTests : CasesPagesTestBase
 {

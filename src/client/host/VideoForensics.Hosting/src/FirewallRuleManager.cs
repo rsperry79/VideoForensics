@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// No-op implementation for hosts where the OS firewall is not managed by this app (for example Linux, where

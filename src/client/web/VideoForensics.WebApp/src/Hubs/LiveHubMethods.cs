@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Wire method names pushed from <see cref="LiveHub"/> to connected clients. Each name is defined

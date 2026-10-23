@@ -15,12 +15,12 @@ using System.Text;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for which OperatorDetails.razor sections an Admin (not SuperAdmin) viewer sees. The page's operator
 /// fetch uses a raw HttpClient rooted at NavigationManager.BaseUri, so the NavigationManager here points at a

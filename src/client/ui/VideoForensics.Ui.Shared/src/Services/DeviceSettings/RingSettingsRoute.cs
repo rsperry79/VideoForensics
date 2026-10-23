@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.DeviceSettings;
+namespace VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 
 /// <summary>Routing for the strongly typed Ring settings page, opened from the device configuration page.</summary>
 public static class RingSettingsRoute

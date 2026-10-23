@@ -3,11 +3,11 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Layout.Simple;
+using VideoForensics.Client.Ui.Shared.Layout.Simple;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
 {

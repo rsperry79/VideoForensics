@@ -1,6 +1,6 @@
 using System.Web;
 
-namespace VideoForensics.Ui.Shared.Services.Cases;
+namespace VideoForensics.Client.Ui.Shared.Services.Cases;
 
 /// <summary>
 /// Helper for managing the 'case' query parameter in the URL.

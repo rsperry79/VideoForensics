@@ -1,9 +1,9 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Events;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Events;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Loads a unified evidence stream: events and media files for a forensic scope, de-duplicated.

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class SessionTokenServiceTests
     {

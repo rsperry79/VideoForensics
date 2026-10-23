@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>Implements ILlmChatProvider for Anthropic's Messages API with tool use support.
     /// Supports both api.anthropic.com and self-hosted/compatible endpoints via custom BaseUrl.</summary>

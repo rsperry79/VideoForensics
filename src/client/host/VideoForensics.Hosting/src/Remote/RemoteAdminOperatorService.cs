@@ -4,13 +4,13 @@ using System.Text.Json;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IAdminOperatorService"/> that calls the server's Minimal API
     /// (see VideoForensics.WebApp/Api/DeviceManagementEndpoints.cs) for admin-level operator management.
     /// Used both by a thin client (MAUI) talking to a remote server, and by the WebApp's own Blazor UI
-    /// calling back into its own Minimal API (see VideoForensics.WebApp.Services.SelfHttpServiceExtensions).
+    /// calling back into its own Minimal API (see VideoForensics.Client.WebApp.Services.SelfHttpServiceExtensions).
     /// Maps the wire DTO (<see cref="OperatorSummaryDto"/>) to the client-facing <see cref="OperatorSummary"/>
     /// at this HTTP boundary - see that type's doc comment for why the two are kept independent.
     /// </summary>

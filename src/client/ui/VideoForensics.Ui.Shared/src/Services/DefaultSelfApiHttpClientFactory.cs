@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default <see cref="ISelfApiHttpClientFactory"/> for hosts (e.g. MAUI) with no self-call

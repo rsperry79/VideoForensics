@@ -7,10 +7,10 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Runs each enabled per-account <see cref="SyncSchedule"/>: when an account's event poll is due it pulls
@@ -21,7 +21,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// GetSession() call sites remain in the provider layer, so two same-provider runs in parallel could race on
     /// the shared session; poll intervals are tens of minutes, so sequential processing costs nothing.
     ///
-    /// Server-tier only (VideoForensics.WebApp, registered through AddVideoForensicsScheduledSync): a client host
+    /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsScheduledSync): a client host
     /// must never call a provider directly. Snapshot/RSSI scheduling is a later milestone; RSSI polling stays with
     /// <see cref="DeviceHealthSyncService"/>. Logs use the provider name ("Ring account"), never the account GUID.
     /// </summary>
@@ -92,7 +92,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
         }
 
-        /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the BackgroundService lifecycle/timer.</summary>
+        /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the BackgroundService lifecycle/timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();

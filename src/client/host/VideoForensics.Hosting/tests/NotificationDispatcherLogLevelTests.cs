@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>A provider that fails is a non-critical side effect: it is logged as a warning and the other providers still send.</summary>
     public class NotificationDispatcherLogLevelTests

@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Core.Services;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Makes sure every archived video has a stored thumbnail: once shortly after startup, then on a fixed interval,
     /// so videos imported before thumbnails existed, or whose frame extraction failed earlier, are picked up later.
     ///
-    /// Registered in server-tier hosts only (console, MCP, VideoForensics.WebApp) - never MAUI: the media files
+    /// Registered in server-tier hosts only (console, MCP, VideoForensics.Client.WebApp) - never MAUI: the media files
     /// live on the server, and a client has no local path to write the thumbnail beside.
     /// </summary>
     public class MediaThumbnailBackfillService : BackgroundService

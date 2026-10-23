@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Layout
+namespace VideoForensics.Client.Ui.Shared.Layout
 {
     /// <summary>
     /// Access policies a page can require. Names match WebApp's <c>VideoForensicsPolicies</c>; keep the two in step.

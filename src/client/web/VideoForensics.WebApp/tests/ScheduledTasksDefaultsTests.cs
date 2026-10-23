@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Guards the shipped scheduler default. An empty <c>ScheduledTasks:EnabledProviders</c> makes

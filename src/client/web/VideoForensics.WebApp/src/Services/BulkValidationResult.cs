@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Result of running full provider reconciliation with auto-fix across all devices.

@@ -1,14 +1,14 @@
 using Moq;
 
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Hubs;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class WebPushNotificationProviderTests
     {

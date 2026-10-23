@@ -2,7 +2,7 @@ using Microsoft.Extensions.Localization;
 
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Ui.Shared.Formatting;
+namespace VideoForensics.Client.Ui.Shared.Formatting;
 
 /// <summary>
 /// Translates technical event and jamming data into plain, non-technical language

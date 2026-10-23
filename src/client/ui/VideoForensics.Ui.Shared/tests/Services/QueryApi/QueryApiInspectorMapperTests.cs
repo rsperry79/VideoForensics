@@ -1,11 +1,10 @@
-
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.QueryApi;
 
 public class LocationInspectorMapper_ToInspector_Tests
 {

@@ -1,6 +1,6 @@
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// The WebApp's own <see cref="ISelfApiHttpClientFactory"/> for <c>Pages/Security*.razor</c>: it

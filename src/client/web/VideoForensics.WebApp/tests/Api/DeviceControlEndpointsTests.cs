@@ -3,16 +3,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Api;
 
 using Xunit;
 
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Tests for the device-control endpoint handlers: provider-device-id lookup, boundary validation and status mapping.

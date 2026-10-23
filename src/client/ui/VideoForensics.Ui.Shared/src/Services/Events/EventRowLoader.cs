@@ -2,9 +2,9 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Services.Events;
+namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
 /// Loads event rows for a forensic scope, handling device fan-out, merging, searching, and legal holds.

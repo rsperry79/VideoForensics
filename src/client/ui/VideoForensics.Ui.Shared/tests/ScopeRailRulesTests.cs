@@ -1,12 +1,11 @@
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class ScopeRailRulesTests
 {

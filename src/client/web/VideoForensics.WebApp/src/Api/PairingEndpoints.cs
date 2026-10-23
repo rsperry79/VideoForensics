@@ -6,14 +6,14 @@ using QRCoder;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// QR-pairing + WebAuthn passkey registration/authentication endpoints (plan §5.1). Attestation

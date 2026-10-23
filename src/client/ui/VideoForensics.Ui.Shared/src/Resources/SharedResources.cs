@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Resources
+namespace VideoForensics.Client.Ui.Shared.Resources
 {
     /// <summary>
     /// Marker type with no members - anchors IStringLocalizer&lt;SharedResources&gt; to

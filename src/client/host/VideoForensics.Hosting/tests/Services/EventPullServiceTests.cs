@@ -2,7 +2,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     public class EventPullServiceTests
     {

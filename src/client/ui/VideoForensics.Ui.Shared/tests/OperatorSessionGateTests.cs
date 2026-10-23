@@ -11,16 +11,16 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-using ExportEvidencePage = VideoForensics.Ui.Shared.Pages.ExportEvidence;
-using SettingsInfrastructurePage = VideoForensics.Ui.Shared.Pages.SettingsInfrastructure;
-using SettingsPage = VideoForensics.Ui.Shared.Pages.Settings;
-using ValidateEvidencePage = VideoForensics.Ui.Shared.Pages.ValidateEvidence;
+using ExportEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ExportEvidence;
+using SettingsInfrastructurePage = VideoForensics.Client.Ui.Shared.Pages.SettingsInfrastructure;
+using SettingsPage = VideoForensics.Client.Ui.Shared.Pages.Settings;
+using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Pages other than Sources (/accounts) must decide "signed in" from the operator session only. With an
 /// operator session present and the camera-provider check returning false, the not-signed-in text must not show.
@@ -48,7 +48,7 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         _ = deviceRepo.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
         _ = Services.AddScoped(_ => deviceRepo.Object);
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceExportService>());
-        _ = Services.AddScoped(_ => Mock.Of<VideoForensics.Data.Common.Contracts.ICaseRepository>());
+        _ = Services.AddScoped(_ => Mock.Of<ICaseRepository>());
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationService>());
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
         _ = Services.AddScoped(_ => Mock.Of<IForensicsConfiguration>());
@@ -57,10 +57,10 @@ public abstract class OperatorSessionGateTestBase : BunitContext
         _ = Services.AddScoped(sp => new ConfigToolsOrchestrator(
             NullLogger<ConfigToolsOrchestrator>.Instance, sp.GetRequiredService<IForensicsConfigurationService>()));
         // The export page runs a passkey step-up before exporting; the gate test only checks the operator is signed in.
-        _ = Services.AddScoped(_ => new Mock<VideoForensics.Ui.Shared.Services.WebAuthnClient>(Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Mock.Of<VideoForensics.Ui.Shared.Services.ISelfApiHttpClientFactory>()).Object);
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.StepUpService>();
+        _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<Microsoft.JSInterop.IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        _ = Services.AddScoped<StepUpService>();
         // The pages inject the interface; the host registers it over the concrete orchestrator.
-        _ = Services.AddScoped<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
+        _ = Services.AddScoped<Core.Contracts.IConfigToolsOrchestrator>(sp => sp.GetRequiredService<ConfigToolsOrchestrator>());
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped(_ => Mock.Of<ICultureSwitcher>());
         _ = Services.AddScoped(_ => Mock.Of<IOperatorPreferencesRepository>());

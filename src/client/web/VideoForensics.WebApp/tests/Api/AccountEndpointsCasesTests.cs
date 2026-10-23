@@ -8,15 +8,15 @@ using Moq;
 
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Route-level tests for the account cases read endpoint. Handlers are invoked directly from the endpoint
@@ -38,7 +38,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<IAccountSyncRunner>());
             _ = builder.Services.AddSingleton(Mock.Of<IRingAccountSyncState>());
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
+            _ = builder.Services.AddSingleton(Mock.Of<Common.Contracts.IAccountExportService>());
             WebApplication app = builder.Build();
             app.MapAccountEndpoints();
             return app;

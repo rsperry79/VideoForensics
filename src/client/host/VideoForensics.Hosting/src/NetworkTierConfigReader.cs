@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Reads the persisted network-tier setting directly from SQLite via a lightweight ADO.NET

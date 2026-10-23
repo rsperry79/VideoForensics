@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
-using VideoForensics.Hosting.Local;
+using VideoForensics.Client.Hosting.Local;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class LocalLogViewerServiceTests
     {

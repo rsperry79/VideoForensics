@@ -1,12 +1,12 @@
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Layout.Mobile;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout.Mobile;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers outside-click dismissal of the notices (bell) dropdown in both the desktop (MainLayout)
 /// and mobile (MobileLayout) layouts. Clicking anywhere else on the page must close the dropdown.

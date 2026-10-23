@@ -10,7 +10,7 @@ namespace VideoForensics.Client.Common.Contracts
     /// Deliberately a small cross-platform-capable abstraction rather than calling a platform API
     /// (Windows Hello via <c>Windows.Security.Credentials.UI.UserConsentVerifier</c>) directly from
     /// UI code, per the plan - Windows is the only implementation today
-    /// (<c>FingerprintLocalAuthGate</c> in VideoForensics.MauiApp, wrapping Plugin.Fingerprint.Maui,
+    /// (<c>FingerprintLocalAuthGate</c> in VideoForensics.Client.MauiApp, wrapping Plugin.Fingerprint.Maui,
     /// which itself wraps that same WinRT API), but adding iOS/Android later reuses this gate
     /// instead of a redesign. No implementation is registered on non-MAUI hosts (WebApp, console,
     /// MCP) - app-lock is a device-local concept with no meaning for a server process.

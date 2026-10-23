@@ -20,7 +20,7 @@ Installation" push deployment is not available. Silent/unattended installs via c
 ### Build Environment
 
 - **Inno Setup 6** — [jrsoftware.org](https://jrsoftware.org/isdl.php), or via `winget install JRSoftware.InnoSetup`. GitHub's `windows-latest` Actions runners already have it preinstalled.
-- **.NET 10 SDK** (to publish `VideoForensics.WebApp` and `VideoForensics.MauiApp`)
+- **.NET 10 SDK** (to publish `VideoForensics.WebApp` and `VideoForensics.Client.MauiApp`)
 
 ### Target Machine (Runtime)
 
@@ -36,7 +36,7 @@ Desktop client only, or both:
   auto-start). Has an optional **Install bundled FFmpeg** task (checked by default) for video
   transcoding/metadata — uncheck it if you already have a system-wide ffmpeg you'd rather use (see
   [Using a Custom ffmpeg Build](#using-a-custom-ffmpeg-build) below).
-- **Desktop Client** (`VideoForensics.MauiApp`) — a plain, unpackaged desktop app (no MSIX, no separate
+- **Desktop Client** (`VideoForensics.Client.MauiApp`) — a plain, unpackaged desktop app (no MSIX, no separate
   service) that connects to a Server over the network. Has an optional **Create Desktop & Start Menu
   shortcuts** task (checked by default).
 
@@ -48,7 +48,7 @@ Before building the installer, publish both self-contained components:
 
 ```bash
 dotnet publish src/client/web/VideoForensics.WebApp -c Release -r win-x64 --self-contained true -o publish\server
-dotnet publish src/client/maui/VideoForensics.MauiApp -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish\desktop
+dotnet publish src/client/maui/VideoForensics.Client.MauiApp -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish\desktop
 ```
 
 ## FFmpeg Binaries

@@ -1,8 +1,8 @@
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Configuration for server-side scheduled provider tasks (bound from the "ScheduledTasks" section).
-    /// Only the server tier (VideoForensics.WebApp) ever enables this; client hosts never talk to providers.
+    /// Only the server tier (VideoForensics.Client.WebApp) ever enables this; client hosts never talk to providers.
     /// </summary>
     public sealed class ScheduledTasksOptions
     {

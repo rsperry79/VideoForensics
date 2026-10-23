@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class CloudflareApiClientTests
     {

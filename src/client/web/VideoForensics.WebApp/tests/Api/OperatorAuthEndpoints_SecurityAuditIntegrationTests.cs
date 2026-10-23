@@ -8,17 +8,17 @@ using System.Net;
 using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>Tests for ISecurityAuditService integration in OperatorAuthEndpoints (Phase 0.5).</summary>
     public class OperatorAuthEndpoints_SecurityAuditIntegrationTests
@@ -289,7 +289,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ILogger<Program> logger,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.OperatorAuthEndpoints)
+            MethodInfo? method = typeof(OperatorAuthEndpoints)
                 .GetMethod("LoginPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,

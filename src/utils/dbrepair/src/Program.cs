@@ -7,7 +7,7 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.Diagnostics;
 using VideoForensics.Utils.Diagnostics.Contracts;

@@ -13,16 +13,16 @@ using Moq;
 using Syncfusion.Blazor.DropDowns;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.QueryApi;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class QueryApiEventsPage_Tests : BunitContext
 {
@@ -39,7 +39,7 @@ public class QueryApiEventsPage_Tests : BunitContext
         _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         _ = Services.AddSingleton(new ScopeState());
         _ = Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Inspector.InspectorState>();
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddSingleton(_discovery.Object);
         _ = Services.AddSingleton(new Mock<IEventAndConfigService>().Object);

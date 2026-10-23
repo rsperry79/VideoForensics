@@ -16,17 +16,17 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Pipeline tests for retiring provider accounts, listing removed ones, and queueing/polling account exports.

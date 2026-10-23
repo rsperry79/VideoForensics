@@ -10,12 +10,12 @@ using Syncfusion.Blazor.DropDowns;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the release channel card on the update page. The card is shown only to Admin and above; only a
 /// SuperAdmin viewer gets the dropdown, and Admin sees the current channel as read-only text.

@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     public class SyncActivityLogTests
     {

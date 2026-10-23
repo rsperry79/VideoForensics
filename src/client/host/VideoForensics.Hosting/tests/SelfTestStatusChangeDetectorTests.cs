@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class SelfTestStatusChangeDetectorTests
     {

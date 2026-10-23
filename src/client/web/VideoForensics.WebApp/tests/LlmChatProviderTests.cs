@@ -2,11 +2,11 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-using VideoForensics.WebApp.Chat;
+using VideoForensics.Client.WebApp.Chat;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 
 /// <summary>Common test utilities for LLM chat providers.</summary>
 internal static class LlmChatProviderTestHelpers

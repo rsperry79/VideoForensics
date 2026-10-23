@@ -1,11 +1,11 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for managing login method (auth method) settings: which authentication methods

@@ -3,11 +3,11 @@ using AngleSharp.Dom;
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Components.Evidence;
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Tests.Components.Evidence;
 
 public class MediaThumbTests : BunitContext
 {

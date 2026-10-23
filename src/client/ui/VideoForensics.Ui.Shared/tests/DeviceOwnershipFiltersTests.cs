@@ -6,14 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Scope;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The shared Provider/Account filter reports which devices remain visible after each change.</summary>
 public class DeviceOwnershipFilters_Tests : BunitContext
 {

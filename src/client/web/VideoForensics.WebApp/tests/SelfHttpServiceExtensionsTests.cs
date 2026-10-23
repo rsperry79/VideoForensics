@@ -4,13 +4,13 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class SelfHttpServiceExtensionsTests
     {

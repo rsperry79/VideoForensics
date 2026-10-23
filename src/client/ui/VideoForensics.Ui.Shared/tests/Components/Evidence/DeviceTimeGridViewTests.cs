@@ -5,12 +5,12 @@ using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Tests.Components.Evidence;
 
 public class DeviceTimeGridViewTests : BunitContext
 {

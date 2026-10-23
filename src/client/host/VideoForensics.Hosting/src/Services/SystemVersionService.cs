@@ -5,7 +5,7 @@ using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Provides system version information including semantic version, build timestamp, and release channel.

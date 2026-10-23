@@ -2,7 +2,7 @@ using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Publishes and removes the TXT record a DNS-01 challenge needs.</summary>
     public interface IDnsChallengePublisher

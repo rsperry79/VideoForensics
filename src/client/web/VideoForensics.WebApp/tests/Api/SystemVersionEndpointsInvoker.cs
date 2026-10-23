@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Http;
 using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Helper class to invoke private methods in SystemVersionEndpoints for testing.

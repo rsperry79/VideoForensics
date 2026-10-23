@@ -21,25 +21,25 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.MCP",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{F643C2BC-D7C9-4928-9C8B-6F9DDE2DE8F2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting", "src\client\host\VideoForensics.Hosting\src\VideoForensics.Hosting.csproj", "{17165AF6-720E-4500-BF4B-785A95922B65}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Hosting", "src\client\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj", "{17165AF6-720E-4500-BF4B-785A95922B65}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Hosting.Tests", "src\client\host\VideoForensics.Hosting\tests\VideoForensics.Hosting.Tests.csproj", "{16F4D3DA-EF17-4CA6-971C-60021E5DBE0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Hosting.Tests", "src\client\host\VideoForensics.Hosting\tests\VideoForensics.Client.Hosting.Tests.csproj", "{16F4D3DA-EF17-4CA6-971C-60021E5DBE0D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ui", "Ui", "{908F72F5-9B79-41D6-90D8-69CF91284406}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared", "src\client\ui\VideoForensics.Ui.Shared\src\VideoForensics.Ui.Shared.csproj", "{5C8906AE-CF81-4083-8034-F148B7F53CBF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Ui.Shared", "src\client\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj", "{5C8906AE-CF81-4083-8034-F148B7F53CBF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Ui.Shared.Tests", "src\client\ui\VideoForensics.Ui.Shared\tests\VideoForensics.Ui.Shared.Tests.csproj", "{36FC9DFA-6877-4BBE-BF6D-1A1C09243787}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.Ui.Shared.Tests", "src\client\ui\VideoForensics.Ui.Shared\tests\VideoForensics.Client.Ui.Shared.Tests.csproj", "{36FC9DFA-6877-4BBE-BF6D-1A1C09243787}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{219CA8FB-E4D2-4182-A6D9-EBBBAAF3A66F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp", "src\client\web\VideoForensics.WebApp\src\VideoForensics.WebApp.csproj", "{0A7FD988-BD57-48A0-B492-E73292BB3C1E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.WebApp", "src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj", "{0A7FD988-BD57-48A0-B492-E73292BB3C1E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.WebApp.Tests", "src\client\web\VideoForensics.WebApp\tests\VideoForensics.WebApp.Tests.csproj", "{4DA99BC9-B488-4F94-AAD9-C307C78FD1BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.WebApp.Tests", "src\client\web\VideoForensics.WebApp\tests\VideoForensics.Client.WebApp.Tests.csproj", "{4DA99BC9-B488-4F94-AAD9-C307C78FD1BB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Maui", "Maui", "{8270ADBD-87D3-4727-80D6-B1E1DF44509F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.MauiApp", "src\client\maui\VideoForensics.MauiApp\src\VideoForensics.MauiApp.csproj", "{5D97B1EC-62BD-432E-B62E-B933A299B066}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoForensics.Client.MauiApp", "src\client\maui\VideoForensics.Client.MauiApp\src\VideoForensics.Client.MauiApp.csproj", "{5D97B1EC-62BD-432E-B62E-B933A299B066}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{E1526BA8-5B95-D769-94C8-2B12AEB81D77}"
 EndProject

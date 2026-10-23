@@ -1,12 +1,12 @@
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Services.Time;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Displays a stored UTC instant in the user's zone, with a fallback for missing values.</summary>
 public class LocalTimeTextTests : BunitContext
 {

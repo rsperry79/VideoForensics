@@ -5,12 +5,12 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Services.Events;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Events;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.Events;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Events;
 
 public class EventRowLoader_LoadAsync_SingleDevice_Tests
 {

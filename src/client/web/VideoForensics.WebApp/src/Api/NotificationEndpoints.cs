@@ -1,9 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Notification settings for the /settings/notifications screen (plan §5.6). Gated Admin, per

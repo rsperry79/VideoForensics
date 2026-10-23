@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 using System.Text.Json;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Step-up re-authentication (plan §5.7): a small number of high-risk actions (device

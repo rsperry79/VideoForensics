@@ -1,13 +1,13 @@
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LocalSelfTestStatusSourceTests
     {

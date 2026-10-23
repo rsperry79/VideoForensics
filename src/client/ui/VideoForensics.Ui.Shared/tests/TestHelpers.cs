@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>
 /// A fake time provider that returns a fixed time for testing.

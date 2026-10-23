@@ -1,11 +1,11 @@
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
 
 using IDeviceControlService = VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Provider-agnostic device controls (light, siren, volume, night mode, motion detection, do-not-disturb).

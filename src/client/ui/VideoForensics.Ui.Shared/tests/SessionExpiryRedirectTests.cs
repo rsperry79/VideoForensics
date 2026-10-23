@@ -4,13 +4,13 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Layout.Mobile;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout.Mobile;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the session-expiry redirect in the desktop (MainLayout) and mobile (MobileLayout) layouts:
 /// when PairedSessionState raises AuthenticationExpired, the layout must send the user to

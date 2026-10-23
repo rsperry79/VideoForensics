@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Provider authentication endpoints (plan §6/M7): login and two-factor authentication flows.
@@ -65,7 +65,7 @@ namespace VideoForensics.WebApp.Api
 
                 return Results.Ok(MapAuthResult(result));
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
+            catch (Providers.Ring.Exceptions.TwoFactorAuthenticationRequiredException)
             {
                 // 2FA is required: store credentials for the follow-up call and return a pending state
                 Guid attemptId = attemptCache.StoreAttempt(request.ProviderName, request.Username, request.Password);
@@ -131,7 +131,7 @@ codeProvider,
 
                 return Results.Ok(MapAuthResult(result));
             }
-            catch (VideoForensics.Providers.Ring.Exceptions.TwoFactorAuthenticationIncorrectException)
+            catch (Providers.Ring.Exceptions.TwoFactorAuthenticationIncorrectException)
             {
                 return Results.BadRequest(new AuthResultDto(
                     Success: false,

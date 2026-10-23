@@ -1,15 +1,15 @@
 @page "/settings/operators/{Id:guid}"
-@using VideoForensics.Ui.Shared.Services.Time
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
-@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services
 @using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject StepUpService StepUp
 @inject IStringLocalizer<OperatorDetails> L
-@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
+@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
 @inject VideoForensics.Client.Common.Contracts.IAdminOperatorService AdminOperatorService
 
 <Breadcrumb Items="@_breadcrumbItems" />

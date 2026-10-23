@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.ServerDiscovery
+namespace VideoForensics.Client.Hosting.ServerDiscovery
 {
     /// <summary>
     /// Thrown when the server cannot be located via mDNS discovery and no cached Internet URL is available.

@@ -1,8 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Starts the permanent Cloudflare tunnel at startup when a tunnel token is saved and the network tier is not

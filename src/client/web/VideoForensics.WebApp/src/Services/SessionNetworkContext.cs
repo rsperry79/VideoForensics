@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Circuit-scoped record of a Blazor Server session's REAL network tier - resolved once, from

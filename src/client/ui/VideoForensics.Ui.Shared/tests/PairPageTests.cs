@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Components;
 
 using System.Reflection;
 
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Pair.razor (device-level passkey registration via api/v1/pairing) is kept but not routed.
 /// Checked via the generated component's RouteAttribute, since bUnit renders components directly

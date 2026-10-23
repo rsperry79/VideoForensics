@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Tests.Api;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.WebApp.Tests.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// xUnit tests for SystemVersionEndpoints covering GET /api/v1/system/version and /api/v1/system/version-manifest.

@@ -1,6 +1,6 @@
-using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Contracts
+namespace VideoForensics.Client.WebApp.Contracts
 {
     /// <summary>
     /// Server-side check of a privileged in-process call against the operator behind the current Blazor circuit.

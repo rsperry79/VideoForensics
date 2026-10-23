@@ -10,12 +10,12 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Shared Syncfusion + session setup for components that render SfButton and read PairedSessionState.</summary>
 public abstract class NavComponentTestBase : BunitContext
 {

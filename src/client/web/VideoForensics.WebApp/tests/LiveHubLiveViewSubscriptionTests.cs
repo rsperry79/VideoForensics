@@ -6,13 +6,13 @@ using Moq;
 
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Hubs;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LiveHubLiveViewSubscriptionTests
     {

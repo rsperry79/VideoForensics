@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Periodically checks GitHub for a newer release (Stable or Testing channel per config)

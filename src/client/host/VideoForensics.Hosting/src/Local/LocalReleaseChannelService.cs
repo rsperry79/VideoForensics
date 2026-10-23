@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Local
+namespace VideoForensics.Client.Hosting.Local
 {
     /// <summary>
     /// In-process <see cref="IReleaseChannelService"/> for the server tier: reads and persists the update release channel

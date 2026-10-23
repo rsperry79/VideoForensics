@@ -9,12 +9,12 @@ using System.Reactive.Subjects;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class LiveViewPageTests : BunitContext
 {
@@ -26,7 +26,7 @@ public class LiveViewPageTests : BunitContext
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddLogging();
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
 
         var deviceRepository = new Mock<IDeviceRepository>();
         _ = deviceRepository
@@ -49,7 +49,7 @@ public class LiveViewPageTests : BunitContext
     public void LiveView_ImportsModuleFromRclContentPath()
     {
         // Arrange / Act
-        IRenderedComponent<LiveView> cut = Render<VideoForensics.Ui.Shared.Pages.LiveView>();
+        IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
 
         // Assert: the module must be requested from the Razor class library static asset path,
         // not "./js/liveview.js" (which resolves to /js/liveview.js and returns 404).

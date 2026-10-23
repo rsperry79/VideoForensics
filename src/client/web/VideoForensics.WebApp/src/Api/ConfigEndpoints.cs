@@ -1,7 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Minimal API surface for forensics configuration read operations. Exposes only client-safe

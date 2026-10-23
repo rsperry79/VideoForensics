@@ -2,12 +2,12 @@
 using System.Resources;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Pins the reviewed policy for every admin page. Each row was checked against the endpoints the page calls (see the
 /// comment on the matching row in <see cref="PageAccessRules"/>). Changing a row must be a deliberate review decision.

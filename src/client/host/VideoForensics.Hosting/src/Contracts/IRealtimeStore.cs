@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Singleton holder of the latest value per real-time stream. It is the only subscriber to

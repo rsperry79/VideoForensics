@@ -12,12 +12,12 @@ using System.Text.Json;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts/{Id}/schedule page tests: the sync-schedule repository mock, the real
 /// <see cref="PairedSessionState"/> over the bUnit JS runtime, and the stub <see cref="HttpClient"/> used for

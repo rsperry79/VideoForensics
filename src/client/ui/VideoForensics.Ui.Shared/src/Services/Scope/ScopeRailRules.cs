@@ -2,7 +2,7 @@ using System.Globalization;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>
 /// Pure decision rules behind the right-hand scope rail (provider/account/device filters, date range,

@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class NetworkTierConfigReaderTests
     {

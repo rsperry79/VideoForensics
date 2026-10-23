@@ -5,7 +5,7 @@ using System.Reflection;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>
     /// Verifies that the Ring device discovery service built by the hosting DI graph receives the

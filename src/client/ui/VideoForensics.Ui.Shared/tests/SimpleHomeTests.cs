@@ -9,12 +9,12 @@ using System.Text.RegularExpressions;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Formatting;
-using VideoForensics.Ui.Shared.Layout.Simple;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Layout.Simple;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class SimpleHomeTests : SimpleModeLayoutTestBase
 {
@@ -142,7 +142,7 @@ public class SimpleHomeTests : SimpleModeLayoutTestBase
     [Fact]
     public void SimpleHome_Text_ComesFromTheLocalizer()
     {
-        _ = Services.AddScoped<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>(_ => new TaggingLocalizer());
+        _ = Services.AddScoped<Microsoft.Extensions.Localization.IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>(_ => new TaggingLocalizer());
 
         IRenderedComponent<SimpleHome> component = RenderLoaded();
 

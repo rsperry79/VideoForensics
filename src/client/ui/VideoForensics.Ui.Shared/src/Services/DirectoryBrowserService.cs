@@ -1,6 +1,6 @@
 using System.Security;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <inheritdoc cref="IDirectoryBrowserService"/>
     public sealed class DirectoryBrowserService : IDirectoryBrowserService

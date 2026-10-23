@@ -1,11 +1,11 @@
 using SIPSorcery.Net;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Exercises <see cref="BrowserLiveViewBridge"/> with a real <see cref="RTCPeerConnection"/> (SIPSorcery's

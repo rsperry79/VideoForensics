@@ -15,17 +15,17 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Pipeline tests for POST sync-now (sync type and range) and GET/PUT config-sync-interval. Requests go through an
@@ -79,7 +79,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
             _ = builder.Services.AddSingleton(_runner.Object);
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
+            _ = builder.Services.AddSingleton(Mock.Of<Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddSingleton(_syncState.Object);
 
             // The account routes require SuperAdmin on the Local tier; the test scheme always signs in such an operator.

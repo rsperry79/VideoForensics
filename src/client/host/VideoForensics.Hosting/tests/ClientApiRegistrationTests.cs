@@ -2,10 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class ClientApiRegistrationTests
     {

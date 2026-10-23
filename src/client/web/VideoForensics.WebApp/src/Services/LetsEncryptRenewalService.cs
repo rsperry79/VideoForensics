@@ -1,4 +1,6 @@
-namespace VideoForensics.WebApp.Services
+using VideoForensics.Client.WebApp.Services;
+
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Checks the certificate every 12 hours and renews it inside the 30-day window. The first check runs at

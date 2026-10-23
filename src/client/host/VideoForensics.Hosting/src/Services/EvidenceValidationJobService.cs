@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// In-memory registry of evidence validation jobs. Work runs on a background task under its own DI scope with

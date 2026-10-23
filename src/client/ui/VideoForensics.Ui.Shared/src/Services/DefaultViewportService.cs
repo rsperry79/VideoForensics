@@ -1,8 +1,8 @@
 using Microsoft.JSInterop;
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VideoForensics.Ui.Shared.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VideoForensics.Client.Ui.Shared.Tests")]
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default implementation of <see cref="IViewportService"/> using JS interop to detect

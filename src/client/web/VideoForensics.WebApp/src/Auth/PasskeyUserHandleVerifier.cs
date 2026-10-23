@@ -1,6 +1,6 @@
 using Fido2NetLib;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     /// <summary>
     /// Builds the Fido2NetLib user-handle ownership callback for passkey assertions.

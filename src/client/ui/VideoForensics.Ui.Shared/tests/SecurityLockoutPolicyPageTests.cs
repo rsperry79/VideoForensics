@@ -12,12 +12,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// SecurityLockoutPolicy.razor's self-HTTP calls must go through the injected
 /// <see cref="ISelfApiHttpClientFactory"/> (plan §5.10/§5.12) rather than a raw

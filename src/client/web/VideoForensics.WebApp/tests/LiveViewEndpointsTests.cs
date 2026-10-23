@@ -17,14 +17,14 @@ using System.Text.Encodings.Web;
 using System.Threading.RateLimiting;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Exercises the live-view REST routes through an in-memory TestServer so routing, the Admin/ReadOnly

@@ -1,7 +1,7 @@
 
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services;
+namespace VideoForensics.Client.Ui.Shared.Services;
 /// <summary>Pure logic for the account sync panel: request body shape and range parsing.</summary>
 public static class SyncRequestBuilder
 {

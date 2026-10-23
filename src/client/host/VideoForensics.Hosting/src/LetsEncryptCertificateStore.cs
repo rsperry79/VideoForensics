@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Persists the Let's Encrypt account key and the issued certificate bundle. Both contain private key

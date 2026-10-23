@@ -1,7 +1,7 @@
 
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 /// <summary>
 /// Immutable viewport state for image pan and zoom operations.
 /// </summary>

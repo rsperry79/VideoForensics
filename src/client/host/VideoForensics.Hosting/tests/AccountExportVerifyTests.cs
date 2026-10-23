@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>The export file must parse completely before an account is purged on its strength.</summary>
     public sealed class AccountExportVerifyTests : IDisposable

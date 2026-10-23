@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.WebApp.Discovery
+namespace VideoForensics.Client.WebApp.Discovery
 {
     /// <summary>
     /// Advertises this server on the LAN via mDNS/DNS-SD (plan §5.2) as

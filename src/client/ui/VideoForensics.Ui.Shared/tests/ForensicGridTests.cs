@@ -7,12 +7,12 @@ using Microsoft.JSInterop;
 
 using Syncfusion.Blazor.Grids;
 
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class ForensicGrid_ToolbarItem_Tests
 {

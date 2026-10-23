@@ -10,15 +10,15 @@ using Microsoft.Extensions.Localization;
 using Moq;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services.QueryApi;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class QueryApiDeviceDetailsPage_Tests : BunitContext
 {

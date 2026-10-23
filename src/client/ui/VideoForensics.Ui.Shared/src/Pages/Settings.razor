@@ -1,16 +1,16 @@
 @page "/settings"
 @using VideoForensics.Client.Core.Tools
 @using Microsoft.Extensions.Localization
-@using VideoForensics.Ui.Shared.Layout
-@using VideoForensics.Ui.Shared.Layout.RightPanel
-@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Layout
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
 @inject PairedSessionState SessionState
 @inject IForensicsConfiguration Config
 @inject IForensicsConfigurationService ConfigService
 @inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Settings> L
-@inject VideoForensics.Ui.Shared.Services.PairedSessionState SessionState
+@inject VideoForensics.Client.Ui.Shared.Services.PairedSessionState SessionState
 @inject IServerLocationInformationService ServerLocationService
 
 <h4 class="mb-4">@L["Title"]</h4>

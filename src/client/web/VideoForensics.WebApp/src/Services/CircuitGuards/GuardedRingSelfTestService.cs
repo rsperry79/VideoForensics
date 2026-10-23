@@ -1,8 +1,8 @@
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards destructive self-test runs. Matches POST /api/v1/selftest/run: a request with Destructive set requires

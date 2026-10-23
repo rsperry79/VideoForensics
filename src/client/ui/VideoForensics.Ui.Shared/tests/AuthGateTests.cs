@@ -8,13 +8,13 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for AuthGate.razor's three-way bootstrap redirect decision logic
 /// (<see cref="AuthGate.ResolveBootstrapRedirectTarget"/>).

@@ -1,11 +1,11 @@
 
 using Microsoft.AspNetCore.Components;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class LeftPanelContentServiceTests
 {

@@ -1,6 +1,6 @@
 using Microsoft.JSInterop;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>Pure rule for which linked account is the current selection.</summary>
     public static class AccountSelection

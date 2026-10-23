@@ -7,13 +7,13 @@ using Microsoft.Extensions.Localization;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Resources;
 
 using Xunit;
 
-using ValidateEvidencePage = VideoForensics.Ui.Shared.Pages.ValidateEvidence;
+using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Validate Evidence runs as server-side jobs; the page must reattach to the latest job and render its console and failure state.
 /// </summary>

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default implementation for hosts where server location information is not available or not applicable

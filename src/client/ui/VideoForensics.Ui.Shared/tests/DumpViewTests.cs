@@ -3,11 +3,11 @@ using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Components.Dump;
+using VideoForensics.Client.Ui.Shared.Components.Dump;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class DumpView_Rendering_Tests : BunitContext
 {

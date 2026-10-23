@@ -7,14 +7,15 @@ using Moq;
 
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Mcp;
+using VideoForensics.Client.WebApp.Mcp.Tools;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Mcp;
-using VideoForensics.WebApp.Mcp.Tools;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests;
 
 public class McpCallerAuthorizer_Tests
 {
@@ -75,7 +76,7 @@ public class McpToolSuccessPath_Tests
         var repository = new Mock<IAuditTrailRepository>();
         _ = repository.Setup(r => r.GetAuditTrailSummaryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AuditTrailSummary());
-        var authorizer = new Mock<VideoForensics.WebApp.Contracts.IMcpCallerAuthorizer>();
+        var authorizer = new Mock<IMcpCallerAuthorizer>();
         _ = authorizer.Setup(a => a.RequireAsync(VideoForensicsPolicies.Admin)).Returns(Task.CompletedTask);
         var tools = new AuditTrailTools(repository.Object, authorizer.Object, NullLogger<AuditTrailTools>.Instance);
         var locationId = Guid.NewGuid();

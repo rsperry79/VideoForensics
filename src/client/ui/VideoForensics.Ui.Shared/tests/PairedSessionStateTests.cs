@@ -8,11 +8,11 @@ using Moq;
 using System.Net;
 using System.Text;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the passkey-setup-only flag on PairedSessionState: set by a create-passkey sign-in, persisted
 /// alongside the other session fields, and cleared with the session.

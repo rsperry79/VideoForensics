@@ -1,9 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards server configuration changes made from the Settings and Infrastructure pages. These run in-process, and no

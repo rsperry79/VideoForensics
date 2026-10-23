@@ -3,12 +3,12 @@ using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers the desktop layout during a limited passkey-setup session: no navigation groups, no
 /// sidebar links, no settings panel - only the sign-out control in the top bar.

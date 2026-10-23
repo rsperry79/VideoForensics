@@ -1,8 +1,8 @@
-using VideoForensics.WebApp.Chat;
+using VideoForensics.Client.WebApp.Chat;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Opt-in live test against the real Anthropic API; skipped unless ANTHROPIC_API_KEY is set.

@@ -10,12 +10,12 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for UserMenuButton bUnit tests. Registers the minimal Syncfusion services the
 /// component's SfButton needs to render for real (the same three services EvidencePageTests

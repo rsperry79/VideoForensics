@@ -1,6 +1,6 @@
 @page "/accounts/{Id:guid}/devices"
 @inherits AccountTabPageBase
-@using VideoForensics.Ui.Shared.Services.Devices
+@using VideoForensics.Client.Ui.Shared.Services.Devices
 @inject ILocationRepository LocationRepository
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceHealthRepository DeviceHealthRepository
@@ -152,7 +152,7 @@ else
         try
         {
             var now = DateTime.UtcNow;
-            var pending = new List<(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
+            var pending = new List<(VideoForensics.Data.Common.Entities.Device Device, DeviceUptimeStatus Status, DateTime? LastSeen, VideoForensics.Client.Ui.Shared.Services.Devices.LatestDeviceMedia.Selection Media)>();
             var locations = await LocationRepository.ListByProviderAccountIdAsync(Id, CancellationToken.None);
             foreach (var location in locations)
             {

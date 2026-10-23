@@ -10,10 +10,10 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// SignalR-backed <see cref="IRealtimeHub"/> for the server's /hubs/live. It is the only type that touches

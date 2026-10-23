@@ -1,9 +1,9 @@
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.SelfTest;
+namespace VideoForensics.Client.Ui.Shared.Services.SelfTest;
 
 /// <summary>
 /// Maps SelfTestCallDto to InspectorModel for display in the inspector panel.

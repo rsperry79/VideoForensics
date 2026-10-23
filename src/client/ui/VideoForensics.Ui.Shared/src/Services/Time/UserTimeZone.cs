@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services.Time;
+namespace VideoForensics.Client.Ui.Shared.Services.Time;
 
 /// <summary>
 /// The zone a signed-in user's times are displayed in. Stored times are UTC; this converts them for display.

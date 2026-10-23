@@ -7,12 +7,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     public static class PairedDeviceAuthenticationDefaults
     {

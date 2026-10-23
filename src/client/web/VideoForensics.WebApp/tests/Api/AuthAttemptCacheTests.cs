@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Caching.Memory;
 
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class AuthAttemptCacheTests
     {

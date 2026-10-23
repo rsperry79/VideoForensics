@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Tests.Api;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.WebApp.Tests.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Integration tests for the full version-check flow end-to-end.

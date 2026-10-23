@@ -2,11 +2,11 @@
 using Bunit;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The shared ScopeRail bUnit base must supply the defaults and helpers without subclass setup.</summary>
 public class ScopeRailTestContext_Defaults_Tests : ScopeRailTestContext
 {

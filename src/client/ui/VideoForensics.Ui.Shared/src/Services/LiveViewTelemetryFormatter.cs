@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Formats the latest live-view telemetry values for display. Numbers are always invariant-culture text, so a

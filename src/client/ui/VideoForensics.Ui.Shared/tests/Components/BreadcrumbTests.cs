@@ -6,12 +6,12 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Resources;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Components;
+namespace VideoForensics.Client.Ui.Shared.Tests.Components;
 
 public class Breadcrumb_Tests : BunitContext
 {

@@ -4,7 +4,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// SignalR-backed <see cref="ILiveViewTelemetryPublisher"/>: pushes a live-view session's state to

@@ -3,8 +3,8 @@ using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Remote;
-namespace VideoForensics.Hosting.Tests
+using VideoForensics.Client.Hosting.Remote;
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteDeviceDiscoveryServiceTests
     {

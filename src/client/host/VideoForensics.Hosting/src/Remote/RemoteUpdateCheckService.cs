@@ -4,7 +4,7 @@ using System.Text.Json;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IUpdateCheckService"/> that calls the server's Minimal API

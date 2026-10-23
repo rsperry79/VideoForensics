@@ -1,7 +1,7 @@
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.QueryApi;
+namespace VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
 /// <summary>
 /// A dropdown entry for the QueryApi filter panel: <see cref="Value"/> is the id used for queries, <see cref="Label"/> is shown to the user.

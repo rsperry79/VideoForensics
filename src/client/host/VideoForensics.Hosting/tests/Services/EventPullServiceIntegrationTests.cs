@@ -4,7 +4,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>Integration tests for EventPullService with multi-account scenarios.</summary>
     public class EventPullServiceIntegrationTests

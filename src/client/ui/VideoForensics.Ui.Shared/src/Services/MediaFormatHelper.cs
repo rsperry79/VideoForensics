@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services;
+namespace VideoForensics.Client.Ui.Shared.Services;
 
 /// <summary>
 /// Helper methods for determining media format types from MIME type strings or file extensions.

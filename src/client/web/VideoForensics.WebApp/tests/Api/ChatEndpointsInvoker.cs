@@ -3,11 +3,11 @@ using Microsoft.Extensions.Logging;
 
 using System.Reflection;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Api;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Helper class to invoke private methods in ChatEndpoints for testing.

@@ -7,11 +7,11 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Render tests for /devices/config/ring/{id}: typed Ring settings, and the cases where the page does not apply.</summary>
 public class RingDeviceSettingsPage_Tests : BunitContext
 {

@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;

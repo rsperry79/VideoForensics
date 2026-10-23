@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Services.CircuitGuards;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     public static class CircuitGuardRegistration
     {

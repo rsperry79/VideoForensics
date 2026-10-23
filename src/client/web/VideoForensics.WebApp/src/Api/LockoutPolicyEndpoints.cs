@@ -1,11 +1,12 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for managing account lockout policy settings: maximum failed login attempts,
@@ -46,7 +47,7 @@ namespace VideoForensics.WebApp.Api
 
             LockoutPolicySettings currentSettings = await repository.GetAsync(ct);
 
-            var updatedSettings = new VideoForensics.Data.Common.Entities.LockoutPolicySettings
+            var updatedSettings = new LockoutPolicySettings
             {
                 Id = currentSettings.Id,
                 MaxFailedAttempts = request.MaxFailedAttempts,

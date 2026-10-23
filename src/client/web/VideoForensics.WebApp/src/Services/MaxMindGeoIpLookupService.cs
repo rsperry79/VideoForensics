@@ -3,7 +3,7 @@ using MaxMind.GeoIP2.Responses;
 
 using System.Net;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// GeoIP lookup service using MaxMind's GeoLite2 database.

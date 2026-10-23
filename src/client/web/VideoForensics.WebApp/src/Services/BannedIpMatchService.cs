@@ -3,7 +3,7 @@ using System.Net;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Service for checking if an IP address is within any manually-banned CIDR range.

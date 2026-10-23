@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Limits a passkey-setup session (issued by POST /api/v1/auth/login/password/create-passkey). Such a session

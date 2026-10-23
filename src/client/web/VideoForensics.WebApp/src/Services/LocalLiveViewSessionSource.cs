@@ -1,9 +1,9 @@
 using System.Reactive.Linq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="ILiveViewSessionSource"/> for the WebApp. The WebApp runs live view in-process and is not a client

@@ -3,11 +3,11 @@ using AngleSharp.Dom;
 
 using Bunit;
 
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>The analysis switcher is a Bootstrap nav-tabs bar, not a row of buttons.</summary>
 public class Analyze_TabBar_Tests : AnalyzePageTestBase
 {

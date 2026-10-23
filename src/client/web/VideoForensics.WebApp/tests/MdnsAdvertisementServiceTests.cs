@@ -6,11 +6,11 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.WebApp.Discovery;
+using VideoForensics.Client.WebApp.Discovery;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class MdnsAdvertisementServiceTests
     {

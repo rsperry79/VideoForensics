@@ -1,6 +1,6 @@
 using System.Web;
 
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>
 /// Represents the global investigation scope: devices, time window, and search query.

@@ -3,11 +3,11 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Source double whose changes the test pushes directly, standing in for the realtime store.</summary>
 public sealed class EvidenceChangedSourceDouble : IEvidenceChangedSource
 {

@@ -1,10 +1,10 @@
 using System.Net;
 
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class MaxMindGeoIpLookupServiceTests
     {

@@ -1,6 +1,6 @@
 @page "/"
 @page "/media"
-@using VideoForensics.Ui.Shared.Services.Time
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using Microsoft.Extensions.Logging
@@ -11,15 +11,15 @@
 @using Device = VideoForensics.Data.Common.Entities.Device
 @using VideoForensics.Client.Common
 @using VideoForensics.Client.Common.Contracts
-@using VideoForensics.Ui.Shared.Layout.RightPanel
-@using VideoForensics.Ui.Shared.Services
-@using VideoForensics.Ui.Shared.Services.Evidence
-@using VideoForensics.Ui.Shared.Services.Events
-@using VideoForensics.Ui.Shared.Services.Inspector
-@using VideoForensics.Ui.Shared.Services.Scope
-@using VideoForensics.Ui.Shared.Components.Inspector
-@using VideoForensics.Ui.Shared.Components.Evidence
-@using VideoForensics.Ui.Shared.Components.Scope
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Evidence
+@using VideoForensics.Client.Ui.Shared.Services.Events
+@using VideoForensics.Client.Ui.Shared.Services.Inspector
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Components.Inspector
+@using VideoForensics.Client.Ui.Shared.Components.Evidence
+@using VideoForensics.Client.Ui.Shared.Components.Scope
 @implements IDisposable
 @inject IMediaContentUrlProvider MediaUrlProvider
 @inject IDeviceRepository DeviceRepository
@@ -270,13 +270,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         // Optional: a host without thumbnail events simply never raises one, so the page must not require the source.
-        VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource? thumbnailSource =
-            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>();
+        VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource? thumbnailSource =
+            ServiceProvider.GetService<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource>();
         _thumbnailReadySubscription = thumbnailSource?.ThumbnailReady.Subscribe(OnThumbnailReady);
 
         // Optional, like the thumbnail source: a host with no realtime feed keeps the manual Refresh button.
-        VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource? evidenceSource =
-            ServiceProvider.GetService<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource>();
+        VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource? evidenceSource =
+            ServiceProvider.GetService<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource>();
         _evidenceChangedSubscription = evidenceSource?.EvidenceChanged
             .Throttle(EvidenceReloadQuietPeriod)
             .Subscribe(change =>

@@ -17,17 +17,17 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Exercises the real routing, authorization policy, step-up filter and SSE response bytes of the log endpoints

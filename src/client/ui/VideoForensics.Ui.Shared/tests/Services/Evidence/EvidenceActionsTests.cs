@@ -1,11 +1,10 @@
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class EvidenceActions_ResolveOperatorActor_Tests
 {

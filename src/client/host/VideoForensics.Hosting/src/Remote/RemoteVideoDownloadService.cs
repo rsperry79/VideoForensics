@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IVideoDownloadService"/> that calls the server's download orchestration

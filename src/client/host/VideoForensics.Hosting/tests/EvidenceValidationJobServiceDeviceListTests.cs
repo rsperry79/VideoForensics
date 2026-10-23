@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>One integrity job over a device list: each device is verified in turn and its results are tagged.</summary>
     public sealed class EvidenceValidationJobServiceDeviceListTests

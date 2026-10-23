@@ -8,11 +8,11 @@ using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared bUnit setup for ScopeRail tests. The constructor registers the defaults every rail test needs;
 /// subclasses inherit them and may override any of them, since later registrations win resolution.
@@ -24,7 +24,7 @@ public abstract class ScopeRailTestContext : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddScoped<RightPanelContentService>();
 
         // Default TimeProvider for tests that don't need a fixed clock; RegisterFakeTime overrides
         // this (later registrations win resolution) for tests asserting exact quick-range dates.

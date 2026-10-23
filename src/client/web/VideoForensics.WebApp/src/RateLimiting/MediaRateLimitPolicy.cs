@@ -1,9 +1,9 @@
 using System.Threading.RateLimiting;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.RateLimiting
+namespace VideoForensics.Client.WebApp.RateLimiting
 {
     /// <summary>
     /// Builds the per-request partition for the "media" rate-limit policy (plan §5.7), covering

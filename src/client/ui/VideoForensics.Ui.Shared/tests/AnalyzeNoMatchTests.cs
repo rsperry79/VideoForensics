@@ -3,11 +3,11 @@ using Bunit;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Pages;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>When the filters match no device, Analyze shows a notice and runs no report.</summary>
 public class Analyze_NoMatch_Tests : AnalyzePageTestBase
 {

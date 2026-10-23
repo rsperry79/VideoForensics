@@ -19,20 +19,20 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Evidence;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
+using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared scenario setup for Evidence page tests: one device, one event with a linked image
 /// media item, and one media-only video item, both occurring on the same UTC day (the event is
@@ -44,19 +44,19 @@ namespace VideoForensics.Ui.Shared.Tests;
 public abstract class EvidencePageTestBase : BunitContext
 {
     /// <summary>Thumbnail-ready events the page under test receives; tests push through this subject.</summary>
-    protected readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReadySubject = new();
+    protected readonly System.Reactive.Subjects.Subject<ThumbnailReadyDto> ThumbnailReadySubject = new();
 
     /// <summary>Fake source that forwards <see cref="ThumbnailReadySubject"/> to the page.</summary>
-    protected sealed class FakeThumbnailReadySource : VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource
+    protected sealed class FakeThumbnailReadySource : IThumbnailReadySource
     {
-        private readonly System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> _ready;
+        private readonly System.Reactive.Subjects.Subject<ThumbnailReadyDto> _ready;
 
-        public FakeThumbnailReadySource(System.Reactive.Subjects.Subject<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ready)
+        public FakeThumbnailReadySource(System.Reactive.Subjects.Subject<ThumbnailReadyDto> ready)
         {
             _ready = ready;
         }
 
-        public IObservable<VideoForensics.Core.Api.Contracts.ThumbnailReadyDto> ThumbnailReady => _ready;
+        public IObservable<ThumbnailReadyDto> ThumbnailReady => _ready;
     }
 
     protected static readonly DateTime FixedNowUtc = new(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
@@ -238,7 +238,7 @@ public abstract class EvidencePageTestBase : BunitContext
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
 
-        _ = Services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
+        _ = Services.AddSingleton<IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
         _ = Services.AddScoped(_ => AuthServiceMock.Object);
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => EventRepositoryMock.Object);
@@ -361,7 +361,7 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
     {
         IRenderedComponent<Evidence> component = RenderEvidencePage();
 
-        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId));
+        ThumbnailReadySubject.OnNext(new ThumbnailReadyDto(VideoMediaId));
 
         // The initial load fetches several items at once; the refresh fetches exactly this one.
         component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
@@ -377,7 +377,7 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
         IRenderedComponent<Evidence> component = RenderEvidencePage();
         var unknown = Guid.NewGuid();
 
-        ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(unknown));
+        ThumbnailReadySubject.OnNext(new ThumbnailReadyDto(unknown));
         await component.InvokeAsync(() => Task.CompletedTask);
 
         MediaUrlProviderMock.Verify(
@@ -395,7 +395,7 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
         MediaUrlProviderMock.Invocations.Clear();
 
         ((IDisposable)component.Instance).Dispose();
-        Exception? ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId)));
+        Exception? ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new ThumbnailReadyDto(VideoMediaId)));
         await Task.Delay(50);
 
         Assert.Null(ex);
@@ -482,7 +482,7 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
 
         IRenderedComponent<Evidence> component = RenderEvidencePage();
 
-        Assert.NotNull(component.FindComponent<VideoForensics.Ui.Shared.Components.Inspector.ForensicGrid<EvidenceItem>>());
+        Assert.NotNull(component.FindComponent<VideoForensics.Client.Ui.Shared.Components.Inspector.ForensicGrid<EvidenceItem>>());
         Assert.Empty(component.FindAll(".evidence-timeline"));
         Assert.Empty(component.FindAll(".evidence-gallery"));
     }

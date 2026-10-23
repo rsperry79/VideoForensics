@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.Ui.Shared.Components.Dump;
+namespace VideoForensics.Client.Ui.Shared.Components.Dump;
 
 public enum DumpNodeKind
 {

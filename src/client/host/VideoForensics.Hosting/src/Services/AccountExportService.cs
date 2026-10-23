@@ -10,7 +10,7 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Queues account exports and runs them one at a time (drained by

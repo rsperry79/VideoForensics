@@ -1,10 +1,10 @@
 using ModelContextProtocol.Server;
 
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Contracts;
 
-namespace VideoForensics.WebApp.Mcp.Tools
+namespace VideoForensics.Client.WebApp.Mcp.Tools
 {
     /// <summary>Phase 0.5 security tools: operator authentication and account security event visibility</summary>
     [McpServerToolType]

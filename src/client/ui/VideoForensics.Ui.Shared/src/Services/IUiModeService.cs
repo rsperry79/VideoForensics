@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Manages the active UI layout mode (Standard/Simple) for the signed-in operator,

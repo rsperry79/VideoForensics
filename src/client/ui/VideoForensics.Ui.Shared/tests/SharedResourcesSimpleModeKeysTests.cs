@@ -2,7 +2,7 @@ using Microsoft.Extensions.Localization;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class SharedResourcesSimpleModeKeysTests
 {

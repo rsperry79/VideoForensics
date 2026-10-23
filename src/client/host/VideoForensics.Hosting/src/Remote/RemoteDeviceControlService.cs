@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IDeviceControlService"/> that calls the server's device-control Minimal API

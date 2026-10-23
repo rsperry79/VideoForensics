@@ -20,8 +20,8 @@ Out: persisting logs, merging with server logs, any new API routes, mobile layou
 | `src/core/core/core.logging/Services/InMemoryLogBuffer.cs` | none (reused) | ring buffer with `GetSnapshot`/`SubscribeWithBacklog` already exists |
 | `src/core/core/core.logging/DependencyInjection/ServiceCollectionExtensions.cs` | reuse `AddInMemoryLogBuffer(capacity)` | already provides the logger provider and buffer |
 | `src/client/common/VideoForensics.Client.Common/Contracts/ILogViewerService.cs` | none (reused) | interface and types stay as-is |
-| `src/client/maui/VideoForensics.MauiApp/Services/LocalLogViewerService.cs` NEW | `ILogViewerService` over `InMemoryLogBuffer`; maps `LogRecord` to `LogEntry`; ignores step-up token or validates non-empty only | no HTTP, no server call |
-| `src/client/maui/VideoForensics.MauiApp/MauiProgram.cs` | call `AddInMemoryLogBuffer`; register `ILogViewerService` as `LocalLogViewerService` after `AddVideoForensicsClientApi` (last registration wins) | MAUI shows its own logs |
+| `src/client/maui/VideoForensics.Client.MauiApp/Services/LocalLogViewerService.cs` NEW | `ILogViewerService` over `InMemoryLogBuffer`; maps `LogRecord` to `LogEntry`; ignores step-up token or validates non-empty only | no HTTP, no server call |
+| `src/client/maui/VideoForensics.Client.MauiApp/MauiProgram.cs` | call `AddInMemoryLogBuffer`; register `ILogViewerService` as `LocalLogViewerService` after `AddVideoForensicsClientApi` (last registration wins) | MAUI shows its own logs |
 | `src/client/ui/VideoForensics.Ui.Shared/Pages/ServerLogs.razor` | possibly a source label or title variant ("Local logs") via a resx key | avoids a misleading "Server" heading; must be localized |
 | `src/client/ui/VideoForensics.Ui.Shared/Layout/NavGroups.cs` | possibly gate or relabel the "Server Logs" nav item on MAUI | route `/settings/logs` is SuperAdmin-gated already |
 | `src/client/maui/` test project | verify path before dispatch (no MAUI test project confirmed on origin/dev) | home for `LocalLogViewerServiceTests` |

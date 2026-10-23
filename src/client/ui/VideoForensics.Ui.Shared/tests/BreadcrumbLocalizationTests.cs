@@ -10,13 +10,13 @@ using Microsoft.JSInterop;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Page-level breadcrumb tests: every crumb label must come from <see cref="IStringLocalizer{T}"/>
 /// (tagged as "L:Key" by <see cref="TaggingLocalizer"/>), never a hard-coded English literal.
@@ -36,7 +36,7 @@ public class BreadcrumbLocalizationTests : BunitContext
         _ = Services.AddScoped<StepUpService>();
         _ = Services.AddScoped(_ => new Mock<IAdminOperatorService>().Object);
         _ = Services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
-        _ = Services.AddScoped(_ => Mock.Of<VideoForensics.Data.Common.Contracts.ICaseRepository>());
+        _ = Services.AddScoped(_ => Mock.Of<Data.Common.Contracts.ICaseRepository>());
         _ = Services.AddScoped(_ => new Mock<ISelfApiHttpClientFactory>().Object);
         _ = Services.AddLogging();
     }

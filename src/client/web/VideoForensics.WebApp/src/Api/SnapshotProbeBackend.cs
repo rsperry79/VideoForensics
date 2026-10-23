@@ -3,7 +3,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using RingSession = VideoForensics.Providers.Ring.Session;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Operations the snapshot probe needs from a Ring account. Exists so the probe routes can be tested

@@ -6,7 +6,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Periodically calibrates camera bitrate baselines by launching short live-view sessions
@@ -14,7 +14,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// the interference detection system establish accurate baselines for each device, time-of-day,
     /// and weekday/weekend patterns.
     ///
-    /// Registered in server-tier hosts only (console, MCP, VideoForensics.WebApp) - never MAUI:
+    /// Registered in server-tier hosts only (console, MCP, VideoForensics.Client.WebApp) - never MAUI:
     /// calibration calls a provider's API directly via live-view, and per §1's "only the server
     /// pulls from any provider" rule, no client host may do that.
     /// </summary>
@@ -45,7 +45,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
-        /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
+        /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             if (!_config.EnableBitrateCalibration)

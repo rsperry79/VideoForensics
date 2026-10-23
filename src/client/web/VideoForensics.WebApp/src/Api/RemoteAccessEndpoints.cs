@@ -1,11 +1,11 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Infrastructure;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Infrastructure;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Cloudflare Tunnel setup for the Internet tier. Every route is SuperAdmin-gated; starting a tunnel and

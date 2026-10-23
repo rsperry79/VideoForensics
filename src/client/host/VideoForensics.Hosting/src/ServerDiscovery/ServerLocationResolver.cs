@@ -2,7 +2,7 @@ using Makaretu.Dns;
 
 using Microsoft.Extensions.Logging;
 
-namespace VideoForensics.Hosting.ServerDiscovery
+namespace VideoForensics.Client.Hosting.ServerDiscovery
 {
     /// <summary>
     /// Resolves the VideoForensics server address using mDNS service discovery on the local network.

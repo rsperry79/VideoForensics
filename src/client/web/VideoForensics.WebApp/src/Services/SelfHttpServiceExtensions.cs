@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Components;
 
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Registers a <c>Remote*</c>-style service (one written to talk to

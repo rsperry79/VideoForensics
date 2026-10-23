@@ -1,9 +1,8 @@
-
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class ImageViewport_Initialization_Tests
 {

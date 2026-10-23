@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Periodically pushes the server's own download progress out over <see cref="LiveHub"/> (plan

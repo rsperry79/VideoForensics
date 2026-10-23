@@ -13,7 +13,7 @@ using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Core.Providers.Common.Contracts.Location;
 using LocationEntity = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>Service for pulling events and configuration from provider accounts automatically.</summary>
     public interface IEventPullService

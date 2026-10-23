@@ -6,14 +6,15 @@ using System.Reflection;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class OperatorUnlockEndpointTests
     {
@@ -142,7 +143,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
+            MethodInfo? method = typeof(DeviceManagementEndpoints)
                 .GetMethod("UnlockAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,

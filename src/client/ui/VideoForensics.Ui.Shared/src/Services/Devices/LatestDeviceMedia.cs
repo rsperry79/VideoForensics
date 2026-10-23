@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Devices;
+namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 
 /// <summary>
 /// Picks the one snapshot and the one roll-up loop to show for a device on its Devices tab. Older snapshots and loops stay

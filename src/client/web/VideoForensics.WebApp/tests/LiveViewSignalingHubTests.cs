@@ -12,13 +12,13 @@ using System.Collections.Concurrent;
 using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Hubs;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Hubs;
-using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Exercises <see cref="LiveViewSignalingHub"/> signaling methods against a real

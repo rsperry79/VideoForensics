@@ -6,13 +6,14 @@ using Microsoft.Extensions.Localization;
 
 using System.Reactive.Subjects;
 
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Components;
+namespace VideoForensics.Client.Ui.Shared.Tests.Components;
 
 public class DownloadProgressPanelTests : BunitContext
 {

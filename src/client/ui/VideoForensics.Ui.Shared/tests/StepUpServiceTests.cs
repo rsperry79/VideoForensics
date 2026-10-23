@@ -7,11 +7,11 @@ using Microsoft.JSInterop;
 
 using Moq;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers which step-up a destructive action gets: a passkey challenge for passkey sessions, and a password
 /// re-entry for password sessions. Passkey sessions never see a password prompt.

@@ -5,7 +5,7 @@ using VideoForensics.Core.Telemetry.Contracts;
 using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Core.Telemetry.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>
     /// Exercises the telemetry wiring added to <see cref="VideoForensicsHostingExtensions.AddVideoForensicsServerCore"/>.

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Periodically samples the Ring self-test status and pushes it to admin clients over

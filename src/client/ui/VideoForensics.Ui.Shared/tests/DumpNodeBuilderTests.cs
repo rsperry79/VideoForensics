@@ -1,11 +1,11 @@
 
 using System.Text;
 
-using VideoForensics.Ui.Shared.Components.Dump;
+using VideoForensics.Client.Ui.Shared.Components.Dump;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class DumpNodeBuilder_FromJson_Tests
 {
