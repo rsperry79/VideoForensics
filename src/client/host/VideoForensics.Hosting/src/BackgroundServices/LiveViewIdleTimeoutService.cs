@@ -30,12 +30,15 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly IForensicsConfiguration _config;
         private readonly ILogger<LiveViewIdleTimeoutService> _logger;
 
+        private readonly ThreadHeartbeats? _heartbeats;
+
         public LiveViewIdleTimeoutService(
             IServiceScopeFactory scopeFactory,
             IForensicsConfiguration config,
-            ILogger<LiveViewIdleTimeoutService> logger)
+            ILogger<LiveViewIdleTimeoutService> logger, ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
+            _heartbeats = heartbeats;
             _config = config;
             _logger = logger;
         }
@@ -46,6 +49,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             do
             {
+                _heartbeats?.Beat(nameof(LiveViewIdleTimeoutService), DateTimeOffset.UtcNow, CheckInterval);
                 await RunOneTickAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));

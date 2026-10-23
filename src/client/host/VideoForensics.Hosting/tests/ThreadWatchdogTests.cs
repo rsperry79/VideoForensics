@@ -56,6 +56,17 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
+        public void Heartbeats_SlowLoop_IsNotStaleUntilItMissesTwoIntervals()
+        {
+            // A 15-minute loop is fine at 20 minutes; a five-minute threshold alone would wrongly flag it.
+            var heartbeats = new ThreadHeartbeats();
+            heartbeats.Beat("DeviceHealthSyncService", Start, TimeSpan.FromMinutes(15));
+
+            Assert.Empty(heartbeats.StaleServices(Start.AddMinutes(20), StaleAfter));
+            Assert.Equal(new[] { "DeviceHealthSyncService" }, heartbeats.StaleServices(Start.AddMinutes(31), StaleAfter));
+        }
+
+        [Fact]
         public void Watchdog_AllServicesBeating_LogsNothing()
         {
             var clock = new FakeTime(Start);

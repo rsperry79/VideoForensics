@@ -39,14 +39,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly ILogger<DeviceHealthSyncService> _logger;
         private readonly ElevatedPollingWindowTracker _elevatedTracker;
 
+        private readonly ThreadHeartbeats? _heartbeats;
+
         public DeviceHealthSyncService(
             IServiceScopeFactory scopeFactory,
             IForensicsConfiguration config,
             IBatteryStatusProvider batteryStatusProvider,
             ILogger<DeviceHealthSyncService> logger,
-            ElevatedPollingWindowTracker elevatedTracker)
+            ElevatedPollingWindowTracker elevatedTracker, ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
+            _heartbeats = heartbeats;
             _config = config;
             _batteryStatusProvider = batteryStatusProvider;
             _logger = logger;
@@ -92,6 +95,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     }
                 }
 
+                _heartbeats?.Beat(nameof(DeviceHealthSyncService), DateTimeOffset.UtcNow, TimeSpan.FromMinutes(45));
                 await RunOneTickAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
