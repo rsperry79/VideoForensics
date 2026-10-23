@@ -37,6 +37,10 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotRollupService> _logger;
 
+        // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
+        private readonly ISnapshotCaptureRepository? _captures;
+        private readonly ISnapshotStillMapper? _stillMapper;
+
         public SnapshotRollupService(
             ILocationRepository locations,
             IDeviceRepository devices,
@@ -44,8 +48,12 @@ namespace VideoForensics.Client.Hosting.Services
             ITimelineVideoBuilder builder,
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotRollupService> logger,
-            IEvidenceChangeNotifier? evidenceChanges = null)
+            IEvidenceChangeNotifier? evidenceChanges = null,
+            ISnapshotCaptureRepository? captures = null,
+            ISnapshotStillMapper? stillMapper = null)
         {
+            _captures = captures;
+            _stillMapper = stillMapper;
             _locations = locations;
             _devices = devices;
             _mediaItems = mediaItems;
@@ -124,6 +132,12 @@ namespace VideoForensics.Client.Hosting.Services
         /// </summary>
         private async Task<IReadOnlyList<TimelineStill>> LoadStillsAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
+            if (_captures is not null && _stillMapper is not null)
+            {
+                return await LoadStillsFromCapturesAsync(deviceId, fromUtc, toUtc, cancellationToken);
+            }
+
+
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);
             var snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
@@ -141,6 +155,28 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             return stills;
+        }
+
+        /// <summary>
+        /// Stills from the window's capture attempts, mapped the same way as the timeline. A failed attempt ends the hold of
+        /// the still before it, so an outage becomes a gap that the builder fills with gray. The newest still is held to the
+        /// window end unless a failure ends it first.
+        /// </summary>
+        private async Task<IReadOnlyList<TimelineStill>> LoadStillsFromCapturesAsync(Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<SnapshotCapture> rows = await _captures!.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
+            var records = rows.Select(r => new SnapshotStillRecord(r.DeviceId, r.CapturedAtUtc, r.HttpStatus, r.MediaFilePath)).ToList();
+
+            // The newest 200 is the only still that can be held to the window end; the mapper cuts it short at a later failure.
+            DateTimeOffset? newestStill = rows.Where(r => r.HttpStatus == 200 && !string.IsNullOrWhiteSpace(r.MediaFilePath))
+                .Select(r => (DateTimeOffset?)r.CapturedAtUtc).Max();
+            if (newestStill is null)
+            {
+                return [];
+            }
+
+            TimeSpan lastHold = new DateTimeOffset(toUtc, TimeSpan.Zero) - newestStill.Value;
+            return _stillMapper!.MapCurrentStills(new SnapshotStillMapRequest(records, deviceId, _options.Value.SnapshotRoot, lastHold < MinimumHold ? MinimumHold : lastHold));
         }
 
         /// <summary>Registers the MP4 as a Media row. RecordedAtUtc is the window end, which is unique per roll-up tick.</summary>
