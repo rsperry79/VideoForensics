@@ -1,6 +1,7 @@
 using System.Net;
-using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.WebApp.Services
 {
@@ -21,9 +22,9 @@ namespace VideoForensics.WebApp.Services
 
         public async Task<bool> IsIpBannedAsync(IPAddress ipAddress, CancellationToken ct)
         {
-            var bannedRanges = await _repository.GetActiveAsync(ct);
+            IReadOnlyList<BannedIpRange> bannedRanges = await _repository.GetActiveAsync(ct);
 
-            foreach (var range in bannedRanges)
+            foreach (BannedIpRange range in bannedRanges)
             {
                 if (IsIpInCidrRange(ipAddress, range.CidrRange))
                 {
@@ -39,20 +40,20 @@ namespace VideoForensics.WebApp.Services
             try
             {
                 // Parse CIDR notation: e.g., "192.168.0.0/24"
-                var parts = cidrRange.Split('/');
+                string[] parts = cidrRange.Split('/');
                 if (parts.Length != 2)
                 {
                     _logger.LogDebug("Invalid CIDR format in banned range");
                     return false;
                 }
 
-                if (!IPAddress.TryParse(parts[0], out var network))
+                if (!IPAddress.TryParse(parts[0], out IPAddress? network))
                 {
                     _logger.LogDebug("Failed to parse network address in CIDR");
                     return false;
                 }
 
-                if (!int.TryParse(parts[1], out var prefixLength) || prefixLength < 0 || prefixLength > (network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
+                if (!int.TryParse(parts[1], out int prefixLength) || prefixLength < 0 || prefixLength > (network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128))
                 {
                     _logger.LogDebug("Invalid prefix length in CIDR");
                     return false;
@@ -70,7 +71,9 @@ namespace VideoForensics.WebApp.Services
         private bool IsIpInNetwork(IPAddress ipAddress, IPAddress network, int prefixLength)
         {
             if (ipAddress.AddressFamily != network.AddressFamily)
+            {
                 return false;
+            }
 
             byte[] ipBytes = ipAddress.GetAddressBytes();
             byte[] networkBytes = network.GetAddressBytes();
@@ -81,7 +84,9 @@ namespace VideoForensics.WebApp.Services
             for (int i = 0; i < byteCount; i++)
             {
                 if (ipBytes[i] != networkBytes[i])
+                {
                     return false;
+                }
             }
 
             if (bitCount > 0)
@@ -92,7 +97,6 @@ namespace VideoForensics.WebApp.Services
 
             return true;
         }
-
     }
 
     /// <summary>
@@ -100,8 +104,16 @@ namespace VideoForensics.WebApp.Services
     /// </summary>
     internal class NullLogger<T> : ILogger<T>
     {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => false;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return false;
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
     }
 }

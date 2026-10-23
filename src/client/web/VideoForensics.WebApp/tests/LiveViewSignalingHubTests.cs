@@ -1,15 +1,15 @@
-using System.Collections.Concurrent;
-using System.Reflection;
-
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Moq;
 
 using SIPSorcery.Net;
+
 using SIPSorceryMedia.Abstractions;
+
+using System.Collections.Concurrent;
+using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -42,9 +42,15 @@ namespace VideoForensics.WebApp.Tests
             public event Action<byte[], uint, int>? OnVideoRtpPayload { add { } remove { } }
             public event Action<byte[], uint, int, int>? OnAudioRtpPayload { add { } remove { } }
 
-            public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
+            public Task CloseAsync(CancellationToken ct)
+            {
+                return Task.CompletedTask;
+            }
 
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+            public ValueTask DisposeAsync()
+            {
+                return ValueTask.CompletedTask;
+            }
         }
 
         /// <summary>
@@ -72,7 +78,10 @@ namespace VideoForensics.WebApp.Tests
                 get { lock (_gate) { return _videoRtp?.GetInvocationList().Length ?? 0; } }
             }
 
-            public void ReleaseFirstSubscription() => _releaseFirstSubscription.TrySetResult();
+            public void ReleaseFirstSubscription()
+            {
+                _ = _releaseFirstSubscription.TrySetResult();
+            }
 
             public event Action<RTCPReceiverReportSampleDto>? OnReceiverReport { add { } remove { } }
             public event Action<long>? OnBitrateSampleBps { add { } remove { } }
@@ -86,7 +95,7 @@ namespace VideoForensics.WebApp.Tests
                 {
                     if (Interlocked.Increment(ref _subscribeAttempts) == 1)
                     {
-                        _firstSubscriptionEntered.TrySetResult();
+                        _ = _firstSubscriptionEntered.TrySetResult();
                         _releaseFirstSubscription.Task.Wait();
                     }
 
@@ -104,32 +113,14 @@ namespace VideoForensics.WebApp.Tests
                 }
             }
 
-            public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
-
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-        }
-
-        /// <summary>
-        /// Logger that records the most recent error-level exception so a test can await it
-        /// instead of sleeping.
-        /// </summary>
-        private sealed class CapturingLogger<T> : ILogger<T>
-        {
-            public TaskCompletionSource<Exception?> ErrorLogged { get; } =
-                new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-            public bool IsEnabled(LogLevel logLevel) => true;
-
-            public void Log<TState>(
-                LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-                Func<TState, Exception?, string> formatter)
+            public Task CloseAsync(CancellationToken ct)
             {
-                if (logLevel == LogLevel.Error)
-                {
-                    ErrorLogged.TrySetResult(exception);
-                }
+                return Task.CompletedTask;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                return ValueTask.CompletedTask;
             }
         }
 
@@ -150,10 +141,10 @@ namespace VideoForensics.WebApp.Tests
             IOptions<BrowserLiveViewOptions> resolvedOptions = Options.Create(options ?? new BrowserLiveViewOptions());
 
             var sessionService = new Mock<ILiveViewSessionService>();
-            sessionService
+            _ = sessionService
                 .Setup(s => s.GetConnectionForSessionAsync(SessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(connectionForSession);
-            sessionService
+            _ = sessionService
                 .Setup(s => s.GetConnectionForSessionAsync(It.Is<Guid>(id => id != SessionId), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ILiveViewConnection?)null);
 
@@ -163,17 +154,17 @@ namespace VideoForensics.WebApp.Tests
 
             var caller = new Mock<ISingleClientProxy>();
             var clients = new Mock<IHubCallerClients>();
-            clients.Setup(c => c.Caller).Returns(caller.Object);
+            _ = clients.Setup(c => c.Caller).Returns(caller.Object);
 
             var context = new Mock<HubCallerContext>();
-            context.Setup(c => c.ConnectionId).Returns(ConnectionId);
-            context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
+            _ = context.Setup(c => c.ConnectionId).Returns(ConnectionId);
+            _ = context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
 
             var hub = new LiveViewSignalingHub(
                 sessionService.Object,
                 bridge,
                 resolvedOptions,
-                logger ??Microsoft.Extensions.Logging.Abstractions.NullLogger<LiveViewSignalingHub>.Instance)
+                logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<LiveViewSignalingHub>.Instance)
             {
                 Clients = clients.Object,
                 Context = context.Object,
@@ -204,18 +195,12 @@ namespace VideoForensics.WebApp.Tests
 
             // A null delegate means no subscribers, which is a valid zero count.
             object? value = field.GetValue(pc);
-            if (value is null)
-            {
-                return 0;
-            }
-
-            if (value is not Delegate handlers)
-            {
-                throw new InvalidOperationException(
-                    $"SIPSorcery RTCPeerConnection field '{FieldName}' holds {value.GetType().FullName}, not a delegate. The helper expects SIPSorcery 10.0.17 layout.");
-            }
-
-            return handlers.GetInvocationList().Length;
+            return value is null
+                ? 0
+                : value is not Delegate handlers
+                ? throw new InvalidOperationException(
+                    $"SIPSorcery RTCPeerConnection field '{FieldName}' holds {value.GetType().FullName}, not a delegate. The helper expects SIPSorcery 10.0.17 layout.")
+                : handlers.GetInvocationList().Length;
         }
 
         /// <summary>
@@ -245,7 +230,7 @@ namespace VideoForensics.WebApp.Tests
                 [new AudioFormat(AudioCodecsEnum.OPUS, 111, 48000, 2, string.Empty)],
                 MediaStreamStatusEnum.SendRecv));
 
-            answerer.setRemoteDescription(new RTCSessionDescriptionInit
+            _ = answerer.setRemoteDescription(new RTCSessionDescriptionInit
             {
                 type = RTCSdpType.offer,
                 sdp = offerSdp
@@ -260,7 +245,7 @@ namespace VideoForensics.WebApp.Tests
         {
             HubFixture fixture = BuildHub(connectionForSession: null);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => fixture.Hub.RequestOffer(SessionId));
 
             Assert.Null(await fixture.Bridge.GetBrowserLegAsync(ConnectionId, SessionId));
@@ -291,7 +276,7 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                _ = await fixture.Hub.RequestOffer(SessionId);
 
                 Assert.NotNull(await fixture.Bridge.GetBrowserLegAsync(ConnectionId, SessionId));
             }
@@ -326,14 +311,14 @@ namespace VideoForensics.WebApp.Tests
         {
             HubFixture fixture = BuildHub(new FakeLiveViewConnection());
             var pushedMethods = new ConcurrentQueue<string>();
-            fixture.Caller
+            _ = fixture.Caller
                 .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .Callback<string, object?[], CancellationToken>((method, _, _) => pushedMethods.Enqueue(method))
                 .Returns(Task.CompletedTask);
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                _ = await fixture.Hub.RequestOffer(SessionId);
 
                 // A trickle push would run on SIPSorcery's gathering thread after RequestOffer returns.
                 // Wait a bounded window so such a push has time to appear before the assertion.
@@ -385,11 +370,14 @@ namespace VideoForensics.WebApp.Tests
         /// Options pointing at a STUN server that never answers (TEST-NET-1, RFC 5737), with a short
         /// gathering timeout so the timeout path runs quickly.
         /// </summary>
-        private static BrowserLiveViewOptions UnreachableStunOptions() => new()
+        private static BrowserLiveViewOptions UnreachableStunOptions()
         {
-            IceServerUrls = ["stun:192.0.2.1:3478"],
-            OfferGatheringTimeout = TimeSpan.FromSeconds(1),
-        };
+            return new()
+            {
+                IceServerUrls = ["stun:192.0.2.1:3478"],
+                OfferGatheringTimeout = TimeSpan.FromSeconds(1),
+            };
+        }
 
         /// <summary>
         /// Awaits a RequestOffer that must fail. The test deadline makes a hang fail the test rather than block the run.
@@ -427,7 +415,7 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await RequestOfferExpectingFailureAsync(fixture.Hub);
+                _ = await RequestOfferExpectingFailureAsync(fixture.Hub);
 
                 Assert.Null(await fixture.Bridge.GetBrowserLegAsync(ConnectionId, SessionId));
             }
@@ -444,7 +432,7 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await RequestOfferExpectingFailureAsync(fixture.Hub);
+                _ = await RequestOfferExpectingFailureAsync(fixture.Hub);
 
                 // A leaked gate would block this call forever; it must fail the same way as the first.
                 InvalidOperationException second = await RequestOfferExpectingFailureAsync(fixture.Hub);
@@ -462,7 +450,7 @@ namespace VideoForensics.WebApp.Tests
         {
             HubFixture fixture = BuildHub(new FakeLiveViewConnection());
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => fixture.Hub.SubmitAnswer(SessionId, "v=0"));
         }
 
@@ -496,10 +484,10 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                _ = await fixture.Hub.RequestOffer(SessionId);
 
                 // Malformed SDP: SIPSorcery cannot apply it as an answer to the local offer.
-                await Assert.ThrowsAsync<InvalidOperationException>(
+                _ = await Assert.ThrowsAsync<InvalidOperationException>(
                     () => fixture.Hub.SubmitAnswer(SessionId, "v=0\r\nnot-a-valid-sdp"));
             }
             finally
@@ -513,7 +501,7 @@ namespace VideoForensics.WebApp.Tests
         {
             HubFixture fixture = BuildHub(new FakeLiveViewConnection());
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => fixture.Hub.SubmitIceCandidate(SessionId, "candidate:1 1 UDP 2122260223 192.168.1.10 54321 typ host", 0));
         }
 
@@ -526,10 +514,10 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await fixture.Hub.RequestOffer(SessionId);
+                _ = await fixture.Hub.RequestOffer(SessionId);
 
                 // Without the range check, (ushort)-1 silently becomes 65535.
-                await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
                     () => fixture.Hub.SubmitIceCandidate(
                         SessionId, "candidate:1 1 UDP 2122260223 192.168.1.10 54321 typ host", sdpMLineIndex));
             }

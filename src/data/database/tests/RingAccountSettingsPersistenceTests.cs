@@ -31,16 +31,18 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private RingAccountProfile BuildProfile(int providerUserId = 42) => new()
+        private RingAccountProfile BuildProfile(int providerUserId = 42)
         {
-            Id = Guid.NewGuid(),
-            RingAccountId = _ringAccountId,
-            ProviderUserId = providerUserId,
-            Email = "sanitized.user@example.com",
-            CreatedAt = "2021-01-01T00:00:00.000Z",
-            TfaEnabled = true,
-            SessionFeatures = new RingAccountSessionFeatures { Id = Guid.NewGuid(), RemoteLoggingLevel = 3, VideoSearchEnabled = true },
-            Flags =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                RingAccountId = _ringAccountId,
+                ProviderUserId = providerUserId,
+                Email = "sanitized.user@example.com",
+                CreatedAt = "2021-01-01T00:00:00.000Z",
+                TfaEnabled = true,
+                SessionFeatures = new RingAccountSessionFeatures { Id = Guid.NewGuid(), RemoteLoggingLevel = 3, VideoSearchEnabled = true },
+                Flags =
             [
                 new RingAccountProfileFlag
                 {
@@ -48,27 +50,33 @@ namespace VideoForensics.Data.Database.Tests
                     Items = [new RingAccountProfileFlagItem { Id = Guid.NewGuid(), Position = 0, Value = "doorbell" }]
                 }
             ]
-        };
+            };
+        }
 
-        private RingAccountRingtone BuildRingtone(string ringtoneId) => new()
+        private RingAccountRingtone BuildRingtone(string ringtoneId)
         {
-            Id = Guid.NewGuid(),
-            RingAccountId = _ringAccountId,
-            RingtoneId = ringtoneId,
-            Kind = "ding",
-            Available = true,
-            Checksum = 7,
-            SupportedDeviceKinds = [new RingAccountRingtoneDeviceKind { Id = Guid.NewGuid(), Position = 0, DeviceKind = "doorbell" }]
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                RingAccountId = _ringAccountId,
+                RingtoneId = ringtoneId,
+                Kind = "ding",
+                Available = true,
+                Checksum = 7,
+                SupportedDeviceKinds = [new RingAccountRingtoneDeviceKind { Id = Guid.NewGuid(), Position = 0, DeviceKind = "doorbell" }]
+            };
+        }
 
-        private RingLocationModeSettings BuildModeSettings() => new()
+        private RingLocationModeSettings BuildModeSettings()
         {
-            Id = Guid.NewGuid(),
-            ProviderLocationId = LocationId,
-            LastUpdateTimeMs = 1700000000000,
-            DefaultCameraOnlyMode = "away",
-            SupportedActionGroups = [new RingLocationModeSupportedActionGroup { Id = Guid.NewGuid(), Position = 0, GroupName = "liveView" }],
-            Entries =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                LastUpdateTimeMs = 1700000000000,
+                DefaultCameraOnlyMode = "away",
+                SupportedActionGroups = [new RingLocationModeSupportedActionGroup { Id = Guid.NewGuid(), Position = 0, GroupName = "liveView" }],
+                Entries =
             [
                 new RingLocationModeSettingsEntry
                 {
@@ -80,7 +88,8 @@ namespace VideoForensics.Data.Database.Tests
                     ]
                 }
             ]
-        };
+            };
+        }
 
         [Fact]
         public async Task RingAccountSettings_FullGraph_RoundTripsThroughSqlite()
@@ -89,12 +98,18 @@ namespace VideoForensics.Data.Database.Tests
             var groupId = Guid.NewGuid();
             var lightGroups = new LightGroupSet
             {
-                Id = Guid.NewGuid(), ProviderLocationId = LocationId, IsOwner = true,
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                IsOwner = true,
                 Groups = [new LightGroup { Id = groupId, ProviderDeviceGroupId = "grp-1", Name = "Backyard", Devices = [new LightGroupDevice { Id = Guid.NewGuid(), ProviderDeviceId = "dev-7" }] }]
             };
             var mode = new RingLocationMode
             {
-                Id = Guid.NewGuid(), ProviderLocationId = LocationId, Mode = "home", ReadOnly = false, ModePanelType = "panel",
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                Mode = "home",
+                ReadOnly = false,
+                ModePanelType = "panel",
                 NotYetParticipating = [new RingLocationModeNotYetParticipating { Id = Guid.NewGuid(), Position = 0, ValueJson = "{\"deviceId\":\"dev-9\"}" }]
             };
             var sharing = new RingLocationModeSharing { Id = Guid.NewGuid(), ProviderLocationId = LocationId, SharedUsersEnabled = false, LastUpdateTimeMs = 5 };
@@ -128,7 +143,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal("dev-7", Assert.Single(Assert.Single(storedGroups.Groups).Devices).ProviderDeviceId);
 
             RingLocationMode storedMode = await read.RingLocationModes.Include(m => m.NotYetParticipating).SingleAsync();
-            Assert.Single(storedMode.NotYetParticipating);
+            _ = Assert.Single(storedMode.NotYetParticipating);
 
             RingLocationModeSettings storedSettings = await read.RingLocationModeSettings
                 .Include(s => s.Entries).ThenInclude(e => e.Actions)
@@ -151,7 +166,7 @@ namespace VideoForensics.Data.Database.Tests
 
             await using VideoForensicsDbContext second = _fixture.Factory.CreateDbContext();
             _ = second.RingAccountProfiles.Add(BuildProfile(providerUserId: 43));
-            await Assert.ThrowsAnyAsync<DbUpdateException>(() => second.SaveChangesAsync());
+            _ = await Assert.ThrowsAnyAsync<DbUpdateException>(() => second.SaveChangesAsync());
         }
 
         [Fact]
@@ -165,7 +180,7 @@ namespace VideoForensics.Data.Database.Tests
 
             await using VideoForensicsDbContext second = _fixture.Factory.CreateDbContext();
             _ = second.RingLocationModes.Add(new RingLocationMode { Id = Guid.NewGuid(), ProviderLocationId = LocationId, Mode = "home" });
-            await Assert.ThrowsAnyAsync<DbUpdateException>(() => second.SaveChangesAsync());
+            _ = await Assert.ThrowsAnyAsync<DbUpdateException>(() => second.SaveChangesAsync());
         }
     }
 }

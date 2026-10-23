@@ -59,14 +59,14 @@ namespace VideoForensics.WebApp.Tests
             var provider = new AnthropicChatProvider(new AnthropicChatOptions { ApiKey = key!, Model = model }, http);
 
             var events = new List<LlmStreamEvent>();
-            await foreach (var e in provider.StreamCompleteAsync(
+            await foreach (LlmStreamEvent e in provider.StreamCompleteAsync(
                 [new LlmMessage("user", "Reply with exactly the word: pong")], [], TestContext.Current.CancellationToken))
             {
                 events.Add(e);
             }
 
             Assert.Contains(events, e => e is LlmTextDelta);
-            var completed = Assert.IsType<LlmStepCompleted>(events[^1]);
+            LlmStepCompleted completed = Assert.IsType<LlmStepCompleted>(events[^1]);
             Assert.False(string.IsNullOrWhiteSpace(completed.Result.TextReply));
         }
     }

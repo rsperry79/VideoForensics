@@ -1,5 +1,4 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Models;
 
 namespace VideoForensics.Ui.Shared.Services.Cases;
 
@@ -47,7 +46,7 @@ public static class CaseItemIntegrity
         }
 
         // Compare hashes (case-insensitive)
-        var hashAtAddMatch = string.Equals(
+        bool hashAtAddMatch = string.Equals(
             item.MediaSha256AtAdd,
             currentMedia.Sha256Hash,
             StringComparison.OrdinalIgnoreCase);

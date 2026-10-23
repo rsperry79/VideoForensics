@@ -4,11 +4,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.BackgroundServices
 {
@@ -41,7 +41,7 @@ namespace VideoForensics.Hosting.BackgroundServices
         internal static readonly TimeSpan RollupRetryBackoff = TimeSpan.FromMinutes(5);
 
         /// <summary>Per account: the time before which a failed roll-up is not retried.</summary>
-        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = new();
+        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = [];
 
         /// <summary>Creates the scheduler.</summary>
         public ScheduledSyncService(
@@ -323,6 +323,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                     {
                         _logger.LogInformation("Scheduled sync start limited to one month back for {ProviderName} account", providerName);
                     }
+
                     DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
@@ -362,6 +363,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                     {
                         counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     }
+
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -412,7 +414,6 @@ namespace VideoForensics.Hosting.BackgroundServices
                 _logger.LogError(ex, "Could not record the completed scheduled sync");
             }
         }
-
 
         /// <summary>
         /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the

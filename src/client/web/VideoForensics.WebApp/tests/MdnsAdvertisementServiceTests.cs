@@ -17,7 +17,7 @@ namespace VideoForensics.WebApp.Tests
         private Mock<IForensicsConfiguration> CreateConfigMock(bool enableMdns = true)
         {
             var config = new Mock<IForensicsConfiguration>();
-            config.SetupProperty(c => c.EnableMdnsAdvertisement, enableMdns);
+            _ = config.SetupProperty(c => c.EnableMdnsAdvertisement, enableMdns);
             return config;
         }
 
@@ -25,15 +25,15 @@ namespace VideoForensics.WebApp.Tests
         {
             var server = new Mock<IServer>();
             var addressesFeature = new Mock<IServerAddressesFeature>();
-            addressesFeature.Setup(f => f.Addresses).Returns(new List<string> { $"http://localhost:{port}" });
-            server.Setup(s => s.Features.Get<IServerAddressesFeature>()).Returns(addressesFeature.Object);
+            _ = addressesFeature.Setup(f => f.Addresses).Returns([$"http://localhost:{port}"]);
+            _ = server.Setup(s => s.Features.Get<IServerAddressesFeature>()).Returns(addressesFeature.Object);
             return server;
         }
 
         private Mock<IServer> CreateServerMockWithoutAddresses()
         {
             var server = new Mock<IServer>();
-            server.Setup(s => s.Features.Get<IServerAddressesFeature>()).Returns((IServerAddressesFeature?)null);
+            _ = server.Setup(s => s.Features.Get<IServerAddressesFeature>()).Returns((IServerAddressesFeature?)null);
             return server;
         }
 
@@ -45,7 +45,8 @@ namespace VideoForensics.WebApp.Tests
             {
                 cts.Cancel();
             }
-            lifetime.Setup(l => l.ApplicationStarted).Returns(cts.Token);
+
+            _ = lifetime.Setup(l => l.ApplicationStarted).Returns(cts.Token);
             return lifetime;
         }
 
@@ -56,9 +57,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task Dispose_ServiceRunning_CleanupsProperly()
         {
             // Arrange
-            var config = CreateConfigMock(enableMdns: true);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
+            Mock<IForensicsConfiguration> config = CreateConfigMock(enableMdns: true);
+            Mock<IServer> server = CreateServerMockWithPort(5000);
+            Mock<IHostApplicationLifetime> lifetime = CreateLifetimeMock(applicationStarted: true);
             var logger = new Mock<ILogger<MdnsAdvertisementService>>();
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);
@@ -83,9 +84,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task StartAsync_AdvertisementException_LogsErrorAndContinues()
         {
             // Arrange
-            var config = CreateConfigMock(enableMdns: true);
-            var server = CreateServerMockWithPort(5000);
-            var lifetime = CreateLifetimeMock(applicationStarted: true);
+            Mock<IForensicsConfiguration> config = CreateConfigMock(enableMdns: true);
+            Mock<IServer> server = CreateServerMockWithPort(5000);
+            Mock<IHostApplicationLifetime> lifetime = CreateLifetimeMock(applicationStarted: true);
             var logger = new Mock<ILogger<MdnsAdvertisementService>>();
 
             var service = new MdnsAdvertisementService(config.Object, server.Object, lifetime.Object, logger.Object);

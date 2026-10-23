@@ -33,7 +33,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Implementations
             ArgumentNullException.ThrowIfNullOrWhiteSpace(keyId);
             ArgumentNullException.ThrowIfNullOrWhiteSpace(signingOfficer);
 
-            return await SignReportAsync(report, keyId, signingOfficer);
+            return await SignReportAsync(report, keyId, signingOfficer).ConfigureAwait(true);
         }
 
         public async Task<EvidenceValidationReport> SignValidationReportAsync(

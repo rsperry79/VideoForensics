@@ -1,6 +1,7 @@
-using Xunit;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Formatting;
+
+using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
 
@@ -10,7 +11,7 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_Describe_MotionEvent_ReturnsPlainLanguageDescription()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -24,7 +25,7 @@ public class EventPlainLanguageFormatterTests
             ApiSourceHash: null,
             EventIntegrityHash: null
         );
-        var deviceName = "Front Door Camera";
+        string deviceName = "Front Door Camera";
 
         // Act
         string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
@@ -40,7 +41,7 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_Describe_PersonEvent_ReturnsPlainLanguageDescription()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -54,7 +55,7 @@ public class EventPlainLanguageFormatterTests
             ApiSourceHash: null,
             EventIntegrityHash: null
         );
-        var deviceName = "Side Yard Camera";
+        string deviceName = "Side Yard Camera";
 
         // Act
         string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
@@ -70,7 +71,7 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_Describe_PackageEvent_ReturnsPlainLanguageDescription()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -84,7 +85,7 @@ public class EventPlainLanguageFormatterTests
             ApiSourceHash: null,
             EventIntegrityHash: null
         );
-        var deviceName = "Porch Camera";
+        string deviceName = "Porch Camera";
 
         // Act
         string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
@@ -100,7 +101,7 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_Describe_UnknownEventType_ReturnsSafeFallback()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -114,7 +115,7 @@ public class EventPlainLanguageFormatterTests
             ApiSourceHash: null,
             EventIntegrityHash: null
         );
-        var deviceName = "My Device";
+        string deviceName = "My Device";
 
         // Act
         string result = EventPlainLanguageFormatter.Describe(TestLocalizer.Create(), eventDto, deviceName);
@@ -128,7 +129,7 @@ public class EventPlainLanguageFormatterTests
     [Fact]
     public void EventPlainLanguageFormatter_Describe_UnknownEventType_NeverShowsRawEventType()
     {
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -153,7 +154,7 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_Describe_NullDeviceName_StillReturnsValidDescription()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var eventDto = new EventDto(
             Id: Guid.NewGuid(),
             DeviceId: Guid.NewGuid(),
@@ -181,13 +182,14 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_DescribeJammingIncident_JammingEvent_ReturnsPlainLanguageDescription()
     {
         // Arrange
-        var startTime = DateTime.UtcNow.AddHours(-1);
-        var endTime = DateTime.UtcNow;
-        var duration = endTime - startTime;
-        var deviceName = "Front Door Camera";
+        DateTime startTime = DateTime.UtcNow.AddHours(-1);
+        DateTime endTime = DateTime.UtcNow;
+
+        _ = endTime - startTime;
+        string deviceName = "Front Door Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(),
             deviceName,
             startTime,
             endTime,
@@ -207,12 +209,12 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_DescribeJammingIncident_ShortDuration_ReturnsMinutes()
     {
         // Arrange
-        var startTime = DateTime.UtcNow;
-        var endTime = startTime.AddMinutes(15);
-        var deviceName = "Camera";
+        DateTime startTime = DateTime.UtcNow;
+        DateTime endTime = startTime.AddMinutes(15);
+        string deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(),
             deviceName,
             startTime,
             endTime,
@@ -231,12 +233,12 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_DescribeJammingIncident_LongDuration_ReturnsHours()
     {
         // Arrange
-        var startTime = DateTime.UtcNow;
-        var endTime = startTime.AddHours(3).AddMinutes(30);
-        var deviceName = "Camera";
+        DateTime startTime = DateTime.UtcNow;
+        DateTime endTime = startTime.AddHours(3).AddMinutes(30);
+        string deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(),
             deviceName,
             startTime,
             endTime,
@@ -255,12 +257,12 @@ public class EventPlainLanguageFormatterTests
     public void EventPlainLanguageFormatter_DescribeJammingIncident_VeryShortDuration_ReturnSeconds()
     {
         // Arrange
-        var startTime = DateTime.UtcNow;
-        var endTime = startTime.AddSeconds(45);
-        var deviceName = "Camera";
+        DateTime startTime = DateTime.UtcNow;
+        DateTime endTime = startTime.AddSeconds(45);
+        string deviceName = "Camera";
 
         // Act
-        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(), 
+        string result = EventPlainLanguageFormatter.DescribeJammingIncident(TestLocalizer.Create(),
             deviceName,
             startTime,
             endTime,

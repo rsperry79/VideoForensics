@@ -6,9 +6,9 @@ using System.Text.RegularExpressions;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Utilities;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -131,26 +131,17 @@ namespace VideoForensics.Client.Core.Services
             }
 
             string kind = providerKind.Trim().ToLowerInvariant();
-            if (kind.StartsWith("doorbell", StringComparison.Ordinal)
+            return kind.StartsWith("doorbell", StringComparison.Ordinal)
                 || kind.StartsWith("doorbot", StringComparison.Ordinal)
                 || kind.StartsWith("authorized_doorbot", StringComparison.Ordinal)
-                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal))
-            {
-                return "doorbell";
-            }
-
-            if (kind.StartsWith("chime", StringComparison.Ordinal))
-            {
-                return "chime";
-            }
-
-            if (kind.StartsWith("stickup_cam", StringComparison.Ordinal)
-                || kind.StartsWith("camera", StringComparison.Ordinal))
-            {
-                return "camera";
-            }
-
-            return "Unknown";
+                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal)
+                ? "doorbell"
+                : kind.StartsWith("chime", StringComparison.Ordinal)
+                ? "chime"
+                : kind.StartsWith("stickup_cam", StringComparison.Ordinal)
+                || kind.StartsWith("camera", StringComparison.Ordinal)
+                ? "camera"
+                : "Unknown";
         }
 
         private (string Json, string Hash) SerializeMetadata(object? apiResponse)
@@ -214,7 +205,7 @@ namespace VideoForensics.Client.Core.Services
                         // rather than failing the whole download, but this indicates the active
                         // account wasn't set where it should have been.
                         _logger.LogWarning("No active provider account set; falling back to a synthetic placeholder account for device identity resolution");
-                        (User _, ProviderAccount? account) = await _dataClient.EnsureUserAndAccountAsync(
+                        (_, ProviderAccount? account) = await _dataClient.EnsureUserAndAccountAsync(
                             _videoProvider.ProviderName, "default", "default", null, ct);
                         accountId = account.Id;
                     }
@@ -225,7 +216,7 @@ namespace VideoForensics.Client.Core.Services
 
                     // Real address when discovery supplied one; the synthetic id/name blob is only the
                     // metadata payload and the hash goes in its own ApiResponseHash field.
-                    _knownLocationAddresses.TryGetValue(effectiveLocationId, out string? locationAddress);
+                    _ = _knownLocationAddresses.TryGetValue(effectiveLocationId, out string? locationAddress);
                     (string locationJson, string locationHash) = SerializeMetadata(new { id = effectiveLocationId, name = locationName });
                     Data.Common.Entities.Location location = await _dataClient.EnsureLocationAsync(
                         accountId, effectiveLocationId, locationName, locationAddress, locationJson, locationHash, ct);
@@ -244,9 +235,9 @@ namespace VideoForensics.Client.Core.Services
                 }
 
                 string deviceType = MapDeviceType(providerDeviceKind);
-                (string Json, string Hash) deviceMetadata = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = deviceType, isOnline });
+                (string Json, string Hash) = SerializeMetadata(new { id = providerDeviceId, name = deviceName, type = deviceType, isOnline });
                 Data.Common.Entities.Device device = await _dataClient.EnsureDeviceAsync(
-                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, deviceMetadata.Json, deviceMetadata.Hash, ct: ct, timeZoneId: deviceTimeZone, details: deviceFields);
+                    locationGuid, providerDeviceId, deviceName, deviceType, isOnline, Json, Hash, ct: ct, timeZoneId: deviceTimeZone, details: deviceFields);
                 _deviceIdCache[providerDeviceId] = device.Id;
                 return device.Id;
             }
@@ -960,7 +951,9 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
     }
 }

@@ -18,6 +18,9 @@ namespace VideoForensics.Core.Providers.Core
             return (RoundUpToEven(cappedWidth), RoundUpToEven(maxHeight));
         }
 
-        private static int RoundUpToEven(int value) => value % 2 == 0 ? value : value + 1;
+        private static int RoundUpToEven(int value)
+        {
+            return value % 2 == 0 ? value : value + 1;
+        }
     }
 }

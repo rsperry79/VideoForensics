@@ -1,4 +1,3 @@
-using VideoForensics.Ui.Shared.Services.Time;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Logging;
@@ -8,6 +7,7 @@ using Syncfusion.Blazor.Layouts;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Extensions;
+using VideoForensics.Ui.Shared.Services.Time;
 
 namespace VideoForensics.Ui.Shared.Layout
 {
@@ -15,7 +15,7 @@ namespace VideoForensics.Ui.Shared.Layout
     {
         private OperatorRole? _role;
         private string _currentPath = "/";
-        private string _currentQuery = "";
+        private string _currentQuery = string.Empty;
         private SfSplitter? _outerSplitter;
         private double _leftNavWidth = 220;
         private double _rightPanelWidth = 280;
@@ -44,33 +44,11 @@ namespace VideoForensics.Ui.Shared.Layout
 
         private string RightPanelStyle => $"flex: 0 0 {_rightPanelWidth}px; width: {_rightPanelWidth}px;";
 
-        private IReadOnlyList<NavGroup> VisibleGroups
-        {
-            get
-            {
-                if (_passkeySetupOnly)
-                {
-                    return [];
-                }
-
-                return NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
-            }
-        }
+        private IReadOnlyList<NavGroup> VisibleGroups => _passkeySetupOnly ? [] : (IReadOnlyList<NavGroup>)NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
 
         private NavGroup ActiveGroup => NavGroups.ActiveGroupFor(VisibleGroups, BuildContext(), _currentPath, _currentQuery);
 
-        private IReadOnlyList<NavSection> ActiveGroupSections
-        {
-            get
-            {
-                if (_passkeySetupOnly)
-                {
-                    return [];
-                }
-
-                return NavGroups.SectionsFor(ActiveGroup, BuildContext());
-            }
-        }
+        private IReadOnlyList<NavSection> ActiveGroupSections => _passkeySetupOnly ? [] : NavGroups.SectionsFor(ActiveGroup, BuildContext());
 
         protected override void OnInitialized()
         {
@@ -149,8 +127,10 @@ namespace VideoForensics.Ui.Shared.Layout
         /// Syncfusion's SfBaseUtils.InvokeMethod wraps a JSException from a synchronous splitter call in
         /// InvalidOperationException, so the JSException is matched both directly and as that wrapper's inner exception.
         /// </summary>
-        private static bool IsSplitterNotReady(Exception ex) =>
-            ex is JSException || (ex is InvalidOperationException && ex.InnerException is JSException);
+        private static bool IsSplitterNotReady(Exception ex)
+        {
+            return ex is JSException || (ex is InvalidOperationException && ex.InnerException is JSException);
+        }
 
         private async Task AttachRightPanelHandleIfNeededAsync()
         {
@@ -204,7 +184,10 @@ namespace VideoForensics.Ui.Shared.Layout
             _currentQuery = parsed.Query;
         }
 
-        private bool PathMatches(string path) => NavPathMatcher.Matches(_currentPath, _currentQuery, path);
+        private bool PathMatches(string path)
+        {
+            return NavPathMatcher.Matches(_currentPath, _currentQuery, path);
+        }
 
         private NavContext BuildContext()
         {
@@ -311,7 +294,7 @@ namespace VideoForensics.Ui.Shared.Layout
             }
 
             // Dismiss every undismissed notice, not just the 5 shown in this dropdown.
-            var allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
+            IReadOnlyList<Notice> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
             await NoticeDismissalRepository.DismissAllAsync(allUndismissed.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
             await LoadNoticesForDropdownAsync();
             _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);

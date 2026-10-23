@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -10,7 +10,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring.Contracts;
 
 namespace VideoForensics.Providers.Ring
@@ -69,9 +68,9 @@ namespace VideoForensics.Providers.Ring
         private const string HardBanStateFileName = "ring_hard_ban.txt";
 
         // Injectable persistence; defaults lazily to the file store in the application data directory.
-        private static IHardBanStateStore? _hardBanStateStore;
 
-        private static IHardBanStateStore HardBanStateStore => _hardBanStateStore ??= new FileHardBanStateStore();
+        [AllowNull]
+        private static IHardBanStateStore HardBanStateStore { get => field ??= new FileHardBanStateStore(); set; }
 
         /// <summary>
         /// Replaces the hard-ban persistence (or restores the default file store when null) and resets
@@ -81,7 +80,7 @@ namespace VideoForensics.Providers.Ring
         {
             lock (_throttleLock)
             {
-                _hardBanStateStore = store;
+                HardBanStateStore = store;
                 _hardBanStateLoaded = false;
                 _hardBanUntilUtc = null;
                 _consecutiveThrottles = 0;
@@ -665,17 +664,11 @@ namespace VideoForensics.Providers.Ring
         {
             DownloadResult result = await DownloadFileWithStatus(url, bearerToken, cancellationToken);
 
-            if (result.Status == (HttpStatusCode)429)
-            {
-                throw new Exceptions.ThrottledException { StatusCode = result.Status, RetryAfter = result.RetryAfter };
-            }
-
-            if (!IsSuccessStatus(result.Status))
-            {
-                throw new Exceptions.DownloadFailedException(url.ToString()) { StatusCode = result.Status };
-            }
-
-            return result.Bytes;
+            return result.Status == (HttpStatusCode)429
+                ? throw new Exceptions.ThrottledException { StatusCode = result.Status, RetryAfter = result.RetryAfter }
+                : !IsSuccessStatus(result.Status)
+                ? throw new Exceptions.DownloadFailedException(url.ToString()) { StatusCode = result.Status }
+                : result.Bytes;
         }
 
         /// <summary>
@@ -684,7 +677,7 @@ namespace VideoForensics.Providers.Ring
         private static bool IsSuccessStatus(HttpStatusCode status)
         {
             int code = (int)status;
-            return code >= 200 && code <= 299;
+            return code is >= 200 and <= 299;
         }
 
         /// <summary>

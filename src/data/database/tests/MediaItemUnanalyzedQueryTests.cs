@@ -26,11 +26,21 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static MediaItem Row(string name, DateTime recordedAt, int? baselineVersion) => new()
+        private static MediaItem Row(string name, DateTime recordedAt, int? baselineVersion)
         {
-            Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), FileName = name, FilePath = name, MediaFormat = "mp4", Sha256Hash = Guid.NewGuid().ToString("N"),
-            RecordedAtUtc = recordedAt, DownloadedAtUtc = recordedAt, BaselineVersion = baselineVersion,
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = Guid.NewGuid(),
+                FileName = name,
+                FilePath = name,
+                MediaFormat = "mp4",
+                Sha256Hash = Guid.NewGuid().ToString("N"),
+                RecordedAtUtc = recordedAt,
+                DownloadedAtUtc = recordedAt,
+                BaselineVersion = baselineVersion,
+            };
+        }
 
         [Fact]
         public async Task ListUnanalyzedAsync_ReturnsOnlyNeverAnalysedRowsOldestFirst()
@@ -40,7 +50,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.AddAsync(Row("analysed.mp4", now.AddMinutes(-1), 3), CancellationToken.None);
             await _repository.AddAsync(Row("older.mp4", now.AddMinutes(-5), null), CancellationToken.None);
 
-            var rows = await _repository.ListUnanalyzedAsync(10, CancellationToken.None);
+            IReadOnlyList<MediaItem> rows = await _repository.ListUnanalyzedAsync(10, CancellationToken.None);
 
             Assert.Equal(new[] { "older.mp4", "newer.mp4" }, rows.Select(r => r.FileName).ToArray());
         }

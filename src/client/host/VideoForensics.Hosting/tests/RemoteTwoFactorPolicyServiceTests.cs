@@ -1,11 +1,10 @@
-using System.Net;
-using System.Net.Http.Json;
-using Moq;
 using Moq.Protected;
+
+using System.Net;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -14,7 +13,7 @@ namespace VideoForensics.Hosting.Tests
         private static HttpClient CreateMockHttpClient(HttpResponseMessage responseMessage)
         {
             var handlerMock = new Mock<HttpMessageHandler>();
-            handlerMock
+            _ = handlerMock
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -34,10 +33,10 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var dtos = new List<TwoFactorRoleRequirementDto>
             {
-                new TwoFactorRoleRequirementDto(OperatorRole.ReadOnly, true, DateTime.UtcNow),
-                new TwoFactorRoleRequirementDto(OperatorRole.Review, true, DateTime.UtcNow),
-                new TwoFactorRoleRequirementDto(OperatorRole.Admin, true, DateTime.UtcNow),
-                new TwoFactorRoleRequirementDto(OperatorRole.SuperAdmin, true, DateTime.UtcNow)
+                new(OperatorRole.ReadOnly, true, DateTime.UtcNow),
+                new(OperatorRole.Review, true, DateTime.UtcNow),
+                new(OperatorRole.Admin, true, DateTime.UtcNow),
+                new(OperatorRole.SuperAdmin, true, DateTime.UtcNow)
             };
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -45,11 +44,11 @@ namespace VideoForensics.Hosting.Tests
                 Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(dtos), System.Text.Encoding.UTF8, "application/json")
             };
 
-            var httpClient = CreateMockHttpClient(response);
+            HttpClient httpClient = CreateMockHttpClient(response);
             var service = new RemoteTwoFactorPolicyService(httpClient);
 
             // Act
-            var result = await service.GetRoleRequirementsAsync(CancellationToken.None);
+            IReadOnlyList<TwoFactorRoleRequirement> result = await service.GetRoleRequirementsAsync(CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -64,7 +63,7 @@ namespace VideoForensics.Hosting.Tests
             var response = new HttpResponseMessage(HttpStatusCode.OK);
 
             var handlerMock = new Mock<HttpMessageHandler>();
-            handlerMock
+            _ = handlerMock
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -102,7 +101,7 @@ namespace VideoForensics.Hosting.Tests
             var response = new HttpResponseMessage(HttpStatusCode.OK);
 
             var handlerMock = new Mock<HttpMessageHandler>();
-            handlerMock
+            _ = handlerMock
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -137,11 +136,11 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
-            var httpClient = CreateMockHttpClient(response);
+            HttpClient httpClient = CreateMockHttpClient(response);
             var service = new RemoteTwoFactorPolicyService(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(() =>
+            _ = await Assert.ThrowsAsync<HttpRequestException>(() =>
                 service.GetRoleRequirementsAsync(CancellationToken.None));
         }
     }

@@ -1,9 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -14,6 +8,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Moq;
+
+using System.Net;
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
@@ -105,15 +105,18 @@ namespace VideoForensics.WebApp.Tests.Api
             }
         }
 
-        private ProviderAccount CreateAccount(bool active, DateTime? removedUtc = null) => new()
+        private ProviderAccount CreateAccount(bool active, DateTime? removedUtc = null)
         {
-            Id = _accountId,
-            UserId = Guid.NewGuid(),
-            ProviderName = "Ring",
-            LinkedUtc = DateTime.UtcNow.AddDays(-10),
-            IsActive = active,
-            RemovedUtc = removedUtc
-        };
+            return new()
+            {
+                Id = _accountId,
+                UserId = Guid.NewGuid(),
+                ProviderName = "Ring",
+                LinkedUtc = DateTime.UtcNow.AddDays(-10),
+                IsActive = active,
+                RemovedUtc = removedUtc
+            };
+        }
 
         private static HttpRequestMessage StepUpPost(string url, object? body = null)
         {

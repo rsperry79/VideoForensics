@@ -3,10 +3,9 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -69,7 +68,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Create test directory
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {
@@ -149,7 +148,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Create test directory
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
 
             try
             {

@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Components.Server.Circuits;
-using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Api.Contracts;
@@ -16,20 +16,20 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         /// </summary>
         public static IServiceCollection AddCircuitOperatorGuards(this IServiceCollection services)
         {
-            services.AddScoped<CircuitScope>();
-            services.AddScoped<CircuitHandler, CircuitScopeHandler>();
-            services.AddScoped<ICircuitOperatorGate, CircuitOperatorGate>();
+            _ = services.AddScoped<CircuitScope>();
+            _ = services.AddScoped<CircuitHandler, CircuitScopeHandler>();
+            _ = services.AddScoped<ICircuitOperatorGate, CircuitOperatorGate>();
 
-            services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IReleaseChannelService>((inner, sp) => new GuardedReleaseChannelService(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<ISecurityAuditLogger>(), sp.GetRequiredService<SessionNetworkContext>()));
-            services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
-            services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IReleaseChannelService>((inner, sp) => new GuardedReleaseChannelService(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<ISecurityAuditLogger>(), sp.GetRequiredService<SessionNetworkContext>()));
+            _ = services.DecorateScoped<ICaseRepository>((inner, sp) => new GuardedCaseRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<ILegalHoldRepository>((inner, sp) => new GuardedLegalHoldRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IMediaStillCaptureService>((inner, sp) => new GuardedMediaStillCaptureService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IConfigToolsOrchestrator>((inner, sp) => new GuardedConfigToolsOrchestrator(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IJammingRepository>((inner, sp) => new GuardedJammingRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
 
             return services;
         }

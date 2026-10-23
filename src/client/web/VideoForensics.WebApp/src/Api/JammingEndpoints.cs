@@ -1,5 +1,5 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -179,27 +179,13 @@ namespace VideoForensics.WebApp.Api
                 return "Invalid source. Must be one of: " + string.Join(", ", Enum.GetNames<JammingIncidentSource>()) + ".";
             }
 
-            if (request.StartUtc >= request.EndUtc)
-            {
-                return "StartUtc must be before EndUtc.";
-            }
-
-            if (!double.IsFinite(request.AverageDegradationDb) || request.AverageDegradationDb < 0)
-            {
-                return "AverageDegradationDb must be a non-negative number.";
-            }
-
-            if (request.AffectedEventCount < 0)
-            {
-                return "AffectedEventCount must be non-negative.";
-            }
-
-            if (request.Notes is { Length: > MaxNotesLength })
-            {
-                return $"Notes must be at most {MaxNotesLength} characters.";
-            }
-
-            return null;
+            return request.StartUtc >= request.EndUtc
+                ? "StartUtc must be before EndUtc."
+                : !double.IsFinite(request.AverageDegradationDb) || request.AverageDegradationDb < 0
+                ? "AverageDegradationDb must be a non-negative number."
+                : request.AffectedEventCount < 0
+                ? "AffectedEventCount must be non-negative."
+                : request.Notes is { Length: > MaxNotesLength } ? $"Notes must be at most {MaxNotesLength} characters." : null;
         }
 
         /// <summary>

@@ -1,7 +1,9 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using VideoForensics.Ui.Shared.Services;
+
 using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class AccountSelectionTests
 {

@@ -7,13 +7,11 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Core.Helpers.Forensics;
+using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring.Interfaces;
+using VideoForensics.Data.Common.Contracts;
 
 using Xunit;
-using VideoForensics.Core.Forensics.Interfaces;
 
 namespace VideoForensics.Client.Core.Tests
 {
@@ -47,7 +45,7 @@ namespace VideoForensics.Client.Core.Tests
                 ValidateOnBuild = true,
             });
 
-            Assert.IsType<LiveViewSessionOrchestrator>(provider.GetRequiredService<ILiveViewSessionService>());
+            _ = Assert.IsType<LiveViewSessionOrchestrator>(provider.GetRequiredService<ILiveViewSessionService>());
         }
 
         [Fact]
@@ -63,7 +61,7 @@ namespace VideoForensics.Client.Core.Tests
                 ValidateOnBuild = true,
             });
 
-            Assert.IsType<NullLiveViewTelemetryPublisher>(provider.GetRequiredService<ILiveViewTelemetryPublisher>());
+            _ = Assert.IsType<NullLiveViewTelemetryPublisher>(provider.GetRequiredService<ILiveViewTelemetryPublisher>());
         }
     }
 }

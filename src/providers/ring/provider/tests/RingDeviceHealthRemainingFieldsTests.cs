@@ -4,7 +4,6 @@ using Moq;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 

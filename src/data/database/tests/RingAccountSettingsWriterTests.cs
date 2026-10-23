@@ -37,14 +37,16 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private RingAccountProfile BuildProfile(string flagName, string email = "sanitized.user@example.com") => new()
+        private RingAccountProfile BuildProfile(string flagName, string email = "sanitized.user@example.com")
         {
-            Id = Guid.NewGuid(),
-            RingAccountId = _ringAccountId,
-            ProviderUserId = 42,
-            Email = email,
-            SessionFeatures = new RingAccountSessionFeatures { Id = Guid.NewGuid(), RemoteLoggingLevel = 3 },
-            Flags =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                RingAccountId = _ringAccountId,
+                ProviderUserId = 42,
+                Email = email,
+                SessionFeatures = new RingAccountSessionFeatures { Id = Guid.NewGuid(), RemoteLoggingLevel = 3 },
+                Flags =
             [
                 new RingAccountProfileFlag
                 {
@@ -52,31 +54,40 @@ namespace VideoForensics.Data.Database.Tests
                     Items = [new RingAccountProfileFlagItem { Id = Guid.NewGuid(), Position = 0, Value = "doorbell" }]
                 }
             ]
-        };
+            };
+        }
 
-        private RingAccountRingtone BuildRingtone(string ringtoneId) => new()
+        private RingAccountRingtone BuildRingtone(string ringtoneId)
         {
-            Id = Guid.NewGuid(),
-            RingAccountId = _ringAccountId,
-            RingtoneId = ringtoneId,
-            Kind = "ding",
-            Available = true,
-            SupportedDeviceKinds = [new RingAccountRingtoneDeviceKind { Id = Guid.NewGuid(), Position = 0, DeviceKind = "doorbell" }]
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                RingAccountId = _ringAccountId,
+                RingtoneId = ringtoneId,
+                Kind = "ding",
+                Available = true,
+                SupportedDeviceKinds = [new RingAccountRingtoneDeviceKind { Id = Guid.NewGuid(), Position = 0, DeviceKind = "doorbell" }]
+            };
+        }
 
-        private RingAccountRingtoneDefaults BuildDefaults(string defaultDingId) => new()
+        private RingAccountRingtoneDefaults BuildDefaults(string defaultDingId)
         {
-            Id = Guid.NewGuid(),
-            RingAccountId = _ringAccountId,
-            DefaultDingId = defaultDingId,
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                RingAccountId = _ringAccountId,
+                DefaultDingId = defaultDingId,
+            };
+        }
 
-        private static LightGroupSet BuildLightGroups(string providerLocationId, string groupId, string? deviceId) => new()
+        private static LightGroupSet BuildLightGroups(string providerLocationId, string groupId, string? deviceId)
         {
-            Id = Guid.NewGuid(),
-            ProviderLocationId = providerLocationId,
-            IsOwner = true,
-            Groups =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = providerLocationId,
+                IsOwner = true,
+                Groups =
             [
                 new LightGroup
                 {
@@ -84,24 +95,30 @@ namespace VideoForensics.Data.Database.Tests
                     Devices = deviceId is null ? [] : [new LightGroupDevice { Id = Guid.NewGuid(), ProviderDeviceId = deviceId }]
                 }
             ]
-        };
+            };
+        }
 
-        private static RingLocationMode BuildMode(string mode, int notYetParticipating) => new()
+        private static RingLocationMode BuildMode(string mode, int notYetParticipating)
         {
-            Id = Guid.NewGuid(),
-            ProviderLocationId = LocationId,
-            Mode = mode,
-            NotYetParticipating = Enumerable.Range(0, notYetParticipating)
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                Mode = mode,
+                NotYetParticipating = Enumerable.Range(0, notYetParticipating)
                 .Select(i => new RingLocationModeNotYetParticipating { Id = Guid.NewGuid(), Position = i, ValueJson = "{}" })
                 .ToList()
-        };
+            };
+        }
 
-        private static RingLocationModeSettings BuildSettings(string actionName, int actionCount) => new()
+        private static RingLocationModeSettings BuildSettings(string actionName, int actionCount)
         {
-            Id = Guid.NewGuid(),
-            ProviderLocationId = LocationId,
-            DefaultCameraOnlyMode = "away",
-            Entries =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                DefaultCameraOnlyMode = "away",
+                Entries =
             [
                 new RingLocationModeSettingsEntry
                 {
@@ -111,7 +128,8 @@ namespace VideoForensics.Data.Database.Tests
                         .ToList()
                 }
             ]
-        };
+            };
+        }
 
         [Fact]
         public async Task RingAccountSettingsWriter_ReplaceProfileAsync_SecondWrite_ReplacesFlagsAndFeatures()
@@ -149,7 +167,7 @@ namespace VideoForensics.Data.Database.Tests
             await _writer.ReplaceRingtonesAsync(_ringAccountId, [BuildRingtone("chime_a")], BuildDefaults("chime_a"), CancellationToken.None);
 
             // Two rows with the same ringtone id violate the unique index, so the insert fails after the delete.
-            await Assert.ThrowsAnyAsync<DbUpdateException>(() => _writer.ReplaceRingtonesAsync(
+            _ = await Assert.ThrowsAnyAsync<DbUpdateException>(() => _writer.ReplaceRingtonesAsync(
                 _ringAccountId, [BuildRingtone("chime_x"), BuildRingtone("chime_x")], BuildDefaults("chime_x"), CancellationToken.None));
 
             await using VideoForensicsDbContext read = _fixture.Factory.CreateDbContext();

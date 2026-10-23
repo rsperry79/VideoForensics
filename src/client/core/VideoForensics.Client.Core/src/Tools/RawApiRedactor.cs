@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -89,17 +88,15 @@ namespace VideoForensics.Client.Core.Tools
         {
             if (string.IsNullOrEmpty(body))
             {
-                return "";
+                return string.Empty;
             }
 
             try
             {
-                using (JsonDocument doc = JsonDocument.Parse(body))
-                {
-                    JsonElement root = doc.RootElement;
-                    JsonElement redacted = RedactJsonElement(root);
-                    return JsonSerializer.Serialize(redacted, new JsonSerializerOptions { WriteIndented = false });
-                }
+                using var doc = JsonDocument.Parse(body);
+                JsonElement root = doc.RootElement;
+                JsonElement redacted = RedactJsonElement(root);
+                return JsonSerializer.Serialize(redacted, new JsonSerializerOptions { WriteIndented = false });
             }
             catch
             {
@@ -120,78 +117,74 @@ namespace VideoForensics.Client.Core.Tools
 
         private static JsonElement RedactJsonObject(JsonElement obj)
         {
-            var options = new JsonSerializerOptions { WriteIndented = false };
-            using (var stream = new MemoryStream())
+            _ = new JsonSerializerOptions { WriteIndented = false };
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                using (var writer = new Utf8JsonWriter(stream))
+                writer.WriteStartObject();
+                foreach (JsonProperty property in obj.EnumerateObject())
                 {
-                    writer.WriteStartObject();
-                    foreach (JsonProperty property in obj.EnumerateObject())
-                    {
-                        writer.WritePropertyName(property.Name);
+                    writer.WritePropertyName(property.Name);
 
-                        if (IsSensitiveFieldName(property.Name))
-                        {
-                            writer.WriteStringValue("REDACTED");
-                        }
-                        else if (property.Value.ValueKind == JsonValueKind.Object)
-                        {
-                            JsonElement redactedNested = RedactJsonElement(property.Value);
-                            WriteJsonElement(writer, redactedNested);
-                        }
-                        else if (property.Value.ValueKind == JsonValueKind.Array)
-                        {
-                            JsonElement redactedArray = RedactJsonElement(property.Value);
-                            WriteJsonElement(writer, redactedArray);
-                        }
-                        else
-                        {
-                            WriteJsonElement(writer, property.Value);
-                        }
+                    if (IsSensitiveFieldName(property.Name))
+                    {
+                        writer.WriteStringValue("REDACTED");
                     }
-                    writer.WriteEndObject();
+                    else if (property.Value.ValueKind == JsonValueKind.Object)
+                    {
+                        JsonElement redactedNested = RedactJsonElement(property.Value);
+                        WriteJsonElement(writer, redactedNested);
+                    }
+                    else if (property.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        JsonElement redactedArray = RedactJsonElement(property.Value);
+                        WriteJsonElement(writer, redactedArray);
+                    }
+                    else
+                    {
+                        WriteJsonElement(writer, property.Value);
+                    }
                 }
-                stream.Position = 0;
-                using (JsonDocument redactedDoc = JsonDocument.Parse(stream))
-                {
-                    return redactedDoc.RootElement.Clone();
-                }
+
+                writer.WriteEndObject();
             }
+
+            stream.Position = 0;
+            using var redactedDoc = JsonDocument.Parse(stream);
+            return redactedDoc.RootElement.Clone();
         }
 
         private static JsonElement RedactJsonArray(JsonElement arr)
         {
-            var options = new JsonSerializerOptions { WriteIndented = false };
-            using (var stream = new MemoryStream())
+            _ = new JsonSerializerOptions { WriteIndented = false };
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                using (var writer = new Utf8JsonWriter(stream))
+                writer.WriteStartArray();
+                foreach (JsonElement item in arr.EnumerateArray())
                 {
-                    writer.WriteStartArray();
-                    foreach (JsonElement item in arr.EnumerateArray())
+                    if (item.ValueKind == JsonValueKind.Object)
                     {
-                        if (item.ValueKind == JsonValueKind.Object)
-                        {
-                            JsonElement redactedItem = RedactJsonElement(item);
-                            WriteJsonElement(writer, redactedItem);
-                        }
-                        else if (item.ValueKind == JsonValueKind.Array)
-                        {
-                            JsonElement redactedItem = RedactJsonElement(item);
-                            WriteJsonElement(writer, redactedItem);
-                        }
-                        else
-                        {
-                            WriteJsonElement(writer, item);
-                        }
+                        JsonElement redactedItem = RedactJsonElement(item);
+                        WriteJsonElement(writer, redactedItem);
                     }
-                    writer.WriteEndArray();
+                    else if (item.ValueKind == JsonValueKind.Array)
+                    {
+                        JsonElement redactedItem = RedactJsonElement(item);
+                        WriteJsonElement(writer, redactedItem);
+                    }
+                    else
+                    {
+                        WriteJsonElement(writer, item);
+                    }
                 }
-                stream.Position = 0;
-                using (JsonDocument redactedDoc = JsonDocument.Parse(stream))
-                {
-                    return redactedDoc.RootElement.Clone();
-                }
+
+                writer.WriteEndArray();
             }
+
+            stream.Position = 0;
+            using var redactedDoc = JsonDocument.Parse(stream);
+            return redactedDoc.RootElement.Clone();
         }
 
         private static void WriteJsonElement(Utf8JsonWriter writer, JsonElement element)
@@ -216,31 +209,34 @@ namespace VideoForensics.Client.Core.Tools
                     {
                         writer.WriteNumberValue(dval);
                     }
+
                     break;
                 case JsonValueKind.String:
                     writer.WriteStringValue(element.GetString());
                     break;
                 case JsonValueKind.Array:
+                {
+                    writer.WriteStartArray();
+                    foreach (JsonElement item in element.EnumerateArray())
                     {
-                        writer.WriteStartArray();
-                        foreach (JsonElement item in element.EnumerateArray())
-                        {
-                            WriteJsonElement(writer, item);
-                        }
-                        writer.WriteEndArray();
-                        break;
+                        WriteJsonElement(writer, item);
                     }
+
+                    writer.WriteEndArray();
+                    break;
+                }
                 case JsonValueKind.Object:
+                {
+                    writer.WriteStartObject();
+                    foreach (JsonProperty prop in element.EnumerateObject())
                     {
-                        writer.WriteStartObject();
-                        foreach (JsonProperty prop in element.EnumerateObject())
-                        {
-                            writer.WritePropertyName(prop.Name);
-                            WriteJsonElement(writer, prop.Value);
-                        }
-                        writer.WriteEndObject();
-                        break;
+                        writer.WritePropertyName(prop.Name);
+                        WriteJsonElement(writer, prop.Value);
                     }
+
+                    writer.WriteEndObject();
+                    break;
+                }
             }
         }
 

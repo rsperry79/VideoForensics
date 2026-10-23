@@ -11,7 +11,7 @@ public static class AnalysisReportMerge
 {
     public static ForensicAnalysisReport Merge(IReadOnlyList<ForensicAnalysisReport> reports)
     {
-        var first = reports[0];
+        ForensicAnalysisReport first = reports[0];
         return new ForensicAnalysisReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
@@ -26,7 +26,7 @@ public static class AnalysisReportMerge
 
     public static SignalAnomalyReport Merge(IReadOnlyList<SignalAnomalyReport> reports)
     {
-        var first = reports[0];
+        SignalAnomalyReport first = reports[0];
         return new SignalAnomalyReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
@@ -39,7 +39,7 @@ public static class AnalysisReportMerge
 
     public static AccessControlReport Merge(IReadOnlyList<AccessControlReport> reports)
     {
-        var first = reports[0];
+        AccessControlReport first = reports[0];
         return new AccessControlReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),

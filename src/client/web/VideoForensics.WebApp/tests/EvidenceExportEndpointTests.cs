@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+
 using Moq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Api;
 using VideoForensics.Hosting;
+using VideoForensics.WebApp.Api;
+
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -25,8 +28,10 @@ namespace VideoForensics.WebApp.Tests
                 .ReturnsAsync(new ExportResult { Success = true, ArchivePath = "a.zip", ItemsIncluded = 2 });
         }
 
-        private Task<IResult> Call(ExportEvidenceRequest request) =>
-            EvidenceEndpoints.ExportAsync(request, _export.Object, _audit.Object, _tier.Object, new DefaultHttpContext(), CancellationToken.None);
+        private Task<IResult> Call(ExportEvidenceRequest request)
+        {
+            return EvidenceEndpoints.ExportAsync(request, _export.Object, _audit.Object, _tier.Object, new DefaultHttpContext(), CancellationToken.None);
+        }
 
         [Fact]
         public async Task Export_MissingCaseId_ReturnsBadRequestAndDoesNotExport()
@@ -41,7 +46,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Export_WithCaseId_ExportsThatCase()
         {
-            Guid caseId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
 
             IResult result = await Call(new ExportEvidenceRequest(caseId, "recipient", "pass"));
 
@@ -52,7 +57,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Export_WithCaseId_AuditsTheCase()
         {
-            Guid caseId = Guid.NewGuid();
+            var caseId = Guid.NewGuid();
 
             _ = await Call(new ExportEvidenceRequest(caseId, null, null));
 

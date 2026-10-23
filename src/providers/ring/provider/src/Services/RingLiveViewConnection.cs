@@ -1,7 +1,5 @@
 using SIPSorcery.Net;
 
-using SIPSorceryMedia.Abstractions;
-
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Streaming;
 
@@ -48,7 +46,7 @@ namespace VideoForensics.Providers.Ring.Services
         private void HandleConnectionStateChange(RTCPeerConnectionState state)
         {
             // Map SIPSorcery's RTCPeerConnectionState enum to our provider-agnostic LiveViewConnectionStateDto
-            var dto = MapConnectionState(state);
+            LiveViewConnectionStateDto dto = MapConnectionState(state);
             OnConnectionStateChange?.Invoke(dto);
         }
 

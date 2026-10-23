@@ -1,9 +1,10 @@
-namespace VideoForensics.Ui.Shared.Tests;
+
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Services.Cases;
 
 using Xunit;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Core.Models;
-using VideoForensics.Ui.Shared.Services.Cases;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class CaseItemIntegrity_Tests
 {
@@ -33,7 +34,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        var result = CaseItemIntegrity.Compare(eventItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(eventItem, currentMedia);
 
         // Assert
         Assert.Equal(PinIntegrity.NotApplicable, result);
@@ -54,7 +55,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        var result = CaseItemIntegrity.Compare(mediaItem, null);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, null);
 
         // Assert
         Assert.Equal(PinIntegrity.MediaMissing, result);
@@ -64,7 +65,7 @@ public class CaseItemIntegrity_Tests
     public void Compare_WithMatchingHash_ReturnsMatch()
     {
         // Arrange
-        var hash = "ABC123DEF456";
+        string hash = "ABC123DEF456";
         var mediaItem = new CaseItem
         {
             Id = Guid.NewGuid(),
@@ -88,7 +89,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        var result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
 
         // Assert
         Assert.Equal(PinIntegrity.Match, result);
@@ -121,7 +122,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        var result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
 
         // Assert
         Assert.Equal(PinIntegrity.Mismatch, result);
@@ -154,7 +155,7 @@ public class CaseItemIntegrity_Tests
         };
 
         // Act
-        var result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
+        PinIntegrity result = CaseItemIntegrity.Compare(mediaItem, currentMedia);
 
         // Assert
         Assert.Equal(PinIntegrity.Match, result);

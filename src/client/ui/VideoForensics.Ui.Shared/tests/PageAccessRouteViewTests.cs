@@ -1,9 +1,13 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
+
 using VideoForensics.Ui.Shared.Layout;
+
 using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class PageAccessRouteView_Tests : NavComponentTestBase
 {
@@ -36,7 +40,10 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         }
     }
 
-    private static RouteData RouteFor<T>() => new(typeof(T), new Dictionary<string, object?>());
+    private static RouteData RouteFor<T>()
+    {
+        return new(typeof(T), new Dictionary<string, object?>());
+    }
 
     [Fact]
     public async Task PageAccessRouteView_RemoteSuperAdminOnLocalPage_ShowsNotAuthorizedAndNoPage()
@@ -44,7 +51,7 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
         Session.SetServerSessionKind(localTier: false, passkeySession: false);
 
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
 
         Assert.Empty(component.FindAll("#page-body"));
         Assert.Contains("You do not have access to this page.", component.Markup);
@@ -56,9 +63,9 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
         Session.SetServerSessionKind(localTier: true, passkeySession: false);
 
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
 
-        Assert.Single(component.FindAll("#page-body"));
+        _ = Assert.Single(component.FindAll("#page-body"));
     }
 
     [Fact]
@@ -67,7 +74,7 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
         Session.SetServerSessionKind(localTier: false, passkeySession: false);
 
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<AliasedLocalOnlyPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<AliasedLocalOnlyPage>()));
 
         Assert.Empty(component.FindAll("#page-body"));
     }
@@ -76,7 +83,7 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
     public void PageAccessRouteView_SignedOut_RendersNothing()
     {
         // No SetAsync: the visitor is signed out. AuthGate redirects them; the guard must show no page body.
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<ChatPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<ChatPage>()));
 
         Assert.Empty(component.FindAll("#page-body"));
         Assert.DoesNotContain("You do not have access to this page.", component.Markup);
@@ -95,9 +102,9 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
     public void PageAccessRouteView_SignedOutOnPublicRoute_RendersPage()
     {
         // Sign-in, register and setup are reachable while signed out (AuthGate allow-list); the guard must not blank them.
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<SignInStubPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<SignInStubPage>()));
 
-        Assert.Single(component.FindAll("#page-body"));
+        _ = Assert.Single(component.FindAll("#page-body"));
     }
 
     [Fact]
@@ -106,7 +113,7 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
         // No server client on this host, so the guard marks the tier known with the most restrictive answer.
         await Session.SetAsync("token", Guid.NewGuid(), "SuperAdmin");
 
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<LocalOnlyPage>()));
 
         component.WaitForAssertion(() => Assert.Contains("You do not have access to this page.", component.Markup));
         Assert.Empty(component.FindAll("#page-body"));
@@ -117,7 +124,7 @@ public class PageAccessRouteView_Tests : NavComponentTestBase
     public async Task PageAccessRouteView_SignInAfterRender_ReevaluatesGuard()
     {
         // A guard rendered while signed out must reveal the page once a session is set, without a navigation.
-        var component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<ChatPage>()));
+        IRenderedComponent<PageAccessRouteView> component = Render<PageAccessRouteView>(p => p.Add(c => c.RouteData, RouteFor<ChatPage>()));
         Assert.Empty(component.FindAll("#page-body"));
 
         await Session.SetAsync("token", Guid.NewGuid(), "ReadOnly");

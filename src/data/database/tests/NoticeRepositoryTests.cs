@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Database.Tests
 
             IReadOnlyList<Notice> result = await _repository.ListForOperatorAsync(operatorId, isAdmin: false, includeDismissed: false, CancellationToken.None);
 
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal(allAudienceNotice.Id, result[0].Id);
             Assert.Equal("AllAudienceEvent", result[0].EventType);
         }

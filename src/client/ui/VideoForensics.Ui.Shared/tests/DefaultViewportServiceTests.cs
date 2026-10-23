@@ -1,7 +1,10 @@
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Ui.Shared.Services;
+
+using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
 
@@ -50,9 +53,9 @@ public class DefaultViewportServiceTests
     public void DefaultViewportService_OnViewportChanged_ValueChanges_FiresOnChange()
     {
         // Arrange
-        var mockJs = Mock.Of<IJSRuntime>();
+        IJSRuntime mockJs = Mock.Of<IJSRuntime>();
         var service = new DefaultViewportService(mockJs);
-        var changeCount = 0;
+        int changeCount = 0;
 
         service.OnChange += () => changeCount++;
 
@@ -68,9 +71,9 @@ public class DefaultViewportServiceTests
     public void DefaultViewportService_OnViewportChanged_SameValue_DoesNotFireOnChange()
     {
         // Arrange
-        var mockJs = Mock.Of<IJSRuntime>();
+        IJSRuntime mockJs = Mock.Of<IJSRuntime>();
         var service = new DefaultViewportService(mockJs);
-        var changeCount = 0;
+        int changeCount = 0;
 
         service.OnChange += () => changeCount++;
 
@@ -89,9 +92,9 @@ public class DefaultViewportServiceTests
     public void DefaultViewportService_OnViewportChanged_MultipleChanges_FiresOnChangeEachTime()
     {
         // Arrange
-        var mockJs = Mock.Of<IJSRuntime>();
+        IJSRuntime mockJs = Mock.Of<IJSRuntime>();
         var service = new DefaultViewportService(mockJs);
-        var changeCount = 0;
+        int changeCount = 0;
 
         service.OnChange += () => changeCount++;
 

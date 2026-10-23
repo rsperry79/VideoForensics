@@ -61,12 +61,9 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             string? password = await _passwordPrompt();
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("Password confirmation was cancelled.");
-            }
-
-            return await _webAuthn.StepUpWithPasswordAsync(token, password);
+            return string.IsNullOrEmpty(password)
+                ? throw new InvalidOperationException("Password confirmation was cancelled.")
+                : await _webAuthn.StepUpWithPasswordAsync(token, password);
         }
     }
 }

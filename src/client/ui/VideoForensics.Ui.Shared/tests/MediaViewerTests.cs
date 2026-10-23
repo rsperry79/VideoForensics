@@ -1,23 +1,25 @@
-namespace VideoForensics.Ui.Shared.Tests;
+using AngleSharp.Dom;
 
-using System;
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-using Xunit;
-using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Evidence;
+
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Components.Evidence;
+using VideoForensics.Ui.Shared.Services.Evidence;
+
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class MediaViewer_Image_Tests : BunitContext
 {
     public MediaViewer_Image_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     private EvidenceItem CreateImageItem()
@@ -48,17 +50,17 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Header_WithLabel()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var header = component.Find(".viewer-header");
+        IElement header = component.Find(".viewer-header");
         Assert.NotNull(header);
         Assert.Contains("Snapshot", header.TextContent);
         Assert.Contains("Front Door", header.TextContent);
@@ -68,17 +70,17 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Header_WithFormattedDate()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var header = component.Find(".viewer-header");
+        IElement header = component.Find(".viewer-header");
         // No user zone cascaded here, so the machine zone is used.
         Assert.Contains(item.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"), header.TextContent);
         Assert.DoesNotContain("UTC", header.TextContent);
@@ -88,9 +90,9 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Header_InUserTimeZone()
     {
         var plus9 = TimeZoneInfo.CreateCustomTimeZone("test-plus9", TimeSpan.FromHours(9), "test-plus9", "test-plus9");
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .AddCascadingValue(new VideoForensics.Ui.Shared.Services.Time.UserTimeZone(plus9))
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
@@ -104,21 +106,21 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Header_WithHashPreview()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var header = component.Find(".viewer-hash");
+        IElement header = component.Find(".viewer-hash");
         Assert.NotNull(header);
         Assert.Contains("abcdef123456", header.TextContent);
         // Check title attribute has full hash
-        var titleAttr = header.GetAttribute("title");
+        string? titleAttr = header.GetAttribute("title");
         Assert.Equal("abcdef1234567890abcdef1234567890", titleAttr);
     }
 
@@ -126,18 +128,18 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Image_WithCorrectSrc()
     {
         // Arrange
-        var item = CreateImageItem();
-        var url = "https://example.com/image.jpg";
+        EvidenceItem item = CreateImageItem();
+        string url = "https://example.com/image.jpg";
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, url)
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         Assert.NotNull(img);
         Assert.Equal(url, img.GetAttribute("src"));
     }
@@ -146,18 +148,18 @@ public class MediaViewer_Image_Tests : BunitContext
     public void Renders_Image_WithDefaultTransform()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var img = component.Find("img");
-        var style = img.GetAttribute("style");
+        IElement img = component.Find("img");
+        string? style = img.GetAttribute("style");
         Assert.Contains("translate(0px, 0px) scale(1)", style);
     }
 
@@ -165,20 +167,20 @@ public class MediaViewer_Image_Tests : BunitContext
     public void ZoomInButton_UpdatesImageScale()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act
-        var zoomInBtn = component.Find("[data-testid='zoom-in']");
+        IElement zoomInBtn = component.Find("[data-testid='zoom-in']");
         zoomInBtn.Click();
 
         // Assert
-        var img = component.Find("img");
-        var style = img.GetAttribute("style");
+        IElement img = component.Find("img");
+        string? style = img.GetAttribute("style");
         Assert.Contains("scale(1.25)", style);
     }
 
@@ -186,25 +188,25 @@ public class MediaViewer_Image_Tests : BunitContext
     public void ZoomOutButton_DecreasesImageScale()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - zoom in twice
-        var zoomInBtn = component.Find("[data-testid='zoom-in']");
+        IElement zoomInBtn = component.Find("[data-testid='zoom-in']");
         zoomInBtn.Click();
         zoomInBtn.Click();
 
         // Then zoom out once
-        var zoomOutBtn = component.Find("[data-testid='zoom-out']");
+        IElement zoomOutBtn = component.Find("[data-testid='zoom-out']");
         zoomOutBtn.Click();
 
         // Assert - should be 1.25
-        var img = component.Find("img");
-        var style = img.GetAttribute("style");
+        IElement img = component.Find("img");
+        string? style = img.GetAttribute("style");
         Assert.Contains("scale(1.25)", style);
     }
 
@@ -212,24 +214,24 @@ public class MediaViewer_Image_Tests : BunitContext
     public void ZoomFitButton_ResetsZoom()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - zoom in
-        var zoomInBtn = component.Find("[data-testid='zoom-in']");
+        IElement zoomInBtn = component.Find("[data-testid='zoom-in']");
         zoomInBtn.Click();
 
         // Then click fit
-        var fitBtn = component.Find("[data-testid='zoom-fit']");
+        IElement fitBtn = component.Find("[data-testid='zoom-fit']");
         fitBtn.Click();
 
         // Assert
-        var img = component.Find("img");
-        var style = img.GetAttribute("style");
+        IElement img = component.Find("img");
+        string? style = img.GetAttribute("style");
         Assert.Contains("translate(0px, 0px) scale(1)", style);
     }
 
@@ -237,19 +239,19 @@ public class MediaViewer_Image_Tests : BunitContext
     public void WheelUp_OnImage_ZoomsIn()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - wheel scroll up (negative deltaY) zooms in
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         img.Wheel(new WheelEventArgs { DeltaY = -100 });
 
         // Assert
-        var style = component.Find("img").GetAttribute("style");
+        string? style = component.Find("img").GetAttribute("style");
         Assert.Contains("scale(1.25)", style);
     }
 
@@ -257,21 +259,21 @@ public class MediaViewer_Image_Tests : BunitContext
     public void WheelDown_OnImage_ZoomsOut()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - zoom in twice, then wheel down once
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         img.Wheel(new WheelEventArgs { DeltaY = -100 });
         img.Wheel(new WheelEventArgs { DeltaY = -100 });
         img.Wheel(new WheelEventArgs { DeltaY = 100 });
 
         // Assert
-        var style = component.Find("img").GetAttribute("style");
+        string? style = component.Find("img").GetAttribute("style");
         Assert.Contains("scale(1.25)", style);
     }
 
@@ -279,8 +281,8 @@ public class MediaViewer_Image_Tests : BunitContext
     public void MouseDrag_AtScaleGreaterThan1_PansImage()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
@@ -290,13 +292,13 @@ public class MediaViewer_Image_Tests : BunitContext
         component.Find("[data-testid='zoom-in']").Click();
 
         // Act - drag from (100, 100) to (140, 130)
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         img.MouseDown(new MouseEventArgs { ClientX = 100, ClientY = 100 });
         img.MouseMove(new MouseEventArgs { ClientX = 140, ClientY = 130 });
         img.MouseUp(new MouseEventArgs { ClientX = 140, ClientY = 130 });
 
         // Assert - offset moved by the drag delta (40, 30)
-        var style = component.Find("img").GetAttribute("style");
+        string? style = component.Find("img").GetAttribute("style");
         Assert.Contains("translate(40px, 30px) scale(1.25)", style);
     }
 
@@ -304,21 +306,21 @@ public class MediaViewer_Image_Tests : BunitContext
     public void MouseDrag_AtScale1_DoesNotPan()
     {
         // Arrange
-        var item = CreateImageItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateImageItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - drag without zooming in first
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         img.MouseDown(new MouseEventArgs { ClientX = 100, ClientY = 100 });
         img.MouseMove(new MouseEventArgs { ClientX = 140, ClientY = 130 });
         img.MouseUp(new MouseEventArgs { ClientX = 140, ClientY = 130 });
 
         // Assert - no pan at scale 1
-        var style = component.Find("img").GetAttribute("style");
+        string? style = component.Find("img").GetAttribute("style");
         Assert.Contains("translate(0px, 0px) scale(1)", style);
     }
 
@@ -326,17 +328,17 @@ public class MediaViewer_Image_Tests : BunitContext
     public void PreviousButton_DisabledWhenHasPreviousFalse()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, true));
 
         // Assert
-        var prevBtn = component.Find("[data-testid='viewer-prev']");
+        IElement prevBtn = component.Find("[data-testid='viewer-prev']");
         Assert.NotNull(prevBtn.GetAttribute("disabled"));
     }
 
@@ -344,17 +346,17 @@ public class MediaViewer_Image_Tests : BunitContext
     public void NextButton_DisabledWhenHasNextFalse()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, true)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var nextBtn = component.Find("[data-testid='viewer-next']");
+        IElement nextBtn = component.Find("[data-testid='viewer-next']");
         Assert.NotNull(nextBtn.GetAttribute("disabled"));
     }
 
@@ -362,10 +364,10 @@ public class MediaViewer_Image_Tests : BunitContext
     public void GrabStillButton_DoesNotRenderForImage()
     {
         // Arrange
-        var item = CreateImageItem();
+        EvidenceItem item = CreateImageItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/image.jpg")
             .Add(p => p.HasPrevious, false)
@@ -381,7 +383,7 @@ public class MediaViewer_NoUrl_Tests : BunitContext
     public MediaViewer_NoUrl_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     [Fact]
@@ -410,12 +412,12 @@ public class MediaViewer_NoUrl_Tests : BunitContext
         };
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, null));
 
         // Assert
-        var unavailable = component.Find(".viewer-unavailable");
+        IElement unavailable = component.Find(".viewer-unavailable");
         Assert.NotNull(unavailable);
         Assert.Contains("Media preview unavailable", unavailable.TextContent);
     }
@@ -446,12 +448,12 @@ public class MediaViewer_NoUrl_Tests : BunitContext
         };
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
-            .Add(p => p.ContentUrl, ""));
+            .Add(p => p.ContentUrl, string.Empty));
 
         // Assert
-        var unavailable = component.Find(".viewer-unavailable");
+        IElement unavailable = component.Find(".viewer-unavailable");
         Assert.NotNull(unavailable);
     }
 }
@@ -463,12 +465,12 @@ public class MediaViewer_Video_Tests : BunitContext
     public MediaViewer_Video_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
         _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
-        _module.SetupVoid("setPlaybackRate", _ => true);
-        _module.SetupVoid("stepFrame", _ => true);
-        _module.SetupVoid("togglePlay", _ => true);
-        _module.SetupVoid("focusElement", _ => true);
+        _ = _module.SetupVoid("setPlaybackRate", _ => true);
+        _ = _module.SetupVoid("stepFrame", _ => true);
+        _ = _module.SetupVoid("togglePlay", _ => true);
+        _ = _module.SetupVoid("focusElement", _ => true);
     }
 
     private EvidenceItem CreateVideoItem(decimal? frameRate = null)
@@ -500,17 +502,17 @@ public class MediaViewer_Video_Tests : BunitContext
     public void Renders_Video_WithPreloadMetadata()
     {
         // Arrange
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var video = component.Find("video");
+        IElement video = component.Find("video");
         Assert.NotNull(video);
         Assert.Equal("metadata", video.GetAttribute("preload"));
         Assert.Equal("https://example.com/video.mp4", video.GetAttribute("src"));
@@ -520,19 +522,19 @@ public class MediaViewer_Video_Tests : BunitContext
     public void SpeedSelect_RendersAllOptions()
     {
         // Arrange
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var select = component.Find("[data-testid='speed']");
+        IElement select = component.Find("[data-testid='speed']");
         Assert.NotNull(select);
-        var options = component.FindAll("select option");
+        IReadOnlyList<IElement> options = component.FindAll("select option");
         Assert.Equal(5, options.Count);
         Assert.Equal("0.25", options[0].GetAttribute("value"));
         Assert.Equal("0.5", options[1].GetAttribute("value"));
@@ -545,20 +547,20 @@ public class MediaViewer_Video_Tests : BunitContext
     public void SpeedSelect_DefaultsTo1()
     {
         // Arrange
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var select = component.Find("select[data-testid='speed']");
+        IElement select = component.Find("select[data-testid='speed']");
         Assert.NotNull(select);
         // The select should have value="1" selected
-        var selectedOption = component.Find("select option[value='1']");
+        IElement selectedOption = component.Find("select option[value='1']");
         Assert.NotNull(selectedOption);
     }
 
@@ -566,19 +568,19 @@ public class MediaViewer_Video_Tests : BunitContext
     public void SpeedSelect_ChangedTo2_InvokesSetPlaybackRateWith2()
     {
         // Arrange
-        var item = CreateVideoItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act
-        var select = component.Find("[data-testid='speed']");
+        IElement select = component.Find("[data-testid='speed']");
         select.Change("2");
 
         // Assert
-        var invocation = _module.VerifyInvoke("setPlaybackRate");
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("setPlaybackRate");
         Assert.Equal(2d, Assert.IsType<double>(invocation.Arguments[1]));
     }
 
@@ -586,8 +588,8 @@ public class MediaViewer_Video_Tests : BunitContext
     public void FrameForwardButton_WithFrameRate25_InvokesStepFrameWith0_04()
     {
         // Arrange
-        var item = CreateVideoItem(frameRate: 25);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem(frameRate: 25);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -597,8 +599,8 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-forward']").Click();
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(1.0 / 25, seconds, precision: 6);
     }
 
@@ -606,8 +608,8 @@ public class MediaViewer_Video_Tests : BunitContext
     public void FrameBackButton_WithNullFrameRate_InvokesStepFrameWithNegativeOneThirtieth()
     {
         // Arrange
-        var item = CreateVideoItem(frameRate: null);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem(frameRate: null);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -617,8 +619,8 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-back']").Click();
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(-1.0 / 30, seconds, precision: 6);
     }
 
@@ -626,8 +628,8 @@ public class MediaViewer_Video_Tests : BunitContext
     public void FrameForwardButton_WithFrameRateZero_InvokesStepFrameWithOneThirtieth()
     {
         // Arrange - regression test: FrameRate of 0 must not divide by zero, and falls back to 30fps
-        var item = CreateVideoItem(frameRate: 0);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem(frameRate: 0);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -637,8 +639,8 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-forward']").Click();
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(1.0 / 30, seconds, precision: 6);
     }
 
@@ -646,8 +648,8 @@ public class MediaViewer_Video_Tests : BunitContext
     public void FrameBackButton_WithFrameRateZero_InvokesStepFrameWithNegativeOneThirtieth()
     {
         // Arrange - regression test: FrameRate of 0 must not divide by zero, and falls back to 30fps
-        var item = CreateVideoItem(frameRate: 0);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem(frameRate: 0);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -657,8 +659,8 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='frame-back']").Click();
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.Equal(-1.0 / 30, seconds, precision: 6);
     }
 
@@ -666,8 +668,8 @@ public class MediaViewer_Video_Tests : BunitContext
     public void PlayToggleButton_Click_InvokesTogglePlay()
     {
         // Arrange
-        var item = CreateVideoItem();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItem();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -677,24 +679,24 @@ public class MediaViewer_Video_Tests : BunitContext
         component.Find("[data-testid='play-toggle']").Click();
 
         // Assert
-        _module.VerifyInvoke("togglePlay");
+        _ = _module.VerifyInvoke("togglePlay");
     }
 
     [Fact]
     public void GrabStillButton_RendersForVideo()
     {
         // Arrange
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Assert
-        var button = component.Find("[data-testid='grab-still']");
+        IElement button = component.Find("[data-testid='grab-still']");
         Assert.NotNull(button);
     }
 
@@ -703,9 +705,9 @@ public class MediaViewer_Video_Tests : BunitContext
     {
         // Arrange
         _ = _module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(4200.0);
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
         long? capturedOffsetMs = null;
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -723,10 +725,10 @@ public class MediaViewer_Video_Tests : BunitContext
     public void GrabStillButton_DoesNotRender_WhenCanGrabStillFalse()
     {
         // Arrange
-        var item = CreateVideoItem();
+        EvidenceItem item = CreateVideoItem();
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -745,12 +747,12 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     public MediaViewer_KeyboardNavigation_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
         _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
-        _module.SetupVoid("setPlaybackRate", _ => true);
-        _module.SetupVoid("stepFrame", _ => true);
-        _module.SetupVoid("togglePlay", _ => true);
-        _module.SetupVoid("focusElement", _ => true);
+        _ = _module.SetupVoid("setPlaybackRate", _ => true);
+        _ = _module.SetupVoid("stepFrame", _ => true);
+        _ = _module.SetupVoid("togglePlay", _ => true);
+        _ = _module.SetupVoid("focusElement", _ => true);
     }
 
     [Fact]
@@ -777,8 +779,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DownloadedAtUtc = DateTime.UtcNow
             }
         };
-        var callbackInvoked = false;
-        var component = Render<MediaViewer>(parameters => parameters
+        bool callbackInvoked = false;
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -786,7 +788,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
             .Add(p => p.OnNext, EventCallback.Factory.Create(this, () => { callbackInvoked = true; })));
 
         // Act
-        var viewer = component.Find("[data-testid='media-viewer']");
+        IElement viewer = component.Find("[data-testid='media-viewer']");
         viewer.KeyDown("ArrowRight");
 
         // Assert
@@ -817,8 +819,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DownloadedAtUtc = DateTime.UtcNow
             }
         };
-        var callbackInvoked = false;
-        var component = Render<MediaViewer>(parameters => parameters
+        bool callbackInvoked = false;
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -826,7 +828,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
             .Add(p => p.OnNext, EventCallback.Factory.Create(this, () => { callbackInvoked = true; })));
 
         // Act
-        var viewer = component.Find("[data-testid='media-viewer']");
+        IElement viewer = component.Find("[data-testid='media-viewer']");
         viewer.KeyDown("ArrowRight");
 
         // Assert
@@ -857,8 +859,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DownloadedAtUtc = DateTime.UtcNow
             }
         };
-        var callbackInvoked = false;
-        var component = Render<MediaViewer>(parameters => parameters
+        bool callbackInvoked = false;
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, true)
@@ -866,7 +868,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
             .Add(p => p.OnPrevious, EventCallback.Factory.Create(this, () => { callbackInvoked = true; })));
 
         // Act
-        var viewer = component.Find("[data-testid='media-viewer']");
+        IElement viewer = component.Find("[data-testid='media-viewer']");
         viewer.KeyDown("ArrowLeft");
 
         // Assert
@@ -897,8 +899,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
                 DownloadedAtUtc = DateTime.UtcNow
             }
         };
-        var callbackInvoked = false;
-        var component = Render<MediaViewer>(parameters => parameters
+        bool callbackInvoked = false;
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -906,7 +908,7 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
             .Add(p => p.OnClose, EventCallback.Factory.Create(this, () => { callbackInvoked = true; })));
 
         // Act
-        var viewer = component.Find("[data-testid='media-viewer']");
+        IElement viewer = component.Find("[data-testid='media-viewer']");
         viewer.KeyDown("Escape");
 
         // Assert
@@ -942,8 +944,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     public void SpaceKey_OnVideo_InvokesTogglePlay()
     {
         // Arrange
-        var item = CreateVideoItemForKeyboard();
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItemForKeyboard();
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -953,15 +955,15 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         component.Find("[data-testid='media-viewer']").KeyDown(" ");
 
         // Assert
-        _module.VerifyInvoke("togglePlay");
+        _ = _module.VerifyInvoke("togglePlay");
     }
 
     [Fact]
     public void PeriodKey_OnVideo_InvokesStepFrameForward()
     {
         // Arrange
-        var item = CreateVideoItemForKeyboard(frameRate: 25);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItemForKeyboard(frameRate: 25);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -971,8 +973,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         component.Find("[data-testid='media-viewer']").KeyDown(".");
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.True(seconds > 0);
         Assert.Equal(1.0 / 25, seconds, precision: 6);
     }
@@ -981,8 +983,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     public void CommaKey_OnVideo_InvokesStepFrameBack()
     {
         // Arrange
-        var item = CreateVideoItemForKeyboard(frameRate: 25);
-        var component = Render<MediaViewer>(parameters => parameters
+        EvidenceItem item = CreateVideoItemForKeyboard(frameRate: 25);
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -992,8 +994,8 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
         component.Find("[data-testid='media-viewer']").KeyDown(",");
 
         // Assert
-        var invocation = _module.VerifyInvoke("stepFrame");
-        var seconds = Assert.IsType<double>(invocation.Arguments[1]);
+        JSRuntimeInvocation invocation = _module.VerifyInvoke("stepFrame");
+        double seconds = Assert.IsType<double>(invocation.Arguments[1]);
         Assert.True(seconds < 0);
         Assert.Equal(-1.0 / 25, seconds, precision: 6);
     }
@@ -1003,9 +1005,9 @@ public class MediaViewer_KeyboardNavigation_Tests : BunitContext
     {
         // Arrange
         _ = _module.Setup<double>("getCurrentTimeMs", _ => true).SetResult(9000.0);
-        var item = CreateVideoItemForKeyboard();
+        EvidenceItem item = CreateVideoItemForKeyboard();
         long? capturedOffsetMs = null;
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item)
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -1027,9 +1029,9 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
     public MediaViewer_StillCaptureStatus_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
         _module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
-        _module.SetupVoid("focusElement", _ => true);
+        _ = _module.SetupVoid("focusElement", _ => true);
     }
 
     private static EvidenceItem CreateVideoItem()
@@ -1063,7 +1065,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
         var status = new MediaStillCaptureStatus { Sha256Hash = "abcdef1234567890", OpenUrl = "https://example.com/still.png" };
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, CreateVideoItem())
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -1071,9 +1073,9 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
             .Add(p => p.StillCaptureStatus, status));
 
         // Assert
-        var result = component.Find("[data-testid='grab-still-result']");
+        IElement result = component.Find("[data-testid='grab-still-result']");
         Assert.Contains("abcdef1234567890", result.TextContent);
-        var link = component.Find("[data-testid='grab-still-open']");
+        IElement link = component.Find("[data-testid='grab-still-open']");
         Assert.Equal("https://example.com/still.png", link.GetAttribute("href"));
     }
 
@@ -1084,7 +1086,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
         var status = new MediaStillCaptureStatus { ErrorMessage = "ffmpeg not available" };
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, CreateVideoItem())
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -1092,7 +1094,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
             .Add(p => p.StillCaptureStatus, status));
 
         // Assert
-        var error = component.Find("[data-testid='grab-still-error']");
+        IElement error = component.Find("[data-testid='grab-still-error']");
         Assert.Contains("ffmpeg not available", error.TextContent);
     }
 
@@ -1103,7 +1105,7 @@ public class MediaViewer_StillCaptureStatus_Tests : BunitContext
         var status = new MediaStillCaptureStatus { InProgress = true };
 
         // Act
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, CreateVideoItem())
             .Add(p => p.ContentUrl, "https://example.com/video.mp4")
             .Add(p => p.HasPrevious, false)
@@ -1120,7 +1122,7 @@ public class MediaViewer_ItemChange_Tests : BunitContext
     public MediaViewer_ItemChange_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     [Fact]
@@ -1168,17 +1170,17 @@ public class MediaViewer_ItemChange_Tests : BunitContext
             }
         };
 
-        var component = Render<MediaViewer>(parameters => parameters
+        IRenderedComponent<MediaViewer> component = Render<MediaViewer>(parameters => parameters
             .Add(p => p.Item, item1)
             .Add(p => p.ContentUrl, "https://example.com/img1.jpg")
             .Add(p => p.HasPrevious, false)
             .Add(p => p.HasNext, false));
 
         // Act - zoom in
-        var zoomInBtn = component.Find("[data-testid='zoom-in']");
+        IElement zoomInBtn = component.Find("[data-testid='zoom-in']");
         zoomInBtn.Click();
-        var imgAfterZoom = component.Find("img");
-        var styleAfterZoom = imgAfterZoom.GetAttribute("style");
+        IElement imgAfterZoom = component.Find("img");
+        string? styleAfterZoom = imgAfterZoom.GetAttribute("style");
         Assert.Contains("scale(1.25)", styleAfterZoom);
 
         // Change item - render with new parameters
@@ -1187,8 +1189,8 @@ public class MediaViewer_ItemChange_Tests : BunitContext
             .Add(p => p.ContentUrl, "https://example.com/img2.jpg"));
 
         // Assert - zoom should be reset
-        var imgAfterChange = component.Find("img");
-        var styleAfterChange = imgAfterChange.GetAttribute("style");
+        IElement imgAfterChange = component.Find("img");
+        string? styleAfterChange = imgAfterChange.GetAttribute("style");
         Assert.Contains("translate(0px, 0px) scale(1)", styleAfterChange);
     }
 }

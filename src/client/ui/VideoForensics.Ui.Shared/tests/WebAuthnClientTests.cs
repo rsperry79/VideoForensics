@@ -1,15 +1,15 @@
-namespace VideoForensics.Ui.Shared.Tests;
-
-using System.Net;
 
 using Microsoft.JSInterop;
 
 using Moq;
 
+using System.Net;
+
 using VideoForensics.Ui.Shared.Services;
 
 using Xunit;
 
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// <see cref="WebAuthnClient"/> must send its calls through the client
 /// <see cref="ISelfApiHttpClientFactory.CreateClient(string?)"/> returns, not a raw
@@ -22,7 +22,7 @@ public class WebAuthnClientTests
 {
     private sealed class RecordingHandler : HttpMessageHandler
     {
-        public List<HttpRequestMessage> Requests { get; } = new();
+        public List<HttpRequestMessage> Requests { get; } = [];
         public Func<HttpRequestMessage, HttpResponseMessage>? RespondWith { get; set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -87,7 +87,7 @@ public class WebAuthnClientTests
 
         Assert.True(success, errorMessage);
         Assert.Equal("issued-token", sessionToken);
-        Assert.Single(handler.Requests);
+        _ = Assert.Single(handler.Requests);
         Assert.EndsWith("api/v1/auth/login/password", handler.Requests[0].RequestUri!.AbsolutePath);
         // Pre-auth: no session exists yet, so the factory must be asked with a null bearer token
         // (rather than WebAuthnClient inventing its own HttpClient with no factory involvement at all).
@@ -139,12 +139,12 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        var result = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods) = await client.SignInWithPasswordAsync("alice", "password123");
 
-        Assert.True(result.Success, result.ErrorMessage);
-        Assert.True(result.RequiresTwoFactor);
-        Assert.Equal("corr-123", result.TwoFactorCorrelationId);
-        Assert.Null(result.SessionToken);
+        Assert.True(Success, ErrorMessage);
+        Assert.True(RequiresTwoFactor);
+        Assert.Equal("corr-123", TwoFactorCorrelationId);
+        Assert.Null(SessionToken);
     }
 
     [Fact]
@@ -165,10 +165,10 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        var result = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods) = await client.SignInWithPasswordAsync("alice", "password123");
 
         // Returned exactly as the server sent them, so the page can decide which ones it knows
-        Assert.Equal(new[] { "passkey", "future-method" }, result.TwoFactorMethods);
+        Assert.Equal(new[] { "passkey", "future-method" }, TwoFactorMethods);
     }
 
     [Fact]
@@ -188,10 +188,10 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        var result = await client.SignInWithPasswordAsync("alice", "password123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods) = await client.SignInWithPasswordAsync("alice", "password123");
 
         // Older servers send no twoFactorMethods; they only ever offered passkey
-        Assert.Equal(new[] { "passkey" }, result.TwoFactorMethods);
+        Assert.Equal(new[] { "passkey" }, TwoFactorMethods);
     }
 
     [Fact]
@@ -216,15 +216,15 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        var result = await client.CreatePasskeyLoginAsync("alice", "password123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods) = await client.CreatePasskeyLoginAsync("alice", "password123");
 
-        Assert.True(result.Success, result.ErrorMessage);
-        Assert.Equal("passkey-setup-token", result.SessionToken);
-        Assert.Equal(operatorId, result.OperatorId);
-        Assert.Equal("ReadOnly", result.Role);
-        Assert.True(result.MustChangePassword);
-        Assert.False(result.HasPasskey);
-        Assert.Single(handler.Requests);
+        Assert.True(Success, ErrorMessage);
+        Assert.Equal("passkey-setup-token", SessionToken);
+        Assert.Equal(operatorId, OperatorId);
+        Assert.Equal("ReadOnly", Role);
+        Assert.True(MustChangePassword);
+        Assert.False(HasPasskey);
+        _ = Assert.Single(handler.Requests);
         Assert.EndsWith("api/v1/auth/login/password/create-passkey", handler.Requests[0].RequestUri!.AbsolutePath);
         Assert.Null(factory.LastRequestedBearerToken);
     }
@@ -269,11 +269,11 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new Mock<IJSRuntime>().Object, factory);
 
-        var result = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey) = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
 
-        Assert.False(result.Success);
-        Assert.Equal("Invalid username or password", result.ErrorMessage);
-        Assert.Single(handler.Requests);
+        Assert.False(Success);
+        Assert.Equal("Invalid username or password", ErrorMessage);
+        _ = Assert.Single(handler.Requests);
         Assert.EndsWith("api/v1/auth/webauthn/username-assertion-options", handler.Requests[0].RequestUri!.AbsolutePath);
     }
 
@@ -281,27 +281,34 @@ public class WebAuthnClientTests
     private sealed class FakeAuthenticateJsRuntime : IJSRuntime
     {
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-            => ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+        {
+            return ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+        }
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-            => ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+        {
+            return ValueTask.FromResult((TValue)(object)"{\"id\":\"AQID\"}");
+        }
     }
 
-    private static RecordingHandler TwoFactorCompleteHandler(object body) => new()
+    private static RecordingHandler TwoFactorCompleteHandler(object body)
     {
-        RespondWith = request => request.RequestUri!.AbsolutePath.EndsWith("username-assertion-options", StringComparison.Ordinal)
-            ? new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = System.Net.Http.Json.JsonContent.Create(new { nonce = "nonce-1", options = new { challenge = "AAAA" } })
-            }
-            : new HttpResponseMessage(HttpStatusCode.OK) { Content = System.Net.Http.Json.JsonContent.Create(body) }
-    };
+        return new()
+        {
+            RespondWith = request => request.RequestUri!.AbsolutePath.EndsWith("username-assertion-options", StringComparison.Ordinal)
+                ? new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = System.Net.Http.Json.JsonContent.Create(new { nonce = "nonce-1", options = new { challenge = "AAAA" } })
+                }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = System.Net.Http.Json.JsonContent.Create(body) }
+        };
+    }
 
     [Fact]
     public async Task CompleteTwoFactorWithPasskeyAsync_Success_ReadsMustChangePasswordFromResponse()
     {
         var operatorId = Guid.NewGuid();
-        var handler = TwoFactorCompleteHandler(new
+        RecordingHandler handler = TwoFactorCompleteHandler(new
         {
             sessionToken = "two-factor-session-token",
             operatorId,
@@ -312,13 +319,13 @@ public class WebAuthnClientTests
         var factory = new FakeSelfApiHttpClientFactory(handler);
         var client = new WebAuthnClient(new FakeAuthenticateJsRuntime(), factory);
 
-        var result = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
+        (bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, _, bool MustChangePassword, bool HasPasskey) = await client.CompleteTwoFactorWithPasskeyAsync("alice", "corr-123");
 
-        Assert.True(result.Success, result.ErrorMessage);
-        Assert.Equal("two-factor-session-token", result.SessionToken);
-        Assert.Equal(operatorId, result.OperatorId);
-        Assert.False(result.MustChangePassword);
-        Assert.True(result.HasPasskey);
+        Assert.True(Success, ErrorMessage);
+        Assert.Equal("two-factor-session-token", SessionToken);
+        Assert.Equal(operatorId, OperatorId);
+        Assert.False(MustChangePassword);
+        Assert.True(HasPasskey);
         Assert.EndsWith("api/v1/auth/webauthn/username-assertion-complete", handler.Requests[1].RequestUri!.AbsolutePath);
     }
 
@@ -326,7 +333,7 @@ public class WebAuthnClientTests
     public async Task CompleteTwoFactorWithPasskeyAsync_MissingField_ThrowsNamingField()
     {
         const string token = "secret-token-value-789";
-        var handler = TwoFactorCompleteHandler(new
+        RecordingHandler handler = TwoFactorCompleteHandler(new
         {
             sessionToken = token,
             operatorId = Guid.NewGuid(),
@@ -363,7 +370,7 @@ public class WebAuthnClientTests
 
         Assert.True(success, errorMessage);
         Assert.Equal("new-session-token", newSessionToken);
-        Assert.Single(handler.Requests);
+        _ = Assert.Single(handler.Requests);
         Assert.EndsWith("api/v1/auth/change-password", handler.Requests[0].RequestUri!.AbsolutePath);
         Assert.Equal("current-session-token", factory.LastRequestedBearerToken);
     }
@@ -385,7 +392,7 @@ public class WebAuthnClientTests
 
         Assert.True(isEmpty);
         Assert.False(isLocal);
-        Assert.Single(handler.Requests);
+        _ = Assert.Single(handler.Requests);
         Assert.EndsWith("api/v1/setup/status", handler.Requests[0].RequestUri!.AbsolutePath);
         Assert.Null(factory.LastRequestedBearerToken);
     }

@@ -1,7 +1,6 @@
 using ModelContextProtocol.Server;
 
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Contracts;
 
@@ -46,7 +45,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             }
 
             // Validate limit
-            if (limit < 1 || limit > 1000)
+            if (limit is < 1 or > 1000)
             {
                 limit = 20;
             }
@@ -102,7 +101,7 @@ namespace VideoForensics.WebApp.Mcp.Tools
             {
                 // Fetch events
                 var events = new List<SecurityEventDto>();
-                await foreach (var @event in _auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, cancellationToken))
+                await foreach (SecurityEventDto @event in _auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, cancellationToken))
                 {
                     events.Add(@event);
                 }

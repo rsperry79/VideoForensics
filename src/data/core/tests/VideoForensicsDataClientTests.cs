@@ -104,7 +104,7 @@ namespace VideoForensics.Data.Core.Tests
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
                 .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
-            _mockMediaAnalysis.Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("ffmpeg missing"));
+            _ = _mockMediaAnalysis.Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("ffmpeg missing"));
 
             DownloadEvent result = await _dataClient.RecordDownloadEventAsync(evt, media, CancellationToken.None);
 
@@ -121,7 +121,7 @@ namespace VideoForensics.Data.Core.Tests
             _ = _mockUnitOfWork
                 .Setup(x => x.ExecuteAsync(It.IsAny<Func<IUnitOfWorkContext, Task<DownloadEvent>>>(), It.IsAny<CancellationToken>()))
                 .Returns(async (Func<IUnitOfWorkContext, Task<DownloadEvent>> work, CancellationToken ct) => await work(context.Object));
-            _mockMediaAnalysis
+            _ = _mockMediaAnalysis
                 .Setup(a => a.AnalyzeAsync(media.Id, It.IsAny<CancellationToken>()))
                 .Returns<Guid, CancellationToken>((_, ct) => { cts.Cancel(); ct.ThrowIfCancellationRequested(); return Task.CompletedTask; });
 
@@ -1242,8 +1242,8 @@ namespace VideoForensics.Data.Core.Tests
         [Fact]
         public async Task RecordDeviceDetailsAsync_DelegatesToDeviceDetailsRepository()
         {
-            Guid deviceId = Guid.NewGuid();
-            Guid healthId = Guid.NewGuid();
+            var deviceId = Guid.NewGuid();
+            var healthId = Guid.NewGuid();
             var caps = new DeviceCapabilities { Id = Guid.NewGuid(), DeviceId = deviceId };
 
             await _dataClient.RecordDeviceDetailsAsync(deviceId, healthId, caps, null, null, CancellationToken.None);
@@ -1255,7 +1255,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task UpdateDeviceDetailFields_ChangedChimeVolume_RecordsOneRow()
         {
             // Arrange: stored ChimeVolume 1, incoming 2. Identity, name and the response hash must be left alone.
-            Guid deviceId = Guid.NewGuid();
+            var deviceId = Guid.NewGuid();
             var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-upd", Name = "Chime", Type = "chime", ChimeVolume = 1, ApiResponseHash = "hash-kept" };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
@@ -1294,7 +1294,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task UpdateDeviceDetailFields_UnknownDevice_WritesNothing()
         {
             // Arrange: no device row for the id.
-            Guid deviceId = Guid.NewGuid();
+            var deviceId = Guid.NewGuid();
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();
             var mockDeviceRepoInContext = new Mock<IDeviceRepository>();
@@ -1318,7 +1318,7 @@ namespace VideoForensics.Data.Core.Tests
         public async Task UpdateDeviceDetailFields_NullStoredValue_RecordsNothing()
         {
             // Arrange: ChimeVolume has never been populated (null); incoming is 2.
-            Guid deviceId = Guid.NewGuid();
+            var deviceId = Guid.NewGuid();
             var existing = new Device { Id = deviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "device-null", Name = "Chime", Type = "chime", ChimeVolume = null };
             var details = new VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields(ChimeVolume: 2);
             var mockContext = new Mock<IUnitOfWorkContext>();

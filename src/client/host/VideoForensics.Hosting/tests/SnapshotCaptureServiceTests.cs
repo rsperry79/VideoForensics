@@ -1,20 +1,15 @@
-using System.Globalization;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using Moq;
+using System.Globalization;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Providers.Ring.Services;
-
-using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -61,7 +56,7 @@ namespace VideoForensics.Hosting.Tests
                 .ReturnsAsync((SnapshotCapture c, CancellationToken _) => c);
             _ = _captureRows.Setup(r => r.GetAttemptsForDeviceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken _) =>
-                    (IReadOnlyList<SnapshotCapture>)_rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
+                    _rows.Where(r => r.DeviceId == deviceId && r.CapturedAtUtc >= from && r.CapturedAtUtc <= to).ToList());
         }
 
         public void Dispose()
@@ -197,7 +192,6 @@ namespace VideoForensics.Hosting.Tests
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
-
         [Fact]
         public async Task RunOneTickAsync_UnknownOnlineState_StillCaptures()
         {
@@ -275,7 +269,6 @@ namespace VideoForensics.Hosting.Tests
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
-
 
         [Fact]
         public async Task RunOneTickAsync_StoredIntervalSeconds_UsesStoredInterval()

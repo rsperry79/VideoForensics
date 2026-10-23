@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 using SIPSorcery.Net;
 
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -33,22 +31,30 @@ namespace VideoForensics.WebApp.Tests
             public int VideoRtpSubscriberCount => OnVideoRtpPayload?.GetInvocationList().Length ?? 0;
             public int AudioRtpSubscriberCount => OnAudioRtpPayload?.GetInvocationList().Length ?? 0;
 
-            public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
+            public Task CloseAsync(CancellationToken ct)
+            {
+                return Task.CompletedTask;
+            }
 
-            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+            public ValueTask DisposeAsync()
+            {
+                return ValueTask.CompletedTask;
+            }
         }
 
-        private static BrowserLiveViewBridge BuildBridge() =>
-            new(
+        private static BrowserLiveViewBridge BuildBridge()
+        {
+            return new(
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<BrowserLiveViewBridge>.Instance,
                 Microsoft.Extensions.Options.Options.Create(new BrowserLiveViewOptions()));
+        }
 
         [Fact]
         public async Task CreateBrowserLegAsync_NullConnection_ThrowsArgumentNullException()
         {
             BrowserLiveViewBridge bridge = BuildBridge();
 
-            await Assert.ThrowsAsync<ArgumentNullException>(
+            _ = await Assert.ThrowsAsync<ArgumentNullException>(
                 () => bridge.CreateBrowserLegAsync(ConnectionId, SessionId, null!));
         }
 
@@ -99,11 +105,11 @@ namespace VideoForensics.WebApp.Tests
             BrowserLiveViewBridge bridge = BuildBridge();
             var ringConnection = new FakeLiveViewConnection();
 
-            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
             try
             {
-                await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+                _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
                 Assert.Equal(1, ringConnection.VideoRtpSubscriberCount);
             }
@@ -121,7 +127,7 @@ namespace VideoForensics.WebApp.Tests
 
             try
             {
-                await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+                _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
                 Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
             }
@@ -137,11 +143,11 @@ namespace VideoForensics.WebApp.Tests
             BrowserLiveViewBridge bridge = BuildBridge();
             var ringConnection = new FakeLiveViewConnection();
 
-            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
             try
             {
-                await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+                _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
                 Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
             }
@@ -156,7 +162,7 @@ namespace VideoForensics.WebApp.Tests
         {
             BrowserLiveViewBridge bridge = BuildBridge();
             var ringConnection = new FakeLiveViewConnection();
-            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
             Assert.Equal(1, ringConnection.AudioRtpSubscriberCount);
 
             await bridge.DisposeBrowserLegAsync(ConnectionId, SessionId);
@@ -179,7 +185,7 @@ namespace VideoForensics.WebApp.Tests
         {
             BrowserLiveViewBridge bridge = BuildBridge();
             var ringConnection = new FakeLiveViewConnection();
-            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
 
             await bridge.DisposeBrowserLegAsync(ConnectionId, SessionId);
 
@@ -215,8 +221,8 @@ namespace VideoForensics.WebApp.Tests
             var otherSessionId = Guid.Parse("22222222-2222-2222-2222-222222222222");
             const string otherConnectionId = "conn-other";
 
-            await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
-            await bridge.CreateBrowserLegAsync(ConnectionId, otherSessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, SessionId, ringConnection);
+            _ = await bridge.CreateBrowserLegAsync(ConnectionId, otherSessionId, ringConnection);
             RTCPeerConnection otherConnectionPeer = await bridge.CreateBrowserLegAsync(otherConnectionId, SessionId, ringConnection);
 
             try

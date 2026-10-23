@@ -1,8 +1,3 @@
-using System.Net;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
@@ -10,6 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Exceptions;
@@ -32,19 +32,24 @@ namespace VideoForensics.WebApp.Tests.Api
 
         private static readonly byte[] SnapshotBytes = Encoding.UTF8.GetBytes("probe-test-stream-bytes");
 
-        private static string Url(string suffix = "latest-snapshot") =>
-            $"/api/v1/probe/ring/{AccountId:D}/doorbots/{DoorbotId}/{suffix}";
-
-        private static Dictionary<string, string?> EnabledConfig(string token = Token) => new()
+        private static string Url(string suffix = "latest-snapshot")
         {
-            ["SnapshotProbe:Enabled"] = "true",
-            ["SnapshotProbe:Token"] = token,
-        };
+            return $"/api/v1/probe/ring/{AccountId:D}/doorbots/{DoorbotId}/{suffix}";
+        }
+
+        private static Dictionary<string, string?> EnabledConfig(string token = Token)
+        {
+            return new()
+            {
+                ["SnapshotProbe:Enabled"] = "true",
+                ["SnapshotProbe:Token"] = token,
+            };
+        }
 
         private static async Task<WebApplication> BuildAsync(Dictionary<string, string?> config, ISnapshotProbeBackend backend)
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            builder.Configuration.AddInMemoryCollection(config);
+            _ = builder.Configuration.AddInMemoryCollection(config);
             _ = builder.WebHost.UseTestServer();
             _ = builder.Services.AddSingleton(backend);
 
@@ -61,6 +66,7 @@ namespace VideoForensics.WebApp.Tests.Api
             {
                 request.Headers.Add("X-Probe-Token", token);
             }
+
             return request;
         }
 
@@ -97,7 +103,7 @@ namespace VideoForensics.WebApp.Tests.Api
         {
             Mock<ISnapshotProbeBackend> backend = BackendReturningSnapshot();
 
-            await using WebApplication app = await BuildAsync(EnabledConfig(token: ""), backend.Object);
+            await using WebApplication app = await BuildAsync(EnabledConfig(token: string.Empty), backend.Object);
 
             var probeRoutes = app.Services.GetRequiredService<EndpointDataSource>().Endpoints
                 .OfType<RouteEndpoint>()
@@ -142,7 +148,7 @@ namespace VideoForensics.WebApp.Tests.Api
             using HttpResponseMessage response = await client.SendAsync(Request(HttpMethod.Get, Url(), Token));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             JsonElement root = json.RootElement;
 
             string expectedPrefix = Convert.ToHexString(SHA256.HashData(SnapshotBytes)).ToLowerInvariant()[..12];
@@ -240,7 +246,7 @@ namespace VideoForensics.WebApp.Tests.Api
             using HttpResponseMessage response = await client.SendAsync(Request(HttpMethod.Get, Url("battery"), Token));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             JsonElement root = json.RootElement;
             Assert.Equal(88, root.GetProperty("battery_life").GetInt32());
             Assert.Equal(JsonValueKind.Null, root.GetProperty("battery_voltage").ValueKind);
@@ -264,10 +270,10 @@ namespace VideoForensics.WebApp.Tests.Api
         {
             var devices = new Devices
             {
-                Doorbots = new List<Doorbot> { new Doorbot { Id = (int)DoorbotId, BatteryLife = 77 } },
-                AuthorizedDoorbots = new List<Doorbot>(),
-                StickupCams = new List<StickupCam>(),
-                Chimes = new List<Chime>(),
+                Doorbots = [new Doorbot { Id = (int)DoorbotId, BatteryLife = 77 }],
+                AuthorizedDoorbots = [],
+                StickupCams = [],
+                Chimes = [],
             };
 
             SnapshotProbeBattery battery = SessionSnapshotProbeBackend.FindBattery(devices, DoorbotId);
@@ -281,13 +287,13 @@ namespace VideoForensics.WebApp.Tests.Api
         {
             var devices = new Devices
             {
-                Doorbots = new List<Doorbot>(),
-                AuthorizedDoorbots = new List<Doorbot>(),
-                StickupCams = new List<StickupCam>
-                {
+                Doorbots = [],
+                AuthorizedDoorbots = [],
+                StickupCams =
+                [
                     new StickupCam { Id = DoorbotId, BatteryLife = 65, BatteryVoltage = 12.5m },
-                },
-                Chimes = new List<Chime>(),
+                ],
+                Chimes = [],
             };
 
             SnapshotProbeBattery battery = SessionSnapshotProbeBackend.FindBattery(devices, DoorbotId);
@@ -301,10 +307,10 @@ namespace VideoForensics.WebApp.Tests.Api
         {
             var devices = new Devices
             {
-                Doorbots = new List<Doorbot>(),
-                AuthorizedDoorbots = new List<Doorbot>(),
-                StickupCams = new List<StickupCam>(),
-                Chimes = new List<Chime>(),
+                Doorbots = [],
+                AuthorizedDoorbots = [],
+                StickupCams = [],
+                Chimes = [],
             };
 
             SnapshotProbeBattery battery = SessionSnapshotProbeBackend.FindBattery(devices, DoorbotId);

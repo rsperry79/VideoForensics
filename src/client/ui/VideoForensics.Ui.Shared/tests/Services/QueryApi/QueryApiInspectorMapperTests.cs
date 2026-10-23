@@ -1,9 +1,11 @@
-namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
+
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Ui.Shared.Services.QueryApi;
 
 using Xunit;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Services.QueryApi;
-using VideoForensics.Ui.Shared.Services.Inspector;
+
+namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
 
 public class LocationInspectorMapper_ToInspector_Tests
 {
@@ -19,7 +21,7 @@ public class LocationInspectorMapper_ToInspector_Tests
         var retrievedAt = new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc);
 
         // Act
-        var inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
+        InspectorModel inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
 
         // Assert
         Assert.Contains("Location", inspector.Title);
@@ -35,10 +37,10 @@ public class LocationInspectorMapper_ToInspector_Tests
             Name: "Home",
             Address: "123 St"
         );
-        var retrievedAt = DateTime.UtcNow;
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
+        InspectorModel inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Fields);
@@ -56,10 +58,10 @@ public class LocationInspectorMapper_ToInspector_Tests
             Address: "123 St",
             Metadata: metadata
         );
-        var retrievedAt = DateTime.UtcNow;
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
+        InspectorModel inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
 
         // Assert
         // The raw JSON should be null for Location since it doesn't have MetadataJson
@@ -74,7 +76,7 @@ public class LocationInspectorMapper_ToInspector_Tests
         var retrievedAt = new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc);
 
         // Act
-        var inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
+        InspectorModel inspector = LocationInspectorMapper.ToInspector(location, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Provenance);
@@ -99,11 +101,11 @@ public class DeviceInspectorMapper_ToInspector_Tests
             LocationId: "loc-123",
             IsOnline: true
         );
-        var locationId = "loc-123";
-        var retrievedAt = DateTime.UtcNow;
+        string locationId = "loc-123";
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
+        InspectorModel inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
 
         // Assert
         Assert.Contains("Device", inspector.Title);
@@ -122,11 +124,11 @@ public class DeviceInspectorMapper_ToInspector_Tests
             LocationId: "loc-123",
             IsOnline: true
         );
-        var locationId = "loc-123";
-        var retrievedAt = DateTime.UtcNow;
+        string locationId = "loc-123";
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
+        InspectorModel inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Fields);
@@ -144,11 +146,11 @@ public class DeviceInspectorMapper_ToInspector_Tests
             LocationId: "loc-456",
             IsOnline: true
         );
-        var locationId = "loc-456";
+        string locationId = "loc-456";
         var retrievedAt = new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc);
 
         // Act
-        var inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
+        InspectorModel inspector = DeviceInspectorMapper.ToInspector(device, locationId, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Provenance);
@@ -173,13 +175,13 @@ public class DeviceEventInspectorMapper_ToInspector_Tests
             EventType: "motion",
             Timestamp: new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc)
         );
-        var deviceId = "dev-123";
+        string deviceId = "dev-123";
         var fromUtc = new DateTime(2026, 9, 17, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
-        var retrievedAt = DateTime.UtcNow;
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
+        InspectorModel inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
 
         // Assert
         Assert.Contains("Event", inspector.Title);
@@ -197,13 +199,13 @@ public class DeviceEventInspectorMapper_ToInspector_Tests
             EventType: "motion",
             Timestamp: DateTime.UtcNow
         );
-        var deviceId = "dev-123";
-        var fromUtc = DateTime.UtcNow.AddDays(-7);
-        var toUtc = DateTime.UtcNow;
-        var retrievedAt = DateTime.UtcNow;
+        string deviceId = "dev-123";
+        DateTime fromUtc = DateTime.UtcNow.AddDays(-7);
+        DateTime toUtc = DateTime.UtcNow;
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
+        InspectorModel inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Fields);
@@ -220,13 +222,13 @@ public class DeviceEventInspectorMapper_ToInspector_Tests
             EventType: "motion",
             Timestamp: new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc)
         );
-        var deviceId = "dev-456";
+        string deviceId = "dev-456";
         var fromUtc = new DateTime(2026, 9, 17, 0, 0, 0, DateTimeKind.Utc);
         var toUtc = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
         var retrievedAt = new DateTime(2026, 9, 20, 15, 0, 0, DateTimeKind.Utc);
 
         // Act
-        var inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
+        InspectorModel inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Provenance);
@@ -250,13 +252,13 @@ public class DeviceEventInspectorMapper_ToInspector_Tests
             Timestamp: DateTime.UtcNow,
             Metadata: metadata
         );
-        var deviceId = "dev-123";
-        var fromUtc = DateTime.UtcNow.AddDays(-7);
-        var toUtc = DateTime.UtcNow;
-        var retrievedAt = DateTime.UtcNow;
+        string deviceId = "dev-123";
+        DateTime fromUtc = DateTime.UtcNow.AddDays(-7);
+        DateTime toUtc = DateTime.UtcNow;
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
+        InspectorModel inspector = DeviceEventInspectorMapper.ToInspector(@event, deviceId, fromUtc, toUtc, retrievedAt);
 
         // Assert
         // DeviceEvent doesn't have MetadataJson property, but has Metadata dictionary
@@ -277,11 +279,11 @@ public class DeviceConfigInspectorMapper_ToInspector_Tests
             MotionSensitivity: 75,
             RecordingMode: "motion"
         );
-        var deviceId = "dev-123";
-        var retrievedAt = DateTime.UtcNow;
+        string deviceId = "dev-123";
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
+        InspectorModel inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
 
         // Assert
         Assert.Contains("Device Config", inspector.Title);
@@ -298,11 +300,11 @@ public class DeviceConfigInspectorMapper_ToInspector_Tests
             MotionSensitivity: 75,
             RecordingMode: "motion"
         );
-        var deviceId = "dev-123";
-        var retrievedAt = DateTime.UtcNow;
+        string deviceId = "dev-123";
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
+        InspectorModel inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Fields);
@@ -319,11 +321,11 @@ public class DeviceConfigInspectorMapper_ToInspector_Tests
             MotionSensitivity: 50,
             RecordingMode: "always"
         );
-        var deviceId = "dev-456";
+        string deviceId = "dev-456";
         var retrievedAt = new DateTime(2026, 9, 20, 14, 30, 45, DateTimeKind.Utc);
 
         // Act
-        var inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
+        InspectorModel inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
 
         // Assert
         Assert.NotNull(inspector.Provenance);
@@ -348,11 +350,11 @@ public class DeviceConfigInspectorMapper_ToInspector_Tests
             RecordingMode: "motion",
             CustomSettings: customSettings
         );
-        var deviceId = "dev-123";
-        var retrievedAt = DateTime.UtcNow;
+        string deviceId = "dev-123";
+        DateTime retrievedAt = DateTime.UtcNow;
 
         // Act
-        var inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
+        InspectorModel inspector = DeviceConfigInspectorMapper.ToInspector(config, deviceId, retrievedAt);
 
         // Assert
         // DeviceConfig doesn't have a MetadataJson property, so RawJson should be null
@@ -373,7 +375,7 @@ public class QueryApiDrillDownHelpers_Tests
         );
 
         // Act
-        var result = QueryApiDrillDownHelpers.DrillDownLocationId(location);
+        string result = QueryApiDrillDownHelpers.DrillDownLocationId(location);
 
         // Assert
         Assert.Equal("loc-123", result);
@@ -383,7 +385,7 @@ public class QueryApiDrillDownHelpers_Tests
     public void DrillDownLocationId_WithNullLocation_ReturnsEmpty()
     {
         // Act
-        var result = QueryApiDrillDownHelpers.DrillDownLocationId(null);
+        string result = QueryApiDrillDownHelpers.DrillDownLocationId(null);
 
         // Assert
         Assert.Empty(result);
@@ -402,7 +404,7 @@ public class QueryApiDrillDownHelpers_Tests
         );
 
         // Act
-        var result = QueryApiDrillDownHelpers.DrillDownDeviceId(device);
+        string result = QueryApiDrillDownHelpers.DrillDownDeviceId(device);
 
         // Assert
         Assert.Equal("dev-456", result);
@@ -412,7 +414,7 @@ public class QueryApiDrillDownHelpers_Tests
     public void DrillDownDeviceId_WithNullDevice_ReturnsEmpty()
     {
         // Act
-        var result = QueryApiDrillDownHelpers.DrillDownDeviceId(null);
+        string result = QueryApiDrillDownHelpers.DrillDownDeviceId(null);
 
         // Assert
         Assert.Empty(result);
@@ -423,7 +425,7 @@ public class QueryApiDrillDownHelpers_Tests
     {
         var location = new Location(Id: "loc-123", Name: "Home", Address: null);
 
-        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
+        string result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
 
         Assert.Equal("Home", result);
     }
@@ -433,7 +435,7 @@ public class QueryApiDrillDownHelpers_Tests
     {
         var location = new Location(Id: "loc-123", Name: "  ", Address: null);
 
-        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
+        string result = QueryApiDrillDownHelpers.LocationDisplayLabel(location);
 
         Assert.Equal("loc-123", result);
     }
@@ -441,9 +443,9 @@ public class QueryApiDrillDownHelpers_Tests
     [Fact]
     public void QueryApiDrillDownHelpers_DeviceDisplayLabel_WithEmptyName_ReturnsId()
     {
-        var device = new Device(Id: "dev-456", Name: "", Type: "camera", LocationId: "loc-123", IsOnline: true);
+        var device = new Device(Id: "dev-456", Name: string.Empty, Type: "camera", LocationId: "loc-123", IsOnline: true);
 
-        var result = QueryApiDrillDownHelpers.DeviceDisplayLabel(device);
+        string result = QueryApiDrillDownHelpers.DeviceDisplayLabel(device);
 
         Assert.Equal("dev-456", result);
     }
@@ -451,7 +453,7 @@ public class QueryApiDrillDownHelpers_Tests
     [Fact]
     public void QueryApiDrillDownHelpers_LocationDisplayLabel_WithNull_ReturnsEmpty()
     {
-        var result = QueryApiDrillDownHelpers.LocationDisplayLabel(null);
+        string result = QueryApiDrillDownHelpers.LocationDisplayLabel(null);
 
         Assert.Empty(result);
     }

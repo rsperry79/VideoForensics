@@ -1,8 +1,11 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Microsoft.AspNetCore.Components;
-using Xunit;
+
 using VideoForensics.Ui.Shared.Services;
+
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class LeftPanelContentServiceTests
 {
@@ -12,7 +15,7 @@ public class LeftPanelContentServiceTests
         // Arrange
         var service = new LeftPanelContentService();
         RenderFragment content = _ => { };
-        var raised = 0;
+        int raised = 0;
         service.OnChange += () => raised++;
 
         // Act
@@ -29,7 +32,7 @@ public class LeftPanelContentServiceTests
         // Arrange
         var service = new LeftPanelContentService();
         service.Set(_ => { });
-        var raised = 0;
+        int raised = 0;
         service.OnChange += () => raised++;
 
         // Act
@@ -45,7 +48,7 @@ public class LeftPanelContentServiceTests
     {
         // Arrange
         var service = new LeftPanelContentService();
-        var raised = 0;
+        int raised = 0;
         service.OnChange += () => raised++;
 
         // Act
@@ -62,8 +65,8 @@ public class LeftPanelContentServiceTests
         // Blazor sets the next page's content before disposing the previous page, so the previous
         // page's Clear must not wipe content that now belongs to the next page.
         var service = new LeftPanelContentService();
-        var previousPage = new object();
-        var nextPage = new object();
+        object previousPage = new();
+        object nextPage = new();
         RenderFragment next = _ => { };
         service.Set(_ => { }, previousPage);
         service.Set(next, nextPage);
@@ -77,7 +80,7 @@ public class LeftPanelContentServiceTests
     public void Clear_ByCurrentOwner_ClearsItsContent()
     {
         var service = new LeftPanelContentService();
-        var page = new object();
+        object page = new();
         service.Set(_ => { }, page);
 
         service.Clear(page);

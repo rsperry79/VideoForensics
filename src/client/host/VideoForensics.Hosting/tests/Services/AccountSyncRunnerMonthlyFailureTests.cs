@@ -1,14 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Contracts;
+
+using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
 namespace VideoForensics.Hosting.Tests.Services
 {
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Core.Providers.Common.Contracts;
-    using VideoForensics.Data.Common.Contracts;
-    using VideoForensics.Data.Common.Entities;
-    using VideoForensics.Hosting.Contracts;
-    using VideoForensics.Hosting.Services;
-    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
-
     /// <summary>
     /// A failed backfill month must not be hidden by a later clean month: the sync stays failed and the account is not marked complete.
     /// </summary>
@@ -22,27 +22,30 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly SyncActivityLog _activity = new();
         private readonly Guid _accountId = Guid.NewGuid();
 
-        private AccountSyncRunner CreateSut() => new(
+        private AccountSyncRunner CreateSut()
+        {
+            return new(
             new ServiceCollection().AddScoped(_ => _mockAuth.Object).AddScoped(_ => _mockPull.Object).BuildServiceProvider(),
             _mockAccounts.Object,
             _mockRuns.Object,
             Mock.Of<ISnapshotSyncService>(),
             _mockLogger.Object,
             _activity);
+        }
 
         [Fact]
         public async Task RunInitialAsync_MonthFailsThenLaterMonthSucceeds_RecordsFailureAndDoesNotMarkComplete()
         {
             var account = new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
-            _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
-            _mockAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
+            _ = _mockAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             var runs = new List<ProviderSyncRun>();
-            _mockRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
+            _ = _mockRuns.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
                 .Callback<ProviderSyncRun, CancellationToken>((run, _) => runs.Add(run))
                 .Returns(Task.CompletedTask);
 
             int calls = 0;
-            _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _ = _mockPull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
                     calls++;

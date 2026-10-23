@@ -1,8 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Contracts;
@@ -392,7 +389,7 @@ namespace VideoForensics.WebApp.Api
                         using IServiceScope scope = scopeFactory.CreateScope();
 
                         // An account whose first sync never finished gets that sync instead of an incremental pull.
-                        var accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
+                        IProviderAccountRepository accountRepository = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
                         ProviderAccount? current = await accountRepository.GetAsync(id, CancellationToken.None);
                         IInitialSyncDispatcher? initialSync = scope.ServiceProvider.GetService<IInitialSyncDispatcher>();
                         if (current is { InitialSyncCompleted: false } && initialSync is not null)
@@ -445,12 +442,9 @@ namespace VideoForensics.WebApp.Api
                 IRingAccountSyncState syncState,
                 CancellationToken ct) =>
             {
-                if (request.Hours is < MinConfigSyncIntervalHours or > MaxConfigSyncIntervalHours)
-                {
-                    return Results.BadRequest($"Hours must be between {MinConfigSyncIntervalHours} and {MaxConfigSyncIntervalHours}.");
-                }
-
-                return await syncState.SetConfigIntervalHoursAsync(id, request.Hours, ct)
+                return request.Hours is < MinConfigSyncIntervalHours or > MaxConfigSyncIntervalHours
+                    ? Results.BadRequest($"Hours must be between {MinConfigSyncIntervalHours} and {MaxConfigSyncIntervalHours}.")
+                    : await syncState.SetConfigIntervalHoursAsync(id, request.Hours, ct)
                     ? Results.Ok(request)
                     : Results.NotFound();
             })
@@ -468,98 +462,101 @@ namespace VideoForensics.WebApp.Api
         /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
         private const int MaxSyncDays = 3650;
 
-    /// <summary>
-    /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
-    /// time, so relabelling it as UTC would shift the instant by the server's offset. Unspecified dates are taken as UTC.
-    /// </summary>
-    private static DateTime ToUtcInstant(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
-    };
-
-    /// <summary>Validates the sync-now body and turns it into a runner request. Dates are treated as UTC.</summary>
-    private static bool TryBuildSyncRequest(SyncNowRequest body, out AccountSyncRequest? request, out string? error)
-    {
-        request = null;
-        error = null;
-
-        AccountSyncType type = AccountSyncType.All;
-        if (body.SyncType != null && !Enum.TryParse(body.SyncType, ignoreCase: true, out type))
+        /// <summary>
+        /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
+        /// time, so relabelling it as UTC would shift the instant by the server's offset. Unspecified dates are taken as UTC.
+        /// </summary>
+        private static DateTime ToUtcInstant(DateTime value)
         {
-            error = "syncType must be All, Events or Snapshots";
-            return false;
+            return value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+            };
         }
 
-        if (!Enum.IsDefined(type))
+        /// <summary>Validates the sync-now body and turns it into a runner request. Dates are treated as UTC.</summary>
+        private static bool TryBuildSyncRequest(SyncNowRequest body, out AccountSyncRequest? request, out string? error)
         {
-            error = "syncType must be All, Events or Snapshots";
-            return false;
-        }
+            request = null;
+            error = null;
 
-        DateTime? from = null;
-        DateTime? to = null;
-        bool allHistory = false;
-
-        switch (body.RangeKind?.ToLowerInvariant())
-        {
-            case null:
-                break;
-            case "all":
-                allHistory = true;
-                break;
-            case "days":
-                if (body.Days is not > 0 or > MaxSyncDays)
-                {
-                    error = $"days must be between 1 and {MaxSyncDays}";
-                    return false;
-                }
-
-                from = DateTime.UtcNow.AddDays(-body.Days.Value);
-                break;
-            case "custom":
-                if (body.StartUtc is null)
-                {
-                    error = "from is required for a custom range";
-                    return false;
-                }
-
-                from = ToUtcInstant(body.StartUtc.Value);
-                to = body.EndUtc is null ? null : ToUtcInstant(body.EndUtc.Value);
-                if (to <= from)
-                {
-                    error = "to must be after from";
-                    return false;
-                }
-
-                break;
-            default:
-                error = "rangeKind must be Days, All or Custom";
+            AccountSyncType type = AccountSyncType.All;
+            if (body.SyncType != null && !Enum.TryParse(body.SyncType, ignoreCase: true, out type))
+            {
+                error = "syncType must be All, Events or Snapshots";
                 return false;
+            }
+
+            if (!Enum.IsDefined(type))
+            {
+                error = "syncType must be All, Events or Snapshots";
+                return false;
+            }
+
+            DateTime? from = null;
+            DateTime? to = null;
+            bool allHistory = false;
+
+            switch (body.RangeKind?.ToLowerInvariant())
+            {
+                case null:
+                    break;
+                case "all":
+                    allHistory = true;
+                    break;
+                case "days":
+                    if (body.Days is not > 0 or > MaxSyncDays)
+                    {
+                        error = $"days must be between 1 and {MaxSyncDays}";
+                        return false;
+                    }
+
+                    from = DateTime.UtcNow.AddDays(-body.Days.Value);
+                    break;
+                case "custom":
+                    if (body.StartUtc is null)
+                    {
+                        error = "from is required for a custom range";
+                        return false;
+                    }
+
+                    from = ToUtcInstant(body.StartUtc.Value);
+                    to = body.EndUtc is null ? null : ToUtcInstant(body.EndUtc.Value);
+                    if (to <= from)
+                    {
+                        error = "to must be after from";
+                        return false;
+                    }
+
+                    break;
+                default:
+                    error = "rangeKind must be Days, All or Custom";
+                    return false;
+            }
+
+            request = new AccountSyncRequest(type, from, to, allHistory);
+            return true;
         }
 
-        request = new AccountSyncRequest(type, from, to, allHistory);
-        return true;
-    }
-
-    /// <summary>
-    /// Background first sync for an account. Errors are recorded on the account by <see cref="IAccountSyncRunner"/>;
-    /// nothing is rethrown because no caller is waiting on this task.
-    /// </summary>
-    private static async Task RunInitialSyncAsync(IServiceScopeFactory scopeFactory, Guid accountId)
-    {
-        try
+        /// <summary>
+        /// Background first sync for an account. Errors are recorded on the account by <see cref="IAccountSyncRunner"/>;
+        /// nothing is rethrown because no caller is waiting on this task.
+        /// </summary>
+        private static async Task RunInitialSyncAsync(IServiceScopeFactory scopeFactory, Guid accountId)
         {
-            using IServiceScope scope = scopeFactory.CreateScope();
-            VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
-            await coordinator.RunAsync(accountId, CancellationToken.None);
+            try
+            {
+                using IServiceScope scope = scopeFactory.CreateScope();
+                VideoForensics.WebApp.Services.IInitialSyncCoordinator coordinator = scope.ServiceProvider.GetRequiredService<VideoForensics.WebApp.Services.IInitialSyncCoordinator>();
+                await coordinator.RunAsync(accountId, CancellationToken.None);
+            }
+            catch
+            {
+                // The runner records its own failures on the account.
+            }
         }
-        catch
-        {
-            // The runner records its own failures on the account.
-        }
-    }
     }
 
     /// <summary>Request DTO for creating a new user.</summary>

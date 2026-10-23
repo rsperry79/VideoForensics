@@ -1,5 +1,6 @@
-using Xunit;
 using VideoForensics.Ui.Shared.Formatting;
+
+using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
 
@@ -12,7 +13,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string>();
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         Assert.Empty(result);
@@ -25,7 +26,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string> { "JammingDetection" };
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         Assert.Equal("Checked: Jamming Detection", result);
@@ -38,7 +39,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string> { "JammingDetection", "TimelineQuery", "DeviceStatus" };
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         Assert.Equal("Checked: Jamming Detection, Timeline Query, Device Status", result);
@@ -51,7 +52,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string> { "Signal_Analysis", "Event_Query" };
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         Assert.Equal("Checked: Signal Analysis, Event Query", result);
@@ -61,7 +62,7 @@ public class ChatToolsFormatterTests
     public void FormatToolsInvoked_NullList_ReturnsEmptyString()
     {
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(null!);
+        string result = ChatToolsFormatter.FormatToolsInvoked(null!);
 
         // Assert
         Assert.Empty(result);
@@ -74,7 +75,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string> { "JammingDetection", "Signal_Analysis", "TimelineQuery" };
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         Assert.Equal("Checked: Jamming Detection, Signal Analysis, Timeline Query", result);
@@ -87,7 +88,7 @@ public class ChatToolsFormatterTests
         var tools = new List<string> { "API", "HTTP" };
 
         // Act
-        var result = ChatToolsFormatter.FormatToolsInvoked(tools);
+        string result = ChatToolsFormatter.FormatToolsInvoked(tools);
 
         // Assert
         // All-caps names won't split on the regex since there's no lowercase before uppercase

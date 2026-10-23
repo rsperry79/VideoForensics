@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,37 +10,37 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "ConfigAreasSynced",
                 table: "ProviderSyncRuns",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "DevicesSynced",
                 table: "ProviderSyncRuns",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "EventsSynced",
                 table: "ProviderSyncRuns",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "FeedsFailed",
                 table: "ProviderSyncRuns",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "LocationsSynced",
                 table: "ProviderSyncRuns",
                 type: "INTEGER",
                 nullable: true);
 
-            migrationBuilder.AddColumn<string>(
+            _ = migrationBuilder.AddColumn<string>(
                 name: "SyncType",
                 table: "ProviderSyncRuns",
                 type: "TEXT",
@@ -52,27 +52,27 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "ConfigAreasSynced",
                 table: "ProviderSyncRuns");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "DevicesSynced",
                 table: "ProviderSyncRuns");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "EventsSynced",
                 table: "ProviderSyncRuns");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "FeedsFailed",
                 table: "ProviderSyncRuns");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "LocationsSynced",
                 table: "ProviderSyncRuns");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SyncType",
                 table: "ProviderSyncRuns");
         }

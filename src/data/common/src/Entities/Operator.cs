@@ -102,7 +102,7 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>
         /// Navigation property for the operator's WebAuthn credentials (passkeys).
         /// </summary>
-        public ICollection<OperatorCredential> OperatorCredentials { get; set; } = new List<OperatorCredential>();
+        public ICollection<OperatorCredential> OperatorCredentials { get; set; } = [];
     }
 
     /// <summary>

@@ -1,8 +1,8 @@
 using Moq;
 
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Hubs;
 using VideoForensics.WebApp.Services;
 
@@ -30,9 +30,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ResolveTargetSubscriptionsAsync_AdminsOnlyAudience_CallsListForAdminsAsync()
         {
-            _pushRepository
+            _ = _pushRepository
                 .Setup(r => r.ListForAdminsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<PushSubscription>());
+                .ReturnsAsync([]);
 
             _ = await _provider.ResolveTargetSubscriptionsAsync(NotificationAudience.AdminsOnly, CancellationToken.None);
 
@@ -42,9 +42,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ResolveTargetSubscriptionsAsync_AdminsOnlyAudience_DoesNotCallListAllAsync()
         {
-            _pushRepository
+            _ = _pushRepository
                 .Setup(r => r.ListForAdminsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<PushSubscription>());
+                .ReturnsAsync([]);
 
             _ = await _provider.ResolveTargetSubscriptionsAsync(NotificationAudience.AdminsOnly, CancellationToken.None);
 
@@ -54,9 +54,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ResolveTargetSubscriptionsAsync_AllAudience_CallsListAllAsync()
         {
-            _pushRepository
+            _ = _pushRepository
                 .Setup(r => r.ListAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<PushSubscription>());
+                .ReturnsAsync([]);
 
             _ = await _provider.ResolveTargetSubscriptionsAsync(NotificationAudience.All, CancellationToken.None);
 
@@ -66,9 +66,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ResolveTargetSubscriptionsAsync_AllAudience_DoesNotCallListForAdminsAsync()
         {
-            _pushRepository
+            _ = _pushRepository
                 .Setup(r => r.ListAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<PushSubscription>());
+                .ReturnsAsync([]);
 
             _ = await _provider.ResolveTargetSubscriptionsAsync(NotificationAudience.All, CancellationToken.None);
 
@@ -87,20 +87,20 @@ namespace VideoForensics.WebApp.Tests
                 AuthKey = "auth",
                 CreatedUtc = DateTime.UtcNow
             };
-            _pushRepository
+            _ = _pushRepository
                 .Setup(r => r.ListAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<PushSubscription> { subscription });
+                .ReturnsAsync([subscription]);
 
             IReadOnlyList<PushSubscription> result = await _provider.ResolveTargetSubscriptionsAsync(NotificationAudience.All, CancellationToken.None);
 
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Same(subscription, result[0]);
         }
 
         [Fact]
         public async Task ResolveTargetSubscriptionsAsync_UnknownAudience_ThrowsArgumentOutOfRangeException()
         {
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
                 _provider.ResolveTargetSubscriptionsAsync((NotificationAudience)99, CancellationToken.None));
 
             _pushRepository.Verify(r => r.ListAllAsync(It.IsAny<CancellationToken>()), Times.Never);

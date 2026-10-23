@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Core.Forensics.Implementations
 {
@@ -22,7 +22,7 @@ namespace VideoForensics.Core.Forensics.Implementations
             CameraBitrateBaseline? deviceGlobalFallback)
         {
             // Select the baseline to use: prefer bucket-specific, fall back to device-global, then null
-            var baseline = bucketBaseline ?? deviceGlobalFallback;
+            CameraBitrateBaseline? baseline = bucketBaseline ?? deviceGlobalFallback;
             if (baseline == null)
             {
                 return null;
@@ -35,9 +35,9 @@ namespace VideoForensics.Core.Forensics.Implementations
             }
 
             // Compute the three deviation components, each roughly in [0,1]
-            var bitrateComponent = ComputeBitrateComponent(sample, baseline);
-            var lossComponent = ComputeLossComponent(sample, baseline);
-            var jitterComponent = ComputeJitterComponent(sample, baseline);
+            double? bitrateComponent = ComputeBitrateComponent(sample, baseline);
+            double? lossComponent = ComputeLossComponent(sample, baseline);
+            double? jitterComponent = ComputeJitterComponent(sample, baseline);
 
             // Combine components that ARE present (skip nulls) into a single composite score.
             // Weight: bitrate 0.4 (primary signal for bandwidth constraint detection),
@@ -47,23 +47,31 @@ namespace VideoForensics.Core.Forensics.Implementations
             var components = new List<(double score, double weight)>();
 
             if (bitrateComponent.HasValue)
+            {
                 components.Add((bitrateComponent.Value, 0.4));
+            }
 
             if (lossComponent.HasValue)
+            {
                 components.Add((lossComponent.Value, 0.2));
+            }
 
             if (jitterComponent.HasValue)
+            {
                 components.Add((jitterComponent.Value, 0.4));
+            }
 
             if (components.Count == 0)
+            {
                 return null;
+            }
 
             // Renormalize weights if some components are missing
-            var totalWeight = components.Sum(c => c.weight);
-            var normalizedComponents = components.Select(c => (score: c.score, weight: c.weight / totalWeight)).ToList();
+            double totalWeight = components.Sum(c => c.weight);
+            var normalizedComponents = components.Select(c => (c.score, weight: c.weight / totalWeight)).ToList();
 
             // Compute weighted average
-            var compositeScore = normalizedComponents.Sum(c => c.score * c.weight);
+            double compositeScore = normalizedComponents.Sum(c => c.score * c.weight);
 
             // Clamp to [0,1]
             return Math.Clamp(compositeScore, 0.0, 1.0);
@@ -78,29 +86,33 @@ namespace VideoForensics.Core.Forensics.Implementations
         private double? ComputeBitrateComponent(LiveViewTelemetrySample sample, CameraBitrateBaseline baseline)
         {
             if (sample.BitrateBps == null)
+            {
                 return null;
+            }
 
-            var deviation = baseline.MedianBitrateBps - sample.BitrateBps.Value;
+            long deviation = baseline.MedianBitrateBps - sample.BitrateBps.Value;
 
             // Bitrate above baseline = 0 degradation
             if (deviation <= 0)
+            {
                 return 0.0;
+            }
 
             // If std dev is effectively zero, use a threshold-based approach
             // Any significant deviation below median maps to 0.5 (moderate score)
             if (baseline.StdDevBitrateBps < 1)
             {
                 // Conservative: a 10% drop from median when there's no variance data = 0.5 score
-                var percentageDrop = (double)deviation / baseline.MedianBitrateBps;
+                double percentageDrop = (double)deviation / baseline.MedianBitrateBps;
                 return Math.Min(percentageDrop * 5.0, 1.0); // Maps 10% drop to 0.5, 20%+ to clamped 1.0
             }
 
             // Normal case: express deviation in units of std dev and clamp
-            var stdDevsBelow = deviation / baseline.StdDevBitrateBps;
+            double stdDevsBelow = deviation / baseline.StdDevBitrateBps;
 
             // Map std devs to a score curve (non-linear to emphasize sharp drops)
             // 1 std dev = 0.2 score, 2 = 0.4, 3+ = 1.0
-            var bitrateScore = Math.Min(stdDevsBelow / 5.0, 1.0);
+            double bitrateScore = Math.Min(stdDevsBelow / 5.0, 1.0);
 
             return bitrateScore;
         }
@@ -113,11 +125,13 @@ namespace VideoForensics.Core.Forensics.Implementations
         private double? ComputeLossComponent(LiveViewTelemetrySample sample, CameraBitrateBaseline baseline)
         {
             if (sample.FractionLost == null)
+            {
                 return null;
+            }
 
             // FractionLost is stored as a percentage (0-100)
-            var sampleLossPercent = sample.FractionLost.Value; // Already a percentage
-            var exceedance = sampleLossPercent - baseline.MedianFractionLost;
+            byte sampleLossPercent = sample.FractionLost.Value; // Already a percentage
+            double exceedance = sampleLossPercent - baseline.MedianFractionLost;
 
             // Clamp to [0,1]: negative exceedance (better than baseline) = 0
             // Since loss is a percentage (0-100), we need to normalize to [0,1]
@@ -132,17 +146,21 @@ namespace VideoForensics.Core.Forensics.Implementations
         private double? ComputeJitterComponent(LiveViewTelemetrySample sample, CameraBitrateBaseline baseline)
         {
             if (sample.JitterTicks == null)
+            {
                 return null;
+            }
 
-            var exceedance = sample.JitterTicks.Value - baseline.MedianJitterTicks;
+            double exceedance = sample.JitterTicks.Value - baseline.MedianJitterTicks;
 
             // Negative exceedance (less jitter than baseline) = 0 degradation
             if (exceedance <= 0)
+            {
                 return 0.0;
+            }
 
             // Map jitter exceedance to [0,1]
             // If exceedance is 2x baseline, score = 0.5; 4x = 1.0
-            var jitterScore = Math.Min((double)exceedance / (baseline.MedianJitterTicks * 4.0), 1.0);
+            double jitterScore = Math.Min(exceedance / (baseline.MedianJitterTicks * 4.0), 1.0);
 
             return jitterScore;
         }

@@ -5,8 +5,6 @@ using VideoForensics.Core.Telemetry.Contracts;
 using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Core.Telemetry.Services;
 
-using Xunit;
-
 namespace VideoForensics.Hosting.Tests
 {
     /// <summary>
@@ -34,7 +32,7 @@ namespace VideoForensics.Hosting.Tests
             ITelemetryProvider telemetryProvider = provider.GetRequiredService<ITelemetryProvider>();
 
             // Assert
-            Assert.IsType<NullTelemetryProvider>(telemetryProvider);
+            _ = Assert.IsType<NullTelemetryProvider>(telemetryProvider);
         }
 
         [Fact]
@@ -62,7 +60,7 @@ namespace VideoForensics.Hosting.Tests
             ITelemetryProvider telemetryProvider = provider.GetRequiredService<ITelemetryProvider>();
 
             // Assert
-            Assert.IsType<OpenTelemetryProvider>(telemetryProvider);
+            _ = Assert.IsType<OpenTelemetryProvider>(telemetryProvider);
         }
     }
 }

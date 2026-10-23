@@ -1,8 +1,10 @@
-namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
 
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Services.QueryApi;
+
 using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests.Services.QueryApi;
 
 public class QueryApiFilterState_Tests
 {
@@ -10,7 +12,7 @@ public class QueryApiFilterState_Tests
     public void QueryApiFilterState_SetLocationId_RaisesOnChange()
     {
         IQueryApiFilterState state = new QueryApiFilterState();
-        var raised = 0;
+        int raised = 0;
         state.OnChange += () => raised++;
 
         state.SetLocationId("loc-1");
@@ -23,7 +25,7 @@ public class QueryApiFilterState_Tests
     public void QueryApiFilterState_SetDeviceId_RaisesOnChange()
     {
         IQueryApiFilterState state = new QueryApiFilterState();
-        var raised = 0;
+        int raised = 0;
         state.OnChange += () => raised++;
 
         state.SetDeviceId("dev-1");
@@ -36,7 +38,7 @@ public class QueryApiFilterState_Tests
     public void QueryApiFilterState_SetSameLocationIdTwice_RaisesOnChangeOnce()
     {
         IQueryApiFilterState state = new QueryApiFilterState();
-        var raised = 0;
+        int raised = 0;
         state.OnChange += () => raised++;
 
         state.SetLocationId("loc-1");

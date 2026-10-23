@@ -9,8 +9,14 @@ namespace VideoForensics.Hosting
     /// </summary>
     public class NullFirewallRuleManager : IFirewallRuleManager
     {
-        public Task EnsureRuleExistsAsync(string ruleName, int port, CancellationToken ct) => Task.CompletedTask;
+        public Task EnsureRuleExistsAsync(string ruleName, int port, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
 
-        public Task RemoveRuleAsync(string ruleName, CancellationToken ct) => Task.CompletedTask;
+        public Task RemoveRuleAsync(string ruleName, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

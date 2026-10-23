@@ -1,4 +1,3 @@
-using VideoForensics.Client.MCP.ServerDiscovery;
 using Xunit;
 
 namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
@@ -38,7 +37,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetApiKey_WhenFileEmpty_ReturnsNull()
         {
-            Directory.CreateDirectory(_root);
+            _ = Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, ApiKeyFileName), string.Empty);
             var store = new FileApiKeyStore(_root);
 
@@ -48,7 +47,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetApiKey_WhenFileWhitespaceOnly_ReturnsNull()
         {
-            Directory.CreateDirectory(_root);
+            _ = Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, ApiKeyFileName), "   \r\n\t ");
             var store = new FileApiKeyStore(_root);
 
@@ -58,7 +57,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetApiKey_WhenFileHasSurroundingWhitespace_ReturnsTrimmedKey()
         {
-            Directory.CreateDirectory(_root);
+            _ = Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, ApiKeyFileName), "  key-456 \r\n");
             var store = new FileApiKeyStore(_root);
 

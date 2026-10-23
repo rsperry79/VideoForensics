@@ -34,26 +34,29 @@ namespace VideoForensics.Data.Database.Tests
             IReadOnlyList<DeviceZone>? zones = null,
             IReadOnlyList<DeviceAdvancedObjectSetting>? objects = null)
         {
-            List<DeviceMotionSnoozePreset> snoozeRows = (snooze ?? [])
+            var snoozeRows = (snooze ?? [])
                 .Select((p, i) => new DeviceMotionSnoozePreset { Id = Guid.NewGuid(), DeviceId = deviceId, Position = i, Preset = p })
                 .ToList();
             return new DeviceSettingsChildren(snoozeRows, [], [], zones, objects);
         }
 
-        private static DeviceZone Zone(Guid deviceId, string zoneId, string name, params string[] detectionTypes) => new()
+        private static DeviceZone Zone(Guid deviceId, string zoneId, string name, params string[] detectionTypes)
         {
-            Id = Guid.NewGuid(),
-            DeviceId = deviceId,
-            Source = "ring",
-            ZoneId = zoneId,
-            Name = name,
-            State = 1,
-            Style = "solid",
-            DetectionTypes = detectionTypes
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                Source = "ring",
+                ZoneId = zoneId,
+                Name = name,
+                State = 1,
+                Style = "solid",
+                DetectionTypes = detectionTypes
                 .Select((t, i) => new DeviceZoneDetectionType { Id = Guid.NewGuid(), Position = i, DetectionType = t })
                 .ToList(),
-            Vertices = [new DeviceZoneVertex { Id = Guid.NewGuid(), Position = 0, X = 0.1, Y = 0.2 }]
-        };
+                Vertices = [new DeviceZoneVertex { Id = Guid.NewGuid(), Position = 0, X = 0.1, Y = 0.2 }]
+            };
+        }
 
         private async Task<List<DeviceSettingChange>> ChangesAsync()
         {
@@ -105,7 +108,7 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Empty(await ChangesAsync());
             await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync();
-            Assert.Single(await db.DeviceMotionSnoozePresets.Where(p => p.DeviceId == _device.Id).ToListAsync());
+            _ = Assert.Single(await db.DeviceMotionSnoozePresets.Where(p => p.DeviceId == _device.Id).ToListAsync());
         }
 
         [Fact]

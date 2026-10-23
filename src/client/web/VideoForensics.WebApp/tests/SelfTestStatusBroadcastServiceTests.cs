@@ -25,9 +25,9 @@ namespace VideoForensics.WebApp.Tests
             var selfTest = new Mock<IRingSelfTestService>();
             var adminsGroup = new Mock<IClientProxy>();
             var clients = new Mock<IHubClients>();
-            clients.Setup(c => c.Group("admins")).Returns(adminsGroup.Object);
+            _ = clients.Setup(c => c.Group("admins")).Returns(adminsGroup.Object);
             var hubContext = new Mock<IHubContext<LiveHub>>();
-            hubContext.Setup(h => h.Clients).Returns(clients.Object);
+            _ = hubContext.Setup(h => h.Clients).Returns(clients.Object);
 
             IServiceProvider services = new ServiceCollection()
                 .AddSingleton(selfTest.Object)
@@ -60,7 +60,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task SelfTestStatusBroadcastService_UnchangedStatus_SendsOnlyOnce()
         {
             (SelfTestStatusBroadcastService service, Mock<IClientProxy> adminsGroup, Mock<IRingSelfTestService> selfTest) = Build();
-            selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
             using var cts = new CancellationTokenSource();
 
@@ -79,7 +79,7 @@ namespace VideoForensics.WebApp.Tests
         {
             (SelfTestStatusBroadcastService service, Mock<IClientProxy> adminsGroup, Mock<IRingSelfTestService> selfTest) = Build();
             SelfTestStatusDto current = new(SelfTestRunStatus.Idle);
-            selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => current);
             using var cts = new CancellationTokenSource();
 

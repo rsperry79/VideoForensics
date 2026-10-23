@@ -296,7 +296,7 @@ namespace VideoForensics.Data.Database.Tests
 
             ProviderAccount? retrieved = await _repository.GetAsync(account.Id, CancellationToken.None);
             Assert.NotNull(retrieved);
-            Assert.NotNull(retrieved.LastErrorUtc);
+            _ = Assert.NotNull(retrieved.LastErrorUtc);
             Assert.Equal(errorMessage, retrieved.LastErrorMessage);
             Assert.True(retrieved.LastErrorUtc > DateTime.UtcNow.AddMinutes(-1));
         }
@@ -317,10 +317,10 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(retrieved);
             Assert.Null(retrieved.LastErrorUtc);
             Assert.Null(retrieved.LastErrorMessage);
-            Assert.NotNull(retrieved.LastSuccessfulAuthUtc);
+            _ = Assert.NotNull(retrieved.LastSuccessfulAuthUtc);
             Assert.True(retrieved.LastSuccessfulAuthUtc > DateTime.UtcNow.AddMinutes(-1));
         }
-            [Fact]
+        [Fact]
         public async Task ProviderAccountRepository_AddAsync_NewAccount_CreatesEnabledDefaultSyncSchedule()
         {
             ProviderAccount account = TestDataBuilder.BuildProviderAccount(Guid.NewGuid(), "Ring");

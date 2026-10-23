@@ -33,7 +33,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
         private bool _updateAvailable;
         private string? _latestVersion;
-        private string _currentVersion;
+        private readonly string _currentVersion;
         private string? _downloadUrl;
         private DateTime? _lastCheckedUtc;
         private string? _errorMessage;
@@ -342,16 +342,14 @@ namespace VideoForensics.Hosting.BackgroundServices
                 "VideoForensics",
                 "pending-update");
 
-            System.IO.Directory.CreateDirectory(pendingDir);
+            _ = System.IO.Directory.CreateDirectory(pendingDir);
 
             string pendingPath = System.IO.Path.Combine(pendingDir, asset.Name);
 
-            using (var client = new HttpClient())
-            {
-                await using var response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct);
-                await using var fileStream = System.IO.File.Create(pendingPath);
-                await response.CopyToAsync(fileStream, ct);
-            }
+            using var client = new HttpClient();
+            await using Stream response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct);
+            await using FileStream fileStream = System.IO.File.Create(pendingPath);
+            await response.CopyToAsync(fileStream, ct);
 
             // On Linux, the admin must manually run: sudo dpkg -i /path/to/the.deb
             // Log this as info so the system log shows where to find the file.

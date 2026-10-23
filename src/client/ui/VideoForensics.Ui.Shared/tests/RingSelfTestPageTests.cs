@@ -1,19 +1,25 @@
-namespace VideoForensics.Ui.Shared.Tests;
+
+using Bunit;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+
+using Moq;
+
+using Syncfusion.Blazor.DropDowns;
 
 using System.Reactive.Subjects;
 
-using Bunit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
-using Moq;
-using Xunit;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Components.Inspector;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
+using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Inspector;
 
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Shared scenario setup for RingSelfTest page tests. Call A carries two HTTP calls (a JSON
 /// "test"-phase call and a truncated, non-JSON "restore"-phase call); call B carries none.
@@ -34,11 +40,20 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         {
         }
 
-        protected override Task OnInitializedAsync() => Task.CompletedTask;
+        protected override Task OnInitializedAsync()
+        {
+            return Task.CompletedTask;
+        }
 
-        protected override Task OnParametersSetAsync() => Task.CompletedTask;
+        protected override Task OnParametersSetAsync()
+        {
+            return Task.CompletedTask;
+        }
 
-        protected override Task OnAfterRenderAsync(bool firstRender) => Task.CompletedTask;
+        protected override Task OnAfterRenderAsync(bool firstRender)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     protected readonly Mock<IRingSelfTestService> SelfTestServiceMock = new();
@@ -81,8 +96,8 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         RestoreSuccess: true,
         RestoreError: null,
         RestoreSkippedReason: null,
-        SchemaIssues: new List<string>(),
-        HttpCalls: new List<SelfTestHttpCallDto> { TestPhaseCall, RestorePhaseCall });
+        SchemaIssues: [],
+        HttpCalls: [TestPhaseCall, RestorePhaseCall]);
 
     protected static readonly SelfTestCallDto CallB = new(
         Endpoint: "call_b",
@@ -99,41 +114,41 @@ public abstract class RingSelfTestPageTestBase : BunitContext
         RestoreSuccess: null,
         RestoreError: null,
         RestoreSkippedReason: null,
-        SchemaIssues: new List<string>(),
-        HttpCalls: new List<SelfTestHttpCallDto>());
+        SchemaIssues: [],
+        HttpCalls: []);
 
     protected RingSelfTestPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddScoped(_ => SelfTestServiceMock.Object);
-        StatusSourceMock.SetupGet(m => m.Status).Returns(StatusStream);
-        Services.AddScoped(_ => StatusSourceMock.Object);
-        Services.AddLogging();
-        Services.AddScoped(_ => InspectorState);
-        Services.AddLocalization();
-        Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddScoped(_ => SelfTestServiceMock.Object);
+        _ = StatusSourceMock.SetupGet(m => m.Status).Returns(StatusStream);
+        _ = Services.AddScoped(_ => StatusSourceMock.Object);
+        _ = Services.AddLogging();
+        _ = Services.AddScoped(_ => InspectorState);
+        _ = Services.AddLocalization();
+        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
         // The page checks the operator's tier before offering destructive endpoints. These tests exercise those
         // endpoints, so they run as a SuperAdmin on the Local tier.
-        Services.AddScoped(sp => new VideoForensics.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
-        var session = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+        _ = Services.AddScoped(sp => new VideoForensics.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
+        PairedSessionState session = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.PairedSessionState>();
         session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin").GetAwaiter().GetResult();
         session.SetServerSessionKind(localTier: true, passkeySession: false);
 
-        ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<SelfTestCallDto>, TestSfGrid>();
-        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
-        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
-        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<SelfTestCallDto>>();
+        _ = ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<SelfTestCallDto>, TestSfGrid>();
+        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
+        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
+        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<SelfTestCallDto>>();
 
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<SelfTestEndpointDto>
-            {
+            .ReturnsAsync(
+            [
                 new("call_a", "Call A", "desc", "oauth2", "GET", "/a", "None", false, false, "Ring")
-            });
+            ]);
     }
 
     /// <summary>
@@ -143,23 +158,29 @@ public abstract class RingSelfTestPageTestBase : BunitContext
     /// </summary>
     protected void SetupCompletedOnLoad(SelfTestResultDto result)
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Completed, DateTime.UtcNow.AddSeconds(-5), DateTime.UtcNow));
 
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetResultAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(result);
     }
 
-    protected static SelfTestResultDto MakeResult(params SelfTestCallDto[] calls) => new(
+    protected static SelfTestResultDto MakeResult(params SelfTestCallDto[] calls)
+    {
+        return new(
         ToolVersion: "1.0.0",
         GeneratedAtUtc: DateTime.UtcNow,
         CredentialSource: "Database",
         Summary: new SelfTestSummaryDto(calls.Length, calls.Length, 0),
         Calls: calls);
+    }
 
-    protected IRenderedComponent<RingSelfTest> RenderPage() => Render<RingSelfTest>();
+    protected IRenderedComponent<RingSelfTest> RenderPage()
+    {
+        return Render<RingSelfTest>();
+    }
 }
 
 public class RingSelfTestPage_InitialLoad_Tests : RingSelfTestPageTestBase
@@ -167,11 +188,11 @@ public class RingSelfTestPage_InitialLoad_Tests : RingSelfTestPageTestBase
     [Fact]
     public void OnInitialized_LoadsEndpoints()
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
 
-        RenderPage();
+        _ = RenderPage();
 
         SelfTestServiceMock.Verify(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -187,13 +208,13 @@ public class RingSelfTestPage_InitialLoad_Tests : RingSelfTestPageTestBase
     {
         SetupCompletedOnLoad(MakeResult(CallA, CallB));
 
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         SelfTestServiceMock.Verify(m => m.GetResultAsync(It.IsAny<CancellationToken>()), Times.Once);
         SelfTestServiceMock.Verify(m => m.StartRunAsync(It.IsAny<SelfTestRunRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Contains("Results", component.Markup);
 
-        var grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
+        IRenderedComponent<ForensicGrid<SelfTestCallDto>> grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
         var displayNames = grid.Instance.DataSource!.Select(c => c.DisplayName).ToList();
         Assert.Contains(CallA.DisplayName, displayNames);
         Assert.Contains(CallB.DisplayName, displayNames);
@@ -206,13 +227,13 @@ public class RingSelfTestPage_RowSelection_Tests : RingSelfTestPageTestBase
     public async Task SelectCallWithHttpCalls_ShowsBothCallsInOrderWithBodiesAndTruncationNote()
     {
         SetupCompletedOnLoad(MakeResult(CallA, CallB));
-        var component = RenderPage();
-        var grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
+        IRenderedComponent<ForensicGrid<SelfTestCallDto>> grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
 
         await component.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(CallA));
 
-        var section = component.Find("[data-testid='raw-calls']");
-        var sectionMarkup = section.InnerHtml;
+        AngleSharp.Dom.IElement section = component.Find("[data-testid='raw-calls']");
+        string sectionMarkup = section.InnerHtml;
 
         // Both HTTP call headers are present, and appear in call order (test, then restore).
         Assert.Contains(TestPhaseCall.Url, sectionMarkup);
@@ -230,7 +251,7 @@ public class RingSelfTestPage_RowSelection_Tests : RingSelfTestPageTestBase
         Assert.Contains("succeeded-value-xyz", sectionMarkup);
 
         // The non-JSON body renders as raw text in a <pre class="raw-text">.
-        var rawTextPre = component.Find("pre.raw-text");
+        AngleSharp.Dom.IElement rawTextPre = component.Find("pre.raw-text");
         Assert.Contains(RestorePhaseCall.Body, rawTextPre.TextContent);
 
         // The truncation note reports the actual response size.
@@ -248,8 +269,8 @@ public class RingSelfTestPage_RowSelection_Tests : RingSelfTestPageTestBase
     public async Task SelectCallWithoutHttpCalls_ShowsNoCallsMessageAndClearsPriorSection()
     {
         SetupCompletedOnLoad(MakeResult(CallA, CallB));
-        var component = RenderPage();
-        var grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
+        IRenderedComponent<ForensicGrid<SelfTestCallDto>> grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
 
         // Select A first so there is a previously-rendered raw-calls section to replace.
         await component.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(CallA));
@@ -272,11 +293,11 @@ public class RingSelfTestPage_FailedRun_Tests : RingSelfTestPageTestBase
     [Fact]
     public void PageOpen_WithFailedStatus_ShowsErrorAndNoGrid()
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Failed, DateTime.UtcNow.AddSeconds(-5), DateTime.UtcNow, "boom-error"));
 
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         Assert.Contains("Run Failed", component.Markup);
         Assert.Contains("boom-error", component.Markup);
@@ -295,16 +316,18 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
 {
     private static readonly DateTime RunStarted = new(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc);
 
-    private static SelfTestStatusDto CompletedRun(DateTime started) =>
-        new(SelfTestRunStatus.Completed, started, started.AddSeconds(5));
+    private static SelfTestStatusDto CompletedRun(DateTime started)
+    {
+        return new(SelfTestRunStatus.Completed, started, started.AddSeconds(5));
+    }
 
     private void ArrangeOnLoad(SelfTestStatusDto onLoad)
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(onLoad);
 
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetResultAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(MakeResult(CallA));
     }
@@ -313,10 +336,10 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     public async Task RingSelfTestPage_StatusAfterDispose_DoesNotFetchResult()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
         await component.InvokeAsync(() => ((IAsyncDisposable)component.Instance).DisposeAsync().AsTask());
 
-        var ex = Record.Exception(() => StatusStream.OnNext(CompletedRun(RunStarted)));
+        Exception? ex = Record.Exception(() => StatusStream.OnNext(CompletedRun(RunStarted)));
         await Task.Delay(50);
 
         Assert.Null(ex);
@@ -327,7 +350,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     public void RingSelfTestPage_CompletedFromStream_FetchesResultOnce()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         StatusStream.OnNext(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
         StatusStream.OnNext(CompletedRun(RunStarted));
@@ -340,7 +363,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     public async Task RingSelfTestPage_RepeatedCompletedForSameRun_DoesNotRefetchResult()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         StatusStream.OnNext(CompletedRun(RunStarted));
         StatusStream.OnNext(CompletedRun(RunStarted));
@@ -355,7 +378,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     {
         // Initial one-shot status already reports the run as Completed, then the stream replays that same run.
         ArrangeOnLoad(CompletedRun(RunStarted));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         StatusStream.OnNext(CompletedRun(RunStarted));
         await component.InvokeAsync(() => { });
@@ -367,7 +390,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     public async Task RingSelfTestPage_NewRunCompletes_FetchesResultAgain()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         StatusStream.OnNext(CompletedRun(RunStarted));
         StatusStream.OnNext(CompletedRun(RunStarted.AddMinutes(1)));
@@ -380,7 +403,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     public async Task RingSelfTestPage_RunningFromStream_DoesNotFetchResult()
     {
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
         StatusStream.OnNext(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
         await component.InvokeAsync(() => { });
@@ -393,7 +416,7 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
     {
         // Before the change the page re-read status every 500 ms while a run was in progress.
         ArrangeOnLoad(new SelfTestStatusDto(SelfTestRunStatus.Running, RunStarted));
-        RenderPage();
+        _ = RenderPage();
 
         await Task.Delay(1500);
 
@@ -419,34 +442,36 @@ public class RingSelfTestPage_Routing_Tests : RingSelfTestPageTestBase
     [Fact]
     public void RingSelfTestPage_Breadcrumb_LinksBackToQueryApi()
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
 
-        var component = RenderPage();
+        IRenderedComponent<RingSelfTest> component = RenderPage();
 
-        var queryLink = component.FindAll("nav a").Single(a => a.GetAttribute("href") == "/query");
+        AngleSharp.Dom.IElement queryLink = component.FindAll("nav a").Single(a => a.GetAttribute("href") == "/query");
         Assert.Equal("Query API", queryLink.TextContent.Trim());
     }
 }
 
 public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
 {
-    private static SelfTestEndpointDto Ep(string key, string provider, bool destructive = false) =>
-        new(key, key, "d", "oauth2", "GET", "/p", "None", destructive, false, provider);
+    private static SelfTestEndpointDto Ep(string key, string provider, bool destructive = false)
+    {
+        return new(key, key, "d", "oauth2", "GET", "/p", "None", destructive, false, provider);
+    }
 
     public RingSelfTestPage_Filter_Tests()
     {
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-        SelfTestServiceMock
+        _ = SelfTestServiceMock
             .Setup(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<SelfTestEndpointDto>
-            {
+            .ReturnsAsync(
+            [
                 Ep("ring_a", "Ring"), Ep("ring_b", "Ring"), Ep("wyze_a", "Wyze"),
                 Ep("ring_d", "Ring", destructive: true),
-            });
+            ]);
     }
 
     /// <summary>
@@ -455,34 +480,38 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     /// </summary>
     private IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> Panel(IRenderedComponent<RingSelfTest> page)
     {
-        var slot = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        RightPanelContentService slot = Services.GetRequiredService<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
         Assert.NotNull(slot.Content);
         return Render(slot.Content!);
     }
 
-    private static List<string> Keys(IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>> c) =>
-        c.Instance.DataSource!.Select(e => e.Key).ToList();
+    private static List<string> Keys(IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>> c)
+    {
+        return c.Instance.DataSource!.Select(e => e.Key).ToList();
+    }
 
-    private IReadOnlyList<IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>> Groups(IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> page) =>
-        page.FindComponents<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>();
+    private IReadOnlyList<IRenderedComponent<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>> Groups(IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> page)
+    {
+        return page.FindComponents<Syncfusion.Blazor.DropDowns.SfMultiSelect<string[], SelfTestEndpointDto>>();
+    }
 
     [Fact]
     public void RingSelfTestPage_ProviderFilter_NarrowsEndpoints()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
 
         Panel(page).Find("[data-testid='provider-filter']").Change("Wyze");
 
-        var readOnly = Groups(Panel(page)).Single();
+        IRenderedComponent<SfMultiSelect<string[], SelfTestEndpointDto>> readOnly = Groups(Panel(page)).Single();
         Assert.Equal(["wyze_a"], Keys(readOnly));
     }
 
     [Fact]
     public void RingSelfTestPage_ProviderFilter_ShowsHumanReadableLabelsOnly()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
 
-        var options = Panel(page).FindAll("[data-testid='provider-filter'] option");
+        IReadOnlyList<AngleSharp.Dom.IElement> options = Panel(page).FindAll("[data-testid='provider-filter'] option");
 
         Assert.Contains(options, o => o.TextContent.Trim() == "Wyze");
         Assert.Contains(options, o => o.TextContent.Trim() == "Ring");
@@ -492,7 +521,7 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     [Fact]
     public void RingSelfTestPage_CategoryFilter_OffersHumanReadableLabels()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
 
         var texts = Panel(page).FindAll("[data-testid='category-filter'] option").Select(o => o.TextContent.Trim()).ToList();
 
@@ -504,7 +533,7 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     [Fact]
     public void RingSelfTestPage_CategoryFilter_ExcludesCategoryWithNoEndpointsForProvider()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
 
         Panel(page).Find("[data-testid='provider-filter']").Change("Wyze");
 
@@ -515,11 +544,11 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     [Fact]
     public void RingSelfTestPage_ReadOnlySelectAll_SelectsOnlyReadOnlyGroup()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
 
         Panel(page).Find("[data-testid='readonly-select-all']").Click();
 
-        var groups = Groups(Panel(page));
+        IReadOnlyList<IRenderedComponent<SfMultiSelect<string[], SelfTestEndpointDto>>> groups = Groups(Panel(page));
         Assert.Equal(["ring_a", "ring_b", "wyze_a"], groups[0].Instance.Value!.OrderBy(k => k, StringComparer.Ordinal));
         Assert.Empty(groups[1].Instance.Value ?? []);
     }
@@ -527,13 +556,13 @@ public class RingSelfTestPage_Filter_Tests : RingSelfTestPageTestBase
     [Fact]
     public void RingSelfTestPage_ReadOnlyUnselectAll_ClearsOnlyReadOnlyGroup()
     {
-        var page = RenderPage();
+        IRenderedComponent<RingSelfTest> page = RenderPage();
         Panel(page).Find("[data-testid='destructive-select-all']").Click();
         Panel(page).Find("[data-testid='readonly-select-all']").Click();
 
         Panel(page).Find("[data-testid='readonly-unselect-all']").Click();
 
-        var groups = Groups(Panel(page));
+        IReadOnlyList<IRenderedComponent<SfMultiSelect<string[], SelfTestEndpointDto>>> groups = Groups(Panel(page));
         Assert.Empty(groups[0].Instance.Value ?? []);
         Assert.Equal(["ring_d"], groups[1].Instance.Value);
     }

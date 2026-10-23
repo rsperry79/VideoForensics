@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Configuration;
 
-using VideoForensics.WebApp.Infrastructure;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Infrastructure

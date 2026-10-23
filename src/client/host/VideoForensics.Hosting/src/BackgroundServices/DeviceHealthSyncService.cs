@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.BackgroundServices
 {
@@ -415,8 +415,8 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
 
             // Now run jamming analysis and manage live view sessions for each elevated device.
-            var jammingOrchestrator = sp.GetRequiredService<JammingToolsOrchestrator>();
-            var liveViewService = sp.GetRequiredService<ILiveViewSessionService>();
+            JammingToolsOrchestrator jammingOrchestrator = sp.GetRequiredService<JammingToolsOrchestrator>();
+            ILiveViewSessionService liveViewService = sp.GetRequiredService<ILiveViewSessionService>();
 
             foreach (Guid deviceId in elevatedDevices.ToList())
             {

@@ -51,7 +51,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             _logger.LogDebug("Device cache hit for {DeviceName}, age {AgeMinutes}min",
-                cached.Name,_cacheFreshnessService.GetAgeMinutes(cached));
+                cached.Name, _cacheFreshnessService.GetAgeMinutes(cached));
             return (cached, false); // Cache fresh
         }
 
@@ -72,7 +72,7 @@ namespace VideoForensics.Data.Core.Services
             }
 
             _logger.LogDebug("Location cache hit for {LocationName}, age {AgeMinutes}min",
-                cached.Name,_cacheFreshnessService.GetAgeMinutes(cached));
+                cached.Name, _cacheFreshnessService.GetAgeMinutes(cached));
             return (cached, false); // Cache fresh
         }
 

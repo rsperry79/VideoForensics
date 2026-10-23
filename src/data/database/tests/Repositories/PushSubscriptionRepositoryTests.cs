@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -21,7 +22,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task AddOrUpdateAsync_SanitizesLogOutput_WhenEndpointContainsNewlines()
         {
             // Arrange: Create a push subscription with Endpoint containing CRLF (log injection attempt)
-            var injectedEndpoint = "https://push.example.com/abc123\r\nFAKE LOG ENTRY: Credentials exposed";
+            string injectedEndpoint = "https://push.example.com/abc123\r\nFAKE LOG ENTRY: Credentials exposed";
             var subscription = new PushSubscription
             {
                 Id = Guid.NewGuid(),
@@ -36,13 +37,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddOrUpdateAsync(subscription, CancellationToken.None);
 
             // Assert: Verify the subscription was persisted with the raw Endpoint intact
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
-            {
-                PushSubscription? persistedSubscription = await db.PushSubscriptions.FirstOrDefaultAsync(ps => ps.Id == subscription.Id, CancellationToken.None);
-                Assert.NotNull(persistedSubscription);
-                // The raw Endpoint (with newlines) should be stored in the database
-                Assert.Equal(injectedEndpoint, persistedSubscription.Endpoint);
-            }
+            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            PushSubscription? persistedSubscription = await db.PushSubscriptions.FirstOrDefaultAsync(ps => ps.Id == subscription.Id, CancellationToken.None);
+            Assert.NotNull(persistedSubscription);
+            // The raw Endpoint (with newlines) should be stored in the database
+            Assert.Equal(injectedEndpoint, persistedSubscription.Endpoint);
         }
 
         [Fact]
@@ -222,7 +221,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         /// <summary>Inserts an operator with the given role and returns its Id. Operators are active and approved unless specified.</summary>
         private async Task<Guid> SeedOperatorAsync(OperatorRole role, string username, bool active = true, bool approved = true)
         {
-            await using var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
             var op = new Operator
             {
                 Id = Guid.NewGuid(),

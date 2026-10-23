@@ -1,7 +1,7 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+
+using System.Security.Claims;
 
 using VideoForensics.WebApp.Auth;
 
@@ -21,11 +21,11 @@ namespace VideoForensics.WebApp.Tests
             _ = services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
             using ServiceProvider sp = services.BuildServiceProvider();
 
-            List<Claim> claims = new()
-            {
+            List<Claim> claims =
+            [
                 new Claim(VideoForensicsClaimTypes.Role, role),
                 new Claim(VideoForensicsClaimTypes.NetworkTier, tier)
-            };
+            ];
             if (passkey)
             {
                 claims.Add(new Claim(VideoForensicsClaimTypes.CredentialKind, "OperatorPasskey"));
@@ -39,18 +39,26 @@ namespace VideoForensics.WebApp.Tests
 
         [Fact]
         public async Task SuperAdminLocalOrPasskey_SuperAdminPasskeyNonLocalTier_Succeeds()
-            => Assert.True(await AuthorizeAsync("SuperAdmin", "Internet", passkey: true));
+        {
+            Assert.True(await AuthorizeAsync("SuperAdmin", "Internet", passkey: true));
+        }
 
         [Fact]
         public async Task SuperAdminLocalOrPasskey_SuperAdminNonLocalNoPasskey_Fails()
-            => Assert.False(await AuthorizeAsync("SuperAdmin", "Internet", passkey: false));
+        {
+            Assert.False(await AuthorizeAsync("SuperAdmin", "Internet", passkey: false));
+        }
 
         [Fact]
         public async Task SuperAdminLocalOrPasskey_SuperAdminLocalNoPasskey_Succeeds()
-            => Assert.True(await AuthorizeAsync("SuperAdmin", "Local", passkey: false));
+        {
+            Assert.True(await AuthorizeAsync("SuperAdmin", "Local", passkey: false));
+        }
 
         [Fact]
         public async Task SuperAdminLocalOrPasskey_AdminPasskeyNonLocal_Fails()
-            => Assert.False(await AuthorizeAsync("Admin", "Internet", passkey: true));
+        {
+            Assert.False(await AuthorizeAsync("Admin", "Internet", passkey: true));
+        }
     }
 }

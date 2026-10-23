@@ -1,20 +1,25 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+using Bunit.Rendering;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Scope;
+
+using Xunit;
+
 using Device = VideoForensics.Data.Common.Entities.Device;
 
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>Filtering to several devices yields one combined audit list and one verdict covering all of them.</summary>
 public class ChainOfCustody_Combined_Tests : BunitContext
 {
@@ -25,30 +30,30 @@ public class ChainOfCustody_Combined_Tests : BunitContext
     {
         // Registrations happen here, before anything resolves a service: bUnit rejects late registrations.
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddScoped(_ => _deviceRepository.Object);
-        Services.AddScoped(_ => _reportService.Object);
-        Services.AddScoped<RightPanelContentService>();
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddScoped(_ => _deviceRepository.Object);
+        _ = Services.AddScoped(_ => _reportService.Object);
+        _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     [Fact]
     public async Task ReportServiceThrows_ShowsErrorAlertInsteadOfFailingThePage()
     {
-        _deviceRepository
+        _ = _deviceRepository
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device>());
-        _reportService
+            .ReturnsAsync([]);
+        _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("database offline"));
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
-        var page = Render<ChainOfCustody>();
+        IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
 
-        var error = Assert.Single(page.FindAll("[data-testid='chain-report-error']"));
+        AngleSharp.Dom.IElement error = Assert.Single(page.FindAll("[data-testid='chain-report-error']"));
         Assert.Contains("database offline", error.TextContent);
     }
 
@@ -61,17 +66,17 @@ public class ChainOfCustody_Combined_Tests : BunitContext
         var front = new Device { Id = Guid.NewGuid(), LocationId = frontLocation.Id, ProviderDeviceId = "f", Name = "Front", Type = "camera" };
         var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
 
-        _deviceRepository
+        _ = _deviceRepository
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device> { front, back });
+            .ReturnsAsync([front, back]);
         // The page first loads the unfiltered whole-database report before the filter is applied.
-        _reportService
+        _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = true });
-        _reportService
+        _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(front.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
-        _reportService
+        _ = _reportService
             .Setup(m => m.BuildChainOfCustodyReportAsync(back.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChainOfCustodyReport { ChainIntegrityVerified = false, ChainVerificationStatus = "hash mismatch" });
 
@@ -81,17 +86,17 @@ public class ChainOfCustody_Combined_Tests : BunitContext
             new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { frontLocation, backLocation } });
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
-        var page = Render<ChainOfCustody>();
+        IRenderedComponent<ChainOfCustody> page = Render<ChainOfCustody>();
 
         // The filter lives in the right panel, which the page hands to RightPanelContentService. Rendering that
         // fragment keeps its callbacks bound to the page under test.
-        var panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
-        var panel = Render(panelContent!);
+        RenderFragment? panelContent = Services.GetRequiredService<RightPanelContentService>().Content;
+        IRenderedComponent<ContainerFragment> panel = Render(panelContent!);
         panel.Find("[data-testid='provider-filter']").Change("Ring");
-        var component = page;
+        IRenderedComponent<ChainOfCustody> component = page;
 
         // One verdict for the whole selection, not one per device, and it names the device that failed.
-        var alert = Assert.Single(component.FindAll(".alert-danger"));
+        AngleSharp.Dom.IElement alert = Assert.Single(component.FindAll(".alert-danger"));
         Assert.Contains("hash mismatch", alert.TextContent);
         Assert.Empty(component.FindAll(".alert-success"));
         _reportService.Verify(

@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
 using System.Security.Claims;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
@@ -38,7 +37,7 @@ namespace VideoForensics.WebApp.Tests
         private static DefaultHttpContext CreateOperatorContext()
         {
             var context = new DefaultHttpContext();
-            var claims = new[] { new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString()) };
+            Claim[] claims = new[] { new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString()) };
             context.User = new ClaimsPrincipal(new ClaimsIdentity(claims));
             return context;
         }
@@ -46,13 +45,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_ValidTesting_SavesConfigAndChangesChannel()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("Testing");
 
             IResult result = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
                 request, config.Object, configService.Object, auditLog.Object, tierResolver.Object, CreateOperatorContext(), CancellationToken.None);
 
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.Equal(UpdateReleaseChannel.Testing, config.Object.ReleaseChannel);
             configService.Verify(cs => cs.SaveConfigurationAsync(config.Object, It.IsAny<CancellationToken>()), Times.Once);
@@ -61,7 +60,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_ValidTesting_WritesUrgentAuditEntry()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("Testing");
 
             _ = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
@@ -80,20 +79,20 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_InvalidChannelString_ReturnsBadRequest()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("Nightly");
 
             IResult result = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
                 request, config.Object, configService.Object, auditLog.Object, tierResolver.Object, CreateOperatorContext(), CancellationToken.None);
 
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
         }
 
         [Fact]
         public async Task SetReleaseChannelAsync_InvalidChannelString_DoesNotSaveOrAudit()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("Nightly");
 
             _ = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
@@ -109,13 +108,13 @@ namespace VideoForensics.WebApp.Tests
         {
             // Enum.TryParse accepts numeric strings such as "5" even when they are not defined members;
             // the endpoint must reject them rather than store an undefined channel.
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("5");
 
             IResult result = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
                 request, config.Object, configService.Object, auditLog.Object, tierResolver.Object, CreateOperatorContext(), CancellationToken.None);
 
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
             configService.Verify(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -123,13 +122,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_LowercaseTesting_IsAccepted()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("testing");
 
             IResult result = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
                 request, config.Object, configService.Object, auditLog.Object, tierResolver.Object, CreateOperatorContext(), CancellationToken.None);
 
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.Equal(UpdateReleaseChannel.Testing, config.Object.ReleaseChannel);
         }
@@ -137,7 +136,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_ChangeFromTestingToStable_AuditDetailsContainOldAndNewValues()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Testing);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Testing);
             var request = new SetReleaseChannelRequest("Stable");
 
             _ = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
@@ -156,13 +155,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetReleaseChannelAsync_UnchangedValue_StillSucceedsAndSaves()
         {
-            (var config, var configService, var auditLog, var tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
+            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks(UpdateReleaseChannel.Stable);
             var request = new SetReleaseChannelRequest("Stable");
 
             IResult result = await ReleaseChannelEndpoints.SetReleaseChannelAsync(
                 request, config.Object, configService.Object, auditLog.Object, tierResolver.Object, CreateOperatorContext(), CancellationToken.None);
 
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.Equal(UpdateReleaseChannel.Stable, config.Object.ReleaseChannel);
             configService.Verify(cs => cs.SaveConfigurationAsync(config.Object, It.IsAny<CancellationToken>()), Times.Once);
@@ -171,7 +170,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void GetReleaseChannel_TestingConfigured_ReturnsTestingName()
         {
-            (var config, _, _, _) = CreateMocks(UpdateReleaseChannel.Testing);
+            (Mock<IForensicsConfiguration>? config, _, _, _) = CreateMocks(UpdateReleaseChannel.Testing);
 
             ReleaseChannelDto dto = ReleaseChannelEndpoints.GetReleaseChannel(config.Object);
 

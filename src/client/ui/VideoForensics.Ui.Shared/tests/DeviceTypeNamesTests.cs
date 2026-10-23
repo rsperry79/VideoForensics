@@ -1,4 +1,5 @@
 using VideoForensics.Ui.Shared.Services.Devices;
+
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;

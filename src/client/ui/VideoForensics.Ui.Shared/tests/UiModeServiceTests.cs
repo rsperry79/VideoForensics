@@ -1,11 +1,12 @@
 using Microsoft.JSInterop;
 
 using Moq;
-using Xunit;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services;
+
+using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
 
@@ -15,8 +16,8 @@ public class UiModeServiceTests
     public void UiModeService_Constructor_DefaultMode_IsStandard()
     {
         // Arrange & Act
-        var mockRepository = Mock.Of<IOperatorPreferencesRepository>();
-        var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>()).Object;
+        IOperatorPreferencesRepository mockRepository = Mock.Of<IOperatorPreferencesRepository>();
+        PairedSessionState mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>()).Object;
         var service = new UiModeService(mockRepository, mockSession);
 
         // Assert
@@ -31,8 +32,8 @@ public class UiModeServiceTests
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
 
         // Simulate no signed-in operator
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns((Guid?)null);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns((Guid?)null);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -49,13 +50,13 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -81,13 +82,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -113,13 +114,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -136,13 +137,13 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
@@ -160,13 +161,13 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
@@ -197,13 +198,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
@@ -229,18 +230,18 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
 
-        var changeCount = 0;
+        int changeCount = 0;
         service.OnChange += () => changeCount++;
 
         // Act
@@ -256,8 +257,8 @@ public class UiModeServiceTests
         // Arrange
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns((Guid?)null);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns((Guid?)null);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
@@ -275,13 +276,13 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -310,13 +311,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -341,13 +342,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
 
@@ -372,19 +373,19 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetModeAsync("Simple"));
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetModeAsync("Simple"));
         Assert.Equal("The display mode is locked by an administrator.", ex.Message);
     }
 
@@ -402,13 +403,13 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPreferences);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
@@ -436,19 +437,19 @@ public class UiModeServiceTests
         // Arrange
         var operatorId = Guid.NewGuid();
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OperatorPreferences?)null);
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => service.SetModeAsync("InvalidMode"));
+        _ = await Assert.ThrowsAsync<ArgumentException>(() => service.SetModeAsync("InvalidMode"));
     }
 
     [Fact]
@@ -473,37 +474,38 @@ public class UiModeServiceTests
         };
 
         var mockRepository = new Mock<IOperatorPreferencesRepository>();
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(initialPrefs);
 
         // First UpsertAsync call (from SetModeAsync) throws lock exception
-        mockRepository
+        _ = mockRepository
             .Setup(r => r.UpsertAsync(It.IsAny<OperatorPreferences>(), It.IsAny<CancellationToken>()))
             .Callback(() =>
             {
                 // After the exception, subsequent GetAsync calls return the locked version
-                mockRepository
+                _ = mockRepository
                     .Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(refreshedPrefs);
             })
             .ThrowsAsync(new InvalidOperationException("The display mode is locked by an administrator."));
 
         var mockSession = new Mock<PairedSessionState>(Mock.Of<IJSRuntime>());
-        mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
-        mockSession.Setup(s => s.OperatorId).Returns(operatorId);
+        _ = mockSession.Setup(s => s.EnsureLoadedAsync()).Returns(Task.CompletedTask);
+        _ = mockSession.Setup(s => s.OperatorId).Returns(operatorId);
 
         var service = new UiModeService(mockRepository.Object, mockSession.Object);
         await service.InitializeAsync();
 
-        var changeCount = 0;
+        int changeCount = 0;
         service.OnChange += () => changeCount++;
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetModeAsync("Simple"));
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetModeAsync("Simple"));
         Assert.Equal("The display mode is locked by an administrator.", ex.Message);
-        
+
         // Verify that Mode and IsLocked were refreshed from the repository
         Assert.True(service.IsLocked);
         Assert.Equal(1, changeCount);
-    }}
+    }
+}

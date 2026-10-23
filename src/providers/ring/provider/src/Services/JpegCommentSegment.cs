@@ -33,7 +33,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             int segmentLength = payload.Length + 2;
-            var result = new byte[jpeg.Length + 4 + payload.Length];
+            byte[] result = new byte[jpeg.Length + 4 + payload.Length];
             result[0] = Prefix;
             result[1] = StartOfImage;
             result[2] = Prefix;
@@ -70,13 +70,13 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Stop at end-of-image or scan data: no COM segment comes after entropy-coded data.
-                if (marker == EndOfImage || marker == StartOfScan)
+                if (marker is EndOfImage or StartOfScan)
                 {
                     return null;
                 }
 
                 // Standalone markers (TEM, RSTn) carry no length field.
-                if (marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7))
+                if (marker is 0x01 or (>= 0xD0 and <= 0xD7))
                 {
                     i += 2;
                     continue;
@@ -104,7 +104,9 @@ namespace VideoForensics.Providers.Ring.Services
             return null;
         }
 
-        private static bool IsStartOfImage(byte[] bytes) =>
-            bytes.Length >= 2 && bytes[0] == Prefix && bytes[1] == StartOfImage;
+        private static bool IsStartOfImage(byte[] bytes)
+        {
+            return bytes.Length >= 2 && bytes[0] == Prefix && bytes[1] == StartOfImage;
+        }
     }
 }

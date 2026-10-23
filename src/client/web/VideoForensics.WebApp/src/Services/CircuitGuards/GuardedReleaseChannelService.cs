@@ -16,8 +16,10 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         SessionNetworkContext network) : IReleaseChannelService
     {
         /// <inheritdoc />
-        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default) =>
-            inner.GetReleaseChannelAsync(cancellationToken);
+        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default)
+        {
+            return inner.GetReleaseChannelAsync(cancellationToken);
+        }
 
         /// <inheritdoc />
         public async Task<UpdateReleaseChannel> SetReleaseChannelAsync(UpdateReleaseChannel channel, CancellationToken cancellationToken = default)

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.WebApp.Hubs

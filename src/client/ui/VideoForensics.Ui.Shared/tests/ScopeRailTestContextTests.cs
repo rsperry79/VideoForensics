@@ -1,18 +1,21 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-using Xunit;
+
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Scope;
 
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>The shared ScopeRail bUnit base must supply the defaults and helpers without subclass setup.</summary>
 public class ScopeRailTestContext_Defaults_Tests : ScopeRailTestContext
 {
     [Fact]
     public void Render_WithRegisteredDevice_ShowsDeviceName()
     {
-        RegisterDeviceRepository(MakeDevice("Front Door"));
+        _ = RegisterDeviceRepository(MakeDevice("Front Door"));
 
-        var component = Render<ScopeRail>();
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         Assert.Contains("Front Door", component.Markup);
     }
@@ -20,8 +23,8 @@ public class ScopeRailTestContext_Defaults_Tests : ScopeRailTestContext
     [Fact]
     public void MakeDevice_CalledTwice_ReturnsDistinctIds()
     {
-        var first = MakeDevice("Front Door");
-        var second = MakeDevice("Front Door");
+        Device first = MakeDevice("Front Door");
+        Device second = MakeDevice("Front Door");
 
         Assert.NotEqual(first.Id, second.Id);
     }

@@ -2,10 +2,7 @@ using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -62,7 +59,7 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act
-            var result = await provider.GetContentUrlsAsync([], CancellationToken.None);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync([], CancellationToken.None);
 
             // Assert
             Assert.False(requestMade);
@@ -75,8 +72,8 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var mediaId1 = Guid.NewGuid();
             var mediaId2 = Guid.NewGuid();
-            var mediaIds = new[] { mediaId1, mediaId2 };
-            var dtos = CreateMediaTicketDtos(mediaIds);
+            Guid[] mediaIds = new[] { mediaId1, mediaId2 };
+            List<MediaTicketDto> dtos = CreateMediaTicketDtos(mediaIds);
             string json = JsonSerializer.Serialize(dtos, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async request =>
@@ -92,7 +89,7 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act
-            var result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
 
             // Assert
             Assert.NotNull(handler.CapturedRequest);
@@ -108,17 +105,17 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var mediaId = Guid.NewGuid();
-            var mediaIds = new[] { mediaId, mediaId, mediaId }; // Same ID three times
-            var dtos = CreateMediaTicketDtos(new[] { mediaId });
+            Guid[] mediaIds = new[] { mediaId, mediaId, mediaId }; // Same ID three times
+            List<MediaTicketDto> dtos = CreateMediaTicketDtos(new[] { mediaId });
             string json = JsonSerializer.Serialize(dtos, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async request =>
             {
                 // Capture the request body to verify de-duplication
                 string? requestBody = await request.Content?.ReadAsStringAsync();
-                var requestDto = JsonSerializer.Deserialize<MediaTicketRequestDto>(requestBody, JsonOptions);
+                MediaTicketRequestDto? requestDto = JsonSerializer.Deserialize<MediaTicketRequestDto>(requestBody, JsonOptions);
                 // Should only have one ID in the request
-                Assert.Single(requestDto!.MediaItemIds);
+                _ = Assert.Single(requestDto!.MediaItemIds);
 
                 await Task.Yield();
                 return new HttpResponseMessage(HttpStatusCode.OK)
@@ -131,10 +128,10 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act
-            var result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
 
             // Assert
-            Assert.Single(result);
+            _ = Assert.Single(result);
         }
 
         [Fact]
@@ -150,13 +147,13 @@ namespace VideoForensics.Hosting.Tests
             {
                 requestCount++;
                 string? requestBody = await request.Content?.ReadAsStringAsync();
-                var requestDto = JsonSerializer.Deserialize<MediaTicketRequestDto>(requestBody, JsonOptions);
+                MediaTicketRequestDto? requestDto = JsonSerializer.Deserialize<MediaTicketRequestDto>(requestBody, JsonOptions);
 
                 // Each request should have at most MaxTicketsPerRequest items
                 Assert.True(requestDto!.MediaItemIds.Count <= MediaContentRoutes.MaxTicketsPerRequest);
 
                 // Build response with tickets for all requested IDs
-                var dtos = CreateMediaTicketDtos(requestDto.MediaItemIds.ToList());
+                List<MediaTicketDto> dtos = CreateMediaTicketDtos(requestDto.MediaItemIds.ToList());
                 string json = JsonSerializer.Serialize(dtos, JsonOptions);
 
                 await Task.Yield();
@@ -170,7 +167,7 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act
-            var result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
 
             // Assert
             Assert.Equal(2, requestCount); // Should make 2 requests (200 + 50 items)
@@ -181,7 +178,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetContentUrlsAsync_NonSuccessStatusThrows()
         {
             // Arrange
-            var mediaIds = new[] { Guid.NewGuid() };
+            Guid[] mediaIds = new[] { Guid.NewGuid() };
 
             FakeHttpMessageHandler handler = new(async _ =>
             {
@@ -196,7 +193,7 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act & Assert
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => provider.GetContentUrlsAsync(mediaIds, CancellationToken.None)
             );
         }
@@ -205,7 +202,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetContentUrlsAsync_ForwardsCancellationToken()
         {
             // Arrange
-            var mediaIds = new[] { Guid.NewGuid() };
+            Guid[] mediaIds = new[] { Guid.NewGuid() };
 
             FakeHttpMessageHandler handler = new(async request =>
             {
@@ -222,12 +219,12 @@ namespace VideoForensics.Hosting.Tests
             var cts = new CancellationTokenSource();
 
             // Act
-            var result = await provider.GetContentUrlsAsync(mediaIds, cts.Token);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaIds, cts.Token);
 
             // Assert
             Assert.NotNull(result);
             // Verify the cancellation token was captured and forwarded (non-default token was passed)
-            Assert.NotNull(handler.CapturedCancellationToken);
+            _ = Assert.NotNull(handler.CapturedCancellationToken);
             // Verify the handler received a non-default token (not CancellationToken.None)
             Assert.True(handler.CapturedCancellationToken.Value != CancellationToken.None);
         }
@@ -237,7 +234,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var mediaIds = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToList();
-            var dtos = CreateMediaTicketDtos(mediaIds);
+            List<MediaTicketDto> dtos = CreateMediaTicketDtos(mediaIds);
             string json = JsonSerializer.Serialize(dtos, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
@@ -253,11 +250,11 @@ namespace VideoForensics.Hosting.Tests
             var provider = new RemoteMediaContentUrlProvider(httpClient);
 
             // Act
-            var result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
+            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaIds, CancellationToken.None);
 
             // Assert
             Assert.Equal(mediaIds.Count, result.Count);
-            foreach (var mediaId in mediaIds)
+            foreach (Guid mediaId in mediaIds)
             {
                 Assert.True(result.ContainsKey(mediaId));
                 Assert.True(result[mediaId].StartsWith("https://example.test"));

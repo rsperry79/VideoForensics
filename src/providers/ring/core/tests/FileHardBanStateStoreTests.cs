@@ -1,8 +1,4 @@
-using System;
-using System.IO;
-
 using VideoForensics.Core.Helpers.Platform;
-using Xunit;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
@@ -47,7 +43,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         [Fact]
         public void Read_WithInvalidContent_ReturnsNull()
         {
-            Directory.CreateDirectory(_testDirectory);
+            _ = Directory.CreateDirectory(_testDirectory);
             var store = new FileHardBanStateStore(_testDirectory);
             File.WriteAllText(store.FilePath, "not_a_valid_number");
 

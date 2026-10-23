@@ -32,8 +32,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             _ = await _mockSession.GetDingSharePlayAsync(DingId);
 
-            (HttpMethod Method, string Url) last = mockHandler.RequestLog.Last(r => r.Url.Contains("/dings/"));
-            Assert.Equal($"https://api.ring.com/clients_api/dings/{DingId}/share/play?disable_redirect=true", last.Url);
+            (HttpMethod Method, string Url) = mockHandler.RequestLog.Last(r => r.Url.Contains("/dings/"));
+            Assert.Equal($"https://api.ring.com/clients_api/dings/{DingId}/share/play?disable_redirect=true", Url);
         }
 
         [Fact]
@@ -45,8 +45,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             _ = await _mockSession.GetDingSharePlayAsync(DingId);
 
-            (HttpMethod Method, string Url) last = mockHandler.RequestLog.Last(r => r.Url.Contains("/dings/"));
-            Assert.Equal(HttpMethod.Get, last.Method);
+            (HttpMethod Method, string Url) = mockHandler.RequestLog.Last(r => r.Url.Contains("/dings/"));
+            Assert.Equal(HttpMethod.Get, Method);
         }
 
         [Fact]

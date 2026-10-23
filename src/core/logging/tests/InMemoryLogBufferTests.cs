@@ -54,8 +54,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry1);
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Equal(1, snapshot[0].Sequence);
         }
 
@@ -76,7 +76,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
             Assert.Equal(5, snapshot.Count);
             for (int i = 0; i < 5; i++)
             {
@@ -103,7 +103,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert - should have last 3 entries (sequences 3, 4, 5)
-            var snapshot = smallBuffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            List<LogRecord> snapshot = smallBuffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
             Assert.Equal(3, snapshot.Count);
             Assert.Equal(3, snapshot[0].Sequence);
             Assert.Equal(4, snapshot[1].Sequence);
@@ -129,7 +129,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
             Assert.Equal(3, snapshot.Count);
             Assert.True(snapshot[0].Sequence < snapshot[1].Sequence);
             Assert.True(snapshot[1].Sequence < snapshot[2].Sequence);
@@ -152,7 +152,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert - get only entries after sequence 2
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: 2, limit: 100);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: 2, limit: 100);
             Assert.Equal(3, snapshot.Count);
             Assert.Equal(3, snapshot[0].Sequence);
             Assert.Equal(4, snapshot[1].Sequence);
@@ -176,7 +176,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert - get last 3 (newest) entries when limit=3 and afterSequence=null
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 3);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 3);
             Assert.Equal(3, snapshot.Count);
             Assert.Equal(8, snapshot[0].Sequence);
             Assert.Equal(9, snapshot[1].Sequence);
@@ -215,8 +215,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry3);
 
             // Assert - filter to only Warning and above (Information and Error, but not Trace)
-            var snapshot = _buffer.GetSnapshot(minLevel: "Warning", search: null, afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: "Warning", search: null, afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
             Assert.Equal("Error", snapshot[0].Level);
         }
 
@@ -243,8 +243,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry2);
 
             // Assert - search for "World"
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: "World", afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: "World", afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
             Assert.Contains("Hello World", snapshot[0].Message);
         }
 
@@ -262,8 +262,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry);
 
             // Assert - search with different case
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: "hello", afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: "hello", afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
         }
 
         [Fact]
@@ -289,8 +289,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry2);
 
             // Assert - search for "MyService"
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: "MyService", afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: "MyService", afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
             Assert.Equal("MyService", snapshot[0].Category);
         }
 
@@ -317,8 +317,8 @@ namespace VideoForensics.Core.Logging.Tests
             _buffer.Append(ref entry2);
 
             // Assert - search for "NullReference"
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: "NullReference", afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: "NullReference", afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
             Assert.Contains("NullReferenceException", snapshot[0].Exception);
         }
 
@@ -370,13 +370,13 @@ namespace VideoForensics.Core.Logging.Tests
             await Task.WhenAll(tasks);
 
             // Assert - should have 1000 entries with unique monotonic sequences
-            var snapshot = buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 2000);
+            List<LogRecord> snapshot = buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 2000);
             Assert.Equal(1000, snapshot.Count);
 
             var sequences = new HashSet<long>();
             for (int i = 0; i < snapshot.Count; i++)
             {
-                sequences.Add(snapshot[i].Sequence);
+                _ = sequences.Add(snapshot[i].Sequence);
                 if (i > 0)
                 {
                     Assert.True(snapshot[i].Sequence > snapshot[i - 1].Sequence);
@@ -390,35 +390,42 @@ namespace VideoForensics.Core.Logging.Tests
         }
 
         private static LogRecord Rec(string level = "Information", string category = "Cat", string message = "msg", string? exception = null)
-            => new(0, DateTimeOffset.UtcNow, level, category, message, exception);
+        {
+            return new(0, DateTimeOffset.UtcNow, level, category, message, exception);
+        }
 
         private static async Task<List<LogRecord>> ReadAsync(IAsyncEnumerable<LogRecord> live, int count, TimeSpan? timeout = null)
         {
             var items = new List<LogRecord>();
             if (count <= 0)
+            {
                 return items;
+            }
 
             using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(10));
-            await foreach (var r in live.WithCancellation(cts.Token))
+            await foreach (LogRecord r in live.WithCancellation(cts.Token))
             {
                 items.Add(r);
                 if (items.Count >= count)
+                {
                     break;
+                }
             }
+
             return items;
         }
 
         [Fact]
         public async Task Subscribe_RecordsAppendedAfterSubscribing_AreDeliveredOnly()
         {
-            var before = Rec(message: "before");
+            LogRecord before = Rec(message: "before");
             _buffer.Append(ref before);
 
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
-            var after = Rec(message: "after");
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            LogRecord after = Rec(message: "after");
             _buffer.Append(ref after);
 
-            var items = await ReadAsync(live, 1);
+            List<LogRecord> items = await ReadAsync(live, 1);
             Assert.Equal("after", Assert.Single(items).Message);
             Assert.Equal(2, items[0].Sequence);
         }
@@ -426,44 +433,52 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public async Task Subscribe_MinLevelAndSearch_FilterLiveRecords()
         {
-            var live = _buffer.Subscribe("Warning", "needle", null, CancellationToken.None);
-            var a = Rec("Information", message: "needle low"); _buffer.Append(ref a);
-            var b = Rec("Error", message: "no match"); _buffer.Append(ref b);
-            var c = Rec("Error", message: "has NEEDLE inside"); _buffer.Append(ref c);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe("Warning", "needle", null, CancellationToken.None);
+            LogRecord a = Rec("Information", message: "needle low");
+            _buffer.Append(ref a);
+            LogRecord b = Rec("Error", message: "no match");
+            _buffer.Append(ref b);
+            LogRecord c = Rec("Error", message: "has NEEDLE inside");
+            _buffer.Append(ref c);
 
-            var items = await ReadAsync(live, 1);
+            List<LogRecord> items = await ReadAsync(live, 1);
             Assert.Equal(3, Assert.Single(items).Sequence);
         }
 
         [Fact]
         public async Task Subscribe_SearchMatchesCategoryAndException()
         {
-            var live = _buffer.Subscribe(null, "zzz", null, CancellationToken.None);
-            var a = Rec(category: "Zzz.Cat"); _buffer.Append(ref a);
-            var b = Rec(exception: "boom ZZZ"); _buffer.Append(ref b);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, "zzz", null, CancellationToken.None);
+            LogRecord a = Rec(category: "Zzz.Cat");
+            _buffer.Append(ref a);
+            LogRecord b = Rec(exception: "boom ZZZ");
+            _buffer.Append(ref b);
 
-            var items = await ReadAsync(live, 2);
+            List<LogRecord> items = await ReadAsync(live, 2);
             Assert.Equal(new long[] { 1, 2 }, items.ConvertAll(i => i.Sequence));
         }
 
         [Fact]
         public async Task Subscribe_AfterSequence_SkipsRecordsAtOrBelowIt()
         {
-            var live = _buffer.Subscribe(null, null, 2, CancellationToken.None);
-            for (int i = 0; i < 4; i++) { var r = Rec(message: $"m{i}"); _buffer.Append(ref r); }
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, 2, CancellationToken.None);
+            for (int i = 0; i < 4; i++)
+            { LogRecord r = Rec(message: $"m{i}"); _buffer.Append(ref r); }
 
-            var items = await ReadAsync(live, 2);
+            List<LogRecord> items = await ReadAsync(live, 2);
             Assert.Equal(new long[] { 3, 4 }, items.ConvertAll(i => i.Sequence));
         }
 
         [Fact]
         public void Append_SlowSubscriberNeverReads_WriterIsNotBlocked()
         {
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
             _ = live; // never enumerated
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            for (int i = 0; i < 20000; i++) { var r = Rec(); _buffer.Append(ref r); }
+            for (int i = 0; i < 20000; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
+
             sw.Stop();
 
             Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"Append took {sw.Elapsed}");
@@ -473,10 +488,11 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public async Task Subscribe_SlowSubscriber_DropsOldestKeepsNewest()
         {
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
-            for (int i = 0; i < 2500; i++) { var r = Rec(); _buffer.Append(ref r); }
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            for (int i = 0; i < 2500; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
 
-            var items = await ReadAsync(live, 1000);
+            List<LogRecord> items = await ReadAsync(live, 1000);
             Assert.Equal(1000, items.Count);
             Assert.Equal(1501, items[0].Sequence);
             Assert.Equal(2500, items[^1].Sequence);
@@ -486,12 +502,13 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task Subscribe_Cancellation_RemovesSubscriberAndEndsEnumeration()
         {
             using var cts = new CancellationTokenSource();
-            var live = _buffer.Subscribe(null, null, null, cts.Token);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, cts.Token);
             Assert.Equal(1, _buffer.SubscriberCount);
 
             var task = Task.Run(async () =>
             {
-                try { await foreach (var _ in live) { } }
+                try
+                { await foreach (LogRecord _ in live) { } }
                 catch (OperationCanceledException) { }
             });
             cts.Cancel();
@@ -503,10 +520,11 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public async Task Subscribe_DisposingEnumerator_RemovesSubscriber()
         {
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
-            var e = live.GetAsyncEnumerator();
-            var move = e.MoveNextAsync().AsTask();
-            var r = Rec(); _buffer.Append(ref r);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            IAsyncEnumerator<LogRecord> e = live.GetAsyncEnumerator();
+            Task<bool> move = e.MoveNextAsync().AsTask();
+            LogRecord r = Rec();
+            _buffer.Append(ref r);
             Assert.True(await move.WaitAsync(TimeSpan.FromSeconds(10)));
 
             await e.DisposeAsync();
@@ -517,12 +535,12 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public async Task Dispose_Buffer_CompletesSubscribers()
         {
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
-            var task = ReadAsync(live, int.MaxValue);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            Task<List<LogRecord>> task = ReadAsync(live, int.MaxValue);
 
             _buffer.Dispose();
 
-            var items = await task.WaitAsync(TimeSpan.FromSeconds(10));
+            List<LogRecord> items = await task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.Empty(items);
             Assert.Equal(0, _buffer.SubscriberCount);
         }
@@ -531,7 +549,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Subscribe_AfterBufferDisposed_CompletesImmediately()
         {
             _buffer.Dispose();
-            var live = _buffer.Subscribe(null, null, null, CancellationToken.None);
+            IAsyncEnumerable<LogRecord> live = _buffer.Subscribe(null, null, null, CancellationToken.None);
             Assert.Equal(0, _buffer.SubscriberCount);
             Assert.NotNull(live);
         }
@@ -539,9 +557,10 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public void SubscribeWithBacklog_NoAfterSequence_BacklogIsNewestLimitEntries()
         {
-            for (int i = 0; i < 10; i++) { var r = Rec(); _buffer.Append(ref r); }
+            for (int i = 0; i < 10; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
 
-            var (backlog, _) = _buffer.SubscribeWithBacklog(null, null, null, 3, CancellationToken.None);
+            (IReadOnlyList<LogRecord>? backlog, IAsyncEnumerable<LogRecord> _) = _buffer.SubscribeWithBacklog(null, null, null, 3, CancellationToken.None);
 
             Assert.Equal(new long[] { 8, 9, 10 }, backlog.Select(b => b.Sequence).ToArray());
         }
@@ -549,9 +568,10 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public void SubscribeWithBacklog_AfterSequence_BacklogContainsAllNewerEntriesRegardlessOfLimit()
         {
-            for (int i = 0; i < 10; i++) { var r = Rec(); _buffer.Append(ref r); }
+            for (int i = 0; i < 10; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
 
-            var (backlog, _) = _buffer.SubscribeWithBacklog(null, null, 4, 3, CancellationToken.None);
+            (IReadOnlyList<LogRecord>? backlog, IAsyncEnumerable<LogRecord> _) = _buffer.SubscribeWithBacklog(null, null, 4, 3, CancellationToken.None);
 
             Assert.Equal(new long[] { 5, 6, 7, 8, 9, 10 }, backlog.Select(b => b.Sequence).ToArray());
         }
@@ -559,13 +579,15 @@ namespace VideoForensics.Core.Logging.Tests
         [Fact]
         public async Task SubscribeWithBacklog_LiveStartsStrictlyAfterBacklog()
         {
-            for (int i = 0; i < 3; i++) { var r = Rec(); _buffer.Append(ref r); }
+            for (int i = 0; i < 3; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
 
-            var (backlog, live) = _buffer.SubscribeWithBacklog(null, null, null, 500, CancellationToken.None);
-            var next = Rec(message: "live"); _buffer.Append(ref next);
+            (IReadOnlyList<LogRecord>? backlog, IAsyncEnumerable<LogRecord>? live) = _buffer.SubscribeWithBacklog(null, null, null, 500, CancellationToken.None);
+            LogRecord next = Rec(message: "live");
+            _buffer.Append(ref next);
 
             Assert.Equal(3, backlog.Count);
-            var items = await ReadAsync(live, 1);
+            List<LogRecord> items = await ReadAsync(live, 1);
             Assert.Equal(4, items[0].Sequence);
         }
 
@@ -575,7 +597,8 @@ namespace VideoForensics.Core.Logging.Tests
             const int writers = 4;
             // Live total stays under the per-subscriber channel capacity so drop-oldest cannot mask a gap.
             const int perWriter = 200;
-            for (int i = 0; i < 50; i++) { var r = Rec(); _buffer.Append(ref r); }
+            for (int i = 0; i < 50; i++)
+            { LogRecord r = Rec(); _buffer.Append(ref r); }
 
             using var go = new ManualResetEventSlim(false);
             var writerTasks = new List<Task>();
@@ -584,22 +607,26 @@ namespace VideoForensics.Core.Logging.Tests
                 writerTasks.Add(Task.Run(() =>
                 {
                     go.Wait();
-                    for (int i = 0; i < perWriter; i++) { var r = Rec(); _buffer.Append(ref r); Thread.SpinWait(2000); }
+                    for (int i = 0; i < perWriter; i++)
+                    { LogRecord r = Rec(); _buffer.Append(ref r); Thread.SpinWait(2000); }
                 }));
             }
 
             go.Set();
             // Subscribe mid-stream so the handoff really happens under concurrent appends.
             while (_buffer.LatestSequence < 50 + 100)
+            {
                 await Task.Yield();
-            var (backlog, live) = _buffer.SubscribeWithBacklog(null, null, null, 100000, CancellationToken.None);
+            }
+
+            (IReadOnlyList<LogRecord>? backlog, IAsyncEnumerable<LogRecord>? live) = _buffer.SubscribeWithBacklog(null, null, null, 100000, CancellationToken.None);
 
             await Task.WhenAll(writerTasks);
-            long total = 50 + writers * perWriter;
-            var firstLiveSeq = backlog.Count == 0 ? 1 : backlog[^1].Sequence + 1;
+            long total = 50 + (writers * perWriter);
+            long firstLiveSeq = backlog.Count == 0 ? 1 : backlog[^1].Sequence + 1;
             int liveCount = (int)(total - firstLiveSeq + 1);
 
-            var items = await ReadAsync(live, liveCount, TimeSpan.FromSeconds(30));
+            List<LogRecord> items = await ReadAsync(live, liveCount, TimeSpan.FromSeconds(30));
 
             var all = backlog.Concat(items).Select(i => i.Sequence).ToList();
             Assert.Equal(Enumerable.Range((int)all[0], all.Count).Select(i => (long)i), all);

@@ -29,12 +29,7 @@ namespace VideoForensics.WebApp.Auth
         /// </summary>
         public static bool IsOwner(Guid operatorId, byte[]? userHandle)
         {
-            if (userHandle == null)
-            {
-                return true;
-            }
-
-            return userHandle.AsSpan().SequenceEqual(operatorId.ToByteArray());
+            return userHandle == null || userHandle.AsSpan().SequenceEqual(operatorId.ToByteArray());
         }
     }
 }

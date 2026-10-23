@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Existing devices default to capture on, matching the entity default.
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "SnapshotCaptureEnabled",
                 table: "Devices",
                 type: "INTEGER",
@@ -22,7 +22,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "SnapshotCaptureEnabled",
                 table: "Devices");
         }

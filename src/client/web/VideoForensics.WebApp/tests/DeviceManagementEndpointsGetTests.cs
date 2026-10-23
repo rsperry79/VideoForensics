@@ -1,11 +1,14 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+
 using Moq;
+
+using System.Text.Json;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Api;
+
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -18,7 +21,7 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var operators = new Mock<IOperatorRepository>();
-            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator
                 {
                     Id = operatorId,
@@ -51,7 +54,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var operators = new Mock<IOperatorRepository>();
-            operators.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            _ = operators.Setup(r => r.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
             // Act

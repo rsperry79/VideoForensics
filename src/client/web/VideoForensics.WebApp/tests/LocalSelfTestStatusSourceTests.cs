@@ -3,7 +3,6 @@ using Moq;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
 using VideoForensics.WebApp.Services;
 
 using Xunit;
@@ -23,13 +22,16 @@ namespace VideoForensics.WebApp.Tests
 
             public int Count => Volatile.Read(ref _count);
 
-            public void Increment() => Interlocked.Increment(ref _count);
+            public void Increment()
+            {
+                _ = Interlocked.Increment(ref _count);
+            }
         }
 
         private static Mock<IRingSelfTestService> BuildService(Func<SelfTestStatusDto> status, CallCounter? calls = null)
         {
             var service = new Mock<IRingSelfTestService>();
-            service.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            _ = service.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
                     calls?.Increment();
@@ -57,7 +59,7 @@ namespace VideoForensics.WebApp.Tests
 
             await source.SampleOnceAsync(CancellationToken.None);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
             Assert.Same(expected, received[0]);
         }
 
@@ -74,7 +76,7 @@ namespace VideoForensics.WebApp.Tests
             await source.SampleOnceAsync(CancellationToken.None);
             await source.SampleOnceAsync(CancellationToken.None);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
         }
 
         [Fact]
@@ -103,7 +105,7 @@ namespace VideoForensics.WebApp.Tests
             var received = new List<SelfTestStatusDto>();
             using IDisposable subscription = source.Status.Subscribe(received.Add);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
             Assert.Equal("boom", received[0].Error);
         }
 
@@ -112,15 +114,11 @@ namespace VideoForensics.WebApp.Tests
         {
             var service = new Mock<IRingSelfTestService>();
             int calls = 0;
-            service.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            _ = service.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
                     calls++;
-                    if (calls == 1)
-                    {
-                        throw new InvalidOperationException("transient");
-                    }
-                    return new SelfTestStatusDto(SelfTestRunStatus.Idle);
+                    return calls == 1 ? throw new InvalidOperationException("transient") : new SelfTestStatusDto(SelfTestRunStatus.Idle);
                 });
             using LocalSelfTestStatusSource source = BuildSource(service.Object);
             var received = new List<SelfTestStatusDto>();
@@ -129,7 +127,7 @@ namespace VideoForensics.WebApp.Tests
             await source.SampleOnceAsync(CancellationToken.None);
             await source.SampleOnceAsync(CancellationToken.None);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
             Assert.Equal(SelfTestRunStatus.Idle, received[0].Status);
         }
 
@@ -137,7 +135,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task LocalSelfTestStatusSource_FirstSubscription_StartsSamplingLoop()
         {
             var calls = new CallCounter();
-            var service = BuildService(() => new SelfTestStatusDto(SelfTestRunStatus.Idle), calls);
+            Mock<IRingSelfTestService> service = BuildService(() => new SelfTestStatusDto(SelfTestRunStatus.Idle), calls);
             using LocalSelfTestStatusSource source = BuildSource(service.Object, TimeSpan.FromMilliseconds(10));
 
             // Nothing samples before the first subscriber arrives.
@@ -154,8 +152,8 @@ namespace VideoForensics.WebApp.Tests
         public async Task LocalSelfTestStatusSource_Dispose_StopsSamplingLoop()
         {
             var calls = new CallCounter();
-            var service = BuildService(() => new SelfTestStatusDto(SelfTestRunStatus.Idle), calls);
-            var source = BuildSource(service.Object, TimeSpan.FromMilliseconds(10));
+            Mock<IRingSelfTestService> service = BuildService(() => new SelfTestStatusDto(SelfTestRunStatus.Idle), calls);
+            LocalSelfTestStatusSource source = BuildSource(service.Object, TimeSpan.FromMilliseconds(10));
             using IDisposable subscription = source.Status.Subscribe(_ => { });
             await WaitUntilAsync(() => calls.Count > 0, TimeSpan.FromSeconds(5));
 

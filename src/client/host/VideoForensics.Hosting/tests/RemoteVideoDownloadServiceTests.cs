@@ -4,11 +4,9 @@ using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
-using VideoForensics.Core.Providers.Common.Contracts;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -40,10 +38,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task DownloadVideosAsync_CallsCorrectRoute()
         {
-            string capturedRoute = "";
+            string capturedRoute = string.Empty;
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
+                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
                 var response = new HttpResponseMessage(HttpStatusCode.Accepted)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(new DownloadOperationResponseDto(true, "Queued")))
@@ -63,10 +61,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task DownloadSnapshotsAsync_CallsCorrectRoute()
         {
-            string capturedRoute = "";
+            string capturedRoute = string.Empty;
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
+                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
                 var response = new HttpResponseMessage(HttpStatusCode.Accepted)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(new DownloadOperationResponseDto(true, "Queued")))
@@ -86,10 +84,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task PreScanAsync_CallsCorrectRoute()
         {
-            string capturedRoute = "";
+            string capturedRoute = string.Empty;
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
+                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Accepted));
             });
 
@@ -148,7 +146,7 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(0, index);
             Assert.Equal(0, total);
-            Assert.Equal("", name);
+            Assert.Equal(string.Empty, name);
         }
 
         [Fact]
@@ -256,8 +254,15 @@ namespace VideoForensics.Hosting.Tests
             public IObservable<ConnectionState> Connection { get; } = new Subject<ConnectionState>();
             public IObservable<ThumbnailReadyDto> ThumbnailReady { get; } = new Subject<ThumbnailReadyDto>();
             public IObservable<EvidenceChangedDto> EvidenceChanged { get; } = new Subject<EvidenceChangedDto>();
-            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-            public Task StopAsync() => Task.CompletedTask;
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync()
+            {
+                return Task.CompletedTask;
+            }
         }
 
         private static DownloadProgressDto CreateProgressDto(string? lastError = null, string? remainingReason = null, IReadOnlyList<string>? activity = null)

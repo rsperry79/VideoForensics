@@ -1,4 +1,5 @@
 using System.Globalization;
+
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Ui.Shared.Services.Scope;
@@ -18,8 +19,10 @@ public static class ScopeRailRules
         IEnumerable<Device> devices,
         IReadOnlyList<DeviceOwnership> ownership,
         string? providerFilter,
-        Guid? accountFilter) =>
-        ScopeDeviceFilter.Filter(devices, ownership, providerFilter, accountFilter);
+        Guid? accountFilter)
+    {
+        return ScopeDeviceFilter.Filter(devices, ownership, providerFilter, accountFilter);
+    }
 
     /// <summary>
     /// Applies a Provider dropdown pick. A blank value means all providers. If the selected account is not
@@ -30,9 +33,9 @@ public static class ScopeRailRules
         Guid? currentAccountFilter,
         string? providerValue)
     {
-        var provider = string.IsNullOrWhiteSpace(providerValue) ? null : providerValue;
+        string? provider = string.IsNullOrWhiteSpace(providerValue) ? null : providerValue;
 
-        var account = currentAccountFilter;
+        Guid? account = currentAccountFilter;
         if (account is not null && !ScopeDeviceFilter.AccountsForProvider(accounts, provider).Any(a => a.Id == account))
         {
             account = null;
@@ -42,8 +45,10 @@ public static class ScopeRailRules
     }
 
     /// <summary>An Account dropdown pick: a GUID value selects that account, anything else means all accounts.</summary>
-    public static Guid? ParseAccountPick(string? value) =>
-        Guid.TryParse(value, out var parsed) ? parsed : null;
+    public static Guid? ParseAccountPick(string? value)
+    {
+        return Guid.TryParse(value, out Guid parsed) ? parsed : null;
+    }
 
     /// <summary>
     /// Recomputes the scope after a Provider or Account pick. While a filter is active the scope is pinned to the
@@ -76,13 +81,13 @@ public static class ScopeRailRules
         string? providerFilter,
         Guid? accountFilter)
     {
-        var existing = current.DeviceIds;
+        IReadOnlyList<Guid> existing = current.DeviceIds;
 
-        var updated = isChecked
+        List<Guid> updated = isChecked
             ? (existing.Contains(deviceId) ? existing.ToList() : existing.Append(deviceId).ToList())
             : existing.Where(id => id != deviceId).ToList();
 
-        var filtered = providerFilter is not null || accountFilter is not null;
+        bool filtered = providerFilter is not null || accountFilter is not null;
         return current with { DeviceIds = updated, MatchesNoDevices = filtered && updated.Count == 0 };
     }
 
@@ -101,35 +106,49 @@ public static class ScopeRailRules
     }
 
     /// <summary>Sets the From bound to the picked day (inclusive).</summary>
-    public static ForensicScope SetFromDate(ForensicScope current, DateTime pickedDate) =>
-        current with { FromUtc = pickedDate };
+    public static ForensicScope SetFromDate(ForensicScope current, DateTime pickedDate)
+    {
+        return current with { FromUtc = pickedDate };
+    }
 
     /// <summary>Sets the To bound from the picked day. The picker shows the inclusive last day; ToUtc is exclusive.</summary>
-    public static ForensicScope SetToDate(ForensicScope current, DateTime pickedDate) =>
-        current with { ToUtc = pickedDate.AddDays(1) };
+    public static ForensicScope SetToDate(ForensicScope current, DateTime pickedDate)
+    {
+        return current with { ToUtc = pickedDate.AddDays(1) };
+    }
 
     /// <summary>The From picker value: the inclusive first day of the window.</summary>
-    public static string FormatFromDate(DateTime fromUtc) =>
-        fromUtc.Date.ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    public static string FormatFromDate(DateTime fromUtc)
+    {
+        return fromUtc.Date.ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    }
 
     /// <summary>The To picker value: ToUtc is exclusive, so the picker shows the day before it.</summary>
-    public static string FormatToDate(DateTime toUtc) =>
-        toUtc.Date.AddDays(-1).ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    public static string FormatToDate(DateTime toUtc)
+    {
+        return toUtc.Date.AddDays(-1).ToString(DateInputFormat, CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
     /// Sets a whole-day window: from <paramref name="daysBack"/> days before <paramref name="today"/>
     /// through tomorrow (exclusive), so today is fully included.
     /// </summary>
-    public static ForensicScope ApplyQuickRange(ForensicScope current, DateTime today, int daysBack) =>
-        current with { FromUtc = today.AddDays(-daysBack), ToUtc = today.AddDays(1) };
+    public static ForensicScope ApplyQuickRange(ForensicScope current, DateTime today, int daysBack)
+    {
+        return current with { FromUtc = today.AddDays(-daysBack), ToUtc = today.AddDays(1) };
+    }
 
     /// <summary>Search text as stored: blank or whitespace-only becomes null, otherwise the text is kept as typed.</summary>
-    public static string? NormalizeSearch(string? draft) =>
-        string.IsNullOrWhiteSpace(draft) ? null : draft;
+    public static string? NormalizeSearch(string? draft)
+    {
+        return string.IsNullOrWhiteSpace(draft) ? null : draft;
+    }
 
     /// <summary>Returns the scope with its search set from the draft text, normalized by <see cref="NormalizeSearch"/>.</summary>
-    public static ForensicScope ApplySearch(ForensicScope current, string? draft) =>
-        current with { Search = NormalizeSearch(draft) };
+    public static ForensicScope ApplySearch(ForensicScope current, string? draft)
+    {
+        return current with { Search = NormalizeSearch(draft) };
+    }
 
     /// <summary>
     /// Clears a no-match flag that no Provider/Account filter can explain. Such a flag would block pages with a
@@ -137,12 +156,9 @@ public static class ScopeRailRules
     /// </summary>
     public static ForensicScope ClearOrphanedNoMatch(ForensicScope current, string? providerFilter, Guid? accountFilter)
     {
-        if (current.MatchesNoDevices && providerFilter is null && accountFilter is null)
-        {
-            return current with { MatchesNoDevices = false };
-        }
-
-        return current;
+        return current.MatchesNoDevices && providerFilter is null && accountFilter is null
+            ? (current with { MatchesNoDevices = false })
+            : current;
     }
 
     /// <summary>
@@ -153,6 +169,8 @@ public static class ScopeRailRules
         bool hasActiveCase,
         bool scopeDiffersFromCase,
         OperatorRole? role,
-        bool matchesNoDevices) =>
-        hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRole.Review && !matchesNoDevices;
+        bool matchesNoDevices)
+    {
+        return hasActiveCase && scopeDiffersFromCase && role.HasValue && role.Value >= OperatorRole.Review && !matchesNoDevices;
+    }
 }

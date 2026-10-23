@@ -1,6 +1,6 @@
-using System.Reflection;
-
 using Microsoft.Extensions.Configuration;
+
+using System.Reflection;
 
 using VideoForensics.Client.Core.Licensing;
 
@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             var registrar = new SyncfusionLicenseRegistrar();
 
-            var ex = Record.Exception(() => registrar.RegisterIfPresent());
+            Exception? ex = Record.Exception(registrar.RegisterIfPresent);
 
             Assert.Null(ex);
         }
@@ -49,7 +49,7 @@ namespace VideoForensics.Client.Core.Tests
         public void SyncfusionLicenseRegistrar_ConfigWithNoKey_ReturnsNull()
         {
             IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .AddInMemoryCollection([])
                 .Build();
 
             Assert.Null(SyncfusionLicenseRegistrar.ResolveConfiguredKey(configuration));
@@ -62,7 +62,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void SyncfusionLicenseRegistrar_BuildConfigurationAssemblyWithoutUserSecrets_DoesNotThrow()
         {
-            var ex = Record.Exception(() => SyncfusionLicenseRegistrar.BuildLicenseConfiguration(typeof(SyncfusionLicenseRegistrarTests).Assembly));
+            Exception ex = Record.Exception(() => SyncfusionLicenseRegistrar.BuildLicenseConfiguration(typeof(SyncfusionLicenseRegistrarTests).Assembly));
 
             Assert.Null(ex);
         }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -21,7 +22,6 @@ namespace VideoForensics.Data.Core.Services
         /// judgement; bounding the query keeps each download's analysis cheap as a device's archive grows.
         /// </summary>
         public const int HistoryWindowClips = 500;
-
 
         /// <summary>Clips needed before "this lighting mode is unusual for the device" can be judged.</summary>
         private const int UnusualLightingMinimumSamples = 10;
@@ -65,12 +65,13 @@ namespace VideoForensics.Data.Core.Services
         /// False for stills (images) and roll-up loops, which are built from images and carry no audio. Any other clip has audio.
         /// The roll-up marker is the literal written by the roll-up service's metadata.
         /// </summary>
-        internal static bool HasAudioTrack(MediaItem media) =>
-            !string.Equals(media.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
+        internal static bool HasAudioTrack(MediaItem media)
+        {
+            return !string.Equals(media.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "jpeg", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(media.MediaFormat, "png", StringComparison.OrdinalIgnoreCase)
             && (media.MetadataJson is null || !media.MetadataJson.Contains("\"type\":\"snapshot-rollup\"", StringComparison.Ordinal));
-
+        }
 
         /// <inheritdoc />
         public async Task AnalyzeAsync(Guid mediaItemId, CancellationToken ct)
@@ -122,7 +123,7 @@ namespace VideoForensics.Data.Core.Services
             IReadOnlyList<MediaItem> clean = others.Where(m => m.RedFlags == string.Empty).ToList();
 
             // Only compare like with like: a stream-reported bitrate is never pooled with an estimated one.
-            List<BaselineSample> samples = clean
+            var samples = clean
                 .Where(m => m.VideoBitrateBps is not null && ParseMode(m.LightingMode) is not null && m.BitrateEstimated == bitrate?.BitrateEstimated)
                 .Select(m => new BaselineSample(m.VideoBitrateBps!.Value, ParseMode(m.LightingMode)!.Value, SeasonExtensions.FromMonth(m.RecordedAtUtc.Month, _hemisphere), Flagged: false))
                 .ToList();
@@ -132,7 +133,7 @@ namespace VideoForensics.Data.Core.Services
             Device? device = await _devices.GetAsync(media.DeviceId, ct);
             if (device is not null)
             {
-                List<long> history = clean
+                var history = clean
                     .Where(m => m.VideoBitrateBps is not null && m.BitrateEstimated == bitrate?.BitrateEstimated)
                     .OrderBy(m => m.RecordedAtUtc)
                     .Select(m => m.VideoBitrateBps!.Value)
@@ -192,7 +193,7 @@ namespace VideoForensics.Data.Core.Services
         /// <summary>How far a value sits above the median of the device's clean history; null when there is too little history.</summary>
         private static double? RiseAboveMedian(double value, IEnumerable<double> history)
         {
-            List<double> sorted = history.OrderBy(v => v).ToList();
+            var sorted = history.OrderBy(v => v).ToList();
             if (sorted.Count < AudioBaselineMinimumSamples)
             {
                 return null;
@@ -204,8 +205,10 @@ namespace VideoForensics.Data.Core.Services
         }
 
         /// <summary>Parses a stored lighting mode; unknown or legacy values yield null so one bad row cannot stop analysis.</summary>
-        private static LightingMode? ParseMode(string? name) =>
-            Enum.TryParse(name, out LightingMode mode) ? mode : null;
+        private static LightingMode? ParseMode(string? name)
+        {
+            return Enum.TryParse(name, out LightingMode mode) ? mode : null;
+        }
 
         /// <summary>True when this clip's lighting mode is rare among the device's clips.</summary>
         private static bool IsUnusualLighting(string? mode, IReadOnlyList<MediaItem> others)
@@ -215,7 +218,7 @@ namespace VideoForensics.Data.Core.Services
                 return false;
             }
 
-            List<string> modes = others.Where(m => ParseMode(m.LightingMode) is not null).Select(m => m.LightingMode!).ToList();
+            var modes = others.Where(m => ParseMode(m.LightingMode) is not null).Select(m => m.LightingMode!).ToList();
             if (modes.Count < UnusualLightingMinimumSamples)
             {
                 return false;

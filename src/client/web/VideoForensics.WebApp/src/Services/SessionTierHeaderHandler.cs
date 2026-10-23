@@ -57,7 +57,7 @@ namespace VideoForensics.WebApp.Services
                 if (principal != null)
                 {
                     string headerValue = _headerProtector.Protect(_networkContext.Tier, principal.OperatorId);
-                    request.Headers.TryAddWithoutValidation(SessionTierHeaderNames.HeaderName, headerValue);
+                    _ = request.Headers.TryAddWithoutValidation(SessionTierHeaderNames.HeaderName, headerValue);
                 }
 
                 // A provided-but-invalid token (expired/revoked) is left with no header at all - the
@@ -67,7 +67,7 @@ namespace VideoForensics.WebApp.Services
             else if (_attachPreAuthHeaderWhenNoToken)
             {
                 string preAuthHeaderValue = _headerProtector.ProtectPreAuth(_networkContext.Tier);
-                request.Headers.TryAddWithoutValidation(SessionTierHeaderNames.HeaderName, preAuthHeaderValue);
+                _ = request.Headers.TryAddWithoutValidation(SessionTierHeaderNames.HeaderName, preAuthHeaderValue);
             }
 
             return base.SendAsync(request, cancellationToken);

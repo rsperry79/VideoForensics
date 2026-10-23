@@ -1,6 +1,8 @@
-using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+using System.Reflection;
+
 using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Services
@@ -34,7 +36,7 @@ namespace VideoForensics.Hosting.Services
         {
             try
             {
-                var attribute = typeof(SystemVersionService).Assembly
+                AssemblyInformationalVersionAttribute? attribute = typeof(SystemVersionService).Assembly
                     .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
 
                 if (attribute?.InformationalVersion != null)

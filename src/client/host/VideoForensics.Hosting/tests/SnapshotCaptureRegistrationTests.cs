@@ -3,10 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting;
 using VideoForensics.Hosting.BackgroundServices;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -15,7 +12,7 @@ namespace VideoForensics.Hosting.Tests
         private static IConfiguration Config(params (string Key, string Value)[] values)
         {
             return new ConfigurationBuilder()
-                .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value))
+                .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => v.Value))
                 .Build();
         }
 

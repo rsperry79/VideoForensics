@@ -1,4 +1,3 @@
-using VideoForensics.Core.Providers.Core;
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
@@ -22,7 +21,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             RedFlagReport report = RedFlagEvaluator.Evaluate(new ClipSignals(
                 BitrateCollapsed: true, ClippedPeakCount: 0, NoiseFloorRiseDb: null, UnusualLighting: false, SilentGapCount: 0, SilenceAboveBaselineFraction: null));
 
-            Assert.Single(report.Flags);
+            _ = Assert.Single(report.Flags);
             Assert.False(report.JammingSuspected);
         }
 

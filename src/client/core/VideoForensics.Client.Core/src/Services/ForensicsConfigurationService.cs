@@ -43,10 +43,7 @@ namespace VideoForensics.Client.Core.Services
 
             await EnsureFfmpegBinDirectoryAsync(config, cancellationToken);
 
-            if (_ffmpegToolLocation != null)
-            {
-                _ffmpegToolLocation.BinDirectory = config.FfmpegBinDirectory;
-            }
+            _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
 
             return config;
         }
@@ -55,10 +52,7 @@ namespace VideoForensics.Client.Core.Services
         {
             await SaveToDatabaseAsync(config, cancellationToken);
 
-            if (_ffmpegToolLocation != null)
-            {
-                _ffmpegToolLocation.BinDirectory = config.FfmpegBinDirectory;
-            }
+            _ffmpegToolLocation?.BinDirectory = config.FfmpegBinDirectory;
         }
 
         /// <summary>
@@ -74,7 +68,7 @@ namespace VideoForensics.Client.Core.Services
 
             try
             {
-                var discovered = _discoverBinDirectory();
+                string? discovered = _discoverBinDirectory();
                 if (discovered == null)
                 {
                     _logger.LogWarning("ffmpeg/ffprobe not found in the app directory or PATH; set FfmpegBinDirectory");
@@ -169,20 +163,20 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("EnableAccessControlMonitoring", config.EnableAccessControlMonitoring.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnablePiiRedaction", config.EnablePiiRedaction.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("ReportOutputFormat", config.ReportOutputFormat, cancellationToken);
-                await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("ExportsLocation", config.ExportsLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("DatabaseLocation", config.DatabaseLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("ReportsLocation", config.ReportsLocation ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("DownloadLocation", config.DownloadLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("QueryExportLocation", config.QueryExportLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("ExportsLocation", config.ExportsLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("DatabaseLocation", config.DatabaseLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("TempDownloadLocation", config.TempDownloadLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("LogsLocation", config.LogsLocation ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("ReportsLocation", config.ReportsLocation ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("RedactionLevel", config.RedactionLevel.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("KeyStorageProvider", config.KeyStorageProvider.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("RetentionDaysDefault", config.RetentionDaysDefault.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LogLevel", config.LogLevel, cancellationToken);
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
-                await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
@@ -198,10 +192,10 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("SmtpFromAddress", config.SmtpFromAddress, cancellationToken);
                 await _settingRepository!.SetAsync("NotificationRecipientEmail", config.NotificationRecipientEmail, cancellationToken);
                 await _settingRepository!.SetAsync("ConfiguredNetworkTier", config.ConfiguredNetworkTier.ToString(), cancellationToken);
-                await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? "", cancellationToken);
-                await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? "", cancellationToken);
+                await _settingRepository!.SetAsync("InternetServerUrl", config.InternetServerUrl ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("UniviewNvrHost", config.UniviewNvrHost ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("UniviewFfmpegPath", config.UniviewFfmpegPath ?? string.Empty, cancellationToken);
+                await _settingRepository!.SetAsync("FfmpegBinDirectory", config.FfmpegBinDirectory ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("EnableLiveView", config.EnableLiveView.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewIdleTimeoutMinutes", config.LiveViewIdleTimeoutMinutes.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("LiveViewTelemetrySampleIntervalSeconds", config.LiveViewTelemetrySampleIntervalSeconds.ToString(), cancellationToken);
@@ -234,7 +228,7 @@ namespace VideoForensics.Client.Core.Services
         private async Task<string> GetStringSetting(string key, string? defaultValue, CancellationToken ct)
         {
             string? value = await _settingRepository!.GetAsync(key, ct);
-            return string.IsNullOrEmpty(value) ? (defaultValue ?? "") : value;
+            return string.IsNullOrEmpty(value) ? (defaultValue ?? string.Empty) : value;
         }
 
         private async Task<int> GetIntSetting(string key, int defaultValue, CancellationToken ct)

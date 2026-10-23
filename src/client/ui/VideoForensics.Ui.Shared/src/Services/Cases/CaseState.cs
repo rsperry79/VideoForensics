@@ -21,7 +21,7 @@ public class CaseState
     /// <summary>
     /// The device IDs associated with the active case, if any.
     /// </summary>
-    public IReadOnlyList<Guid> ActiveCaseDeviceIds { get; private set; } = new List<Guid>();
+    public IReadOnlyList<Guid> ActiveCaseDeviceIds { get; private set; } = [];
 
     /// <summary>
     /// Raised when the active case changes or is deactivated.
@@ -40,19 +40,19 @@ public class CaseState
     /// </summary>
     public async Task<bool> ActivateAsync(Guid caseId, CancellationToken ct)
     {
-        var forensicCase = await _caseRepository.GetAsync(caseId, ct);
+        ForensicCase? forensicCase = await _caseRepository.GetAsync(caseId, ct);
         if (forensicCase is null)
         {
             return false;
         }
 
-        var deviceIds = await _caseRepository.GetDeviceIdsAsync(caseId, ct);
+        IReadOnlyList<Guid> deviceIds = await _caseRepository.GetDeviceIdsAsync(caseId, ct);
         ActiveCase = forensicCase;
         ActiveCaseDeviceIds = deviceIds;
 
         // Apply the case's scope to the current scope state
-        var fromUtc = forensicCase.ScopeFromUtc ?? _scopeState.Current.FromUtc;
-        var toUtc = forensicCase.ScopeToUtc ?? _scopeState.Current.ToUtc;
+        DateTime fromUtc = forensicCase.ScopeFromUtc ?? _scopeState.Current.FromUtc;
+        DateTime toUtc = forensicCase.ScopeToUtc ?? _scopeState.Current.ToUtc;
         _scopeState.Set(_scopeState.Current with
         {
             DeviceIds = deviceIds,
@@ -76,7 +76,7 @@ public class CaseState
         }
 
         ActiveCase = null;
-        ActiveCaseDeviceIds = new List<Guid>();
+        ActiveCaseDeviceIds = [];
         OnChange?.Invoke();
     }
 
@@ -99,11 +99,11 @@ public class CaseState
                 return true;
             }
 
-            var caseFromUtc = ActiveCase.ScopeFromUtc ?? _scopeState.Current.FromUtc;
-            var caseToUtc = ActiveCase.ScopeToUtc ?? _scopeState.Current.ToUtc;
+            DateTime caseFromUtc = ActiveCase.ScopeFromUtc ?? _scopeState.Current.FromUtc;
+            DateTime caseToUtc = ActiveCase.ScopeToUtc ?? _scopeState.Current.ToUtc;
 
-            var devicesDiffer = !_scopeState.Current.DeviceIds.SequenceEqual(ActiveCaseDeviceIds);
-            var windowDiffers = _scopeState.Current.FromUtc != caseFromUtc || _scopeState.Current.ToUtc != caseToUtc;
+            bool devicesDiffer = !_scopeState.Current.DeviceIds.SequenceEqual(ActiveCaseDeviceIds);
+            bool windowDiffers = _scopeState.Current.FromUtc != caseFromUtc || _scopeState.Current.ToUtc != caseToUtc;
 
             return devicesDiffer || windowDiffers;
         }
@@ -134,7 +134,7 @@ public class CaseState
             ct);
 
         // Refresh the active case to reflect the saved changes
-        var refreshed = await _caseRepository.GetAsync(ActiveCase.Id, ct);
+        ForensicCase? refreshed = await _caseRepository.GetAsync(ActiveCase.Id, ct);
         if (refreshed is not null)
         {
             ActiveCase = refreshed;
@@ -148,17 +148,11 @@ public class CaseState
     /// </summary>
     public async Task<CaseItem> PinAsync(CaseItemKind kind, Guid targetId, string reason, string actor, CancellationToken ct)
     {
-        if (ActiveCase is null)
-        {
-            throw new InvalidOperationException("No active case to pin evidence to.");
-        }
-
-        if (ActiveCase.Status == CaseStatus.Closed)
-        {
-            throw new InvalidOperationException("Cannot pin evidence to a closed case.");
-        }
-
-        return await _caseRepository.AddItemAsync(
+        return ActiveCase is null
+            ? throw new InvalidOperationException("No active case to pin evidence to.")
+            : ActiveCase.Status == CaseStatus.Closed
+            ? throw new InvalidOperationException("Cannot pin evidence to a closed case.")
+            : await _caseRepository.AddItemAsync(
             ActiveCase.Id,
             kind,
             targetId,

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Configuration;
-
 namespace VideoForensics.WebApp.Infrastructure
 {
     /// <summary>
@@ -67,7 +65,7 @@ namespace VideoForensics.WebApp.Infrastructure
                         && (string.Compare(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) == 0 || string.Compare(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) == 0)
                         && string.IsNullOrEmpty(uri.AbsolutePath.Trim('/')))
                     {
-                        origins.Add(uri.GetLeftPart(UriPartial.Authority));
+                        _ = origins.Add(uri.GetLeftPart(UriPartial.Authority));
                     }
                 }
             }
@@ -84,20 +82,14 @@ namespace VideoForensics.WebApp.Infrastructure
         /// <returns>The RP id, a bare host name with no scheme, port or trailing dot.</returns>
         public static string ResolveRpId(IConfiguration configuration, string? configuredInternetUrl = null)
         {
-            if (configuration["WebAuthn:RpId"]?.Trim().TrimEnd('.')
-                        is { Length: > 0 } configured)
-            {
-                return configured;
-            }
-
-            if (Uri.TryCreate(configuredInternetUrl, UriKind.Absolute, out Uri? internetUrl)
+            return configuration["WebAuthn:RpId"]?.Trim().TrimEnd('.')
+                        is { Length: > 0 } configured
+                ? configured
+                : Uri.TryCreate(configuredInternetUrl, UriKind.Absolute, out Uri? internetUrl)
                 && internetUrl.Scheme == Uri.UriSchemeHttps
-                && internetUrl.Host.Length > 0)
-            {
-                return internetUrl.Host;
-            }
-
-            return "localhost";
+                && internetUrl.Host.Length > 0
+                ? internetUrl.Host
+                : "localhost";
         }
 
         /// <summary>

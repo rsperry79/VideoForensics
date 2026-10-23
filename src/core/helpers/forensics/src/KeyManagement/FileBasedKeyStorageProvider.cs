@@ -55,7 +55,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 StoreKeyMetadata(keyId, thumbprint);
 
                 return thumbprint;
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task<byte[]> GetPublicKeyAsync(string keyId)
@@ -64,7 +64,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
             {
                 string pubKeyPath = Path.Combine(_keyStorePath, $"{keyId}.pub");
                 return File.Exists(pubKeyPath) ? File.ReadAllBytes(pubKeyPath) : Array.Empty<byte>();
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task<string> SignDataAsync(string keyId, byte[] data)
@@ -85,7 +85,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
                 byte[] signature = rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                 return Convert.ToBase64String(signature);
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task<bool> VerifySignatureAsync(string keyId, byte[] data, string signature)
@@ -110,7 +110,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 {
                     return false;
                 }
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task DeleteKeyAsync(string keyId, string authorizingOfficer)
@@ -135,7 +135,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 {
                     File.Delete(metadataPath);
                 }
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task<IEnumerable<string>> ListKeysAsync()
@@ -147,7 +147,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                     : Directory.GetFiles(_keyStorePath, $"*{KeyFileExtension}")
                     .Select(f => Path.GetFileNameWithoutExtension(f))
                     .ToList();
-            });
+            }).ConfigureAwait(true);
         }
 
         public async Task<KeyMetadata> GetKeyMetadataAsync(string keyId)
@@ -161,7 +161,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                     StorageProvider = ProviderName,
                     CreatedUtc = DateTime.UtcNow
                 };
-            });
+            }).ConfigureAwait(true);
         }
 
         private byte[] EncryptKey(byte[] keyData, string keyId)

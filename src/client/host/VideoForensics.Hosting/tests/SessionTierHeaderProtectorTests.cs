@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.DataProtection;
 
 using VideoForensics.Data.Common.Entities;
 
-using Xunit;
-
 namespace VideoForensics.Hosting.Tests
 {
     public class SessionTierHeaderProtectorTests
@@ -70,7 +68,7 @@ namespace VideoForensics.Hosting.Tests
             // Act - flip a character to simulate tampering with the protected payload.
             char[] chars = header.ToCharArray();
             chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
-            string tampered = new string(chars);
+            string tampered = new(chars);
             bool ok = protector.TryUnprotect(tampered, out NetworkTier tier, out Guid? operatorId);
 
             // Assert
@@ -90,7 +88,7 @@ namespace VideoForensics.Hosting.Tests
             // Act - flip a character to simulate tampering with the protected payload.
             char[] chars = header.ToCharArray();
             chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
-            string tampered = new string(chars);
+            string tampered = new(chars);
             bool ok = protector.TryUnprotect(tampered, out _, out Guid? operatorId);
 
             // Assert
@@ -112,7 +110,8 @@ namespace VideoForensics.Hosting.Tests
 
             // Act - advance beyond the header's short (<=2 minute) lifetime.
             timeProvider.SetUtcNow(new DateTime(2026, 1, 1, 0, 5, 0, DateTimeKind.Utc));
-            bool ok = protector.TryUnprotect(header, out NetworkTier tier, out Guid? resolvedOperatorId);
+
+            bool ok = protector.TryUnprotect(header, out _, out _);
 
             // Assert
             Assert.False(ok);

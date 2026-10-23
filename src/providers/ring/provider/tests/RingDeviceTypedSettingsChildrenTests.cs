@@ -1,4 +1,6 @@
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -21,18 +23,18 @@ namespace VideoForensics.Providers.Ring.Tests
                 DetectionTypes: [new DetectionTypeDetail("human", true, "cloud", false, true)],
                 DetectionThresholds: [new DetectionThresholdDetail("loitering", 10.0)]);
 
-            var children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
+            DeviceSettingsChildren children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
 
-            var offline = Assert.Single(children.OfflineMotion!);
+            DeviceOfflineMotionSettings offline = Assert.Single(children.OfflineMotion!);
             Assert.Equal(DeviceId, offline.DeviceId);
             Assert.Equal(5000, offline.MaxUploadKb);
             Assert.Equal(30, offline.PeriodAfterSecs);
-            var human = Assert.Single(children.DetectionTypes!);
+            DeviceDetectionType human = Assert.Single(children.DetectionTypes!);
             Assert.Equal(DeviceId, human.DeviceId);
             Assert.Equal("human", human.DetectionType);
             Assert.Equal("cloud", human.Mode);
             Assert.Equal(true, human.Notification);
-            var threshold = Assert.Single(children.DetectionThresholds!);
+            DeviceDetectionThreshold threshold = Assert.Single(children.DetectionThresholds!);
             Assert.Equal("loitering", threshold.DetectionType);
             Assert.Equal(10.0, threshold.Threshold);
         }
@@ -47,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 OfflineMotion: null,
                 DetectionTypes: []);
 
-            var children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
+            DeviceSettingsChildren children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
 
             Assert.Empty(children.OfflineMotion!);
             Assert.Empty(children.DetectionTypes!);
@@ -61,7 +63,7 @@ namespace VideoForensics.Providers.Ring.Tests
                 LiveViewPresets: [],
                 AdvancedMotionZones: []);
 
-            var children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
+            DeviceSettingsChildren children = RingDeviceDetailsMapper.ToSettingsChildren(fields, DeviceId)!;
 
             Assert.Null(children.OfflineMotion);
             Assert.Null(children.DetectionTypes);

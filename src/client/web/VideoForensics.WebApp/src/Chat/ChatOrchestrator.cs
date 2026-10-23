@@ -1,11 +1,13 @@
+using Microsoft.Extensions.Primitives;
+
 using ModelContextProtocol.Client;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
+
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Infrastructure;
@@ -97,7 +99,7 @@ namespace VideoForensics.WebApp.Chat
             string message,
             [EnumeratorCancellation] CancellationToken ct)
         {
-            Channel<ChatStreamEvent> channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions { SingleReader = true });
+            var channel = Channel.CreateUnbounded<ChatStreamEvent>(new UnboundedChannelOptions { SingleReader = true });
 
             _ = RunTurnAsync(history, message, channel.Writer, ct).ContinueWith(turn =>
             {
@@ -165,7 +167,7 @@ namespace VideoForensics.WebApp.Chat
                 {
                     // List available MCP tools
                     var toolsParams = new ModelContextProtocol.Protocol.ListToolsRequestParams();
-                    var toolsResult = await mcpToolClient.ListToolsAsync(toolsParams, ct);
+                    ListToolsResult toolsResult = await mcpToolClient.ListToolsAsync(toolsParams, ct);
                     var tools = new List<LlmToolDefinition>();
                     if (toolsResult?.Tools != null)
                     {
@@ -180,10 +182,11 @@ namespace VideoForensics.WebApp.Chat
 
                     // Build LLM message history
                     var llmMessages = new List<LlmMessage>();
-                    foreach (var turn in history)
+                    foreach (ChatTurn turn in history)
                     {
                         llmMessages.Add(new LlmMessage(turn.Role, turn.Content));
                     }
+
                     llmMessages.Add(new LlmMessage("user", message));
 
                     // Tool-use loop
@@ -242,7 +245,7 @@ namespace VideoForensics.WebApp.Chat
                         IReadOnlyDictionary<string, object?>? toolArguments = null;
                         if (!string.IsNullOrEmpty(completion.ToolArgumentsJson))
                         {
-                            var jsonElement = JsonSerializer.Deserialize<JsonElement>(completion.ToolArgumentsJson);
+                            JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(completion.ToolArgumentsJson);
                             toolArguments = JsonSerializer.Deserialize<Dictionary<string, object?>>(jsonElement.GetRawText());
                         }
 
@@ -301,7 +304,7 @@ namespace VideoForensics.WebApp.Chat
 
         private ILlmChatProvider ConstructLlmProvider(string provider, string apiKey, string model, string? baseUrl)
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            HttpClient httpClient = _httpClientFactory.CreateClient();
 
             return provider switch
             {
@@ -325,14 +328,14 @@ namespace VideoForensics.WebApp.Chat
 
         private async Task<McpClient> ConnectToLocalMcpEndpointAsync(CancellationToken ct)
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            HttpClient httpClient = _httpClientFactory.CreateClient();
 
             // Determine the local server's base address from configuration
             int port = ServerAddressResolver.ResolveHttpPort(_configuration);
             httpClient.BaseAddress = new Uri($"http://localhost:{port}");
 
             // Forward the current request's authorization header to the local MCP call
-            if (_httpContextAccessor?.HttpContext?.Request.Headers.TryGetValue("Authorization", out var authHeader) == true)
+            if (_httpContextAccessor?.HttpContext?.Request.Headers.TryGetValue("Authorization", out StringValues authHeader) == true)
             {
                 httpClient.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse(authHeader.ToString());
             }
@@ -354,7 +357,7 @@ namespace VideoForensics.WebApp.Chat
             }
 
             // Extract text content from tool result
-            var textContents = toolResult.Content
+            IEnumerable<string> textContents = toolResult.Content
                 .OfType<ModelContextProtocol.Protocol.TextContentBlock>()
                 .Select(tc => tc.Text)
                 .Where(t => !string.IsNullOrEmpty(t));

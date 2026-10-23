@@ -1,8 +1,8 @@
 using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 
 namespace VideoForensics.Hosting.Tests
@@ -25,8 +25,15 @@ namespace VideoForensics.Hosting.Tests
             public IObservable<ConnectionState> Connection => State;
             public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
             public IObservable<EvidenceChangedDto> EvidenceChanged => Evidence;
-            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-            public Task StopAsync() => Task.CompletedTask;
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync()
+            {
+                return Task.CompletedTask;
+            }
         }
 
         /// <summary>
