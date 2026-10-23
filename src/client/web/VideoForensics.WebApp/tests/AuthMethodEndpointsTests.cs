@@ -174,7 +174,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [authMethodsService, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<object> GetSettingsAsync(
@@ -194,7 +194,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [authMethodsService, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateSettingsAsync(
@@ -219,7 +219,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [request, authMethodsService, auditLog, tierResolver, context, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

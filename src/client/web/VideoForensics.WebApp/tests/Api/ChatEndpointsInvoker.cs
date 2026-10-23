@@ -35,7 +35,7 @@ namespace VideoForensics.WebApp.Tests.Api
             }
 
             object? result = method.Invoke(null, [request, chatService, context, logger, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

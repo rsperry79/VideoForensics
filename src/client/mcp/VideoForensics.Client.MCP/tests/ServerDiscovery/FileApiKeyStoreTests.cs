@@ -1,3 +1,4 @@
+using VideoForensics.Client.MCP.ServerDiscovery;
 using Xunit;
 
 namespace VideoForensics.Client.MCP.Tests.ServerDiscovery

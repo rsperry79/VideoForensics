@@ -326,7 +326,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [operatorId, operators, preferences, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<object> SetUiModeAsync(
@@ -354,7 +354,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [operatorId, request, operators, preferences, auditLog, tierResolver, context, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

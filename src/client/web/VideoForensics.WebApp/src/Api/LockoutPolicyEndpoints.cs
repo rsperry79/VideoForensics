@@ -58,7 +58,7 @@ namespace VideoForensics.WebApp.Api
                 AutoBanWindowMinutes = request.AutoBanWindowMinutes,
                 AutoBanDurationMinutes = request.AutoBanDurationMinutes,
                 UpdatedAtUtc = DateTime.UtcNow,
-                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not string.Empty } claim
+                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not "" } claim
                     && Guid.TryParse(claim.Value, out Guid operatorId) ? operatorId : null
             };
 

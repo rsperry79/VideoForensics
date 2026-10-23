@@ -1,3 +1,4 @@
+using VideoForensics.WebApp.Auth;
 using Fido2NetLib;
 
 using Microsoft.AspNetCore.Http;

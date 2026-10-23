@@ -156,7 +156,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [operatorId, operators, auditLog, tierResolver, context, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

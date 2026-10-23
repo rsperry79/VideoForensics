@@ -30,7 +30,7 @@ namespace VideoForensics.WebApp.Tests.Api
             }
 
             object? result = method.Invoke(null, [versionProvider, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<IResult> GetVersionManifest(
@@ -50,7 +50,7 @@ namespace VideoForensics.WebApp.Tests.Api
             }
 
             object? result = method.Invoke(null, [versionProvider, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

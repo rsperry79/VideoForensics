@@ -97,7 +97,7 @@ public class SelfTestInspectorMapper_ToInspector_Tests
 
         // Assert
         Assert.NotNull(model.Fields);
-        object fieldsObj = model.Fields;
+        var fieldsObj = (dynamic)model.Fields;
         Assert.Equal("get_devices", fieldsObj.Endpoint);
         Assert.Equal("device-456", fieldsObj.Target);
         Assert.Equal(250, fieldsObj.DurationMs);
@@ -137,7 +137,7 @@ public class SelfTestInspectorMapper_ToInspector_Tests
 
         // Assert
         Assert.NotNull(model.Fields);
-        object fieldsObj = model.Fields;
+        var fieldsObj = (dynamic)model.Fields;
         dynamic restoreInfo = fieldsObj.RestoreInfo;
         Assert.True(restoreInfo.RestoreAttempted);
         Assert.False(restoreInfo.RestoreSuccess);

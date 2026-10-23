@@ -47,7 +47,7 @@ namespace VideoForensics.WebApp.Api
                 Role = role,
                 RequireTwoFactor = request.RequireTwoFactor,
                 UpdatedAtUtc = DateTime.UtcNow,
-                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not string.Empty } claim
+                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not "" } claim
                     && Guid.TryParse(claim.Value, out Guid operatorId) ? operatorId : null
             };
 

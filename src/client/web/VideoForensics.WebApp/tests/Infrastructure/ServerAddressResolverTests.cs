@@ -1,3 +1,4 @@
+using VideoForensics.WebApp.Infrastructure;
 using Microsoft.Extensions.Configuration;
 
 using Xunit;

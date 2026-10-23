@@ -13,7 +13,7 @@ namespace VideoForensics.Hosting.Tests
         private static IConfiguration Config(params (string Key, string Value)[] values)
         {
             return new ConfigurationBuilder()
-                .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => v.Value))
+                .AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value))
                 .Build();
         }
 

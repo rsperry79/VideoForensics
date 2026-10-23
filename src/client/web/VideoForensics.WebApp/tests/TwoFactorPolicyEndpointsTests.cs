@@ -246,7 +246,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [repository, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateRoleRequirementAsync(
@@ -272,7 +272,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [role, request, repository, auditLog, tierResolver, context, ct]);
-            return await result;
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateOperatorOverrideAsync(
@@ -298,7 +298,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             object? result = method.Invoke(null, [operatorId, request, operators, auditLog, tierResolver, context, ct]);
-            return await result;
+            return await (dynamic)result;
         }
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -67,7 +68,7 @@ namespace VideoForensics.Client.Core.Tests
 
                 _ = _mediaItemRepositoryMock
                     .Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(mediaItem));
+                    .Returns(Task.FromResult((MediaItem?)mediaItem));
 
                 _ = _integrityVerificationServiceMock
                     .Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
@@ -146,7 +147,7 @@ namespace VideoForensics.Client.Core.Tests
 
                 _ = _mediaItemRepositoryMock
                     .Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(mediaItem));
+                    .Returns(Task.FromResult((MediaItem?)mediaItem));
 
                 _ = _integrityVerificationServiceMock
                     .Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))

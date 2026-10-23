@@ -13,7 +13,7 @@ public static class DeviceTypeNames
             "chime" => "Chime",
             "base_station" => "Base Station",
             "range_extender" => "Range Extender",
-            null or string.Empty => "Unknown",
+            null or "" => "Unknown",
             _ => string.Join(" ", type.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0]) + w[1..]))
         };
     }
