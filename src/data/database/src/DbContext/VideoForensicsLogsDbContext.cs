@@ -27,6 +27,7 @@ namespace VideoForensics.Data.Database.DbContext
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfiguration(new ProviderApiErrorLogConfiguration());
+            modelBuilder.ApplyConfiguration(new ProviderApiCallRecordConfiguration());
 
             // The main configuration adds a foreign key to LiveViewSession, which is not part of this model.
             _ = modelBuilder.Entity<LiveViewTelemetrySample>(builder =>

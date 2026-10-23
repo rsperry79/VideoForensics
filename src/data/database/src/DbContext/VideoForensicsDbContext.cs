@@ -329,11 +329,7 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the security audit log entries (plan §5.5).</summary>
         public DbSet<SecurityAuditLogEntry> SecurityAuditLogEntries { get; set; }
 
-        /// <summary>Gets or sets the provider API call log (plan §5.12).</summary>
-        public DbSet<ProviderApiCallRecord> ProviderApiCallRecords { get; set; }
 
-        /// <summary>Gets or sets the provider API error log (status code + truncated response body per failed download attempt).</summary>
-        public DbSet<ProviderApiErrorLog> ProviderApiErrorLogs { get; set; }
 
         /// <summary>Gets or sets the per-operator UI preferences (theme mode, language).</summary>
         public DbSet<OperatorPreferences> OperatorPreferences { get; set; }
@@ -365,8 +361,6 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets the live-view sessions.</summary>
         public DbSet<LiveViewSession> LiveViewSessions { get; set; }
 
-        /// <summary>Gets or sets the live-view telemetry samples.</summary>
-        public DbSet<LiveViewTelemetrySample> LiveViewTelemetrySamples { get; set; }
 
         /// <summary>Gets or sets the camera bitrate baselines.</summary>
         public DbSet<CameraBitrateBaseline> CameraBitrateBaselines { get; set; }
@@ -410,6 +404,12 @@ namespace VideoForensics.Data.Database.DbContext
             base.OnModelCreating(modelBuilder);
             _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(VideoForensicsDbContext).Assembly);
             RingEventHistoryModel.Configure(modelBuilder);
+
+            // Operational rows moved to logs.db (VideoForensicsLogsDbContext). Ignoring them here makes the next migration drop
+            // their tables from this database.
+            _ = modelBuilder.Ignore<ProviderApiCallRecord>();
+            _ = modelBuilder.Ignore<ProviderApiErrorLog>();
+            _ = modelBuilder.Ignore<LiveViewTelemetrySample>();
         }
     }
 }
