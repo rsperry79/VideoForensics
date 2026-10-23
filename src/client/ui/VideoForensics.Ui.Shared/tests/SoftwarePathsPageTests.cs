@@ -1,18 +1,22 @@
-namespace VideoForensics.Ui.Shared.Tests;
+using Bunit;
 
-using System.Net.Http;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
+
+using Moq;
+
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Bunit;
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-using Moq;
+
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
+
 using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class SoftwarePathsPageTests : BunitContext
 {
@@ -21,14 +25,14 @@ public class SoftwarePathsPageTests : BunitContext
     public SoftwarePathsPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped<WebAuthnClient>(sp => new StepUpStubWebAuthnClient(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped<StepUpService>();
-        Services.AddScoped(_ => new HttpClient(_handler));
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped<WebAuthnClient>(sp => new StepUpStubWebAuthnClient(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped<StepUpService>();
+        _ = Services.AddScoped(_ => new HttpClient(_handler));
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -37,9 +41,9 @@ public class SoftwarePathsPageTests : BunitContext
     {
         // No signed-in session, so the step-up challenge cannot produce a token. This is the same failure
         // the page sees when the operator cancels the challenge.
-        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = "" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = string.Empty };
 
-        var cut = Render<SoftwarePaths>();
+        IRenderedComponent<SoftwarePaths> cut = Render<SoftwarePaths>();
         cut.WaitForAssertion(() => Assert.Single(_handler.Sent, s => s.Method == HttpMethod.Get));
 
         cut.Find("button.save-software-paths").Click();
@@ -51,11 +55,11 @@ public class SoftwarePathsPageTests : BunitContext
     [Fact]
     public async Task SoftwarePathsPage_SaveWithStepUpAndValidPaths_ShowsSavedMessage()
     {
-        var session = await SignInWithPasskeyAsync();
+        PairedSessionState session = await SignInWithPasskeyAsync();
 
         _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = @"C:\old" };
-        var cut = Render<SoftwarePaths>();
-        cut.WaitForElement("#ffmpeg-bin-directory");
+        IRenderedComponent<SoftwarePaths> cut = Render<SoftwarePaths>();
+        _ = cut.WaitForElement("#ffmpeg-bin-directory");
 
         // The handler answers the POST with whatever the body currently holds, so the saved values are the new ones.
         _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = @"C:\new" };
@@ -63,7 +67,7 @@ public class SoftwarePathsPageTests : BunitContext
 
         cut.Find("button.save-software-paths").Click();
 
-        var localizer = Services.GetRequiredService<IStringLocalizer<SoftwarePaths>>();
+        IStringLocalizer<SoftwarePaths> localizer = Services.GetRequiredService<IStringLocalizer<SoftwarePaths>>();
         cut.WaitForAssertion(() => Assert.Contains(localizer["SavedMessage"], cut.Markup));
         Assert.Contains(_handler.Sent, s => s.Method == HttpMethod.Post && s.Body is not null && s.Body.Contains(@"C:\\new"));
         Assert.NotNull(session.SessionToken);
@@ -73,12 +77,12 @@ public class SoftwarePathsPageTests : BunitContext
     public async Task SoftwarePathsPage_SaveRejected_ShowsServerError()
     {
         const string serverError = @"Path does not exist: C:\missing";
-        await SignInWithPasskeyAsync();
+        _ = await SignInWithPasskeyAsync();
 
-        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = "" };
+        _handler.Bodies["/api/v1/software-paths"] = new { ffmpegBinDirectory = string.Empty };
         _handler.PostError = serverError;
-        var cut = Render<SoftwarePaths>();
-        cut.WaitForElement("#ffmpeg-bin-directory");
+        IRenderedComponent<SoftwarePaths> cut = Render<SoftwarePaths>();
+        _ = cut.WaitForElement("#ffmpeg-bin-directory");
         cut.Find("#ffmpeg-bin-directory").Change(@"C:\missing");
 
         cut.Find("button.save-software-paths").Click();
@@ -90,7 +94,7 @@ public class SoftwarePathsPageTests : BunitContext
     /// <summary>Signs the test circuit in with a passkey session, which the step-up stub then confirms.</summary>
     private async Task<PairedSessionState> SignInWithPasskeyAsync()
     {
-        var session = Services.GetRequiredService<PairedSessionState>();
+        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("session-token", Guid.NewGuid(), "SuperAdmin");
         session.SetServerSessionKind(localTier: false, passkeySession: true);
         return session;
@@ -104,7 +108,10 @@ public class SoftwarePathsPageTests : BunitContext
         {
         }
 
-        public override Task<string> StepUpAsync(string sessionToken) => Task.FromResult("step-up-token");
+        public override Task<string> StepUpAsync(string sessionToken)
+        {
+            return Task.FromResult("step-up-token");
+        }
     }
 
     /// <summary>
@@ -113,33 +120,27 @@ public class SoftwarePathsPageTests : BunitContext
     /// </summary>
     private sealed class SoftwarePathsHandler : HttpMessageHandler
     {
-        public Dictionary<string, object> Bodies { get; } = new();
+        public Dictionary<string, object> Bodies { get; } = [];
         public string? PostError { get; set; }
-        public List<(HttpMethod Method, string Path, string? Body)> Sent { get; } = new();
+        public List<(HttpMethod Method, string Path, string? Body)> Sent { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var path = request.RequestUri!.AbsolutePath;
+            string path = request.RequestUri!.AbsolutePath;
             string? sentBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             Sent.Add((request.Method, path, sentBody));
 
-            if (request.Method == HttpMethod.Post && PostError is not null)
-            {
-                return Json(HttpStatusCode.BadRequest, new { error = PostError });
-            }
-
-            if (!Bodies.TryGetValue(path, out var body))
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-
-            return Json(HttpStatusCode.OK, body);
+            return request.Method == HttpMethod.Post && PostError is not null
+                ? Json(HttpStatusCode.BadRequest, new { error = PostError })
+                : !Bodies.TryGetValue(path, out object? body) ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(HttpStatusCode.OK, body);
         }
 
-        private static HttpResponseMessage Json(HttpStatusCode status, object body) =>
-            new(status)
+        private static HttpResponseMessage Json(HttpStatusCode status, object body)
+        {
+            return new(status)
             {
                 Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
             };
+        }
     }
 }

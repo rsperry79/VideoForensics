@@ -18,14 +18,25 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             return inner.UpsertIncidentAsync(incident, ct);
         }
 
-        public Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct) =>
-            inner.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+        public Task<IReadOnlyList<JammingIncidentRecord>> ListIncidentsAsync(Guid? deviceId, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
+        {
+            return inner.ListIncidentsAsync(deviceId, fromUtc, toUtc, ct);
+        }
 
-        public Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct) => inner.GetIncidentAsync(incidentId, ct);
+        public Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
+        {
+            return inner.GetIncidentAsync(incidentId, ct);
+        }
 
-        public Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct) => inner.GetStatsAsync(deviceId, ct);
+        public Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct)
+        {
+            return inner.GetStatsAsync(deviceId, ct);
+        }
 
-        public Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct) => inner.ListStatsAsync(ct);
+        public Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct)
+        {
+            return inner.ListStatsAsync(ct);
+        }
 
         public Task<JammingStatsSummary> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
         {

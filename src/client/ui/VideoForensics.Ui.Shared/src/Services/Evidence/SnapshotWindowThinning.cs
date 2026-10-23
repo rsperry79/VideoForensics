@@ -27,7 +27,7 @@ public static class SnapshotWindowThinning
             }
 
             long bucket = item.OccurredAtUtc.Ticks / window.Ticks;
-            var key = (item.DeviceId, bucket);
+            (Guid DeviceId, long bucket) key = (item.DeviceId, bucket);
             if (!newestPerWindow.TryGetValue(key, out EvidenceItem? current) || item.OccurredAtUtc > current.OccurredAtUtc)
             {
                 newestPerWindow[key] = item;

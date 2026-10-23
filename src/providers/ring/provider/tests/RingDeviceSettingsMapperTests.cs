@@ -150,7 +150,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal("1 hour", children.MotionSnoozePresets[0].Preset);
             Assert.Equal(1, children.MotionSnoozePresets[1].Position);
             Assert.Equal("until sunrise", children.MotionSnoozePresets[1].Preset);
-            Assert.Single(children.LiveViewPresets);
+            _ = Assert.Single(children.LiveViewPresets);
             Assert.Equal("night", children.LiveViewPresets[0].Preset);
         }
 

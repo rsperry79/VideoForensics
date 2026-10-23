@@ -1,15 +1,13 @@
+using Microsoft.Extensions.DependencyInjection;
+
+using System.Collections.Specialized;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -41,23 +39,31 @@ namespace VideoForensics.Hosting.Tests
             return (new RemoteJammingRepository(http), seen, bodies, tokens);
         }
 
-        private static JammingIncidentDto SampleIncidentDto(Guid? caseId = null) => new(
+        private static JammingIncidentDto SampleIncidentDto(Guid? caseId = null)
+        {
+            return new(
             IncidentId, DeviceId,
             new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 3, 1, 10, 30, 0, DateTimeKind.Utc),
             4, 12.5, "High", new DateTime(2026, 3, 1, 11, 0, 0, DateTimeKind.Utc), "notes", "ManuallyRecorded", caseId);
+        }
 
-        private static JammingStatsSummaryDto SampleStatsDto() => new(
+        private static JammingStatsSummaryDto SampleStatsDto()
+        {
+            return new(
             Guid.NewGuid(), DeviceId, 3, 90.5, 11.5, 20.0, 1, 1, 1, 0,
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
             new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc));
+        }
 
         private static HttpResponseMessage Json<T>(T value, HttpStatusCode status = HttpStatusCode.OK)
-            => new(status) { Content = JsonContent.Create(value) };
+        {
+            return new(status) { Content = JsonContent.Create(value) };
+        }
 
         [Fact]
         public async Task ListIncidentsAsync_NoFilters_GetsBareRouteAndMapsDtos()
         {
-            var (repo, seen, _, _) = Create(_ => Json(new List<JammingIncidentDto> { SampleIncidentDto(CaseId) }));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingIncidentDto> { SampleIncidentDto(CaseId) }));
 
             IReadOnlyList<JammingIncidentRecord> result = await repo.ListIncidentsAsync(null, null, null, CancellationToken.None);
 
@@ -79,13 +85,13 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListIncidentsAsync_WithFilters_SendsDeviceAndRangeQuery()
         {
-            var (repo, seen, _, _) = Create(_ => Json(new List<JammingIncidentDto>()));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingIncidentDto>()));
             var from = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
             var to = new DateTime(2026, 3, 2, 12, 30, 0, DateTimeKind.Utc);
 
             _ = await repo.ListIncidentsAsync(DeviceId, from, to, CancellationToken.None);
 
-            var parsed = System.Web.HttpUtility.ParseQueryString(seen[0].RequestUri!.Query);
+            NameValueCollection parsed = System.Web.HttpUtility.ParseQueryString(seen[0].RequestUri!.Query);
             Assert.Equal(DeviceId.ToString(), parsed["deviceId"]);
             Assert.Equal(from, DateTime.Parse(parsed["fromUtc"]!, null, System.Globalization.DateTimeStyles.RoundtripKind));
             Assert.Equal(to, DateTime.Parse(parsed["toUtc"]!, null, System.Globalization.DateTimeStyles.RoundtripKind));
@@ -95,7 +101,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListIncidentsAsync_ForwardsCancellationTokenToHttpPipeline()
         {
-            var (repo, _, _, _) = Create(_ => Json(new List<JammingIncidentDto>()), blockUntilCancelled: true);
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingIncidentDto>()), blockUntilCancelled: true);
             using var cts = new CancellationTokenSource();
 
             Task<IReadOnlyList<JammingIncidentRecord>> pending = repo.ListIncidentsAsync(null, null, null, cts.Token);
@@ -106,7 +112,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetIncidentAsync_Found_MapsRecordIncludingCaseId()
         {
-            var (repo, seen, _, _) = Create(_ => Json(SampleIncidentDto(CaseId)));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(SampleIncidentDto(CaseId)));
 
             JammingIncidentRecord? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
 
@@ -119,7 +125,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetIncidentAsync_NotFound_ReturnsNull()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
             JammingIncidentRecord? rec = await repo.GetIncidentAsync(IncidentId, CancellationToken.None);
 
@@ -129,7 +135,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetIncidentAsync_ServerError_Throws()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetIncidentAsync(IncidentId, CancellationToken.None));
         }
@@ -138,7 +144,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetStatsAsync_Found_MapsSummary()
         {
             JammingStatsSummaryDto dto = SampleStatsDto();
-            var (repo, seen, _, _) = Create(_ => Json(dto));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(dto));
 
             JammingStatsSummary? stats = await repo.GetStatsAsync(DeviceId, CancellationToken.None);
 
@@ -153,7 +159,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetStatsAsync_NotFound_ReturnsNull()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
             Assert.Null(await repo.GetStatsAsync(DeviceId, CancellationToken.None));
         }
@@ -161,7 +167,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetStatsAsync_ServerError_Throws()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadGateway));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadGateway));
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.GetStatsAsync(DeviceId, CancellationToken.None));
         }
@@ -169,7 +175,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListStatsAsync_GetsStatsRouteAndMapsAll()
         {
-            var (repo, seen, _, _) = Create(_ => Json(new List<JammingStatsSummaryDto> { SampleStatsDto(), SampleStatsDto() }));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(new List<JammingStatsSummaryDto> { SampleStatsDto(), SampleStatsDto() }));
 
             IReadOnlyList<JammingStatsSummary> result = await repo.ListStatsAsync(CancellationToken.None);
 
@@ -181,7 +187,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RecomputeStatsAsync_PostsRecomputeRouteAndMapsSummary()
         {
-            var (repo, seen, _, _) = Create(_ => Json(SampleStatsDto()));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?> _, List<CancellationToken> _) = Create(_ => Json(SampleStatsDto()));
 
             JammingStatsSummary stats = await repo.RecomputeStatsAsync(DeviceId, CancellationToken.None);
 
@@ -193,7 +199,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task RecomputeStatsAsync_NotFound_Throws()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.RecomputeStatsAsync(DeviceId, CancellationToken.None));
         }
@@ -201,7 +207,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UpsertIncidentAsync_PutsRequestWithSourceButWithoutServerControlledFields_AndReturnsSavedRecord()
         {
-            var (repo, seen, bodies, _) = Create(_ => Json(SampleIncidentDto(CaseId)));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage>? seen, List<string?>? bodies, List<CancellationToken> _) = Create(_ => Json(SampleIncidentDto(CaseId)));
             var incident = new JammingIncidentRecord
             {
                 Id = IncidentId,
@@ -221,7 +227,7 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(HttpMethod.Put, seen[0].Method);
             Assert.Equal("/api/v1/jamming/incidents", seen[0].RequestUri!.AbsolutePath);
-            using JsonDocument body = JsonDocument.Parse(bodies[0]!);
+            using var body = JsonDocument.Parse(bodies[0]!);
             JsonElement root = body.RootElement;
             Assert.False(root.EnumerateObject().Any(p => p.Name.Equals("caseId", StringComparison.OrdinalIgnoreCase)));
             Assert.Equal("AutoDetected", root.GetProperty("source").GetString());
@@ -240,7 +246,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UpsertIncidentAsync_BadRequest_Throws()
         {
-            var (repo, _, _, _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(() => repo.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
         }
@@ -248,7 +254,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UpsertIncidentAsync_Cancelled_PropagatesCancellation()
         {
-            var (repo, _, _, _) = Create(_ => Json(SampleIncidentDto()));
+            (RemoteJammingRepository? repo, List<HttpRequestMessage> _, List<string?> _, List<CancellationToken> _) = Create(_ => Json(SampleIncidentDto()));
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
@@ -259,25 +265,25 @@ namespace VideoForensics.Hosting.Tests
         public void AddVideoForensicsClientApi_ResolvesIJammingRepositoryToRemote()
         {
             var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
-            services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
-            services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
+            _ = services.AddLogging();
+            _ = services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
 
             IJammingRepository repo = provider.GetRequiredService<IJammingRepository>();
 
-            Assert.IsType<RemoteJammingRepository>(repo);
+            _ = Assert.IsType<RemoteJammingRepository>(repo);
         }
 
         [Fact]
         public void AddVideoForensicsClientApi_ResolvesJammingToolsOrchestrator()
         {
             var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
-            services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
-            services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
+            _ = services.AddLogging();
+            _ = services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+            _ = services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
             using IServiceScope scope = provider.CreateScope();
 
@@ -291,10 +297,15 @@ namespace VideoForensics.Hosting.Tests
         {
             private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _respond;
 
-            public FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) => _respond = respond;
+            public FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+            {
+                _respond = respond;
+            }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-                => _respond(request, cancellationToken);
+            {
+                return _respond(request, cancellationToken);
+            }
         }
     }
 }

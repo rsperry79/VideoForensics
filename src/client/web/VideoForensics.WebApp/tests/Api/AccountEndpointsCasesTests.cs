@@ -1,13 +1,12 @@
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 using Moq;
+
+using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -78,17 +77,20 @@ namespace VideoForensics.WebApp.Tests.Api
             return context;
         }
 
-        private static ForensicCase CreateCase(string caseNumber) => new()
+        private static ForensicCase CreateCase(string caseNumber)
         {
-            Id = Guid.NewGuid(),
-            CaseNumber = caseNumber,
-            Title = "Driveway motion",
-            Status = CaseStatus.Open,
-            CreatedBy = "admin",
-            CreatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-            UpdatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-            ScopeFromUtc = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                CaseNumber = caseNumber,
+                Title = "Driveway motion",
+                Status = CaseStatus.Open,
+                CreatedBy = "admin",
+                CreatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+                UpdatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+                ScopeFromUtc = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+            };
+        }
 
         [Fact]
         public void MapAccountEndpoints_CasesRoute_IsRegistered()
@@ -107,8 +109,8 @@ namespace VideoForensics.WebApp.Tests.Api
             var accountId = Guid.NewGuid();
             ForensicCase caseEntity = CreateCase("detected-2026-10-01-12-00-0");
             var cases = new Mock<ICaseRepository>();
-            cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ForensicCase> { caseEntity });
+            _ = cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([caseEntity]);
 
             DefaultHttpContext context = await InvokeAsync(FindHandler(app, CasesRoute), cases.Object, accountId);
 
@@ -135,11 +137,11 @@ namespace VideoForensics.WebApp.Tests.Api
             var cts = new CancellationTokenSource();
             await cts.CancelAsync();
             var cases = new Mock<ICaseRepository>();
-            cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.ListForProviderAccountAsync(accountId, It.IsAny<CancellationToken>()))
                 .Returns((Guid _, CancellationToken ct) =>
                 {
                     ct.ThrowIfCancellationRequested();
-                    return Task.FromResult<IReadOnlyList<ForensicCase>>(new List<ForensicCase>());
+                    return Task.FromResult<IReadOnlyList<ForensicCase>>([]);
                 });
 
             _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>

@@ -1,8 +1,8 @@
-using System.Net;
-
 using Microsoft.Extensions.Logging;
 
 using Moq;
+
+using System.Net;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
@@ -619,7 +619,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task PersistLocationMetadataAsync_LocationRowExists_MetadataLocationIdEqualsLocationRowId()
         {
-            Guid locationRowId = Guid.NewGuid();
+            var locationRowId = Guid.NewGuid();
             LocationMetadataEntity? added = null;
             var metadataRepo = new Mock<VideoForensics.Data.Common.Contracts.ILocationMetadataRepository>();
             _ = metadataRepo.Setup(r => r.AddAsync(It.IsAny<LocationMetadataEntity>(), It.IsAny<CancellationToken>()))
@@ -676,8 +676,8 @@ namespace VideoForensics.Providers.Ring.Tests
             const string locationId = "11111111-1111-1111-1111-111111111111";
             var accountA = Guid.NewGuid();
             var accountB = Guid.NewGuid();
-            var sessionA = CreateDevicesSession(new Doorbot { Id = 111, Description = "Account A Door", LocationId = Guid.Parse(locationId) });
-            var sessionB = CreateDevicesSession(new Doorbot { Id = 222, Description = "Account B Door", LocationId = Guid.Parse(locationId) });
+            Mock<Session> sessionA = CreateDevicesSession(new Doorbot { Id = 111, Description = "Account A Door", LocationId = Guid.Parse(locationId) });
+            Mock<Session> sessionB = CreateDevicesSession(new Doorbot { Id = 222, Description = "Account B Door", LocationId = Guid.Parse(locationId) });
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(accountA)).Returns(sessionA.Object);
             _ = sessionProvider.Setup(sp => sp.GetSession(accountB)).Returns(sessionB.Object);
@@ -700,7 +700,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Arrange
             const string locationId = "11111111-1111-1111-1111-111111111111";
             var accountA = Guid.NewGuid();
-            var session = CreateDevicesSession(new Doorbot { Id = 111, Description = "Front Door", LocationId = Guid.Parse(locationId) });
+            Mock<Session> session = CreateDevicesSession(new Doorbot { Id = 111, Description = "Front Door", LocationId = Guid.Parse(locationId) });
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(accountA)).Returns(session.Object);
             var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
@@ -757,8 +757,10 @@ namespace VideoForensics.Providers.Ring.Tests
             private const string RingDevicesUrl = "https://api.ring.com/clients_api/ring_devices";
             private readonly string _locationsJson;
 
-            public AccountStubHandler(string locationId, string locationName) =>
+            public AccountStubHandler(string locationId, string locationName)
+            {
                 _locationsJson = $"{{\"user_locations\":[{{\"location_id\":\"{locationId}\",\"name\":\"{locationName}\",\"is_owner\":true}}]}}";
+            }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {

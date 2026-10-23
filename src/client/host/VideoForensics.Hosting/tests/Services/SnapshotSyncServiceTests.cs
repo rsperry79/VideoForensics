@@ -1,14 +1,16 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting.Contracts;
+using VideoForensics.Providers.Ring.Services;
+
+using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
 namespace VideoForensics.Hosting.Tests.Services
 {
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Client.Common.Contracts;
-    using VideoForensics.Core.Helpers.Platform;
-    using VideoForensics.Core.Providers.Common.Contracts;
-    using VideoForensics.Hosting.Contracts;
-    using VideoForensics.Providers.Ring.Services;
-    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
-
     /// <summary>Snapshot sync fetches snapshots for every device of an account through the provider-neutral download contract.</summary>
     public class SnapshotSyncServiceTests
     {
@@ -24,17 +26,23 @@ namespace VideoForensics.Hosting.Tests.Services
 
         public SnapshotSyncServiceTests()
         {
-            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true });
-            _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { _location });
-            _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { _location });
+            _ = _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new StorageSettings(new[] { new StorageCategoryStatus(StorageCategory.Media, MediaRoot, true, 0, 0, true, false) }));
         }
 
-        private ISnapshotSyncService Sut() => Sut(new ServiceCollection().AddScoped(_ => _download.Object));
+        private ISnapshotSyncService Sut()
+        {
+            return Sut(new ServiceCollection().AddScoped(_ => _download.Object));
+        }
 
-        private ISnapshotSyncService Sut(IServiceCollection services) => new SnapshotSyncService(
+        private ISnapshotSyncService Sut(IServiceCollection services)
+        {
+            return new SnapshotSyncService(
             services.BuildServiceProvider(), _accounts.Object, _locations.Object, _devices.Object, _storage.Object, Mock.Of<ILogger<SnapshotSyncService>>());
+        }
 
         [Fact]
         public async Task SyncAccountSnapshotsAsync_ScheduleHasRollupInterval_SetsWarningWindowToIt()
@@ -42,14 +50,14 @@ namespace VideoForensics.Hosting.Tests.Services
             AddDevices("1");
             DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
             var schedules = new Mock<VideoForensics.Data.Common.Contracts.ISyncScheduleRepository>();
-            schedules.Setup(s => s.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = schedules.Setup(s => s.GetByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VideoForensics.Data.Common.Entities.SyncSchedule
                 {
                     Id = Guid.NewGuid(),
                     ProviderAccountId = _accountId,
                     SnapshotRollupIntervalMinutes = 30,
                 });
-            var services = new ServiceCollection().AddScoped(_ => _download.Object).AddScoped(_ => schedules.Object);
+            IServiceCollection services = new ServiceCollection().AddScoped(_ => _download.Object).AddScoped(_ => schedules.Object);
 
             _ = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -67,13 +75,19 @@ namespace VideoForensics.Hosting.Tests.Services
             _download.Verify(d => d.SetSnapshotWarningWindow(TimeSpan.FromMinutes(VideoForensics.Data.Common.Entities.SyncSchedule.DefaultSnapshotRollupIntervalMinutes)), Times.Once);
         }
 
-        private void AddDevices(params string[] providerIds) => _devices
+        private void AddDevices(params string[] providerIds)
+        {
+            _ = _devices
             .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(providerIds.Select(id => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = id, Name = $"Cam {id}", Type = "doorbot" }).ToList());
+        }
 
-        private void DownloadReturns(string deviceId, DownloadResult result) => _download
+        private void DownloadReturns(string deviceId, DownloadResult result)
+        {
+            _ = _download
             .Setup(d => d.DownloadSnapshotsAsync(deviceId, It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(result);
+        }
 
         [Fact]
         public async Task SyncAccountSnapshotsAsync_TwoDevices_DownloadsEachAndSumsFiles()
@@ -107,7 +121,7 @@ namespace VideoForensics.Hosting.Tests.Services
         public async Task SyncAccountSnapshotsAsync_DownloadThrows_CountsFailureAndContinues()
         {
             AddDevices("1", "2");
-            _download.Setup(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = _download.Setup(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("boom"));
             DownloadReturns("2", new DownloadResult(true, FilesDownloaded: 1));
 
@@ -137,7 +151,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
             var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
 
-            await Sut().SyncAccountSnapshotsAsync(_accountId, from, to, CancellationToken.None);
+            _ = await Sut().SyncAccountSnapshotsAsync(_accountId, from, to, CancellationToken.None);
 
             _download.Verify(d => d.DownloadSnapshotsAsync(
                 "1",
@@ -154,7 +168,7 @@ namespace VideoForensics.Hosting.Tests.Services
             AddDevices("1");
             DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));
 
-            await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+            _ = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
             _download.Verify(d => d.SetActiveProviderAccountId(_accountId), Times.Once);
         }
@@ -163,7 +177,7 @@ namespace VideoForensics.Hosting.Tests.Services
         public async Task SyncAccountSnapshotsAsync_NoMediaStorageConfigured_ReturnsErrorWithoutDownloading()
         {
             AddDevices("1");
-            _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new StorageSettings(Array.Empty<StorageCategoryStatus>()));
+            _ = _storage.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new StorageSettings(Array.Empty<StorageCategoryStatus>()));
 
             SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -174,7 +188,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task SyncAccountSnapshotsAsync_AccountMissing_ReturnsError()
         {
-            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccountEntity?)null);
+            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccountEntity?)null);
 
             SnapshotSyncResult result = await Sut().SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -186,31 +200,34 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             var ring = new Mock<IMediaDownloadService>();
             var wyze = new Mock<IMediaDownloadService>();
-            foreach (var m in new[] { ring, wyze })
+            foreach (Mock<IMediaDownloadService>? m in new[] { ring, wyze })
             {
-                m.Setup(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                _ = m.Setup(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new DownloadResult(true, FilesDownloaded: 1));
             }
 
             // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever was registered last.
             var services = new ServiceCollection();
-            services.AddKeyedScoped<IMediaDownloadService>("Ring", (_, _) => ring.Object);
-            services.AddKeyedScoped<IMediaDownloadService>("Wyze", (_, _) => wyze.Object);
-            services.AddScoped(_ => ring.Object);
-            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = services.AddKeyedScoped<IMediaDownloadService>("Ring", (_, _) => ring.Object);
+            _ = services.AddKeyedScoped<IMediaDownloadService>("Wyze", (_, _) => wyze.Object);
+            _ = services.AddScoped(_ => ring.Object);
+            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Wyze", LinkedUtc = DateTime.UtcNow, IsActive = true });
             AddDevices("1");
 
-            await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
+            _ = await Sut(services).SyncAccountSnapshotsAsync(_accountId, null, null, CancellationToken.None);
 
             wyze.Verify(d => d.SetActiveProviderAccountId(_accountId), Times.Once);
             wyze.Verify(d => d.DownloadSnapshotsAsync("1", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
             ring.Verify(d => d.DownloadSnapshotsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
-        private void AddDevicesWithState(params (string Id, bool? IsOnline)[] devices) => _devices
+        private void AddDevicesWithState(params (string Id, bool? IsOnline)[] devices)
+        {
+            _ = _devices
             .Setup(r => r.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(devices.Select(d => new DeviceEntity { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = d.Id, Name = $"Cam {d.Id}", Type = "doorbot", IsOnline = d.IsOnline }).ToList());
+        }
 
         [Fact]
         public async Task SyncAccountSnapshotsAsync_RingOfflineDevice_IsSkippedAndNotCounted()
@@ -231,7 +248,7 @@ namespace VideoForensics.Hosting.Tests.Services
         public async Task SyncAccountSnapshotsAsync_ProviderWithoutStatusRule_KeepsOfflineDevice()
         {
             // Without a registered rule the sync has no basis to call a device offline, so it keeps the device.
-            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Wyze", LinkedUtc = DateTime.UtcNow, IsActive = true });
             AddDevicesWithState(("1", false));
             DownloadReturns("1", new DownloadResult(true, FilesDownloaded: 1));

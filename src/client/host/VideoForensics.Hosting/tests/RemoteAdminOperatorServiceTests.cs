@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using Xunit;
-using VideoForensics.Core.Api.Contracts;
+using System.Reflection;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Remote;
 
 namespace VideoForensics.Hosting.Tests
@@ -13,10 +14,10 @@ namespace VideoForensics.Hosting.Tests
         public void UnlockAsync_MethodExists()
         {
             // Verify that RemoteAdminOperatorService has the UnlockAsync method
-            var service = new RemoteAdminOperatorService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
+            _ = new RemoteAdminOperatorService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
 
             // Verify the method exists and is accessible
-            var method = typeof(RemoteAdminOperatorService).GetMethod("UnlockAsync");
+            MethodInfo? method = typeof(RemoteAdminOperatorService).GetMethod("UnlockAsync");
             Assert.NotNull(method);
             Assert.True(method?.IsPublic);
         }
@@ -26,7 +27,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Verify that RemoteAdminOperatorService implements IAdminOperatorService
             var service = new RemoteAdminOperatorService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
-            Assert.IsAssignableFrom<IAdminOperatorService>(service);
+            _ = Assert.IsAssignableFrom<IAdminOperatorService>(service);
         }
 
         [Fact]
@@ -52,8 +53,10 @@ namespace VideoForensics.Hosting.Tests
             {
                 Assert.Equal(HttpMethod.Get, request.Method);
                 Assert.Equal("/api/devices-management/operators", request.RequestUri?.AbsolutePath);
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = JsonContent.Create(summaries);
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(summaries)
+                };
                 return response;
             });
 
@@ -61,11 +64,11 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteAdminOperatorService(httpClient);
 
             // Act
-            var result = await service.ListOperatorsAsync(CancellationToken.None);
+            IReadOnlyList<OperatorSummary> result = await service.ListOperatorsAsync(CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Single(result);
+            _ = Assert.Single(result);
             Assert.Equal(operatorId, result[0].Id);
             Assert.Equal("Jane Operator", result[0].DisplayName);
             Assert.True(result[0].Active);
@@ -76,15 +79,17 @@ namespace VideoForensics.Hosting.Tests
         {
             var handler = new FakeHttpMessageHandler(_ =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = JsonContent.Create(new List<OperatorSummaryDto>());
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<OperatorSummaryDto>())
+                };
                 return response;
             });
 
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
             var service = new RemoteAdminOperatorService(httpClient);
 
-            var result = await service.ListOperatorsAsync(CancellationToken.None);
+            IReadOnlyList<OperatorSummary> result = await service.ListOperatorsAsync(CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Empty(result);
@@ -97,11 +102,10 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
             var service = new RemoteAdminOperatorService(httpClient);
 
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.ListOperatorsAsync(CancellationToken.None));
         }
 
-        
         [Fact]
         public async Task GetUiModeAsync_CallsExpectedEndpoint_ReturnsMappedValues()
         {
@@ -113,8 +117,10 @@ namespace VideoForensics.Hosting.Tests
             {
                 Assert.Equal(HttpMethod.Get, request.Method);
                 Assert.Equal($"/api/devices-management/operators/{operatorId}/ui-mode", request.RequestUri?.AbsolutePath);
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = JsonContent.Create(dto);
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(dto)
+                };
                 return response;
             });
 
@@ -122,7 +128,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteAdminOperatorService(httpClient);
 
             // Act
-            var result = await service.GetUiModeAsync(operatorId, CancellationToken.None);
+            OperatorUiMode result = await service.GetUiModeAsync(operatorId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -138,7 +144,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
             var service = new RemoteAdminOperatorService(httpClient);
 
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.GetUiModeAsync(operatorId, CancellationToken.None));
         }
 
@@ -147,15 +153,17 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            var mode = "Standard";
-            var locked = false;
+            string mode = "Standard";
+            bool locked = false;
 
             var handler = new FakeHttpMessageHandler(request =>
             {
                 Assert.Equal(HttpMethod.Put, request.Method);
                 Assert.Equal($"/api/devices-management/operators/{operatorId}/ui-mode", request.RequestUri?.AbsolutePath);
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = JsonContent.Create(new OperatorUiModeDto(mode, locked));
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new OperatorUiModeDto(mode, locked))
+                };
                 return response;
             });
 
@@ -174,7 +182,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
             var service = new RemoteAdminOperatorService(httpClient);
 
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.SetUiModeAsync(operatorId, "Invalid", false, CancellationToken.None));
         }
 
@@ -186,7 +194,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
             var service = new RemoteAdminOperatorService(httpClient);
 
-            await Assert.ThrowsAsync<HttpRequestException>(
+            _ = await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.SetUiModeAsync(operatorId, "Simple", true, CancellationToken.None));
         }
         private class FakeHttpMessageHandler : HttpMessageHandler

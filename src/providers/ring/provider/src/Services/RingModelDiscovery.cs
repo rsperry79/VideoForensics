@@ -48,28 +48,14 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static string FamilyFor(Devices? devices, string providerDeviceId)
         {
-            if (devices == null)
-            {
-                return "Unknown";
-            }
-
-            if (devices.Doorbots?.Any(d => d.Id.ToString() == providerDeviceId) == true
-                || devices.AuthorizedDoorbots?.Any(d => d.Id.ToString() == providerDeviceId) == true)
-            {
-                return RingDeviceFamily.Doorbell.ToString();
-            }
-
-            if (devices.StickupCams?.Any(d => d.Id?.ToString() == providerDeviceId) == true)
-            {
-                return RingDeviceFamily.Camera.ToString();
-            }
-
-            if (devices.Chimes?.Any(c => c.Id.ToString() == providerDeviceId) == true)
-            {
-                return RingDeviceFamily.Chime.ToString();
-            }
-
-            return "Unknown";
+            return devices == null
+                ? "Unknown"
+                : devices.Doorbots?.Any(d => d.Id.ToString() == providerDeviceId) == true
+                || devices.AuthorizedDoorbots?.Any(d => d.Id.ToString() == providerDeviceId) == true
+                ? RingDeviceFamily.Doorbell.ToString()
+                : devices.StickupCams?.Any(d => d.Id?.ToString() == providerDeviceId) == true
+                ? RingDeviceFamily.Camera.ToString()
+                : devices.Chimes?.Any(c => c.Id.ToString() == providerDeviceId) == true ? RingDeviceFamily.Chime.ToString() : "Unknown";
         }
     }
 }

@@ -40,7 +40,7 @@ namespace VideoForensics.Core.Providers.Core
 
         private static double Median(IEnumerable<long> values)
         {
-            List<long> sorted = values.OrderBy(v => v).ToList();
+            var sorted = values.OrderBy(v => v).ToList();
             int mid = sorted.Count / 2;
             return sorted.Count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2.0;
         }

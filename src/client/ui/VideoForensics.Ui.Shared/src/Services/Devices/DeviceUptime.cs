@@ -49,12 +49,14 @@ public static class DeviceUptime
     }
 
     /// <summary>The most recent of the heartbeat and the capture time; whichever exists when only one does.</summary>
-    public static DateTime LastSeenUtc(DateTime? lastHeartbeatUtc, DateTime? capturedAtUtc) =>
-        (lastHeartbeatUtc, capturedAtUtc) switch
+    public static DateTime LastSeenUtc(DateTime? lastHeartbeatUtc, DateTime? capturedAtUtc)
+    {
+        return (lastHeartbeatUtc, capturedAtUtc) switch
         {
             (DateTime heartbeat, DateTime captured) => heartbeat > captured ? heartbeat : captured,
             (DateTime heartbeat, null) => heartbeat,
             (null, DateTime captured) => captured,
             _ => DateTime.MinValue,
         };
+    }
 }

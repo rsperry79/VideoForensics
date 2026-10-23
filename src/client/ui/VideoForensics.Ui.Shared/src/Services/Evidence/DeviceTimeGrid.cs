@@ -79,12 +79,12 @@ public static class DeviceTimeGrid
             return new DeviceTimeGridResult(Array.Empty<DateTime>(), TimeSpan.FromHours(1), Array.Empty<DeviceTimeRow>());
         }
 
-        var totalHours = (toUtc - fromUtc).TotalHours;
-        var bucketHours = totalHours <= MaxColumns ? 1 : (int)Math.Ceiling(totalHours / MaxColumns);
+        double totalHours = (toUtc - fromUtc).TotalHours;
+        int bucketHours = totalHours <= MaxColumns ? 1 : (int)Math.Ceiling(totalHours / MaxColumns);
         var bucketSize = TimeSpan.FromHours(bucketHours);
 
         var bucketStarts = new List<DateTime>();
-        for (var start = fromUtc; start < toUtc; start += bucketSize)
+        for (DateTime start = fromUtc; start < toUtc; start += bucketSize)
         {
             bucketStarts.Add(start);
         }
@@ -94,17 +94,17 @@ public static class DeviceTimeGrid
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var rows = new List<DeviceTimeRow>(devices.Count);
-        foreach (var device in devices)
+        foreach (Device device in devices)
         {
-            var deviceItems = itemsByDevice.TryGetValue(device.Id, out var list) ? list : new List<EvidenceItem>();
+            List<EvidenceItem> deviceItems = itemsByDevice.TryGetValue(device.Id, out List<EvidenceItem>? list) ? list : [];
 
             var buckets = new List<DeviceTimeBucket>(bucketStarts.Count);
-            foreach (var bucketStart in bucketStarts)
+            foreach (DateTime bucketStart in bucketStarts)
             {
-                var bucketEnd = bucketStart + bucketSize;
-                var eventCount = 0;
-                var snapshotCount = 0;
-                foreach (var item in deviceItems)
+                DateTime bucketEnd = bucketStart + bucketSize;
+                int eventCount = 0;
+                int snapshotCount = 0;
+                foreach (EvidenceItem? item in deviceItems)
                 {
                     if (item.OccurredAtUtc < bucketStart || item.OccurredAtUtc >= bucketEnd)
                     {
@@ -139,20 +139,20 @@ public static class DeviceTimeGrid
     /// </summary>
     private static List<DeviceTimeBucket> MarkGaps(List<DeviceTimeBucket> buckets)
     {
-        var firstActivity = buckets.FindIndex(b => !b.IsEmpty);
+        int firstActivity = buckets.FindIndex(b => !b.IsEmpty);
         if (firstActivity < 0)
         {
             // No activity anywhere in range: nothing to call a gap.
             return buckets;
         }
 
-        var lastActivity = buckets.FindLastIndex(b => !b.IsEmpty);
+        int lastActivity = buckets.FindLastIndex(b => !b.IsEmpty);
 
         var result = new List<DeviceTimeBucket>(buckets.Count);
-        for (var i = 0; i < buckets.Count; i++)
+        for (int i = 0; i < buckets.Count; i++)
         {
-            var bucket = buckets[i];
-            var isGap = bucket.IsEmpty && i > firstActivity && i < lastActivity;
+            DeviceTimeBucket bucket = buckets[i];
+            bool isGap = bucket.IsEmpty && i > firstActivity && i < lastActivity;
             result.Add(bucket with { IsGap = isGap });
         }
 

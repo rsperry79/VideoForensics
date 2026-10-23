@@ -12,24 +12,32 @@ namespace VideoForensics.Ui.Shared.Services.Evidence;
 public static class EvidenceActions
 {
     /// <summary>True if a legal hold can be placed: the item has downloaded media and isn't already on hold.</summary>
-    public static bool CanPlaceHold(EvidenceActionState? actions) =>
-        actions?.MediaItemId is not null && actions.ActiveHoldId is null;
+    public static bool CanPlaceHold(EvidenceActionState? actions)
+    {
+        return actions?.MediaItemId is not null && actions.ActiveHoldId is null;
+    }
 
     /// <summary>True if a legal hold can be released: the item has downloaded media and is currently on hold.</summary>
-    public static bool CanReleaseHold(EvidenceActionState? actions) =>
-        actions?.MediaItemId is not null && actions.ActiveHoldId is not null;
+    public static bool CanReleaseHold(EvidenceActionState? actions)
+    {
+        return actions?.MediaItemId is not null && actions.ActiveHoldId is not null;
+    }
 
     /// <summary>
     /// True if device-scoped integrity verification can be triggered from this item. Mirrors
     /// EventRow's VerifyIntegrityForDeviceAsync guard, which required a linked media item even
     /// though the underlying call verifies every file for the device, not just this one.
     /// </summary>
-    public static bool CanVerifyIntegrity(EvidenceActionState? actions) =>
-        actions?.MediaItemId is not null;
+    public static bool CanVerifyIntegrity(EvidenceActionState? actions)
+    {
+        return actions?.MediaItemId is not null;
+    }
 
     /// <summary>True if this item's media can be sent to the export flow.</summary>
-    public static bool CanExport(EvidenceActionState? actions) =>
-        actions?.MediaItemId is not null;
+    public static bool CanExport(EvidenceActionState? actions)
+    {
+        return actions?.MediaItemId is not null;
+    }
 
     /// <summary>
     /// The chain-of-custody actor identity to record for a legal hold place/release action: the
@@ -42,23 +50,28 @@ public static class EvidenceActions
     /// Events page's bug: that recorded the server process's OS account, not the operator, and
     /// would misattribute the action in the chain of custody).
     /// </summary>
-    public static string? ResolveOperatorActor(Guid? operatorId) => operatorId?.ToString();
+    public static string? ResolveOperatorActor(Guid? operatorId)
+    {
+        return operatorId?.ToString();
+    }
 
     /// <summary>
     /// Collects the distinct, exportable (downloaded-media) IDs from a set of evidence items.
     /// Event-only items (no linked media) are skipped, mirroring Events.razor's ExportRows.
     /// </summary>
-    public static IReadOnlyList<Guid> GetExportMediaItemIds(IEnumerable<EvidenceItem> items) =>
-        items
+    public static IReadOnlyList<Guid> GetExportMediaItemIds(IEnumerable<EvidenceItem> items)
+    {
+        return items
             .Where(i => i.Media is not null)
             .Select(i => i.Media!.Id)
             .Distinct()
             .ToList();
+    }
 
     /// <summary>Builds the "/review/export?ids=..." navigation target for the given media item IDs.</summary>
     public static string BuildExportUrl(IEnumerable<Guid> mediaItemIds)
     {
-        var idsParam = string.Join(",", mediaItemIds);
+        string idsParam = string.Join(",", mediaItemIds);
         return $"/review/export?ids={Uri.EscapeDataString(idsParam)}";
     }
 
@@ -71,7 +84,7 @@ public static class EvidenceActions
         Guid mediaItemId,
         IReadOnlyList<IntegrityRecord> integrityRecords)
     {
-        var record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaItemId);
+        IntegrityRecord? record = integrityRecords.FirstOrDefault(r => r.MediaItemId == mediaItemId);
 
         if (record is null)
         {

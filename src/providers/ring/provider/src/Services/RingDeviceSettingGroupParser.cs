@@ -83,42 +83,48 @@ namespace VideoForensics.Providers.Ring.Services
                 root[field.Key] = JsonNode.Parse(field.Value.GetRawText());
             }
 
-            root.Remove(OfflineMotionKey);
+            _ = root.Remove(OfflineMotionKey);
             if (root[CvSettingsKey] is JsonObject cv)
             {
-                cv.Remove(DetectionTypesKey);
+                _ = cv.Remove(DetectionTypesKey);
                 if (cv[ThresholdKey] is JsonObject threshold)
                 {
                     foreach (string name in threshold.Select(p => p.Key).ToList())
                     {
                         if (threshold[name] is JsonValue value && value.TryGetValue(out double _))
                         {
-                            threshold.Remove(name);
+                            _ = threshold.Remove(name);
                         }
                     }
 
                     if (threshold.Count == 0)
                     {
-                        cv.Remove(ThresholdKey);
+                        _ = cv.Remove(ThresholdKey);
                     }
                 }
 
                 if (cv.Count == 0)
                 {
-                    root.Remove(CvSettingsKey);
+                    _ = root.Remove(CvSettingsKey);
                 }
             }
 
             return root.Count > 0 ? root.ToJsonString() : null;
         }
 
-        private static bool? Bool(JsonElement obj, string name) =>
-            obj.TryGetProperty(name, out JsonElement v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False ? v.GetBoolean() : null;
+        private static bool? Bool(JsonElement obj, string name)
+        {
+            return obj.TryGetProperty(name, out JsonElement v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False ? v.GetBoolean() : null;
+        }
 
-        private static int? Int(JsonElement obj, string name) =>
-            obj.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : null;
+        private static int? Int(JsonElement obj, string name)
+        {
+            return obj.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : null;
+        }
 
-        private static string? Text(JsonElement obj, string name) =>
-            obj.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        private static string? Text(JsonElement obj, string name)
+        {
+            return obj.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        }
     }
 }

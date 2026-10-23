@@ -22,16 +22,16 @@ public static class ScopeUrl
         }
 
         // Parse the URI to extract path, query, and fragment
-        var fragmentIndex = currentUri.IndexOf('#');
-        var fragment = fragmentIndex >= 0 ? currentUri.Substring(fragmentIndex) : "";
-        var uriWithoutFragment = fragmentIndex >= 0 ? currentUri.Substring(0, fragmentIndex) : currentUri;
+        int fragmentIndex = currentUri.IndexOf('#');
+        string fragment = fragmentIndex >= 0 ? currentUri[fragmentIndex..] : string.Empty;
+        string uriWithoutFragment = fragmentIndex >= 0 ? currentUri[..fragmentIndex] : currentUri;
 
-        var queryIndex = uriWithoutFragment.IndexOf('?');
-        var path = queryIndex >= 0 ? uriWithoutFragment.Substring(0, queryIndex) : uriWithoutFragment;
-        var existingQuery = queryIndex >= 0 ? uriWithoutFragment.Substring(queryIndex + 1) : "";
+        int queryIndex = uriWithoutFragment.IndexOf('?');
+        string path = queryIndex >= 0 ? uriWithoutFragment[..queryIndex] : uriWithoutFragment;
+        string existingQuery = queryIndex >= 0 ? uriWithoutFragment[(queryIndex + 1)..] : string.Empty;
 
         // Parse existing query string, keeping only unrelated keys
-        var unrelatedKeys = ParseUnrelatedKeys(existingQuery);
+        List<string> unrelatedKeys = ParseUnrelatedKeys(existingQuery);
 
         // Build new query string: scope keys first, then unrelated keys
         var newQueryParts = new List<string>();
@@ -46,15 +46,10 @@ public static class ScopeUrl
             newQueryParts.AddRange(unrelatedKeys);
         }
 
-        var newQuery = string.Join("&", newQueryParts);
+        string newQuery = string.Join("&", newQueryParts);
 
         // Reconstruct the URI
-        if (string.IsNullOrWhiteSpace(newQuery))
-        {
-            return path + fragment;
-        }
-
-        return path + "?" + newQuery + fragment;
+        return string.IsNullOrWhiteSpace(newQuery) ? path + fragment : path + "?" + newQuery + fragment;
     }
 
     private static List<string> ParseUnrelatedKeys(string query)
@@ -66,16 +61,16 @@ public static class ScopeUrl
             return result;
         }
 
-        var pairs = query.Split('&');
-        foreach (var pair in pairs)
+        string[] pairs = query.Split('&');
+        foreach (string pair in pairs)
         {
-            var eqIndex = pair.IndexOf('=');
+            int eqIndex = pair.IndexOf('=');
             if (eqIndex <= 0)
             {
                 continue;
             }
 
-            var key = pair.Substring(0, eqIndex);
+            string key = pair[..eqIndex];
             if (!ScopeKeys.Contains(key))
             {
                 result.Add(pair);

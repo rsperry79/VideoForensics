@@ -1,7 +1,7 @@
-namespace VideoForensics.Ui.Shared.Services;
 
 using System.Globalization;
 
+namespace VideoForensics.Ui.Shared.Services;
 /// <summary>Pure logic for the account sync panel: request body shape and range parsing.</summary>
 public static class SyncRequestBuilder
 {
@@ -45,8 +45,10 @@ public static class SyncRequestBuilder
     }
 
     /// <summary>Last-30-days default for the custom range pickers.</summary>
-    public static (string Start, string End) DefaultCustomRange(DateTime today) =>
-        (today.AddDays(-30).ToString(DateFormat, CultureInfo.InvariantCulture), today.ToString(DateFormat, CultureInfo.InvariantCulture));
+    public static (string Start, string End) DefaultCustomRange(DateTime today)
+    {
+        return (today.AddDays(-30).ToString(DateFormat, CultureInfo.InvariantCulture), today.ToString(DateFormat, CultureInfo.InvariantCulture));
+    }
 
     /// <summary>Returns the run's record counts in the given format, or null when the counts are unknown (old runs).</summary>
     public static string? FormatRecords(string format, int? devices, int? locations, int? events, int? configAreas, int? feedsFailed, int? snapshotsSynced = null, string? snapshotsFormat = null)
@@ -64,6 +66,8 @@ public static class SyncRequestBuilder
         return snapshotsPart is null ? counts : counts + ", " + snapshotsPart;
     }
 
-    private static DateTime? ParseDate(string? value) =>
-        DateTime.TryParseExact(value, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt) ? dt : null;
+    private static DateTime? ParseDate(string? value)
+    {
+        return DateTime.TryParseExact(value, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt) ? dt : null;
+    }
 }

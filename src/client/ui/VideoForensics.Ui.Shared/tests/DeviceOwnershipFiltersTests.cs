@@ -1,24 +1,26 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-using Moq;
-using Xunit;
-using VideoForensics.Data.Common.Contracts;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Scope;
 using VideoForensics.Ui.Shared.Services.Scope;
+
+using Xunit;
+
 using Device = VideoForensics.Data.Common.Entities.Device;
 
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>The shared Provider/Account filter reports which devices remain visible after each change.</summary>
 public class DeviceOwnershipFilters_Tests : BunitContext
 {
     public DeviceOwnershipFilters_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     [Fact]
@@ -41,8 +43,8 @@ public class DeviceOwnershipFilters_Tests : BunitContext
             });
 
         DeviceFilterResult? reported = null;
-        var component = Render<DeviceOwnershipFilters>(parameters => parameters
-            .Add(p => p.Devices, new List<Device> { ringDevice, wyzeDevice })
+        IRenderedComponent<DeviceOwnershipFilters> component = Render<DeviceOwnershipFilters>(parameters => parameters
+            .Add(p => p.Devices, [ringDevice, wyzeDevice])
             .Add(p => p.VisibleDevicesChanged, EventCallback.Factory.Create<DeviceFilterResult>(this, r => reported = r)));
 
         component.Find("[data-testid='provider-filter']").Change("Ring");

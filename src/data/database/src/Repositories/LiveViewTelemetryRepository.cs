@@ -67,6 +67,7 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _logger.LogInformation("Pruned {DeletedCount} telemetry samples older than {Cutoff}", deletedCount, cutoff);
                 }
+
                 return deletedCount;
             }
             catch (Exception ex)

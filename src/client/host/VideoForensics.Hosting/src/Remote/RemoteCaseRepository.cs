@@ -65,7 +65,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/{id}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
@@ -77,7 +79,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/by-number/{Uri.EscapeDataString(caseNumber)}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);

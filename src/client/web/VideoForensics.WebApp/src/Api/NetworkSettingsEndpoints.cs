@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Client.Common.Contracts;

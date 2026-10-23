@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 

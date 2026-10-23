@@ -11,6 +11,9 @@ namespace VideoForensics.Data.Core.Services
     public sealed class NullMediaThumbnailNotifier : IMediaThumbnailNotifier
     {
         /// <inheritdoc />
-        public Task ThumbnailReadyAsync(Guid mediaItemId, CancellationToken ct) => Task.CompletedTask;
+        public Task ThumbnailReadyAsync(Guid mediaItemId, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

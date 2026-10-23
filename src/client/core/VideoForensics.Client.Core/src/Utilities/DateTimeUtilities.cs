@@ -33,12 +33,12 @@ namespace VideoForensics.Client.Core.Utilities
                 return null;
             }
 
-            foreach (var pattern in SupportedPatterns)
+            foreach (LocalDatePattern pattern in SupportedPatterns)
             {
-                var parseResult = pattern.Parse(dateString);
+                ParseResult<LocalDate> parseResult = pattern.Parse(dateString);
                 if (parseResult.Success)
                 {
-                    var localDate = parseResult.Value;
+                    LocalDate localDate = parseResult.Value;
                     return new DateTime(localDate.Year, localDate.Month, localDate.Day);
                 }
             }

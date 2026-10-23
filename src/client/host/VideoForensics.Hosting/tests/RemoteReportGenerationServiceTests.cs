@@ -5,8 +5,6 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Hosting.Remote;
 
-using Xunit;
-
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteReportGenerationServiceTests

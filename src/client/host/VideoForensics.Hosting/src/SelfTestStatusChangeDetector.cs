@@ -15,12 +15,7 @@ namespace VideoForensics.Hosting
         /// <inheritdoc />
         public bool HasChanged(SelfTestStatusDto? previous, SelfTestStatusDto current)
         {
-            if (previous is null)
-            {
-                return true;
-            }
-
-            return previous.Status != current.Status
+            return previous is null || previous.Status != current.Status
                 || previous.StartedAtUtc != current.StartedAtUtc
                 || previous.CompletedAtUtc != current.CompletedAtUtc
                 || previous.Error != current.Error;

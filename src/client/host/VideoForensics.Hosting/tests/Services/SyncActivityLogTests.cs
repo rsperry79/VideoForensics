@@ -1,9 +1,5 @@
 namespace VideoForensics.Hosting.Tests.Services
 {
-    using VideoForensics.Hosting.Services;
-
-    using Xunit;
-
     public class SyncActivityLogTests
     {
         [Fact]

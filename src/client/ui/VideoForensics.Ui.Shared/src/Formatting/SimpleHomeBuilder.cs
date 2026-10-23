@@ -1,7 +1,9 @@
-using System.Globalization;
 using Microsoft.Extensions.Localization;
-using VideoForensics.Core.Api.Contracts;
+
+using System.Globalization;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Resources;
@@ -42,7 +44,10 @@ public sealed class SimpleHomeBuilder
     /// Returns a builder that shows times in <paramref name="zone"/>. Used once the signed-in user's browser zone is known,
     /// so the Simple home reflects the user rather than the server.
     /// </summary>
-    public SimpleHomeBuilder ForZone(TimeZoneInfo zone) => new(_timeProvider, _urlProvider, _localizer, zone);
+    public SimpleHomeBuilder ForZone(TimeZoneInfo zone)
+    {
+        return new(_timeProvider, _urlProvider, _localizer, zone);
+    }
 
     /// <summary>Builds the Simple Mode home model for the given look-back window.</summary>
     /// <param name="events">Event repository.</param>
@@ -61,41 +66,43 @@ public sealed class SimpleHomeBuilder
     {
         ct.ThrowIfCancellationRequested();
 
-        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
-        var fromUtc = nowUtc - window;
+        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        DateTime fromUtc = nowUtc - window;
 
-        var deviceList = await devices.ListAsync(ct);
+        IReadOnlyList<Device> deviceList = await devices.ListAsync(ct);
         var names = deviceList.ToDictionary(d => d.Id, d => string.IsNullOrWhiteSpace(d.Name) ? null : d.Name.Trim());
 
         var entries = new List<SimpleTimelineEntry>();
         var mediaItems = new List<(MediaItem Item, string? Name)>();
 
-        foreach (var device in deviceList)
+        foreach (Device device in deviceList)
         {
-            var name = names[device.Id];
+            string? name = names[device.Id];
 
-            foreach (var evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (Event evt in await events.ListByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
             {
-                var when = AsUtc(evt.OccurredAtUtc);
+                DateTime when = AsUtc(evt.OccurredAtUtc);
                 entries.Add(new SimpleTimelineEntry(when, TimeText(when), EventPlainLanguageFormatter.Describe(_localizer, evt.ToDto(), name), SimpleEntryKind.Event));
             }
 
-            foreach (var item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            foreach (MediaItem item in await media.GetByDeviceAndDateRangeAsync(device.Id, fromUtc, nowUtc, ct))
+            {
                 mediaItems.Add((item, name));
+            }
         }
 
         // Blocked-activity data is optional: a missing or failing source must not hide the device events.
-        var blockedUnavailable = jamming is null;
+        bool blockedUnavailable = jamming is null;
         if (jamming is not null)
         {
             try
             {
-                foreach (var incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
+                foreach (JammingIncidentRecord incident in await jamming.ListIncidentsAsync(null, fromUtc, nowUtc, ct))
                 {
-                    names.TryGetValue(incident.DeviceId, out var name);
-                    var start = AsUtc(incident.StartUtc);
+                    _ = names.TryGetValue(incident.DeviceId, out string? name);
+                    DateTime start = AsUtc(incident.StartUtc);
                     // Only the duration is passed on: signal strength and degradation are technical and must not reach victims.
-                    var text = EventPlainLanguageFormatter.DescribeJammingIncident(_localizer, name, start, AsUtc(incident.EndUtc));
+                    string text = EventPlainLanguageFormatter.DescribeJammingIncident(_localizer, name, start, AsUtc(incident.EndUtc));
                     entries.Add(new SimpleTimelineEntry(start, TimeText(start), text, SimpleEntryKind.Blocked));
                 }
             }
@@ -108,11 +115,12 @@ public sealed class SimpleHomeBuilder
                 blockedUnavailable = true;
             }
         }
-        var ordered = entries.OrderByDescending(e => e.TimeUtc).ToList();
-        var hasMore = ordered.Count > MaxTimelineEntries;
-        var days = GroupByLocalDay(ordered.Take(MaxTimelineEntries), nowUtc);
 
-        var evidence = await BuildEvidenceAsync(mediaItems, ct);
+        var ordered = entries.OrderByDescending(e => e.TimeUtc).ToList();
+        bool hasMore = ordered.Count > MaxTimelineEntries;
+        IReadOnlyList<SimpleTimelineDay> days = GroupByLocalDay(ordered.Take(MaxTimelineEntries), nowUtc);
+
+        IReadOnlyList<SimpleEvidenceItem> evidence = await BuildEvidenceAsync(mediaItems, ct);
 
         return new SimpleHomeModel(days, evidence, hasMore, fromUtc, blockedUnavailable);
     }
@@ -121,7 +129,9 @@ public sealed class SimpleHomeBuilder
     {
         var top = mediaItems.OrderByDescending(m => m.Item.RecordedAtUtc).Take(MaxEvidenceItems).ToList();
         if (top.Count == 0)
+        {
             return Array.Empty<SimpleEvidenceItem>();
+        }
 
         var available = top.Where(m => !m.Item.IsPurged).Select(m => m.Item.Id).ToList();
         IReadOnlyDictionary<Guid, string> urls = available.Count == 0
@@ -130,11 +140,13 @@ public sealed class SimpleHomeBuilder
 
         return top.Select(m =>
         {
-            var when = AsUtc(m.Item.RecordedAtUtc);
-            var timeText = TimeText(when);
+            DateTime when = AsUtc(m.Item.RecordedAtUtc);
+            string timeText = TimeText(when);
             string? url = null;
-            if (!m.Item.IsPurged && urls.TryGetValue(m.Item.Id, out var found))
+            if (!m.Item.IsPurged && urls.TryGetValue(m.Item.Id, out string? found))
+            {
                 url = found;
+            }
 
             return new SimpleEvidenceItem(
                 _localizer["SimpleEvidenceLabel", CameraLabel(m.Name), timeText].Value,
@@ -159,18 +171,32 @@ public sealed class SimpleHomeBuilder
 
     private string Heading(DateOnly date, DateOnly today)
     {
-        if (date == today) return _localizer["SimpleDayToday"].Value;
-        if (date == today.AddDays(-1)) return _localizer["SimpleDayYesterday"].Value;
+        if (date == today)
+        {
+            return _localizer["SimpleDayToday"].Value;
+        }
+
+        if (date == today.AddDays(-1))
+        {
+            return _localizer["SimpleDayYesterday"].Value;
+        }
         // Day/month names follow the active UI culture (en keeps "Monday 5 October").
         return date.ToString("dddd d MMMM", CultureInfo.CurrentUICulture);
     }
 
-    private string TimeText(DateTime utc) =>
-        TimeZoneInfo.ConvertTimeFromUtc(utc, _timeZone).ToString("h:mm tt", CultureInfo.InvariantCulture);
+    private string TimeText(DateTime utc)
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(utc, _timeZone).ToString("h:mm tt", CultureInfo.InvariantCulture);
+    }
 
-    private static DateTime AsUtc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    private static DateTime AsUtc(DateTime value)
+    {
+        return DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
 
     // Evidence labels read as a noun phrase ("Front door camera"), unlike timeline text ("Your front door camera ...").
-    private string CameraLabel(string? name) =>
-        string.IsNullOrWhiteSpace(name) ? _localizer["PlainDeviceFallback"].Value : char.ToUpperInvariant(name[0]) + name[1..];
+    private string CameraLabel(string? name)
+    {
+        return string.IsNullOrWhiteSpace(name) ? _localizer["PlainDeviceFallback"].Value : char.ToUpperInvariant(name[0]) + name[1..];
+    }
 }

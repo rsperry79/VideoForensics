@@ -35,7 +35,7 @@ namespace VideoForensics.Data.Database.ReferenceData
                 Dictionary<string, DeviceModel> existing = await db.DeviceModels
                     .Where(m => m.Provider == source.Name)
                     .ToDictionaryAsync(m => m.Kind, ct);
-                HashSet<string> incomingKinds = data.Models.Select(m => m.Kind).ToHashSet(StringComparer.Ordinal);
+                var incomingKinds = data.Models.Select(m => m.Kind).ToHashSet(StringComparer.Ordinal);
 
                 foreach (DeviceModel model in data.Models)
                 {
@@ -53,10 +53,10 @@ namespace VideoForensics.Data.Database.ReferenceData
                 }
 
                 // Catalog rows the source no longer lists are retired. Discovered rows stay, because nothing in the catalog owns them.
-                List<DeviceModel> retired = existing.Values
+                var retired = existing.Values
                     .Where(m => m.Source == DeviceModelSources.Catalog && !incomingKinds.Contains(m.Kind))
                     .ToList();
-                HashSet<string> catalogKinds = incomingKinds.Concat(retired.Select(m => m.Kind)).ToHashSet(StringComparer.Ordinal);
+                var catalogKinds = incomingKinds.Concat(retired.Select(m => m.Kind)).ToHashSet(StringComparer.Ordinal);
 
                 // Links for catalog-owned kinds are replaced wholesale, so a removed link does not survive a version bump.
                 // Links for discovered kinds are not touched.
@@ -67,7 +67,7 @@ namespace VideoForensics.Data.Database.ReferenceData
                 db.DeviceModelFeatures.AddRange(data.ModelFeatures);
 
                 // Feature definitions are shared across providers, so only codes not yet present are added.
-                HashSet<string> knownFeatures = (await db.DeviceFeatureDefinitions.Select(f => f.Code).ToListAsync(ct))
+                var knownFeatures = (await db.DeviceFeatureDefinitions.Select(f => f.Code).ToListAsync(ct))
                     .ToHashSet(StringComparer.Ordinal);
                 foreach (DeviceFeatureDefinition feature in data.Features.Where(f => !knownFeatures.Contains(f.Code)))
                 {

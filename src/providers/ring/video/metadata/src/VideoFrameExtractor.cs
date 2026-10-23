@@ -174,6 +174,7 @@ namespace VideoForensics.Providers.Ring
                 {
                     processInfo.ArgumentList.Add(arg);
                 }
+
                 processInfo.ArgumentList.Add("-ss");
                 processInfo.ArgumentList.Add(timeFormatted);
                 processInfo.ArgumentList.Add("-i");

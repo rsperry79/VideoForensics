@@ -1,10 +1,9 @@
-using VideoForensics.Ui.Shared.Services.Time;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.JSInterop;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Extensions;
+using VideoForensics.Ui.Shared.Services.Time;
 
 namespace VideoForensics.Ui.Shared.Layout.Mobile
 {
@@ -12,7 +11,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
     {
         private OperatorRole? _role;
         private string _currentPath = "/";
-        private string _currentQuery = "";
+        private string _currentQuery = string.Empty;
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
@@ -25,18 +24,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
 
         private bool IsAdmin => _role.HasValue && _role >= OperatorRole.Admin;
 
-        private IReadOnlyList<NavGroup> VisibleGroups
-        {
-            get
-            {
-                if (_passkeySetupOnly)
-                {
-                    return [];
-                }
-
-                return NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
-            }
-        }
+        private IReadOnlyList<NavGroup> VisibleGroups => _passkeySetupOnly ? [] : (IReadOnlyList<NavGroup>)NavGroups.All.Where(g => g.IsVisible(BuildContext())).ToList();
 
         private NavGroup ActiveGroup => NavGroups.ActiveGroupFor(VisibleGroups, BuildContext(), _currentPath, _currentQuery);
 
@@ -103,7 +91,10 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
             _currentQuery = parsed.Query;
         }
 
-        private bool PathMatches(string path) => NavPathMatcher.Matches(_currentPath, _currentQuery, path);
+        private bool PathMatches(string path)
+        {
+            return NavPathMatcher.Matches(_currentPath, _currentQuery, path);
+        }
 
         private NavContext BuildContext()
         {
@@ -194,7 +185,7 @@ namespace VideoForensics.Ui.Shared.Layout.Mobile
             }
 
             // Dismiss every undismissed notice, not just the 5 shown in this dropdown.
-            var allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
+            IReadOnlyList<Notice> allUndismissed = await NoticeRepository.ListForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, includeDismissed: false, CancellationToken.None);
             await NoticeDismissalRepository.DismissAllAsync(allUndismissed.Select(n => n.Id), SessionState.OperatorId.Value, CancellationToken.None);
             await LoadNoticesForDropdownAsync();
             _undismissedCount = await NoticeRepository.CountUndismissedForOperatorAsync(SessionState.OperatorId.Value, IsAdmin, CancellationToken.None);

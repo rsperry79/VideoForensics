@@ -15,6 +15,9 @@ namespace VideoForensics.Data.Core.Services
     public sealed class NullEvidenceChangeNotifier : IEvidenceChangeNotifier
     {
         /// <inheritdoc />
-        public Task EvidenceChangedAsync(Guid deviceId, CancellationToken ct) => Task.CompletedTask;
+        public Task EvidenceChangedAsync(Guid deviceId, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

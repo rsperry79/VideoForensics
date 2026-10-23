@@ -1,5 +1,6 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Services;
+
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Common.Tests
@@ -15,8 +16,8 @@ namespace VideoForensics.Core.Providers.Common.Tests
         /// <summary>In-memory media source. Responses are scripted per call; every call is recorded.</summary>
         private sealed class FakeDownloads : IMediaDownloadService
         {
-            public readonly List<(string Device, DateTime Start, DateTime End)> Calls = new();
-            public readonly List<(int Max, TimeSpan Interval)> Pacing = new();
+            public readonly List<(string Device, DateTime Start, DateTime End)> Calls = [];
+            public readonly List<(int Max, TimeSpan Interval)> Pacing = [];
             public int MatchedCount;
             public Func<int, DateTime, DownloadResult> Respond = (_, _) => new DownloadResult(Success: true, FilesDownloaded: 1, FilesMatched: 1);
 
@@ -27,24 +28,37 @@ namespace VideoForensics.Core.Providers.Common.Tests
                 return Task.FromResult(Respond(attempt, startDate));
             }
 
-            public Task<DownloadResult> DownloadSnapshotsAsync(string deviceId, string outputPath, DateTime startDate, DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default) =>
+            public Task<DownloadResult> DownloadSnapshotsAsync(string deviceId, string outputPath, DateTime startDate, DateTime endDate, string? providerLocationId = null, CancellationToken cancellationToken = default)
+            {
                 throw new NotSupportedException();
+            }
 
-            public void SetRequestPacing(int maxConcurrent, TimeSpan minRequestInterval) => Pacing.Add((maxConcurrent, minRequestInterval));
+            public void SetRequestPacing(int maxConcurrent, TimeSpan minRequestInterval)
+            {
+                Pacing.Add((maxConcurrent, minRequestInterval));
+            }
 
-            public DownloadStatus GetStatus() => new(false, 0, 0, 0);
+            public DownloadStatus GetStatus()
+            {
+                return new(false, 0, 0, 0);
+            }
 
-            public Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default) =>
-                Task.FromResult(MatchedCount);
+            public Task<int> GetMatchedEventCountAsync(string deviceId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(MatchedCount);
+            }
         }
 
         /// <summary>In-memory watermark store that records every value written, in order.</summary>
         private sealed class FakeProgress : IMediaPullProgressStore
         {
             public DateTime? Watermark;
-            public readonly List<DateTime> Saved = new();
+            public readonly List<DateTime> Saved = [];
 
-            public Task<DateTime?> GetWatermarkUtcAsync(CancellationToken cancellationToken) => Task.FromResult(Watermark);
+            public Task<DateTime?> GetWatermarkUtcAsync(CancellationToken cancellationToken)
+            {
+                return Task.FromResult(Watermark);
+            }
 
             public Task SetWatermarkUtcAsync(DateTime watermarkUtc, CancellationToken cancellationToken)
             {
@@ -54,20 +68,25 @@ namespace VideoForensics.Core.Providers.Common.Tests
             }
         }
 
-        private static MediaPullRequest Request(DateTime start, DateTime end, bool advance = true) =>
-            new(start, end, advance, new[] { Device });
+        private static MediaPullRequest Request(DateTime start, DateTime end, bool advance = true)
+        {
+            return new(start, end, advance, new[] { Device });
+        }
 
-        private static EventMediaPuller CreatePuller(List<TimeSpan>? waits = null) => new(
+        private static EventMediaPuller CreatePuller(List<TimeSpan>? waits = null)
+        {
+            return new(
             batchLength: Batch,
             minRequestInterval: TimeSpan.FromSeconds(1),
             wait: (wait, _) => { waits?.Add(wait); return Task.CompletedTask; });
+        }
 
         [Fact]
         public async Task PullAsync_OneYearWindow_CreatesThirteenBatchesInThirtyDaySteps()
         {
             var downloads = new FakeDownloads();
 
-            await CreatePuller().PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, End), CancellationToken.None);
+            _ = await CreatePuller().PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, End), CancellationToken.None);
 
             Assert.Equal(13, downloads.Calls.Count);
             Assert.Equal(OneYearAgo, downloads.Calls[0].Start);
@@ -125,7 +144,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
                     : new DownloadResult(Success: true, FilesDownloaded: 1, FilesMatched: 1),
             };
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>
                 CreatePuller().PullAsync(interrupted, progress, Request(OneYearAgo, End), CancellationToken.None));
 
             // The first batch completed and was recorded; the second was interrupted and must be retried.
@@ -133,7 +152,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
 
             var resumed = new FakeDownloads();
             DateTime resumeFrom = await progress.GetWatermarkUtcAsync(CancellationToken.None) ?? OneYearAgo;
-            await CreatePuller().PullAsync(resumed, progress, Request(resumeFrom, End), CancellationToken.None);
+            _ = await CreatePuller().PullAsync(resumed, progress, Request(resumeFrom, End), CancellationToken.None);
 
             Assert.Equal(OneYearAgo + Batch, resumed.Calls[0].Start);
         }
@@ -143,7 +162,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
         {
             var downloads = new FakeDownloads();
 
-            await CreatePuller().PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, End), CancellationToken.None);
+            _ = await CreatePuller().PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, End), CancellationToken.None);
 
             Assert.Equal(new[] { (1, TimeSpan.FromSeconds(1)) }, downloads.Pacing);
         }
@@ -179,7 +198,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
                     : new DownloadResult(Success: true, FilesDownloaded: 1, FilesMatched: 1),
             };
 
-            await CreatePuller(waits).PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, OneYearAgo + TimeSpan.FromDays(10)), CancellationToken.None);
+            _ = await CreatePuller(waits).PullAsync(downloads, new FakeProgress(), Request(OneYearAgo, OneYearAgo + TimeSpan.FromDays(10)), CancellationToken.None);
 
             Assert.Equal(new[] { TimeSpan.FromSeconds(60) }, waits);
         }
@@ -235,16 +254,16 @@ namespace VideoForensics.Core.Providers.Common.Tests
             DateTime watermark = End.AddDays(-3);
             var downloads = new FakeDownloads();
 
-            await CreatePuller().PullAsync(downloads, new FakeProgress { Watermark = watermark }, Request(watermark, End), CancellationToken.None);
+            _ = await CreatePuller().PullAsync(downloads, new FakeProgress { Watermark = watermark }, Request(watermark, End), CancellationToken.None);
 
-            Assert.Single(downloads.Calls);
+            _ = Assert.Single(downloads.Calls);
             Assert.Equal(watermark, downloads.Calls[0].Start);
         }
 
         [Fact]
         public void MediaPullBatching_Split_ProducesThirtyDayWindowsCoveringTheRange()
         {
-            List<(DateTime Start, DateTime End)> batches = MediaPullBatching.Split(OneYearAgo, End, Batch).ToList();
+            var batches = MediaPullBatching.Split(OneYearAgo, End, Batch).ToList();
 
             Assert.Equal(13, batches.Count);
             Assert.Equal(End, batches[^1].End);

@@ -18,7 +18,7 @@ namespace VideoForensics.Core.Providers.Core
         {
             try
             {
-                using JsonDocument document = JsonDocument.Parse(json);
+                using var document = JsonDocument.Parse(json);
                 JsonElement root = document.RootElement;
 
                 double? duration = ReadNumber(root, "format", "duration");

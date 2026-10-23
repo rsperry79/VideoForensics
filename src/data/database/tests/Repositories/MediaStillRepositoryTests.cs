@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -34,15 +35,15 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task CreateAsync_PersistsBothMediaItemAndCaptureRow()
         {
-            var source = NewMediaItem();
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            MediaItem source = NewMediaItem();
+            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                db.MediaItems.Add(source);
-                await db.SaveChangesAsync(CancellationToken.None);
+                _ = db.MediaItems.Add(source);
+                _ = await db.SaveChangesAsync(CancellationToken.None);
             }
 
             var stillId = Guid.NewGuid();
-            var still = NewMediaItem(stillId, sha: "sha-still");
+            MediaItem still = NewMediaItem(stillId, sha: "sha-still");
             still.MediaFormat = "image/png";
 
             var capture = new MediaStillCapture
@@ -60,7 +61,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             Assert.Equal(stillId, result.MediaItemId);
 
-            await using var verifyDb = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            await using VideoForensicsDbContext verifyDb = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
             MediaItem? persistedItem = await verifyDb.MediaItems.FindAsync(new object[] { stillId }, CancellationToken.None);
             Assert.NotNull(persistedItem);
             Assert.Equal("sha-still", persistedItem!.Sha256Hash);
@@ -82,14 +83,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetAsync_ReturnsCapture_WhenExists()
         {
-            var source = NewMediaItem();
+            MediaItem source = NewMediaItem();
             var stillId = Guid.NewGuid();
-            var still = NewMediaItem(stillId, sha: "sha-still");
+            MediaItem still = NewMediaItem(stillId, sha: "sha-still");
 
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                db.MediaItems.Add(source);
-                await db.SaveChangesAsync(CancellationToken.None);
+                _ = db.MediaItems.Add(source);
+                _ = await db.SaveChangesAsync(CancellationToken.None);
             }
 
             var capture = new MediaStillCapture
@@ -102,7 +103,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 CaptureMethod = MediaStillCaptureMethod.Client,
                 CreatedAtUtc = DateTime.UtcNow
             };
-            await _repository.CreateAsync(still, capture, CancellationToken.None);
+            _ = await _repository.CreateAsync(still, capture, CancellationToken.None);
 
             MediaStillCapture? result = await _repository.GetAsync(stillId, CancellationToken.None);
             Assert.NotNull(result);
@@ -112,17 +113,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         [Fact]
         public async Task GetBySourceMediaItemIdAsync_ReturnsAllDerivedStills()
         {
-            var source = NewMediaItem();
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            MediaItem source = NewMediaItem();
+            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                db.MediaItems.Add(source);
-                await db.SaveChangesAsync(CancellationToken.None);
+                _ = db.MediaItems.Add(source);
+                _ = await db.SaveChangesAsync(CancellationToken.None);
             }
 
             for (int i = 0; i < 2; i++)
             {
                 var stillId = Guid.NewGuid();
-                var still = NewMediaItem(stillId, sha: $"sha-still-{i}");
+                MediaItem still = NewMediaItem(stillId, sha: $"sha-still-{i}");
                 var capture = new MediaStillCapture
                 {
                     MediaItemId = stillId,
@@ -133,7 +134,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                     CaptureMethod = MediaStillCaptureMethod.Server,
                     CreatedAtUtc = DateTime.UtcNow
                 };
-                await _repository.CreateAsync(still, capture, CancellationToken.None);
+                _ = await _repository.CreateAsync(still, capture, CancellationToken.None);
             }
 
             IReadOnlyList<MediaStillCapture> results = await _repository.GetBySourceMediaItemIdAsync(source.Id, CancellationToken.None);

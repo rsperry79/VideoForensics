@@ -11,8 +11,8 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         public static string? FindBinDirectory(IEnumerable<string?> candidateDirectories)
         {
-            var ext = OperatingSystem.IsWindows() ? ".exe" : string.Empty;
-            foreach (var dir in candidateDirectories)
+            string ext = OperatingSystem.IsWindows() ? ".exe" : string.Empty;
+            foreach (string? dir in candidateDirectories)
             {
                 if (string.IsNullOrWhiteSpace(dir))
                 {
@@ -34,8 +34,10 @@ namespace VideoForensics.Core.Providers.Core
         /// "%LOCALAPPDATA%\...") would otherwise never match the real directory.
         /// Pure apart from variable expansion, so it can be tested with arbitrary inputs.
         /// </summary>
-        public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, string? pathVariable) =>
-            DefaultCandidates(appBaseDirectory, new[] { pathVariable });
+        public static IEnumerable<string> DefaultCandidates(string appBaseDirectory, string? pathVariable)
+        {
+            return DefaultCandidates(appBaseDirectory, new[] { pathVariable });
+        }
 
         /// <summary>
         /// Like <see cref="DefaultCandidates(string, string?)"/> but over several PATH sources in order (process, user, machine).
@@ -45,16 +47,16 @@ namespace VideoForensics.Core.Providers.Core
         {
             yield return appBaseDirectory;
 
-            foreach (var pathVariable in pathVariables)
+            foreach (string? pathVariable in pathVariables)
             {
                 if (string.IsNullOrEmpty(pathVariable))
                 {
                     continue;
                 }
 
-                foreach (var raw in pathVariable.Split(Path.PathSeparator))
+                foreach (string raw in pathVariable.Split(Path.PathSeparator))
                 {
-                    var entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
+                    string entry = Environment.ExpandEnvironmentVariables(raw.Trim().Trim('"').Trim()).Trim();
                     // A relative entry resolves against the working directory, and a found directory is persisted as configuration.
                     // Only rooted entries are candidates; an unexpanded %VAR% (unset variable) is not rooted either.
                     if (entry.Length > 0 && Path.IsPathRooted(entry))
@@ -71,15 +73,15 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         public static string? FindExecutable(IEnumerable<string?> candidateDirectories, string fileName)
         {
-            var exeName = fileName + (OperatingSystem.IsWindows() ? ".exe" : string.Empty);
-            foreach (var dir in candidateDirectories)
+            string exeName = fileName + (OperatingSystem.IsWindows() ? ".exe" : string.Empty);
+            foreach (string? dir in candidateDirectories)
             {
                 if (string.IsNullOrWhiteSpace(dir))
                 {
                     continue;
                 }
 
-                var candidate = Path.Combine(dir, exeName);
+                string candidate = Path.Combine(dir, exeName);
                 if (File.Exists(candidate))
                 {
                     return candidate;
@@ -90,18 +92,24 @@ namespace VideoForensics.Core.Providers.Core
         }
 
         /// <summary>Discovers the bin directory from the app base directory, then the process, user and machine PATH.</summary>
-        public static string? DiscoverDefault() =>
-            FindBinDirectory(DefaultCandidates(AppContext.BaseDirectory, PathVariables()));
+        public static string? DiscoverDefault()
+        {
+            return FindBinDirectory(DefaultCandidates(AppContext.BaseDirectory, PathVariables()));
+        }
 
         /// <summary>Discovers an executable by base name from the app base directory, then the process, user and machine PATH.</summary>
-        public static string? DiscoverDefaultExecutable(string fileName) =>
-            FindExecutable(DefaultCandidates(AppContext.BaseDirectory, PathVariables()), fileName);
+        public static string? DiscoverDefaultExecutable(string fileName)
+        {
+            return FindExecutable(DefaultCandidates(AppContext.BaseDirectory, PathVariables()), fileName);
+        }
 
-        private static string?[] PathVariables() =>
-        [
+        private static string?[] PathVariables()
+        {
+            return [
             Environment.GetEnvironmentVariable("PATH"),
             Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User),
             Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine),
         ];
+        }
     }
 }

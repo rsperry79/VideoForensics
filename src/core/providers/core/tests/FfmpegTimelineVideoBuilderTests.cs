@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
 using System.ComponentModel;
 using System.Diagnostics;
-
-using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -17,7 +17,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         public FfmpegTimelineVideoBuilderTests()
         {
-            Directory.CreateDirectory(_workDir);
+            _ = Directory.CreateDirectory(_workDir);
         }
 
         public void Dispose()
@@ -38,17 +38,17 @@ namespace VideoForensics.Core.Providers.Core.Tests
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
             var request = new TimelineVideoRequest(Array.Empty<TimelineStill>(), Path.Combine(_workDir, "out.mp4"));
 
-            await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
         }
 
         [Fact]
         public async Task BuildAsync_MissingImageFile_ThrowsArgumentException()
         {
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
-            var stills = new[] { new TimelineStill(Path.Combine(_workDir, "missing.png"), T0, TimeSpan.FromSeconds(1)) };
+            TimelineStill[] stills = new[] { new TimelineStill(Path.Combine(_workDir, "missing.png"), T0, TimeSpan.FromSeconds(1)) };
             var request = new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"));
 
-            await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
         }
 
         [Fact]
@@ -56,10 +56,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         {
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
             string image = WriteDummyFile("still.png");
-            var stills = new[] { new TimelineStill(image, T0, TimeSpan.Zero) };
+            TimelineStill[] stills = new[] { new TimelineStill(image, T0, TimeSpan.Zero) };
             var request = new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"));
 
-            await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             CreatePng(c, 200, 300);
 
             // Holds 2s, 1.4s (rounds to 1s), 3s: expected frames = 2 + 1 + 3 = 6.
-            var stills = new[]
+            TimelineStill[] stills = new[]
             {
                 new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
                 new TimelineStill(b, T0.AddSeconds(2), TimeSpan.FromSeconds(1.4)),
@@ -127,7 +127,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => builder.BuildAsync(request, cts.Token));
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => builder.BuildAsync(request, cts.Token));
         }
 
         private string WriteDummyFile(string name)
@@ -139,7 +139,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         private void CreatePng(string path, int width, int height)
         {
-            RunTool("ffmpeg", "-f", "lavfi", "-i", $"color=c=red:s={width}x{height}", "-frames:v", "1", "-y", path);
+            _ = RunTool("ffmpeg", "-f", "lavfi", "-i", $"color=c=red:s={width}x{height}", "-frames:v", "1", "-y", path);
         }
 
         private static string ProbeStreamField(string path, string entry)
@@ -159,8 +159,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             try
             {
                 using Process process = StartTool(baseName, "-version");
-                process.StandardOutput.ReadToEnd();
-                process.StandardError.ReadToEnd();
+                _ = process.StandardOutput.ReadToEnd();
+                _ = process.StandardError.ReadToEnd();
                 process.WaitForExit();
                 return process.ExitCode == 0;
             }
@@ -176,12 +176,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string stdout = process.StandardOutput.ReadToEnd();
             string stderr = process.StandardError.ReadToEnd();
             process.WaitForExit();
-            if (process.ExitCode != 0)
-            {
-                throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}");
-            }
-
-            return stdout;
+            return process.ExitCode != 0 ? throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}") : stdout;
         }
 
         private static Process StartTool(string baseName, params string[] args)
@@ -239,7 +234,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string b = Path.Combine(_workDir, "b.png");
             CreatePng(a, 320, 240);
             CreatePng(b, 320, 240);
-            var stills = new[]
+            TimelineStill[] stills = new[]
             {
                 new TimelineStill(a, T0, TimeSpan.FromSeconds(5)),
                 new TimelineStill(b, T0.AddSeconds(2), TimeSpan.FromSeconds(2)),
@@ -266,7 +261,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string b = Path.Combine(_workDir, "b.png");
             CreatePng(a, 320, 240);
             CreatePng(b, 320, 240);
-            var stills = new[]
+            TimelineStill[] stills = new[]
             {
                 new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
                 new TimelineStill(b, T0.AddSeconds(5), TimeSpan.FromSeconds(1)),
@@ -294,7 +289,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string b = Path.Combine(_workDir, "b.png");
             CreatePng(a, 320, 240);
             CreatePng(b, 320, 240);
-            var stills = new[]
+            TimelineStill[] stills = new[]
             {
                 new TimelineStill(a, T0, TimeSpan.FromSeconds(2)),
                 new TimelineStill(b, T0.AddSeconds(5), TimeSpan.FromSeconds(1)),

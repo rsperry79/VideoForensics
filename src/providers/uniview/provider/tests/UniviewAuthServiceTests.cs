@@ -267,11 +267,11 @@ namespace VideoForensics.Providers.Uniview.Tests
             // Act
             string testUsername = "secretadmin";
             string testPassword = "password";
-            await service.AuthenticateAsync(testUsername, testPassword, CancellationToken.None);
+            _ = await service.AuthenticateAsync(testUsername, testPassword, CancellationToken.None);
 
             // Assert
             // Check all log invocations for the raw username
-            foreach (var invocation in mockLogger.Invocations)
+            foreach (IInvocation invocation in mockLogger.Invocations)
             {
                 string invocationString = invocation.ToString();
                 Assert.DoesNotContain(testUsername, invocationString);

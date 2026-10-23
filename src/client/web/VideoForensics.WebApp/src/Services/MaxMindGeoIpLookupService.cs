@@ -1,5 +1,7 @@
-using System.Net;
 using MaxMind.GeoIP2;
+using MaxMind.GeoIP2.Responses;
+
+using System.Net;
 
 namespace VideoForensics.WebApp.Services
 {
@@ -34,7 +36,7 @@ namespace VideoForensics.WebApp.Services
 
                 // Use MaxMind's DatabaseReader to perform the lookup
                 using var reader = new DatabaseReader(_dbFilePath);
-                var country = reader.Country(ipAddress);
+                CountryResponse country = reader.Country(ipAddress);
                 return country?.Country?.IsoCode;
             }
             catch

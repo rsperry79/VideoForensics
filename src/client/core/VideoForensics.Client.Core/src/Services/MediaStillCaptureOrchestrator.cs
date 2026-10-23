@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -170,7 +170,7 @@ namespace VideoForensics.Client.Core.Services
                 await _storageProvider.SaveAsync(stillFilePath, memoryStream, ct);
             }
 
-            var nowUtc = DateTime.UtcNow;
+            DateTime nowUtc = DateTime.UtcNow;
             var stillMediaItem = new MediaItem
             {
                 Id = stillId,

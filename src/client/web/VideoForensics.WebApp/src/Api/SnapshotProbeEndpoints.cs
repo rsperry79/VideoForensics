@@ -34,7 +34,7 @@ namespace VideoForensics.WebApp.Api
                 return;
             }
 
-            services.AddSingleton<ISnapshotProbeBackend, SessionSnapshotProbeBackend>();
+            _ = services.AddSingleton<ISnapshotProbeBackend, SessionSnapshotProbeBackend>();
         }
 
         /// <summary>
@@ -139,6 +139,7 @@ namespace VideoForensics.WebApp.Api
                 {
                     http.Response.Headers.RetryAfter = Math.Max(0, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 }
+
                 return Results.Json(new { message = "Ring is throttling requests. Try again later." }, statusCode: StatusCodes.Status429TooManyRequests);
             }
             catch (Exception ex)

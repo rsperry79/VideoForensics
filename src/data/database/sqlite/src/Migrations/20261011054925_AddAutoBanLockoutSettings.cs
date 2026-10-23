@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,28 +10,28 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "AutoBanDistinctAccountThreshold",
                 table: "LockoutPolicySettings",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 3);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "AutoBanDurationMinutes",
                 table: "LockoutPolicySettings",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 1440);
 
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "AutoBanEnabled",
                 table: "LockoutPolicySettings",
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: false);
 
-            migrationBuilder.AddColumn<int>(
+            _ = migrationBuilder.AddColumn<int>(
                 name: "AutoBanWindowMinutes",
                 table: "LockoutPolicySettings",
                 type: "INTEGER",
@@ -42,19 +42,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AutoBanDistinctAccountThreshold",
                 table: "LockoutPolicySettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AutoBanDurationMinutes",
                 table: "LockoutPolicySettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AutoBanEnabled",
                 table: "LockoutPolicySettings");
 
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "AutoBanWindowMinutes",
                 table: "LockoutPolicySettings");
         }

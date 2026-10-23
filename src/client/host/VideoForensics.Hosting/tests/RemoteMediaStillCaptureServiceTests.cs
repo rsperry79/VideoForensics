@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Remote;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -32,6 +29,7 @@ namespace VideoForensics.Hosting.Tests
                 {
                     CapturedBody = await request.Content.ReadAsStringAsync(cancellationToken);
                 }
+
                 return await _responseFactory(request);
             }
         }
@@ -59,7 +57,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task CaptureStillAsync_Success_ReturnsOkResultWithMappedInfo()
         {
             var sourceId = Guid.NewGuid();
-            var dto = CreateDto(sourceId: sourceId);
+            MediaStillDto dto = CreateDto(sourceId: sourceId);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 
             var handler = new FakeHttpMessageHandler(async req =>
@@ -87,7 +85,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var sourceId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            var dto = CreateDto(sourceId: sourceId);
+            MediaStillDto dto = CreateDto(sourceId: sourceId);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 
             var handler = new FakeHttpMessageHandler(async req =>

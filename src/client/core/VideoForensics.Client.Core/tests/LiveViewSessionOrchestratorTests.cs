@@ -5,16 +5,14 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Helpers.Forensics;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring.Interfaces;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
-using VideoForensics.Core.Forensics.Interfaces;
 
 namespace VideoForensics.Client.Core.Tests
 {
@@ -39,27 +37,27 @@ namespace VideoForensics.Client.Core.Tests
             _notificationDispatcherMock = new Mock<INotificationDispatcher>();
 
             // Default config: live view enabled
-            _configMock.Setup(c => c.EnableLiveView).Returns(true);
-            _configMock.Setup(c => c.LiveViewIdleTimeoutMinutes).Returns(5);
-            _configMock.Setup(c => c.LiveViewTelemetrySampleIntervalSeconds).Returns(2);
-            _configMock.Setup(c => c.SustainedModeMaxDurationMinutes).Returns(240);
+            _ = _configMock.Setup(c => c.EnableLiveView).Returns(true);
+            _ = _configMock.Setup(c => c.LiveViewIdleTimeoutMinutes).Returns(5);
+            _ = _configMock.Setup(c => c.LiveViewTelemetrySampleIntervalSeconds).Returns(2);
+            _ = _configMock.Setup(c => c.SustainedModeMaxDurationMinutes).Returns(240);
         }
 
         private LiveViewSessionOrchestrator CreateOrchestrator(Mock<IServiceProvider>? serviceProviderMock = null)
         {
             // The orchestrator opens a DI scope per operation. Wire the scope factory to a scope whose
             // provider resolves the repository and service mocks, mirroring the production registration.
-            var sp = serviceProviderMock ?? new Mock<IServiceProvider>();
-            sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
-            sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
-            sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
-            sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(_notificationDispatcherMock.Object);
+            Mock<IServiceProvider> sp = serviceProviderMock ?? new Mock<IServiceProvider>();
+            _ = sp.Setup(s => s.GetService(typeof(ILiveViewSessionRepository))).Returns(_sessionRepositoryMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IDeviceRepository))).Returns(_deviceRepositoryMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(IProviderApiBudgetGuard))).Returns(_budgetGuardMock.Object);
+            _ = sp.Setup(s => s.GetService(typeof(INotificationDispatcher))).Returns(_notificationDispatcherMock.Object);
 
             var scopeMock = new Mock<IServiceScope>();
-            scopeMock.Setup(s => s.ServiceProvider).Returns(sp.Object);
+            _ = scopeMock.Setup(s => s.ServiceProvider).Returns(sp.Object);
 
             var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-            scopeFactoryMock.Setup(f => f.CreateScope()).Returns(scopeMock.Object);
+            _ = scopeFactoryMock.Setup(f => f.CreateScope()).Returns(scopeMock.Object);
 
             return new LiveViewSessionOrchestrator(
                 _loggerMock.Object,
@@ -86,34 +84,34 @@ namespace VideoForensics.Client.Core.Tests
 
             var mockConnection = new Mock<ILiveViewConnection>();
             var mockProvider = new Mock<ILiveViewCapableProvider>();
-            mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = mockProvider.Setup(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockConnection.Object);
 
-            _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
-            _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
             var spMock = new Mock<IServiceProvider>();
-            spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
+            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
                 .Returns(mockProvider.Object);
 
-            var orchestrator = CreateOrchestrator(spMock);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
             // Act
-            var result = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, operatorId, CancellationToken.None);
+            LiveViewSession result = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, operatorId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(deviceId, result.DeviceId);
             Assert.Equal(LiveViewTriggerReason.Manual, result.TriggerReason);
             Assert.Equal(operatorId, result.OperatorId);
-            Assert.True(result.State == LiveViewSessionState.Starting || result.State == LiveViewSessionState.Active);
+            Assert.True(result.State is LiveViewSessionState.Starting or LiveViewSessionState.Active);
             _sessionRepositoryMock.Verify(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -141,16 +139,16 @@ namespace VideoForensics.Client.Core.Tests
             };
             var mockProvider = new Mock<ILiveViewCapableProvider>();
 
-            _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingSession);
 
             var spMock = new Mock<IServiceProvider>();
-            var orchestrator = CreateOrchestrator(spMock);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
             // Act
-            var result = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
+            LiveViewSession result = await orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -163,12 +161,12 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            _configMock.Setup(c => c.EnableLiveView).Returns(false);
+            _ = _configMock.Setup(c => c.EnableLiveView).Returns(false);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None));
             Assert.Contains("disabled", ex.Message);
         }
@@ -188,21 +186,21 @@ namespace VideoForensics.Client.Core.Tests
             };
             var mockProvider = new Mock<ILiveViewCapableProvider>();
 
-            _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
-            _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             var spMock = new Mock<IServiceProvider>();
-            spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
+            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
                 .Returns(mockProvider.Object);
 
-            var orchestrator = CreateOrchestrator(spMock);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None));
             mockProvider.Verify(p => p.StartLiveViewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -221,21 +219,21 @@ namespace VideoForensics.Client.Core.Tests
                 Type = "camera"
             };
 
-            _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _deviceRepositoryMock.Setup(r => r.GetAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(device);
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
-            _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _budgetGuardMock.Setup(b => b.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             var spMock = new Mock<IServiceProvider>();
-            spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
+            _ = spMock.Setup(s => s.GetService(typeof(ILiveViewCapableProvider)))
                 .Returns(null);
 
-            var orchestrator = CreateOrchestrator(spMock);
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator(spMock);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(
                 () => orchestrator.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None));
         }
 
@@ -247,14 +245,14 @@ namespace VideoForensics.Client.Core.Tests
             var session = new LiveViewSession { Id = sessionId, State = LiveViewSessionState.Active };
 
             LiveViewSession? capturedSession = null;
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .Callback<LiveViewSession, CancellationToken>((s, _) => capturedSession = s)
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
-            var orchestrator = CreateOrchestrator();
-            var beforeExtend = DateTime.UtcNow;
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
+            DateTime beforeExtend = DateTime.UtcNow;
 
             // Act
             await orchestrator.ExtendAsync(sessionId, CancellationToken.None);
@@ -270,13 +268,13 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange
             var sessionId = Guid.NewGuid();
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act & Assert
-            await Assert.ThrowsAsync<KeyNotFoundException>(
+            _ = await Assert.ThrowsAsync<KeyNotFoundException>(
                 () => orchestrator.ExtendAsync(sessionId, CancellationToken.None));
         }
 
@@ -296,24 +294,24 @@ namespace VideoForensics.Client.Core.Tests
                 OperatorId = operatorId
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
-            _notificationDispatcherMock.Setup(n => n.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+            _ = _notificationDispatcherMock.Setup(n => n.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
                 .Callback<NotificationEvent, CancellationToken>((ne, ct) => { })
                 .Returns(Task.CompletedTask);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.PromoteToSustainedAsync(sessionId, "Test promotion reason", CancellationToken.None);
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Test promotion reason", CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.True(result.IsSustained);
             Assert.Equal(LiveViewSessionState.Sustained, result.State);
-            Assert.NotNull(result.SustainedSinceUtc);
+            _ = Assert.NotNull(result.SustainedSinceUtc);
             Assert.Equal("Test promotion reason", result.PromotionReason);
             _notificationDispatcherMock.Verify(
                 n => n.DispatchAsync(It.Is<NotificationEvent>(ne => ne.EventType == "LiveViewSustainedModeEntered"), It.IsAny<CancellationToken>()),
@@ -333,15 +331,15 @@ namespace VideoForensics.Client.Core.Tests
                 SustainedSinceUtc = DateTime.UtcNow.AddMinutes(-10)
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.PromoteToSustainedAsync(sessionId, "Another reason", CancellationToken.None);
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Another reason", CancellationToken.None);
 
             // Assert
             Assert.True(result.IsSustained);
@@ -361,18 +359,18 @@ namespace VideoForensics.Client.Core.Tests
                 OperatorId = Guid.NewGuid()
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
-            _notificationDispatcherMock.Setup(n => n.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+            _ = _notificationDispatcherMock.Setup(n => n.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
                 .Callback<NotificationEvent, CancellationToken>((ne, ct) => { throw new Exception("Dispatch failed"); })
                 .Returns(Task.CompletedTask);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.PromoteToSustainedAsync(sessionId, "Test", CancellationToken.None);
+            LiveViewSession result = await orchestrator.PromoteToSustainedAsync(sessionId, "Test", CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -393,15 +391,15 @@ namespace VideoForensics.Client.Core.Tests
                 SustainedSinceUtc = DateTime.UtcNow.AddMinutes(-10)
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.DemoteFromSustainedAsync(sessionId, CancellationToken.None);
+            LiveViewSession result = await orchestrator.DemoteFromSustainedAsync(sessionId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -422,12 +420,12 @@ namespace VideoForensics.Client.Core.Tests
                 State = LiveViewSessionState.Active
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.UpsertSessionAsync(It.IsAny<LiveViewSession>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession s, CancellationToken _) => s);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
             await orchestrator.StopAsync(sessionId, "ManualStop", CancellationToken.None);
@@ -448,10 +446,10 @@ namespace VideoForensics.Client.Core.Tests
                 EndedAtUtc = DateTime.UtcNow.AddMinutes(-5)
             };
 
-            _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
             await orchestrator.StopAsync(sessionId, "ManualStop", CancellationToken.None);
@@ -465,13 +463,13 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange
             var deviceId = Guid.NewGuid();
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((LiveViewSession?)null);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.GetActiveSessionAsync(deviceId, CancellationToken.None);
+            LiveViewSession? result = await orchestrator.GetActiveSessionAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -483,13 +481,13 @@ namespace VideoForensics.Client.Core.Tests
             // Arrange
             var deviceId = Guid.NewGuid();
             var session = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = deviceId, State = LiveViewSessionState.Active };
-            _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
+            _ = _sessionRepositoryMock.Setup(r => r.GetActiveForDeviceAsync(deviceId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
 
-            var orchestrator = CreateOrchestrator();
+            LiveViewSessionOrchestrator orchestrator = CreateOrchestrator();
 
             // Act
-            var result = await orchestrator.GetActiveSessionAsync(deviceId, CancellationToken.None);
+            LiveViewSession? result = await orchestrator.GetActiveSessionAsync(deviceId, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);

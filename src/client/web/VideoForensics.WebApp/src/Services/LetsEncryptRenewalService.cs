@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
 namespace VideoForensics.WebApp.Services
 {
     /// <summary>
@@ -27,7 +24,7 @@ namespace VideoForensics.WebApp.Services
                 try
                 {
                     using IServiceScope scope = _scopes.CreateScope();
-                    var manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
+                    LetsEncryptCertificateManager manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
                     CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken);
                     if (!result.Success)
                     {

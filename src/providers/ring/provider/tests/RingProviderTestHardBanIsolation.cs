@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -18,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Tests
         internal static void Isolate()
         {
             var store = new FileHardBanStateStore(Directory);
-            typeof(HttpUtility)
+            _ = typeof(HttpUtility)
                 .GetMethod("UseHardBanStateStoreForTesting", BindingFlags.NonPublic | BindingFlags.Static)!
                 .Invoke(null, new object?[] { store });
 

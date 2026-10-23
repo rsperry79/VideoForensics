@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using VideoForensics.Core.Providers.Core;
+
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests

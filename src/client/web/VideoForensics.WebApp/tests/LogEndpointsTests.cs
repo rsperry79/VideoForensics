@@ -1,16 +1,19 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+
 using Moq;
-using VideoForensics.Core.Api.Contracts;
+
+using System.Security.Claims;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.Services;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
+
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -32,7 +35,7 @@ namespace VideoForensics.WebApp.Tests
         private static DefaultHttpContext CreateHttpContextWithStepUpToken(Guid pairedDeviceId, string stepUpToken = "valid-step-up-token")
         {
             var context = new DefaultHttpContext();
-            var claims = new[]
+            Claim[] claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.PairedDeviceId, pairedDeviceId.ToString()),
                 new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
@@ -46,9 +49,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetLogsAsync_ValidRequest_ReturnsLogPageDto()
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            var pairedDeviceId = Guid.NewGuid();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             // Add entries to buffer
             var entry1 = new LogRecord(0, DateTimeOffset.UtcNow.AddSeconds(-10), "Information", "TestCategory", "Test message 1", null);
@@ -59,8 +62,8 @@ namespace VideoForensics.WebApp.Tests
             var query = new LogQueryDto(null, null, null, 500);
             IResult result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var okResult = Assert.IsType<Ok<LogPageDto>>(result);
-            var pageDto = okResult.Value;
+            Ok<LogPageDto> okResult = Assert.IsType<Ok<LogPageDto>>(result);
+            LogPageDto? pageDto = okResult.Value;
 
             Assert.NotNull(pageDto);
             Assert.Equal(2, pageDto.Entries.Count);
@@ -91,31 +94,31 @@ namespace VideoForensics.WebApp.Tests
         [InlineData(5000, 2000)]
         public async Task GetLogsAsync_Limit_IsClampedWithZeroMeaningDefault(int limit, int expectedCount)
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            var context = CreateHttpContextWithStepUpToken(Guid.NewGuid());
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(Guid.NewGuid());
             var entry = new LogRecord(0, DateTimeOffset.UtcNow, "Information", "Test", "Test", null);
             for (int i = 0; i < 2100; i++)
             {
                 buffer.Append(ref entry);
             }
 
-            var result = await LogEndpoints.GetLogsAsync(new LogQueryDto(null, null, null, limit), buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+            IResult result = await LogEndpoints.GetLogsAsync(new LogQueryDto(null, null, null, limit), buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var okResult = Assert.IsType<Ok<LogPageDto>>(result);
+            Ok<LogPageDto> okResult = Assert.IsType<Ok<LogPageDto>>(result);
             Assert.Equal(expectedCount, okResult.Value!.Entries.Count);
             Assert.True(okResult.Value.Truncated);
         }
         [Fact]
         public async Task GetLogsAsync_InvalidMinLevel_ReturnsBadRequest()
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            var pairedDeviceId = Guid.NewGuid();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             var query = new LogQueryDto("InvalidLevel", null, null, 500);
             IResult result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var badRequest = Assert.IsType<BadRequest<ProblemDetails>>(result);
+            BadRequest<ProblemDetails> badRequest = Assert.IsType<BadRequest<ProblemDetails>>(result);
             Assert.NotNull(badRequest.Value);
             Assert.Equal(400, badRequest.Value.Status);
             Assert.Contains("MinLevel", badRequest.Value.Detail);
@@ -124,9 +127,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetLogsAsync_TruncatedFlag_SetWhenLimitExceeded()
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            var pairedDeviceId = Guid.NewGuid();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             // Add 501 entries to exceed the 500 limit
             var entry = new LogRecord(0, DateTimeOffset.UtcNow, "Information", "Category", "Message", null);
@@ -138,7 +141,7 @@ namespace VideoForensics.WebApp.Tests
             var query = new LogQueryDto(null, null, null, 500);
             IResult result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var okResult = Assert.IsType<Ok<LogPageDto>>(result);
+            Ok<LogPageDto> okResult = Assert.IsType<Ok<LogPageDto>>(result);
             Assert.True(okResult.Value.Truncated);
             Assert.Equal(500, okResult.Value.Entries.Count);
         }
@@ -146,9 +149,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetLogsAsync_WithMinLevel_FiltersEntries()
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            var pairedDeviceId = Guid.NewGuid();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             // Add entries with different levels
             var infoEntry = new LogRecord(0, DateTimeOffset.UtcNow, "Information", "Category", "Info message", null);
@@ -158,20 +161,20 @@ namespace VideoForensics.WebApp.Tests
 
             // Query for Warning level or higher
             var query = new LogQueryDto("Warning", null, null, 500);
-            var result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+            IResult result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var okResult = Assert.IsType<Ok<LogPageDto>>(result);
+            Ok<LogPageDto> okResult = Assert.IsType<Ok<LogPageDto>>(result);
             // Only warning entry should be returned
-            Assert.Single(okResult.Value.Entries);
+            _ = Assert.Single(okResult.Value.Entries);
             Assert.Equal("Warning", okResult.Value.Entries[0].Level);
         }
 
         [Fact]
         public async Task GetLogsAsync_WithAfterSequence_ResumsFromSequence()
         {
-            (var buffer, var auditLog, var tierResolver) = CreateMocks();
-            Guid pairedDeviceId = Guid.NewGuid();
-            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            (InMemoryLogBuffer? buffer, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver) = CreateMocks();
+            var pairedDeviceId = Guid.NewGuid();
+            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             // Add three entries
             var entry1 = new LogRecord(0, DateTimeOffset.UtcNow, "Information", "Cat", "Msg1", null);
@@ -183,9 +186,9 @@ namespace VideoForensics.WebApp.Tests
 
             // Query with afterSequence = 1 should return only entries 2 and 3
             var query = new LogQueryDto(null, null, 1, 500);
-            var result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
+            IResult result = await LogEndpoints.GetLogsAsync(query, buffer, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
-            var okResult = Assert.IsType<Ok<LogPageDto>>(result);
+            Ok<LogPageDto> okResult = Assert.IsType<Ok<LogPageDto>>(result);
             Assert.Equal(2, okResult.Value.Entries.Count);
             Assert.Equal(2, okResult.Value.Entries[0].Sequence);
             Assert.Equal(3, okResult.Value.Entries[1].Sequence);

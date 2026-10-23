@@ -1,10 +1,15 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using System.Reflection;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
+
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -34,24 +39,24 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetAsync_WithValidConfiguration_ReturnsSettingsWithoutApiKey()
         {
             // Arrange
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Anthropic");
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("claude-3-sonnet-20240229");
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.GetAsync(keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.GetAsync(keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             var okResult = result as Ok<LlmSettingsResponseDto>;
             Assert.NotNull(okResult);
-            var responseDto = okResult.Value;
+            LlmSettingsResponseDto? responseDto = okResult.Value;
             Assert.NotNull(responseDto);
             Assert.Equal("Anthropic", responseDto.Provider);
             Assert.Equal("claude-3-sonnet-20240229", responseDto.Model);
@@ -66,24 +71,24 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetAsync_NoConfigurationSet_ReturnsDefaults()
         {
             // Arrange
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.GetAsync(keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.GetAsync(keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             var okResult = result as Ok<LlmSettingsResponseDto>;
             Assert.NotNull(okResult);
-            var responseDto = okResult.Value;
+            LlmSettingsResponseDto? responseDto = okResult.Value;
             Assert.NotNull(responseDto);
             Assert.Empty(responseDto.Provider);
             Assert.Empty(responseDto.Model);
@@ -101,32 +106,32 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.SetProviderAsync("Anthropic", It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.SetProviderAsync("Anthropic", It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetModelAsync("claude-3-sonnet-20240229", It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetModelAsync("claude-3-sonnet-20240229", It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetApiKeyAsync("sk-ant-test-key-12345", It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetApiKeyAsync("sk-ant-test-key-12345", It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetBaseUrlAsync(null, It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetBaseUrlAsync(null, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Anthropic");
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("claude-3-sonnet-20240229");
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             var okResult = result as Ok<LlmSettingsResponseDto>;
             Assert.NotNull(okResult);
-            var responseDto = okResult.Value;
+            LlmSettingsResponseDto? responseDto = okResult.Value;
             Assert.NotNull(responseDto);
             Assert.Equal("Anthropic", responseDto.Provider);
             Assert.Equal("claude-3-sonnet-20240229", responseDto.Model);
@@ -148,24 +153,24 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetBaseUrlAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetBaseUrlAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Anthropic");
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("claude-3-sonnet-20240229");
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -184,24 +189,24 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetBaseUrlAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetBaseUrlAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("Anthropic");
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("claude-3-sonnet-20240229");
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -220,26 +225,26 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            _ = keyStore.Setup(k => k.SetProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetModelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetApiKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetApiKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.SetBaseUrlAsync(null, It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.SetBaseUrlAsync(null, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetProviderAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("OpenAiCompatible");
-            keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetModelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("gpt-4");
-            keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
+            _ = keyStore.Setup(k => k.GetBaseUrlAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
-            var logger = CreateMockLogger();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -258,11 +263,11 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            var logger = CreateMockLogger();
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(request, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -282,11 +287,11 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            var logger = CreateMockLogger();
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(requestNullProvider, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(requestNullProvider, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -306,11 +311,11 @@ namespace VideoForensics.WebApp.Tests
                 BaseUrl: null
             );
 
-            var keyStore = CreateMockKeyStore();
-            var logger = CreateMockLogger();
+            Mock<ILlmApiKeyStore> keyStore = CreateMockKeyStore();
+            Mock<ILogger<Program>> logger = CreateMockLogger();
 
             // Act
-            var result = await LlmSettingsEndpointsInvoker.PostAsync(requestEmptyModel, keyStore.Object, logger.Object, CancellationToken.None);
+            IResult result = await LlmSettingsEndpointsInvoker.PostAsync(requestEmptyModel, keyStore.Object, logger.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -331,7 +336,7 @@ namespace VideoForensics.WebApp.Tests
             ILogger<Program> logger,
             CancellationToken ct)
         {
-            var method = typeof(LlmSettingsEndpoints)
+            MethodInfo? method = typeof(LlmSettingsEndpoints)
                 .GetMethod("GetLlmSettingsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -339,9 +344,11 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find GetLlmSettingsAsync method");
+            }
 
-            var result = method.Invoke(null, [keyStore, logger, ct]);
+            object? result = method.Invoke(null, [keyStore, logger, ct]);
             return await (Task<IResult>)result!;
         }
 
@@ -351,7 +358,7 @@ namespace VideoForensics.WebApp.Tests
             ILogger<Program> logger,
             CancellationToken ct)
         {
-            var method = typeof(LlmSettingsEndpoints)
+            MethodInfo? method = typeof(LlmSettingsEndpoints)
                 .GetMethod("UpdateLlmSettingsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -359,9 +366,11 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find UpdateLlmSettingsAsync method");
+            }
 
-            var result = method.Invoke(null, [request, keyStore, logger, ct]);
+            object? result = method.Invoke(null, [request, keyStore, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

@@ -33,42 +33,55 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static RingVideoSearchEvent BuildVideoSearch(string dingId, string kind) => new()
+        private static RingVideoSearchEvent BuildVideoSearch(string dingId, string kind)
         {
-            Id = Guid.NewGuid(),
-            RingItemId = 7,
-            ProviderEventId = dingId,
-            CreatedAtMs = 1792178873638,
-            UpdatedAtMs = 1792178914777000,
-            Kind = kind,
-            State = "timed_out",
-            DurationSeconds = 41,
-            Favorite = false,
-            HqUrl = "https://sanitized.example.invalid/hq",
-            LqUrl = "https://sanitized.example.invalid/lq",
-            ThumbnailUrl = "https://sanitized.example.invalid/thumb",
-            UntranscodedUrl = "https://sanitized.example.invalid/raw",
-            IsE2ee = false,
-            PrerollDuration = 7400,
-            HadSubscription = true,
-            OwnerId = "00000000",
-            SourceId = "86401464",
-            Riid = "riid-1",
-            BatteryPercentage = "90",
-            BatteryStatus = "full",
-        };
-
-        private static RingEventDetails BuildVideoSearchDetails(Guid rowId) => new()
-        {
-            Doorbot = new RingEventDoorbot { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, DoorbotId = 86401464, Description = "Sanitized description", Type = "doorbell" },
-            Properties = new RingEventProperties { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, IsAlexa = false, IsSidewalk = false, IsAutoreply = false, StarkReviewed = false, PackagePickupDetected = true, DetectionConfidence = 0.75 },
-            Geolocation = new RingEventGeolocation { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, Latitude = 1.5, Longitude = -2.5, Accuracy = 10, TimestampMs = 1792178873000, LocationSource = "gps" },
-            SubscriptionReceipt = new RingEventSubscriptionReceipt { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, SubscriptionId = "sub-1", SubscriptionType = "basic", CapturedAt = 1, ExpiresAt = 2 },
-            CvProperties = new RingEventCvProperties
+            return new()
             {
-                Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId,
-                PersonDetected = true, StreamBroken = false, DetectionType = "human", FullDescription = "full", ShortDescription = "short", Similarity = 0.5, Anomaly = 0.25,
-                DetectionTypes =
+                Id = Guid.NewGuid(),
+                RingItemId = 7,
+                ProviderEventId = dingId,
+                CreatedAtMs = 1792178873638,
+                UpdatedAtMs = 1792178914777000,
+                Kind = kind,
+                State = "timed_out",
+                DurationSeconds = 41,
+                Favorite = false,
+                HqUrl = "https://sanitized.example.invalid/hq",
+                LqUrl = "https://sanitized.example.invalid/lq",
+                ThumbnailUrl = "https://sanitized.example.invalid/thumb",
+                UntranscodedUrl = "https://sanitized.example.invalid/raw",
+                IsE2ee = false,
+                PrerollDuration = 7400,
+                HadSubscription = true,
+                OwnerId = "00000000",
+                SourceId = "86401464",
+                Riid = "riid-1",
+                BatteryPercentage = "90",
+                BatteryStatus = "full",
+            };
+        }
+
+        private static RingEventDetails BuildVideoSearchDetails(Guid rowId)
+        {
+            return new()
+            {
+                Doorbot = new RingEventDoorbot { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, DoorbotId = 86401464, Description = "Sanitized description", Type = "doorbell" },
+                Properties = new RingEventProperties { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, IsAlexa = false, IsSidewalk = false, IsAutoreply = false, StarkReviewed = false, PackagePickupDetected = true, DetectionConfidence = 0.75 },
+                Geolocation = new RingEventGeolocation { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, Latitude = 1.5, Longitude = -2.5, Accuracy = 10, TimestampMs = 1792178873000, LocationSource = "gps" },
+                SubscriptionReceipt = new RingEventSubscriptionReceipt { Id = Guid.NewGuid(), Source = RingEventSources.VideoSearch, SourceRowId = rowId, SubscriptionId = "sub-1", SubscriptionType = "basic", CapturedAt = 1, ExpiresAt = 2 },
+                CvProperties = new RingEventCvProperties
+                {
+                    Id = Guid.NewGuid(),
+                    Source = RingEventSources.VideoSearch,
+                    SourceRowId = rowId,
+                    PersonDetected = true,
+                    StreamBroken = false,
+                    DetectionType = "human",
+                    FullDescription = "full",
+                    ShortDescription = "short",
+                    Similarity = 0.5,
+                    Anomaly = 0.25,
+                    DetectionTypes =
                 [
                     new RingEventCvDetectionType
                     {
@@ -76,12 +89,13 @@ namespace VideoForensics.Data.Database.Tests
                         VerifiedTimestamps = [new RingEventCvVerifiedTimestamp { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177 }],
                     },
                 ],
-                SecurityAlerts = [new RingEventCvSecurityAlert { Id = Guid.NewGuid(), Severity = "high", Alerts = [new RingEventCvSecurityAlertItem { Id = Guid.NewGuid(), Position = 0, AlertText = "alert" }] }],
-                Profiles = [new RingEventCvProfile { Id = Guid.NewGuid(), Position = 0, ProfileId = "p-1", Name = "Profile", Confidence = 0.9, ThumbnailUrl = "https://sanitized.example.invalid/profile" }],
-                DetectionDetails = [new RingEventCvDetectionDetail { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177, Type = "human", Confidence = 0.8, ModelVersion = "v2", Zones = [new RingEventCvDetectionZone { Id = Guid.NewGuid(), Position = 0, ZoneId = "z-1", Name = "Porch", Confidence = 0.7 }] }],
-                Tags = [new RingEventCvTag { Id = Guid.NewGuid(), Position = 0, Tag = "porch" }],
-            },
-        };
+                    SecurityAlerts = [new RingEventCvSecurityAlert { Id = Guid.NewGuid(), Severity = "high", Alerts = [new RingEventCvSecurityAlertItem { Id = Guid.NewGuid(), Position = 0, AlertText = "alert" }] }],
+                    Profiles = [new RingEventCvProfile { Id = Guid.NewGuid(), Position = 0, ProfileId = "p-1", Name = "Profile", Confidence = 0.9, ThumbnailUrl = "https://sanitized.example.invalid/profile" }],
+                    DetectionDetails = [new RingEventCvDetectionDetail { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177, Type = "human", Confidence = 0.8, ModelVersion = "v2", Zones = [new RingEventCvDetectionZone { Id = Guid.NewGuid(), Position = 0, ZoneId = "z-1", Name = "Porch", Confidence = 0.7 }] }],
+                    Tags = [new RingEventCvTag { Id = Guid.NewGuid(), Position = 0, Tag = "porch" }],
+                },
+            };
+        }
 
         [Fact]
         public async Task RingEventHistoryWriter_VideoSearchRoundTrip_PersistsRootAndEveryNestedRow()
@@ -144,10 +158,26 @@ namespace VideoForensics.Data.Database.Tests
             await _writer.ReplaceLocationEventPageAsync(new RingLocationEventPage { Id = Guid.NewGuid(), ProviderLocationId = LocationId, PaginationKey = "sanitized-pagination-key" }, CancellationToken.None);
             var evt = new RingLocationEvent
             {
-                Id = Guid.NewGuid(), ProviderLocationId = LocationId, ProviderEventId = "7697349643908571576", SourceId = "86401464",
-                EventType = "motion", State = "timed_out", Favorite = false, Recorded = true, RecordingStatus = "ready", IsE2ee = false,
-                CreatedAt = "2026-10-16T19:27:46Z", HadSubscription = true, OwnerId = "00000000", Riid = "riid-2", DoorbotId = 86401464,
-                DingId = 7697349643908571000, DingIdString = "7697349643908571576", Kind = "motion", BatteryPercentage = "90", BatteryStatus = "full",
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                ProviderEventId = "7697349643908571576",
+                SourceId = "86401464",
+                EventType = "motion",
+                State = "timed_out",
+                Favorite = false,
+                Recorded = true,
+                RecordingStatus = "ready",
+                IsE2ee = false,
+                CreatedAt = "2026-10-16T19:27:46Z",
+                HadSubscription = true,
+                OwnerId = "00000000",
+                Riid = "riid-2",
+                DoorbotId = 86401464,
+                DingId = 7697349643908571000,
+                DingIdString = "7697349643908571576",
+                Kind = "motion",
+                BatteryPercentage = "90",
+                BatteryStatus = "full",
             };
             var details = new RingEventDetails
             {
@@ -227,20 +257,49 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evt = new RingLocationHistoryEvent
             {
-                Id = Guid.NewGuid(), ProviderLocationId = LocationId, ProviderEventId = dingId, Schema = "Event", SourceId = "86401464",
-                StartTime = "2026-10-16T19:27:46.238Z", EndTime = "2026-10-16T19:28:34.469Z", EventType = eventType, DurationMs = 48231,
-                SessionDurationMs = 41000, State = "timed_out", HadSubscription = true, IsFavorite = false, RecordingStatus = "ready",
-                UpdatedAt = "2026-10-16T19:28:34.777Z", OwnerId = "00000000", DeleteInProgress = false, IsWatched = false, IsActive = true,
-                UserActionDisabled = false, Riid = "riid-3",
+                Id = Guid.NewGuid(),
+                ProviderLocationId = LocationId,
+                ProviderEventId = dingId,
+                Schema = "Event",
+                SourceId = "86401464",
+                StartTime = "2026-10-16T19:27:46.238Z",
+                EndTime = "2026-10-16T19:28:34.469Z",
+                EventType = eventType,
+                DurationMs = 48231,
+                SessionDurationMs = 41000,
+                State = "timed_out",
+                HadSubscription = true,
+                IsFavorite = false,
+                RecordingStatus = "ready",
+                UpdatedAt = "2026-10-16T19:28:34.777Z",
+                OwnerId = "00000000",
+                DeleteInProgress = false,
+                IsWatched = false,
+                IsActive = true,
+                UserActionDisabled = false,
+                Riid = "riid-3",
             };
             var media = new RingLocationHistoryMedia
             {
-                Id = Guid.NewGuid(), Schema = "Media", Url = "https://sanitized.example.invalid/media", StartTime = "2026-10-16T19:27:46.238Z",
-                EndTime = "2026-10-16T19:28:34.469Z", IsE2ee = false, FileType = "VIDEO", FileFamily = "VIDEO", PrerollDurationMs = 7400,
-                PlaybackDuration = 48231, Source = "Apsara",
+                Id = Guid.NewGuid(),
+                Schema = "Media",
+                Url = "https://sanitized.example.invalid/media",
+                StartTime = "2026-10-16T19:27:46.238Z",
+                EndTime = "2026-10-16T19:28:34.469Z",
+                IsE2ee = false,
+                FileType = "VIDEO",
+                FileFamily = "VIDEO",
+                PrerollDurationMs = 7400,
+                PlaybackDuration = 48231,
+                Source = "Apsara",
                 Metadata = new RingLocationHistoryMediaMetadata
                 {
-                    Id = Guid.NewGuid(), Recording24x7Enabled = false, DingId = dingId, AudioEncoding = "PCMU", VideoEncoding = "H264", TbaTranscodingEnabled = true,
+                    Id = Guid.NewGuid(),
+                    Recording24x7Enabled = false,
+                    DingId = dingId,
+                    AudioEncoding = "PCMU",
+                    VideoEncoding = "H264",
+                    TbaTranscodingEnabled = true,
                     Tracks =
                     [
                         new RingLocationHistoryMediaTrack { Id = Guid.NewGuid(), Position = 0, TrackId = "audio.2.0", Codec = "PCMU", Type = "audio" },
@@ -256,26 +315,51 @@ namespace VideoForensics.Data.Database.Tests
             return evt;
         }
 
-        private static RingEventDetails BuildLocationHistoryDetails(Guid rowId) => new()
+        private static RingEventDetails BuildLocationHistoryDetails(Guid rowId)
         {
-            Doorbot = new RingEventDoorbot { Id = Guid.NewGuid(), Source = RingEventSources.LocationHistory, SourceRowId = rowId, DoorbotId = 86401464, Description = "Sanitized description", Type = "doorbell" },
-            Properties = new RingEventProperties { Id = Guid.NewGuid(), Source = RingEventSources.LocationHistory, SourceRowId = rowId, IsAlexa = false, IsSidewalk = false, IsAutoreply = false, StarkReviewed = false },
-            CvProperties = new RingEventCvProperties
+            return new()
             {
-                Id = Guid.NewGuid(), Source = RingEventSources.LocationHistory, SourceRowId = rowId, PersonDetected = true, StreamBroken = false, DetectionType = "human",
-                DetectionTypes = [new RingEventCvDetectionType { Id = Guid.NewGuid(), Position = 0, DetectionType = "human", VerifiedTimestamps = [new RingEventCvVerifiedTimestamp { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177 }] }],
-                DetectionDetails = [new RingEventCvDetectionDetail { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177, Type = "human" }],
-            },
-        };
+                Doorbot = new RingEventDoorbot { Id = Guid.NewGuid(), Source = RingEventSources.LocationHistory, SourceRowId = rowId, DoorbotId = 86401464, Description = "Sanitized description", Type = "doorbell" },
+                Properties = new RingEventProperties { Id = Guid.NewGuid(), Source = RingEventSources.LocationHistory, SourceRowId = rowId, IsAlexa = false, IsSidewalk = false, IsAutoreply = false, StarkReviewed = false },
+                CvProperties = new RingEventCvProperties
+                {
+                    Id = Guid.NewGuid(),
+                    Source = RingEventSources.LocationHistory,
+                    SourceRowId = rowId,
+                    PersonDetected = true,
+                    StreamBroken = false,
+                    DetectionType = "human",
+                    DetectionTypes = [new RingEventCvDetectionType { Id = Guid.NewGuid(), Position = 0, DetectionType = "human", VerifiedTimestamps = [new RingEventCvVerifiedTimestamp { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177 }] }],
+                    DetectionDetails = [new RingEventCvDetectionDetail { Id = Guid.NewGuid(), Position = 0, TimestampMs = 1792178874177, Type = "human" }],
+                },
+            };
+        }
 
-        private static RingAppLocationHistoryMessage BuildAppLocationHistory(string eventId) => new()
+        private static RingAppLocationHistoryMessage BuildAppLocationHistory(string eventId)
         {
-            Id = Guid.NewGuid(), Seq = 0, Msg = "DataUpdate", DataType = "DeviceInfoDocType", Src = "aps", EventId = eventId, EventPublishedTsMs = 1792177910381,
-            RequestSeq = 0, AffectedEntityId = "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7", DeviceFamily = "alarm", InitiatingEntityType = "user",
-            AffectedEntityType = "device", ForwarderTopic = "location:11111111-2222-3333-4444-555555555555/aps", AccountId = "11111111-2222-3333-4444-555555555555",
-            RequestSessionId = 0, EventLevel = 10, InitiatingEntityId = "00000000", EventOccurredTsMs = 1792177910381, AffectedEntityName = "Alarm",
-            ProgramId = "a551631c-0e88-4097-8e1a-9595202c2ba9",
-            Bodies =
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                Seq = 0,
+                Msg = "DataUpdate",
+                DataType = "DeviceInfoDocType",
+                Src = "aps",
+                EventId = eventId,
+                EventPublishedTsMs = 1792177910381,
+                RequestSeq = 0,
+                AffectedEntityId = "43c0403c-19ad-42e8-b5bc-5694c8e8d9d7",
+                DeviceFamily = "alarm",
+                InitiatingEntityType = "user",
+                AffectedEntityType = "device",
+                ForwarderTopic = "location:11111111-2222-3333-4444-555555555555/aps",
+                AccountId = "11111111-2222-3333-4444-555555555555",
+                RequestSessionId = 0,
+                EventLevel = 10,
+                InitiatingEntityId = "00000000",
+                EventOccurredTsMs = 1792177910381,
+                AffectedEntityName = "Alarm",
+                ProgramId = "a551631c-0e88-4097-8e1a-9595202c2ba9",
+                Bodies =
             [
                 new RingAppLocationHistoryBody
                 {
@@ -294,7 +378,8 @@ namespace VideoForensics.Data.Database.Tests
                     Impulses = [new RingAppLocationHistoryImpulse { Id = Guid.NewGuid(), Position = 0, ImpulseType = "command.complete", CommandType = "security-panel.switch-mode", DataMode = "some" }],
                 },
             ],
-        };
+            };
+        }
 
         [Fact]
         public async Task RingEventHistoryWriter_AppLocationHistoryRoundTrip_PersistsBodyModesAndImpulses()
@@ -333,9 +418,18 @@ namespace VideoForensics.Data.Database.Tests
         {
             var evt = new RingDoorbotHistoryEvent
             {
-                Id = Guid.NewGuid(), ProviderEventId = "12345", CreatedAt = "2026-10-16T19:27:46Z", Answered = false, Kind = "motion",
-                Favorite = false, SnapshotUrl = "https://sanitized.example.invalid/snapshot", Duration = 41, IsE2ee = false, HadSubscription = true,
-                OwnerId = "00000000", Riid = "riid-4",
+                Id = Guid.NewGuid(),
+                ProviderEventId = "12345",
+                CreatedAt = "2026-10-16T19:27:46Z",
+                Answered = false,
+                Kind = "motion",
+                Favorite = false,
+                SnapshotUrl = "https://sanitized.example.invalid/snapshot",
+                Duration = 41,
+                IsE2ee = false,
+                HadSubscription = true,
+                OwnerId = "00000000",
+                Riid = "riid-4",
             };
             var details = new RingEventDetails
             {

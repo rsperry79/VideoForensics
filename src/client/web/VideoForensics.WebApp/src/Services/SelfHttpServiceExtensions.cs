@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;

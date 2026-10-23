@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Services
         public async Task<ILiveViewConnection> StartLiveViewAsync(string providerDeviceId, Guid accountId, CancellationToken ct)
         {
             // Get the authenticated Session for the specific account
-            var session = _sessionProvider.GetSession(accountId);
+            Session? session = _sessionProvider.GetSession(accountId);
             if (session == null)
             {
                 throw new InvalidOperationException($"Not authenticated with Ring for account {accountId}.");
@@ -49,7 +49,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 // Start the live view via the Ring SDK
-                var ringSession = await session.StartLiveView(doorbotId, ct);
+                RingLiveViewSession ringSession = await session.StartLiveView(doorbotId, ct);
 
                 // Wrap in the provider-agnostic adapter
                 var connection = new RingLiveViewConnection(ringSession);

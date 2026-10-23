@@ -46,10 +46,10 @@ namespace VideoForensics.Hosting.Remote
                     PeriodAfterSecs = o.PeriodAfterSecs,
                 }
                 : null;
-            List<DeviceDetectionType> types = dto.DetectionTypes
+            var types = dto.DetectionTypes
                 .Select(t => new DeviceDetectionType { Id = Guid.NewGuid(), DeviceId = deviceId, DetectionType = t.DetectionType, Enabled = t.Enabled, Mode = t.Mode, Record = t.Record, Notification = t.Notification })
                 .ToList();
-            List<DeviceDetectionThreshold> thresholds = dto.Thresholds
+            var thresholds = dto.Thresholds
                 .Select(t => new DeviceDetectionThreshold { Id = Guid.NewGuid(), DeviceId = deviceId, DetectionType = t.DetectionType, Threshold = t.Threshold })
                 .ToList();
             return new DeviceTypedSettings(offline, types, thresholds);

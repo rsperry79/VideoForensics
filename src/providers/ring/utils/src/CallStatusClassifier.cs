@@ -20,7 +20,9 @@ namespace VideoForensics.Providers.Ring
         private const string ClientDeviceRequiredMarker = "Client Device required";
 
         public static string Classify(EndpointDescriptor descriptor, bool success, IEnumerable<int> httpStatusCodes)
-            => Classify(descriptor, success, httpStatusCodes.Select(code => (StatusCode: code, Body: (string?)null)));
+        {
+            return Classify(descriptor, success, httpStatusCodes.Select(code => (StatusCode: code, Body: (string?)null)));
+        }
 
         /// <summary>
         /// Body-aware form: a RequiresPushRegistration endpoint answering 422 "Client Device required" is
@@ -35,18 +37,12 @@ namespace VideoForensics.Providers.Ring
 
             var calledList = calls.ToList();
 
-            if (descriptor.NotApplicableWithoutAlarmHub && calledList.Any(c => c.StatusCode == 404))
-            {
-                return NotApplicable;
-            }
-
-            if (descriptor.RequiresPushRegistration && calledList.Any(c => c.StatusCode == 422
-                    && c.Body != null && c.Body.Contains(ClientDeviceRequiredMarker, StringComparison.OrdinalIgnoreCase)))
-            {
-                return NotApplicable;
-            }
-
-            return Failed;
+            return descriptor.NotApplicableWithoutAlarmHub && calledList.Any(c => c.StatusCode == 404)
+                ? NotApplicable
+                : descriptor.RequiresPushRegistration && calledList.Any(c => c.StatusCode == 422
+                    && c.Body != null && c.Body.Contains(ClientDeviceRequiredMarker, StringComparison.OrdinalIgnoreCase))
+                ? NotApplicable
+                : Failed;
         }
     }
 }

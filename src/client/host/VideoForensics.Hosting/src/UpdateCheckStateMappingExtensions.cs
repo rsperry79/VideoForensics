@@ -1,5 +1,5 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Hosting
 {

@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using System;
-
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 

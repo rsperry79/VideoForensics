@@ -1,12 +1,14 @@
-using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
+
+using System.Security.Cryptography;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Hubs;
-using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -256,12 +258,9 @@ namespace VideoForensics.WebApp.Api
                 CancellationToken ct) =>
             {
                 string? operatorIdClaim = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
-                if (!Guid.TryParse(operatorIdClaim, out Guid operatorId))
-                {
-                    return Results.Forbid();
-                }
-
-                return Results.Ok(await credentials.ListForOperatorAsync(operatorId, ct));
+                return !Guid.TryParse(operatorIdClaim, out Guid operatorId)
+                    ? Results.Forbid()
+                    : Results.Ok(await credentials.ListForOperatorAsync(operatorId, ct));
             })
             .RequireAuthorization(VideoForensicsPolicies.ReadOnly)
             .RequireRateLimiting("auth");
@@ -326,7 +325,7 @@ namespace VideoForensics.WebApp.Api
             }
 
             // Validate mode
-            if (request.Mode != "Standard" && request.Mode != "Simple")
+            if (request.Mode is not "Standard" and not "Simple")
             {
                 return Results.BadRequest(new { error = "Invalid UI mode. Must be 'Standard' or 'Simple'." });
             }
@@ -366,7 +365,9 @@ namespace VideoForensics.WebApp.Api
     internal static class OperatorDetailsMappingExtensions
     {
         /// <summary>Projects an Operator entity to the secret-free wire DTO.</summary>
-        internal static OperatorDetailsDto ToDto(this Operator op) => new(
+        internal static OperatorDetailsDto ToDto(this Operator op)
+        {
+            return new(
             op.Id,
             op.DisplayName,
             op.Username,
@@ -384,5 +385,6 @@ namespace VideoForensics.WebApp.Api
             op.LockedOutUntilUtc,
             op.TwoFactorRequirementOverride,
             op.IsPrimarySuperAdmin);
+        }
     }
 }

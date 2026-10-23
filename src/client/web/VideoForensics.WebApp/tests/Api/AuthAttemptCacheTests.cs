@@ -37,10 +37,10 @@ namespace VideoForensics.WebApp.Tests.Api
             Guid attemptId = cache.StoreAttempt(provider, username, password);
 
             // Act
-            var result = cache.GetAndRemoveAttempt(attemptId);
+            (string? ProviderName, string? Username, string? Password)? result = cache.GetAndRemoveAttempt(attemptId);
 
             // Assert
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Equal(provider, result.Value.ProviderName);
             Assert.Equal(username, result.Value.Username);
             Assert.Equal(password, result.Value.Password);
@@ -56,7 +56,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var cache = new AuthAttemptCache(memoryCache);
 
             // Act
-            var result = cache.GetAndRemoveAttempt(Guid.NewGuid());
+            (string? ProviderName, string? Username, string? Password)? result = cache.GetAndRemoveAttempt(Guid.NewGuid());
 
             // Assert
             Assert.Null(result);
@@ -73,12 +73,12 @@ namespace VideoForensics.WebApp.Tests.Api
             Guid attemptId = cache.StoreAttempt("provider", "username", "password");
 
             // Act - first retrieval succeeds
-            var first = cache.GetAndRemoveAttempt(attemptId);
+            (string? ProviderName, string? Username, string? Password)? first = cache.GetAndRemoveAttempt(attemptId);
             // Second retrieval should fail (entry was removed on first call)
-            var second = cache.GetAndRemoveAttempt(attemptId);
+            (string? ProviderName, string? Username, string? Password)? second = cache.GetAndRemoveAttempt(attemptId);
 
             // Assert
-            Assert.NotNull(first);
+            _ = Assert.NotNull(first);
             Assert.Null(second);
 
             memoryCache.Dispose();
@@ -93,10 +93,10 @@ namespace VideoForensics.WebApp.Tests.Api
 
             // Act
             Guid attemptId = cache.StoreAttempt(null, "username", "password");
-            var result = cache.GetAndRemoveAttempt(attemptId);
+            (string? ProviderName, string? Username, string? Password)? result = cache.GetAndRemoveAttempt(attemptId);
 
             // Assert
-            Assert.NotNull(result);
+            _ = Assert.NotNull(result);
             Assert.Null(result.Value.ProviderName);
             Assert.Equal("username", result.Value.Username);
             Assert.Equal("password", result.Value.Password);
@@ -118,11 +118,11 @@ namespace VideoForensics.WebApp.Tests.Api
             // Assert
             Assert.NotEqual(id1, id2);
 
-            var result1 = cache.GetAndRemoveAttempt(id1);
-            var result2 = cache.GetAndRemoveAttempt(id2);
+            (string? ProviderName, string? Username, string? Password)? result1 = cache.GetAndRemoveAttempt(id1);
+            (string? ProviderName, string? Username, string? Password)? result2 = cache.GetAndRemoveAttempt(id2);
 
-            Assert.NotNull(result1);
-            Assert.NotNull(result2);
+            _ = Assert.NotNull(result1);
+            _ = Assert.NotNull(result2);
             Assert.Equal("user1", result1.Value.Username);
             Assert.Equal("user2", result2.Value.Username);
 
@@ -138,12 +138,12 @@ namespace VideoForensics.WebApp.Tests.Api
             var attemptIds = new System.Collections.Generic.HashSet<Guid>();
 
             // Act: Concurrent stores
-            var tasks = Enumerable.Range(0, 50).Select(i => Task.Run(() =>
+            Task[] tasks = Enumerable.Range(0, 50).Select(i => Task.Run(() =>
             {
                 Guid id = cache.StoreAttempt($"provider{i}", $"user{i}", "password");
                 lock (attemptIds)
                 {
-                    attemptIds.Add(id);
+                    _ = attemptIds.Add(id);
                 }
             })).ToArray();
 
@@ -165,13 +165,13 @@ namespace VideoForensics.WebApp.Tests.Api
                 .Select(i => cache.StoreAttempt($"provider{i}", $"user{i}", "password"))
                 .ToList();
 
-            var successCount = 0;
-            var lockObj = new object();
+            int successCount = 0;
+            object lockObj = new();
 
             // Act: Concurrent retrievals on different attempt IDs
-            var tasks = attemptIds.Select(id => Task.Run(() =>
+            Task[] tasks = attemptIds.Select(id => Task.Run(() =>
             {
-                var result = cache.GetAndRemoveAttempt(id);
+                (string? ProviderName, string? Username, string? Password)? result = cache.GetAndRemoveAttempt(id);
                 if (result != null)
                 {
                     lock (lockObj)

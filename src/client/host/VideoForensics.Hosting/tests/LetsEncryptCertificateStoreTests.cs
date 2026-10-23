@@ -1,15 +1,8 @@
-using Moq;
-
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting;
-
-using Xunit;
-
 namespace VideoForensics.Hosting.Tests
 {
     public class LetsEncryptCertificateStoreTests
     {
-        private readonly Dictionary<string, string> _rows = new();
+        private readonly Dictionary<string, string> _rows = [];
         private readonly Mock<IAppSettingRepository> _settings = new();
         private readonly Mock<ICredentialEncryptionProvider> _encryption = new();
         private readonly LetsEncryptCertificateStore _store;

@@ -19,8 +19,10 @@ namespace VideoForensics.Providers.Wyze.Services
             _isAuthenticated = false;
         }
 
-        private static string MaskForLog(string value) =>
-            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+        private static string MaskForLog(string value)
+        {
+            return string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+        }
 
         /// <summary>
         /// Authenticates with Wyze API using username and password.

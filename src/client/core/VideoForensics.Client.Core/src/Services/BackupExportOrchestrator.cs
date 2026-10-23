@@ -7,9 +7,9 @@ using System.Text;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -273,17 +273,16 @@ namespace VideoForensics.Client.Core.Services
         {
             string fullRoot = Path.GetFullPath(root);
             string fullCandidate = Path.GetFullPath(candidatePath);
-            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
-            }
-
-            return fullCandidate;
+            return !fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase)
+                ? throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.")
+                : fullCandidate;
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
     }
 }

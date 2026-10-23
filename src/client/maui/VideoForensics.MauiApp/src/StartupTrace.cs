@@ -19,7 +19,7 @@ internal static class StartupTrace
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
             File.AppendAllText(
                 LogPath,
                 DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " " + step + Environment.NewLine);

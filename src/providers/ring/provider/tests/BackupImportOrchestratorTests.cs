@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -34,7 +33,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
         public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
         public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
-        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+        public Task SaveChangesAsync(CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     public class BackupImportOrchestratorTests

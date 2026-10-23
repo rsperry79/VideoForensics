@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
 
@@ -219,12 +219,15 @@ namespace VideoForensics.WebApp.Api
         /// Maps the documented service exceptions to their status. Returns null for anything else so the
         /// exception filter lets it propagate unchanged.
         /// </summary>
-        private static IResult? TryMapFailure(Exception ex) => ex switch
+        private static IResult? TryMapFailure(Exception ex)
         {
-            KeyNotFoundException => Results.Problem(statusCode: StatusCodes.Status404NotFound),
-            InvalidOperationException => Results.Problem(statusCode: StatusCodes.Status409Conflict),
-            NotSupportedException => Results.Problem(statusCode: StatusCodes.Status501NotImplemented),
-            _ => null
-        };
+            return ex switch
+            {
+                KeyNotFoundException => Results.Problem(statusCode: StatusCodes.Status404NotFound),
+                InvalidOperationException => Results.Problem(statusCode: StatusCodes.Status409Conflict),
+                NotSupportedException => Results.Problem(statusCode: StatusCodes.Status501NotImplemented),
+                _ => null
+            };
+        }
     }
 }

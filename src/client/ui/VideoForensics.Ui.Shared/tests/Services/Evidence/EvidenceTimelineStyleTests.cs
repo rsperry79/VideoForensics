@@ -1,8 +1,10 @@
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
-using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services.Evidence;
+
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
 public class EvidenceTimelineStyle_ToneClass_Tests
 {
@@ -10,7 +12,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
 
     private static EvidenceItem EventItem(string eventType, Guid? eventId = null, MediaItem? media = null)
     {
-        var id = eventId ?? Guid.NewGuid();
+        Guid id = eventId ?? Guid.NewGuid();
         return new EvidenceItem
         {
             Key = $"event:{id}",
@@ -31,8 +33,9 @@ public class EvidenceTimelineStyle_ToneClass_Tests
         };
     }
 
-    private static EvidenceItem MediaOnlyItem(Guid mediaId) =>
-        new()
+    private static EvidenceItem MediaOnlyItem(Guid mediaId)
+    {
+        return new()
         {
             Key = $"media:{mediaId}",
             Kind = EvidenceKind.Snapshot,
@@ -51,6 +54,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
                 IsPurged = false,
             }
         };
+    }
 
     private static readonly IReadOnlySet<Guid> NothingPinned = new HashSet<Guid>();
     [Fact]
@@ -58,7 +62,6 @@ public class EvidenceTimelineStyle_ToneClass_Tests
     {
         Assert.Equal("timeline-tone-ding", EvidenceTimelineStyle.ToneClass(EventItem("ding"), NothingPinned));
     }
-
 
     [Fact]
     public void MediaOnly_NotSnapshotOrTimeLapse_IsGray()
@@ -112,7 +115,7 @@ public class EvidenceTimelineStyle_ToneClass_Tests
     [Fact]
     public void EventWithPinnedAttachedMedia_IsRed()
     {
-        var media = MediaOnlyItem(Guid.NewGuid()).Media!;
+        MediaItem media = MediaOnlyItem(Guid.NewGuid()).Media!;
         var pinned = new HashSet<Guid> { media.Id };
 
         Assert.Equal("timeline-tone-in-case", EvidenceTimelineStyle.ToneClass(EventItem("motion", media: media), pinned));

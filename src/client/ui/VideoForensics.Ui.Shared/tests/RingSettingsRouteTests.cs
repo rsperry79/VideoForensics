@@ -7,7 +7,10 @@ namespace VideoForensics.Ui.Shared.Tests;
 
 public class RingSettingsRoute_Tests
 {
-    private static Device Dev(string? provider) => new() { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Front", Type = "doorbot", ProviderName = provider };
+    private static Device Dev(string? provider)
+    {
+        return new() { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "1", Name = "Front", Type = "doorbot", ProviderName = provider };
+    }
 
     [Fact]
     public void RingSettingsRoute_IsRingDevice_RingProvider_True()
@@ -26,7 +29,7 @@ public class RingSettingsRoute_Tests
     [Fact]
     public void RingSettingsRoute_Href_BuildsDeviceRoute()
     {
-        Guid id = Guid.Parse("12345678-1234-1234-1234-123456789abc");
+        var id = Guid.Parse("12345678-1234-1234-1234-123456789abc");
 
         Assert.Equal("/devices/config/ring/12345678-1234-1234-1234-123456789abc", RingSettingsRoute.Href(id));
     }

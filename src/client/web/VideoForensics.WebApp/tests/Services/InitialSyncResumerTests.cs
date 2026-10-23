@@ -1,10 +1,12 @@
-using Xunit;
-namespace VideoForensics.WebApp.Tests.Services;
-
 using Moq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Services;
+
+using Xunit;
+
+namespace VideoForensics.WebApp.Tests.Services;
 
 public class InitialSyncResumerTests
 {
@@ -15,8 +17,8 @@ public class InitialSyncResumerTests
         var interrupted = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = false };
 
         var accounts = new Mock<IProviderAccountRepository>();
-        accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ProviderAccount> { finished, interrupted });
+        _ = accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([finished, interrupted]);
         var coordinator = new Mock<IInitialSyncCoordinator>();
 
         await new InitialSyncResumer(accounts.Object, coordinator.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<InitialSyncResumer>.Instance)
@@ -33,10 +35,10 @@ public class InitialSyncResumerTests
         var second = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", IsActive = true, InitialSyncCompleted = false };
 
         var accounts = new Mock<IProviderAccountRepository>();
-        accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ProviderAccount> { first, second });
+        _ = accounts.Setup(a => a.ListActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([first, second]);
         var coordinator = new Mock<IInitialSyncCoordinator>();
-        coordinator.Setup(c => c.RunAsync(first.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
+        _ = coordinator.Setup(c => c.RunAsync(first.Id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
 
         await new InitialSyncResumer(accounts.Object, coordinator.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<InitialSyncResumer>.Instance)
             .ResumeIncompleteAsync(CancellationToken.None);

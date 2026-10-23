@@ -1,17 +1,23 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Text.Json;
+
 using VideoForensics.Ui.Shared.Services;
+
 using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 
 public class SyncRequestBuilderTests
 {
-    private static JsonElement Json(object o) => JsonSerializer.SerializeToElement(o, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    private static JsonElement Json(object o)
+    {
+        return JsonSerializer.SerializeToElement(o, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
 
     [Fact]
     public void Build_NumericRange_UsesDaysKind()
     {
-        var r = Json(SyncRequestBuilder.Build("Events", "60", null, null));
+        JsonElement r = Json(SyncRequestBuilder.Build("Events", "60", null, null));
         Assert.Equal("Days", r.GetProperty("rangeKind").GetString());
         Assert.Equal(60, r.GetProperty("days").GetInt32());
     }
@@ -25,7 +31,7 @@ public class SyncRequestBuilderTests
     [Fact]
     public void Build_CustomRange_IncludesParsedDates()
     {
-        var r = Json(SyncRequestBuilder.Build("All", "Custom", "2026-01-02", "2026-02-03"));
+        JsonElement r = Json(SyncRequestBuilder.Build("All", "Custom", "2026-01-02", "2026-02-03"));
         Assert.Equal("Custom", r.GetProperty("rangeKind").GetString());
         Assert.StartsWith("2026-01-02", r.GetProperty("from").GetString());
         Assert.StartsWith("2026-02-03", r.GetProperty("to").GetString());
@@ -68,7 +74,7 @@ public class SyncRequestBuilderTests
     [Fact]
     public void DefaultCustomRange_Is30DaysBack()
     {
-        var (s, e) = SyncRequestBuilder.DefaultCustomRange(new DateTime(2026, 10, 17));
+        (string? s, string? e) = SyncRequestBuilder.DefaultCustomRange(new DateTime(2026, 10, 17));
         Assert.Equal("2026-09-17", s);
         Assert.Equal("2026-10-17", e);
     }

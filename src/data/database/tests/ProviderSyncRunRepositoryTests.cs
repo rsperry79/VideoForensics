@@ -39,7 +39,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ListByProviderAccountIdAsync_AddedOutOfOrder_ReturnsNewestStartedFirst()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             var t1 = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
             var t2 = new DateTime(2026, 10, 2, 8, 0, 0, DateTimeKind.Utc);
             var t3 = new DateTime(2026, 10, 3, 8, 0, 0, DateTimeKind.Utc);
@@ -55,8 +55,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task ListByProviderAccountIdAsync_RunsForOtherAccounts_ExcludesThem()
         {
-            Guid account = Guid.NewGuid();
-            Guid other = Guid.NewGuid();
+            var account = Guid.NewGuid();
+            var other = Guid.NewGuid();
             var now = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
             await _repository.AddAsync(Build(account, now), CancellationToken.None);
             await _repository.AddAsync(Build(other, now.AddMinutes(1)), CancellationToken.None);
@@ -70,7 +70,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task AddAsync_FailedRun_RoundTripsErrorMessageAndCompletion()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             ProviderSyncRun run = Build(account, new DateTime(2026, 10, 15, 9, 0, 0, DateTimeKind.Utc), success: false, error: "refresh token rejected");
             await _repository.AddAsync(run, CancellationToken.None);
 

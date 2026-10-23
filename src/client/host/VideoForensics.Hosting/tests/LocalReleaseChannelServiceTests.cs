@@ -1,7 +1,5 @@
-using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Local;
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -14,7 +15,7 @@ namespace VideoForensics.Hosting.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<EvidenceValidationJobService> _logger;
         private readonly object _gate = new();
-        private readonly Dictionary<EvidenceValidationJobKind, JobRecord> _latest = new();
+        private readonly Dictionary<EvidenceValidationJobKind, JobRecord> _latest = [];
 
         /// <summary>Creates the registry.</summary>
         public EvidenceValidationJobService(IServiceScopeFactory scopeFactory, ILogger<EvidenceValidationJobService> logger)
@@ -24,19 +25,18 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
-            StartIntegrity(deviceId is { } id ? new[] { id } : null, ct);
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        {
+            return StartIntegrity(deviceId is { } id ? new[] { id } : null, ct);
+        }
 
         /// <inheritdoc />
         public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(deviceIds);
-            if (deviceIds.Count == 0)
-            {
-                throw new ArgumentException("At least one device is required.", nameof(deviceIds));
-            }
-
-            return StartIntegrity(deviceIds.Distinct().ToArray(), ct);
+            return deviceIds.Count == 0
+                ? throw new ArgumentException("At least one device is required.", nameof(deviceIds))
+                : StartIntegrity(deviceIds.Distinct().ToArray(), ct);
         }
 
         /// <summary>
@@ -53,12 +53,9 @@ namespace VideoForensics.Hosting.Services
                 if (TryGetRunning(EvidenceValidationJobKind.Integrity, out JobRecord? running))
                 {
                     // Joining is only safe for the same devices; otherwise the caller would get results for the wrong set.
-                    if (SameScope(running!.Scope, deviceIds))
-                    {
-                        return Task.FromResult(running.Snapshot());
-                    }
-
-                    return Task.FromException<EvidenceValidationJob>(new InvalidOperationException(
+                    return SameScope(running!.Scope, deviceIds)
+                        ? Task.FromResult(running.Snapshot())
+                        : Task.FromException<EvidenceValidationJob>(new InvalidOperationException(
                         "An integrity check is already running for a different set of devices. Wait for it to finish."));
                 }
 
@@ -121,7 +118,7 @@ namespace VideoForensics.Hosting.Services
                 IEvidenceValidationService validation = scope.ServiceProvider.GetRequiredService<IEvidenceValidationService>();
                 var progress = new DelegateProgress(line => AppendLog(job, line));
 
-                List<MediaVerificationResult> results = new();
+                List<MediaVerificationResult> results = [];
                 if (deviceIds is null)
                 {
                     results.AddRange(await validation.VerifyLocalIntegrityAsync(null, CancellationToken.None, progress));
@@ -212,12 +209,7 @@ namespace VideoForensics.Hosting.Services
         /// <summary>Two integrity scopes match when both mean every device, or both list the same devices.</summary>
         private static bool SameScope(IReadOnlyList<Guid>? running, IReadOnlyList<Guid>? requested)
         {
-            if (running is null || requested is null)
-            {
-                return running is null && requested is null;
-            }
-
-            return running.ToHashSet().SetEquals(requested);
+            return running is null || requested is null ? running is null && requested is null : running.ToHashSet().SetEquals(requested);
         }
 
         /// <summary>Caller must hold <see cref="_gate"/>.</summary>
@@ -241,13 +233,16 @@ namespace VideoForensics.Hosting.Services
             job.CompletedUtc = DateTime.UtcNow;
         }
 
-        private static JobRecord NewJob(EvidenceValidationJobKind kind) => new()
+        private static JobRecord NewJob(EvidenceValidationJobKind kind)
         {
-            Id = Guid.NewGuid(),
-            Kind = kind,
-            State = EvidenceValidationJobState.Running,
-            StartedUtc = DateTime.UtcNow
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                Kind = kind,
+                State = EvidenceValidationJobState.Running,
+                StartedUtc = DateTime.UtcNow
+            };
+        }
 
         /// <summary>
         /// Synchronous <see cref="IProgress{T}"/> that runs its action inline. <see cref="System.Progress{T}"/> is
@@ -262,13 +257,16 @@ namespace VideoForensics.Hosting.Services
                 _report = report;
             }
 
-            public void Report(string value) => _report(value);
+            public void Report(string value)
+            {
+                _report(value);
+            }
         }
 
         /// <summary>Mutable job state. Only touched while holding <see cref="_gate"/>.</summary>
         private sealed class JobRecord
         {
-            private readonly List<string> _log = new();
+            private readonly List<string> _log = [];
 
             public required Guid Id { get; init; }
             public required EvidenceValidationJobKind Kind { get; init; }
@@ -299,18 +297,21 @@ namespace VideoForensics.Hosting.Services
             private const int MaxLogLines = 1000;
 
             /// <summary>Copies the current state so the caller never shares the mutable lists.</summary>
-            public EvidenceValidationJob Snapshot() => new()
+            public EvidenceValidationJob Snapshot()
             {
-                Id = Id,
-                Kind = Kind,
-                State = State,
-                StartedUtc = StartedUtc,
-                CompletedUtc = CompletedUtc,
-                Log = _log.ToArray(),
-                IntegrityResults = IntegrityResults?.ToArray(),
-                Discrepancies = Discrepancies?.ToArray(),
-                ErrorMessage = ErrorMessage
-            };
+                return new()
+                {
+                    Id = Id,
+                    Kind = Kind,
+                    State = State,
+                    StartedUtc = StartedUtc,
+                    CompletedUtc = CompletedUtc,
+                    Log = _log.ToArray(),
+                    IntegrityResults = IntegrityResults?.ToArray(),
+                    Discrepancies = Discrepancies?.ToArray(),
+                    ErrorMessage = ErrorMessage
+                };
+            }
         }
     }
 }

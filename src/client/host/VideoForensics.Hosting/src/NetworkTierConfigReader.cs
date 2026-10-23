@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
 
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting
 {

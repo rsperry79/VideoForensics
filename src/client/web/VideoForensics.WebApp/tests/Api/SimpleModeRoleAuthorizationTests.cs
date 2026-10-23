@@ -1,18 +1,19 @@
-namespace VideoForensics.WebApp.Tests.Api;
 
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using System.Security.Claims;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
+
 using Xunit;
 
+namespace VideoForensics.WebApp.Tests.Api;
 /// <summary>
 /// Tests for ChatEndpoints authorization, validation, and simple-mode specific chat flows.
 /// Covers role-based access control (ReadOnly role) and message/history validation constraints.
@@ -22,7 +23,7 @@ public class SimpleModeRoleAuthorizationTests
     private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, OperatorRole role = OperatorRole.ReadOnly)
     {
         var context = new DefaultHttpContext();
-        var claims = new[]
+        Claim[] claims = new[]
         {
             new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
             new Claim(ClaimTypes.Role, role.ToString()),
@@ -36,8 +37,10 @@ public class SimpleModeRoleAuthorizationTests
 
     private static HttpContext CreateUnauthenticatedHttpContext()
     {
-        var context = new DefaultHttpContext();
-        context.User = new ClaimsPrincipal();
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal()
+        };
         context.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
         return context;
     }
@@ -47,26 +50,26 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "What can you tell me about this evidence?"
         );
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "This is a relevant piece of evidence.",
-                ToolsInvoked = new List<string> { "analyze_tool" }
+                ToolsInvoked = ["analyze_tool"]
             });
 
         // Act & Assert
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -84,26 +87,26 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.Admin);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.Admin);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "Analyze this evidence"
         );
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Analysis complete",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -121,10 +124,10 @@ public class SimpleModeRoleAuthorizationTests
     public async Task SendChatMessage_UnauthenticatedUser_Returns401()
     {
         // Arrange
-        var context = CreateUnauthenticatedHttpContext();
+        HttpContext context = CreateUnauthenticatedHttpContext();
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "Hello"
         );
 
@@ -132,7 +135,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -149,18 +152,17 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
-            Message: ""
-        );
+            History: [],
+            Message: string.Empty);
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -180,10 +182,10 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "   \n  \t  "
         );
 
@@ -191,7 +193,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -208,11 +210,11 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
-        var longMessage = new string('x', 10_001);
+        string longMessage = new('x', 10_001);
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: longMessage
         );
 
@@ -220,7 +222,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -240,27 +242,27 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
-        var maxMessage = new string('x', 10_000);
+        string maxMessage = new('x', 10_000);
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: maxMessage
         );
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Got your message",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -279,7 +281,7 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var largeHistory = new List<ChatMessageDto>();
         for (int i = 0; i < 101; i++)
@@ -296,7 +298,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockLogger = new Mock<ILogger<Program>>();
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -316,7 +318,7 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var maxHistory = new List<ChatMessageDto>();
         for (int i = 0; i < 100; i++)
@@ -332,16 +334,16 @@ public class SimpleModeRoleAuthorizationTests
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Reply to your message",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -360,26 +362,26 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "Hello"
         );
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Hi there",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -398,20 +400,20 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "Analyze the timestamp"
         );
 
-        var expectedReply = "The timestamp indicates the event occurred at 2024-10-04 15:30:00 UTC";
+        string expectedReply = "The timestamp indicates the event occurred at 2024-10-04 15:30:00 UTC";
         var expectedTools = new List<string> { "parse_timestamp", "correlate_events" };
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
@@ -420,7 +422,7 @@ public class SimpleModeRoleAuthorizationTests
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -432,11 +434,11 @@ public class SimpleModeRoleAuthorizationTests
         var okResult = result as Microsoft.AspNetCore.Http.HttpResults.Ok<ChatResponseDto>;
         Assert.NotNull(okResult);
         // The response DTO should contain both the reply and tools invoked
-        var responseValue = okResult?.Value;
+        ChatResponseDto? responseValue = okResult?.Value;
         Assert.NotNull(responseValue);
         Assert.Equal(expectedReply, responseValue.Reply);
         Assert.Equal(expectedTools.Count, responseValue.ToolsInvoked.Count);
-        foreach (var tool in expectedTools)
+        foreach (string tool in expectedTools)
         {
             Assert.Contains(tool, responseValue.ToolsInvoked);
         }
@@ -447,26 +449,26 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var chatRequest = new ChatRequestDto(
-            History: new List<ChatMessageDto>(),
+            History: [],
             Message: "Start a new conversation"
         );
 
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "I'm ready to help",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,
@@ -484,13 +486,13 @@ public class SimpleModeRoleAuthorizationTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
+        HttpContext context = CreateAuthenticatedHttpContext(operatorId, OperatorRole.ReadOnly);
 
         var history = new List<ChatMessageDto>
         {
-            new ChatMessageDto(Role: "user", Content: "First question"),
-            new ChatMessageDto(Role: "assistant", Content: "First answer"),
-            new ChatMessageDto(Role: "user", Content: "Follow-up question")
+            new(Role: "user", Content: "First question"),
+            new(Role: "assistant", Content: "First answer"),
+            new(Role: "user", Content: "Follow-up question")
         };
 
         var chatRequest = new ChatRequestDto(
@@ -501,7 +503,7 @@ public class SimpleModeRoleAuthorizationTests
         var mockChatService = new Mock<IChatService>();
         var mockLogger = new Mock<ILogger<Program>>();
 
-        mockChatService
+        _ = mockChatService
             .Setup(s => s.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback<IReadOnlyList<ChatTurn>, string, CancellationToken>((turns, msg, ct) =>
             {
@@ -512,11 +514,11 @@ public class SimpleModeRoleAuthorizationTests
             .ReturnsAsync(new ChatTurnResult
             {
                 Reply = "Continuing the conversation",
-                ToolsInvoked = new List<string>()
+                ToolsInvoked = []
             });
 
         // Act
-        var result = await ChatEndpointsInvoker.SendChatMessageAsync(
+        IResult result = await ChatEndpointsInvoker.SendChatMessageAsync(
             chatRequest,
             mockChatService.Object,
             context,

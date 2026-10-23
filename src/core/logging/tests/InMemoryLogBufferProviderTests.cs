@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Logging.Providers;
@@ -40,8 +39,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Test message");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Equal("Information", snapshot[0].Level);
         }
 
@@ -52,8 +51,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogError("Error message");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Equal("Error", snapshot[0].Level);
         }
 
@@ -64,8 +63,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Test");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Equal("TestCategory", snapshot[0].Category);
         }
 
@@ -73,12 +72,12 @@ namespace VideoForensics.Core.Logging.Tests
         public void LogInformation_CapturesMessage()
         {
             // Act
-            var testMessage = "This is a test log message";
+            string testMessage = "This is a test log message";
             _logger.LogInformation(testMessage);
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Contains(testMessage, snapshot[0].Message);
         }
 
@@ -90,8 +89,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogError(ex, "Error occurred");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.NotNull(snapshot[0].Exception);
             Assert.Contains("InvalidOperationException", snapshot[0].Exception);
             Assert.Contains("Test exception", snapshot[0].Exception);
@@ -114,8 +113,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogError(ex, "Caught exception");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.NotNull(snapshot[0].Exception);
             Assert.Contains("NullReferenceException", snapshot[0].Exception);
             Assert.Contains("Value is null", snapshot[0].Exception);
@@ -128,8 +127,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("No exception");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Null(snapshot[0].Exception);
         }
 
@@ -137,13 +136,13 @@ namespace VideoForensics.Core.Logging.Tests
         public void LogError_WithException_TruncatedTo4000Chars()
         {
             // Act
-            var longMessage = new string('x', 5000);
+            string longMessage = new('x', 5000);
             var ex = new Exception(longMessage);
             _logger.LogError(ex, "Error");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.NotNull(snapshot[0].Exception);
             Assert.True(snapshot[0].Exception.Length <= 4000);
         }
@@ -152,13 +151,13 @@ namespace VideoForensics.Core.Logging.Tests
         public void LogInformation_CapturesTimestamp()
         {
             // Act
-            var beforeLog = DateTimeOffset.UtcNow;
+            DateTimeOffset beforeLog = DateTimeOffset.UtcNow;
             _logger.LogInformation("Test");
-            var afterLog = DateTimeOffset.UtcNow;
+            DateTimeOffset afterLog = DateTimeOffset.UtcNow;
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.True(snapshot[0].TimestampUtc >= beforeLog);
             Assert.True(snapshot[0].TimestampUtc <= afterLog);
         }
@@ -172,7 +171,7 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Message 3");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
             Assert.Equal(3, snapshot.Count);
         }
 
@@ -189,8 +188,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.Log(level, "Message at " + level.ToString());
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Equal(level.ToString(), snapshot[0].Level);
         }
 
@@ -201,8 +200,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Request with Bearer sk-token-123");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Contains("[REDACTED]", snapshot[0].Message);
             Assert.DoesNotContain("sk-token-123", snapshot[0].Message);
         }
@@ -214,8 +213,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Connect with password=MySecret");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 10);
+            _ = Assert.Single(snapshot);
             Assert.Contains("password=[REDACTED]", snapshot[0].Message);
             Assert.DoesNotContain("MySecret", snapshot[0].Message);
         }
@@ -224,14 +223,14 @@ namespace VideoForensics.Core.Logging.Tests
         public void CreateLogger_DifferentCategories()
         {
             // Act
-            var logger1 = _provider.CreateLogger("Category1");
-            var logger2 = _provider.CreateLogger("Category2");
+            ILogger logger1 = _provider.CreateLogger("Category1");
+            ILogger logger2 = _provider.CreateLogger("Category2");
 
             logger1.LogInformation("From Category1");
             logger2.LogInformation("From Category2");
 
             // Assert
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
             Assert.Equal(2, snapshot.Count);
             Assert.Equal("Category1", snapshot[0].Category);
             Assert.Equal("Category2", snapshot[1].Category);
@@ -245,12 +244,12 @@ namespace VideoForensics.Core.Logging.Tests
             _provider.Dispose();
 
             // Create a new logger from the disposed provider
-            var newLogger = _provider.CreateLogger("NewCategory");
+            ILogger newLogger = _provider.CreateLogger("NewCategory");
             newLogger.LogInformation("After dispose");
 
             // Assert - buffer should still have first entry since it's independent of provider
-            var snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
-            Assert.Single(snapshot);
+            List<LogRecord> snapshot = _buffer.GetSnapshot(minLevel: null, search: null, afterSequence: null, limit: 100);
+            _ = Assert.Single(snapshot);
             Assert.Equal("Before dispose", snapshot[0].Message);
         }
     }

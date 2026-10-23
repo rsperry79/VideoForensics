@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;

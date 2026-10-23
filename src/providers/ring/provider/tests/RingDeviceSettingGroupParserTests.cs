@@ -27,13 +27,16 @@ namespace VideoForensics.Providers.Ring.Tests
             }
             """;
 
-        private static Dictionary<string, JsonElement> Fields(string json) =>
-            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+        private static Dictionary<string, JsonElement> Fields(string json)
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+        }
+
         [Fact]
         public void RingDeviceSettingGroupParser_OfflineMotion_MapsTypedColumns()
         {
             TypedSettingDetails groups = RingDeviceSettingGroupParser.Parse(Fields(Sample));
-OfflineMotionDetail offline = Assert.IsType<OfflineMotionDetail>(groups.OfflineMotion);
+            OfflineMotionDetail offline = Assert.IsType<OfflineMotionDetail>(groups.OfflineMotion);
             Assert.Equal(true, offline.Subscribed);
             Assert.Equal(false, offline.Enabled);
             Assert.Equal(5000, offline.MaxUploadKb);
@@ -46,7 +49,7 @@ OfflineMotionDetail offline = Assert.IsType<OfflineMotionDetail>(groups.OfflineM
         public void RingDeviceSettingGroupParser_DetectionTypes_OneTypedRowPerType()
         {
             TypedSettingDetails groups = RingDeviceSettingGroupParser.Parse(Fields(Sample));
-Assert.Equal(2, groups.DetectionTypes.Count);
+            Assert.Equal(2, groups.DetectionTypes.Count);
             DetectionTypeDetail human = groups.DetectionTypes.Single(t => t.DetectionType == "human");
             Assert.Equal(true, human.Enabled);
             Assert.Equal("cloud", human.Mode);
@@ -58,7 +61,7 @@ Assert.Equal(2, groups.DetectionTypes.Count);
         public void RingDeviceSettingGroupParser_Thresholds_OnlyNumericEntries()
         {
             TypedSettingDetails groups = RingDeviceSettingGroupParser.Parse(Fields(Sample));
-Assert.Equal(2, groups.Thresholds.Count);
+            Assert.Equal(2, groups.Thresholds.Count);
             Assert.Equal(10.0, groups.Thresholds.Single(t => t.DetectionType == "loitering").Threshold);
             Assert.Equal(3.0, groups.Thresholds.Single(t => t.DetectionType == "package_delivery").Threshold);
         }

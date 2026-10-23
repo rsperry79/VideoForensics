@@ -1,7 +1,6 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+
+using System.Security.Claims;
 
 using VideoForensics.WebApp.Contracts;
 
@@ -16,12 +15,7 @@ namespace VideoForensics.WebApp.Mcp
         public async Task<bool> IsAllowedAsync(string policyName)
         {
             ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
-            if (user is null)
-            {
-                return false;
-            }
-
-            return (await authorization.AuthorizeAsync(user, null, policyName)).Succeeded;
+            return user is not null && (await authorization.AuthorizeAsync(user, null, policyName)).Succeeded;
         }
 
         public async Task RequireAsync(string policyName)

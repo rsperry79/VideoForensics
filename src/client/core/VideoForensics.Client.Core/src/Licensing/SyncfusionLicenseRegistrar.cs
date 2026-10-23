@@ -1,6 +1,6 @@
-using System.Reflection;
-
 using Microsoft.Extensions.Configuration;
+
+using System.Reflection;
 
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Helpers.Platform;

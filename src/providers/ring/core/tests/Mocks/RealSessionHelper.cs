@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
-using VideoForensics.Hosting;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting;
 using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
@@ -93,7 +93,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
         /// True when the database holds usable Ring credentials. Live tests run whenever this is true and skip
         /// otherwise, so no environment variable is needed to enable them.
         /// </summary>
-        public static bool CredentialsAvailable() => CredentialsPresent.Value;
+        public static bool CredentialsAvailable()
+        {
+            return CredentialsPresent.Value;
+        }
 
         /// <summary>Skips the calling test when no Ring credentials are saved in the database.</summary>
         public static void RequireLive()

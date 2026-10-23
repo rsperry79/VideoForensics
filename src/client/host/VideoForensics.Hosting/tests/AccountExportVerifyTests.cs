@@ -1,7 +1,3 @@
-using VideoForensics.Hosting.Services;
-
-using Xunit;
-
 namespace VideoForensics.Hosting.Tests
 {
     /// <summary>The export file must parse completely before an account is purged on its strength.</summary>
@@ -9,9 +5,15 @@ namespace VideoForensics.Hosting.Tests
     {
         private readonly string _dir = Path.Combine(Path.GetTempPath(), "vf-export-verify-" + Guid.NewGuid().ToString("N"));
 
-        public AccountExportVerifyTests() => Directory.CreateDirectory(_dir);
+        public AccountExportVerifyTests()
+        {
+            _ = Directory.CreateDirectory(_dir);
+        }
 
-        public void Dispose() => Directory.Delete(_dir, recursive: true);
+        public void Dispose()
+        {
+            Directory.Delete(_dir, recursive: true);
+        }
 
         private string Write(string content)
         {

@@ -1,12 +1,15 @@
-namespace VideoForensics.Ui.Shared.Tests;
+
+using AngleSharp.Dom;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Layout.Mobile;
@@ -16,6 +19,9 @@ using VideoForensics.Ui.Shared.Services.Cases;
 using VideoForensics.Ui.Shared.Services.Inspector;
 using VideoForensics.Ui.Shared.Services.Scope;
 
+using Xunit;
+
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for MobileFiltersSheet component.
 /// </summary>
@@ -24,29 +30,29 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     public MobileFiltersSheet_Rendering_Tests()
     {
         // Register Syncfusion services required by SfButton
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         // Don't add ScopeState here - let each test register it as needed (some tests override ScopeState).
         // Base registers CaseState, PairedSessionState, case/device repositories and TimeProvider defaults.
-        RegisterDeviceRepository();
+        _ = RegisterDeviceRepository();
 
-        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
+        _ = Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
     }
 
     [Fact]
     public void FiltersButton_IsPresent()
     {
         // Arrange
-        Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
-        RegisterDeviceRepository();
+        _ = Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
+        _ = RegisterDeviceRepository();
 
         // Act
-        var component = Render<MobileFiltersSheet>();
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
 
         // Assert
-        var filtersButton = component.FindAll("[data-testid='mobile-filters-toggle']");
+        IReadOnlyList<IElement> filtersButton = component.FindAll("[data-testid='mobile-filters-toggle']");
         Assert.NotEmpty(filtersButton);
     }
 
@@ -54,17 +60,17 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     public void FiltersButton_TogglesSheet()
     {
         // Arrange
-        Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
-        RegisterDeviceRepository();
+        _ = Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
+        _ = RegisterDeviceRepository();
 
-        var component = Render<MobileFiltersSheet>();
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
 
         // Act - click filters button to open sheet
-        var filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
+        IElement filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
         filtersButton.Click();
 
         // Assert - sheet is visible and contains ScopeRail markup
-        var sheet = component.FindAll("[data-testid='mobile-filters-sheet']");
+        IReadOnlyList<IElement> sheet = component.FindAll("[data-testid='mobile-filters-sheet']");
         Assert.NotEmpty(sheet);
 
         // Verify ScopeRail content is rendered (e.g., case picker or date inputs)
@@ -77,15 +83,15 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     public void FiltersSheet_HasCloseButton()
     {
         // Arrange
-        Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
-        RegisterDeviceRepository();
+        _ = Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
+        _ = RegisterDeviceRepository();
 
-        var component = Render<MobileFiltersSheet>();
-        var filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
+        IElement filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
         filtersButton.Click();
 
         // Act - click close button
-        var closeButton = component.Find("[data-testid='mobile-filters-close']");
+        IElement closeButton = component.Find("[data-testid='mobile-filters-close']");
         closeButton.Click();
 
         // Assert - sheet is closed
@@ -96,15 +102,15 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     public void FiltersSheetBackdrop_ClosesSheet()
     {
         // Arrange
-        Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
-        RegisterDeviceRepository();
+        _ = Services.AddScoped(sp => new ScopeState());  // Register default ScopeState
+        _ = RegisterDeviceRepository();
 
-        var component = Render<MobileFiltersSheet>();
-        var filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
+        IElement filtersButton = component.Find("[data-testid='mobile-filters-toggle']");
         filtersButton.Click();
 
         // Act - click backdrop
-        var backdrop = component.Find("[data-testid='mobile-filters-backdrop']");
+        IElement backdrop = component.Find("[data-testid='mobile-filters-backdrop']");
         backdrop.Click();
 
         // Assert - sheet is closed
@@ -116,11 +122,11 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     {
         // Arrange
         var fixedNow = new DateTime(2026, 9, 25, 12, 0, 0, DateTimeKind.Utc);
-        RegisterFakeTime(fixedNow);
-        RegisterDeviceRepository();
+        _ = RegisterFakeTime(fixedNow);
+        _ = RegisterDeviceRepository();
 
         // Act
-        var component = Render<MobileFiltersSheet>();
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
 
         // Assert - indicator should not be present with default scope
         Assert.Empty(component.FindAll("[data-testid='mobile-filters-indicator']"));
@@ -131,18 +137,18 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
     {
         // Arrange
         var fixedNow = new DateTime(2026, 9, 25, 12, 0, 0, DateTimeKind.Utc);
-        var timeProvider = RegisterFakeTime(fixedNow);
-        var device = MakeDevice("Test Camera");
-        RegisterDeviceRepository(device);
+        FakeTimeProvider timeProvider = RegisterFakeTime(fixedNow);
+        Device device = MakeDevice("Test Camera");
+        _ = RegisterDeviceRepository(device);
 
         var scopeState = new ScopeState(timeProvider);
-        Services.AddScoped(_ => scopeState);
+        _ = Services.AddScoped(_ => scopeState);
 
-        var component = Render<MobileFiltersSheet>();
+        IRenderedComponent<MobileFiltersSheet> component = Render<MobileFiltersSheet>();
 
         // Act - update scope to include a device
         var customScope = new ForensicScope(
-            DeviceIds: new List<Guid> { device.Id },
+            DeviceIds: [device.Id],
             FromUtc: fixedNow.Date.AddDays(-7),
             ToUtc: fixedNow.Date.AddDays(1),
             Search: null);
@@ -155,7 +161,6 @@ public class MobileFiltersSheet_Rendering_Tests : ScopeRailTestContext
         // Assert - indicator should now be present
         Assert.NotEmpty(component.FindAll("[data-testid='mobile-filters-indicator']"));
     }
-
 }
 
 /// <summary>
@@ -168,28 +173,28 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
 
         // Register Syncfusion services required by InspectorPanel components
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         // Register services needed by MobileInspectorDrawer
-        Services.AddScoped(sp => new InspectorState());
-        Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped(sp => new ScopeState());
+        _ = Services.AddScoped(sp => new InspectorState());
+        _ = Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(sp => new ScopeState());
 
         // Mock repositories
         var caseRepoMock = new Mock<ICaseRepository>();
-        Services.AddScoped(_ => caseRepoMock.Object);
+        _ = Services.AddScoped(_ => caseRepoMock.Object);
 
         // InspectorPanel's evidence-actions section (hold/release/verify) needs these too, even
         // though none of these tests exercise them.
-        Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
-        Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
+        _ = Services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        _ = Services.AddScoped(_ => new Mock<VideoForensics.Client.Common.Contracts.IEvidenceValidationService>().Object);
 
-        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
+        _ = Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
 
-        Services.AddSingleton(TimeProvider.System);
+        _ = Services.AddSingleton(TimeProvider.System);
     }
 
     [Fact]
@@ -197,9 +202,9 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var component = Render<MobileInspectorDrawer>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
 
         // Act / Assert - inspector drawer should not be visible
         Assert.Empty(component.FindAll("[data-testid='mobile-inspector']"));
@@ -210,9 +215,9 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var component = Render<MobileInspectorDrawer>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
         var model = new InspectorModel(Title: "Test Item", Fields: new { Id = 1 });
 
         // Act
@@ -222,7 +227,7 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         });
 
         // Assert - inspector drawer should appear with the model
-        var drawer = component.FindAll("[data-testid='mobile-inspector']");
+        IReadOnlyList<IElement> drawer = component.FindAll("[data-testid='mobile-inspector']");
         Assert.NotEmpty(drawer);
         Assert.Contains("Test Item", component.Markup);
     }
@@ -232,9 +237,9 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var component = Render<MobileInspectorDrawer>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
         var model = new InspectorModel(Title: "Test Item", Fields: new { });
         inspectorState.Show(model);
 
@@ -242,7 +247,7 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         Assert.NotEmpty(component.FindAll("[data-testid='mobile-inspector']"));
 
         // Act - click close button
-        var closeButton = component.Find("[data-testid='inspector-close']");
+        IElement closeButton = component.Find("[data-testid='inspector-close']");
         closeButton.Click();
 
         // Assert - drawer is closed and state is cleared
@@ -255,9 +260,9 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var component = Render<MobileInspectorDrawer>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
         var model = new InspectorModel(Title: "Test Item", Fields: new { });
         inspectorState.Show(model);
 
@@ -265,7 +270,7 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         Assert.NotEmpty(component.FindAll("[data-testid='mobile-inspector']"));
 
         // Act - click backdrop
-        var backdrop = component.Find("[data-testid='mobile-inspector-backdrop']");
+        IElement backdrop = component.Find("[data-testid='mobile-inspector-backdrop']");
         backdrop.Click();
 
         // Assert - drawer is closed and state is cleared
@@ -278,10 +283,10 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var navManager = Services.GetRequiredService<NavigationManager>();
-        var component = Render<MobileInspectorDrawer>();
+        NavigationManager navManager = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
 
         var model = new InspectorModel(Title: "Test Item", Fields: new { });
         inspectorState.Show(model);
@@ -305,9 +310,9 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
     {
         // Arrange
         var inspectorState = new InspectorState();
-        Services.AddScoped(_ => inspectorState);
+        _ = Services.AddScoped(_ => inspectorState);
 
-        var component = Render<MobileInspectorDrawer>();
+        IRenderedComponent<MobileInspectorDrawer> component = Render<MobileInspectorDrawer>();
         var model = new InspectorModel(
             Title: "Test Device",
             Fields: new { DeviceName = "Front Door" },
@@ -318,7 +323,7 @@ public class MobileInspectorDrawer_Rendering_Tests : BunitContext
         Assert.Contains("Test Device", component.Markup);
 
         // Verify tabs are present
-        var fieldsTabs = component.FindAll("[data-testid='inspector-tab-fields']");
+        IReadOnlyList<IElement> fieldsTabs = component.FindAll("[data-testid='inspector-tab-fields']");
         Assert.NotEmpty(fieldsTabs);
     }
 }

@@ -1,10 +1,8 @@
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Remote;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {

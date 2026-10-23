@@ -1,15 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Hosting;
+using VideoForensics.Utils.DbRepair;
 using VideoForensics.Utils.Diagnostics;
 using VideoForensics.Utils.Diagnostics.Contracts;
-using VideoForensics.Utils.DbRepair;
-using VideoForensics.Utils.DbRepair.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.Core.Helpers.Platform;
 
 // VideoForensics.Utils.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
 // and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost
@@ -105,16 +106,16 @@ if (resetSuperAdminPassword)
 
 try
 {
-    var ct = CancellationToken.None;
+    CancellationToken ct = CancellationToken.None;
 
     // Check for duplicates and orphaned records
     Console.WriteLine("\nScanning for issues...\n");
 
-    var duplicateDevices = await checker.FindDuplicateDevicesAsync(ct);
-    var duplicateEvents = await checker.FindDuplicateEventsAsync(ct);
-    var orphaned = await checker.FindOrphanedRecordsAsync(ct);
-    var redundancy = await checker.GetDetectionRedundancySummaryAsync(ct);
-    var overlap = await checker.GetDeviceFeatureOverlapAsync(ct);
+    IReadOnlyList<DuplicateGroup> duplicateDevices = await checker.FindDuplicateDevicesAsync(ct);
+    IReadOnlyList<DuplicateGroup> duplicateEvents = await checker.FindDuplicateEventsAsync(ct);
+    OrphanedRecordSummary orphaned = await checker.FindOrphanedRecordsAsync(ct);
+    DetectionRedundancySummary redundancy = await checker.GetDetectionRedundancySummaryAsync(ct);
+    DeviceFeatureOverlapSummary overlap = await checker.GetDeviceFeatureOverlapAsync(ct);
 
     // Report findings
     int totalDeleteCount = 0;
@@ -122,7 +123,7 @@ try
     if (duplicateDevices.Count > 0)
     {
         Console.WriteLine($"Found {duplicateDevices.Count} duplicate device group(s):");
-        foreach (var group in duplicateDevices)
+        foreach (DuplicateGroup group in duplicateDevices)
         {
             Console.WriteLine($"  Location {group.LocationId} / ProviderDeviceId '{group.ProviderKey}': {group.Count} duplicates (IDs: {string.Join(", ", group.RecordIds)})");
         }
@@ -139,10 +140,11 @@ try
     if (duplicateEvents.Count > 0)
     {
         Console.WriteLine($"Found {duplicateEvents.Count} duplicate event group(s):");
-        foreach (var group in duplicateEvents)
+        foreach (DuplicateGroup group in duplicateEvents)
         {
             Console.WriteLine($"  Device {group.DeviceId} / ProviderEventId '{group.ProviderKey}': {group.Count} duplicates (IDs: {string.Join(", ", group.RecordIds)})");
         }
+
         int duplicatesToDelete = duplicateEvents.Sum(g => g.Count - 1);
         Console.WriteLine($"  -> Will delete {duplicatesToDelete} duplicate record(s) if --apply is used\n");
         totalDeleteCount += duplicatesToDelete;
@@ -195,6 +197,7 @@ try
     {
         Console.WriteLine($"  -> Avg detections per media item: {redundancy.AvgDetectionsPerMediaItem}");
     }
+
     if (redundancy.AvgDetectionsPerEvent.HasValue)
     {
         Console.WriteLine($"  -> Avg detections per event: {redundancy.AvgDetectionsPerEvent}");
@@ -245,8 +248,8 @@ try
     }
 
     // Execute repairs in a transaction
-    await using var context = await factory.CreateDbContextAsync(ct);
-    await using var transaction = await context.Database.BeginTransactionAsync(ct);
+    await using VideoForensicsDbContext context = await factory.CreateDbContextAsync(ct);
+    await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync(ct);
 
     try
     {
@@ -256,10 +259,10 @@ try
         if (duplicateDevices.Count > 0)
         {
             Console.WriteLine("\nDeleting duplicate devices...");
-            foreach (var group in duplicateDevices)
+            foreach (DuplicateGroup group in duplicateDevices)
             {
                 // Get the actual device records to determine which to keep
-                var devices = await context.Devices
+                List<Device> devices = await context.Devices
                     .Where(d => d.LocationId == group.LocationId && d.ProviderDeviceId == group.ProviderKey)
                     .ToListAsync(ct);
 
@@ -267,23 +270,24 @@ try
                 var sorted = devices.OrderBy(d => d.Id).ToList();
                 var toDelete = sorted.Skip(1).ToList();
 
-                foreach (var device in toDelete)
+                foreach (Device? device in toDelete)
                 {
                     Console.WriteLine($"  Deleting Device {device.Id} (LocationId {device.LocationId}, ProviderDeviceId '{device.ProviderDeviceId}')");
-                    context.Devices.Remove(device);
+                    _ = context.Devices.Remove(device);
                     totalDeleted++;
                 }
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         // Fix duplicate events: keep earliest by DiscoveredAtUtc
         if (duplicateEvents.Count > 0)
         {
             Console.WriteLine("Deleting duplicate events...");
-            foreach (var group in duplicateEvents)
+            foreach (DuplicateGroup group in duplicateEvents)
             {
-                var events = await context.Events
+                List<Event> events = await context.Events
                     .Where(e => e.DeviceId == group.DeviceId && e.ProviderEventId == group.ProviderKey)
                     .ToListAsync(ct);
 
@@ -291,105 +295,112 @@ try
                 var sorted = events.OrderBy(e => e.DiscoveredAtUtc).ToList();
                 var toDelete = sorted.Skip(1).ToList();
 
-                foreach (var evt in toDelete)
+                foreach (Event? evt in toDelete)
                 {
                     Console.WriteLine($"  Deleting Event {evt.Id} (DeviceId {evt.DeviceId}, ProviderEventId '{evt.ProviderEventId}', DiscoveredAtUtc {evt.DiscoveredAtUtc:O})");
-                    context.Events.Remove(evt);
+                    _ = context.Events.Remove(evt);
                     totalDeleted++;
                 }
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         // Delete orphaned records
         if (orphaned.OrphanedEventCount > 0)
         {
             Console.WriteLine("Deleting orphaned events...");
-            var orphanedEvents = await context.Events
+            List<Event> orphanedEvents = await context.Events
                 .Where(e => orphaned.OrphanedEventIds.Contains(e.Id))
                 .ToListAsync(ct);
-            foreach (var evt in orphanedEvents)
+            foreach (Event? evt in orphanedEvents)
             {
                 Console.WriteLine($"  Deleting Event {evt.Id}");
-                context.Events.Remove(evt);
+                _ = context.Events.Remove(evt);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         if (orphaned.OrphanedMediaItemCount > 0)
         {
             Console.WriteLine("Deleting orphaned media items...");
-            var orphanedItems = await context.MediaItems
+            List<MediaItem> orphanedItems = await context.MediaItems
                 .Where(m => orphaned.OrphanedMediaItemIds.Contains(m.Id))
                 .ToListAsync(ct);
-            foreach (var item in orphanedItems)
+            foreach (MediaItem? item in orphanedItems)
             {
                 Console.WriteLine($"  Deleting MediaItem {item.Id}");
-                context.MediaItems.Remove(item);
+                _ = context.MediaItems.Remove(item);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         if (orphaned.OrphanedMediaItemDetectionCount > 0)
         {
             Console.WriteLine("Deleting orphaned media item detections...");
-            var orphanedDetections = await context.MediaItemDetections
+            List<MediaItemDetection> orphanedDetections = await context.MediaItemDetections
                 .Where(mid => orphaned.OrphanedMediaItemDetectionIds.Contains(mid.Id))
                 .ToListAsync(ct);
-            foreach (var detection in orphanedDetections)
+            foreach (MediaItemDetection? detection in orphanedDetections)
             {
                 Console.WriteLine($"  Deleting MediaItemDetection {detection.Id}");
-                context.MediaItemDetections.Remove(detection);
+                _ = context.MediaItemDetections.Remove(detection);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         if (orphaned.OrphanedEventDetectionCount > 0)
         {
             Console.WriteLine("Deleting orphaned event detections...");
-            var orphanedDetections = await context.EventDetections
+            List<EventDetection> orphanedDetections = await context.EventDetections
                 .Where(ed => orphaned.OrphanedEventDetectionIds.Contains(ed.Id))
                 .ToListAsync(ct);
-            foreach (var detection in orphanedDetections)
+            foreach (EventDetection? detection in orphanedDetections)
             {
                 Console.WriteLine($"  Deleting EventDetection {detection.Id}");
-                context.EventDetections.Remove(detection);
+                _ = context.EventDetections.Remove(detection);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         if (orphaned.OrphanedDeviceCount > 0)
         {
             Console.WriteLine("Deleting orphaned devices...");
-            var orphanedDevices = await context.Devices
+            List<Device> orphanedDevices = await context.Devices
                 .Where(d => orphaned.OrphanedDeviceIds.Contains(d.Id))
                 .ToListAsync(ct);
-            foreach (var device in orphanedDevices)
+            foreach (Device? device in orphanedDevices)
             {
                 Console.WriteLine($"  Deleting Device {device.Id}");
-                context.Devices.Remove(device);
+                _ = context.Devices.Remove(device);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         if (orphaned.OrphanedDownloadEventCount > 0)
         {
             Console.WriteLine("Deleting orphaned download events...");
-            var orphanedDownloads = await context.DownloadEvents
+            List<DownloadEvent> orphanedDownloads = await context.DownloadEvents
                 .Where(de => orphaned.OrphanedDownloadEventIds.Contains(de.Id))
                 .ToListAsync(ct);
-            foreach (var download in orphanedDownloads)
+            foreach (DownloadEvent? download in orphanedDownloads)
             {
                 Console.WriteLine($"  Deleting DownloadEvent {download.Id}");
-                context.DownloadEvents.Remove(download);
+                _ = context.DownloadEvents.Remove(download);
                 totalDeleted++;
             }
-            await context.SaveChangesAsync(ct);
+
+            _ = await context.SaveChangesAsync(ct);
         }
 
         await transaction.CommitAsync(ct);
@@ -417,15 +428,15 @@ static async Task<int> HandleSuperAdminRecoveryAsync(IServiceProvider provider, 
     try
     {
         using IServiceScope scope = provider.CreateScope();
-        var operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
-        var appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
-        var auditRepo = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogRepository>();
+        IOperatorRepository operatorRepo = scope.ServiceProvider.GetRequiredService<IOperatorRepository>();
+        IAppSettingRepository appSettingRepo = scope.ServiceProvider.GetRequiredService<IAppSettingRepository>();
+        ISecurityAuditLogRepository auditRepo = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogRepository>();
 
         var passwordPrompt = new TerminalPasswordPrompt();
         var recovery = new SuperAdminRecovery(operatorRepo, appSettingRepo, passwordPrompt, auditRepo);
 
         Console.WriteLine("\n=== SuperAdmin Password Recovery ===");
-        await recovery.ExecuteAsync(username, skipConfirmation, CancellationToken.None);
+        _ = await recovery.ExecuteAsync(username, skipConfirmation, CancellationToken.None);
 
         return 0;
     }

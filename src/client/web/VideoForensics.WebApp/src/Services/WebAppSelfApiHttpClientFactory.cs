@@ -34,9 +34,15 @@ namespace VideoForensics.WebApp.Services
         }
 
         /// <inheritdoc/>
-        public HttpClient CreateClient() => SelfHttpServiceExtensions.CreateSelfHttpClient(_serviceProvider, _innermostHandlerOverride);
+        public HttpClient CreateClient()
+        {
+            return SelfHttpServiceExtensions.CreateSelfHttpClient(_serviceProvider, _innermostHandlerOverride);
+        }
 
         /// <inheritdoc/>
-        public HttpClient CreateClient(string? bearerToken) => SelfHttpServiceExtensions.CreateSelfHttpClientWithBearerToken(_serviceProvider, bearerToken, _innermostHandlerOverride);
+        public HttpClient CreateClient(string? bearerToken)
+        {
+            return SelfHttpServiceExtensions.CreateSelfHttpClientWithBearerToken(_serviceProvider, bearerToken, _innermostHandlerOverride);
+        }
     }
 }

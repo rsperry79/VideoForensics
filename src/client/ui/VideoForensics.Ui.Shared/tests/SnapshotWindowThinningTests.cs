@@ -1,4 +1,5 @@
 using VideoForensics.Ui.Shared.Services.Evidence;
+
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
@@ -8,23 +9,29 @@ public class SnapshotWindowThinningTests
     private static readonly DateTime Start = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
     private static readonly Guid Device = Guid.NewGuid();
 
-    private static EvidenceItem Snapshot(Guid device, DateTime at) => new()
+    private static EvidenceItem Snapshot(Guid device, DateTime at)
     {
-        Key = Guid.NewGuid().ToString(),
-        Kind = EvidenceKind.Snapshot,
-        OccurredAtUtc = at,
-        DeviceId = device,
-        DeviceName = "Porch",
-    };
+        return new()
+        {
+            Key = Guid.NewGuid().ToString(),
+            Kind = EvidenceKind.Snapshot,
+            OccurredAtUtc = at,
+            DeviceId = device,
+            DeviceName = "Porch",
+        };
+    }
 
-    private static EvidenceItem Event(Guid device, DateTime at) => new()
+    private static EvidenceItem Event(Guid device, DateTime at)
     {
-        Key = Guid.NewGuid().ToString(),
-        Kind = EvidenceKind.Event,
-        OccurredAtUtc = at,
-        DeviceId = device,
-        DeviceName = "Porch",
-    };
+        return new()
+        {
+            Key = Guid.NewGuid().ToString(),
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = at,
+            DeviceId = device,
+            DeviceName = "Porch",
+        };
+    }
 
     [Fact]
     public void Apply_TwoSnapshotsInOneWindow_KeepsTheNewest()
@@ -32,9 +39,9 @@ public class SnapshotWindowThinningTests
         EvidenceItem early = Snapshot(Device, Start.AddMinutes(1));
         EvidenceItem late = Snapshot(Device, Start.AddMinutes(9));
 
-        var result = SnapshotWindowThinning.Apply(new[] { early, late }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> result = SnapshotWindowThinning.Apply(new[] { early, late }, _ => TimeSpan.FromMinutes(15));
 
-        Assert.Single(result);
+        _ = Assert.Single(result);
         Assert.Same(late, result[0]);
     }
 
@@ -44,7 +51,7 @@ public class SnapshotWindowThinningTests
         EvidenceItem first = Snapshot(Device, Start.AddMinutes(1));
         EvidenceItem second = Snapshot(Device, Start.AddMinutes(16));
 
-        var result = SnapshotWindowThinning.Apply(new[] { first, second }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> result = SnapshotWindowThinning.Apply(new[] { first, second }, _ => TimeSpan.FromMinutes(15));
 
         Assert.Equal(2, result.Count);
     }
@@ -52,25 +59,24 @@ public class SnapshotWindowThinningTests
     [Fact]
     public void Apply_UsesEachDevicesOwnWindow()
     {
-        Guid other = Guid.NewGuid();
+        var other = Guid.NewGuid();
         EvidenceItem a = Snapshot(Device, Start.AddMinutes(1));
         EvidenceItem b = Snapshot(Device, Start.AddMinutes(6));
         EvidenceItem c = Snapshot(other, Start.AddMinutes(1));
         EvidenceItem d = Snapshot(other, Start.AddMinutes(6));
 
         // Device has 5-minute windows (1 and 6 fall in different ones); the other device has 15-minute windows (both fall in one).
-        var result = SnapshotWindowThinning.Apply(new[] { a, b, c, d }, id => id == Device ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> result = SnapshotWindowThinning.Apply(new[] { a, b, c, d }, id => id == Device ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(15));
 
         Assert.Equal(3, result.Count);
     }
 
-
     [Fact]
     public void Apply_SameWindowDifferentDevices_KeepsOnePerDevice()
     {
-        Guid other = Guid.NewGuid();
+        var other = Guid.NewGuid();
 
-        var result = SnapshotWindowThinning.Apply(
+        IReadOnlyList<EvidenceItem> result = SnapshotWindowThinning.Apply(
             new[] { Snapshot(Device, Start.AddMinutes(1)), Snapshot(other, Start.AddMinutes(2)) },
             _ => TimeSpan.FromMinutes(15));
 
@@ -83,7 +89,7 @@ public class SnapshotWindowThinningTests
         EvidenceItem e1 = Event(Device, Start.AddMinutes(1));
         EvidenceItem e2 = Event(Device, Start.AddMinutes(2));
 
-        var result = SnapshotWindowThinning.Apply(new[] { e1, e2 }, _ => TimeSpan.FromMinutes(15));
+        IReadOnlyList<EvidenceItem> result = SnapshotWindowThinning.Apply(new[] { e1, e2 }, _ => TimeSpan.FromMinutes(15));
 
         Assert.Equal(2, result.Count);
     }

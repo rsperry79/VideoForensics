@@ -335,7 +335,7 @@ namespace VideoForensics.Client.Core.Tests
                 JammingIncidentRecord? existing = Stored.FirstOrDefault(i => i.Id == incident.Id);
                 if (existing != null)
                 {
-                    Stored.Remove(existing);
+                    _ = Stored.Remove(existing);
                 }
 
                 var saved = new JammingIncidentRecord
@@ -367,20 +367,28 @@ namespace VideoForensics.Client.Core.Tests
             }
 
             public Task<JammingIncidentRecord?> GetIncidentAsync(Guid incidentId, CancellationToken ct)
-                => Task.FromResult(Stored.FirstOrDefault(i => i.Id == incidentId));
+            {
+                return Task.FromResult(Stored.FirstOrDefault(i => i.Id == incidentId));
+            }
 
             public Task<JammingStatsSummary?> GetStatsAsync(Guid deviceId, CancellationToken ct)
-                => Task.FromResult<JammingStatsSummary?>(new JammingStatsSummary
+            {
+                return Task.FromResult<JammingStatsSummary?>(new JammingStatsSummary
                 {
                     DeviceId = deviceId,
                     IncidentCount = Stored.Count(i => i.DeviceId == deviceId)
                 });
+            }
 
             public Task<IReadOnlyList<JammingStatsSummary>> ListStatsAsync(CancellationToken ct)
-                => Task.FromResult<IReadOnlyList<JammingStatsSummary>>([]);
+            {
+                return Task.FromResult<IReadOnlyList<JammingStatsSummary>>([]);
+            }
 
             public Task<JammingStatsSummary> RecomputeStatsAsync(Guid deviceId, CancellationToken ct)
-                => Task.FromResult(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = Stored.Count(i => i.DeviceId == deviceId) });
+            {
+                return Task.FromResult(new JammingStatsSummary { DeviceId = deviceId, IncidentCount = Stored.Count(i => i.DeviceId == deviceId) });
+            }
         }
 
         [Fact]
@@ -391,7 +399,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // 10 baseline, 3 degraded, 6 baseline, 3 degraded, 4 baseline (two separate jamming runs).
             int[] rssi = [.. Enumerable.Repeat(-40, 10), -60, -62, -59, .. Enumerable.Repeat(-40, 6), -61, -60, -63, .. Enumerable.Repeat(-40, 4)];
-            List<DeviceHealth> readings = rssi
+            var readings = rssi
                 .Select((v, i) => new DeviceHealth { DeviceId = deviceId, WifiSignalRssi = v, CapturedAtUtc = t0.AddMinutes(i) })
                 .ToList();
             DateTime from = t0.AddMinutes(-1);
@@ -400,7 +408,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _healthRepositoryMock
                 .Setup(r => r.GetHistoryAsync(deviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid _, DateTime f, DateTime t, CancellationToken _) =>
-                    (IReadOnlyList<DeviceHealth>)readings.Where(r => r.CapturedAtUtc >= f && r.CapturedAtUtc <= t).OrderBy(r => r.CapturedAtUtc).ToList());
+                    readings.Where(r => r.CapturedAtUtc >= f && r.CapturedAtUtc <= t).OrderBy(r => r.CapturedAtUtc).ToList());
             var remote = new RemoteSemanticsJammingRepository();
             var orchestrator = new JammingToolsOrchestrator(_loggerMock.Object, remote, _healthRepositoryMock.Object);
 

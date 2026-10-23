@@ -1,12 +1,10 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -14,7 +12,9 @@ namespace VideoForensics.Hosting.Tests
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-        private static EvidenceValidationJobDto BuildDto(Guid id, string kind, string state) => new(
+        private static EvidenceValidationJobDto BuildDto(Guid id, string kind, string state)
+        {
+            return new(
             Id: id,
             Kind: kind,
             State: state,
@@ -22,11 +22,12 @@ namespace VideoForensics.Hosting.Tests
             CompletedUtc: new DateTime(2026, 1, 2, 3, 9, 5, DateTimeKind.Utc),
             Log: new[] { "03:04:05 started", "03:09:05 failed" },
             IntegrityResults: null,
-            Discrepancies: new List<ReconciliationDiscrepancyDto>
-            {
+            Discrepancies:
+            [
                 new(DiscrepancyType.MissingFromProvider, "event-456", null, null, null)
-            },
+            ],
             ErrorMessage: "provider timeout");
+        }
 
         [Fact]
         public async Task StartIntegrityAsync_CallsIntegrityJobRoute()

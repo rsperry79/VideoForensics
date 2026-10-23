@@ -45,7 +45,10 @@ namespace VideoForensics.WebApp.Services
         }
 
         /// <inheritdoc />
-        public Task RunInitialSyncAsync(Guid accountId, CancellationToken ct) => RunAsync(accountId, ct);
+        public Task RunInitialSyncAsync(Guid accountId, CancellationToken ct)
+        {
+            return RunAsync(accountId, ct);
+        }
 
         /// <inheritdoc />
         public async Task RunAsync(Guid accountId, CancellationToken ct)

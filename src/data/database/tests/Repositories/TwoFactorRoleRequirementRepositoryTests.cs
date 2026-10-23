@@ -1,4 +1,4 @@
-﻿using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -24,20 +24,20 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             // Assert: Should return four synthesized rows (one per role) with RequireTwoFactor=true
             Assert.NotNull(requirements);
             Assert.Equal(4, requirements.Count);
-            
-            var readOnlyReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.ReadOnly);
+
+            TwoFactorRoleRequirement? readOnlyReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.ReadOnly);
             Assert.NotNull(readOnlyReq);
             Assert.True(readOnlyReq.RequireTwoFactor);
 
-            var reviewReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.Review);
+            TwoFactorRoleRequirement? reviewReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.Review);
             Assert.NotNull(reviewReq);
             Assert.True(reviewReq.RequireTwoFactor);
 
-            var adminReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.Admin);
+            TwoFactorRoleRequirement? adminReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.Admin);
             Assert.NotNull(adminReq);
             Assert.True(adminReq.RequireTwoFactor);
 
-            var superAdminReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.SuperAdmin);
+            TwoFactorRoleRequirement? superAdminReq = requirements.FirstOrDefault(r => r.Role == OperatorRole.SuperAdmin);
             Assert.NotNull(superAdminReq);
             Assert.True(superAdminReq.RequireTwoFactor);
         }
@@ -101,7 +101,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             // Assert: Verify it was updated (still one row, not two)
             IReadOnlyList<TwoFactorRoleRequirement> allReqs = await _repository.GetAllAsync(CancellationToken.None);
             var reviewRows = allReqs.Where(r => r.Role == OperatorRole.Review).ToList();
-            Assert.Single(reviewRows); // Only one row for Review role
+            _ = Assert.Single(reviewRows); // Only one row for Review role
             Assert.False(reviewRows[0].RequireTwoFactor);
         }
 

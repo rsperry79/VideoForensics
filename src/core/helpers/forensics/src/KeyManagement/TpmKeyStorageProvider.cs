@@ -184,7 +184,10 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
             return CngKey.Create(CngAlgorithm.Rsa, KeyName(keyId), parameters);
         }
 
-        private static string KeyName(string keyId) => KeyNamePrefix + keyId;
+        private static string KeyName(string keyId)
+        {
+            return KeyNamePrefix + keyId;
+        }
 
         private static CngKey? OpenIfExists(string keyId)
         {
@@ -225,12 +228,9 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
         private IEnumerable<ManifestEntry> ReadManifest()
         {
-            if (!File.Exists(_manifestPath))
-            {
-                return Array.Empty<ManifestEntry>();
-            }
-
-            return File.ReadAllLines(_manifestPath)
+            return !File.Exists(_manifestPath)
+                ? Array.Empty<ManifestEntry>()
+                : File.ReadAllLines(_manifestPath)
                 .Select(line => line.Split('\t'))
                 .Where(parts => parts.Length == 2)
                 .Select(parts => new ManifestEntry(parts[0], DateTime.Parse(parts[1], null, System.Globalization.DateTimeStyles.RoundtripKind)))
@@ -239,7 +239,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
 
         private void AppendManifest(string keyId, DateTime createdUtc)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_manifestPath)!);
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(_manifestPath)!);
             File.AppendAllText(_manifestPath, keyId + "\t" + createdUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + Environment.NewLine);
         }
 

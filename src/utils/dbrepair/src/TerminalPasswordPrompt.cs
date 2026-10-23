@@ -48,7 +48,7 @@ public class TerminalPasswordPrompt : IPasswordPrompt
             }
             else if (!char.IsControl(key.KeyChar))
             {
-                password.Append(key.KeyChar);
+                _ = password.Append(key.KeyChar);
             }
         }
 

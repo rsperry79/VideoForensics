@@ -27,7 +27,7 @@ namespace VideoForensics.Core.Providers.Core
         /// </returns>
         public static async Task<string?> DetectAsync(string ffmpegPath, CancellationToken cancellationToken = default)
         {
-            var lazy = Cache.GetOrAdd(
+            Lazy<Task<string?>> lazy = Cache.GetOrAdd(
                 ffmpegPath,
                 path => new Lazy<Task<string?>>(() => ProbeAsync(path))
             );
@@ -58,8 +58,10 @@ namespace VideoForensics.Core.Providers.Core
         /// An array of strings to prepend before '-i' in the ffmpeg command line.
         /// Returns empty array if hwAccelMethod is null or empty, otherwise returns ["-hwaccel", hwAccelMethod].
         /// </returns>
-        public static string[] BuildDecodeArgs(string? hwAccelMethod) =>
-            string.IsNullOrEmpty(hwAccelMethod) ? Array.Empty<string>() : new[] { "-hwaccel", hwAccelMethod };
+        public static string[] BuildDecodeArgs(string? hwAccelMethod)
+        {
+            return string.IsNullOrEmpty(hwAccelMethod) ? Array.Empty<string>() : new[] { "-hwaccel", hwAccelMethod };
+        }
 
         /// <summary>
         /// Probes the ffmpeg executable to find the first available hardware-acceleration method.
@@ -68,11 +70,11 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         private static async Task<string?> ProbeAsync(string ffmpegPath)
         {
-            var candidates = OperatingSystem.IsWindows()
+            string[] candidates = OperatingSystem.IsWindows()
                 ? new[] { "d3d11va", "cuda", "qsv", "dxva2" }
                 : new[] { "vaapi", "cuda", "qsv" };
 
-            foreach (var candidate in candidates)
+            foreach (string? candidate in candidates)
             {
                 if (await TryProbeMethod(ffmpegPath, candidate).ConfigureAwait(false))
                 {
@@ -102,32 +104,28 @@ namespace VideoForensics.Core.Providers.Core
                     CreateNoWindow = true
                 };
 
-                using (var process = new Process { StartInfo = psi })
+                using var process = new Process { StartInfo = psi };
+                _ = process.Start();
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
                 {
-                    process.Start();
-
-                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                    await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+                    return process.ExitCode == 0;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Timeout: method is not available
+                    try
                     {
-                        try
-                        {
-                            await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
-                            return process.ExitCode == 0;
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Timeout: method is not available
-                            try
-                            {
-                                process.Kill();
-                            }
-                            catch
-                            {
-                                // Ignore errors during cleanup
-                            }
-
-                            return false;
-                        }
+                        process.Kill();
                     }
+                    catch
+                    {
+                        // Ignore errors during cleanup
+                    }
+
+                    return false;
                 }
             }
             catch

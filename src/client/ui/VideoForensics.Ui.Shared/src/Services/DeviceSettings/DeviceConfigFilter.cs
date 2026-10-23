@@ -9,18 +9,22 @@ namespace VideoForensics.Ui.Shared.Services.DeviceSettings;
 public static class DeviceConfigFilter
 {
     /// <summary>The distinct linked provider names, sorted, for the provider filter's options.</summary>
-    public static IReadOnlyList<string> ProviderOptions(IEnumerable<Device> devices) =>
-        devices
+    public static IReadOnlyList<string> ProviderOptions(IEnumerable<Device> devices)
+    {
+        return devices
             .Select(d => d.ProviderName)
             .Where(n => !string.IsNullOrEmpty(n))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(n => n, StringComparer.Ordinal)
             .Select(n => n!)
             .ToList();
+    }
 
     /// <summary>Devices linked to <paramref name="providerName"/>, or every device when it is null or empty.</summary>
-    public static IReadOnlyList<Device> Filter(IEnumerable<Device> devices, string? providerName) =>
-        string.IsNullOrEmpty(providerName)
+    public static IReadOnlyList<Device> Filter(IEnumerable<Device> devices, string? providerName)
+    {
+        return string.IsNullOrEmpty(providerName)
             ? devices.ToList()
             : devices.Where(d => d.ProviderName == providerName).ToList();
+    }
 }

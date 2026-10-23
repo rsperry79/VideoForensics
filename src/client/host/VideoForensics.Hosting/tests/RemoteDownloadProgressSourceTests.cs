@@ -1,13 +1,9 @@
 using System.Reactive.Subjects;
 
-using Moq;
-
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Ui.Shared.Contracts;
-
-using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -42,8 +38,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var subject = new Subject<DownloadProgressDto>();
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
             var source = new RemoteDownloadProgressSource(store.Object);
 
             DownloadProgressSnapshot? received = null;
@@ -75,8 +71,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var subject = new Subject<DownloadProgressDto>();
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
             var source = new RemoteDownloadProgressSource(store.Object);
             DownloadProgressDto dto = BuildDto() with { CurrentDeviceName = null };
 
@@ -95,14 +91,14 @@ namespace VideoForensics.Hosting.Tests
             DownloadProgressDto latest = BuildDto(["already shown"]);
             var subject = new BehaviorSubject<DownloadProgressDto>(latest);
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns(latest);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns(latest);
             var source = new RemoteDownloadProgressSource(store.Object);
 
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
 
-            Assert.Single(received);
+            _ = Assert.Single(received);
             Assert.Empty(received[0].Activity);
             Assert.Equal(2, received[0].FilesCompleted);
         }
@@ -113,12 +109,12 @@ namespace VideoForensics.Hosting.Tests
             DownloadProgressDto latest = BuildDto(["already shown"]);
             var subject = new BehaviorSubject<DownloadProgressDto>(latest);
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns(latest);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns(latest);
             var source = new RemoteDownloadProgressSource(store.Object);
 
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
             subject.OnNext(BuildDto(["fresh line"]));
 
             Assert.Equal(2, received.Count);
@@ -130,8 +126,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var subject = new Subject<DownloadProgressDto>();
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
             var source = new RemoteDownloadProgressSource(store.Object);
 
             using IDisposable subscription = source.Progress.Subscribe(_ => { });
@@ -146,8 +142,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var subject = new Subject<DownloadProgressDto>();
             var store = new Mock<IRealtimeStore>();
-            store.SetupGet(s => s.DownloadProgress).Returns(subject);
-            store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
+            _ = store.SetupGet(s => s.DownloadProgress).Returns(subject);
+            _ = store.SetupGet(s => s.LatestDownloadProgress).Returns((DownloadProgressDto?)null);
             var source = new RemoteDownloadProgressSource(store.Object);
 
             IDisposable subscription = source.Progress.Subscribe(_ => { });

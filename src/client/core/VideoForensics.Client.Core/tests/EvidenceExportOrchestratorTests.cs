@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -42,7 +41,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange: Setup mocks and test directory - use relative path for export
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
             string relativeExportPath = "test-export-log-injection";
 
             try
@@ -68,7 +67,7 @@ namespace VideoForensics.Client.Core.Tests
 
                 _ = _mediaItemRepositoryMock
                     .Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult((MediaItem?)mediaItem));
+                    .Returns(Task.FromResult(mediaItem));
 
                 _ = _integrityVerificationServiceMock
                     .Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))
@@ -121,7 +120,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange: Setup mocks and test directory
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
             string relativeExportPath = "test-export-normal";
 
             try
@@ -147,7 +146,7 @@ namespace VideoForensics.Client.Core.Tests
 
                 _ = _mediaItemRepositoryMock
                     .Setup(r => r.GetAsync(mediaItemId, It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult((MediaItem?)mediaItem));
+                    .Returns(Task.FromResult(mediaItem));
 
                 _ = _integrityVerificationServiceMock
                     .Setup(s => s.VerifyAsync(mediaItemId, It.IsAny<CancellationToken>()))

@@ -4,17 +4,23 @@ namespace VideoForensics.Ui.Shared.Services.Devices;
 public static class DeviceTypeNames
 {
     /// <summary>Human-readable name for a stored device type. Unknown types are shown with their words capitalised.</summary>
-    public static string Display(string? type) => type?.ToLowerInvariant() switch
+    public static string Display(string? type)
     {
-        "doorbot" or "authorized_doorbot" => "Doorbell",
-        "stickup_cam" => "Stick Up Cam",
-        "chime" => "Chime",
-        "base_station" => "Base Station",
-        "range_extender" => "Range Extender",
-        null or "" => "Unknown",
-        _ => string.Join(" ", type.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0]) + w[1..]))
-    };
+        return type?.ToLowerInvariant() switch
+        {
+            "doorbot" or "authorized_doorbot" => "Doorbell",
+            "stickup_cam" => "Stick Up Cam",
+            "chime" => "Chime",
+            "base_station" => "Base Station",
+            "range_extender" => "Range Extender",
+            null or string.Empty => "Unknown",
+            _ => string.Join(" ", type.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0]) + w[1..]))
+        };
+    }
 
     /// <summary>True for a camera type. Snapshots and time lapses exist only for cameras.</summary>
-    public static bool IsCamera(string? type) => type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+    public static bool IsCamera(string? type)
+    {
+        return type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+    }
 }

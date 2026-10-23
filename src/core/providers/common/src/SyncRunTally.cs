@@ -30,22 +30,40 @@ namespace VideoForensics.Core.Providers.Common
         }
 
         /// <inheritdoc />
-        public void MarkConfigRan() => _configRan = true;
+        public void MarkConfigRan()
+        {
+            _configRan = true;
+        }
 
         /// <inheritdoc />
-        public void AddConfigArea() => _configAreas++;
+        public void AddConfigArea()
+        {
+            _configAreas++;
+        }
 
         /// <inheritdoc />
-        public void AddEventsPulled(int count) => _eventsPulled += count;
+        public void AddEventsPulled(int count)
+        {
+            _eventsPulled += count;
+        }
 
         /// <inheritdoc />
-        public void AddEventsAlreadyPresent(int count) => _eventsAlreadyPresent += count;
+        public void AddEventsAlreadyPresent(int count)
+        {
+            _eventsAlreadyPresent += count;
+        }
 
         /// <inheritdoc />
-        public void AddEventsNotPulled(int count) => _eventsNotPulled += count;
+        public void AddEventsNotPulled(int count)
+        {
+            _eventsNotPulled += count;
+        }
 
         /// <inheritdoc />
-        public void AddFeedFailure() => _feedsFailed++;
+        public void AddFeedFailure()
+        {
+            _feedsFailed++;
+        }
 
         /// <inheritdoc />
         public void SetInventory(int locationCount, int deviceCount)
@@ -55,7 +73,9 @@ namespace VideoForensics.Core.Providers.Common
         }
 
         /// <inheritdoc />
-        public SyncRunTotals Snapshot() =>
-            new(_configRan, _locations, _devices, _configAreas, _eventsPulled + _eventsAlreadyPresent, _feedsFailed, _eventsNotPulled, _eventsAlreadyPresent);
+        public SyncRunTotals Snapshot()
+        {
+            return new(_configRan, _locations, _devices, _configAreas, _eventsPulled + _eventsAlreadyPresent, _feedsFailed, _eventsNotPulled, _eventsAlreadyPresent);
+        }
     }
 }

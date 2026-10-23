@@ -1,75 +1,88 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-using Microsoft.AspNetCore.Components;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Scope;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
 using VideoForensics.Ui.Shared.Services.Scope;
+
+using Xunit;
+
 using Device = VideoForensics.Data.Common.Entities.Device;
 
+namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>The rail's Provider and Account filters narrow the device list and scope the investigation to it.</summary>
 public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
 {
     public ScopeRail_ProviderAccountFilter_Tests()
     {
-        Services.AddScoped(_ => new ScopeState());
+        _ = Services.AddScoped(_ => new ScopeState());
 
         // Overrides the base's Open-only case repository: this rail test also queries with a nullable status.
         var caseRepository = new Mock<ICaseRepository>();
-        caseRepository
+        _ = caseRepository
             .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ForensicCase>());
-        Services.AddScoped(_ => caseRepository.Object);
+            .ReturnsAsync([]);
+        _ = Services.AddScoped(_ => caseRepository.Object);
     }
 
-    private static Device MakeDevice(string name, Guid locationId) => new()
+    private static Device MakeDevice(string name, Guid locationId)
     {
-        Id = Guid.NewGuid(),
-        LocationId = locationId,
-        ProviderDeviceId = Guid.NewGuid().ToString(),
-        Name = name,
-        Type = "camera",
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            LocationId = locationId,
+            ProviderDeviceId = Guid.NewGuid().ToString(),
+            Name = name,
+            Type = "camera",
+        };
+    }
 
-    private static ProviderAccount MakeAccount(string providerName) => new()
+    private static ProviderAccount MakeAccount(string providerName)
     {
-        Id = Guid.NewGuid(),
-        UserId = Guid.NewGuid(),
-        ProviderName = providerName,
-        LinkedUtc = DateTime.UtcNow,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            ProviderName = providerName,
+            LinkedUtc = DateTime.UtcNow,
+        };
+    }
 
-    private static Location MakeLocation() => new()
+    private static Location MakeLocation()
     {
-        Id = Guid.NewGuid(),
-        ProviderLocationId = Guid.NewGuid().ToString(),
-        Name = "Home",
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            ProviderLocationId = Guid.NewGuid().ToString(),
+            Name = "Home",
+        };
+    }
 
-    private IReadOnlyList<string> VisibleDeviceIds(IRenderedComponent<ScopeRail> component) =>
-        component.FindAll("input[data-device-id]").Select(i => i.GetAttribute("data-device-id")!).ToList();
+    private IReadOnlyList<string> VisibleDeviceIds(IRenderedComponent<ScopeRail> component)
+    {
+        return component.FindAll("input[data-device-id]").Select(i => i.GetAttribute("data-device-id")!).ToList();
+    }
 
     [Fact]
     public void ProviderPicked_ShowsOnlyThatProvidersDevices_AndScopesToThem()
     {
-        var ringAccount = MakeAccount("Ring");
-        var wyzeAccount = MakeAccount("Wyze");
-        var ringLocation = MakeLocation();
-        var wyzeLocation = MakeLocation();
-        var ringDevice = MakeDevice("Ring Front", ringLocation.Id);
-        var wyzeDevice = MakeDevice("Wyze Garage", wyzeLocation.Id);
+        ProviderAccount ringAccount = MakeAccount("Ring");
+        ProviderAccount wyzeAccount = MakeAccount("Wyze");
+        Location ringLocation = MakeLocation();
+        Location wyzeLocation = MakeLocation();
+        Device ringDevice = MakeDevice("Ring Front", ringLocation.Id);
+        Device wyzeDevice = MakeDevice("Wyze Garage", wyzeLocation.Id);
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository
+        _ = deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device> { ringDevice, wyzeDevice });
-        Services.AddScoped(_ => deviceRepository.Object);
+            .ReturnsAsync([ringDevice, wyzeDevice]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
 
         ScopeOwnershipTestDoubles.Register(
             Services,
@@ -80,7 +93,7 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
                 [wyzeAccount.Id] = new[] { wyzeLocation },
             });
 
-        var component = Render<ScopeRail>();
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
         Assert.Equal(2, VisibleDeviceIds(component).Count);
 
         component.Find("[data-testid='scope-provider-filter']").Change("Ring");
@@ -92,18 +105,18 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
     [Fact]
     public void AccountPicked_ShowsOnlyThatAccountsDevices()
     {
-        var ringAccount = MakeAccount("Ring");
-        var otherRingAccount = MakeAccount("Ring");
-        var ringLocation = MakeLocation();
-        var otherLocation = MakeLocation();
-        var ringDevice = MakeDevice("Ring Front", ringLocation.Id);
-        var otherDevice = MakeDevice("Ring Back", otherLocation.Id);
+        ProviderAccount ringAccount = MakeAccount("Ring");
+        ProviderAccount otherRingAccount = MakeAccount("Ring");
+        Location ringLocation = MakeLocation();
+        Location otherLocation = MakeLocation();
+        Device ringDevice = MakeDevice("Ring Front", ringLocation.Id);
+        Device otherDevice = MakeDevice("Ring Back", otherLocation.Id);
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository
+        _ = deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device> { ringDevice, otherDevice });
-        Services.AddScoped(_ => deviceRepository.Object);
+            .ReturnsAsync([ringDevice, otherDevice]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
 
         ScopeOwnershipTestDoubles.Register(
             Services,
@@ -114,7 +127,7 @@ public class ScopeRail_ProviderAccountFilter_Tests : ScopeRailTestContext
                 [otherRingAccount.Id] = new[] { otherLocation },
             });
 
-        var component = Render<ScopeRail>();
+        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
 
         component.Find("[data-testid='scope-account-filter']").Change(otherRingAccount.Id.ToString());
 

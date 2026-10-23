@@ -56,7 +56,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<OperatorPreferences> SetUiModeAsync(Guid operatorId, string uiMode, bool locked, CancellationToken ct)
         {
             // Validate uiMode
-            if (uiMode != "Standard" && uiMode != "Simple")
+            if (uiMode is not "Standard" and not "Simple")
             {
                 throw new ArgumentException($"UiMode must be either 'Standard' or 'Simple', but got '{uiMode}'.", nameof(uiMode));
             }

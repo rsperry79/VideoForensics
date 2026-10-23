@@ -1,4 +1,5 @@
 using Bogus;
+
 using VideoForensics.Providers.Ring.Entities;
 
 namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
@@ -19,43 +20,43 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
                 .RuleFor(e => e.Answered, f => false)
                 .RuleFor(e => e.Favorite, f => false)
                 .RuleFor(e => e.Doorbot, f => GetDefaultDoorbot()) // Default Doorbot includes realistic test values
-                .RuleFor(e => e.CvProperties, f => null as CvProperties);
+                .RuleFor(e => e.CvProperties, f => null);
         }
 
         public SnapshotEventBuilder WithId(long id)
         {
-            _faker.RuleFor(e => e.Id, f => id);
+            _ = _faker.RuleFor(e => e.Id, f => id);
             return this;
         }
 
         public SnapshotEventBuilder WithKind(string kind)
         {
-            _faker.RuleFor(e => e.Kind, f => kind);
+            _ = _faker.RuleFor(e => e.Kind, f => kind);
             return this;
         }
 
         public SnapshotEventBuilder WithCreatedAt(DateTime createdAt)
         {
             // Ring API returns ISO-8601 datetime strings, not DateTime objects
-            _faker.RuleFor(e => e.CreatedAt, f => createdAt.ToString("o"));
+            _ = _faker.RuleFor(e => e.CreatedAt, f => createdAt.ToString("o"));
             return this;
         }
 
         public SnapshotEventBuilder WithDoorbot(Doorbot doorbot)
         {
-            _faker.RuleFor(e => e.Doorbot, f => doorbot);
+            _ = _faker.RuleFor(e => e.Doorbot, f => doorbot);
             return this;
         }
 
         public SnapshotEventBuilder WithCvProperties(CvProperties cvProperties)
         {
-            _faker.RuleFor(e => e.CvProperties, f => cvProperties);
+            _ = _faker.RuleFor(e => e.CvProperties, f => cvProperties);
             return this;
         }
 
         public SnapshotEventBuilder WithPersonDetection(bool detected, int confidence = 95)
         {
-            _faker.RuleFor(e => e.CvProperties, (f, evt) =>
+            _ = _faker.RuleFor(e => e.CvProperties, (f, evt) =>
             {
                 CvProperties cvProps = evt.CvProperties ?? new CvProperties();
                 cvProps.PersonDetected = detected;
@@ -68,13 +69,14 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
 
         public SnapshotEventBuilder WithMotionDetection(bool detected)
         {
-            _faker.RuleFor(e => e.CvProperties, (f, evt) =>
+            _ = _faker.RuleFor(e => e.CvProperties, (f, evt) =>
             {
                 CvProperties cvProps = evt.CvProperties ?? new CvProperties();
                 if (detected)
                 {
                     cvProps.DetectionType = "motion";
                 }
+
                 return cvProps;
             });
             return this;
@@ -82,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
 
         public SnapshotEventBuilder WithDefaultDoorbot()
         {
-            _faker.RuleFor(e => e.Doorbot, f => GetDefaultDoorbot());
+            _ = _faker.RuleFor(e => e.Doorbot, f => GetDefaultDoorbot());
             return this;
         }
 

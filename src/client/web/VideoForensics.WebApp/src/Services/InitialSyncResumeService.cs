@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+
 using VideoForensics.Hosting.BackgroundServices;
 
 namespace VideoForensics.WebApp.Services

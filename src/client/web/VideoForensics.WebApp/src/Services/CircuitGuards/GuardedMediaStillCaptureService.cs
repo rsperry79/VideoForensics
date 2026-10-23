@@ -19,12 +19,9 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             string capturedBy,
             CancellationToken ct)
         {
-            if (!gate.Allows(AccessPolicy.Review))
-            {
-                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Review));
-            }
-
-            return inner.CaptureStillAsync(sourceMediaItemId, frameOffsetMs, clientPngBase64, caseId, pinReason, capturedBy, ct);
+            return !gate.Allows(AccessPolicy.Review)
+                ? throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Review))
+                : inner.CaptureStillAsync(sourceMediaItemId, frameOffsetMs, clientPngBase64, caseId, pinReason, capturedBy, ct);
         }
     }
 }

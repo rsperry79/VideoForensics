@@ -66,7 +66,6 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             _ = Assert.IsType<TpmKeyStorageProvider>(provider);
         }
 
-
         [Fact]
         public void CreateDpapiProvider_Always_ReturnsDpapiProvider()
         {

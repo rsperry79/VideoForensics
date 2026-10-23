@@ -34,7 +34,7 @@ namespace VideoForensics.Hosting
         public string Store(string optionsJson)
         {
             string nonce = Guid.NewGuid().ToString("N");
-            _cache.Set(nonce, optionsJson, new MemoryCacheEntryOptions
+            _ = _cache.Set(nonce, optionsJson, new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = CeremonyLifetime
             });

@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+
+using System.Reflection;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.WebApp.Api;
@@ -19,7 +22,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ILogger<Program> logger,
             CancellationToken ct)
         {
-            var method = typeof(ChatEndpoints)
+            MethodInfo? method = typeof(ChatEndpoints)
                 .GetMethod("SendChatMessageAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -27,10 +30,12 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find SendChatMessageAsync method");
+            }
 
-            var result = method.Invoke(null, [request, chatService, context, logger, ct]);
-            return await (dynamic)result;
+            object? result = method.Invoke(null, [request, chatService, context, logger, ct]);
+            return await result;
         }
     }
 }

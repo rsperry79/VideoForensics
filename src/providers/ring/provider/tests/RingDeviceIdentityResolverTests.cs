@@ -18,7 +18,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task EnsureDeviceIdentityAsync_DoorbellKindOffline_StoresDoorbellTypeAndNotOnline()
         {
-            var dataClient = CreateDataClient();
+            Mock<IVideoForensicsDataClient> dataClient = CreateDataClient();
             var resolver = new RingDeviceIdentityResolver(dataClient.Object, new Mock<ILogger>().Object);
             resolver.SetActiveProviderAccountId(Guid.NewGuid());
 
@@ -32,7 +32,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task EnsureDeviceIdentityAsync_ChimeKindOnline_StoresChimeTypeAndOnline()
         {
-            var dataClient = CreateDataClient();
+            Mock<IVideoForensicsDataClient> dataClient = CreateDataClient();
             var resolver = new RingDeviceIdentityResolver(dataClient.Object, new Mock<ILogger>().Object);
             resolver.SetActiveProviderAccountId(Guid.NewGuid());
 
@@ -46,7 +46,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task EnsureDeviceIdentityAsync_MissingKind_StoresUnknownType()
         {
-            var dataClient = CreateDataClient();
+            Mock<IVideoForensicsDataClient> dataClient = CreateDataClient();
             var resolver = new RingDeviceIdentityResolver(dataClient.Object, new Mock<ILogger>().Object);
             resolver.SetActiveProviderAccountId(Guid.NewGuid());
 
@@ -60,14 +60,14 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task EnsureDeviceIdentityAsync_UnknownOnlineState_StoresNullOnline()
         {
-            var dataClient = CreateDataClient();
+            Mock<IVideoForensicsDataClient> dataClient = CreateDataClient();
             var resolver = new RingDeviceIdentityResolver(dataClient.Object, new Mock<ILogger>().Object);
             resolver.SetActiveProviderAccountId(Guid.NewGuid());
 
             _ = await resolver.EnsureDeviceIdentityAsync("789", "Unknown Thing", "loc-1", "chime_v2", null, CancellationToken.None);
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
-                It.IsAny<Guid>(), "789", "Unknown Thing", "chime", (bool?)null,
+                It.IsAny<Guid>(), "789", "Unknown Thing", "chime", null,
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 

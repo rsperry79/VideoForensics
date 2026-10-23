@@ -43,17 +43,11 @@ namespace VideoForensics.Hosting
         public async Task<DateTime> GetLastUpdatedAtUtcAsync(CancellationToken ct)
         {
             string? updatedAtStr = await _settings.GetAsync(UpdatedAtUtcKey, ct);
-            if (string.IsNullOrEmpty(updatedAtStr))
-            {
-                return DateTime.MinValue;
-            }
-
-            if (DateTime.TryParseExact(updatedAtStr, "O", null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime result))
-            {
-                return result;
-            }
-
-            return DateTime.MinValue;
+            return string.IsNullOrEmpty(updatedAtStr)
+                ? DateTime.MinValue
+                : DateTime.TryParseExact(updatedAtStr, "O", null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime result)
+                ? result
+                : DateTime.MinValue;
         }
 
         public async Task<bool> IsEnabledAsync(string methodName, CancellationToken ct)
@@ -77,7 +71,7 @@ namespace VideoForensics.Hosting
         public async Task<bool> UpdateAsync(UpdateAuthMethodSettingsRequest request, CancellationToken ct)
         {
             // Get current settings to calculate new state
-            var current = await GetAsync(ct);
+            AuthMethodSettingsDto current = await GetAsync(ct);
 
             // Determine new state for validation
             bool newPasswordEnabled = request.PasswordEnabled ?? current.PasswordEnabled;

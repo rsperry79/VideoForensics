@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
+            _ = migrationBuilder.AddColumn<bool>(
                 name: "InitialSyncCompleted",
                 table: "ProviderAccounts",
                 type: "INTEGER",
@@ -19,13 +19,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             // Existing accounts finished their first sync before this flag existed, so they start true and skip the
             // validate-all catch-up. The column default stays false (matches the model); this UPDATE is the backfill.
-            migrationBuilder.Sql("UPDATE ProviderAccounts SET InitialSyncCompleted = 1;");
+            _ = migrationBuilder.Sql("UPDATE ProviderAccounts SET InitialSyncCompleted = 1;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            _ = migrationBuilder.DropColumn(
                 name: "InitialSyncCompleted",
                 table: "ProviderAccounts");
         }
