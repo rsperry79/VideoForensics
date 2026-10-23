@@ -179,7 +179,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device) || !device.HealthCaptureEnabled)
                         {
                             continue;
                         }
@@ -343,7 +343,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                     foreach (DeviceHealthReading reading in readings)
                     {
-                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device))
+                        if (!devicesByProviderId.TryGetValue(reading.ProviderDeviceId, out Data.Common.Entities.Device? device) || !device.HealthCaptureEnabled)
                         {
                             continue;
                         }
