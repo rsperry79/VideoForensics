@@ -1,6 +1,6 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Server-side <see cref="IMultiProviderAuthService"/> that constructs an <see cref="IProviderAuthService"/>

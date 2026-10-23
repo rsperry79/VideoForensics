@@ -1,6 +1,6 @@
 using VideoForensics.Data.Core.Models;
 
-namespace VideoForensics.Ui.Shared.Services.Analysis;
+namespace VideoForensics.Client.Ui.Shared.Services.Analysis;
 
 /// <summary>
 /// Combines per-device analysis reports into one report. The server builds each report for a single device (or
@@ -11,7 +11,7 @@ public static class AnalysisReportMerge
 {
     public static ForensicAnalysisReport Merge(IReadOnlyList<ForensicAnalysisReport> reports)
     {
-        var first = reports[0];
+        ForensicAnalysisReport first = reports[0];
         return new ForensicAnalysisReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
@@ -26,7 +26,7 @@ public static class AnalysisReportMerge
 
     public static SignalAnomalyReport Merge(IReadOnlyList<SignalAnomalyReport> reports)
     {
-        var first = reports[0];
+        SignalAnomalyReport first = reports[0];
         return new SignalAnomalyReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),
@@ -39,7 +39,7 @@ public static class AnalysisReportMerge
 
     public static AccessControlReport Merge(IReadOnlyList<AccessControlReport> reports)
     {
-        var first = reports[0];
+        AccessControlReport first = reports[0];
         return new AccessControlReport
         {
             GeneratedAtUtc = reports.Max(r => r.GeneratedAtUtc),

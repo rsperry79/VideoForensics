@@ -1,4 +1,4 @@
-﻿using Fido2NetLib;
+using Fido2NetLib;
 using Fido2NetLib.Objects;
 
 using Microsoft.AspNetCore.Identity;
@@ -8,14 +8,14 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Operator (human user) authentication endpoints for username-first passwordless and password-based login (plan Â§5.11/Â§5.12).
@@ -32,7 +32,7 @@ namespace VideoForensics.WebApp.Api
         /// Dummy operator used for consistent password verification timing (timing-attack mitigation).
         /// Fields are minimal since we only use this for password hash verification, never for real operations.
         /// </summary>
-        private static readonly Operator DummyOperator = new Operator
+        private static readonly Operator DummyOperator = new()
         {
             Id = Guid.Empty,
             DisplayName = "Dummy",
@@ -158,8 +158,9 @@ namespace VideoForensics.WebApp.Api
         /// The passkeys offered at username sign-in: approved and active only, most recently used first. Every such passkey is
         /// kept, so an operator with several is never locked out; the order only puts the last one used first.
         /// </summary>
-        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials, bool allCredentials = false) =>
-            credentials
+        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials, bool allCredentials = false)
+        {
+            return credentials
                 .Where(c => c.IsApproved && c.IsActive)
                 .OrderByDescending(c => c.LastUsedAtUtc ?? DateTime.MinValue)
                 // Single-passkey mode offers only the most recent one; the fallback offers all of them.
@@ -169,7 +170,7 @@ namespace VideoForensics.WebApp.Api
                     Convert.FromBase64String(c.WebAuthnCredentialId),
                     new[] { AuthenticatorTransport.Internal }))
                 .ToList();
-
+        }
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(
             UsernameAssertionOptionsRequest request,
@@ -630,7 +631,7 @@ namespace VideoForensics.WebApp.Api
         private static async Task<PasswordCheck> VerifyPasswordAsync(
             LoginPasswordRequest request,
             IOperatorRepository operators,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             ISecurityAuditLogger auditLog,
             INetworkTierResolver tierResolver,
             ISessionTierHeaderProtector headerProtector,
@@ -647,7 +648,7 @@ namespace VideoForensics.WebApp.Api
             // Resolve the caller's source IP address early for all subsequent checks
             string sourceIpString = tierResolver.ResolveClientIp(context);
             IPAddress? sourceIp = null;
-            if (IPAddress.TryParse(sourceIpString, out var parsedIp))
+            if (IPAddress.TryParse(sourceIpString, out IPAddress? parsedIp))
             {
                 sourceIp = parsedIp;
             }
@@ -828,7 +829,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,
@@ -915,7 +916,7 @@ namespace VideoForensics.WebApp.Api
 
             return Results.Ok(new
             {
-                sessionToken = sessionToken,
+                sessionToken,
                 operatorId = op.Id,
                 role = op.Role.ToString(),
                 mustChangePassword = op.MustChangePassword,
@@ -945,7 +946,7 @@ namespace VideoForensics.WebApp.Api
             IThreatIntelBlocklistService threatIntelService,
             IGeoIpLookupService geoIpService,
             ISecurityAuditService auditService,
-            VideoForensics.Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
+            Hosting.Contracts.IAuthMethodSettingsService authMethodsService,
             IFailedLoginIpTracker failedLoginIpTracker,
             HttpContext context,
             ILogger<Program> logger,
@@ -1159,11 +1160,8 @@ namespace VideoForensics.WebApp.Api
 
             // Get the primary SuperAdmin operator
             Operator? primaryAdmin = allOps.FirstOrDefault(o => o.IsPrimarySuperAdmin);
-            if (primaryAdmin == null)
-            {
-                // Fallback to any SuperAdmin if primary doesn't exist
-                primaryAdmin = allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
-            }
+            // Fallback to any SuperAdmin if primary doesn't exist
+            primaryAdmin ??= allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
 
             if (primaryAdmin == null)
             {
@@ -1197,7 +1195,6 @@ namespace VideoForensics.WebApp.Api
             // Return temporary password (only time it's shown in plaintext)
             return Results.Ok(new { temporaryPassword });
         }
-
     }
 
     // Request/response DTOs
@@ -1215,6 +1212,4 @@ namespace VideoForensics.WebApp.Api
 
     internal record PendingCredentialRegistration(Guid OperatorId, string Label, string OptionsJson);
 }
-
-
 

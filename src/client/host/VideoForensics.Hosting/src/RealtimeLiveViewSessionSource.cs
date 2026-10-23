@@ -2,10 +2,10 @@ using System.Reactive.Linq;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// <see cref="ILiveViewSessionSource"/> over <see cref="RealtimeHub"/>. It maps each
@@ -37,12 +37,16 @@ namespace VideoForensics.Hosting
         public bool IsConnected => _hub.IsLiveHubConnected;
 
         /// <inheritdoc />
-        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken) =>
-            _hub.SubscribeLiveViewAsync(sessionId, cancellationToken);
+        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            return _hub.SubscribeLiveViewAsync(sessionId, cancellationToken);
+        }
 
         /// <inheritdoc />
-        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) =>
-            _hub.UnsubscribeLiveViewAsync(sessionId, cancellationToken);
+        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            return _hub.UnsubscribeLiveViewAsync(sessionId, cancellationToken);
+        }
     }
 
     /// <summary>Maps live-view telemetry sample DTOs from the realtime hub back to domain entities.</summary>

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services.Time;
+namespace VideoForensics.Client.Ui.Shared.Services.Time;
 
 /// <summary>
 /// The zone a signed-in user's times are displayed in. Stored times are UTC; this converts them for display.
@@ -15,16 +15,23 @@ public sealed record UserTimeZone(TimeZoneInfo Zone)
     public static UserTimeZone Unavailable { get; } = new(TimeZoneInfo.Utc);
 
     /// <summary>Returns the instant as a UTC-kind value. Unspecified kinds are treated as UTC; local kinds go through UTC first.</summary>
-    public static DateTime AsUtc(DateTime value) =>
+    public static DateTime AsUtc(DateTime value)
+    {
         // Local-kind values carry the machine offset; normalise to UTC before converting to the user's zone.
-        value.Kind == DateTimeKind.Local
+        return value.Kind == DateTimeKind.Local
             ? value.ToUniversalTime()
             : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
 
     /// <summary>Converts a stored instant into this zone.</summary>
-    public DateTime ToLocal(DateTime value) => TimeZoneInfo.ConvertTimeFromUtc(AsUtc(value), Zone);
+    public DateTime ToLocal(DateTime value)
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(AsUtc(value), Zone);
+    }
 
     /// <summary>Formats a stored instant in this zone with the given format string, using the current culture.</summary>
-    public string Format(DateTime value, string? format) =>
-        ToLocal(value).ToString(format, CultureInfo.CurrentCulture);
+    public string Format(DateTime value, string? format)
+    {
+        return ToLocal(value).ToString(format, CultureInfo.CurrentCulture);
+    }
 }

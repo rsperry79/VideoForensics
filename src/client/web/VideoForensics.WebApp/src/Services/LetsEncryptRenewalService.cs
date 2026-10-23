@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using VideoForensics.Client.WebApp.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Checks the certificate every 12 hours and renews it inside the 30-day window. The first check runs at
@@ -27,7 +26,7 @@ namespace VideoForensics.WebApp.Services
                 try
                 {
                     using IServiceScope scope = _scopes.CreateScope();
-                    var manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
+                    LetsEncryptCertificateManager manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
                     CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken);
                     if (!result.Success)
                     {

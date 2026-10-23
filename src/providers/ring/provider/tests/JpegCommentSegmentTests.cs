@@ -50,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public void Insert_CommentTooLongForSegment_Throws()
         {
             // A JPEG segment length is 16-bit and includes its own two bytes, so the payload is capped at 65533.
-            string tooLong = new string('x', 65534);
+            string tooLong = new('x', 65534);
 
             _ = Assert.Throws<ArgumentException>(() => JpegCommentSegment.Insert(MinimalJpeg, tooLong));
         }

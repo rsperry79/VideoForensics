@@ -1,17 +1,22 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-using Microsoft.AspNetCore.Components;
+using Bunit.Rendering;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
-using ValidateEvidencePage = VideoForensics.Ui.Shared.Pages.ValidateEvidence;
-using Device = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Client.Ui.Shared.Services;
 
+using Xunit;
+
+using Device = VideoForensics.Data.Common.Entities.Device;
+using ValidateEvidencePage = VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Verify starts one integrity job over every device the filter leaves visible.</summary>
 public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
 {
@@ -19,7 +24,7 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
 
     public ValidateEvidence_DeviceList_Tests()
     {
-        Services.AddScoped(_ => _jobs.Object);
+        _ = Services.AddScoped(_ => _jobs.Object);
     }
 
     [Fact]
@@ -31,19 +36,19 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         var otherDevice = new Device { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), ProviderDeviceId = "x", Name = "Other", Type = "camera" };
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { ownDevice, otherDevice });
-        deviceRepository.Setup(m => m.GetByLocationIdAsync(ownLocation.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { ownDevice });
-        Services.AddScoped(_ => deviceRepository.Object);
+        _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([ownDevice, otherDevice]);
+        _ = deviceRepository.Setup(m => m.GetByLocationIdAsync(ownLocation.Id, It.IsAny<CancellationToken>())).ReturnsAsync([ownDevice]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
         ScopeOwnershipTestDoubles.Register(
             Services,
             new[] { account },
             new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { ownLocation } });
         var locationRepository = new Mock<ILocationRepository>();
-        locationRepository.Setup(m => m.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Location> { ownLocation });
-        Services.AddScoped(_ => locationRepository.Object);
+        _ = locationRepository.Setup(m => m.ListByProviderAccountIdAsync(account.Id, It.IsAny<CancellationToken>())).ReturnsAsync([ownLocation]);
+        _ = Services.AddScoped(_ => locationRepository.Object);
         await SignInOperatorAsync();
 
-        var page = Render<ValidateEvidencePage>(p => p.Add(c => c.AccountId, account.Id));
+        IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>(p => p.Add(c => c.AccountId, account.Id));
         page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Run local validation").Click();
 
         // The account's devices are passed explicitly: a null target would mean every device in the system.
@@ -65,20 +70,20 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { front, back });
-        Services.AddScoped(_ => deviceRepository.Object);
+        _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([front, back]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
         ScopeOwnershipTestDoubles.Register(
             Services,
             new[] { account },
             new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { frontLocation, backLocation } });
         await SignInOperatorAsync();
 
-        var page = Render<ValidateEvidencePage>();
-        var panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
+        IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>();
+        IRenderedComponent<ContainerFragment> panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
         panel.Find("[data-testid='provider-filter']").Change("Ring");
 
         // The integrity tab is also labelled "Validate locally"; the action button is the one labelled exactly "Verify".
-        var verify = page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Run local validation");
+        AngleSharp.Dom.IElement verify = page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Run local validation");
         verify.Click();
 
         _jobs.Verify(
@@ -99,8 +104,8 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         var back = new Device { Id = Guid.NewGuid(), LocationId = backLocation.Id, ProviderDeviceId = "b", Name = "Back", Type = "camera" };
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { front, back });
-        Services.AddScoped(_ => deviceRepository.Object);
+        _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([front, back]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
         // The filter only reaches Front, so a stale filter would verify one device; a reset verifies both.
         ScopeOwnershipTestDoubles.Register(
             Services,
@@ -108,8 +113,8 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
             new Dictionary<Guid, IReadOnlyList<Location>> { [account.Id] = new[] { frontLocation } });
         await SignInOperatorAsync();
 
-        var page = Render<ValidateEvidencePage>();
-        var panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
+        IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>();
+        IRenderedComponent<ContainerFragment> panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
         panel.Find("[data-testid='provider-filter']").Change("Ring");
 
         // Leave the integrity tab and come back: the controls are rebuilt at "all", and the page must agree.

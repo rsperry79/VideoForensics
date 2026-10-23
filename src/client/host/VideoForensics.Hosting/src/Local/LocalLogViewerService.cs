@@ -1,8 +1,9 @@
 using System.Runtime.CompilerServices;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
 
-namespace VideoForensics.Hosting.Local
+namespace VideoForensics.Client.Hosting.Local
 {
     /// <summary>
     /// In-process <see cref="ILogViewerService"/> that reads the host's own <see cref="InMemoryLogBuffer"/>, so MAUI
@@ -50,7 +51,7 @@ namespace VideoForensics.Hosting.Local
             IEnumerable<LogRecord> kept = truncated && query.AfterSequence is null
                 ? snapshot.Skip(snapshot.Count - clampedLimit)
                 : snapshot.Take(clampedLimit);
-            List<LogEntry> entries = kept.Select(ToEntry).ToList();
+            var entries = kept.Select(ToEntry).ToList();
 
             return Task.FromResult(new LogPage(entries, _buffer.LatestSequence, truncated));
         }
@@ -91,11 +92,19 @@ namespace VideoForensics.Hosting.Local
             }
         }
 
-        private static int ClampLimit(int limit) => limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
+        private static int ClampLimit(int limit)
+        {
+            return limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
+        }
 
-        private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
+        private static string? NullIfEmpty(string? value)
+        {
+            return string.IsNullOrEmpty(value) ? null : value;
+        }
 
         private static LogEntry ToEntry(LogRecord record)
-            => new(record.Sequence, record.TimestampUtc, record.Level, record.Category, record.Message, record.Exception);
+        {
+            return new(record.Sequence, record.TimestampUtc, record.Level, record.Category, record.Message, record.Exception);
+        }
     }
 }

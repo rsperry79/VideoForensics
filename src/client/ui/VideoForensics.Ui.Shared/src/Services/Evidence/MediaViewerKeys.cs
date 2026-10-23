@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Maps keyboard inputs to media viewer actions.
@@ -20,32 +20,56 @@ public static class MediaViewerKeys
 
         // Navigation keys (work for both image and video)
         if (key == "ArrowLeft")
+        {
             return MediaViewerAction.Previous;
+        }
+
         if (key == "ArrowRight")
+        {
             return MediaViewerAction.Next;
+        }
+
         if (key == "Escape")
+        {
             return MediaViewerAction.Close;
+        }
 
         // Image-only keys (zoom)
         if (!isVideo)
         {
-            if (key == "+" || key == "=")
+            if (key is "+" or "=")
+            {
                 return MediaViewerAction.ZoomIn;
+            }
+
             if (key == "-")
+            {
                 return MediaViewerAction.ZoomOut;
+            }
         }
 
         // Video-only keys
         if (isVideo)
         {
             if (key == " ")
+            {
                 return MediaViewerAction.TogglePlay;
+            }
+
             if (key == ",")
+            {
                 return MediaViewerAction.FrameBack;
+            }
+
             if (key == ".")
+            {
                 return MediaViewerAction.FrameForward;
-            if (key == "s" || key == "S")
+            }
+
+            if (key is "s" or "S")
+            {
                 return MediaViewerAction.GrabStill;
+            }
         }
 
         return MediaViewerAction.None;

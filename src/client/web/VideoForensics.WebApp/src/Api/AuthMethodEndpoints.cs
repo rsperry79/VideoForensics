@@ -1,11 +1,11 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for managing login method (auth method) settings: which authentication methods
@@ -38,7 +38,7 @@ namespace VideoForensics.WebApp.Api
             IAuthMethodSettingsService authMethodsService,
             CancellationToken ct)
         {
-            var settings = await authMethodsService.GetAsync(ct);
+            AuthMethodSettingsDto settings = await authMethodsService.GetAsync(ct);
 
             var authMethodsDto = new AuthMethodsDto(
                 Password: settings.PasswordEnabled,
@@ -51,7 +51,7 @@ namespace VideoForensics.WebApp.Api
             IAuthMethodSettingsService authMethodsService,
             CancellationToken ct)
         {
-            var settings = await authMethodsService.GetAsync(ct);
+            AuthMethodSettingsDto settings = await authMethodsService.GetAsync(ct);
             return Results.Ok(settings);
         }
 
@@ -75,7 +75,7 @@ namespace VideoForensics.WebApp.Api
                 Guid.TryParse(operatorIdClaim, out Guid actingOperatorId) ? actingOperatorId : null,
                 null, tierResolver.ResolveClientIp(context), details, isUrgent: true, ct);
 
-            var settings = await authMethodsService.GetAsync(ct);
+            AuthMethodSettingsDto settings = await authMethodsService.GetAsync(ct);
             return Results.Ok(settings);
         }
 
@@ -84,10 +84,14 @@ namespace VideoForensics.WebApp.Api
             var parts = new List<string>();
 
             if (request.PasswordEnabled.HasValue)
+            {
                 parts.Add($"Password: {(request.PasswordEnabled.Value ? "enabled" : "disabled")}");
+            }
 
             if (request.PasskeyEnabled.HasValue)
+            {
                 parts.Add($"Passkey: {(request.PasskeyEnabled.Value ? "enabled" : "disabled")}");
+            }
 
             return string.Join(", ", parts);
         }

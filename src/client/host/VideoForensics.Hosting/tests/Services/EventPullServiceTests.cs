@@ -1,10 +1,9 @@
-namespace VideoForensics.Hosting.Tests.Services
-{
-    using VideoForensics.Core.Providers.Common.Contracts;
-    using LocationEntity = VideoForensics.Data.Common.Entities.Location;
-    using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
-    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+using VideoForensics.Core.Providers.Common.Contracts;
 
+using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
+namespace VideoForensics.Client.Hosting.Tests.Services
+{
     public class EventPullServiceTests
     {
         private readonly Mock<IEventAndConfigService> _mockEventAndConfigService;
@@ -38,7 +37,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -67,7 +66,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             var events = new List<DeviceEvent>
             {
-                new DeviceEvent(
+                new(
                     Id: "event-1",
                     DeviceId: "device-123",
                     EventType: "motion",
@@ -82,12 +81,12 @@ namespace VideoForensics.Hosting.Tests.Services
                 RecordingMode: "always"
             );
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 accountId,
                 "device-123",
                 DateTime.MinValue,
@@ -96,11 +95,11 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ReturnsAsync(events);
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
+            _ = _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
                 .ReturnsAsync(config);
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
+            _ = await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -122,8 +121,8 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var lastAuthTime = DateTime.UtcNow.AddDays(-1);
-            var cancellationToken = CancellationToken.None;
+            DateTime lastAuthTime = DateTime.UtcNow.AddDays(-1);
+            CancellationToken cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -151,25 +150,25 @@ namespace VideoForensics.Hosting.Tests.Services
                 Type = "doorbell"
             };
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 accountId,
                 "device-123",
                 lastAuthTime,
                 It.IsAny<DateTime>(),
                 null,
                 cancellationToken
-            )).ReturnsAsync(new List<DeviceEvent>());
+            )).ReturnsAsync([]);
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
+            _ = _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: lastAuthTime, toTimestampUtc: null, cancellationToken);
+            _ = await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: lastAuthTime, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -189,7 +188,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -216,25 +215,25 @@ namespace VideoForensics.Hosting.Tests.Services
                 Type = "doorbell"
             };
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 null,
                 cancellationToken
-            )).ReturnsAsync(new List<DeviceEvent>());
+            )).ReturnsAsync([]);
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
+            _ = _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
+            _ = await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockProviderAccountRepository.Verify(r => r.UpdateAsync(
@@ -254,7 +253,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -281,25 +280,25 @@ namespace VideoForensics.Hosting.Tests.Services
                 Type = "doorbell"
             };
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
                 null,
                 cancellationToken
-            )).ReturnsAsync(new List<DeviceEvent>());
+            )).ReturnsAsync([]);
 
-            _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
+            _ = _mockEventAndConfigService.Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
+            _ = await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             _mockDeviceRepository.Verify(r => r.UpdateAsync(
@@ -319,8 +318,8 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            var errorMessage = "Failed to connect to provider";
-            var cancellationToken = CancellationToken.None;
+            string errorMessage = "Failed to connect to provider";
+            CancellationToken cancellationToken = CancellationToken.None;
             VideoForensics.Data.Common.Entities.ProviderAccount? capturedAccount = null;
 
             var account = new ProviderAccountEntity
@@ -348,12 +347,12 @@ namespace VideoForensics.Hosting.Tests.Services
                 Type = "doorbell"
             };
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, _mockDiscovery, _mockLocationRepository, _mockDeviceRepository);
 
-            _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
+            _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(
                 It.IsAny<Guid>(),
                 It.IsAny<string>(),
                 It.IsAny<DateTime>(),
@@ -362,18 +361,18 @@ namespace VideoForensics.Hosting.Tests.Services
                 cancellationToken
             )).ThrowsAsync(new InvalidOperationException(errorMessage));
 
-            _mockProviderAccountRepository.Setup(r => r.UpdateAsync(It.IsAny<VideoForensics.Data.Common.Entities.ProviderAccount>(), cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.UpdateAsync(It.IsAny<VideoForensics.Data.Common.Entities.ProviderAccount>(), cancellationToken))
                 .Callback<VideoForensics.Data.Common.Entities.ProviderAccount, CancellationToken>((acc, ct) => capturedAccount = acc)
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
+            _ = await _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken);
 
             // Assert
             Assert.NotNull(capturedAccount);
             Assert.Equal(accountId, capturedAccount.Id);
             Assert.NotNull(capturedAccount.LastErrorMessage);
-            Assert.NotNull(capturedAccount.LastErrorUtc);
+            _ = Assert.NotNull(capturedAccount.LastErrorUtc);
             Assert.True(capturedAccount.LastErrorMessage.Contains(errorMessage));
         }
 
@@ -383,7 +382,7 @@ namespace VideoForensics.Hosting.Tests.Services
             // Arrange
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -401,17 +400,17 @@ namespace VideoForensics.Hosting.Tests.Services
                 Name = "Home"
             };
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
-            _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
+            _ = _mockLocationRepository.Setup(r => r.ListByProviderAccountIdAsync(accountId, cancellationToken))
                 .ReturnsAsync(new[] { location });
 
-            _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
+            _ = _mockDeviceRepository.Setup(r => r.GetByLocationIdAsync(locationId, cancellationToken))
                 .ReturnsAsync(Array.Empty<DeviceEntity>());
 
             // Act
-            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
+            Exception? ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
 
             // Assert
             Assert.Null(ex);
@@ -423,13 +422,13 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             // Arrange
             var accountId = Guid.NewGuid();
-            var cancellationToken = CancellationToken.None;
+            CancellationToken cancellationToken = CancellationToken.None;
 
-            _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
+            _ = _mockProviderAccountRepository.Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync((ProviderAccountEntity?)null);
 
             // Act
-            var ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
+            Exception? ex = await Record.ExceptionAsync(() => _sut.PullAccountEventsAsync(accountId, fromTimestampUtc: null, toTimestampUtc: null, cancellationToken));
 
             // Assert
             Assert.Null(ex);

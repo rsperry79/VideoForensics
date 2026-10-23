@@ -1,19 +1,18 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
+using System.Security.Claims;
+
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Hubs;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LiveHubLiveViewSubscriptionTests
     {
@@ -29,8 +28,8 @@ namespace VideoForensics.WebApp.Tests
             IServiceScopeFactory scopeFactory = services.GetRequiredService<IServiceScopeFactory>();
 
             var context = new Mock<HubCallerContext>();
-            context.Setup(c => c.ConnectionId).Returns(ConnectionId);
-            context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
+            _ = context.Setup(c => c.ConnectionId).Returns(ConnectionId);
+            _ = context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
 
             var groups = new Mock<IGroupManager>();
 
@@ -48,10 +47,10 @@ namespace VideoForensics.WebApp.Tests
         public async Task SubscribeLiveView_UnknownSession_ThrowsHubException()
         {
             (LiveHub hub, Mock<IGroupManager> groups, Mock<ILiveViewSessionRepository> sessions) = BuildHub();
-            Guid sessionId = Guid.NewGuid();
-            sessions.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync((LiveViewSession?)null);
+            var sessionId = Guid.NewGuid();
+            _ = sessions.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>())).ReturnsAsync((LiveViewSession?)null);
 
-            await Assert.ThrowsAsync<HubException>(() => hub.SubscribeLiveView(sessionId));
+            _ = await Assert.ThrowsAsync<HubException>(() => hub.SubscribeLiveView(sessionId));
 
             groups.Verify(g => g.AddToGroupAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -60,8 +59,8 @@ namespace VideoForensics.WebApp.Tests
         public async Task SubscribeLiveView_ValidSession_AddsConnectionToSessionGroup()
         {
             (LiveHub hub, Mock<IGroupManager> groups, Mock<ILiveViewSessionRepository> sessions) = BuildHub();
-            Guid sessionId = Guid.NewGuid();
-            sessions.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
+            var sessionId = Guid.NewGuid();
+            _ = sessions.Setup(r => r.GetByIdAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new LiveViewSession { Id = sessionId });
 
             await hub.SubscribeLiveView(sessionId);
@@ -75,7 +74,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnsubscribeLiveView_ValidSession_RemovesConnectionFromGroup()
         {
             (LiveHub hub, Mock<IGroupManager> groups, _) = BuildHub();
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
 
             await hub.UnsubscribeLiveView(sessionId);
 

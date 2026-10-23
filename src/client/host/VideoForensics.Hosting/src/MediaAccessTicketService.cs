@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 using System.Text.Json;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Issues and validates short-lived, media-specific access tickets for use in URL query strings.
@@ -47,7 +47,7 @@ namespace VideoForensics.Hosting
 
         public MediaAccessTicket Issue(Guid mediaItemId, Guid operatorId)
         {
-            var expiresAt = _timeProvider.GetUtcNow().UtcDateTime.Add(Lifetime);
+            DateTime expiresAt = _timeProvider.GetUtcNow().UtcDateTime.Add(Lifetime);
             var payload = new MediaAccessPayload(mediaItemId, operatorId, expiresAt);
             string token = _protector.Protect(JsonSerializer.Serialize(payload));
             return new MediaAccessTicket(token, expiresAt);
@@ -63,22 +63,11 @@ namespace VideoForensics.Hosting
             try
             {
                 MediaAccessPayload? payload = JsonSerializer.Deserialize<MediaAccessPayload>(_protector.Unprotect(ticket));
-                if (payload == null)
-                {
-                    return null;
-                }
-
-                if (payload.MediaItemId != mediaItemId)
-                {
-                    return null;
-                }
-
-                if (payload.ExpiresAtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
-                {
-                    return null;
-                }
-
-                return payload.OperatorId;
+                return payload == null
+                    ? null
+                    : payload.MediaItemId != mediaItemId
+                    ? null
+                    : payload.ExpiresAtUtc <= _timeProvider.GetUtcNow().UtcDateTime ? null : payload.OperatorId;
             }
             catch
             {

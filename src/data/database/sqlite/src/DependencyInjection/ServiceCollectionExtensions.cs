@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {

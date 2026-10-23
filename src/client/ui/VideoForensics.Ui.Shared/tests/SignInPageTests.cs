@@ -1,16 +1,21 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using AngleSharp.Dom;
+
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
+
 using Moq;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Covers where SignIn.razor sends a user after a successful username/password sign-in:
 /// a forced password change comes first, then a user with no operator-bound passkey is sent to
@@ -24,18 +29,18 @@ public class SignInPageTests : BunitContext
     public SignInPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(false);
-        WebAuthn.Setup(w => w.GetAuthMethodsAsync())
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(false);
+        _ = WebAuthn.Setup(w => w.GetAuthMethodsAsync())
             .ReturnsAsync(new AuthMethodsInfo(PasswordEnabled: true, PasskeyEnabled: false));
-        Services.AddScoped(_ => WebAuthn.Object);
+        _ = Services.AddScoped(_ => WebAuthn.Object);
 
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -46,8 +51,8 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupPasswordLogin(mustChangePassword: false, hasPasskey: false);
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var component = await RenderAndWaitForFormAsync();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -61,9 +66,9 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupPasswordLogin(mustChangePassword: false, hasPasskey: true);
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/signin?returnUrl=%2Fcases%2F42");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -77,8 +82,8 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - a forced change still comes before the passkey-setup redirect, even with no passkey
         SetupPasswordLogin(mustChangePassword: true, hasPasskey: false);
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var component = await RenderAndWaitForFormAsync();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -92,7 +97,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - the operator has a passkey, so the server asks for a second factor instead of issuing a session
         SetupTwoFactorRequired("corr-123");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -111,10 +116,10 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
+        _ = WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
             .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null, Array.Empty<string>()));
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var component = await RenderAndWaitForFormAsync();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Create a new passkey"));
 
@@ -130,11 +135,11 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
+        _ = WebAuthn.Setup(w => w.CreatePasskeyLoginAsync(Username, Password))
             .ReturnsAsync((true, null, "passkey-setup-token", Guid.NewGuid(), "ReadOnly", false, false, false, null, Array.Empty<string>()));
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var session = Services.GetRequiredService<PairedSessionState>();
-        var component = await RenderAndWaitForFormAsync();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Create a new passkey"));
 
@@ -151,7 +156,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -172,9 +177,9 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_TwoFactorRequired_ShowsNoErrorText()
     {
         // Arrange - a failed attempt first, so a stale error exists when the two-factor response arrives
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
-            .ReturnsAsync((false, "Wrong password", null, default(Guid), "", false, false, false, null, Array.Empty<string>()));
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
+            .ReturnsAsync((false, "Wrong password", null, default, string.Empty, false, false, false, null, Array.Empty<string>()));
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.NotEmpty(component.FindAll(".alert-danger")));
 
@@ -194,8 +199,8 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         await SubmitPasswordLoginAsync(component);
         component.WaitForAssertion(() => Assert.Contains(component.FindAll("button"), b => b.TextContent.Trim() == "Back"));
 
@@ -218,7 +223,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - a successful password sign-in previously rendered the diagnostic block
         SetupPasswordLogin(mustChangePassword: false, hasPasskey: true);
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -233,10 +238,10 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_TwoFactorRequired_ShowsTitleAndNoIntroOrSignInPasskey()
     {
         // Arrange - passkey sign-in is offered before password entry, so it must go once a second factor is required
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
         SetupTwoFactorRequired("corr-123");
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act - reveal the credential fields, then submit with ClickButtonAsync: the passkey button is now first among e-primary buttons
         await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
@@ -259,7 +264,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -278,8 +283,8 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - the "Sign In" page heading is shown in the normal state only
         SetupTwoFactorRequired("corr-123");
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         Assert.Contains(component.FindAll("h3"), h => h.TextContent.Trim() == localizer["Title"]);
 
         // Act
@@ -298,7 +303,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange
         SetupTwoFactorRequired("corr-123");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -306,7 +311,7 @@ public class SignInPageTests : BunitContext
         // Assert - an e-outline button renders grey text and reads as disabled; this one must be an active primary button
         component.WaitForAssertion(() =>
         {
-            var classes = FindButton(component, "Create a new passkey").ClassList;
+            ITokenList classes = FindButton(component, "Create a new passkey").ClassList;
             Assert.Contains("e-primary", classes);
             Assert.DoesNotContain("e-outline", classes);
         });
@@ -316,9 +321,9 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_TwoFactorRequired_UsePasskeyHiddenWhenMethodMissing()
     {
         // Arrange - the server accepts no second factor this client knows, so there is nothing to offer as "Use passkey"
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
-            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, "corr-123", Array.Empty<string>()));
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
+            .ReturnsAsync((true, null, null, default, string.Empty, false, false, true, "corr-123", Array.Empty<string>()));
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -338,7 +343,7 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - a fresh two-factor response with no earlier failure
         SetupTwoFactorRequired("corr-123");
-        var component = await RenderAndWaitForFormAsync();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act
         await SubmitPasswordLoginAsync(component);
@@ -353,8 +358,8 @@ public class SignInPageTests : BunitContext
     {
         // Arrange - the operator is already signed in at limited access, so the register prompt must not show
         SetupTwoFactorRequired("corr-123");
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
         Assert.Contains(localizer["NoAccountText"], component.Markup);
 
         // Act
@@ -372,8 +377,8 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_NormalState_HeadingUsesTitleResource()
     {
         // Arrange - the page heading is a light h3 carrying the product-named Title resource
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act & Assert
         component.WaitForAssertion(() =>
@@ -384,8 +389,8 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_NormalState_UsernameAndPasswordUseFloatingPlaceholders()
     {
         // Arrange
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act & Assert - floating-label textboxes carry the label text as their placeholder
         // Syncfusion renders a FloatLabelType textbox's Placeholder as its floating label (.e-float-text), not as an input attribute
@@ -401,14 +406,14 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_PasskeyAvailable_PasskeyButtonIsActivePrimary()
     {
         // Arrange - the passkey button is a full primary button, not an outlined one that reads as disabled
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act & Assert
         component.WaitForAssertion(() =>
         {
-            var classes = FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList;
+            ITokenList classes = FindButton(component, localizer["SignInWithPasskeyButton"]).ClassList;
             Assert.Contains("e-primary", classes);
             Assert.DoesNotContain("e-outline", classes);
         });
@@ -418,11 +423,11 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_NormalState_HasNoRememberMeOrForgotPassword()
     {
         // Arrange - no backing behavior exists for these, so they must not be rendered
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Act & Assert
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
         await ClickButtonAsync(component, localizer["UseUserNameAndPasswordButton"]);
         component.WaitForAssertion(() => Assert.NotNull(FindButton(component, localizer["SignInButton"])));
         Assert.DoesNotContain("Remember", component.Markup);
@@ -431,8 +436,8 @@ public class SignInPageTests : BunitContext
     [Fact]
     public async Task SignIn_UsernameField_IsMarkedAsAutofillableUsername()
     {
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         Assert.Equal("username webauthn", component.Find("input[name='username']").GetAttribute("autocomplete"));
     }
@@ -440,10 +445,10 @@ public class SignInPageTests : BunitContext
     [Fact]
     public async Task SignIn_PasskeyAvailable_EnterInUsername_StartsPasskeySignIn()
     {
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", true))
-            .ReturnsAsync((true, (string?)null, (string?)"token", Guid.NewGuid(), "Operator"));
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        _ = WebAuthn.Setup(w => w.SignInWithUsernameAsync("sysop", true))
+            .ReturnsAsync((true, null, "token", Guid.NewGuid(), "Operator"));
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         component.Find("input[type='text']").Change("sysop");
         component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
@@ -454,8 +459,8 @@ public class SignInPageTests : BunitContext
     [Fact]
     public async Task SignIn_PasskeyAvailable_OtherKeyInUsername_DoesNotStartPasskeySignIn()
     {
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         component.Find("input[type='text']").Change("sysop");
         component.Find("#username-passkey-entry").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "a" });
@@ -463,14 +468,13 @@ public class SignInPageTests : BunitContext
         WebAuthn.Verify(w => w.SignInWithUsernameAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
     }
 
-
     [Fact]
     public async Task SignIn_PasskeyAvailable_CredentialFieldsHiddenUntilToggled()
     {
         // Arrange - with passkey sign-in available, the username is shown (the passkey needs it) and the password stays hidden behind a button
-        WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        _ = WebAuthn.Setup(w => w.IsAvailableAsync()).ReturnsAsync(true);
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Assert - username visible by default, password hidden
         Assert.NotEmpty(component.FindAll("input[type='text']"));
@@ -494,11 +498,11 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_NormalState_ShowsRestrictedAccessNotice()
     {
         // Arrange
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Assert
-        var notice = component.Find("[data-testid='restricted-access-notice']");
+        IElement notice = component.Find("[data-testid='restricted-access-notice']");
         Assert.Equal(localizer["RestrictedAccessNotice"], notice.TextContent.Trim());
     }
 
@@ -506,8 +510,8 @@ public class SignInPageTests : BunitContext
     public async Task SignIn_PasskeyUnavailable_CredentialFieldsShownWithoutToggle()
     {
         // Arrange - with no passkey option there is nothing to switch from, so the fields show straight away
-        var localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
-        var component = await RenderAndWaitForFormAsync();
+        IStringLocalizer<SignIn> localizer = Services.GetRequiredService<IStringLocalizer<SignIn>>();
+        IRenderedComponent<SignIn> component = await RenderAndWaitForFormAsync();
 
         // Assert
         Assert.NotEmpty(component.FindAll("input[type='text']"));
@@ -516,24 +520,26 @@ public class SignInPageTests : BunitContext
         Assert.DoesNotContain(localizer["UseUserNameAndPasswordButton"], labels);
     }
 
-    private static IElement FindButton(IRenderedComponent<SignIn> component, string label) =>
-        component.FindAll("button").First(b => b.TextContent.Trim() == label);
+    private static IElement FindButton(IRenderedComponent<SignIn> component, string label)
+    {
+        return component.FindAll("button").First(b => b.TextContent.Trim() == label);
+    }
 
     private void SetupPasswordLogin(bool mustChangePassword, bool hasPasskey)
     {
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
+        _ = WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
             .ReturnsAsync((true, null, "session-token", Guid.NewGuid(), "ReadOnly", mustChangePassword, hasPasskey, false, null, Array.Empty<string>()));
     }
 
     private void SetupTwoFactorRequired(string correlationId)
     {
-        WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
-            .ReturnsAsync((true, null, null, default(Guid), "", false, false, true, correlationId, new[] { "passkey" }));
+        _ = WebAuthn.Setup(w => w.SignInWithPasswordAsync(Username, Password, It.IsAny<bool>()))
+            .ReturnsAsync((true, null, null, default, string.Empty, false, false, true, correlationId, new[] { "passkey" }));
     }
 
     private async Task<IRenderedComponent<SignIn>> RenderAndWaitForFormAsync()
     {
-        var component = Render<SignIn>();
+        IRenderedComponent<SignIn> component = Render<SignIn>();
         // SignIn shows a progress bar until its first-render OnAfterRenderAsync completes, then the form.
         // Either the credential fields or the "Use User Name and Password" toggle is the first sign of the form.
         await component.WaitForStateAsync(() => component.FindAll("button").Count > 0);

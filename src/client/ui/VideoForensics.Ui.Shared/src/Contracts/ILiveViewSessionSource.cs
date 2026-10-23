@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// Host-agnostic source of live-view session state pushes for the LiveView page. The page subscribes to a

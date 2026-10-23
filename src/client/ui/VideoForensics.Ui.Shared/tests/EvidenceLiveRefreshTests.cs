@@ -1,12 +1,13 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Reactive.Subjects;
-using Moq;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Source double whose changes the test pushes directly, standing in for the realtime store.</summary>
 public sealed class EvidenceChangedSourceDouble : IEvidenceChangedSource
 {
@@ -23,8 +24,10 @@ public sealed class EvidenceChangedSourceDouble : IEvidenceChangedSource
 /// <summary>The Evidence page reloads itself when the server reports a change, instead of waiting for Refresh.</summary>
 public class Evidence_LiveRefresh_Tests : EvidencePageTestBase
 {
-    private int LoadCount() =>
-        MediaItemRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IMediaItemRepository.GetByDeviceAndDateRangeAsync));
+    private int LoadCount()
+    {
+        return MediaItemRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IMediaItemRepository.GetByDeviceAndDateRangeAsync));
+    }
 
     /// <summary>
     /// The page reloads from a debounce timer, on a thread-pool thread that bUnit's WaitForAssertion does not pump, so the
@@ -42,7 +45,7 @@ public class Evidence_LiveRefresh_Tests : EvidencePageTestBase
     [Fact]
     public async Task EvidenceChanged_ReloadsTheEvidence()
     {
-        RenderEvidencePage();
+        _ = RenderEvidencePage();
         int before = LoadCount();
 
         EvidenceChanges.OnNext(new EvidenceChangedDto(DeviceId));
@@ -55,7 +58,7 @@ public class Evidence_LiveRefresh_Tests : EvidencePageTestBase
     [Fact]
     public async Task EvidenceChangedBurst_ReloadsOnce()
     {
-        RenderEvidencePage();
+        _ = RenderEvidencePage();
         int before = LoadCount();
 
         for (int i = 0; i < 5; i++)

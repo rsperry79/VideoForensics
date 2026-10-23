@@ -1,11 +1,11 @@
-using System.Security.Cryptography;
-using System.Collections.Concurrent;
-using System.Globalization;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.Security.Cryptography;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -17,7 +17,7 @@ using VideoForensics.Providers.Ring.Services;
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Captures a snapshot for every enabled device of every active Ring account, once per account interval, and records every
@@ -29,7 +29,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
     /// Rows hold only the attempt record. A 200 also writes the JPEG under SnapshotRoot\&lt;account&gt;\&lt;doorbotId&gt;\yyyyMMddTHHmmssfffZ.jpg.
     ///
-    /// Server-tier only (VideoForensics.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
+    /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
     /// ("Ring account") and the device name, never account or device GUIDs.
     /// </summary>
     public class SnapshotCaptureService : BackgroundService
@@ -103,7 +103,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
         }
 
-        /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the BackgroundService timer.</summary>
+        /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the BackgroundService timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
@@ -163,7 +163,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             int seconds = schedule is null
                 ? DefaultIntervalSeconds
                 : Math.Max(ScheduleCalculator.EffectiveSnapshotIntervalSeconds(schedule, _time.GetUtcNow().UtcDateTime), schedule.SnapshotIntervalSeconds ?? 0);
-            TimeSpan interval = TimeSpan.FromSeconds(seconds);
+            var interval = TimeSpan.FromSeconds(seconds);
 
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
             ISnapshotCaptureRepository captures = sp.GetRequiredService<ISnapshotCaptureRepository>();
@@ -321,7 +321,7 @@ namespace VideoForensics.Hosting.BackgroundServices
 
             try
             {
-                SnapshotCapture row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, mediaFilePath, deviceHealthId: null);
+                var row = SnapshotCapture.Create(device.Id, attemptedAt, "fresh", status, mediaFilePath, deviceHealthId: null);
                 _ = await sp.GetRequiredService<ISnapshotCaptureRepository>().AddAsync(row, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

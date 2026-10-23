@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Manages auth method (login method) enablement settings for password and passkey authentication.

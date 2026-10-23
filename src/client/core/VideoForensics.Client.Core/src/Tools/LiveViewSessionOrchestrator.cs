@@ -1,16 +1,14 @@
-using System.Collections.Concurrent;
-using System.Threading.Channels;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using System.Collections.Concurrent;
+using System.Threading.Channels;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Forensics.Interfaces;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Helpers.Forensics;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Providers.Ring.Interfaces;
-using VideoForensics.Core.Forensics.Interfaces;
 
 namespace VideoForensics.Client.Core.Tools
 {
@@ -137,7 +135,7 @@ namespace VideoForensics.Client.Core.Tools
             /// <summary>Provider-thread entry point for bitrate samples. Only records the value; writes no row.</summary>
             public void OnBitrateSampleBps(long bitsPerSecond)
             {
-                Interlocked.Exchange(ref _pendingBitrateBps, Math.Max(0, bitsPerSecond));
+                _ = Interlocked.Exchange(ref _pendingBitrateBps, Math.Max(0, bitsPerSecond));
             }
 
             /// <summary>Stops accepting new readings; the consumer still drains what is already queued.</summary>
@@ -372,7 +370,7 @@ namespace VideoForensics.Client.Core.Tools
             IProviderApiBudgetGuard budgetGuard = scope.ServiceProvider.GetRequiredService<IProviderApiBudgetGuard>();
 
             // Check for existing active session (idempotent)
-            var existingSession = await sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
+            LiveViewSession? existingSession = await sessionRepository.GetActiveForDeviceAsync(deviceId, ct);
             if (existingSession != null)
             {
                 _logger.LogDebug("Returning existing active live view session {SessionId} for device {DeviceId}", existingSession.Id, deviceId);
@@ -380,7 +378,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Resolve the device to get its provider device ID
-            var device = await deviceRepository.GetAsync(deviceId, ct)
+            Data.Common.Entities.Device device = await deviceRepository.GetAsync(deviceId, ct)
                 ?? throw new KeyNotFoundException($"Device {deviceId} not found.");
 
             // Determine provider name - for now, we infer from device metadata or use a convention.
@@ -395,15 +393,14 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Resolve provider from the same scope that resolved the repositories
-            ILiveViewCapableProvider? provider = scope.ServiceProvider.GetService(typeof(ILiveViewCapableProvider)) as ILiveViewCapableProvider;
-            if (provider == null)
+            if (scope.ServiceProvider.GetService(typeof(ILiveViewCapableProvider)) is not ILiveViewCapableProvider provider)
             {
                 throw new NotSupportedException($"Live view not supported for provider {providerName}. No capable provider found.");
             }
 
             // Start the provider connection
             _logger.LogDebug("Starting live view connection for device {DeviceName}", device.Name);
-            var connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, ct);
+            ILiveViewConnection? connection = await provider.StartLiveViewAsync(device.ProviderDeviceId, ct);
 
             // Create and persist the session in Starting state
             var session = new LiveViewSession
@@ -432,9 +429,7 @@ namespace VideoForensics.Client.Core.Tools
 
             // Subscribe to connection state changes: Starting → Active on successful connect.
             // The callback fires long after this scope is disposed, so it opens its own scope per event.
-            if (connection != null)
-            {
-                connection.OnConnectionStateChange += async (state) =>
+            connection?.OnConnectionStateChange += async (state) =>
                 {
                     try
                     {
@@ -444,7 +439,7 @@ namespace VideoForensics.Client.Core.Tools
                         if (state == LiveViewConnectionStateDto.Connected)
                         {
                             session.State = LiveViewSessionState.Active;
-                            await callbackRepository.UpsertSessionAsync(session, ct);
+                            _ = await callbackRepository.UpsertSessionAsync(session, ct);
                             _logger.LogInformation("Live view session {SessionId} transitioned to Active state", session.Id);
                         }
                         else if (state == LiveViewConnectionStateDto.Failed)
@@ -452,9 +447,9 @@ namespace VideoForensics.Client.Core.Tools
                             session.State = LiveViewSessionState.Failed;
                             session.EndedAtUtc = DateTime.UtcNow;
                             session.StopReason = "ConnectionFailed";
-                            await callbackRepository.UpsertSessionAsync(session, ct);
+                            _ = await callbackRepository.UpsertSessionAsync(session, ct);
                             _logger.LogError("Live view session {SessionId} failed to connect", session.Id);
-                            if (_activeSessions.TryRemove(session.Id, out var failedHandle) && failedHandle.Telemetry != null)
+                            if (_activeSessions.TryRemove(session.Id, out global::VideoForensics.Client.Core.Tools.LiveViewSessionOrchestrator.ActiveLiveViewHandle failedHandle) && failedHandle.Telemetry != null)
                             {
                                 // Stop feeding the sampler; its consumer drains anything already queued and exits.
                                 DetachTelemetry(failedHandle.Connection, failedHandle.Telemetry);
@@ -466,7 +461,6 @@ namespace VideoForensics.Client.Core.Tools
                         _logger.LogError(ex, "Error handling connection state change for session {SessionId}", session.Id);
                     }
                 };
-            }
 
             return session;
         }
@@ -476,11 +470,11 @@ namespace VideoForensics.Client.Core.Tools
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
 
-            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
+            LiveViewSession session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             session.LastExtendedAtUtc = DateTime.UtcNow;
-            await sessionRepository.UpsertSessionAsync(session, ct);
+            _ = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogDebug("Extended live view session {SessionId} timeout", sessionId);
         }
 
@@ -489,7 +483,7 @@ namespace VideoForensics.Client.Core.Tools
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
 
-            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
+            LiveViewSession session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             // Idempotent: if already sustained, return as-is
@@ -504,7 +498,7 @@ namespace VideoForensics.Client.Core.Tools
             session.PromotionReason = reason;
             session.State = LiveViewSessionState.Sustained;
 
-            await sessionRepository.UpsertSessionAsync(session, ct);
+            _ = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Promoted live view session {SessionId} to sustained mode: {Reason}", sessionId, reason);
             await PublishSessionChangedSafelyAsync(session, ct);
 
@@ -512,7 +506,7 @@ namespace VideoForensics.Client.Core.Tools
             // Resolved here rather than injected: INotificationDispatcher is scoped.
             try
             {
-                var notificationDispatcher = scope.ServiceProvider.GetService<INotificationDispatcher>();
+                INotificationDispatcher? notificationDispatcher = scope.ServiceProvider.GetService<INotificationDispatcher>();
                 if (notificationDispatcher != null)
                 {
                     await notificationDispatcher.DispatchAsync(
@@ -541,14 +535,14 @@ namespace VideoForensics.Client.Core.Tools
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
 
-            var session = await sessionRepository.GetByIdAsync(sessionId, ct)
+            LiveViewSession session = await sessionRepository.GetByIdAsync(sessionId, ct)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found.");
 
             session.IsSustained = false;
             session.SustainedSinceUtc = null;
             session.State = LiveViewSessionState.Active;
 
-            await sessionRepository.UpsertSessionAsync(session, ct);
+            _ = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogDebug("Demoted live view session {SessionId} from sustained mode", sessionId);
             await PublishSessionChangedSafelyAsync(session, ct);
 
@@ -560,7 +554,7 @@ namespace VideoForensics.Client.Core.Tools
             using IServiceScope scope = _scopeFactory.CreateScope();
             ILiveViewSessionRepository sessionRepository = scope.ServiceProvider.GetRequiredService<ILiveViewSessionRepository>();
 
-            var session = await sessionRepository.GetByIdAsync(sessionId, ct);
+            LiveViewSession? session = await sessionRepository.GetByIdAsync(sessionId, ct);
             if (session == null)
             {
                 throw new KeyNotFoundException($"Session {sessionId} not found.");
@@ -574,7 +568,7 @@ namespace VideoForensics.Client.Core.Tools
             }
 
             // Close the underlying connection if it's in memory
-            if (_activeSessions.TryRemove(sessionId, out var handle))
+            if (_activeSessions.TryRemove(sessionId, out ActiveLiveViewHandle? handle))
             {
                 // Drain the sampler before closing, so no sample is written after the connection is gone
                 if (handle.Telemetry != null)
@@ -598,7 +592,7 @@ namespace VideoForensics.Client.Core.Tools
             session.EndedAtUtc = DateTime.UtcNow;
             session.StopReason = stopReason;
 
-            await sessionRepository.UpsertSessionAsync(session, ct);
+            _ = await sessionRepository.UpsertSessionAsync(session, ct);
             _logger.LogInformation("Stopped live view session {SessionId}: {StopReason}", sessionId, stopReason);
             await PublishSessionChangedSafelyAsync(session, ct);
         }
@@ -620,12 +614,7 @@ namespace VideoForensics.Client.Core.Tools
         /// <returns>The active connection, or null if the session does not exist or is not in memory.</returns>
         public async Task<ILiveViewConnection?> GetConnectionForSessionAsync(Guid sessionId, CancellationToken ct)
         {
-            if (_activeSessions.TryGetValue(sessionId, out var handle))
-            {
-                return handle.Connection;
-            }
-
-            return await Task.FromResult<ILiveViewConnection?>(null);
+            return _activeSessions.TryGetValue(sessionId, out ActiveLiveViewHandle? handle) ? handle.Connection : await Task.FromResult<ILiveViewConnection?>(null);
         }
     }
 }

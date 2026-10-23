@@ -1,10 +1,13 @@
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using VideoForensics.Ui.Shared.Layout.Simple;
 
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Client.Ui.Shared.Layout.Simple;
+
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
 {
@@ -12,7 +15,7 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
 
     private IRenderedComponent<SimpleLayout> RenderAt(string path)
     {
-        RegisterSignedInSession();
+        _ = RegisterSignedInSession();
         RegisterViewportService();
         RegisterUiModeService("Simple");
         Services.GetRequiredService<NavigationManager>().NavigateTo(path);
@@ -27,9 +30,9 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [InlineData("/#section")]
     public void SimpleLayout_AtHomeRoutes_ShowsSimpleHomeNotBody(string path)
     {
-        var component = RenderAt(path);
+        IRenderedComponent<SimpleLayout> component = RenderAt(path);
 
-        Assert.Single(component.FindComponents<SimpleHome>());
+        _ = Assert.Single(component.FindComponents<SimpleHome>());
         Assert.Empty(component.FindAll("#routed-body"));
     }
 
@@ -42,23 +45,23 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [InlineData("/media/extra")]
     public void SimpleLayout_AtOtherRoutes_ShowsBodyNotSimpleHome(string path)
     {
-        var component = RenderAt(path);
+        IRenderedComponent<SimpleLayout> component = RenderAt(path);
 
         Assert.Empty(component.FindComponents<SimpleHome>());
-        Assert.Single(component.FindAll("#routed-body"));
+        _ = Assert.Single(component.FindAll("#routed-body"));
     }
 
     [Fact]
     public void SimpleLayout_NavigatingFromChatToHome_SwapsToSimpleHome()
     {
-        var component = RenderAt("/chat");
+        IRenderedComponent<SimpleLayout> component = RenderAt("/chat");
         Assert.Empty(component.FindComponents<SimpleHome>());
 
         Services.GetRequiredService<NavigationManager>().NavigateTo("/");
 
         component.WaitForAssertion(() =>
         {
-            Assert.Single(component.FindComponents<SimpleHome>());
+            _ = Assert.Single(component.FindComponents<SimpleHome>());
             Assert.Empty(component.FindAll("#routed-body"));
         });
     }
@@ -66,21 +69,21 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [Fact]
     public void SimpleLayout_NavigatingFromHomeToOtherRoute_SwapsToBody()
     {
-        var component = RenderAt("/");
+        IRenderedComponent<SimpleLayout> component = RenderAt("/");
 
         Services.GetRequiredService<NavigationManager>().NavigateTo("/cases/42");
 
         component.WaitForAssertion(() =>
         {
             Assert.Empty(component.FindComponents<SimpleHome>());
-            Assert.Single(component.FindAll("#routed-body"));
+            _ = Assert.Single(component.FindAll("#routed-body"));
         });
     }
 
     [Fact]
     public void SimpleLayout_AtHome_KeepsHeaderAndChatPanel()
     {
-        var component = RenderAt("/");
+        IRenderedComponent<SimpleLayout> component = RenderAt("/");
 
         Assert.NotNull(component.Find(".simple-layout-header"));
         Assert.NotNull(component.Find("button.simple-layout-signout"));
@@ -90,12 +93,12 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [Fact]
     public async Task SimpleLayout_AfterDispose_NavigationDoesNotThrow()
     {
-        var component = RenderAt("/chat");
-        var nav = Services.GetRequiredService<NavigationManager>();
+        IRenderedComponent<SimpleLayout> component = RenderAt("/chat");
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
 
         await DisposeComponentsAsync();
 
-        var ex = Record.Exception(() => nav.NavigateTo("/"));
+        Exception? ex = Record.Exception(() => nav.NavigateTo("/"));
         Assert.Null(ex);
     }
 }

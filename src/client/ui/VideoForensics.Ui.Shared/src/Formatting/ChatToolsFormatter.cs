@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Formatting;
+namespace VideoForensics.Client.Ui.Shared.Formatting;
 
 /// <summary>
 /// Formats chat tool invocation metadata for display in the UI.
@@ -17,7 +17,7 @@ public static class ChatToolsFormatter
             return string.Empty;
         }
 
-        var formatted = string.Join(", ", toolsInvoked.Select(t => FormatToolName(t)));
+        string formatted = string.Join(", ", toolsInvoked.Select(FormatToolName));
         return $"Checked: {formatted}";
     }
 
@@ -32,7 +32,7 @@ public static class ChatToolsFormatter
         }
 
         // Convert CamelCase to Title Case with spaces
-        var result = System.Text.RegularExpressions.Regex.Replace(
+        string result = System.Text.RegularExpressions.Regex.Replace(
             toolName,
             "([a-z])([A-Z])",
             "$1 $2");

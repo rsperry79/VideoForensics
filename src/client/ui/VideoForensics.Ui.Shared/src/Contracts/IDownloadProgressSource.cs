@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// Host-agnostic source of live download progress for <c>DownloadProgressPanel</c>. The panel

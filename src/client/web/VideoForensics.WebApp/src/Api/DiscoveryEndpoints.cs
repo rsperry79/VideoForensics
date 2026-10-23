@@ -1,7 +1,8 @@
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Minimal API surface wrapping IDeviceDiscoveryService and IEventAndConfigService contracts.

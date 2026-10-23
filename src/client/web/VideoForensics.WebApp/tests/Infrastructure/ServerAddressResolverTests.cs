@@ -1,10 +1,11 @@
+
 using Microsoft.Extensions.Configuration;
 
-using VideoForensics.WebApp.Infrastructure;
+using VideoForensics.Client.WebApp.Infrastructure;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Infrastructure
+namespace VideoForensics.Client.WebApp.Tests.Infrastructure
 {
     public class ServerAddressResolverTests
     {

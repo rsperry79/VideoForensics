@@ -1,15 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Moq;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Services;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>A failing device keeps the results of the devices verified before it; the job log stays bounded.</summary>
     public sealed class EvidenceValidationJobPartialTests
@@ -19,7 +13,7 @@ namespace VideoForensics.Hosting.Tests
         private static EvidenceValidationJobService CreateService(Mock<IEvidenceValidationService> validation)
         {
             ServiceCollection services = new();
-            services.AddSingleton(validation.Object);
+            _ = services.AddSingleton(validation.Object);
             ServiceProvider provider = services.BuildServiceProvider();
             return new EvidenceValidationJobService(
                 provider.GetRequiredService<IServiceScopeFactory>(),
@@ -44,13 +38,13 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task LaterDeviceFails_JobFailed_ButKeepsEarlierDeviceResults()
         {
-            Guid first = Guid.NewGuid();
-            Guid second = Guid.NewGuid();
+            var first = Guid.NewGuid();
+            var second = Guid.NewGuid();
             var firstResult = new MediaVerificationResult { MediaItemId = Guid.NewGuid(), FileName = "a.mp4", Status = "verified" };
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(first, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                .ReturnsAsync(new List<MediaVerificationResult> { firstResult });
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(second, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(first, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                .ReturnsAsync([firstResult]);
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(second, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .ThrowsAsync(new InvalidOperationException("hash store offline"));
             EvidenceValidationJobService service = CreateService(validation);
 
@@ -59,7 +53,7 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.Equal(EvidenceValidationJobState.Failed, done.State);
             Assert.Equal("hash store offline", done.ErrorMessage);
-            var kept = Assert.Single(done.IntegrityResults!);
+            MediaVerificationResult kept = Assert.Single(done.IntegrityResults!);
             Assert.Equal(first, kept.DeviceId);
             Assert.Equal("a.mp4", kept.FileName);
         }
@@ -68,7 +62,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task LongRun_LogKeepsNewestLinesWithinCap()
         {
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(null, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(null, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns((Guid? _, CancellationToken _, IProgress<string>? progress) =>
                 {
                     for (int i = 0; i < 1500; i++)
@@ -76,7 +70,7 @@ namespace VideoForensics.Hosting.Tests
                         progress?.Report($"file {i}");
                     }
 
-                    return Task.FromResult<IReadOnlyList<MediaVerificationResult>>(new List<MediaVerificationResult>());
+                    return Task.FromResult<IReadOnlyList<MediaVerificationResult>>([]);
                 });
             EvidenceValidationJobService service = CreateService(validation);
 

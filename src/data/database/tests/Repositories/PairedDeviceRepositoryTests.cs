@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -33,7 +34,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
 
             // Add the device to the database first
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 _ = db.PairedDevices.Add(device);
                 _ = await db.SaveChangesAsync(CancellationToken.None);
@@ -44,11 +45,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.RevokeAsync(pairedDeviceId, injectedReason, CancellationToken.None);
 
             // Assert: Verify the device was revoked and the reason is stored as-is in the database
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 PairedDevice? revokedDevice = await db.PairedDevices.FindAsync(new object[] { pairedDeviceId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(revokedDevice);
-                Assert.NotNull(revokedDevice.RevokedAtUtc);
+                _ = Assert.NotNull(revokedDevice.RevokedAtUtc);
                 // The raw reason (with newlines) should be stored in the database
                 Assert.Equal(injectedReason, revokedDevice.RevokedReason);
             }

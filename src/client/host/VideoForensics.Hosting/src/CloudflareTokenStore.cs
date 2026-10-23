@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     public interface ICloudflareTokenStore
     {

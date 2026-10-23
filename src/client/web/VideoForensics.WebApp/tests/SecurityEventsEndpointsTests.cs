@@ -1,20 +1,20 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using System.Reflection;
+using System.Security.Claims;
+
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Cross-account security-event queries require SuperAdmin + Local tier (plan §5.10). This must
@@ -29,7 +29,7 @@ namespace VideoForensics.WebApp.Tests
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, NetworkTier claimedTier, OperatorRole role = OperatorRole.SuperAdmin)
         {
             var context = new DefaultHttpContext();
-            var claims = new[]
+            Claim[] claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(VideoForensicsClaimTypes.Role, role.ToString()),
@@ -45,7 +45,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct = default)
         {
-            var method = typeof(SecurityEventsEndpoints)
+            MethodInfo? method = typeof(SecurityEventsEndpoints)
                 .GetMethod("GetSecurityEventsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -59,7 +59,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             ILogger<Program> logger = LoggerFactory.Create(b => { }).CreateLogger<Program>();
-            var result = method.Invoke(null, [request, auditService, context, logger, ct]);
+            object? result = method.Invoke(null, [request, auditService, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
 
@@ -82,7 +82,7 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await InvokeAsync(request, auditService.Object, context);
 
             // Assert
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
         }
 
@@ -104,12 +104,12 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await InvokeAsync(request, auditService.Object, context);
 
             // Assert
-            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
         }
 
 #pragma warning disable CS1998
-        private static async IAsyncEnumerable<VideoForensics.Data.Common.Contracts.SecurityEventDto> EmptyEvents()
+        private static async IAsyncEnumerable<Data.Common.Contracts.SecurityEventDto> EmptyEvents()
         {
             yield break;
         }

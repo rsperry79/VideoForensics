@@ -268,7 +268,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object,
                 mockConfig.Object);
 
-            var ct = CancellationToken.None;
+            CancellationToken ct = CancellationToken.None;
 
             // Act
             IReadOnlyList<Location> locations = await service.GetLocationsAsync(providerAccountId, ct);
@@ -294,7 +294,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object,
                 mockConfig.Object);
 
-            var ct = CancellationToken.None;
+            CancellationToken ct = CancellationToken.None;
 
             // Act
             IReadOnlyList<Device> devices = await service.GetDevicesAsync(providerAccountId, "192.168.1.1", ct);
@@ -320,7 +320,7 @@ namespace VideoForensics.Providers.Uniview.Tests
                 mockSessionProvider.Object,
                 mockConfig.Object);
 
-            var ct = CancellationToken.None;
+            CancellationToken ct = CancellationToken.None;
 
             // Act
             Device? device = await service.GetDeviceAsync(providerAccountId, "1", ct);

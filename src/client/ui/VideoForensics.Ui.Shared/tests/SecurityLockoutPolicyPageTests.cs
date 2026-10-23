@@ -1,24 +1,23 @@
-namespace VideoForensics.Ui.Shared.Tests;
-
-using System.Net;
-using System.Net.Http.Json;
 
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+
 using Syncfusion.Blazor.Buttons;
 using Syncfusion.Blazor.Inputs;
-using Microsoft.JSInterop;
 
-using Moq;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// SecurityLockoutPolicy.razor's self-HTTP calls must go through the injected
 /// <see cref="ISelfApiHttpClientFactory"/> (plan §5.10/§5.12) rather than a raw
@@ -32,7 +31,7 @@ public class SecurityLockoutPolicyPageTests : BunitContext
 {
     private sealed class RecordingHandler : HttpMessageHandler
     {
-        public List<HttpRequestMessage> Requests { get; } = new();
+        public List<HttpRequestMessage> Requests { get; } = [];
 
         /// <summary>Body returned by GET /api/v1/lockout-policy; tests override it to simulate stored auto-ban values.</summary>
         public object PolicyBody { get; set; } = new
@@ -57,31 +56,22 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         {
             Requests.Add(request);
 
-            if (request.Method == HttpMethod.Delete)
-            {
-                return Task.FromResult(new HttpResponseMessage(DeleteStatus));
-            }
-
-            if (request.RequestUri!.AbsolutePath.EndsWith("/api/v1/banned-ips", StringComparison.Ordinal))
-            {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return request.Method == HttpMethod.Delete
+                ? Task.FromResult(new HttpResponseMessage(DeleteStatus))
+                : request.RequestUri!.AbsolutePath.EndsWith("/api/v1/banned-ips", StringComparison.Ordinal)
+                ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = JsonContent.Create(BannedIpsBody)
-                });
-            }
-
-            if (request.RequestUri!.AbsolutePath.EndsWith("/two-factor-policy/roles", StringComparison.Ordinal))
-            {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                })
+                : request.RequestUri!.AbsolutePath.EndsWith("/two-factor-policy/roles", StringComparison.Ordinal)
+                ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = JsonContent.Create(new List<object>())
+                })
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(PolicyBody)
                 });
-            }
-
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(PolicyBody)
-            });
         }
     }
 
@@ -102,7 +92,10 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             _sessionState = sessionState;
         }
 
-        public HttpClient CreateClient() => CreateClient(_sessionState.SessionToken);
+        public HttpClient CreateClient()
+        {
+            return CreateClient(_sessionState.SessionToken);
+        }
 
         public HttpClient CreateClient(string? bearerToken)
         {
@@ -122,27 +115,27 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddLocalization();
     }
 
     private async Task<PairedSessionState> RegisterSignedInSessionAsync()
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), OperatorRole.SuperAdmin.ToString());
-        Services.AddScoped(_ => session);
-        Services.AddScoped<ISelfApiHttpClientFactory>(_ => new FakeSelfApiHttpClientFactory(_handler, session));
+        _ = Services.AddScoped(_ => session);
+        _ = Services.AddScoped<ISelfApiHttpClientFactory>(_ => new FakeSelfApiHttpClientFactory(_handler, session));
         return session;
     }
 
     [Fact]
     public async Task PageOpen_SignedIn_SendsRequestsThroughInjectedFactorysClient()
     {
-        await RegisterSignedInSessionAsync();
+        _ = await RegisterSignedInSessionAsync();
 
-        Render<SecurityLockoutPolicy>();
+        _ = Render<SecurityLockoutPolicy>();
 
         // The page reloads on OnAfterRenderAsync(firstRender) after SessionState.EnsureLoadedAsync
         // (see SecurityEventsPageTests' identical note) - both OnInitializedAsync's and
@@ -163,20 +156,22 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         });
     }
 
-    private static IStringLocalizer<SecurityLockoutPolicy> GetLocalizer(BunitContext ctx) =>
-        ctx.Services.GetRequiredService<IStringLocalizer<SecurityLockoutPolicy>>();
+    private static IStringLocalizer<SecurityLockoutPolicy> GetLocalizer(BunitContext ctx)
+    {
+        return ctx.Services.GetRequiredService<IStringLocalizer<SecurityLockoutPolicy>>();
+    }
 
     [Fact]
     public async Task SecurityLockoutPolicy_RendersAutoBanInputs_WithLocalizedLabels()
     {
-        await RegisterSignedInSessionAsync();
-        var localizer = GetLocalizer(this);
+        _ = await RegisterSignedInSessionAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
 
         cut.WaitForAssertion(() =>
         {
-            var markup = cut.Markup;
+            string markup = cut.Markup;
             Assert.Contains(localizer["AutoBanEnabledLabel"].Value, markup, StringComparison.Ordinal);
             Assert.Contains(localizer["AutoBanDistinctAccountThresholdLabel"].Value, markup, StringComparison.Ordinal);
             Assert.Contains(localizer["AutoBanWindowMinutesLabel"].Value, markup, StringComparison.Ordinal);
@@ -187,7 +182,7 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task SecurityLockoutPolicy_LoadedPolicy_PopulatesAutoBanInputs()
     {
-        await RegisterSignedInSessionAsync();
+        _ = await RegisterSignedInSessionAsync();
         _handler.PolicyBody = new
         {
             maxFailedAttempts = 5,
@@ -200,7 +195,7 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             autoBanDurationMinutes = 240
         };
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
 
         cut.WaitForAssertion(() =>
         {
@@ -217,7 +212,7 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task SecurityLockoutPolicy_Save_IncludesAutoBanFieldsInBody()
     {
-        await RegisterSignedInSessionAsync();
+        _ = await RegisterSignedInSessionAsync();
         _handler.PolicyBody = new
         {
             maxFailedAttempts = 5,
@@ -229,17 +224,17 @@ public class SecurityLockoutPolicyPageTests : BunitContext
             autoBanWindowMinutes = 15,
             autoBanDurationMinutes = 240
         };
-        var localizer = GetLocalizer(this);
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
         cut.WaitForAssertion(() => Assert.Contains(localizer["AutoBanEnabledLabel"].Value, cut.Markup, StringComparison.Ordinal));
 
-        var saveButton = cut.FindAll("button").First(b => b.TextContent.Trim() == localizer["SaveButton"].Value);
+        AngleSharp.Dom.IElement saveButton = cut.FindAll("button").First(b => b.TextContent.Trim() == localizer["SaveButton"].Value);
         saveButton.Click();
 
         cut.WaitForAssertion(() => Assert.Contains(_handler.Requests, r => r.Method == HttpMethod.Put));
-        var put = _handler.Requests.First(r => r.Method == HttpMethod.Put);
-        var body = System.Text.Json.JsonDocument.Parse(await put.Content!.ReadAsStringAsync()).RootElement;
+        HttpRequestMessage put = _handler.Requests.First(r => r.Method == HttpMethod.Put);
+        JsonElement body = System.Text.Json.JsonDocument.Parse(await put.Content!.ReadAsStringAsync()).RootElement;
 
         Assert.True(body.GetProperty("autoBanEnabled").GetBoolean());
         Assert.Equal(7, body.GetProperty("autoBanDistinctAccountThreshold").GetInt32());
@@ -247,27 +242,30 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         Assert.Equal(240, body.GetProperty("autoBanDurationMinutes").GetInt32());
     }
 
-    private static object BannedRow(string cidr, string reason, Guid createdBy, bool isAutoBan, DateTime? expiresAtUtc, Guid? id = null) => new
+    private static object BannedRow(string cidr, string reason, Guid createdBy, bool isAutoBan, DateTime? expiresAtUtc, Guid? id = null)
     {
-        id = id ?? Guid.NewGuid(),
-        cidrRange = cidr,
-        reason,
-        createdAtUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc),
-        expiresAtUtc,
-        createdByOperatorId = createdBy,
-        isAutoBan
-    };
+        return new
+        {
+            id = id ?? Guid.NewGuid(),
+            cidrRange = cidr,
+            reason,
+            createdAtUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc),
+            expiresAtUtc,
+            createdByOperatorId = createdBy,
+            isAutoBan
+        };
+    }
 
     [Fact]
     public async Task BannedIps_RendersRows_WithRangeAndReason()
     {
-        await RegisterSignedInSessionAsync();
+        _ = await RegisterSignedInSessionAsync();
         _handler.BannedIpsBody = new List<object>
         {
             BannedRow("203.0.113.0/24", "Known botnet C2 network", Guid.NewGuid(), false, null)
         };
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
 
         cut.WaitForAssertion(() =>
         {
@@ -279,22 +277,22 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task BannedIps_AutoBadge_ShowsOnlyOnSystemRow()
     {
-        await RegisterSignedInSessionAsync();
-        var localizer = GetLocalizer(this);
+        _ = await RegisterSignedInSessionAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
         _handler.BannedIpsBody = new List<object>
         {
             BannedRow("198.51.100.7/32", "Auto-ban: 3 accounts locked in 60 min", new Guid("00000000-0000-0000-0000-00000000f2b1"), true, DateTime.UtcNow.AddHours(24)),
             BannedRow("203.0.113.9/32", "Manual", Guid.NewGuid(), false, null)
         };
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
 
         cut.WaitForAssertion(() =>
         {
-            var badge = localizer["BannedIpsAutoBadge"].Value;
-            var rows = cut.FindAll("tbody tr");
+            string badge = localizer["BannedIpsAutoBadge"].Value;
+            IReadOnlyList<AngleSharp.Dom.IElement> rows = cut.FindAll("tbody tr");
             var autoRows = rows.Where(r => r.TextContent.Contains(badge, StringComparison.Ordinal)).ToList();
-            Assert.Single(autoRows);
+            _ = Assert.Single(autoRows);
             Assert.Contains("198.51.100.7/32", autoRows[0].TextContent, StringComparison.Ordinal);
         });
     }
@@ -302,11 +300,11 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task BannedIps_NoActiveBans_ShowsLocalizedEmptyState()
     {
-        await RegisterSignedInSessionAsync();
-        var localizer = GetLocalizer(this);
+        _ = await RegisterSignedInSessionAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
         _handler.BannedIpsBody = new List<object>();
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
 
         cut.WaitForAssertion(() =>
         {
@@ -316,22 +314,26 @@ public class SecurityLockoutPolicyPageTests : BunitContext
 
     private const string UnbanCidr = "203.0.113.9/32";
 
-    private static IEnumerable<AngleSharp.Dom.IElement> ButtonsWithText(IRenderedComponent<SecurityLockoutPolicy> cut, string text) =>
-        cut.FindAll("button").Where(b => b.TextContent.Trim() == text);
+    private static IEnumerable<AngleSharp.Dom.IElement> ButtonsWithText(IRenderedComponent<SecurityLockoutPolicy> cut, string text)
+    {
+        return cut.FindAll("button").Where(b => b.TextContent.Trim() == text);
+    }
 
-    private static IEnumerable<AngleSharp.Dom.IElement> RowsContaining(IRenderedComponent<SecurityLockoutPolicy> cut, string text) =>
-        cut.FindAll("tbody tr").Where(r => r.TextContent.Contains(text, StringComparison.Ordinal));
+    private static IEnumerable<AngleSharp.Dom.IElement> RowsContaining(IRenderedComponent<SecurityLockoutPolicy> cut, string text)
+    {
+        return cut.FindAll("tbody tr").Where(r => r.TextContent.Contains(text, StringComparison.Ordinal));
+    }
 
     private async Task<(Guid BanId, IRenderedComponent<SecurityLockoutPolicy> Cut)> RenderWithManualBanAsync()
     {
-        await RegisterSignedInSessionAsync();
+        _ = await RegisterSignedInSessionAsync();
         var banId = Guid.NewGuid();
         _handler.BannedIpsBody = new List<object>
         {
             BannedRow(UnbanCidr, "Manual", Guid.NewGuid(), false, null, banId)
         };
 
-        var cut = Render<SecurityLockoutPolicy>();
+        IRenderedComponent<SecurityLockoutPolicy> cut = Render<SecurityLockoutPolicy>();
         cut.WaitForAssertion(() => Assert.Contains(UnbanCidr, cut.Markup, StringComparison.Ordinal));
         return (banId, cut);
     }
@@ -339,16 +341,16 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task BannedIps_UnbanClick_ShowsLocalizedConfirmStepWithoutSendingDelete()
     {
-        var (_, cut) = await RenderWithManualBanAsync();
-        var localizer = GetLocalizer(this);
+        (_, IRenderedComponent<SecurityLockoutPolicy>? cut) = await RenderWithManualBanAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
 
         ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
 
         cut.WaitForAssertion(() =>
         {
             Assert.Contains(localizer["UnbanConfirmMessage", UnbanCidr].Value, cut.Markup, StringComparison.Ordinal);
-            Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value));
-            Assert.Single(ButtonsWithText(cut, localizer["UnbanCancelButton"].Value));
+            _ = Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value));
+            _ = Assert.Single(ButtonsWithText(cut, localizer["UnbanCancelButton"].Value));
         });
         Assert.DoesNotContain(_handler.Requests, r => r.Method == HttpMethod.Delete);
     }
@@ -356,15 +358,15 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task BannedIps_UnbanConfirm_SendsDeleteAndRemovesRow()
     {
-        var (banId, cut) = await RenderWithManualBanAsync();
-        var localizer = GetLocalizer(this);
+        (Guid banId, IRenderedComponent<SecurityLockoutPolicy>? cut) = await RenderWithManualBanAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
 
         ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
         cut.WaitForAssertion(() => Assert.Single(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value)));
         ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value).Single().Click();
 
         cut.WaitForAssertion(() => Assert.Empty(RowsContaining(cut, UnbanCidr)));
-        var delete = Assert.Single(_handler.Requests, r => r.Method == HttpMethod.Delete);
+        HttpRequestMessage delete = Assert.Single(_handler.Requests, r => r.Method == HttpMethod.Delete);
         Assert.EndsWith($"/api/v1/banned-ips/{banId}", delete.RequestUri!.AbsolutePath, StringComparison.Ordinal);
         Assert.Contains(localizer["UnbanSucceeded"].Value, cut.Markup, StringComparison.Ordinal);
     }
@@ -372,23 +374,23 @@ public class SecurityLockoutPolicyPageTests : BunitContext
     [Fact]
     public async Task BannedIps_UnbanCancel_LeavesRowAndSendsNothing()
     {
-        var (_, cut) = await RenderWithManualBanAsync();
-        var localizer = GetLocalizer(this);
+        (_, IRenderedComponent<SecurityLockoutPolicy>? cut) = await RenderWithManualBanAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
 
         ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
         cut.WaitForAssertion(() => Assert.Single(ButtonsWithText(cut, localizer["UnbanCancelButton"].Value)));
         ButtonsWithText(cut, localizer["UnbanCancelButton"].Value).Single().Click();
 
         cut.WaitForAssertion(() => Assert.Empty(ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value)));
-        Assert.Single(RowsContaining(cut, UnbanCidr));
+        _ = Assert.Single(RowsContaining(cut, UnbanCidr));
         Assert.DoesNotContain(_handler.Requests, r => r.Method == HttpMethod.Delete);
     }
 
     [Fact]
     public async Task BannedIps_UnbanServerFailure_ShowsLocalizedErrorAndKeepsRow()
     {
-        var (_, cut) = await RenderWithManualBanAsync();
-        var localizer = GetLocalizer(this);
+        (_, IRenderedComponent<SecurityLockoutPolicy>? cut) = await RenderWithManualBanAsync();
+        IStringLocalizer<SecurityLockoutPolicy> localizer = GetLocalizer(this);
         _handler.DeleteStatus = HttpStatusCode.InternalServerError;
 
         ButtonsWithText(cut, localizer["UnbanButton"].Value).Single().Click();
@@ -396,6 +398,6 @@ public class SecurityLockoutPolicyPageTests : BunitContext
         ButtonsWithText(cut, localizer["UnbanConfirmButton"].Value).Single().Click();
 
         cut.WaitForAssertion(() => Assert.Contains(localizer["UnbanFailed", HttpStatusCode.InternalServerError.ToString()].Value, cut.Markup, StringComparison.Ordinal));
-        Assert.Single(RowsContaining(cut, UnbanCidr));
+        _ = Assert.Single(RowsContaining(cut, UnbanCidr));
     }
 }

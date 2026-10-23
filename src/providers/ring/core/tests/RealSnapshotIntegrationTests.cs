@@ -16,7 +16,10 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
 
         [Fact]
         [Trait("Description", "Real API: captures the latest snapshot from the first doorbot with the saved credentials")]
@@ -30,8 +33,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             Session session = await RealSessionHelper.CreateAuthenticatedSessionAsync();
-            var devices = await session.GetRingDevices();
-            var doorbot = devices.Doorbots.FirstOrDefault();
+            Entities.Devices devices = await session.GetRingDevices();
+            Entities.Doorbot? doorbot = devices.Doorbots.FirstOrDefault();
             if (doorbot is null)
             {
                 Assert.Skip("This Ring account has no doorbot to capture a snapshot from.");

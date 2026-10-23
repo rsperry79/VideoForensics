@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// One host-agnostic sample of download progress, the data <c>DownloadProgressPanel</c> renders.

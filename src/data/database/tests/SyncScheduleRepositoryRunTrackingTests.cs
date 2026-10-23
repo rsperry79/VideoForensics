@@ -85,7 +85,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RecordEventRunAsync_ExistingRow_UpdatesOnlyEventRunFields()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account, eventMinutes: 30, snapshotMinutes: 45, advanced: true), CancellationToken.None);
             var ran = new DateTime(2026, 5, 1, 10, 0, 0, DateTimeKind.Utc);
             DateTime next = ran.AddMinutes(30);
@@ -107,7 +107,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RecordEventRunAsync_IntervalsEditedAfterLoad_DoesNotOverwriteEdits()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account, eventMinutes: 30), CancellationToken.None);
             // User edits the schedule while a run is in flight.
             await _repository.UpsertAsync(Build(account, enabled: false, eventMinutes: 99, snapshotMinutes: 77), CancellationToken.None);
@@ -124,7 +124,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task RecordSnapshotRunAsync_ExistingRow_UpdatesOnlySnapshotRunFields()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account), CancellationToken.None);
             var ran = new DateTime(2026, 5, 1, 11, 0, 0, DateTimeKind.Utc);
             DateTime next = ran.AddMinutes(45);
@@ -161,7 +161,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task SetSnapshotIntervalSecondsAsync_NewSchedule_IsNull()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account), CancellationToken.None);
 
             SyncSchedule? row = await _repository.GetByProviderAccountIdAsync(account, CancellationToken.None);
@@ -173,7 +173,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task SetSnapshotIntervalSecondsAsync_ExistingRow_UpdatesOnlySnapshotIntervalSeconds()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account, eventMinutes: 30, snapshotMinutes: 45, advanced: true), CancellationToken.None);
 
             await _repository.SetSnapshotIntervalSecondsAsync(account, 3, CancellationToken.None);
@@ -198,7 +198,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task SetSnapshotIntervalSecondsAsync_NonPositiveSeconds_ThrowsArgumentOutOfRange()
         {
-            Guid account = Guid.NewGuid();
+            var account = Guid.NewGuid();
             await _repository.UpsertAsync(Build(account), CancellationToken.None);
 
             _ = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(

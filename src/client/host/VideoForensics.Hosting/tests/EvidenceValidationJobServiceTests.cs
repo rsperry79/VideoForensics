@@ -1,15 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Moq;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Services;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public sealed class EvidenceValidationJobServiceTests
     {
@@ -18,20 +12,23 @@ namespace VideoForensics.Hosting.Tests
         private static EvidenceValidationJobService CreateService(Mock<IEvidenceValidationService> validation)
         {
             ServiceCollection services = new();
-            services.AddSingleton(validation.Object);
+            _ = services.AddSingleton(validation.Object);
             ServiceProvider provider = services.BuildServiceProvider();
             return new EvidenceValidationJobService(
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 NullLogger<EvidenceValidationJobService>.Instance);
         }
 
-        private static MediaVerificationResult Result(string fileName, string status, string? reason = null) => new()
+        private static MediaVerificationResult Result(string fileName, string status, string? reason = null)
         {
-            MediaItemId = Guid.NewGuid(),
-            FileName = fileName,
-            Status = status,
-            FailureReason = reason
-        };
+            return new()
+            {
+                MediaItemId = Guid.NewGuid(),
+                FileName = fileName,
+                Status = status,
+                FailureReason = reason
+            };
+        }
 
         private static async Task<EvidenceValidationJob> WaitForCompletionAsync(EvidenceValidationJobService service, EvidenceValidationJobKind kind)
         {
@@ -53,7 +50,7 @@ namespace VideoForensics.Hosting.Tests
         {
             TaskCompletionSource<IReadOnlyList<MediaVerificationResult>> gate = new();
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns((Guid? _, CancellationToken _, IProgress<string>? _) => gate.Task);
             EvidenceValidationJobService service = CreateService(validation);
 
@@ -65,7 +62,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Null(job.CompletedUtc);
 
             gate.SetResult(Array.Empty<MediaVerificationResult>());
-            await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
+            _ = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
         }
 
         [Fact]
@@ -76,7 +73,7 @@ namespace VideoForensics.Hosting.Tests
             TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource reported = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns(async (Guid? _, CancellationToken _, IProgress<string>? progress) =>
                 {
                     progress!.Report("a.mp4: checking");
@@ -108,20 +105,20 @@ namespace VideoForensics.Hosting.Tests
                 Result("b.mp4", "failed", "hash mismatch")
             ];
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns(async (Guid? _, CancellationToken _, IProgress<string>? progress) =>
                 {
                     progress!.Report("a.mp4: verified");
                     progress.Report("b.mp4: failed - hash mismatch");
-                    return (IReadOnlyList<MediaVerificationResult>)results;
+                    return results;
                 });
             EvidenceValidationJobService service = CreateService(validation);
 
-            await service.StartIntegrityAsync(null, CancellationToken.None);
+            _ = await service.StartIntegrityAsync(null, CancellationToken.None);
             EvidenceValidationJob done = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
 
             Assert.Equal(EvidenceValidationJobState.Succeeded, done.State);
-            Assert.NotNull(done.CompletedUtc);
+            _ = Assert.NotNull(done.CompletedUtc);
             Assert.NotNull(done.IntegrityResults);
             Assert.Equal(2, done.IntegrityResults!.Count);
             Assert.Null(done.ErrorMessage);
@@ -135,16 +132,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartIntegrityAsync_WhenServiceThrows_SetsFailedWithErrorMessage()
         {
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .ThrowsAsync(new InvalidOperationException("disk unavailable"));
             EvidenceValidationJobService service = CreateService(validation);
 
-            await service.StartIntegrityAsync(null, CancellationToken.None);
+            _ = await service.StartIntegrityAsync(null, CancellationToken.None);
             EvidenceValidationJob done = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
 
             Assert.Equal(EvidenceValidationJobState.Failed, done.State);
             Assert.Equal("disk unavailable", done.ErrorMessage);
-            Assert.NotNull(done.CompletedUtc);
+            _ = Assert.NotNull(done.CompletedUtc);
             Assert.Contains(done.Log, line => line.Contains("disk unavailable", StringComparison.Ordinal));
         }
 
@@ -154,10 +151,10 @@ namespace VideoForensics.Hosting.Tests
             TaskCompletionSource<IReadOnlyList<MediaVerificationResult>> gate = new();
             TaskCompletionSource invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns((Guid? _, CancellationToken _, IProgress<string>? _) =>
                 {
-                    invoked.TrySetResult();
+                    _ = invoked.TrySetResult();
                     return gate.Task;
                 });
             EvidenceValidationJobService service = CreateService(validation);
@@ -171,25 +168,25 @@ namespace VideoForensics.Hosting.Tests
             validation.Verify(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()), Times.Once);
 
             gate.SetResult(Array.Empty<MediaVerificationResult>());
-            await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
+            _ = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
         }
 
         [Fact]
         public async Task GetLatestAsync_AfterReconcileStarted_ReturnsReconcileJobNotIntegrity()
         {
             Mock<IEvidenceValidationService> validation = new();
-            validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .ReturnsAsync(Array.Empty<MediaVerificationResult>());
-            validation.Setup(v => v.ReconcileWithProviderAsync(
+            _ = validation.Setup(v => v.ReconcileWithProviderAsync(
                     It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
             EvidenceValidationJobService service = CreateService(validation);
 
-            await service.StartIntegrityAsync(null, CancellationToken.None);
-            await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
+            _ = await service.StartIntegrityAsync(null, CancellationToken.None);
+            _ = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Integrity);
             EvidenceValidationJob reconcile = await service.StartReconcileAsync(
                 Guid.NewGuid(), "provider-1", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, CancellationToken.None);
-            await WaitForCompletionAsync(service, EvidenceValidationJobKind.Reconcile);
+            _ = await WaitForCompletionAsync(service, EvidenceValidationJobKind.Reconcile);
 
             EvidenceValidationJob? latestReconcile = await service.GetLatestAsync(EvidenceValidationJobKind.Reconcile, CancellationToken.None);
             EvidenceValidationJob? latestIntegrity = await service.GetLatestAsync(EvidenceValidationJobKind.Integrity, CancellationToken.None);

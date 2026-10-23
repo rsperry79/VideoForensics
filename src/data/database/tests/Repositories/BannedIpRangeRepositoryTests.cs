@@ -1,4 +1,5 @@
-﻿using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -8,32 +9,30 @@ namespace VideoForensics.Data.Database.Tests.Repositories
     public class BannedIpRangeRepositoryTests : RepositoryTestBase
     {
         private BannedIpRangeRepository _repository = null!;
-        private Guid _testOperatorId = Guid.NewGuid();
+        private readonly Guid _testOperatorId = Guid.NewGuid();
 
         public override async ValueTask InitializeAsync()
         {
             await base.InitializeAsync();
             _repository = new BannedIpRangeRepository(Fixture.Factory, CreateLogger<BannedIpRangeRepository>());
-            
+
             // Create a test operator for FK
-            await using (var db = await Fixture.Factory.CreateDbContextAsync())
+            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync();
+            _ = db.Operators.Add(new Operator
             {
-                db.Operators.Add(new Operator
-                {
-                    Id = _testOperatorId,
-                    DisplayName = "Test Admin",
-                    Username = "testadmin",
-                    Email = "admin@example.com",
-                    FirstName = "Test",
-                    LastName = "Admin",
-                    CreatedAtUtc = DateTime.UtcNow,
-                    SecurityStamp = Guid.NewGuid(),
-                    Role = OperatorRole.SuperAdmin,
-                    Active = true,
-                    IsApproved = true
-                });
-                await db.SaveChangesAsync();
-            }
+                Id = _testOperatorId,
+                DisplayName = "Test Admin",
+                Username = "testadmin",
+                Email = "admin@example.com",
+                FirstName = "Test",
+                LastName = "Admin",
+                CreatedAtUtc = DateTime.UtcNow,
+                SecurityStamp = Guid.NewGuid(),
+                Role = OperatorRole.SuperAdmin,
+                Active = true,
+                IsApproved = true
+            });
+            _ = await db.SaveChangesAsync();
         }
 
         [Fact]
@@ -66,7 +65,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             // Assert: Verify it appears in active bans
             IReadOnlyList<BannedIpRange> activeBans = await _repository.GetActiveAsync(CancellationToken.None);
-            Assert.Single(activeBans);
+            _ = Assert.Single(activeBans);
             Assert.Equal("203.0.113.0/24", activeBans[0].CidrRange);
             Assert.Equal("Malicious activity", activeBans[0].Reason);
         }
@@ -84,7 +83,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 CreatedByOperatorId = _testOperatorId,
                 ExpiresAtUtc = null
             };
-            
+
             var expiredBan = new BannedIpRange
             {
                 Id = Guid.NewGuid(),
@@ -94,7 +93,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 CreatedByOperatorId = _testOperatorId,
                 ExpiresAtUtc = DateTime.UtcNow.AddHours(-1) // Already expired
             };
-            
+
             await _repository.AddAsync(permanentBan, CancellationToken.None);
             await _repository.AddAsync(expiredBan, CancellationToken.None);
 
@@ -102,7 +101,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             IReadOnlyList<BannedIpRange> activeBans = await _repository.GetActiveAsync(CancellationToken.None);
 
             // Assert: Should only return the permanent ban
-            Assert.Single(activeBans);
+            _ = Assert.Single(activeBans);
             Assert.Equal("203.0.113.0/24", activeBans[0].CidrRange);
         }
 
@@ -125,7 +124,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             IReadOnlyList<BannedIpRange> activeBans = await _repository.GetActiveAsync(CancellationToken.None);
 
             // Assert: Should include the future-expiring ban
-            Assert.Single(activeBans);
+            _ = Assert.Single(activeBans);
             Assert.Equal("198.51.100.0/24", activeBans[0].CidrRange);
         }
 
@@ -172,7 +171,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 CreatedByOperatorId = _testOperatorId,
                 ExpiresAtUtc = null
             };
-            
+
             var ban2 = new BannedIpRange
             {
                 Id = Guid.NewGuid(),
@@ -182,7 +181,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 CreatedByOperatorId = _testOperatorId,
                 ExpiresAtUtc = null
             };
-            
+
             await _repository.AddAsync(ban1, CancellationToken.None);
             await _repository.AddAsync(ban2, CancellationToken.None);
 
@@ -191,7 +190,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
 
             // Assert: ban2 should still exist
             IReadOnlyList<BannedIpRange> activeBans = await _repository.GetActiveAsync(CancellationToken.None);
-            Assert.Single(activeBans);
+            _ = Assert.Single(activeBans);
             Assert.Equal("192.0.2.0/24", activeBans[0].CidrRange);
         }
     }

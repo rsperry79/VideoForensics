@@ -72,12 +72,9 @@ namespace VideoForensics.Providers.Ring.Services
         // Same lookup order as DeviceHealthMatcher.FindDeviceHealth, but returns the device's display name.
         private static string? FindDeviceName(Devices? devices, string providerDeviceId)
         {
-            if (devices == null)
-            {
-                return null;
-            }
-
-            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+            return devices == null
+                ? null
+                : devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
                 ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
                 ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
                 ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;

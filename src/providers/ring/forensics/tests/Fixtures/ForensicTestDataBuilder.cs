@@ -20,25 +20,25 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
                 .RuleFor(e => e.EventTimestamp, f => f.Date.Recent())
                 .RuleFor(e => e.EventType, f => f.PickRandom("motion", "doorbell", "battery", "motion_detection"))
                 .RuleFor(e => e.ExtractionHandler, _ => "ForensicExtractor")
-                .RuleFor(e => e.ExtractedData, _ => new Dictionary<string, object>())
-                .RuleFor(e => e.Checksums, _ => new Dictionary<string, string>());
+                .RuleFor(e => e.ExtractedData, _ => [])
+                .RuleFor(e => e.Checksums, _ => []);
         }
 
         public ForensicTestDataBuilder WithDeviceId(string deviceId)
         {
-            _faker.RuleFor(e => e.SourceDeviceId, _ => deviceId);
+            _ = _faker.RuleFor(e => e.SourceDeviceId, _ => deviceId);
             return this;
         }
 
         public ForensicTestDataBuilder WithEventTimestamp(DateTime timestamp)
         {
-            _faker.RuleFor(e => e.EventTimestamp, _ => timestamp);
+            _ = _faker.RuleFor(e => e.EventTimestamp, _ => timestamp);
             return this;
         }
 
         public ForensicTestDataBuilder WithEventType(string eventType)
         {
-            _faker.RuleFor(e => e.EventType, _ => eventType);
+            _ = _faker.RuleFor(e => e.EventType, _ => eventType);
             return this;
         }
 
@@ -56,7 +56,7 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 
         public ForensicTestDataBuilder WithHandler(string handler)
         {
-            _faker.RuleFor(e => e.ExtractionHandler, _ => handler);
+            _ = _faker.RuleFor(e => e.ExtractionHandler, _ => handler);
             return this;
         }
 
@@ -68,16 +68,16 @@ namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
 
         public EvidenceMetadata BuildEvidence()
         {
-            var evidence = _faker.Generate();
+            EvidenceMetadata evidence = _faker.Generate();
 
             // Apply any extracted data overrides
-            foreach (var kvp in _extractedDataOverrides)
+            foreach (KeyValuePair<string, object> kvp in _extractedDataOverrides)
             {
                 evidence.ExtractedData[kvp.Key] = kvp.Value;
             }
 
             // Apply any checksum overrides
-            foreach (var kvp in _checksumOverrides)
+            foreach (KeyValuePair<string, string> kvp in _checksumOverrides)
             {
                 evidence.Checksums[kvp.Key] = kvp.Value;
             }

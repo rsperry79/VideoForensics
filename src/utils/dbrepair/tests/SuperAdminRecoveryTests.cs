@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Identity;
 using Moq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.DbRepair.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Utils.DbRepair.Tests;
@@ -39,12 +40,12 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithUsername_ReturnsOperatorIfExists()
     {
         // Arrange
-        var target = CreateTestOperator("admin");
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        Operator target = CreateTestOperator("admin");
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
 
         // Act
-        var result = await _recovery.SelectTargetAsync("admin", CancellationToken.None);
+        Operator result = await _recovery.SelectTargetAsync("admin", CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -55,11 +56,11 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithUsername_ThrowsIfOperatorNotExists()
     {
         // Arrange
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Operator?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _recovery.SelectTargetAsync("admin", CancellationToken.None));
     }
 
@@ -67,12 +68,12 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithUsername_ThrowsIfNotSuperAdmin()
     {
         // Arrange
-        var op = CreateTestOperator("user", OperatorRole.Admin);
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("user", It.IsAny<CancellationToken>()))
+        Operator op = CreateTestOperator("user", OperatorRole.Admin);
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("user", It.IsAny<CancellationToken>()))
             .ReturnsAsync(op);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _recovery.SelectTargetAsync("user", CancellationToken.None));
     }
 
@@ -80,12 +81,12 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithoutUsername_ReturnsPrimarySuperAdmin()
     {
         // Arrange
-        var primary = CreateTestOperator("primary", isPrimary: true);
-        _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+        Operator primary = CreateTestOperator("primary", isPrimary: true);
+        _ = _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { primary });
 
         // Act
-        var result = await _recovery.SelectTargetAsync(null, CancellationToken.None);
+        Operator result = await _recovery.SelectTargetAsync(null, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -96,12 +97,12 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithoutUsername_ReturnsSingleSuperAdminIfNoPrimary()
     {
         // Arrange
-        var superAdmin = CreateTestOperator("super");
-        _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+        Operator superAdmin = CreateTestOperator("super");
+        _ = _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { superAdmin });
 
         // Act
-        var result = await _recovery.SelectTargetAsync(null, CancellationToken.None);
+        Operator result = await _recovery.SelectTargetAsync(null, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -112,13 +113,13 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithoutUsername_ThrowsIfMultipleSuperAdmins()
     {
         // Arrange
-        var super1 = CreateTestOperator("super1");
-        var super2 = CreateTestOperator("super2");
-        _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+        Operator super1 = CreateTestOperator("super1");
+        Operator super2 = CreateTestOperator("super2");
+        _ = _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { super1, super2 });
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _recovery.SelectTargetAsync(null, CancellationToken.None));
     }
 
@@ -126,12 +127,12 @@ public class SuperAdminRecoveryTests
     public async Task SelectTarget_WithoutUsername_ThrowsIfNoSuperAdmin()
     {
         // Arrange
-        var op = CreateTestOperator("user", OperatorRole.Admin);
-        _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+        Operator op = CreateTestOperator("user", OperatorRole.Admin);
+        _ = _operatorRepo.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { op });
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _recovery.SelectTargetAsync(null, CancellationToken.None));
     }
 
@@ -139,7 +140,7 @@ public class SuperAdminRecoveryTests
     public void ValidatePassword_TooShort_Throws()
     {
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => _recovery.ValidatePassword("short"));
+        _ = Assert.Throws<InvalidOperationException>(() => _recovery.ValidatePassword("short"));
     }
 
     [Fact]
@@ -153,13 +154,13 @@ public class SuperAdminRecoveryTests
     public async Task PromptPassword_Successful()
     {
         // Arrange
-        _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
 
         // Act
-        var pwd = await _recovery.PromptPasswordAsync(CancellationToken.None);
+        string pwd = await _recovery.PromptPasswordAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal("NewPassword123!", pwd);
@@ -169,13 +170,13 @@ public class SuperAdminRecoveryTests
     public async Task PromptPassword_MismatchedConfirmation_Throws()
     {
         // Arrange
-        _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("Password123!");
-        _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("DifferentPassword!");
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _recovery.PromptPasswordAsync(CancellationToken.None));
     }
 
@@ -184,7 +185,7 @@ public class SuperAdminRecoveryTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var op = CreateTestOperator();
+        Operator op = CreateTestOperator();
         op.Id = operatorId;
         string newPassword = "NewPassword123!";
 
@@ -205,7 +206,7 @@ public class SuperAdminRecoveryTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var op = CreateTestOperator();
+        Operator op = CreateTestOperator();
         op.Id = operatorId;
         op.FailedLoginAttemptCount = 5;
         op.LockedOutUntilUtc = DateTime.UtcNow.AddHours(1);
@@ -221,8 +222,8 @@ public class SuperAdminRecoveryTests
     public async Task ResetPassword_EnablesAuthPasswordIfKeyExists()
     {
         // Arrange
-        var op = CreateTestOperator();
-        _appSettingRepo.Setup(r => r.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
+        Operator op = CreateTestOperator();
+        _ = _appSettingRepo.Setup(r => r.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
             .ReturnsAsync("False");
 
         // Act
@@ -236,8 +237,8 @@ public class SuperAdminRecoveryTests
     public async Task ResetPassword_DoesNotWriteSettingWhenKeyAbsent()
     {
         // Arrange
-        var op = CreateTestOperator();
-        _appSettingRepo.Setup(r => r.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
+        Operator op = CreateTestOperator();
+        _ = _appSettingRepo.Setup(r => r.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
         // Act
@@ -251,8 +252,8 @@ public class SuperAdminRecoveryTests
     public async Task ResetPassword_LogsAuditEvent()
     {
         // Arrange
-        var op = CreateTestOperator();
-        var operatorId = op.Id;
+        Operator op = CreateTestOperator();
+        Guid operatorId = op.Id;
 
         // Act
         await _recovery.ResetPasswordAsync(op, "NewPassword123!", CancellationToken.None);
@@ -272,7 +273,7 @@ public class SuperAdminRecoveryTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var op = CreateTestOperator();
+        Operator op = CreateTestOperator();
         op.Id = operatorId;
         op.Active = false;  // Account is deactivated
 
@@ -288,7 +289,7 @@ public class SuperAdminRecoveryTests
     {
         // Arrange
         var operatorId = Guid.NewGuid();
-        var op = CreateTestOperator();
+        Operator op = CreateTestOperator();
         op.Id = operatorId;
         op.Active = true;  // Already active
 
@@ -303,19 +304,19 @@ public class SuperAdminRecoveryTests
     public async Task Execute_FullFlow_WithConfirmation()
     {
         // Arrange
-        var target = CreateTestOperator("admin");
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        Operator target = CreateTestOperator("admin");
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
 
-        _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.AskConfirmationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.AskConfirmationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
-        var result = await _recovery.ExecuteAsync("admin", skipConfirmation: false, CancellationToken.None);
+        Operator result = await _recovery.ExecuteAsync("admin", skipConfirmation: false, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -327,17 +328,17 @@ public class SuperAdminRecoveryTests
     public async Task Execute_SkipConfirmation()
     {
         // Arrange
-        var target = CreateTestOperator("admin");
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        Operator target = CreateTestOperator("admin");
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
 
-        _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
 
         // Act
-        var result = await _recovery.ExecuteAsync("admin", skipConfirmation: true, CancellationToken.None);
+        Operator result = await _recovery.ExecuteAsync("admin", skipConfirmation: true, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -348,19 +349,19 @@ public class SuperAdminRecoveryTests
     public async Task Execute_DeclinedConfirmation_CancelsOperation()
     {
         // Arrange
-        var target = CreateTestOperator("admin");
-        _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
+        Operator target = CreateTestOperator("admin");
+        _ = _operatorRepo.Setup(r => r.GetByUsernameAsync("admin", It.IsAny<CancellationToken>()))
             .ReturnsAsync(target);
 
-        _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptPasswordAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.PromptConfirmationAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("NewPassword123!");
-        _passwordPrompt.Setup(p => p.AskConfirmationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _passwordPrompt.Setup(p => p.AskConfirmationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>
             _recovery.ExecuteAsync("admin", skipConfirmation: false, CancellationToken.None));
     }
 }

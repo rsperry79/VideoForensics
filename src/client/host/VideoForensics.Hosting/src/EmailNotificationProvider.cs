@@ -8,7 +8,7 @@ using MimeKit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Email is the baseline urgent-notification channel (plan §5.6) - the one channel that

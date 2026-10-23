@@ -93,9 +93,9 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void BuildTempPath_KeepsMediaExtension_ForFormatInference()
         {
-            var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg");
+            _ = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg");
 
-            var method = typeof(FfmpegMediaMetadataTagger).GetMethod(
+            MethodInfo? method = typeof(FfmpegMediaMetadataTagger).GetMethod(
                 "BuildTempPath",
                 BindingFlags.NonPublic | BindingFlags.Static,
                 null,
@@ -118,7 +118,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
             File.WriteAllBytes(tempFile, new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
-            Guid eventId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
             try
             {
                 var tagger = new FfmpegMediaMetadataTagger(
@@ -158,7 +158,7 @@ namespace VideoForensics.Providers.Ring.Tests
             }
 
             string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".mp4");
-            Guid eventId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
             try
             {
                 using (Process generate = Process.Start(new ProcessStartInfo(ffmpeg)
@@ -194,7 +194,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             try
             {
-                using Process? probe = Process.Start(new ProcessStartInfo(name, "-version")
+                using var probe = Process.Start(new ProcessStartInfo(name, "-version")
                 {
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -205,7 +205,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     return false;
                 }
 
-                probe.StandardOutput.ReadToEnd();
+                _ = probe.StandardOutput.ReadToEnd();
                 probe.WaitForExit();
                 return probe.ExitCode == 0;
             }
@@ -220,11 +220,11 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var tagger = new FfmpegMediaMetadataTagger(_mockLogger.Object, ffmpegPath: "ffmpeg");
             string mediaFilePath = "/path/to/media.mp4";
-            Guid eventId = Guid.NewGuid();
+            var eventId = Guid.NewGuid();
             string tmpPath = "/path/to/tmp.mp4";
 
             // Use reflection to call the internal BuildTaggingProcessInfo method
-            var method = typeof(FfmpegMediaMetadataTagger).GetMethod(
+            MethodInfo? method = typeof(FfmpegMediaMetadataTagger).GetMethod(
                 "BuildTaggingProcessInfo",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
                 null,
@@ -257,7 +257,7 @@ namespace VideoForensics.Providers.Ring.Tests
             string mediaFilePath = "/path/to/media.mp4";
 
             // Use reflection to call the internal BuildReadingProcessInfo method
-            var method = typeof(FfmpegMediaMetadataTagger).GetMethod(
+            MethodInfo? method = typeof(FfmpegMediaMetadataTagger).GetMethod(
                 "BuildReadingProcessInfo",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
                 null,

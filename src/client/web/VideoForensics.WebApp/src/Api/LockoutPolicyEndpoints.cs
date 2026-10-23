@@ -1,11 +1,12 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for managing account lockout policy settings: maximum failed login attempts,
@@ -26,7 +27,7 @@ namespace VideoForensics.WebApp.Api
             ILockoutPolicySettingsRepository repository,
             CancellationToken ct)
         {
-            var settings = await repository.GetAsync(ct);
+            LockoutPolicySettings settings = await repository.GetAsync(ct);
             return Results.Ok(settings.ToDto());
         }
 
@@ -38,15 +39,15 @@ namespace VideoForensics.WebApp.Api
             HttpContext context,
             CancellationToken ct)
         {
-            var validationErrors = ValidateAutoBanFields(request);
+            Dictionary<string, string[]> validationErrors = ValidateAutoBanFields(request);
             if (validationErrors.Count > 0)
             {
                 return Results.ValidationProblem(validationErrors);
             }
 
-            var currentSettings = await repository.GetAsync(ct);
+            LockoutPolicySettings currentSettings = await repository.GetAsync(ct);
 
-            var updatedSettings = new VideoForensics.Data.Common.Entities.LockoutPolicySettings
+            var updatedSettings = new LockoutPolicySettings
             {
                 Id = currentSettings.Id,
                 MaxFailedAttempts = request.MaxFailedAttempts,
@@ -86,14 +87,17 @@ namespace VideoForensics.WebApp.Api
             {
                 errors[nameof(request.AutoBanDistinctAccountThreshold)] = ["Must be at least 1."];
             }
+
             if (request.AutoBanWindowMinutes < 1)
             {
                 errors[nameof(request.AutoBanWindowMinutes)] = ["Must be at least 1."];
             }
+
             if (request.AutoBanDurationMinutes < 1)
             {
                 errors[nameof(request.AutoBanDurationMinutes)] = ["Must be at least 1."];
             }
+
             return errors;
         }
     }

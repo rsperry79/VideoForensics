@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Formatting;
+namespace VideoForensics.Client.Ui.Shared.Formatting;
 
 /// <summary>Kind of entry shown on the Simple Mode timeline.</summary>
 public enum SimpleEntryKind

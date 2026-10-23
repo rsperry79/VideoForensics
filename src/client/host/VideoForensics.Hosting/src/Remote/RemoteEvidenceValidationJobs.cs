@@ -2,11 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IEvidenceValidationJobs"/> that starts and polls validation jobs on the
@@ -24,8 +23,10 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
-            PostIntegrityAsync(new StartIntegrityJobRequest(deviceId), ct);
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
+        {
+            return PostIntegrityAsync(new StartIntegrityJobRequest(deviceId), ct);
+        }
 
         /// <inheritdoc />
         public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)

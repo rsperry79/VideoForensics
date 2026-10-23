@@ -1,17 +1,15 @@
-using System.Collections.Concurrent;
-using System.Net;
-
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-using Moq;
+using System.Collections.Concurrent;
+using System.Net;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RealtimeHubTests
     {
@@ -20,7 +18,7 @@ namespace VideoForensics.Hosting.Tests
         private static IServiceProvider CreateServices()
         {
             var services = new ServiceCollection();
-            services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
+            _ = services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
             return services.BuildServiceProvider();
         }
 
@@ -45,12 +43,7 @@ namespace VideoForensics.Hosting.Tests
             await using var hub = new RealtimeHub(ServerAddress, CreateServices(), _ =>
             {
                 connectCalls++;
-                if (connectCalls == 1)
-                {
-                    throw new InvalidOperationException("Server not reachable yet");
-                }
-
-                return Task.CompletedTask;
+                return connectCalls == 1 ? throw new InvalidOperationException("Server not reachable yet") : Task.CompletedTask;
             });
             var states = new List<ConnectionState>();
             var connected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -59,7 +52,7 @@ namespace VideoForensics.Hosting.Tests
                 states.Add(state);
                 if (state == ConnectionState.Connected)
                 {
-                    connected.TrySetResult();
+                    _ = connected.TrySetResult();
                 }
             });
 
@@ -127,12 +120,9 @@ namespace VideoForensics.Hosting.Tests
             await using var hub = new RealtimeHub(ServerAddress, CreateServices(), _ =>
             {
                 connectCalls++;
-                if (connectCalls == 1)
-                {
-                    throw new InvalidOperationException("Server not reachable yet");
-                }
-
-                return Task.FromException(new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
+                return connectCalls == 1
+                    ? throw new InvalidOperationException("Server not reachable yet")
+                    : Task.FromException(new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
             });
             using IDisposable faulty = hub.Connection.Subscribe(state =>
             {
@@ -146,7 +136,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 if (state == ConnectionState.Disconnected)
                 {
-                    disconnected.TrySetResult();
+                    _ = disconnected.TrySetResult();
                 }
             });
 
@@ -295,9 +285,9 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task SubscribeLiveViewAsync_Connected_InvokesSubscribeLiveView()
         {
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls);
+            await using RealtimeHub hub = CreateHubWithInvoke(calls);
             await hub.StartAsync(CancellationToken.None);
 
             await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
@@ -310,15 +300,15 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UnsubscribeLiveViewAsync_Connected_InvokesUnsubscribeLiveView()
         {
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls);
+            await using RealtimeHub hub = CreateHubWithInvoke(calls);
             await hub.StartAsync(CancellationToken.None);
             await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
 
             await hub.UnsubscribeLiveViewAsync(sessionId, CancellationToken.None);
 
-            var recorded = calls.ToArray();
+            (string Method, Guid SessionId)[] recorded = calls.ToArray();
             Assert.Equal(2, recorded.Length);
             Assert.Equal(("UnsubscribeLiveView", sessionId), recorded[1]);
         }
@@ -328,9 +318,9 @@ namespace VideoForensics.Hosting.Tests
         {
             // The reconnect loop runs through the connect seam. After the server drops the connection, group membership
             // is gone, so the tracked session must be re-subscribed once the connection is back.
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls);
+            await using RealtimeHub hub = CreateHubWithInvoke(calls);
             await hub.StartAsync(CancellationToken.None);
             await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
             (Task reconnected, IDisposable watch) = WatchForReconnect(hub);
@@ -348,17 +338,17 @@ namespace VideoForensics.Hosting.Tests
         {
             // Drives the built-in HubConnection.Reconnected handler through HandleReconnectedAsync. That handler is the
             // only path that restores group membership after SignalR's own automatic reconnect.
-            Guid first = Guid.NewGuid();
-            Guid second = Guid.NewGuid();
+            var first = Guid.NewGuid();
+            var second = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls);
+            await using RealtimeHub hub = CreateHubWithInvoke(calls);
             await hub.StartAsync(CancellationToken.None);
             await hub.SubscribeLiveViewAsync(first, CancellationToken.None);
             await hub.SubscribeLiveViewAsync(second, CancellationToken.None);
 
             await hub.HandleReconnectedAsync();
 
-            var replayed = calls.Skip(2).ToArray();
+            (string Method, Guid SessionId)[] replayed = calls.Skip(2).ToArray();
             Assert.Equal(2, replayed.Length);
             Assert.All(replayed, call => Assert.Equal("SubscribeLiveView", call.Method));
             Assert.Equal(new[] { first, second }.OrderBy(id => id), replayed.Select(call => call.SessionId).OrderBy(id => id));
@@ -367,9 +357,9 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task SubscribeLiveViewAsync_HubException_IsSwallowedAndNotReplayed()
         {
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls, method => method == "SubscribeLiveView"
+            await using RealtimeHub hub = CreateHubWithInvoke(calls, method => method == "SubscribeLiveView"
                 ? Task.FromException(new HubException("Unknown live-view session"))
                 : Task.CompletedTask);
             await hub.StartAsync(CancellationToken.None);
@@ -383,15 +373,15 @@ namespace VideoForensics.Hosting.Tests
             watch.Dispose();
 
             // Only the rejected attempt was sent; the bad id was dropped and not replayed on reconnect.
-            Assert.Single(calls);
+            _ = Assert.Single(calls);
         }
 
         [Fact]
         public async Task SubscribeLiveViewAsync_NotConnected_TracksAndSendsOnConnect()
         {
-            Guid sessionId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using var hub = CreateHubWithInvoke(calls);
+            await using RealtimeHub hub = CreateHubWithInvoke(calls);
 
             await hub.SubscribeLiveViewAsync(sessionId, CancellationToken.None);
             Assert.Empty(calls);
@@ -428,15 +418,18 @@ namespace VideoForensics.Hosting.Tests
                 }
                 else if (state == ConnectionState.Connected && reconnecting)
                 {
-                    reconnected.TrySetResult();
+                    _ = reconnected.TrySetResult();
                 }
             });
             return (reconnected.Task, subscription);
         }
 
-        private static LiveViewSessionDto SampleSession() => new(
+        private static LiveViewSessionDto SampleSession()
+        {
+            return new(
             Guid.NewGuid(), Guid.NewGuid(), "Manual", "Active",
             new DateTime(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc), null,
             new DateTime(2026, 10, 9, 10, 0, 0, DateTimeKind.Utc), false, null, null, null, null, null);
+        }
     }
 }

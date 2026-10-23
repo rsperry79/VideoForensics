@@ -8,14 +8,14 @@ using Moq;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class PairedDeviceAuthenticationHandlerTests
     {
@@ -1333,7 +1333,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange - limited session, no passkey yet, calling passkey registration options
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-register-options", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential>());
+                "limited-register-options", "/api/v1/auth/operator-credentials/register/options", []);
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1347,7 +1347,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange - limited session calling an unrelated endpoint
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-other-endpoint", "/api/v1/llm/settings", new List<OperatorCredential>());
+                "limited-other-endpoint", "/api/v1/llm/settings", []);
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1361,9 +1361,9 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange - the two other endpoints the passkey setup page needs
             (PairedDeviceAuthenticationHandler completeHandler, HttpContext completeContext) = CreateLimitedSessionRequest(
-                "limited-register-complete", "/api/v1/auth/operator-credentials/register/complete", new List<OperatorCredential>());
+                "limited-register-complete", "/api/v1/auth/operator-credentials/register/complete", []);
             (PairedDeviceAuthenticationHandler mineHandler, HttpContext mineContext) = CreateLimitedSessionRequest(
-                "limited-mine", "/api/devices-management/operator-credentials/mine", new List<OperatorCredential>());
+                "limited-mine", "/api/devices-management/operator-credentials/mine", []);
 
             // Act
             AuthenticateResult complete = await AuthenticateAsync(completeHandler, PairedDeviceAuthenticationDefaults.SchemeName, completeContext);
@@ -1379,7 +1379,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange - the browser asks the server which kind of session it holds
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-session-kind", "/api/v1/auth/session-kind", new List<OperatorCredential>());
+                "limited-session-kind", "/api/v1/auth/session-kind", []);
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1404,7 +1404,7 @@ namespace VideoForensics.WebApp.Tests
                 CreatedAtUtc = issuedAt.AddMinutes(-10)
             };
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-existing-passkey", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { existing }, issuedAt);
+                "limited-existing-passkey", "/api/v1/auth/operator-credentials/register/options", [existing], issuedAt);
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1429,7 +1429,7 @@ namespace VideoForensics.WebApp.Tests
                 CreatedAtUtc = issuedAt.AddMinutes(1)
             };
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-created-after", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { created }, issuedAt);
+                "limited-created-after", "/api/v1/auth/operator-credentials/register/options", [created], issuedAt);
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1443,7 +1443,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange - issued 16 minutes ago; the token's own expiry is still in the future, so only the 15-minute limit can end it
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-too-old", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential>(), DateTime.UtcNow.AddMinutes(-16));
+                "limited-too-old", "/api/v1/auth/operator-credentials/register/options", [], DateTime.UtcNow.AddMinutes(-16));
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);
@@ -1467,7 +1467,7 @@ namespace VideoForensics.WebApp.Tests
                 CreatedAtUtc = DateTime.UtcNow
             };
             (PairedDeviceAuthenticationHandler handler, HttpContext context) = CreateLimitedSessionRequest(
-                "limited-no-issued-at", "/api/v1/auth/operator-credentials/register/options", new List<OperatorCredential> { created }, default(DateTime));
+                "limited-no-issued-at", "/api/v1/auth/operator-credentials/register/options", [created], default(DateTime));
 
             // Act
             AuthenticateResult result = await AuthenticateAsync(handler, PairedDeviceAuthenticationDefaults.SchemeName, context);

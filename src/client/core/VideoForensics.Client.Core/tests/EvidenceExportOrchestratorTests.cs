@@ -42,7 +42,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange: Setup mocks and test directory - use relative path for export
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
             string relativeExportPath = "test-export-log-injection";
 
             try
@@ -121,7 +121,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange: Setup mocks and test directory
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(tempDir);
+            _ = Directory.CreateDirectory(tempDir);
             string relativeExportPath = "test-export-normal";
 
             try

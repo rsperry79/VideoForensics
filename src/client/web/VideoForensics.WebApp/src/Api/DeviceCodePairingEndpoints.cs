@@ -2,12 +2,12 @@ using System.Security.Cryptography;
 using System.Text;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Device-code (RFC 8628-style) pairing endpoints for headless clients (e.g. the MCP stdio bridge)

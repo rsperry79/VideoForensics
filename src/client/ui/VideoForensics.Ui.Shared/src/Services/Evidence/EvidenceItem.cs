@@ -1,7 +1,6 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Enumeration of evidence item kinds.

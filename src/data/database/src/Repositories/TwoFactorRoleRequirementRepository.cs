@@ -27,7 +27,7 @@ namespace VideoForensics.Data.Database.Repositories
             // If table is empty, synthesize defaults for all four roles with RequireTwoFactor=true (secure-by-default)
             if (requirements.Count == 0)
             {
-                var allRoles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
+                OperatorRole[] allRoles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
                 requirements = allRoles.Select(role => new TwoFactorRoleRequirement
                 {
                     Id = Guid.NewGuid(),

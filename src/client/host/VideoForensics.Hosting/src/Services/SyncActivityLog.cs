@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Process-wide queue of sync console lines. Bounded so a sync that is never drained (no client connected) cannot

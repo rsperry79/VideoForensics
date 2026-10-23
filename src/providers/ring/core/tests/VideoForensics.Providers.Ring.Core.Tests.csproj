@@ -32,7 +32,7 @@
     <ProjectReference Include="../../auth/src/VideoForensics.Providers.Ring.Auth.csproj" />
     <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />
     <ProjectReference Include="../../provider/src/VideoForensics.Providers.Ring.csproj" />
-    <ProjectReference Include="../../../../client/host/VideoForensics.Hosting/src/VideoForensics.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\..\client\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Microsoft.Testing.Platform" Version="2.5.1" />

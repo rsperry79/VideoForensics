@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 
 using System.Collections.Concurrent;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Tracks which live <see cref="LiveHub"/> connections belong to which paired device, so

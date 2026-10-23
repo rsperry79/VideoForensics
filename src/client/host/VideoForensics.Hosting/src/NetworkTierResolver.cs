@@ -5,7 +5,7 @@ using System.Net;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Resolves which network tier (plan §5.2) an individual HTTP request actually arrived via -

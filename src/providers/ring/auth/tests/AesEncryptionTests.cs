@@ -1,9 +1,10 @@
+using System.Reflection;
+using System.Text;
+
+using VideoForensics.Providers.Ring.Implementations;
+
 namespace VideoForensics.Providers.Ring.Auth.Tests
 {
-    using System.Reflection;
-    using System.Text;
-    using VideoForensics.Providers.Ring.Implementations;
-
     public class AesEncryptionTests
     {
         private readonly string _tempSaltDir = Path.Combine(Path.GetTempPath(), $"aes-test-{Guid.NewGuid()}");
@@ -12,7 +13,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         {
             if (!Directory.Exists(_tempSaltDir))
             {
-                Directory.CreateDirectory(_tempSaltDir);
+                _ = Directory.CreateDirectory(_tempSaltDir);
             }
         }
 
@@ -53,7 +54,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             var aes = new AesEncryption();
 
             // Act
-            string result = aes.Encrypt("");
+            string result = aes.Encrypt(string.Empty);
 
             // Assert
             Assert.Null(result);
@@ -79,7 +80,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             var aes = new AesEncryption();
 
             // Act
-            string result = aes.Decrypt("");
+            string result = aes.Decrypt(string.Empty);
 
             // Assert
             Assert.Null(result);
@@ -143,7 +144,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         {
             // Arrange
             var aes = new AesEncryption();
-            string plaintext = new string('A', 10000); // 10KB of data
+            string plaintext = new('A', 10000); // 10KB of data
 
             // Act
             string ciphertext = aes.Encrypt(plaintext);
@@ -170,7 +171,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             for (int i = 0; i < 10; i++)
             {
                 string ciphertext = aes.Encrypt(plaintext);
-                ciphertexts.Add(ciphertext);
+                _ = ciphertexts.Add(ciphertext);
             }
 
             // Assert
@@ -205,7 +206,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
             string ciphertext = aes.Encrypt(plaintext);
 
             // Corrupt the ciphertext by truncating it
-            string truncated = ciphertext.Substring(0, ciphertext.Length - 10);
+            string truncated = ciphertext[..^10];
 
             // Act
             string result = aes.Decrypt(truncated);
@@ -237,11 +238,11 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_PBKDF2_Iterations_Equals_750000()
         {
             // Arrange - use reflection to get the private constant
-            var aesType = typeof(AesEncryption);
-            var iterationsField = aesType.GetField("Iterations", BindingFlags.NonPublic | BindingFlags.Static);
+            Type aesType = typeof(AesEncryption);
+            FieldInfo? iterationsField = aesType.GetField("Iterations", BindingFlags.NonPublic | BindingFlags.Static);
 
             // Act
-            var iterationsValue = iterationsField?.GetValue(null);
+            object? iterationsValue = iterationsField?.GetValue(null);
 
             // Assert
             Assert.NotNull(iterationsValue);
@@ -256,11 +257,11 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
         public void AesEncryption_Salt_Size_Is_SixteenBytes()
         {
             // Arrange - use reflection to get the private constant
-            var aesType = typeof(AesEncryption);
-            var saltSizeField = aesType.GetField("SaltSize", BindingFlags.NonPublic | BindingFlags.Static);
+            Type aesType = typeof(AesEncryption);
+            FieldInfo? saltSizeField = aesType.GetField("SaltSize", BindingFlags.NonPublic | BindingFlags.Static);
 
             // Act
-            var saltSizeValue = saltSizeField?.GetValue(null);
+            object? saltSizeValue = saltSizeField?.GetValue(null);
 
             // Assert
             Assert.NotNull(saltSizeValue);
@@ -278,7 +279,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 string plaintext = "Test message";
 
                 // Act
-                string ciphertext = aes.Encrypt(plaintext);
+                _ = aes.Encrypt(plaintext);
 
                 // Call DeriveKey via encryption to trigger salt creation
                 // The salt should be created in the default location
@@ -321,11 +322,11 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
                 }
 
                 // First encryption
-                string ciphertext1 = aes.Encrypt(plaintext1);
+                _ = aes.Encrypt(plaintext1);
                 byte[] salt1 = File.ReadAllBytes(saltPath);
 
                 // Second encryption
-                string ciphertext2 = aes.Encrypt(plaintext2);
+                _ = aes.Encrypt(plaintext2);
                 byte[] salt2 = File.ReadAllBytes(saltPath);
 
                 // Assert - both encryptions should use the same salt

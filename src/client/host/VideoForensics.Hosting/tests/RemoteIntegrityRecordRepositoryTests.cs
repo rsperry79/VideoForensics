@@ -3,11 +3,9 @@ using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests;
+namespace VideoForensics.Client.Hosting.Tests;
 
 public class RemoteIntegrityRecordRepositoryTests
 {

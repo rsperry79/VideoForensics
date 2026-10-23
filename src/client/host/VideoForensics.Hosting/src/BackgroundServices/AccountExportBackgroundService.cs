@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using VideoForensics.Hosting.Services;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Drains the account export queue on a background thread, one job at a time, so an export never runs on a

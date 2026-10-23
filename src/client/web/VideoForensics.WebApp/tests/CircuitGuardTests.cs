@@ -1,22 +1,25 @@
-namespace VideoForensics.WebApp.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
+
 using Moq;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Services;
-using VideoForensics.WebApp.Services.CircuitGuards;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
+
 using Xunit;
 
+namespace VideoForensics.Client.WebApp.Tests;
 /// <summary>Builds the server-side circuit state the gate reads: an open or closed circuit, a token, and a tier.</summary>
 internal sealed class CircuitFixture
 {
@@ -28,13 +31,16 @@ internal sealed class CircuitFixture
 
     public Mock<IStringLocalizer<SharedResources>> Localizer { get; } = CreateLocalizer();
 
-    public CircuitOperatorGate CreateGate() => new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object, Localizer.Object);
+    public CircuitOperatorGate CreateGate()
+    {
+        return new(Scope, Session.Object, Tokens.Object, Network, StepUp.Object, Localizer.Object);
+    }
 
     /// <summary>Returns each key as its own text, so tests can assert which denial was produced.</summary>
     private static Mock<IStringLocalizer<SharedResources>> CreateLocalizer()
     {
         var localizer = new Mock<IStringLocalizer<SharedResources>>();
-        localizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
+        _ = localizer.Setup(l => l[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
         return localizer;
     }
 
@@ -42,10 +48,10 @@ internal sealed class CircuitFixture
     public SessionPrincipal SignIn(OperatorRole role, CredentialKind kind = CredentialKind.Password, NetworkTier tier = NetworkTier.Local)
     {
         const string token = "circuit-token";
-        Session.Setup(s => s.SessionToken).Returns(token);
+        _ = Session.Setup(s => s.SessionToken).Returns(token);
         var principal = new SessionPrincipal(
             Guid.NewGuid(), null, kind, role, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
-        Tokens.Setup(t => t.Validate(token)).Returns(principal);
+        _ = Tokens.Setup(t => t.Validate(token)).Returns(principal);
         Network.SetTier(tier);
         return principal;
     }
@@ -68,7 +74,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.ReadOnly));
     }
@@ -79,8 +85,8 @@ public class CircuitOperatorGate_Tests
         // The browser can send any token; only one the server re-validates may count.
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.Session.Setup(s => s.SessionToken).Returns("forged");
-        fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns("forged");
+        _ = fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.ReadOnly));
     }
@@ -90,7 +96,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.SuperAdmin, tier: NetworkTier.Local);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin, tier: NetworkTier.Local);
 
         Assert.True(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
     }
@@ -100,7 +106,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.SuperAdmin, tier: NetworkTier.Internet);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin, tier: NetworkTier.Internet);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
     }
@@ -111,7 +117,7 @@ public class CircuitOperatorGate_Tests
         // A passkey satisfies SuperAdminLocalOrPasskey, not SuperAdminLocal.
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.SuperAdmin, CredentialKind.OperatorPasskey, NetworkTier.Internet);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin, CredentialKind.OperatorPasskey, NetworkTier.Internet);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
         Assert.True(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocalOrPasskey));
@@ -122,7 +128,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.Admin, tier: NetworkTier.Local);
+        _ = fixture.SignIn(OperatorRole.Admin, tier: NetworkTier.Local);
 
         Assert.False(fixture.CreateGate().Allows(AccessPolicy.SuperAdminLocal));
     }
@@ -142,7 +148,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = false;
-        fixture.SignIn(OperatorRole.SuperAdmin);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin);
 
         Assert.Null(fixture.CreateGate().OperatorId);
     }
@@ -152,7 +158,7 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns((string?)null);
 
         Assert.Null(fixture.CreateGate().OperatorId);
     }
@@ -162,8 +168,8 @@ public class CircuitOperatorGate_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.Session.Setup(s => s.SessionToken).Returns("forged");
-        fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns("forged");
+        _ = fixture.Tokens.Setup(t => t.Validate("forged")).Returns((SessionPrincipal?)null);
 
         Assert.Null(fixture.CreateGate().OperatorId);
     }
@@ -175,17 +181,17 @@ public class GuardedProviderAccountRepository_Tests
     {
         var inner = new Mock<IProviderAccountRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(It.IsAny<AccessPolicy>())).Returns(allowed);
+        _ = gate.Setup(g => g.Allows(It.IsAny<AccessPolicy>())).Returns(allowed);
         return (new GuardedProviderAccountRepository(inner.Object, gate.Object), inner);
     }
 
     [Fact]
     public async Task GuardedProviderAccountRepository_AddAsync_Denied_ThrowsAndDoesNotCallInner()
     {
-        var (guarded, inner) = Create(allowed: false);
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: false);
         var account = new ProviderAccount { ProviderName = "Ring" };
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.AddAsync(account, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.AddAsync(account, CancellationToken.None));
 
         inner.Verify(r => r.AddAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -193,7 +199,7 @@ public class GuardedProviderAccountRepository_Tests
     [Fact]
     public async Task GuardedProviderAccountRepository_DeleteAsync_Allowed_CallsInner()
     {
-        var (guarded, inner) = Create(allowed: true);
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: true);
         var id = Guid.NewGuid();
 
         await guarded.DeleteAsync(id, CancellationToken.None);
@@ -205,8 +211,8 @@ public class GuardedProviderAccountRepository_Tests
     public async Task GuardedProviderAccountRepository_ListAsync_Denied_StillPassesThrough()
     {
         // Collect and Device Configuration read accounts for every operator, so reads are never gated here.
-        var (guarded, inner) = Create(allowed: false);
-        inner.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<ProviderAccount>());
+        (GuardedProviderAccountRepository? guarded, Mock<IProviderAccountRepository>? inner) = Create(allowed: false);
+        _ = inner.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         _ = await guarded.ListAsync(CancellationToken.None);
 
@@ -221,10 +227,10 @@ public class GuardedDeviceConfigRepository_Tests
     {
         var inner = new Mock<IDeviceConfigRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
         var guarded = new GuardedDeviceConfigRepository(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.AppendSnapshotAsync(new DeviceConfigSnapshot(), CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.AppendSnapshotAsync(new DeviceConfigSnapshot(), CancellationToken.None));
 
         inner.Verify(r => r.AppendSnapshotAsync(It.IsAny<DeviceConfigSnapshot>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -237,10 +243,10 @@ public class GuardedEvidenceExportService_Tests
     {
         var inner = new Mock<IEvidenceExportService>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
         var guarded = new GuardedEvidenceExportService(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
             Guid.NewGuid(), null, null, CancellationToken.None));
 
         inner.Verify(r => r.ExportEvidenceAsync(
@@ -254,20 +260,20 @@ public class GuardedRingSelfTestService_Tests
     private static (GuardedRingSelfTestService Guarded, Mock<IRingSelfTestService> Inner) Create(bool allowed)
     {
         var inner = new Mock<IRingSelfTestService>();
-        inner.Setup(s => s.StartRunAsync(It.IsAny<SelfTestRunRequestDto>(), It.IsAny<CancellationToken>()))
+        _ = inner.Setup(s => s.StartRunAsync(It.IsAny<SelfTestRunRequestDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SelfTestRunResponseDto)null!);
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(allowed);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(allowed);
         return (new GuardedRingSelfTestService(inner.Object, gate.Object), inner);
     }
 
     [Fact]
     public async Task GuardedRingSelfTestService_DestructiveRun_Denied_ThrowsAndDoesNotStart()
     {
-        var (guarded, inner) = Create(allowed: false);
-        var request = new SelfTestRunRequestDto(new List<string> { "unlock" }, Destructive: true);
+        (GuardedRingSelfTestService? guarded, Mock<IRingSelfTestService>? inner) = Create(allowed: false);
+        var request = new SelfTestRunRequestDto(["unlock"], Destructive: true);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.StartRunAsync(request, CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.StartRunAsync(request, CancellationToken.None));
 
         inner.Verify(s => s.StartRunAsync(It.IsAny<SelfTestRunRequestDto>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -275,8 +281,8 @@ public class GuardedRingSelfTestService_Tests
     [Fact]
     public async Task GuardedRingSelfTestService_ReadOnlyRun_Denied_StillStarts()
     {
-        var (guarded, inner) = Create(allowed: false);
-        var request = new SelfTestRunRequestDto(new List<string> { "list" }, Destructive: false);
+        (GuardedRingSelfTestService? guarded, Mock<IRingSelfTestService>? inner) = Create(allowed: false);
+        var request = new SelfTestRunRequestDto(["list"], Destructive: false);
 
         _ = await guarded.StartRunAsync(request, CancellationToken.None);
 
@@ -290,29 +296,29 @@ public class CircuitGuardRegistration_Tests
     public async Task CircuitGuardRegistration_RegisteredAccountRepository_IsWrappedByGuard()
     {
         var services = new ServiceCollection();
-        services.AddScoped<IProviderAccountRepository, ProviderAccountRepositoryStub>();
+        _ = services.AddScoped<IProviderAccountRepository, ProviderAccountRepositoryStub>();
         // The other guarded services must be registered too, or the helper fails fast (see the test below).
-        services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
-        services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
-        services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
-        services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
-        services.AddScoped(_ => new Mock<ICaseRepository>().Object);
-        services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
-        services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
-        services.AddScoped(_ => new Mock<IJammingRepository>().Object);
-        services.AddScoped(_ => new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>().Object);
-        services.AddCircuitOperatorGuards();
+        _ = services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
+        _ = services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);
+        _ = services.AddScoped(_ => new Mock<IReleaseChannelService>().Object);
+        _ = services.AddScoped(_ => new Mock<ICaseRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<ILegalHoldRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<IMediaStillCaptureService>().Object);
+        _ = services.AddScoped(_ => new Mock<IJammingRepository>().Object);
+        _ = services.AddScoped(_ => new Mock<Core.Contracts.IConfigToolsOrchestrator>().Object);
+        _ = services.AddCircuitOperatorGuards();
         // The gate is overridden so the test controls the decision without a circuit.
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
-        services.AddScoped(_ => gate.Object);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        _ = services.AddScoped(_ => gate.Object);
 
         await using ServiceProvider provider = services.BuildServiceProvider();
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
         IProviderAccountRepository resolved = scope.ServiceProvider.GetRequiredService<IProviderAccountRepository>();
 
-        Assert.IsType<GuardedProviderAccountRepository>(resolved);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => resolved.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
+        _ = Assert.IsType<GuardedProviderAccountRepository>(resolved);
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => resolved.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
     }
 
     [Fact]
@@ -320,24 +326,71 @@ public class CircuitGuardRegistration_Tests
     {
         var services = new ServiceCollection();
 
-        Assert.Throws<InvalidOperationException>(() => services.AddCircuitOperatorGuards());
+        _ = Assert.Throws<InvalidOperationException>(services.AddCircuitOperatorGuards);
     }
 
     /// <summary>Stand-in for the real data-layer repository, so the registration test needs no database.</summary>
     public sealed class ProviderAccountRepositoryStub : IProviderAccountRepository
     {
-        public Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct) => Task.FromResult<ProviderAccount?>(null);
-        public Task<IReadOnlyList<ProviderAccount>> GetByUserIdAsync(Guid userId, CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
-        public Task<ProviderAccount?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct) => Task.FromResult<ProviderAccount?>(null);
-        public Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
-        public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
-        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
-        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null) => Task.CompletedTask;
-        public Task AddAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
-        public Task UpdateAsync(ProviderAccount account, CancellationToken ct) => Task.CompletedTask;
-        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null) => Task.CompletedTask;
-        public Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<ProviderAccount?> GetAsync(Guid accountId, CancellationToken ct)
+        {
+            return Task.FromResult<ProviderAccount?>(null);
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> GetByUserIdAsync(Guid userId, CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        }
+
+        public Task<ProviderAccount?> GetByUserAndProviderAsync(Guid userId, string providerName, CancellationToken ct)
+        {
+            return Task.FromResult<ProviderAccount?>(null);
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListAsync(CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListActiveAsync(CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        }
+
+        public Task<IReadOnlyList<ProviderAccount>> ListRemovedAsync(CancellationToken ct)
+        {
+            return Task.FromResult<IReadOnlyList<ProviderAccount>>([]);
+        }
+
+        public Task RetireAsync(Guid accountId, DateTime removedUtc, CancellationToken ct, string? stepUpToken = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task AddAsync(ProviderAccount account, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(ProviderAccount account, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(Guid accountId, CancellationToken ct, string? stepUpToken = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RecordErrorAsync(Guid providerAccountId, string errorMessage, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RecordSuccessAsync(Guid providerAccountId, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
 
@@ -349,11 +402,11 @@ public class GuardedCaseRepository_Tests
         // Review is enough for case edits but not for close and reopen, which the server requires Admin for.
         var inner = new Mock<ICaseRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(true);
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(true);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
         var guarded = new GuardedCaseRepository(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CloseAsync(Guid.NewGuid(), "op", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CloseAsync(Guid.NewGuid(), "op", CancellationToken.None));
 
         inner.Verify(r => r.CloseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -363,10 +416,10 @@ public class GuardedCaseRepository_Tests
     {
         var inner = new Mock<ICaseRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
         var guarded = new GuardedCaseRepository(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RemoveItemAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RemoveItemAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
 
         inner.Verify(r => r.RemoveItemAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -379,10 +432,10 @@ public class GuardedLegalHoldRepository_Tests
     {
         var inner = new Mock<ILegalHoldRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
         var guarded = new GuardedLegalHoldRepository(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ReleaseAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ReleaseAsync(Guid.NewGuid(), "op", "why", CancellationToken.None));
 
         inner.Verify(r => r.ReleaseAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -395,10 +448,10 @@ public class GuardedMediaStillCaptureService_Tests
     {
         var inner = new Mock<IMediaStillCaptureService>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Review)).Returns(false);
         var guarded = new GuardedMediaStillCaptureService(inner.Object, gate.Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CaptureStillAsync(
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.CaptureStillAsync(
             Guid.NewGuid(), 0, null, null, null, "op", CancellationToken.None));
 
         inner.Verify(r => r.CaptureStillAsync(
@@ -413,16 +466,16 @@ public class GuardedJammingRepository_Tests
     {
         var inner = new Mock<IJammingRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(allowed);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(allowed);
         return (new GuardedJammingRepository(inner.Object, gate.Object), inner);
     }
 
     [Fact]
     public async Task GuardedJammingRepository_UpsertIncident_ReviewOperator_ThrowsAndDoesNotWrite()
     {
-        var (guarded, inner) = Create(allowed: false);
+        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.UpsertIncidentAsync(new JammingIncidentRecord(), CancellationToken.None));
 
         inner.Verify(r => r.UpsertIncidentAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -430,9 +483,9 @@ public class GuardedJammingRepository_Tests
     [Fact]
     public async Task GuardedJammingRepository_RecomputeStats_ReviewOperator_ThrowsAndDoesNotRecompute()
     {
-        var (guarded, inner) = Create(allowed: false);
+        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RecomputeStatsAsync(Guid.NewGuid(), CancellationToken.None));
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.RecomputeStatsAsync(Guid.NewGuid(), CancellationToken.None));
 
         inner.Verify(r => r.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -440,8 +493,8 @@ public class GuardedJammingRepository_Tests
     [Fact]
     public async Task GuardedJammingRepository_ListIncidents_ReviewOperator_StillPassesThrough()
     {
-        var (guarded, inner) = Create(allowed: false);
-        inner.Setup(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new List<JammingIncidentRecord>());
+        (GuardedJammingRepository? guarded, Mock<IJammingRepository>? inner) = Create(allowed: false);
+        _ = inner.Setup(r => r.ListIncidentsAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         _ = await guarded.ListIncidentsAsync(null, null, null, CancellationToken.None);
 
@@ -454,12 +507,12 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_HealthSync_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
-        var (success, _) = await guarded.SetHealthSyncAsync(new Mock<IForensicsConfiguration>().Object, false);
+        (bool success, _) = await guarded.SetHealthSyncAsync(new Mock<IForensicsConfiguration>().Object, false);
 
         Assert.False(success);
         inner.Verify(c => c.SetHealthSyncAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -470,13 +523,13 @@ public class GuardedConfigToolsOrchestrator_Tests
     {
         // Factory reset is destructive and has no HTTP endpoint, so the server check is the only one. A denied call
         // returns a failed result rather than throwing, so the page can show why.
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
-        gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("Only a SuperAdmin on this computer can do this.");
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        _ = gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("Only a SuperAdmin on this computer can do this.");
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
-        var (success, message) = await guarded.FactoryResetAsync();
+        (bool success, string? message) = await guarded.FactoryResetAsync();
 
         Assert.False(success);
         Assert.Equal("Only a SuperAdmin on this computer can do this.", message);
@@ -486,14 +539,14 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_Retention_AdminAllowed_CallsInner()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
-        inner.Setup(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()))
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
+        _ = inner.Setup(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, "ok"));
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
-        var (success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
+        (bool success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
 
         Assert.True(success);
         inner.Verify(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), 30, It.IsAny<CancellationToken>()), Times.Once);
@@ -502,12 +555,12 @@ public class GuardedConfigToolsOrchestrator_Tests
     [Fact]
     public async Task GuardedConfigToolsOrchestrator_Retention_ReadOnlyOperator_ReturnsFailureAndDoesNotChange()
     {
-        var inner = new Mock<VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator>();
+        var inner = new Mock<Core.Contracts.IConfigToolsOrchestrator>();
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
-        var guarded = new VideoForensics.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(false);
+        var guarded = new VideoForensics.Client.WebApp.Services.CircuitGuards.GuardedConfigToolsOrchestrator(inner.Object, gate.Object);
 
-        var (success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
+        (bool success, _) = await guarded.SetRetentionDaysAsync(new Mock<IForensicsConfiguration>().Object, 30);
 
         Assert.False(success);
         inner.Verify(c => c.SetRetentionDaysAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -531,7 +584,7 @@ public class CircuitOperatorGateStepUp_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.SuperAdmin);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin);
 
         Assert.False(fixture.CreateGate().IsStepUpValid(null));
     }
@@ -542,11 +595,11 @@ public class CircuitOperatorGateStepUp_Tests
         // The endpoint filter binds a step-up to the paired-device claim, which for a passkey session is its credential.
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        Guid credentialId = Guid.NewGuid();
-        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
-        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+        var credentialId = Guid.NewGuid();
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        _ = fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
             Guid.NewGuid(), credentialId, CredentialKind.OperatorPasskey, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        fixture.StepUp.Setup(v => v.Validate("step", credentialId)).Returns(true);
+        _ = fixture.StepUp.Setup(v => v.Validate("step", credentialId)).Returns(true);
 
         Assert.True(fixture.CreateGate().IsStepUpValid("step"));
     }
@@ -556,11 +609,11 @@ public class CircuitOperatorGateStepUp_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        Guid operatorId = Guid.NewGuid();
-        fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
-        fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
+        var operatorId = Guid.NewGuid();
+        _ = fixture.Session.Setup(s => s.SessionToken).Returns("circuit-token");
+        _ = fixture.Tokens.Setup(t => t.Validate("circuit-token")).Returns(new SessionPrincipal(
             operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        fixture.StepUp.Setup(v => v.Validate("step", operatorId)).Returns(true);
+        _ = fixture.StepUp.Setup(v => v.Validate("step", operatorId)).Returns(true);
 
         Assert.True(fixture.CreateGate().IsStepUpValid("step"));
     }
@@ -570,8 +623,8 @@ public class CircuitOperatorGateStepUp_Tests
     {
         var fixture = new CircuitFixture();
         fixture.Scope.IsOpen = true;
-        fixture.SignIn(OperatorRole.SuperAdmin);
-        fixture.StepUp.Setup(v => v.Validate("expired", It.IsAny<Guid>())).Returns(false);
+        _ = fixture.SignIn(OperatorRole.SuperAdmin);
+        _ = fixture.StepUp.Setup(v => v.Validate("expired", It.IsAny<Guid>())).Returns(false);
 
         Assert.False(fixture.CreateGate().IsStepUpValid("expired"));
     }
@@ -582,22 +635,22 @@ public class GuardedEvidenceExportStepUp_Tests
     private static (GuardedEvidenceExportService Guarded, Mock<IEvidenceExportService> Inner) Create(bool localAdmin, bool stepUpValid)
     {
         var inner = new Mock<IEvidenceExportService>();
-        inner.Setup(e => e.ExportEvidenceAsync(
+        _ = inner.Setup(e => e.ExportEvidenceAsync(
                 It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(new ExportResult { Success = true });
         var gate = new Mock<ICircuitOperatorGate>();
-        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(localAdmin);
-        gate.Setup(g => g.IsStepUpValid(It.IsAny<string?>())).Returns(stepUpValid);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(localAdmin);
+        _ = gate.Setup(g => g.IsStepUpValid(It.IsAny<string?>())).Returns(stepUpValid);
         return (new GuardedEvidenceExportService(inner.Object, gate.Object), inner);
     }
 
     [Fact]
     public async Task GuardedEvidenceExportService_NoStepUp_ThrowsAndDoesNotExport()
     {
-        var (guarded, inner) = Create(localAdmin: true, stepUpValid: false);
+        (GuardedEvidenceExportService? guarded, Mock<IEvidenceExportService>? inner) = Create(localAdmin: true, stepUpValid: false);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.ExportEvidenceAsync(
             Guid.NewGuid(), null, null, CancellationToken.None, null));
 
         inner.Verify(e => e.ExportEvidenceAsync(
@@ -608,9 +661,9 @@ public class GuardedEvidenceExportStepUp_Tests
     [Fact]
     public async Task GuardedEvidenceExportService_ValidStepUpAndLocalAdmin_Exports()
     {
-        var (guarded, inner) = Create(localAdmin: true, stepUpValid: true);
+        (GuardedEvidenceExportService? guarded, Mock<IEvidenceExportService>? inner) = Create(localAdmin: true, stepUpValid: true);
 
-        var result = await guarded.ExportEvidenceAsync(
+        ExportResult result = await guarded.ExportEvidenceAsync(
             Guid.NewGuid(), null, null, CancellationToken.None, "step");
 
         Assert.True(result.Success);

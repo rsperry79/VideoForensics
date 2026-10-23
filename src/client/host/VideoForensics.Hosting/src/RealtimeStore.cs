@@ -3,10 +3,10 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Singleton latest-value store. It subscribes to each <see cref="IRealtimeHub"/> stream once, at construction,
@@ -18,7 +18,7 @@ namespace VideoForensics.Hosting
         private const int MaxActivityLogLines = 500;
 
         private readonly object _gate = new();
-        private readonly CompositeDisposable _hubSubscriptions = new();
+        private readonly CompositeDisposable _hubSubscriptions = [];
         private readonly BehaviorSubject<DownloadProgressDto?> _downloadProgress = new(null);
         private readonly BehaviorSubject<NotificationEvent?> _urgentEvents = new(null);
         private readonly BehaviorSubject<SelfTestStatusDto?> _selfTestStatus = new(null);

@@ -49,10 +49,10 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync();
             DeviceHealth health = TestDataBuilder.BuildDeviceHealth(deviceId);
-            await _healthRepository.AddAsync(health, CancellationToken.None);
+            _ = await _healthRepository.AddAsync(health, CancellationToken.None);
 
-            SnapshotCapture capture = SnapshotCapture.Create(deviceId, T0, "fresh", 200, "Devices/x/frame.jpg", health.Id);
-            await _repository.AddAsync(capture, CancellationToken.None);
+            var capture = SnapshotCapture.Create(deviceId, T0, "fresh", 200, "Devices/x/frame.jpg", health.Id);
+            _ = await _repository.AddAsync(capture, CancellationToken.None);
 
             IReadOnlyList<SnapshotCapture> results = await _repository.GetCurrentForDeviceAsync(
                 deviceId, T0.AddMinutes(-1), T0.AddMinutes(1), CancellationToken.None);
@@ -74,9 +74,9 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync();
 
             // Insert out of time order, with a 404 in the middle, to prove the query orders by time.
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(10), "fresh", 200, "Devices/x/b.jpg", null), CancellationToken.None);
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(5), "fresh", 404, null, null), CancellationToken.None);
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0, "latest", 200, "Devices/x/a.jpg", null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(10), "fresh", 200, "Devices/x/b.jpg", null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(5), "fresh", 404, null, null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0, "latest", 200, "Devices/x/a.jpg", null), CancellationToken.None);
 
             IReadOnlyList<SnapshotCapture> results = await _repository.GetCurrentForDeviceAsync(
                 deviceId, T0.AddMinutes(-1), T0.AddMinutes(20), CancellationToken.None);
@@ -91,10 +91,10 @@ namespace VideoForensics.Data.Database.Tests
             Guid deviceId = await SeedDeviceAsync();
 
             // Failed attempts must come back too: the timeline mapper needs them to end a still's hold.
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(10), "fresh", 200, "Devices/x/b.jpg", null), CancellationToken.None);
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(5), "fresh", 404, null, null), CancellationToken.None);
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0, "latest", 200, "Devices/x/a.jpg", null), CancellationToken.None);
-            await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(30), "fresh", 200, "Devices/x/late.jpg", null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(10), "fresh", 200, "Devices/x/b.jpg", null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(5), "fresh", 404, null, null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0, "latest", 200, "Devices/x/a.jpg", null), CancellationToken.None);
+            _ = await _repository.AddAsync(SnapshotCapture.Create(deviceId, T0.AddMinutes(30), "fresh", 200, "Devices/x/late.jpg", null), CancellationToken.None);
 
             IReadOnlyList<SnapshotCapture> results = await _repository.GetAttemptsForDeviceAsync(
                 deviceId, T0.AddMinutes(-1), T0.AddMinutes(20), CancellationToken.None);

@@ -1,11 +1,9 @@
-using Microsoft.Extensions.Logging;
-
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Provides media content URLs (for img/video src attributes) for the local WebApp by issuing
@@ -66,9 +64,9 @@ namespace VideoForensics.WebApp.Services
 
             // Issue tickets for each distinct ID and build the result dictionary
             var result = new Dictionary<Guid, string>(distinctIds.Count);
-            foreach (var mediaId in distinctIds)
+            foreach (Guid mediaId in distinctIds)
             {
-                var ticket = _ticketService.Issue(mediaId, principal.OperatorId);
+                MediaAccessTicket ticket = _ticketService.Issue(mediaId, principal.OperatorId);
                 string url = MediaContentRoutes.ContentUrl(mediaId, ticket.Token);
                 result[mediaId] = url;
             }

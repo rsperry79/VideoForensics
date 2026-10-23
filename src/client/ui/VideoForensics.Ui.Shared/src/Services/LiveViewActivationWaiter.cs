@@ -1,9 +1,9 @@
 using System.Diagnostics;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Waits for a live-view session to become <see cref="LiveViewSessionState.Active"/> after it is started.

@@ -386,12 +386,11 @@ namespace VideoForensics.Providers.Ring
         private static string DescribeTarget(TargetRecord? t)
         {
             return t == null
-                ? ""
-                : t.LocationId != null
+                ? string.Empty : t.LocationId != null
                 ? $"(location {t.LocationName ?? t.LocationId})"
                 : t.DoorbotId != null
                 ? $"(doorbot {t.DoorbotName ?? t.DoorbotId.ToString()})"
-                : t.ChimeId != null ? $"(chime {t.ChimeName ?? t.ChimeId.ToString()})" : "";
+                : t.ChimeId != null ? $"(chime {t.ChimeName ?? t.ChimeId.ToString()})" : string.Empty;
         }
 
         private string BuildFileName(string endpointKey, TargetRecord? target, bool multipleCalls, string phase)
@@ -401,10 +400,10 @@ namespace VideoForensics.Providers.Ring
                 { LocationId: not null } => "_" + target.LocationId![..Math.Min(8, target.LocationId.Length)],
                 { DoorbotId: not null } => "_" + target.DoorbotId,
                 { ChimeId: not null } => "_" + target.ChimeId,
-                _ => ""
+                _ => string.Empty
             };
-            string phaseSuffix = phase == "restore" ? "_restore" : "";
-            string seq = multipleCalls ? $"_{++_fileSequence}" : "";
+            string phaseSuffix = phase == "restore" ? "_restore" : string.Empty;
+            string seq = multipleCalls ? $"_{++_fileSequence}" : string.Empty;
             string timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfffZ");
             return $"{endpointKey}{targetPart}{phaseSuffix}_{timestamp}{seq}.json";
         }

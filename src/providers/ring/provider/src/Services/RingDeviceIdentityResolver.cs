@@ -143,26 +143,17 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             string kind = providerKind.Trim().ToLowerInvariant();
-            if (kind.StartsWith("doorbell", StringComparison.Ordinal)
+            return kind.StartsWith("doorbell", StringComparison.Ordinal)
                 || kind.StartsWith("doorbot", StringComparison.Ordinal)
                 || kind.StartsWith("authorized_doorbot", StringComparison.Ordinal)
-                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal))
-            {
-                return "doorbell";
-            }
-
-            if (kind.StartsWith("chime", StringComparison.Ordinal))
-            {
-                return "chime";
-            }
-
-            if (kind.StartsWith("stickup_cam", StringComparison.Ordinal)
-                || kind.StartsWith("camera", StringComparison.Ordinal))
-            {
-                return "camera";
-            }
-
-            return "Unknown";
+                || kind.StartsWith("authorized_doorbell", StringComparison.Ordinal)
+                ? "doorbell"
+                : kind.StartsWith("chime", StringComparison.Ordinal)
+                ? "chime"
+                : kind.StartsWith("stickup_cam", StringComparison.Ordinal)
+                || kind.StartsWith("camera", StringComparison.Ordinal)
+                ? "camera"
+                : "Unknown";
         }
     }
 }

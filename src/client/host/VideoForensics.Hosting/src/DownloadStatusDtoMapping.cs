@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Extension methods for mapping download-status DTOs to/from the Providers.Common domain type.</summary>
     public static class DownloadStatusDtoMapping

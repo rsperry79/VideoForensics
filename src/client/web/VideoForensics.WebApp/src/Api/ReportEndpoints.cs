@@ -1,9 +1,10 @@
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.WebApp.Api;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Forensic report generation endpoints (read-only operations that build reports from stored evidence).

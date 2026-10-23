@@ -3,13 +3,7 @@ using CloudflaredKit.Models;
 
 using Microsoft.Extensions.Options;
 
-using Moq;
-
-using VideoForensics.Hosting;
-
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class CloudflaredTunnelServiceTests
     {

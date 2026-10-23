@@ -40,7 +40,9 @@ namespace VideoForensics.Core.Logging.DependencyInjection
         public static IServiceCollection AddInMemoryLogBuffer(this IServiceCollection services, int capacity)
         {
             if (capacity <= 0)
+            {
                 throw new ArgumentException("Capacity must be greater than 0", nameof(capacity));
+            }
 
             _ = services.AddSingleton(new InMemoryLogBuffer(capacity: capacity));
             return services;
@@ -97,7 +99,7 @@ namespace VideoForensics.Core.Logging.DependencyInjection
 
             // Resolve the buffer lazily from the real container so registration order doesn't matter and the
             // provider writes to the same singleton the endpoints read (no throwaway service provider).
-            logging.Services.AddSingleton<ILoggerProvider>(sp =>
+            _ = logging.Services.AddSingleton<ILoggerProvider>(sp =>
                 sp.GetService<InMemoryLogBuffer>() is { } buffer
                     ? new InMemoryLogBufferProvider(buffer)
                     : NullLoggerProvider.Instance);

@@ -4,7 +4,7 @@ using System.Text;
 
 using VideoForensics.Providers.Ring.Exceptions;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Probe-only HTTP endpoints under /api/v1/probe, used by an external harness to measure Ring snapshot
@@ -22,7 +22,7 @@ namespace VideoForensics.WebApp.Api
 
         private const string EnabledKey = "SnapshotProbe:Enabled";
         private const string TokenKey = "SnapshotProbe:Token";
-        private const string LoggerCategory = "VideoForensics.WebApp.SnapshotProbe";
+        private const string LoggerCategory = "VideoForensics.Client.WebApp.SnapshotProbe";
 
         /// <summary>
         /// Registers the probe backend when the probe is enabled. Call from Program.cs before the host is built.
@@ -34,7 +34,7 @@ namespace VideoForensics.WebApp.Api
                 return;
             }
 
-            services.AddSingleton<ISnapshotProbeBackend, SessionSnapshotProbeBackend>();
+            _ = services.AddSingleton<ISnapshotProbeBackend, SessionSnapshotProbeBackend>();
         }
 
         /// <summary>
@@ -139,6 +139,7 @@ namespace VideoForensics.WebApp.Api
                 {
                     http.Response.Headers.RetryAfter = Math.Max(0, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 }
+
                 return Results.Json(new { message = "Ring is throttling requests. Try again later." }, statusCode: StatusCodes.Status429TooManyRequests);
             }
             catch (Exception ex)

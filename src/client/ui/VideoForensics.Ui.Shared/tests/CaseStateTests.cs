@@ -1,14 +1,16 @@
-namespace VideoForensics.Ui.Shared.Tests;
-
-using Bunit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 using Moq;
-using Xunit;
+
+using System.Reflection;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Tests;
+
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class CaseState_Tests
 {
@@ -52,25 +54,25 @@ public class CaseState_Tests
         var caseId = Guid.NewGuid();
         var device1Id = Guid.NewGuid();
         var device2Id = Guid.NewGuid();
-        var testCase = CreateTestCase(
+        ForensicCase testCase = CreateTestCase(
             id: caseId,
             scopeFromUtc: new DateTime(2026, 9, 1),
             scopeToUtc: new DateTime(2026, 9, 10),
             deviceIds: new[] { device1Id, device2Id });
 
-        var mockRepo = CreateMockCaseRepository();
-        mockRepo
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testCase);
-        mockRepo
+        _ = mockRepo
             .Setup(r => r.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { device1Id, device2Id }.ToList());
 
-        var scopeState = CreateScopeState();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
 
         // Act
-        var result = await caseState.ActivateAsync(caseId, CancellationToken.None);
+        bool result = await caseState.ActivateAsync(caseId, CancellationToken.None);
 
         // Assert
         Assert.True(result);
@@ -88,17 +90,17 @@ public class CaseState_Tests
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        var mockRepo = CreateMockCaseRepository();
-        mockRepo
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ForensicCase?)null);
 
-        var scopeState = CreateScopeState();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
-        var originalScope = scopeState.Current;
+        ForensicScope originalScope = scopeState.Current;
 
         // Act
-        var result = await caseState.ActivateAsync(caseId, CancellationToken.None);
+        bool result = await caseState.ActivateAsync(caseId, CancellationToken.None);
 
         // Assert
         Assert.False(result);
@@ -112,26 +114,26 @@ public class CaseState_Tests
         // Arrange
         var caseId = Guid.NewGuid();
         var device1Id = Guid.NewGuid();
-        var testCase = CreateTestCase(
+        ForensicCase testCase = CreateTestCase(
             id: caseId,
             scopeFromUtc: null,
             scopeToUtc: null);
 
-        var mockRepo = CreateMockCaseRepository();
-        mockRepo
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testCase);
-        mockRepo
+        _ = mockRepo
             .Setup(r => r.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { device1Id }.ToList());
 
-        var scopeState = CreateScopeState();
-        var originalFromUtc = scopeState.Current.FromUtc;
-        var originalToUtc = scopeState.Current.ToUtc;
+        ScopeState scopeState = CreateScopeState();
+        DateTime originalFromUtc = scopeState.Current.FromUtc;
+        DateTime originalToUtc = scopeState.Current.ToUtc;
         var caseState = new CaseState(mockRepo.Object, scopeState);
 
         // Act
-        await caseState.ActivateAsync(caseId, CancellationToken.None);
+        _ = await caseState.ActivateAsync(caseId, CancellationToken.None);
 
         // Assert - devices are applied, window stays
         Assert.Contains(device1Id, scopeState.Current.DeviceIds);
@@ -143,10 +145,10 @@ public class CaseState_Tests
     public void Deactivate_ClearsActiveCase()
     {
         // Arrange
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
-        var testCase = CreateTestCase();
+        ForensicCase testCase = CreateTestCase();
 
         caseState._setActiveCaseForTest(testCase);
         Assert.NotNull(caseState.ActiveCase);
@@ -162,15 +164,15 @@ public class CaseState_Tests
     public void ScopeDiffersFromCase_WithNullWindow_ReturnsTrue()
     {
         // Arrange - case with no saved scope (both null)
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
-        var testCase = CreateTestCase(scopeFromUtc: null, scopeToUtc: null);
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
+        ForensicCase testCase = CreateTestCase(scopeFromUtc: null, scopeToUtc: null);
 
         var caseState = new CaseState(mockRepo.Object, scopeState);
         caseState._setActiveCaseForTest(testCase);
 
         // Act
-        var differs = caseState.ScopeDiffersFromCase;
+        bool differs = caseState.ScopeDiffersFromCase;
 
         // Assert
         Assert.True(differs);
@@ -180,10 +182,10 @@ public class CaseState_Tests
     public void ScopeDiffersFromCase_WhenDevicesAndWindowMatch_ReturnsFalse()
     {
         // Arrange
-        var device1Id = Guid.NewGuid();
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
-        var testCase = CreateTestCase(scopeFromUtc: scopeState.Current.FromUtc, scopeToUtc: scopeState.Current.ToUtc);
+        _ = Guid.NewGuid();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
+        ForensicCase testCase = CreateTestCase(scopeFromUtc: scopeState.Current.FromUtc, scopeToUtc: scopeState.Current.ToUtc);
 
         var caseState = new CaseState(mockRepo.Object, scopeState);
         caseState._setActiveCaseForTest(testCase);
@@ -191,13 +193,13 @@ public class CaseState_Tests
         // Set scope to match the case exactly
         scopeState.Set(scopeState.Current with
         {
-            DeviceIds = new List<Guid>(),
+            DeviceIds = [],
             FromUtc = testCase.ScopeFromUtc ?? scopeState.Current.FromUtc,
             ToUtc = testCase.ScopeToUtc ?? scopeState.Current.ToUtc
         });
 
         // Act
-        var differs = caseState.ScopeDiffersFromCase;
+        bool differs = caseState.ScopeDiffersFromCase;
 
         // Assert
         Assert.False(differs);
@@ -209,18 +211,18 @@ public class CaseState_Tests
         // Arrange
         var device1Id = Guid.NewGuid();
         var device2Id = Guid.NewGuid();
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
-        var testCase = CreateTestCase(scopeFromUtc: scopeState.Current.FromUtc, scopeToUtc: scopeState.Current.ToUtc);
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
+        ForensicCase testCase = CreateTestCase(scopeFromUtc: scopeState.Current.FromUtc, scopeToUtc: scopeState.Current.ToUtc);
 
         var caseState = new CaseState(mockRepo.Object, scopeState);
         caseState._setActiveCaseForTest(testCase);
 
         // Change devices
-        scopeState.Set(scopeState.Current with { DeviceIds = new List<Guid> { device1Id, device2Id } });
+        scopeState.Set(scopeState.Current with { DeviceIds = [device1Id, device2Id] });
 
         // Act
-        var differs = caseState.ScopeDiffersFromCase;
+        bool differs = caseState.ScopeDiffersFromCase;
 
         // Assert
         Assert.True(differs);
@@ -230,16 +232,16 @@ public class CaseState_Tests
     public void ScopeDiffersFromCase_WhenWindowDiffers_ReturnsTrue()
     {
         // Arrange
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
-        var testCase = CreateTestCase(scopeFromUtc: new DateTime(2026, 9, 1), scopeToUtc: new DateTime(2026, 9, 10));
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
+        ForensicCase testCase = CreateTestCase(scopeFromUtc: new DateTime(2026, 9, 1), scopeToUtc: new DateTime(2026, 9, 10));
 
         var caseState = new CaseState(mockRepo.Object, scopeState);
         caseState._setActiveCaseForTest(testCase);
 
         // Current scope will be default from ScopeState, which differs from the case
         // Act
-        var differs = caseState.ScopeDiffersFromCase;
+        bool differs = caseState.ScopeDiffersFromCase;
 
         // Assert
         Assert.True(differs);
@@ -252,8 +254,8 @@ public class CaseState_Tests
         var caseId = Guid.NewGuid();
         var device1Id = Guid.NewGuid();
         var device2Id = Guid.NewGuid();
-        var mockRepo = CreateMockCaseRepository();
-        mockRepo
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        _ = mockRepo
             .Setup(r => r.SetScopeAsync(
                 caseId,
                 It.IsAny<DateTime?>(),
@@ -262,21 +264,21 @@ public class CaseState_Tests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        mockRepo
+        _ = mockRepo
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateTestCase(id: caseId));
-        mockRepo
+        _ = mockRepo
             .Setup(r => r.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { device1Id, device2Id }.ToList());
 
-        var scopeState = CreateScopeState();
-        scopeState.Set(scopeState.Current with { DeviceIds = new List<Guid> { device1Id, device2Id } });
+        ScopeState scopeState = CreateScopeState();
+        scopeState.Set(scopeState.Current with { DeviceIds = [device1Id, device2Id] });
 
         var caseState = new CaseState(mockRepo.Object, scopeState);
-        var testCase = CreateTestCase(id: caseId);
+        ForensicCase testCase = CreateTestCase(id: caseId);
         caseState._setActiveCaseForTest(testCase);
 
-        var actor = Guid.NewGuid().ToString();
+        string actor = Guid.NewGuid().ToString();
 
         // Act
         await caseState.SaveScopeToCaseAsync(actor, CancellationToken.None);
@@ -297,7 +299,7 @@ public class CaseState_Tests
         // Arrange
         var caseId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        var mockRepo = CreateMockCaseRepository();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
         var caseItem = new CaseItem
         {
             Id = Guid.NewGuid(),
@@ -306,7 +308,7 @@ public class CaseState_Tests
             Reason = "Test reason",
             AddedBy = "test-actor"
         };
-        mockRepo
+        _ = mockRepo
             .Setup(r => r.AddItemAsync(
                 caseId,
                 CaseItemKind.Event,
@@ -316,13 +318,13 @@ public class CaseState_Tests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(caseItem);
 
-        var scopeState = CreateScopeState();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
-        var testCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
+        ForensicCase testCase = CreateTestCase(id: caseId, status: CaseStatus.Open);
         caseState._setActiveCaseForTest(testCase);
 
         // Act
-        var result = await caseState.PinAsync(CaseItemKind.Event, eventId, "Test reason", "test-actor", CancellationToken.None);
+        CaseItem result = await caseState.PinAsync(CaseItemKind.Event, eventId, "Test reason", "test-actor", CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -340,13 +342,13 @@ public class CaseState_Tests
     public async Task PinAsync_WithoutActiveCase_ThrowsInvalidOperationException()
     {
         // Arrange
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
         // No case activated
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
             () => caseState.PinAsync(CaseItemKind.Event, Guid.NewGuid(), "reason", "actor", CancellationToken.None));
     }
 
@@ -354,14 +356,14 @@ public class CaseState_Tests
     public async Task PinAsync_WithClosedCase_ThrowsInvalidOperationException()
     {
         // Arrange
-        var mockRepo = CreateMockCaseRepository();
-        var scopeState = CreateScopeState();
+        Mock<ICaseRepository> mockRepo = CreateMockCaseRepository();
+        ScopeState scopeState = CreateScopeState();
         var caseState = new CaseState(mockRepo.Object, scopeState);
-        var testCase = CreateTestCase(status: CaseStatus.Closed);
+        ForensicCase testCase = CreateTestCase(status: CaseStatus.Closed);
         caseState._setActiveCaseForTest(testCase);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
             () => caseState.PinAsync(CaseItemKind.Event, Guid.NewGuid(), "reason", "actor", CancellationToken.None));
     }
 }
@@ -371,7 +373,7 @@ internal static class CaseStateTestExtensions
 {
     internal static void _setActiveCaseForTest(this CaseState state, ForensicCase caseItem)
     {
-        var property = typeof(CaseState).GetProperty("ActiveCase");
+        PropertyInfo? property = typeof(CaseState).GetProperty("ActiveCase");
         property?.SetValue(state, caseItem);
     }
 }

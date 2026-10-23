@@ -1,19 +1,15 @@
 using Microsoft.Extensions.Logging;
 
-using Moq;
-
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>A provider that fails is a non-critical side effect: it is logged as a warning and the other providers still send.</summary>
     public class NotificationDispatcherLogLevelTests
     {
-        private static NotificationEvent Event() => new(
+        private static NotificationEvent Event()
+        {
+            return new(
             EventType: "AccountRemoved",
             TimestampUtc: DateTime.UtcNow,
             OperatorId: null,
@@ -22,19 +18,20 @@ namespace VideoForensics.Hosting.Tests
             Details: "details",
             Audience: NotificationAudience.AdminsOnly,
             Severity: NoticeSeverity.Alert);
+        }
 
         [Fact]
         public async Task DispatchAsync_OneProviderFails_LogsWarningAndStillSendsToTheOthers()
         {
             var failing = new Mock<INotificationProvider>();
-            failing.SetupGet(p => p.Name).Returns("failing");
-            failing.Setup(p => p.IsEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            failing.Setup(p => p.SendAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("smtp down"));
+            _ = failing.SetupGet(p => p.Name).Returns("failing");
+            _ = failing.Setup(p => p.IsEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = failing.Setup(p => p.SendAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("smtp down"));
 
             var healthy = new Mock<INotificationProvider>();
-            healthy.SetupGet(p => p.Name).Returns("healthy");
-            healthy.Setup(p => p.IsEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            healthy.Setup(p => p.SendAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _ = healthy.SetupGet(p => p.Name).Returns("healthy");
+            _ = healthy.Setup(p => p.IsEnabledAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = healthy.Setup(p => p.SendAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             var logger = new Mock<ILogger<NotificationDispatcher>>();
             var notices = new Mock<INoticeRepository>();

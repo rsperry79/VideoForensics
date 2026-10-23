@@ -2,7 +2,7 @@ using ModelContextProtocol.Server;
 
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.WebApp.Mcp.Tools
+namespace VideoForensics.Client.WebApp.Mcp.Tools
 {
     /// <summary>Phase 3 forensics tools: Event Correlation & Device Health Analysis</summary>
     [McpServerToolType]

@@ -1,12 +1,11 @@
-using System.Reflection;
-
 using Microsoft.Extensions.DependencyInjection;
 
+using System.Reflection;
+
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Ring.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>
     /// Verifies that the Ring device discovery service built by the hosting DI graph receives the
@@ -32,7 +31,7 @@ namespace VideoForensics.Hosting.Tests
             IDeviceDiscoveryService discovery = provider.GetRequiredKeyedService<IDeviceDiscoveryService>("Ring");
 
             // Assert - the constructor keeps these as private fields; read them to prove they were passed.
-            Assert.IsType<RingDeviceDiscoveryService>(discovery);
+            _ = Assert.IsType<RingDeviceDiscoveryService>(discovery);
             object? locationRepository = GetPrivateField(discovery, "_locationRepository");
             object? metadataRepository = GetPrivateField(discovery, "_metadataRepository");
             Assert.NotNull(locationRepository);
@@ -40,7 +39,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Account settings (profile, ringtones, light groups, location mode) are persisted during sync.
             object? settingsPersister = GetPrivateField(discovery, "_settingsPersister");
-            Assert.IsType<VideoForensics.Providers.Ring.Services.RingAccountSettingsPersister>(settingsPersister);
+            _ = Assert.IsType<VideoForensics.Providers.Ring.Services.RingAccountSettingsPersister>(settingsPersister);
         }
 
         [Fact]

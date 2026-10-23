@@ -6,14 +6,14 @@ using QRCoder;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// QR-pairing + WebAuthn passkey registration/authentication endpoints (plan §5.1). Attestation
@@ -304,10 +304,10 @@ namespace VideoForensics.WebApp.Api
                         return Results.Unauthorized();
                     }
 
-                    allowedCredentials = new List<PublicKeyCredentialDescriptor>
-                    {
+                    allowedCredentials =
+                    [
                         new(PublicKeyCredentialType.PublicKey, Convert.FromBase64String(passkeyId), new[] { AuthenticatorTransport.Internal })
-                    };
+                    ];
                 }
 
                 // Every credential registration forces AuthenticatorAttachment.Platform above, so every

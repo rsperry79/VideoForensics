@@ -1,12 +1,12 @@
+using System.Runtime.Versioning;
 using System.Text;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
-using Xunit;
-
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 {
+    [SupportedOSPlatform("windows")]
     public class TpmKeyStorageProviderTests : IDisposable
     {
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-tpm-tests-" + Guid.NewGuid().ToString("N"));

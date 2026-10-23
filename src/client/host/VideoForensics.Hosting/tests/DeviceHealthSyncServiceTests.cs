@@ -1,21 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using Moq;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Tools;
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Core.Providers.Common.Contracts;
-
-using Xunit;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class DeviceHealthSyncServiceTests
     {
@@ -421,7 +416,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RunElevatedTickAsync_JammingConfirmed_NoActiveSession_StartsSession()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var device = MakeDevice("ring-123");
+            DeviceEntity device = MakeDevice("ring-123");
             elevatedTracker.EnterElevated(device.Id, TimeSpan.FromSeconds(30));
 
             var services = new ServiceCollection();
@@ -510,7 +505,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RunElevatedTickAsync_JammingConfirmed_ActiveSessionExists_PromotesToSustained()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var device = MakeDevice("ring-123");
+            DeviceEntity device = MakeDevice("ring-123");
             elevatedTracker.EnterElevated(device.Id, TimeSpan.FromSeconds(30));
 
             var services = new ServiceCollection();
@@ -599,7 +594,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RunElevatedTickAsync_NotConfirmed_ClearsElevatedWindow()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var device = MakeDevice("ring-123");
+            DeviceEntity device = MakeDevice("ring-123");
             elevatedTracker.EnterElevated(device.Id, TimeSpan.FromSeconds(30));
 
             var services = new ServiceCollection();
@@ -678,7 +673,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RunElevatedTickAsync_BudgetExceeded_SkipsPollWithoutCallingProvider()
         {
             var elevatedTracker = new ElevatedPollingWindowTracker();
-            var device = MakeDevice("ring-123");
+            DeviceEntity device = MakeDevice("ring-123");
             elevatedTracker.EnterElevated(device.Id, TimeSpan.FromSeconds(30));
 
             var services = new ServiceCollection();

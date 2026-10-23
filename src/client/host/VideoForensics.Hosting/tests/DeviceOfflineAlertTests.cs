@@ -1,21 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using Moq;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Tools;
-using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Core.Providers.Common.Contracts;
-
-using Xunit;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>
     /// Online-to-offline transitions raise a DeviceOffline alert. Only the transition does: a device that stays
@@ -74,8 +68,10 @@ namespace VideoForensics.Hosting.Tests
             return (service, healthRepo, dataClient, dispatcher);
         }
 
-        private static DeviceHealth PriorReading(bool wasOnline) =>
-            new() { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), IsOnline = wasOnline, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-15) };
+        private static DeviceHealth PriorReading(bool wasOnline)
+        {
+            return new() { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid(), IsOnline = wasOnline, CapturedAtUtc = DateTime.UtcNow.AddMinutes(-15) };
+        }
 
         [Fact]
         public async Task RunOneTickAsync_OnlineToOffline_DispatchesDeviceOfflineAlert()

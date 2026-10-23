@@ -1,8 +1,8 @@
 using Microsoft.JSInterop;
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VideoForensics.Ui.Shared.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VideoForensics.Client.Ui.Shared.Tests")]
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default implementation of <see cref="IViewportService"/> using JS interop to detect
@@ -81,7 +81,10 @@ namespace VideoForensics.Ui.Shared.Services
         /// </summary>
         /// <param name="widthPx">Viewport width in pixels.</param>
         /// <returns>True if width is less than 600px (mobile), false otherwise.</returns>
-        internal static bool DetermineIsMobile(double widthPx) => widthPx < 600;
+        internal static bool DetermineIsMobile(double widthPx)
+        {
+            return widthPx < 600;
+        }
 
         /// <summary>
         /// Disposes the DotNetObjectReference held for JS callbacks.

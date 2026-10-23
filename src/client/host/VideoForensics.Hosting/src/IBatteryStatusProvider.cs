@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Coarse power-source state, used to slow down background polling while on battery.</summary>
     public enum BatteryStatus
@@ -10,7 +10,7 @@ namespace VideoForensics.Hosting
 
     /// <summary>
     /// Reports the current host's power-source state. Every server-tier host (console, MCP,
-    /// VideoForensics.WebApp) registers the no-op AlwaysOnAcPower implementation below - only a
+    /// VideoForensics.Client.WebApp) registers the no-op AlwaysOnAcPower implementation below - only a
     /// MAUI client would ever have a real answer here (via Microsoft.Maui.Devices.Battery), and
     /// per the "only the server pulls new media/telemetry" rule, MAUI never runs
     /// DeviceHealthSyncService itself, so no MAUI implementation exists yet. The abstraction stays

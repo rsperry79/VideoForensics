@@ -1,13 +1,11 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteUpdateCheckServiceTests
     {
@@ -147,7 +145,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Assert - error should be captured in state
             Assert.NotNull(state.ErrorMessage);
-            Assert.NotNull(state.LastCheckedUtc);
+            _ = Assert.NotNull(state.LastCheckedUtc);
             Assert.False(state.UpdateAvailable);
         }
 
@@ -173,7 +171,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Assert - error should be captured gracefully
             Assert.NotNull(state.ErrorMessage);
-            Assert.NotNull(state.LastCheckedUtc);
+            _ = Assert.NotNull(state.LastCheckedUtc);
             Assert.False(state.UpdateAvailable);
         }
     }

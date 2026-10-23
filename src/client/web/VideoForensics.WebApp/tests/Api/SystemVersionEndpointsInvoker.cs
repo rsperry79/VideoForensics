@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Http;
-using VideoForensics.Client.Common.Contracts;
-using VideoForensics.WebApp.Api;
 
-namespace VideoForensics.WebApp.Tests.Api
+using System.Reflection;
+
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Helper class to invoke private methods in SystemVersionEndpoints for testing.
@@ -14,7 +17,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ISystemVersionProvider versionProvider,
             CancellationToken ct)
         {
-            var method = typeof(SystemVersionEndpoints)
+            MethodInfo? method = typeof(SystemVersionEndpoints)
                 .GetMethod("GetSystemVersion",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -22,9 +25,11 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find GetSystemVersion method");
+            }
 
-            var result = method.Invoke(null, [versionProvider, ct]);
+            object? result = method.Invoke(null, [versionProvider, ct]);
             return await (dynamic)result;
         }
 
@@ -32,7 +37,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ISystemVersionProvider versionProvider,
             CancellationToken ct)
         {
-            var method = typeof(SystemVersionEndpoints)
+            MethodInfo? method = typeof(SystemVersionEndpoints)
                 .GetMethod("GetVersionManifest",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -40,9 +45,11 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find GetVersionManifest method");
+            }
 
-            var result = method.Invoke(null, [versionProvider, ct]);
+            object? result = method.Invoke(null, [versionProvider, ct]);
             return await (dynamic)result;
         }
     }

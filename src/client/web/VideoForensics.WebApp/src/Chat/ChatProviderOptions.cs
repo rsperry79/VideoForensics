@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>Configuration for AnthropicChatProvider.</summary>
     public class AnthropicChatOptions

@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Local
+namespace VideoForensics.Client.Hosting.Local
 {
     /// <summary>
     /// In-process <see cref="IReleaseChannelService"/> for the server tier: reads and persists the update release channel
@@ -11,8 +11,10 @@ namespace VideoForensics.Hosting.Local
     public sealed class LocalReleaseChannelService(IForensicsConfiguration config, IForensicsConfigurationService configService) : IReleaseChannelService
     {
         /// <inheritdoc />
-        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(config.ReleaseChannel);
+        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(config.ReleaseChannel);
+        }
 
         /// <inheritdoc />
         public async Task<UpdateReleaseChannel> SetReleaseChannelAsync(UpdateReleaseChannel channel, CancellationToken cancellationToken = default)

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Manages the active UI layout mode (Standard/Simple) for the signed-in operator,
@@ -12,13 +12,13 @@ namespace VideoForensics.Ui.Shared.Services
         string Mode { get; }
 
         /// <summary>
-        
+
         /// <summary>
         /// Gets whether the UI mode is locked by an administrator.
         /// When locked, SetModeAsync will throw InvalidOperationException if an attempt is made to change the mode.
         /// </summary>
         bool IsLocked { get; }/// Fired when the UI mode changes or is initialized.
-        /// </summary>
+                              /// </summary>
         event Action? OnChange;
 
         /// <summary>

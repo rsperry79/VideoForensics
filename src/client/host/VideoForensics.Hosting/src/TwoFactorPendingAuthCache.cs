@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Short-lived server-side cache for correlating password-login step-1 with WebAuthn-passkey step-2
@@ -42,7 +42,7 @@ namespace VideoForensics.Hosting
         public string Store(Guid operatorId)
         {
             string correlationToken = Guid.NewGuid().ToString("N");
-            _cache.Set(correlationToken, operatorId, new MemoryCacheEntryOptions
+            _ = _cache.Set(correlationToken, operatorId, new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = PendingAuthLifetime
             });

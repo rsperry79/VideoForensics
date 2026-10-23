@@ -1,13 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-using Moq;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class ClientApiRegistrationTests
     {
@@ -15,13 +13,13 @@ namespace VideoForensics.Hosting.Tests
         public void AddVideoForensicsClientApi_ResolvesILiveViewSessionService_AsRemote()
         {
             var services = new ServiceCollection();
-            services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
+            _ = services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
             _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
 
             using ServiceProvider provider = services.BuildServiceProvider();
             ILiveViewSessionService service = provider.GetRequiredService<ILiveViewSessionService>();
 
-            Assert.IsType<RemoteLiveViewSessionService>(service);
+            _ = Assert.IsType<RemoteLiveViewSessionService>(service);
         }
     }
 }

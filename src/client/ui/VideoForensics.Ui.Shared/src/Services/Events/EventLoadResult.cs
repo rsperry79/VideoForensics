@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Events;
+namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
 /// Result of loading events for a forensic scope, including rows and metadata.

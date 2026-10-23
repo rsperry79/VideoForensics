@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Result of loading evidence items for a forensic scope.
@@ -34,10 +34,10 @@ public class EvidenceLoadResult
     {
         get
         {
-            var eventCount = Items.Count(i => i.Kind == EvidenceKind.Event);
-            var snapshotCount = Items.Count(i => i.Kind == EvidenceKind.Snapshot);
-            var videoCount = Items.Count(i => i.Kind == EvidenceKind.Video);
-            var fileCount = Items.Count(i => i.Kind == EvidenceKind.File);
+            int eventCount = Items.Count(i => i.Kind == EvidenceKind.Event);
+            int snapshotCount = Items.Count(i => i.Kind == EvidenceKind.Snapshot);
+            int videoCount = Items.Count(i => i.Kind == EvidenceKind.Video);
+            int fileCount = Items.Count(i => i.Kind == EvidenceKind.File);
             return new EvidenceItemCounts(eventCount, snapshotCount, videoCount, fileCount);
         }
     }

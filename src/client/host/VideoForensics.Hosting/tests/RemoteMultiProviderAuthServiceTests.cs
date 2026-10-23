@@ -1,12 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 
-using VideoForensics.Hosting.Remote;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteMultiProviderAuthServiceTests
     {
@@ -184,7 +182,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Act
             IProviderAuthService nullService = service.GetService(null!);
-            IProviderAuthService emptyService = service.GetService("");
+            IProviderAuthService emptyService = service.GetService(string.Empty);
 
             // Assert
             Assert.NotNull(nullService);

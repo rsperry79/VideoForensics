@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IMediaContentUrlProvider"/> that requests media access tickets
@@ -51,7 +51,7 @@ namespace VideoForensics.Hosting.Remote
                 List<MediaTicketDto>? tickets = await response.Content.ReadFromJsonAsync<List<MediaTicketDto>>(JsonOptions, ct);
                 if (tickets != null)
                 {
-                    foreach (var ticket in tickets)
+                    foreach (MediaTicketDto ticket in tickets)
                     {
                         string contentUrl = ticket.ContentUrl;
 

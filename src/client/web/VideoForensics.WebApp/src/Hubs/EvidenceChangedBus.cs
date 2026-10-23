@@ -3,7 +3,7 @@ using System.Reactive.Subjects;
 
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// In-process event stream of evidence changes. The WebApp's own Blazor circuits read it directly, since they run in

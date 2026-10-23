@@ -7,12 +7,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 
+using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     public static class PairedDeviceAuthenticationDefaults
     {
@@ -177,7 +177,7 @@ namespace VideoForensics.WebApp.Auth
                 else if (principal.Kind == CredentialKind.OperatorPasskey)
                 {
                     // OperatorPasskey: credential is an OperatorCredential row.
-                    var credential = await _operatorCredentialRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
+                    OperatorCredential? credential = await _operatorCredentialRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
                     if (credential == null || !credential.IsActive || !credential.IsApproved)
                     {
                         return AuthenticateResult.Fail("Invalid or expired credential.");

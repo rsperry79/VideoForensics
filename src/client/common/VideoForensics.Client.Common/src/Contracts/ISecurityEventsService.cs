@@ -22,7 +22,7 @@ namespace VideoForensics.Client.Common.Contracts
     /// Service for querying operator security events (login attempts, breaches, lockouts, etc.).
     /// On a client host (MAUI), this is backed by HTTP calls to the server; the WebApp's own Blazor UI
     /// uses the same HTTP-backed implementation calling back into its own Minimal API (see
-    /// <c>VideoForensics.WebApp.Services.SelfHttpServiceExtensions</c>), so the endpoint's authorization
+    /// <c>VideoForensics.Client.WebApp.Services.SelfHttpServiceExtensions</c>), so the endpoint's authorization
     /// rule (self-service always allowed; cross-account requires SuperAdmin + Local tier) is the single,
     /// uniform source of truth for both hosts.
     /// Provides both self-service (caller's own events) and cross-account audit access (SuperAdmin only).

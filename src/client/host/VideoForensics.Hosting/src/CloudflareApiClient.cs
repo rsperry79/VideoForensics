@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Thin client over the Cloudflare v4 REST API, authenticated with an Account API token. Every method
@@ -95,12 +95,9 @@ namespace VideoForensics.Hosting
             string tunnelId = created.Result.Id!;
             ApiCall<string> token = await CallAsync<string>(
                 HttpMethod.Get, $"{accountPath}/{Uri.EscapeDataString(tunnelId)}/token", apiToken, null, ct);
-            if (!token.IsSuccess || string.IsNullOrWhiteSpace(token.Result))
-            {
-                return new(false, tunnelId, null, token.ErrorMessage ?? "Cloudflare did not return a tunnel token.");
-            }
-
-            return new(true, tunnelId, token.Result, null);
+            return !token.IsSuccess || string.IsNullOrWhiteSpace(token.Result)
+                ? new(false, tunnelId, null, token.ErrorMessage ?? "Cloudflare did not return a tunnel token.")
+                : new(true, tunnelId, token.Result, null);
         }
 
         public async Task<CloudflareOperationResult> ConfigureIngressAsync(string apiToken, string accountId, string tunnelId, string hostname, string serviceUrl, CancellationToken ct)
@@ -175,7 +172,9 @@ namespace VideoForensics.Hosting
         }
 
         private static string AccountTunnelsPath(string accountId)
-            => $"client/v4/accounts/{Uri.EscapeDataString(accountId)}/cfd_tunnel";
+        {
+            return $"client/v4/accounts/{Uri.EscapeDataString(accountId)}/cfd_tunnel";
+        }
 
         private async Task<ApiCall<T>> CallAsync<T>(HttpMethod method, string path, string apiToken, object? body, CancellationToken ct)
         {

@@ -29,23 +29,26 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static MediaItem Row(Guid deviceId, string name, string format, DateTime recordedAt, string? metadata) => new()
+        private static MediaItem Row(Guid deviceId, string name, string format, DateTime recordedAt, string? metadata)
         {
-            Id = Guid.NewGuid(),
-            DeviceId = deviceId,
-            FileName = name,
-            FilePath = name,
-            MediaFormat = format,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
-            RecordedAtUtc = recordedAt,
-            DownloadedAtUtc = recordedAt,
-            MetadataJson = metadata,
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                FileName = name,
+                FilePath = name,
+                MediaFormat = format,
+                Sha256Hash = Guid.NewGuid().ToString("N"),
+                RecordedAtUtc = recordedAt,
+                DownloadedAtUtc = recordedAt,
+                MetadataJson = metadata,
+            };
+        }
 
         [Fact]
         public async Task GetSnapshotsByDeviceAndDateRangeAsync_ReturnsOnlySnapshotJpegsInWindowOldestFirst()
         {
-            Guid device = Guid.NewGuid();
+            var device = Guid.NewGuid();
             await _repository.AddAsync(Row(device, "late.jpg", "jpg", Start.AddMinutes(9), SnapshotMetadata), CancellationToken.None);
             await _repository.AddAsync(Row(device, "early.jpg", "jpg", Start.AddMinutes(1), SnapshotMetadata), CancellationToken.None);
             await _repository.AddAsync(Row(device, "event.jpg", "jpg", Start.AddMinutes(2), "{\"type\":\"event\"}"), CancellationToken.None);

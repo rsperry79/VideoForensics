@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Primitives;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     /// <summary>
     /// Shared "which network tier does the WebApp's own self-HTTP <c>X-VF-Session-Tier</c> header

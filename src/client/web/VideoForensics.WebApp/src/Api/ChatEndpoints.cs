@@ -1,9 +1,11 @@
 using System.Text.Json;
+
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Chat API endpoints for the embedded MCP-backed assistant (Milestone 8).
@@ -56,7 +58,7 @@ namespace VideoForensics.WebApp.Api
                     .ToList();
 
                 // Invoke the orchestrator
-                var result = await chatService.SendMessageAsync(history, request.Message, ct);
+                ChatTurnResult result = await chatService.SendMessageAsync(history, request.Message, ct);
 
                 // Log the interaction (Info on success, tools invoked)
                 logger.LogDebug(
@@ -139,13 +141,16 @@ namespace VideoForensics.WebApp.Api
         }
 
         /// <summary>Maps a streamed event to its SSE event name and JSON data payload.</summary>
-        internal static (string EventName, string Data) ToSseFrame(ChatStreamEvent evt) => evt switch
+        internal static (string EventName, string Data) ToSseFrame(ChatStreamEvent evt)
         {
-            ChatTextDelta delta => ("delta", JsonSerializer.Serialize(new ChatStreamDeltaDto(delta.Text), SseJsonOptions)),
-            ChatToolInvoked tool => ("tool", JsonSerializer.Serialize(new ChatStreamToolDto(tool.ToolName), SseJsonOptions)),
-            ChatTurnCompleted completed => ("done", JsonSerializer.Serialize(completed.Result.ToDto(), SseJsonOptions)),
-            _ => throw new InvalidOperationException($"Unknown chat stream event: {evt.GetType().Name}")
-        };
+            return evt switch
+            {
+                ChatTextDelta delta => ("delta", JsonSerializer.Serialize(new ChatStreamDeltaDto(delta.Text), SseJsonOptions)),
+                ChatToolInvoked tool => ("tool", JsonSerializer.Serialize(new ChatStreamToolDto(tool.ToolName), SseJsonOptions)),
+                ChatTurnCompleted completed => ("done", JsonSerializer.Serialize(completed.Result.ToDto(), SseJsonOptions)),
+                _ => throw new InvalidOperationException($"Unknown chat stream event: {evt.GetType().Name}")
+            };
+        }
 
         /// <summary>Returns an error message for an invalid request, or null when the request is acceptable.</summary>
         private static string? ValidateRequest(ChatRequestDto? request)
@@ -161,17 +166,9 @@ namespace VideoForensics.WebApp.Api
             }
 
             // Limit message and history size
-            if (request.Message.Length > 10_000)
-            {
-                return "Message is too long (max 10,000 characters).";
-            }
-
-            if (request.History?.Count > 100)
-            {
-                return "History is too long (max 100 turns).";
-            }
-
-            return null;
+            return request.Message.Length > 10_000
+                ? "Message is too long (max 10,000 characters)."
+                : request.History?.Count > 100 ? "History is too long (max 100 turns)." : null;
         }
     }
 }

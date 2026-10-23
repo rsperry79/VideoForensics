@@ -1,7 +1,5 @@
 using VideoForensics.Providers.Ring.Exceptions;
 
-using Xunit;
-
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>

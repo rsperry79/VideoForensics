@@ -7,7 +7,7 @@ using System.Text.Json;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IChatService"/> that calls the server's embedded MCP-based chat endpoint

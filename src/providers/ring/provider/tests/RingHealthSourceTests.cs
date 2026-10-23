@@ -564,7 +564,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert - should have exactly 1 reading from the single session
             Assert.NotNull(readings);
-            Assert.Single(readings);
+            _ = Assert.Single(readings);
             Assert.Equal("100", readings[0].ProviderDeviceId);
         }
 
@@ -624,7 +624,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account1, account2 });
+                .ReturnsAsync([account1, account2]);
 
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
 
@@ -669,7 +669,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = session.Setup(s => s.GetRingDevices()).ReturnsAsync(devices);
 
             // First call returns null, second call (after restore) returns session
-            var callCount = 0;
+            int callCount = 0;
             _ = sessionProvider.Setup(sp => sp.GetSession(accountId))
                 .Returns(() =>
                 {
@@ -679,7 +679,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
+                .ReturnsAsync([account]);
 
             var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
@@ -693,7 +693,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert - should have restored and fetched the session
             Assert.NotNull(readings);
-            Assert.Single(readings);
+            _ = Assert.Single(readings);
             Assert.Equal("100", readings[0].ProviderDeviceId);
             authService.Verify(ras => ras.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -715,7 +715,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account });
+                .ReturnsAsync([account]);
 
             var authService = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
             _ = authService.Setup(a => a.RestoreFromSavedCredentialsAsync(accountId, It.IsAny<CancellationToken>()))
@@ -774,7 +774,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var providerAccountRepository = new Mock<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<VideoForensics.Data.Common.Entities.ProviderAccount> { account1, account2 });
+                .ReturnsAsync([account1, account2]);
 
             ILogger<RingHealthSource> logger = new Mock<ILogger<RingHealthSource>>().Object;
             var authServiceMock = new Mock<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>();
@@ -785,7 +785,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert - should have only the second account's reading, no throw
             Assert.NotNull(readings);
-            Assert.Single(readings);
+            _ = Assert.Single(readings);
             Assert.Equal("200", readings[0].ProviderDeviceId);
         }
 

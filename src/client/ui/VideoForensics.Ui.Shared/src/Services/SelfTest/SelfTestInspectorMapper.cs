@@ -1,8 +1,9 @@
 using System.Text.Json;
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.SelfTest;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+
+namespace VideoForensics.Client.Ui.Shared.Services.SelfTest;
 
 /// <summary>
 /// Maps SelfTestCallDto to InspectorModel for display in the inspector panel.
@@ -15,45 +16,46 @@ public static class SelfTestInspectorMapper
     public static InspectorModel ToInspector(SelfTestCallDto call)
     {
         // Title: endpoint name and pass/fail status
-        var title = $"{call.DisplayName} · {(call.Success ? "OK" : "FAILED")}";
+        string title = $"{call.DisplayName} · {(call.Success ? "OK" : "FAILED")}";
 
         // Fields: call summary with metadata (without bodies)
         var fields = new
         {
             call.Endpoint,
             call.Target,
-            DurationMs = call.DurationMs,
-            Success = call.Success,
-            Error = call.Error,
-            SessionMethod = call.SessionMethod,
-            Destructive = call.Destructive,
-            Physical = call.Physical,
+            call.DurationMs,
+            call.Success,
+            call.Error,
+            call.SessionMethod,
+            call.Destructive,
+            call.Physical,
             RestoreInfo = new
             {
-                RestoreAttempted = call.RestoreAttempted,
-                RestoreSuccess = call.RestoreSuccess,
-                RestoreError = call.RestoreError,
-                RestoreSkippedReason = call.RestoreSkippedReason
+                call.RestoreAttempted,
+                call.RestoreSuccess,
+                call.RestoreError,
+                call.RestoreSkippedReason
             },
             SchemaIssuesCount = call.SchemaIssues.Count,
             HttpCallsCount = call.HttpCalls.Count
         };
 
         // RawJson: body of first test-phase HTTP call
-        var rawJson = call.HttpCalls
+        string? rawJson = call.HttpCalls
             .FirstOrDefault(h => h.Phase == "test")
             ?.Body;
 
         // Provenance: one entry per HTTP call (Phase Method StatusCode + URL + truncation info)
         var provenance = new List<KeyValuePair<string, string>>();
-        foreach (var httpCall in call.HttpCalls)
+        foreach (SelfTestHttpCallDto httpCall in call.HttpCalls)
         {
-            var key = $"{httpCall.Phase} {httpCall.Method} {httpCall.StatusCode}";
-            var value = httpCall.Url;
+            string key = $"{httpCall.Phase} {httpCall.Method} {httpCall.StatusCode}";
+            string value = httpCall.Url;
             if (httpCall.BodyTruncated)
             {
                 value += $" (truncated, {httpCall.ResponseBodyBytes} bytes)";
             }
+
             provenance.Add(new KeyValuePair<string, string>(key, value));
         }
 
@@ -61,7 +63,7 @@ public static class SelfTestInspectorMapper
             Title: title,
             Fields: fields,
             RawJson: rawJson,
-            Related: new List<InspectorLink>(),
+            Related: [],
             Provenance: provenance,
             Pin: null);
     }
@@ -78,7 +80,7 @@ public static class SelfTestInspectorMapper
 
         try
         {
-            JsonDocument.Parse(text);
+            _ = JsonDocument.Parse(text);
             return true;
         }
         catch

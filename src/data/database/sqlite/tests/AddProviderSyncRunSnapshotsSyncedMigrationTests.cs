@@ -1,7 +1,7 @@
-using System.Reflection;
-
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+
+using System.Reflection;
 
 using Xunit;
 

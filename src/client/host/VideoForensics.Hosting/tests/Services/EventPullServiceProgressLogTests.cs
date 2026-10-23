@@ -1,14 +1,13 @@
-using System.Collections.Concurrent;
-
 using Microsoft.Extensions.Logging;
 
-namespace VideoForensics.Hosting.Tests.Services
-{
-    using VideoForensics.Core.Providers.Common.Contracts;
-    using LocationEntity = VideoForensics.Data.Common.Entities.Location;
-    using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
-    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+using System.Collections.Concurrent;
 
+using VideoForensics.Core.Providers.Common.Contracts;
+
+using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
+namespace VideoForensics.Client.Hosting.Tests.Services
+{
     /// <summary>
     /// Verifies the Information-level progress lines a pull writes so a long sync is visible in the console.
     /// </summary>
@@ -18,7 +17,10 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             public ConcurrentQueue<string> Lines { get; } = new();
 
-            public ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new CapturingLogger(this);
+            }
 
             public void Dispose()
             {
@@ -26,9 +28,15 @@ namespace VideoForensics.Hosting.Tests.Services
 
             private sealed class CapturingLogger(CapturingLoggerProvider owner) : ILogger
             {
-                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                {
+                    return null;
+                }
 
-                public bool IsEnabled(LogLevel logLevel) => true;
+                public bool IsEnabled(LogLevel logLevel)
+                {
+                    return true;
+                }
 
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {
@@ -46,24 +54,27 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly CapturingLoggerProvider _logs = new();
 
-        private static DeviceEntity Device(Guid locationId, string providerDeviceId, string name) => new()
+        private static DeviceEntity Device(Guid locationId, string providerDeviceId, string name)
         {
-            Id = Guid.NewGuid(),
-            LocationId = locationId,
-            ProviderDeviceId = providerDeviceId,
-            Name = name,
-            Type = "doorbell"
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                LocationId = locationId,
+                ProviderDeviceId = providerDeviceId,
+                Name = name,
+                Type = "doorbell"
+            };
+        }
 
         private EventPullService BuildSut(params DeviceEntity[] devices)
         {
             var account = new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
             var location = new LocationEntity { Id = _locationId, ProviderLocationId = "location-123", Name = "Home" };
 
-            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
+            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
             DiscoveryStub.Wire(_accountId, location, devices, _discovery, _locations, _devices);
 
-            var factory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(_logs));
+            ILoggerFactory factory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddProvider(_logs));
             return new EventPullService(
                 _events.Object,
                 _devices.Object,
@@ -97,21 +108,21 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task PullAccountEventsAsync_DeviceWithEventsInAndOutsideWindow_LogsOnlyInWindowCountForThatDevice()
         {
-            var from = DateTime.UtcNow.AddDays(-1);
+            DateTime from = DateTime.UtcNow.AddDays(-1);
             EventPullService sut = BuildSut(Device(_locationId, "dev-1", "Front Door"), Device(_locationId, "dev-2", "Back Yard"));
 
-            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", from, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>
-                {
+            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", from, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
                     new("e-1", "dev-1", "motion", DateTime.UtcNow.AddHours(-1)),
                     new("e-2", "dev-1", "ding", DateTime.UtcNow.AddHours(-2)),
                     new("e-3", "dev-1", "motion", DateTime.UtcNow.AddDays(-2))
-                });
-            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-2", from, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>
-                {
+                ]);
+            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-2", from, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                [
                     new("e-4", "dev-2", "motion", DateTime.UtcNow.AddHours(-3))
-                });
+                ]);
 
             _ = await sut.PullAccountEventsAsync(_accountId, from, null, CancellationToken.None);
 

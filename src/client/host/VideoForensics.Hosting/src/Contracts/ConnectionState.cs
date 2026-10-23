@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Lifecycle state of the client's real-time hub connection, published by <see cref="IRealtimeHub.Connection"/>.

@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Stores the LLM API key and configuration (provider, model, base URL) encrypted via the existing

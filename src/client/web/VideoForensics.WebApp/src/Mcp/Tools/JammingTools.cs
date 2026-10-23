@@ -1,11 +1,11 @@
 using ModelContextProtocol.Server;
 
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Contracts;
 
-namespace VideoForensics.WebApp.Mcp.Tools
+namespace VideoForensics.Client.WebApp.Mcp.Tools
 {
     /// <summary>RF jamming / signal interference detection tools. See the jamming-analysis resource for the recommended call sequence and interpretation guidance.</summary>
     [McpServerToolType]

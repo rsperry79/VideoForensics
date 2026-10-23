@@ -34,7 +34,7 @@ Part 1 is STILL OPEN as a manual check only; no code is needed. Part 2 (local un
 | File | Change | Why |
 |---|---|---|
 | (none required for the verdict) | none | Verification is manual; step-up integration is dropped. |
-| `src/client/maui/VideoForensics.MauiApp/App.xaml.cs` | Only if step 5 shows fail-open: make it fail-closed or give an explicit fallback | Security of the lock |
+| `src/client/maui/VideoForensics.Client.MauiApp/App.xaml.cs` | Only if step 5 shows fail-open: make it fail-closed or give an explicit fallback | Security of the lock |
 | `plans/archive/maui-blazor-hybrid-conversion.md` line 19 | Edit to mark verified and "won't do" for the step-up synergy | Close out the item |
 
 ## Test plan

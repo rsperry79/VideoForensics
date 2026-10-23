@@ -3,12 +3,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.WebApp.Hubs;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LiveEvidenceNotifierTests
     {

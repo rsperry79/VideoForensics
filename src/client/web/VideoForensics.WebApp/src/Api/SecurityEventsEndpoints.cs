@@ -1,10 +1,9 @@
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Operator security event query endpoints (Phase 0.5).
@@ -43,7 +42,7 @@ namespace VideoForensics.WebApp.Api
             int limit = request.Limit ?? 20;
             int offset = request.Offset ?? 0;
 
-            if (limit < 1 || limit > 1000)
+            if (limit is < 1 or > 1000)
             {
                 return Results.BadRequest(new { error = "Limit must be between 1 and 1000." });
             }
@@ -104,7 +103,7 @@ namespace VideoForensics.WebApp.Api
             {
                 // Fetch events from the audit service and map to API DTOs
                 var events = new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>();
-                await foreach (var @event in auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, ct))
+                await foreach (Data.Common.Contracts.SecurityEventDto @event in auditService.GetOperatorEventsAsync(targetOperatorId, offset, limit, ct))
                 {
                     events.Add(new VideoForensics.Core.Api.Contracts.SecurityEventDto(
                         Id: @event.Id,

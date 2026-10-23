@@ -6,15 +6,15 @@ using Moq;
 
 using System.Security.Claims;
 
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class CaseEndpointsTests
     {
@@ -32,8 +32,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
-                new Claim(ClaimTypes.Role, OperatorRole.Admin.ToString())
+                new(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
+                new(ClaimTypes.Role, OperatorRole.Admin.ToString())
             };
             var identity = new ClaimsIdentity(claims, "test");
             return new ClaimsPrincipal(identity);
@@ -83,11 +83,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCasesAsync_WithoutStatus_ReturnsCases()
         {
-            (var cases, _) = CreateMocks();
-            var case1 = CreateForensicCase();
-            var case2 = CreateForensicCase();
-            cases.Setup(c => c.ListAsync(null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ForensicCase> { case1, case2 });
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            ForensicCase case1 = CreateForensicCase();
+            ForensicCase case2 = CreateForensicCase();
+            _ = cases.Setup(c => c.ListAsync(null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([case1, case2]);
 
             IResult result = await CaseEndpoints.GetCasesAsync(null, cases.Object, CancellationToken.None);
 
@@ -100,11 +100,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCasesAsync_WithStatus_FiltersCorrectly()
         {
-            (var cases, _) = CreateMocks();
-            var closedCase = CreateForensicCase();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            ForensicCase closedCase = CreateForensicCase();
             closedCase.Status = CaseStatus.Closed;
-            cases.Setup(c => c.ListAsync(CaseStatus.Closed, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ForensicCase> { closedCase });
+            _ = cases.Setup(c => c.ListAsync(CaseStatus.Closed, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([closedCase]);
 
             IResult result = await CaseEndpoints.GetCasesAsync("Closed", cases.Object, CancellationToken.None);
 
@@ -119,25 +119,25 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCaseAsync_NotFound_ReturnsNotFound()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var id = Guid.NewGuid();
-            cases.Setup(c => c.GetAsync(id, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetAsync(id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ForensicCase?)null);
 
             IResult result = await CaseEndpoints.GetCaseAsync(id, cases.Object, CancellationToken.None);
 
-            Assert.IsType<NotFound>(result);
+            _ = Assert.IsType<NotFound>(result);
         }
 
         [Fact]
         public async Task GetCaseAsync_Found_ReturnsCaseWithDeviceIds()
         {
-            (var cases, _) = CreateMocks();
-            var @case = CreateForensicCase();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            ForensicCase @case = CreateForensicCase();
             var deviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
-            cases.Setup(c => c.GetAsync(@case.Id, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetAsync(@case.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(deviceIds);
 
             IResult result = await CaseEndpoints.GetCaseAsync(@case.Id, cases.Object, CancellationToken.None);
@@ -154,24 +154,24 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCaseByNumberAsync_NotFound_ReturnsNotFound()
         {
-            (var cases, _) = CreateMocks();
-            cases.Setup(c => c.GetByNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            _ = cases.Setup(c => c.GetByNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ForensicCase?)null);
 
             IResult result = await CaseEndpoints.GetCaseByNumberAsync("INVALID", cases.Object, CancellationToken.None);
 
-            Assert.IsType<NotFound>(result);
+            _ = Assert.IsType<NotFound>(result);
         }
 
         [Fact]
         public async Task GetCaseByNumberAsync_Found_ReturnsCaseWithDeviceIds()
         {
-            (var cases, _) = CreateMocks();
-            var @case = CreateForensicCase();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            ForensicCase @case = CreateForensicCase();
             var deviceIds = new List<Guid> { Guid.NewGuid() };
-            cases.Setup(c => c.GetByNumberAsync(@case.CaseNumber, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetByNumberAsync(@case.CaseNumber, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(deviceIds);
 
             IResult result = await CaseEndpoints.GetCaseByNumberAsync(@case.CaseNumber, cases.Object, CancellationToken.None);
@@ -187,10 +187,10 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCaseDevicesAsync_ReturnsDeviceIds()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var caseId = Guid.NewGuid();
             var deviceIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
-            cases.Setup(c => c.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(caseId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(deviceIds);
 
             IResult result = await CaseEndpoints.GetCaseDevicesAsync(caseId, cases.Object, CancellationToken.None);
@@ -216,13 +216,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetCaseItemsAsync_WithIncludeRemoved_ReturnsItems()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var caseId = Guid.NewGuid();
-            var item1 = CreateCaseItem(caseId: caseId);
-            var item2 = CreateCaseItem(caseId: caseId);
+            CaseItem item1 = CreateCaseItem(caseId: caseId);
+            CaseItem item2 = CreateCaseItem(caseId: caseId);
             item2.RemovedAtUtc = DateTime.UtcNow;
-            cases.Setup(c => c.ListItemsAsync(caseId, true, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<CaseItem> { item1, item2 });
+            _ = cases.Setup(c => c.ListItemsAsync(caseId, true, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([item1, item2]);
 
             IResult result = await CaseEndpoints.GetCaseItemsAsync(caseId, true, cases.Object, CancellationToken.None);
 
@@ -237,7 +237,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ListCasesContainingAsync_MissingParameters_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
 
             IResult result = await CaseEndpoints.ListCasesContainingAsync(null, null, cases.Object, CancellationToken.None);
 
@@ -247,7 +247,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ListCasesContainingAsync_InvalidKind_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
 
             IResult result = await CaseEndpoints.ListCasesContainingAsync("InvalidKind", Guid.NewGuid(), cases.Object, CancellationToken.None);
 
@@ -257,11 +257,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ListCasesContainingAsync_ValidParameters_ReturnsCases()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var targetId = Guid.NewGuid();
-            var @case = CreateForensicCase();
-            cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, targetId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ForensicCase> { @case });
+            ForensicCase @case = CreateForensicCase();
+            _ = cases.Setup(c => c.ListCasesContainingAsync(CaseItemKind.Media, targetId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([@case]);
 
             IResult result = await CaseEndpoints.ListCasesContainingAsync("Media", targetId, cases.Object, CancellationToken.None);
 
@@ -276,23 +276,23 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
-            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, new List<Guid>());
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task CreateCaseAsync_NullCaseNumber_PassesNullToRepository()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var @case = CreateForensicCase();
-            var request = new CreateCaseRequestDto(null, "Test", null, null, null, null, new List<Guid>());
-            cases.Setup(c => c.CreateAsync(
+            ForensicCase @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto(null, "Test", null, null, null, null, []);
+            _ = cases.Setup(c => c.CreateAsync(
                 It.Is<string?>(s => s == null),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
@@ -303,8 +303,8 @@ namespace VideoForensics.WebApp.Tests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Guid>());
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -325,11 +325,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_EmptyStringCaseNumber_PassesEmptyToRepository()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var @case = CreateForensicCase();
-            var request = new CreateCaseRequestDto("", "Test", null, null, null, null, new List<Guid>());
-            cases.Setup(c => c.CreateAsync(
+            ForensicCase @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto(string.Empty, "Test", null, null, null, null, []);
+            _ = cases.Setup(c => c.CreateAsync(
                 It.Is<string?>(s => string.IsNullOrWhiteSpace(s)),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
@@ -340,8 +340,8 @@ namespace VideoForensics.WebApp.Tests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Guid>());
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -362,11 +362,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_ExplicitCaseNumber_PassesThroughExactly()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var @case = CreateForensicCase();
-            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, new List<Guid>());
-            cases.Setup(c => c.CreateAsync(
+            ForensicCase @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
+            _ = cases.Setup(c => c.CreateAsync(
                 It.Is<string?>(s => s == "CASE-001"),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
@@ -377,8 +377,8 @@ namespace VideoForensics.WebApp.Tests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Guid>());
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -399,10 +399,10 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_CaseNumberTooLong_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var longNumber = new string('A', 65);
-            var request = new CreateCaseRequestDto(longNumber, "Test", null, null, null, null, new List<Guid>());
+            string longNumber = new('A', 65);
+            var request = new CreateCaseRequestDto(longNumber, "Test", null, null, null, null, []);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -413,9 +413,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_EmptyTitle_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new CreateCaseRequestDto("CASE-001", "", null, null, null, null, new List<Guid>());
+            var request = new CreateCaseRequestDto("CASE-001", string.Empty, null, null, null, null, []);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -426,11 +426,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_InvalidScopeRange_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var from = DateTime.UtcNow.AddDays(1);
-            var to = DateTime.UtcNow;
-            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, from, to, new List<Guid>());
+            DateTime from = DateTime.UtcNow.AddDays(1);
+            DateTime to = DateTime.UtcNow;
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, from, to, []);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -441,10 +441,10 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_DuplicateCaseNumber_ReturnsConflict()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, new List<Guid>());
-            cases.Setup(c => c.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
+            _ = cases.Setup(c => c.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
                 It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(),
                 It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Duplicate case number"));
@@ -458,16 +458,16 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CreateCaseAsync_Success_ReturnsCreated()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var @case = CreateForensicCase();
-            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, new List<Guid>());
-            cases.Setup(c => c.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            ForensicCase @case = CreateForensicCase();
+            var request = new CreateCaseRequestDto("CASE-001", "Test", null, null, null, null, []);
+            _ = cases.Setup(c => c.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
                 It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(),
                 It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(@case);
-            cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<Guid>());
+            _ = cases.Setup(c => c.GetDeviceIdsAsync(@case.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([]);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CreateCaseAsync(request, cases.Object, context, CancellationToken.None);
@@ -486,21 +486,21 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task UpdateCaseDetailsAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var request = new UpdateCaseDetailsRequestDto("New Title", null, null);
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.UpdateCaseDetailsAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task UpdateCaseDetailsAsync_EmptyTitle_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new UpdateCaseDetailsRequestDto("", null, null);
+            var request = new UpdateCaseDetailsRequestDto(string.Empty, null, null);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.UpdateCaseDetailsAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
@@ -511,17 +511,17 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task UpdateCaseDetailsAsync_Success_ReturnsNoContent()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
             var request = new UpdateCaseDetailsRequestDto("New Title", "New Description", null);
-            cases.Setup(c => c.UpdateDetailsAsync(caseId, It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.UpdateDetailsAsync(caseId, It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.UpdateCaseDetailsAsync(caseId, request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<NoContent>(result);
+            _ = Assert.IsType<NoContent>(result);
         }
 
         #endregion
@@ -531,11 +531,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetCaseScopeAsync_InvalidScopeRange_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var from = DateTime.UtcNow.AddDays(1);
-            var to = DateTime.UtcNow;
-            var request = new SetCaseScopeRequestDto(from, to, new List<Guid>());
+            DateTime from = DateTime.UtcNow.AddDays(1);
+            DateTime to = DateTime.UtcNow;
+            var request = new SetCaseScopeRequestDto(from, to, []);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.SetCaseScopeAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
@@ -546,17 +546,17 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetCaseScopeAsync_Success_ReturnsNoContent()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            var request = new SetCaseScopeRequestDto(DateTime.UtcNow, DateTime.UtcNow.AddDays(1), new List<Guid> { Guid.NewGuid() });
-            cases.Setup(c => c.SetScopeAsync(caseId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            var request = new SetCaseScopeRequestDto(DateTime.UtcNow, DateTime.UtcNow.AddDays(1), [Guid.NewGuid()]);
+            _ = cases.Setup(c => c.SetScopeAsync(caseId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.SetCaseScopeAsync(caseId, request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<NoContent>(result);
+            _ = Assert.IsType<NoContent>(result);
         }
 
         #endregion
@@ -566,21 +566,21 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task AddCaseItemAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var request = new AddCaseItemRequestDto("Media", Guid.NewGuid(), "Test reason");
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.AddCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task AddCaseItemAsync_EmptyReason_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new AddCaseItemRequestDto("Media", Guid.NewGuid(), "");
+            var request = new AddCaseItemRequestDto("Media", Guid.NewGuid(), string.Empty);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.AddCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
@@ -591,7 +591,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task AddCaseItemAsync_InvalidKind_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var request = new AddCaseItemRequestDto("InvalidKind", Guid.NewGuid(), "Test reason");
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
@@ -604,12 +604,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task AddCaseItemAsync_Success_ReturnsCreated()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            var item = CreateCaseItem(caseId: caseId);
+            CaseItem item = CreateCaseItem(caseId: caseId);
             var request = new AddCaseItemRequestDto("Media", item.MediaItemId!.Value, "Test reason");
-            cases.Setup(c => c.AddItemAsync(caseId, CaseItemKind.Media, item.MediaItemId!.Value, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.AddItemAsync(caseId, CaseItemKind.Media, item.MediaItemId!.Value, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
@@ -626,21 +626,21 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task RemoveCaseItemAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var request = new RemoveCaseItemRequestDto("No longer relevant");
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.RemoveCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task RemoveCaseItemAsync_EmptyReason_ReturnsBadRequest()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
-            var request = new RemoveCaseItemRequestDto("");
+            var request = new RemoveCaseItemRequestDto(string.Empty);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.RemoveCaseItemAsync(Guid.NewGuid(), request, cases.Object, context, CancellationToken.None);
@@ -651,17 +651,17 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task RemoveCaseItemAsync_Success_ReturnsNoContent()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var itemId = Guid.NewGuid();
             var request = new RemoveCaseItemRequestDto("No longer relevant");
-            cases.Setup(c => c.RemoveItemAsync(itemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.RemoveItemAsync(itemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.RemoveCaseItemAsync(itemId, request, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<NoContent>(result);
+            _ = Assert.IsType<NoContent>(result);
         }
 
         #endregion
@@ -671,21 +671,21 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CloseCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.CloseCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task CloseCaseAsync_AlreadyClosed_ReturnsConflict()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            cases.Setup(c => c.CloseAsync(caseId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.CloseAsync(caseId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Case is already closed"));
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
@@ -697,16 +697,16 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task CloseCaseAsync_Success_ReturnsNoContent()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            cases.Setup(c => c.CloseAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.CloseAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.CloseCaseAsync(caseId, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<NoContent>(result);
+            _ = Assert.IsType<NoContent>(result);
         }
 
         #endregion
@@ -716,27 +716,27 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task ReopenCaseAsync_NoOperatorClaim_ReturnsUnauthorized()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var context = new DefaultHttpContext();
 
             IResult result = await CaseEndpoints.ReopenCaseAsync(Guid.NewGuid(), cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<UnauthorizedHttpResult>(result);
+            _ = Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task ReopenCaseAsync_Success_ReturnsNoContent()
         {
-            (var cases, _) = CreateMocks();
+            (Mock<ICaseRepository>? cases, _) = CreateMocks();
             var operatorId = Guid.NewGuid();
             var caseId = Guid.NewGuid();
-            cases.Setup(c => c.ReopenAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))
+            _ = cases.Setup(c => c.ReopenAsync(caseId, operatorId.ToString(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { User = CreatePrincipalWithOperatorId(operatorId) };
 
             IResult result = await CaseEndpoints.ReopenCaseAsync(caseId, cases.Object, context, CancellationToken.None);
 
-            Assert.IsType<NoContent>(result);
+            _ = Assert.IsType<NoContent>(result);
         }
 
         #endregion

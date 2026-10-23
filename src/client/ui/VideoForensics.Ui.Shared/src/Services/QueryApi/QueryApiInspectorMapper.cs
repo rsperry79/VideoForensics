@@ -1,7 +1,7 @@
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
-namespace VideoForensics.Ui.Shared.Services.QueryApi;
+namespace VideoForensics.Client.Ui.Shared.Services.QueryApi;
 
 /// <summary>
 /// A dropdown entry for the QueryApi filter panel: <see cref="Value"/> is the id used for queries, <see cref="Label"/> is shown to the user.
@@ -58,19 +58,19 @@ public static class LocationInspectorMapper
 {
     public static InspectorModel ToInspector(Location location, DateTime retrievedAt)
     {
-        var title = $"Location · {location.Name}";
+        string title = $"Location · {location.Name}";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("Source", "IDeviceDiscoveryService.GetLocationsAsync"),
-            new KeyValuePair<string, string>("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("Source", "IDeviceDiscoveryService.GetLocationsAsync"),
+            new("RetrievedAtUtc", retrievedAt.ToString("u"))
         };
 
         return new InspectorModel(
             Title: title,
             Fields: location,
             RawJson: null,
-            Related: new List<InspectorLink>(),
+            Related: [],
             Provenance: provenance);
     }
 }
@@ -82,20 +82,20 @@ public static class DeviceInspectorMapper
 {
     public static InspectorModel ToInspector(Device device, string locationId, DateTime retrievedAt)
     {
-        var title = $"Device · {device.Name} ({device.Type})";
+        string title = $"Device · {device.Name} ({device.Type})";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("LocationId", locationId),
-            new KeyValuePair<string, string>("Source", "IDeviceDiscoveryService.GetDevicesAsync"),
-            new KeyValuePair<string, string>("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("LocationId", locationId),
+            new("Source", "IDeviceDiscoveryService.GetDevicesAsync"),
+            new("RetrievedAtUtc", retrievedAt.ToString("u"))
         };
 
         return new InspectorModel(
             Title: title,
             Fields: device,
             RawJson: null,
-            Related: new List<InspectorLink>(),
+            Related: [],
             Provenance: provenance);
     }
 }
@@ -112,22 +112,22 @@ public static class DeviceEventInspectorMapper
         DateTime toUtc,
         DateTime retrievedAt)
     {
-        var title = $"Event · {@event.EventType} · {@event.Timestamp:u}";
+        string title = $"Event · {@event.EventType} · {@event.Timestamp:u}";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("DeviceId", deviceId),
-            new KeyValuePair<string, string>("DateRangeFromUtc", fromUtc.ToString("u")),
-            new KeyValuePair<string, string>("DateRangeToUtc", toUtc.ToString("u")),
-            new KeyValuePair<string, string>("Source", "IEventAndConfigService.GetEventsAsync"),
-            new KeyValuePair<string, string>("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("DeviceId", deviceId),
+            new("DateRangeFromUtc", fromUtc.ToString("u")),
+            new("DateRangeToUtc", toUtc.ToString("u")),
+            new("Source", "IEventAndConfigService.GetEventsAsync"),
+            new("RetrievedAtUtc", retrievedAt.ToString("u"))
         };
 
         return new InspectorModel(
             Title: title,
             Fields: @event,
             RawJson: null,
-            Related: new List<InspectorLink>(),
+            Related: [],
             Provenance: provenance);
     }
 }
@@ -139,20 +139,20 @@ public static class DeviceConfigInspectorMapper
 {
     public static InspectorModel ToInspector(DeviceConfig config, string deviceId, DateTime retrievedAt)
     {
-        var title = $"Device Config · {deviceId}";
+        string title = $"Device Config · {deviceId}";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("DeviceId", deviceId),
-            new KeyValuePair<string, string>("Source", "IEventAndConfigService.GetDeviceConfigAsync"),
-            new KeyValuePair<string, string>("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("DeviceId", deviceId),
+            new("Source", "IEventAndConfigService.GetDeviceConfigAsync"),
+            new("RetrievedAtUtc", retrievedAt.ToString("u"))
         };
 
         return new InspectorModel(
             Title: title,
             Fields: config,
             RawJson: null,
-            Related: new List<InspectorLink>(),
+            Related: [],
             Provenance: provenance);
     }
 }

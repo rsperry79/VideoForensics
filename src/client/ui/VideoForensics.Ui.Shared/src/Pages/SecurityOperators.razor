@@ -1,8 +1,8 @@
 @page "/settings/operators"
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Data.Common.Entities
-@using VideoForensics.Ui.Shared.Services
-@using VideoForensics.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using Operator = VideoForensics.Data.Common.Entities.Operator
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
@@ -10,7 +10,7 @@
 @inject StepUpService StepUp
 @inject ISelfApiHttpClientFactory ClientFactory
 @inject IStringLocalizer<SecurityOperators> L
-@inject IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources> SharedL
+@inject IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources> SharedL
 
 <Breadcrumb Items="@_breadcrumbItems" />
 

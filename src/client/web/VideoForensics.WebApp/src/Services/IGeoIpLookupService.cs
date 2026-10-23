@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Service for performing GeoIP lookups to resolve the country code associated with an IP address.

@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using VideoForensics.Ui.Shared.Resources;
 
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Client.Ui.Shared.Resources;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>
 /// Builds a real <see cref="IStringLocalizer{SharedResources}"/> backed by the shipped SharedResources.resx,
@@ -30,5 +31,8 @@ internal sealed class TaggingLocalizer : IStringLocalizer<SharedResources>
     public LocalizedString this[string name, params object[] arguments] =>
         new(name, "L:" + name + string.Concat(arguments.Select(a => "|" + a)));
 
-    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => Array.Empty<LocalizedString>();
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
+    {
+        return Array.Empty<LocalizedString>();
+    }
 }

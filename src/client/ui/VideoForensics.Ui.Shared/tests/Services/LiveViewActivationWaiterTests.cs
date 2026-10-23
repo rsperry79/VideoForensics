@@ -2,12 +2,12 @@ using System.Diagnostics;
 using System.Reactive.Subjects;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services
+namespace VideoForensics.Client.Ui.Shared.Tests.Services
 {
     public class LiveViewActivationWaiterTests
     {
@@ -49,7 +49,10 @@ namespace VideoForensics.Ui.Shared.Tests.Services
                 return Task.CompletedTask;
             }
 
-            public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
         }
 
         /// <summary>Stand-in for GetActiveSessionAsync. Each call returns the result for its 1-based call number.</summary>
@@ -71,15 +74,18 @@ namespace VideoForensics.Ui.Shared.Tests.Services
             }
         }
 
-        private static LiveViewSession Session(Guid id, LiveViewSessionState state) => new()
+        private static LiveViewSession Session(Guid id, LiveViewSessionState state)
         {
-            Id = id,
-            DeviceId = Guid.NewGuid(),
-            TriggerReason = LiveViewTriggerReason.Manual,
-            State = state,
-            StartedAtUtc = DateTime.UtcNow,
-            LastExtendedAtUtc = DateTime.UtcNow,
-        };
+            return new()
+            {
+                Id = id,
+                DeviceId = Guid.NewGuid(),
+                TriggerReason = LiveViewTriggerReason.Manual,
+                State = state,
+                StartedAtUtc = DateTime.UtcNow,
+                LastExtendedAtUtc = DateTime.UtcNow,
+            };
+        }
 
         [Fact]
         public async Task LiveViewActivationWaiter_SourceEmitsActive_ReturnsWithoutPolling()

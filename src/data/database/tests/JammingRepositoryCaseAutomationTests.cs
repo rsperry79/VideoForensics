@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Moq;
 
 using VideoForensics.Data.Common.Contracts;
@@ -50,32 +51,37 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory.Dispose();
         }
 
-        private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null) =>
-            new(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
+        private JammingRepository BuildJammingRepo(ICaseRepository? caseRepository = null)
+        {
+            return new(_fixture.Factory, _loggerFactory.CreateLogger<JammingRepository>(), caseRepository);
+        }
 
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
-            var loc = TestDataBuilder.BuildLocation(name: "Test Location");
+            Location loc = TestDataBuilder.BuildLocation(name: "Test Location");
             await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
-            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
+            Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Test Device");
             await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
         private static JammingIncidentRecord NewIncident(Guid deviceId, JammingConfidenceLevel level,
-            JammingIncidentSource source = JammingIncidentSource.AutoDetected, string? notes = null) => new()
+            JammingIncidentSource source = JammingIncidentSource.AutoDetected, string? notes = null)
         {
-            Id = Guid.NewGuid(),
-            DeviceId = deviceId,
-            StartUtc = Start,
-            EndUtc = End,
-            AffectedEventCount = 7,
-            AverageDegradationDb = 8.5,
-            Confidence = level,
-            DetectedAtUtc = End,
-            Notes = notes,
-            Source = source
-        };
+            return new()
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                StartUtc = Start,
+                EndUtc = End,
+                AffectedEventCount = 7,
+                AverageDegradationDb = 8.5,
+                Confidence = level,
+                DetectedAtUtc = End,
+                Notes = notes,
+                Source = source
+            };
+        }
 
         /// <summary>
         /// Test (a): New High-confidence incident creates case with "detected-" prefix, alert, and links incident.
@@ -85,12 +91,12 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
-            var jammingRepo = BuildJammingRepo(_caseRepo);
+            JammingRepository jammingRepo = BuildJammingRepo(_caseRepo);
 
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
             // Verify case was created
-            Assert.NotNull(result.CaseId);
+            _ = Assert.NotNull(result.CaseId);
             ForensicCase? forensicCase = await _caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);
             Assert.NotNull(forensicCase);
             Assert.StartsWith("detected-", forensicCase.CaseNumber);
@@ -118,11 +124,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.Medium);
-            var jammingRepo = BuildJammingRepo(_caseRepo);
+            JammingRepository jammingRepo = BuildJammingRepo(_caseRepo);
 
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
-            Assert.NotNull(result.CaseId);
+            _ = Assert.NotNull(result.CaseId);
             ForensicCase? forensicCase = await _caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);
             Assert.NotNull(forensicCase);
             Assert.StartsWith("suspected-", forensicCase.CaseNumber);
@@ -137,11 +143,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.Low);
-            var jammingRepo = BuildJammingRepo(_caseRepo);
+            JammingRepository jammingRepo = BuildJammingRepo(_caseRepo);
 
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
-            Assert.NotNull(result.CaseId);
+            _ = Assert.NotNull(result.CaseId);
             ForensicCase? forensicCase = await _caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);
             Assert.NotNull(forensicCase);
             Assert.StartsWith("suspected-", forensicCase.CaseNumber);
@@ -159,11 +165,11 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High, JammingIncidentSource.ManuallyRecorded);
-            var jammingRepo = BuildJammingRepo(_caseRepo);
+            JammingRepository jammingRepo = BuildJammingRepo(_caseRepo);
 
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
-            Assert.NotNull(result.CaseId);
+            _ = Assert.NotNull(result.CaseId);
             ForensicCase? forensicCase = await _caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);
             Assert.NotNull(forensicCase);
             Assert.StartsWith("detected-", forensicCase.CaseNumber);
@@ -181,7 +187,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Guid deviceId = await SeedDeviceAsync(_fixture.Factory, _loggerFactory);
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
-            var jammingRepo = BuildJammingRepo(_caseRepo);
+            JammingRepository jammingRepo = BuildJammingRepo(_caseRepo);
 
             // First upsert: INSERT
             JammingIncidentRecord created = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
@@ -227,11 +233,11 @@ namespace VideoForensics.Data.Database.Tests
 
             // Mock ICaseRepository to throw
             var mockCaseRepo = new Mock<ICaseRepository>();
-            mockCaseRepo
+            _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Simulated case creation failure"));
 
-            var jammingRepo = BuildJammingRepo(mockCaseRepo.Object);
+            JammingRepository jammingRepo = BuildJammingRepo(mockCaseRepo.Object);
 
             // Upsert should not throw; should continue
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
@@ -257,7 +263,7 @@ namespace VideoForensics.Data.Database.Tests
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
 
             // Build jamming repo without case repository
-            var jammingRepo = BuildJammingRepo(null);
+            JammingRepository jammingRepo = BuildJammingRepo(null);
 
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
@@ -282,14 +288,14 @@ namespace VideoForensics.Data.Database.Tests
 
             // Mock ICaseRepository to throw OperationCanceledException
             var mockCaseRepo = new Mock<ICaseRepository>();
-            mockCaseRepo
+            _ = mockCaseRepo
                 .Setup(r => r.CreateFromJammingDetectionAsync(It.IsAny<JammingIncidentRecord>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException("Cancelled"));
 
-            var jammingRepo = BuildJammingRepo(mockCaseRepo.Object);
+            JammingRepository jammingRepo = BuildJammingRepo(mockCaseRepo.Object);
 
             // Expect OperationCanceledException to propagate
-            await Assert.ThrowsAsync<OperationCanceledException>(
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(
                 () => jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None));
         }
 
@@ -307,23 +313,23 @@ namespace VideoForensics.Data.Database.Tests
             var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
 
             // Register the DbContext factory first
-            services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(testFixture.Factory);
+            _ = services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(testFixture.Factory);
 
             // Add logging
-            services.AddLogging();
+            _ = services.AddLogging();
 
             // Add the database layer
-            services.AddVideoForensicsDatabase();
+            _ = services.AddVideoForensicsDatabase();
 
-            var sp = services.BuildServiceProvider();
+            ServiceProvider sp = services.BuildServiceProvider();
 
             // Verify IJammingRepository is resolved
-            var jammingRepo = sp.GetRequiredService<IJammingRepository>();
+            IJammingRepository jammingRepo = sp.GetRequiredService<IJammingRepository>();
             Assert.NotNull(jammingRepo);
-            Assert.IsType<JammingRepository>(jammingRepo);
+            _ = Assert.IsType<JammingRepository>(jammingRepo);
 
             // Verify ICaseRepository is also resolved
-            var caseRepo = sp.GetRequiredService<ICaseRepository>();
+            ICaseRepository caseRepo = sp.GetRequiredService<ICaseRepository>();
             Assert.NotNull(caseRepo);
 
             // Behavioral test: seed a device, then upsert a NEW incident and verify case/alert creation
@@ -333,7 +339,7 @@ namespace VideoForensics.Data.Database.Tests
             JammingIncidentRecord result = await jammingRepo.UpsertIncidentAsync(incident, CancellationToken.None);
 
             // The incident should have a CaseId set (thanks to the injected CaseRepository)
-            Assert.NotNull(result.CaseId);
+            _ = Assert.NotNull(result.CaseId);
 
             // Verify the case actually exists
             ForensicCase? forensicCase = await caseRepo.GetAsync(result.CaseId.Value, CancellationToken.None);

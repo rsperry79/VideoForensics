@@ -54,7 +54,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // OrderBy is stable, so captures at the same instant keep their input order.
-            List<(DateTimeOffset CapturedAt, string ImagePath)> ordered = current.OrderBy(c => c.CapturedAt).ToList();
+            var ordered = current.OrderBy(c => c.CapturedAt).ToList();
             failures.Sort();
             var stills = new List<TimelineStill>(ordered.Count);
             int nextFailure = 0;

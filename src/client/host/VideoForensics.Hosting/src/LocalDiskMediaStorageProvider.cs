@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Today's (M5) only IMediaStorageProvider implementation - plain local-disk File I/O, matching

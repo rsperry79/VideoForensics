@@ -1,9 +1,9 @@
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Services;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Web Push subscription and VAPID key management endpoints (plan §5.6).

@@ -1,8 +1,8 @@
 using Moq;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 
@@ -640,7 +640,7 @@ namespace VideoForensics.Client.Core.Tests
 
             Assert.NotNull(result);
             _ = Assert.Single(result.Calls[0].HttpCalls);
-            var httpCallDto = result.Calls[0].HttpCalls[0];
+            SelfTestHttpCallDto httpCallDto = result.Calls[0].HttpCalls[0];
             Assert.Equal("GET", httpCallDto.Method);
             Assert.Contains("access_token=REDACTED", httpCallDto.Url);
             Assert.Contains("data=value", httpCallDto.Url);
@@ -656,7 +656,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task GetResultAsync_HttpCallsWithLongBody_Truncates()
         {
-            string longBody = new string('x', 262145);
+            string longBody = new('x', 262145);
             var httpCall = new HttpCallRecord
             {
                 Method = "GET",
@@ -703,7 +703,7 @@ namespace VideoForensics.Client.Core.Tests
             SelfTestResultDto? result = await _service.GetResultAsync();
 
             Assert.NotNull(result);
-            var httpCallDto = result.Calls[0].HttpCalls[0];
+            SelfTestHttpCallDto httpCallDto = result.Calls[0].HttpCalls[0];
             Assert.Equal(262144, httpCallDto.Body.Length);
             Assert.True(httpCallDto.BodyTruncated);
             Assert.Equal(262145, httpCallDto.ResponseBodyBytes);

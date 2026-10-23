@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>A message in the LLM-facing conversation. Richer than the public ChatTurn DTO/domain type:
     /// includes tool-call and tool-result turns needed to drive a tool-use loop.</summary>

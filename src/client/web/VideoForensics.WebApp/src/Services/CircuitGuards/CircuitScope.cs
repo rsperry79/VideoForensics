@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components.Server.Circuits;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Scoped marker that is open only while a Blazor circuit (a browser UI session) owns this DI scope.

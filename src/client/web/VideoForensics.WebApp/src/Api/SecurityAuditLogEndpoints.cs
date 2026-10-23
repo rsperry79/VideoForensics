@@ -1,7 +1,7 @@
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.WebApp.Auth;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>Read-only security audit log viewer (plan §5.5) - Admin role may view, filterable by Operator.</summary>
     public static class SecurityAuditLogEndpoints

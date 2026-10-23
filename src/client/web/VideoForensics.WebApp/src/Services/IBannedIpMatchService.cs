@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Service for checking if an IP address is in a manually-banned CIDR range.

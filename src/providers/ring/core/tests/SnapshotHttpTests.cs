@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -6,8 +5,6 @@ using System.Text;
 using System.Threading;
 
 using VideoForensics.Providers.Ring.Exceptions;
-
-using Xunit;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
@@ -181,6 +178,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         /// <summary>xUnit disposes each test's instance after the test: clear the throttle state it may have set.</summary>
-        public void Dispose() => RingTestHardBanIsolation.ResetForTest();
+        public void Dispose()
+        {
+            RingTestHardBanIsolation.ResetForTest();
+        }
     }
 }

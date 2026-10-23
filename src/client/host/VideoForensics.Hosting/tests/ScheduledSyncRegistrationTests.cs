@@ -3,13 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.BackgroundServices;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class ScheduledSyncRegistrationTests
     {

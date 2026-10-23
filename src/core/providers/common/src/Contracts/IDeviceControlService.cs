@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VideoForensics.Core.Providers.Common.Contracts
 {
     /// <summary>

@@ -6,7 +6,7 @@
 
 ## Verdict
 
-STILL OPEN. Checked with `git grep` on origin/dev for `WebAuthnNative`, `WebAuthnCeremonyClient`, `MakeCredential(`, `GetAssertion(`, `WebAuthnCeremonyException` and `InternalsVisibleTo`. The only hits are the two files themselves under `src/client/maui/VideoForensics.MauiApp/Platforms/Windows/WebAuthn/`. Nothing in MauiProgram, Ui.Shared or any test project calls them, and there is no MAUI test project. Only the pure helper logic (client-data JSON, base64url, JSON shaping) can be automated. The real Windows Hello ceremony needs a human on a device.
+STILL OPEN. Checked with `git grep` on origin/dev for `WebAuthnNative`, `WebAuthnCeremonyClient`, `MakeCredential(`, `GetAssertion(`, `WebAuthnCeremonyException` and `InternalsVisibleTo`. The only hits are the two files themselves under `src/client/maui/VideoForensics.Client.MauiApp/Platforms/Windows/WebAuthn/`. Nothing in MauiProgram, Ui.Shared or any test project calls them, and there is no MAUI test project. Only the pure helper logic (client-data JSON, base64url, JSON shaping) can be automated. The real Windows Hello ceremony needs a human on a device.
 
 ## Scope
 
@@ -28,8 +28,8 @@ Split:
 
 | File | Change | Why |
 |---|---|---|
-| `src/client/maui/VideoForensics.MauiApp/Platforms/Windows/WebAuthn/WebAuthnCeremonyClient.cs` | Split pure helpers and response shaping into a testable class; make the public surface an interface-backed instance; keep P/Invoke calls behind a seam | Needs testability; static plus private blocks it |
-| `src/client/maui/VideoForensics.MauiApp/Platforms/Windows/WebAuthn/WebAuthnNative.cs` | Add `IWebAuthnNativeApi` adapter; expose layout constants for tests | Allows a fake native layer |
+| `src/client/maui/VideoForensics.Client.MauiApp/Platforms/Windows/WebAuthn/WebAuthnCeremonyClient.cs` | Split pure helpers and response shaping into a testable class; make the public surface an interface-backed instance; keep P/Invoke calls behind a seam | Needs testability; static plus private blocks it |
+| `src/client/maui/VideoForensics.Client.MauiApp/Platforms/Windows/WebAuthn/WebAuthnNative.cs` | Add `IWebAuthnNativeApi` adapter; expose layout constants for tests | Allows a fake native layer |
 | `src/client/common/VideoForensics.Client.Common/Contracts/IWebAuthnCeremonyClient.cs` (NEW; Client.Common/Contracts verified to exist) | Platform-agnostic interface, public API in Contracts per convention | Lets the shared code mock it |
 | `src/client/maui/VideoForensics.MauiApp.Tests/VideoForensics.MauiApp.Tests.csproj` (NEW) | xUnit v3 test project, Windows TFM, `Microsoft.CodeAnalysis` reference per repo rule | No MAUI test project exists |
 | `src/client/maui/VideoForensics.MauiApp.Tests/WebAuthnCeremonyClientTests.cs` (NEW) | Tests listed below | TDD |

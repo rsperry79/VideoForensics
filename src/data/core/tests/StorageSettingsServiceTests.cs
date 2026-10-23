@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Core.Services;
 
 using Xunit;
 
@@ -203,7 +203,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             var request = new RelocateStorageCategoryRequest(
                 Category: StorageCategory.Reports,
-                NewRootPath: "");
+                NewRootPath: string.Empty);
 
             // Act
             RelocateStorageCategoryResult result = await _service.RelocateAsync(request, CancellationToken.None);

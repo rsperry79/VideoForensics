@@ -1,26 +1,29 @@
-namespace VideoForensics.Ui.Shared.Tests;
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.DeviceSettings;
+using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
+
 public class DeviceConfigFilter_Tests
 {
-    private static Device Dev(string name, string? provider) => new()
+    private static Device Dev(string name, string? provider)
     {
-        Id = Guid.NewGuid(),
-        LocationId = Guid.NewGuid(),
-        ProviderDeviceId = name,
-        Name = name,
-        Type = "doorbot",
-        ProviderName = provider,
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            LocationId = Guid.NewGuid(),
+            ProviderDeviceId = name,
+            Name = name,
+            Type = "doorbot",
+            ProviderName = provider,
+        };
+    }
 
     [Fact]
     public void DeviceConfigFilter_ProviderOptions_ListsDistinctSortedProviderNames()
     {
-        var devices = new[] { Dev("a", "Wyze"), Dev("b", "Ring"), Dev("c", "Ring"), Dev("d", null) };
+        Device[] devices = new[] { Dev("a", "Wyze"), Dev("b", "Ring"), Dev("c", "Ring"), Dev("d", null) };
 
         IReadOnlyList<string> options = DeviceConfigFilter.ProviderOptions(devices);
 
@@ -30,7 +33,7 @@ public class DeviceConfigFilter_Tests
     [Fact]
     public void DeviceConfigFilter_Filter_NullProvider_ReturnsAllDevices()
     {
-        var devices = new[] { Dev("a", "Wyze"), Dev("b", null) };
+        Device[] devices = new[] { Dev("a", "Wyze"), Dev("b", null) };
 
         Assert.Equal(2, DeviceConfigFilter.Filter(devices, null).Count());
     }
@@ -38,7 +41,7 @@ public class DeviceConfigFilter_Tests
     [Fact]
     public void DeviceConfigFilter_Filter_NamedProvider_ReturnsOnlyThatProvidersDevices()
     {
-        var devices = new[] { Dev("a", "Wyze"), Dev("b", "Ring"), Dev("c", null) };
+        Device[] devices = new[] { Dev("a", "Wyze"), Dev("b", "Ring"), Dev("c", null) };
 
         IReadOnlyList<Device> result = DeviceConfigFilter.Filter(devices, "Ring");
 

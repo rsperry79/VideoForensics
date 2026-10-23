@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+
 using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Providers.Ring.Implementations

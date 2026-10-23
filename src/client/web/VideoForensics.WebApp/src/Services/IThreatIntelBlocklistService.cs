@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Service for checking if an IP address is blocked by threat intelligence feeds (e.g., Spamhaus, Emerging Threats).

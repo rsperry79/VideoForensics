@@ -4,10 +4,10 @@ using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="ILogViewerService"/> calling <c>/api/v1/logs</c> and <c>/api/v1/logs/stream</c>
@@ -49,7 +49,7 @@ namespace VideoForensics.Hosting.Remote
             await using Stream body = await response.Content.ReadAsStreamAsync(ct);
 
             // The parser surfaces only data frames; comment frames (heartbeats) are dropped.
-            SseParser<LogEntryDto?> parser = SseParser.Create(body, static (_, data) => JsonSerializer.Deserialize<LogEntryDto>(data, JsonOptions));
+            var parser = SseParser.Create(body, static (_, data) => JsonSerializer.Deserialize<LogEntryDto>(data, JsonOptions));
             await foreach (SseItem<LogEntryDto?> item in parser.EnumerateAsync(ct))
             {
                 if (item.Data is { } dto)
@@ -63,10 +63,25 @@ namespace VideoForensics.Hosting.Remote
         {
             // Values are escaped individually: search text is user input and can contain '&', '#', spaces, etc.
             var parts = new List<string>();
-            if (!string.IsNullOrEmpty(query.MinLevel)) parts.Add("minLevel=" + Uri.EscapeDataString(query.MinLevel));
-            if (!string.IsNullOrEmpty(query.Search)) parts.Add("search=" + Uri.EscapeDataString(query.Search));
-            if (query.AfterSequence is { } after) parts.Add("afterSequence=" + after.ToString(CultureInfo.InvariantCulture));
-            if (query.Limit > 0) parts.Add("limit=" + query.Limit.ToString(CultureInfo.InvariantCulture));
+            if (!string.IsNullOrEmpty(query.MinLevel))
+            {
+                parts.Add("minLevel=" + Uri.EscapeDataString(query.MinLevel));
+            }
+
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                parts.Add("search=" + Uri.EscapeDataString(query.Search));
+            }
+
+            if (query.AfterSequence is { } after)
+            {
+                parts.Add("afterSequence=" + after.ToString(CultureInfo.InvariantCulture));
+            }
+
+            if (query.Limit > 0)
+            {
+                parts.Add("limit=" + query.Limit.ToString(CultureInfo.InvariantCulture));
+            }
 
             string url = parts.Count == 0 ? path : path + "?" + string.Join('&', parts);
             return new HttpRequestMessage(HttpMethod.Get, url);
@@ -77,12 +92,18 @@ namespace VideoForensics.Hosting.Remote
     internal static class LogViewerMapping
     {
         public static LogEntry ToDomain(this LogEntryDto dto)
-            => new(dto.Sequence, dto.TimestampUtc, dto.Level, dto.Category, dto.Message, dto.Exception);
+        {
+            return new(dto.Sequence, dto.TimestampUtc, dto.Level, dto.Category, dto.Message, dto.Exception);
+        }
 
         public static LogPage ToDomain(this LogPageDto dto)
-            => new(dto.Entries.Select(e => e.ToDomain()).ToList(), dto.LatestSequence, dto.Truncated);
+        {
+            return new(dto.Entries.Select(e => e.ToDomain()).ToList(), dto.LatestSequence, dto.Truncated);
+        }
 
         public static LogQueryDto ToDto(this LogQuery query)
-            => new(query.MinLevel, query.Search, query.AfterSequence, query.Limit);
+        {
+            return new(query.MinLevel, query.Search, query.AfterSequence, query.Limit);
+        }
     }
 }

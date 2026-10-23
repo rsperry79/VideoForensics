@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Core.Services;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Announces an evidence change to two audiences: the WebApp's own in-process views through

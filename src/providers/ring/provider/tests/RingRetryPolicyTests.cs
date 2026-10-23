@@ -1,15 +1,10 @@
-using System;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using Xunit;
 
 using VideoForensics.Providers.Ring.Services;
-using VideoForensics.Providers.Ring.Exceptions;
+
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -33,11 +28,11 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             bool executed = false;
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 executed = true;
                 await Task.CompletedTask;
-            };
+            }
 
             // Act
             await _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None);
@@ -51,14 +46,14 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             int attempts = 0;
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 attempts++;
                 throw new InvalidOperationException("Not a rate limit error");
-            };
+            }
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None));
 
             // Only one attempt should have been made
@@ -70,24 +65,25 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             int attempts = 0;
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 attempts++;
                 if (attempts < 3)
                 {
                     throw new Exceptions.ThrottledException { IsHardBan = false };
                 }
+
                 await Task.CompletedTask;
-            };
+            }
 
             // Act
             await _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None);
 
             // Assert
             Assert.Equal(3, attempts);
-            var elapsed = DateTime.UtcNow - startTime;
+            TimeSpan elapsed = DateTime.UtcNow - startTime;
             // Should wait at least 1s (first retry) + 2s (second attempt) = 3s minimum
             Assert.True(elapsed.TotalSeconds >= 3);
         }
@@ -97,14 +93,14 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             int attempts = 0;
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 attempts++;
                 throw new Exceptions.ThrottledException { IsHardBan = true };
-            };
+            }
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exceptions.ThrottledException>(
+            _ = await Assert.ThrowsAsync<Exceptions.ThrottledException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None));
 
             // Only one attempt should have been made; no retry on hard ban
@@ -116,14 +112,14 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             int attempts = 0;
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 attempts++;
                 throw new Exceptions.ThrottledException { IsHardBan = false };
-            };
+            }
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exceptions.ThrottledException>(
+            _ = await Assert.ThrowsAsync<Exceptions.ThrottledException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None));
 
             // Should have tried MaxRetries + 1 (final attempt without catch)
@@ -137,7 +133,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new Exceptions.ThrottledException("HTTP 429: Too many requests");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.True(result);
@@ -150,7 +146,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new Exception("too many requests detected");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.True(result);
@@ -163,7 +159,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new Exception("rate limit exceeded");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.True(result);
@@ -176,7 +172,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new Exception("denied by Ring");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.True(result);
@@ -189,7 +185,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new InvalidOperationException("Something went wrong");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.False(result);
@@ -202,7 +198,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new Exception();
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.False(result);
@@ -215,7 +211,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var timestamps = new System.Collections.Generic.List<DateTime>();
             int attempts = 0;
 
-            Func<Task> operation = async () =>
+            async Task operation()
             {
                 attempts++;
                 timestamps.Add(DateTime.UtcNow);
@@ -223,8 +219,9 @@ namespace VideoForensics.Providers.Ring.Tests
                 {
                     throw new Exceptions.ThrottledException { IsHardBan = false };
                 }
+
                 await Task.CompletedTask;
-            };
+            }
 
             // Act
             await _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", CancellationToken.None);
@@ -233,7 +230,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(attempts >= 3);
             if (timestamps.Count >= 2)
             {
-                var firstWait = (timestamps[1] - timestamps[0]).TotalMilliseconds;
+                double firstWait = (timestamps[1] - timestamps[0]).TotalMilliseconds;
                 Assert.True(firstWait >= 900); // ~1s, allow 100ms tolerance
             }
         }
@@ -242,13 +239,13 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RetryWithBackoffAsync_LogsWarningOnRateLimitRetry()
         {
             // Arrange
-            Func<Task> operation = async () =>
+            static async Task operation()
             {
                 throw new Exceptions.ThrottledException { IsHardBan = false };
-            };
+            }
 
             // Act
-            await Assert.ThrowsAsync<Exceptions.ThrottledException>(
+            _ = await Assert.ThrowsAsync<Exceptions.ThrottledException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "TestOp", CancellationToken.None));
 
             // Assert - verify logging occurred
@@ -269,7 +266,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var exception = new HttpRequestException("Server returned 429 Too Many Requests");
 
             // Act
-            var result = _retryPolicy.IsRateLimitError(exception);
+            bool result = _retryPolicy.IsRateLimitError(exception);
 
             // Assert
             Assert.True(result);
@@ -282,17 +279,17 @@ namespace VideoForensics.Providers.Ring.Tests
             var cts = new CancellationTokenSource();
             int attempts = 0;
 
-            Func<Task> operation = () =>
+            Task operation()
             {
                 attempts++;
                 // Cancel from inside the first attempt, then fail with a retryable error so the
                 // policy proceeds to the (cancelled) backoff delay instead of a second attempt.
                 cts.Cancel();
                 throw new Exceptions.ThrottledException { IsHardBan = false };
-            };
+            }
 
             // Act & Assert - TaskCanceledException derives from OperationCanceledException
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(
                 () => _retryPolicy.RetryWithBackoffAsync(operation, "test-operation", cts.Token));
             Assert.Equal(1, attempts);
         }

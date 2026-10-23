@@ -1,8 +1,8 @@
 using System.Net.Http.Headers;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// <see cref="DelegatingHandler"/> that attaches the paired-device bearer token to every outgoing

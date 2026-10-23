@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Services
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     public class LetsEncryptCertificateManagerTests
     {

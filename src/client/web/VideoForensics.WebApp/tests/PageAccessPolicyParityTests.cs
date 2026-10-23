@@ -1,9 +1,9 @@
-namespace VideoForensics.WebApp.Tests;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Auth;
 using Xunit;
 
+namespace VideoForensics.Client.WebApp.Tests;
 /// <summary>
 /// The UI's <see cref="AccessPolicy"/> names are copies of the server's <see cref="VideoForensicsPolicies"/>
 /// constants (the UI cannot reference the WebApp). These tests fail if the two sets drift apart.

@@ -41,7 +41,7 @@ Prereqs: server reachable over HTTPS (service workers need a secure context; `lo
 | `src/client/web/VideoForensics.WebApp/Api/PushEndpoints.cs` | None (tested as is) | Needs coverage |
 | `src/client/web/VideoForensics.WebApp/Hubs/SignalRNotificationProvider.cs` | None (tested as is) | Needs coverage |
 | `src/client/web/VideoForensics.WebApp.Tests/` (new `Hubs/WebPushNotificationProviderTests.cs`, `Services/VapidKeyProviderTests.cs`, `Api/PushEndpointsTests.cs`, `Hubs/SignalRNotificationProviderTests.cs`) | New test files in the existing test project | Send path, key persistence, endpoints, group routing |
-| `src/client/maui/VideoForensics.MauiApp/MauiProgram.cs` | Optional: move the inline toast handler into a small testable class | The lambda is untestable; only worthwhile if a MAUI test project exists (not verified) |
+| `src/client/maui/VideoForensics.Client.MauiApp/MauiProgram.cs` | Optional: move the inline toast handler into a small testable class | The lambda is untestable; only worthwhile if a MAUI test project exists (not verified) |
 
 ## Test plan
 

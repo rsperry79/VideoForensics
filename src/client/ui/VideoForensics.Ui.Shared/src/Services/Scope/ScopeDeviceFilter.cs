@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>A device's link to the provider account that can see it, via the device's location.</summary>
 public sealed record DeviceOwnership(Guid DeviceId, Guid ProviderAccountId, string ProviderName);
@@ -28,18 +28,18 @@ public static class ScopeDeviceFilter
 
         // Invert account -> locations into location -> accounts so each device is a single lookup.
         var accountsByLocation = new Dictionary<Guid, List<ProviderAccount>>();
-        foreach (var (accountId, locationIds) in locationIdsByAccount)
+        foreach ((Guid accountId, IReadOnlyList<Guid>? locationIds) in locationIdsByAccount)
         {
-            if (!accountById.TryGetValue(accountId, out var account))
+            if (!accountById.TryGetValue(accountId, out ProviderAccount? account))
             {
                 continue;
             }
 
-            foreach (var locationId in locationIds)
+            foreach (Guid locationId in locationIds)
             {
-                if (!accountsByLocation.TryGetValue(locationId, out var list))
+                if (!accountsByLocation.TryGetValue(locationId, out List<ProviderAccount>? list))
                 {
-                    list = new List<ProviderAccount>();
+                    list = [];
                     accountsByLocation[locationId] = list;
                 }
 
@@ -48,14 +48,14 @@ public static class ScopeDeviceFilter
         }
 
         var result = new List<DeviceOwnership>();
-        foreach (var device in devices)
+        foreach (Device device in devices)
         {
-            if (!accountsByLocation.TryGetValue(device.LocationId, out var owners))
+            if (!accountsByLocation.TryGetValue(device.LocationId, out List<ProviderAccount>? owners))
             {
                 continue;
             }
 
-            foreach (var owner in owners)
+            foreach (ProviderAccount owner in owners)
             {
                 result.Add(new DeviceOwnership(device.Id, owner.Id, owner.ProviderName));
             }
@@ -89,8 +89,10 @@ public static class ScopeDeviceFilter
     }
 
     /// <summary>Accounts offered by the Account filter: all of them, or only those of <paramref name="providerName"/>.</summary>
-    public static IReadOnlyList<ProviderAccount> AccountsForProvider(IEnumerable<ProviderAccount> accounts, string? providerName) =>
-        providerName is null
+    public static IReadOnlyList<ProviderAccount> AccountsForProvider(IEnumerable<ProviderAccount> accounts, string? providerName)
+    {
+        return providerName is null
             ? accounts.ToList()
             : accounts.Where(a => string.Equals(a.ProviderName, providerName, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
 }

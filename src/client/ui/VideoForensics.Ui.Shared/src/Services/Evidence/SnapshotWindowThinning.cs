@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Keeps one snapshot per device per roll-up window on the media view. Windows are aligned to the clock (the window
@@ -27,7 +27,7 @@ public static class SnapshotWindowThinning
             }
 
             long bucket = item.OccurredAtUtc.Ticks / window.Ticks;
-            var key = (item.DeviceId, bucket);
+            (Guid DeviceId, long bucket) key = (item.DeviceId, bucket);
             if (!newestPerWindow.TryGetValue(key, out EvidenceItem? current) || item.OccurredAtUtc > current.OccurredAtUtc)
             {
                 newestPerWindow[key] = item;

@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Mcp.Tools
+namespace VideoForensics.Client.WebApp.Mcp.Tools
 {
     /// <summary>Abstract base class for forensics tool implementations. Consolidates common logging and repository patterns.</summary>
     public abstract class ForensicsToolBase

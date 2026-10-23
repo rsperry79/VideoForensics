@@ -2,13 +2,10 @@ using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteLiveViewSessionServiceTests
     {
@@ -40,8 +37,10 @@ namespace VideoForensics.Hosting.Tests
 
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK);
-                response.Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(dto), System.Text.Encoding.UTF8, "application/json")
+                };
                 return response;
             });
 
@@ -184,8 +183,8 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var service = new RemoteLiveViewSessionService(new HttpClient(handler) { BaseAddress = BaseUri });
-            Guid sessionId = Guid.NewGuid();
-            Guid deviceId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
+            var deviceId = Guid.NewGuid();
 
             _ = await service.StartAsync(deviceId, LiveViewTriggerReason.Manual, null, CancellationToken.None);
             await service.ExtendAsync(sessionId, CancellationToken.None);

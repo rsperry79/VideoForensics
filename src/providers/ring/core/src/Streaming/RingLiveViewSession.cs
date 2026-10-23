@@ -31,7 +31,7 @@ namespace VideoForensics.Providers.Ring.Streaming
         private readonly RTCPeerConnection _pc;
         private readonly long _doorbotId;
         private readonly int _bitrateTimerIntervalMs;
-        private Timer _bitrateTimer;
+        private readonly Timer _bitrateTimer;
         private long _rtpBytesAccumulated;
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace VideoForensics.Providers.Ring.Streaming
                 // Accumulate bytes for bitrate tracking
                 if (packet?.Payload != null)
                 {
-                    Interlocked.Add(ref _rtpBytesAccumulated, packet.Payload.Length);
+                    _ = Interlocked.Add(ref _rtpBytesAccumulated, packet.Payload.Length);
                 }
             };
             _pc.onconnectionstatechange += state => OnConnectionStateChange?.Invoke(state);
@@ -174,7 +174,7 @@ namespace VideoForensics.Providers.Ring.Streaming
             // Check for receiver report (remote sent us a report about what it's receiving from us)
             if (compoundPacket.ReceiverReport?.ReceptionReports != null)
             {
-                foreach (var report in compoundPacket.ReceiverReport.ReceptionReports)
+                foreach (ReceptionReportSample? report in compoundPacket.ReceiverReport.ReceptionReports)
                 {
                     if (report != null)
                     {
@@ -193,7 +193,7 @@ namespace VideoForensics.Providers.Ring.Streaming
             // Also check for sender report (we sent data, remote is reporting back)
             if (compoundPacket.SenderReport?.ReceptionReports != null)
             {
-                foreach (var report in compoundPacket.SenderReport.ReceptionReports)
+                foreach (ReceptionReportSample? report in compoundPacket.SenderReport.ReceptionReports)
                 {
                     if (report != null)
                     {
@@ -214,7 +214,7 @@ namespace VideoForensics.Providers.Ring.Streaming
         {
             long bytes = Interlocked.Exchange(ref _rtpBytesAccumulated, 0);
             long bits = bytes * 8;
-            long bitsPerSecond = (bits * 1000) / _bitrateTimerIntervalMs;
+            long bitsPerSecond = bits * 1000 / _bitrateTimerIntervalMs;
             OnBitrateSampleBps?.Invoke(bitsPerSecond);
         }
 
@@ -224,7 +224,7 @@ namespace VideoForensics.Providers.Ring.Streaming
         /// </summary>
         public void SimulateRtpPacket(int payloadSize)
         {
-            Interlocked.Add(ref _rtpBytesAccumulated, payloadSize);
+            _ = Interlocked.Add(ref _rtpBytesAccumulated, payloadSize);
         }
     }
 }

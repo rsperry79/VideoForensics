@@ -1,27 +1,23 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
-using VideoForensics.Data.Database.DependencyInjection;
-using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.WebApp.Tests.Services
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// The first sync against a real database: seeded Ring account, location and camera, the real runner, coordinator and
@@ -35,7 +31,10 @@ namespace VideoForensics.WebApp.Tests.Services
         private readonly Guid _deviceId = Guid.NewGuid();
         private ServiceProvider? _provider;
 
-        public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+        public ValueTask InitializeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
 
         public async ValueTask DisposeAsync()
         {
@@ -61,7 +60,7 @@ namespace VideoForensics.WebApp.Tests.Services
         public async Task FirstSync_AllStagesSucceed_SetsFlagAndRecordsSuccessfulFullRun()
         {
             var pull = new Mock<IEventPullService>();
-            pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _ = pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 1, LocationsSynced: 1));
             _provider = await BuildProviderAsync(pull.Object, integrityThrows: false);
 
@@ -79,7 +78,7 @@ namespace VideoForensics.WebApp.Tests.Services
         public async Task FirstSync_PullRecordsError_LeavesFlagFalseAndRecordsFailedRun()
         {
             var pull = new Mock<IEventPullService>();
-            pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _ = pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
                     // The real pull records its own failures on the account instead of throwing.
@@ -104,7 +103,7 @@ namespace VideoForensics.WebApp.Tests.Services
         public async Task FirstSync_MediaValidationFails_LeavesFlagFalse()
         {
             var pull = new Mock<IEventPullService>();
-            pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _ = pull.Setup(p => p.PullAccountEventsAsync(_accountId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult());
             _provider = await BuildProviderAsync(pull.Object, integrityThrows: true);
 
@@ -120,8 +119,10 @@ namespace VideoForensics.WebApp.Tests.Services
             await scope.ServiceProvider.GetRequiredService<IInitialSyncCoordinator>().RunAsync(_accountId, CancellationToken.None);
         }
 
-        private async Task<VideoForensicsDbContext> Db() =>
-            await _provider!.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>().CreateDbContextAsync();
+        private async Task<VideoForensicsDbContext> Db()
+        {
+            return await _provider!.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>().CreateDbContextAsync();
+        }
 
         /// <summary>Real data layer and coordinator on a temp database; only the provider (auth, pull, media integrity) is faked.</summary>
         private async Task<ServiceProvider> BuildProviderAsync(IEventPullService pull, bool integrityThrows)
@@ -132,25 +133,20 @@ namespace VideoForensics.WebApp.Tests.Services
             _ = services.AddSingleton<ISyncActivityLog>(new SyncActivityLog());
 
             var auth = new Mock<IProviderAuthService>();
-            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);
             _ = services.AddKeyedSingleton<IEventPullService>("Ring", pull);
             _ = services.AddSingleton(Mock.Of<ISnapshotSyncService>());
 
             var validation = new Mock<IEvidenceValidationService>();
-            if (integrityThrows)
-            {
-                _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                    .ThrowsAsync(new InvalidOperationException("disk offline"));
-            }
-            else
-            {
-                _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                    .ReturnsAsync(new List<MediaVerificationResult>());
-            }
+            _ = integrityThrows
+                ? validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                    .ThrowsAsync(new InvalidOperationException("disk offline"))
+                : validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                    .ReturnsAsync([]);
 
             _ = validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<ReconciliationDiscrepancy>());
+                .ReturnsAsync([]);
             _ = services.AddSingleton(validation.Object);
 
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();

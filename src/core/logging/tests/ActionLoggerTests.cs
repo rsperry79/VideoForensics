@@ -2,8 +2,6 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using Serilog.Context;
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -269,7 +267,7 @@ namespace VideoForensics.Core.Logging.Tests
             var entityId = Guid.NewGuid();
             string userName = Environment.UserName;
 
-            var expectedEntry = TestHelpers.CreateActionLogEntry(
+            ActionLogEntry expectedEntry = TestHelpers.CreateActionLogEntry(
                 actor: userName,
                 action: action,
                 entityType: entityType,
@@ -310,7 +308,7 @@ namespace VideoForensics.Core.Logging.Tests
             string entityType = "MediaItem";
             var entityId = Guid.NewGuid();
 
-            var expectedEntry = TestHelpers.CreateActionLogEntry(
+            ActionLogEntry expectedEntry = TestHelpers.CreateActionLogEntry(
                 actor: customActor,
                 action: action,
                 entityType: entityType,
@@ -350,7 +348,7 @@ namespace VideoForensics.Core.Logging.Tests
             var entityId = Guid.NewGuid();
             string details = "setting changed";
 
-            var expectedEntry = TestHelpers.CreateActionLogEntry(
+            ActionLogEntry expectedEntry = TestHelpers.CreateActionLogEntry(
                 action: action,
                 entityType: entityType,
                 entityId: entityId,
@@ -416,7 +414,7 @@ namespace VideoForensics.Core.Logging.Tests
                 .ThrowsAsync(repositoryException);
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _actionLogger.LogAsync(action, entityType));
 
             // Serilog should have been called before repository failed

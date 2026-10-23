@@ -1,14 +1,19 @@
-namespace VideoForensics.Ui.Shared.Tests.Components;
+
+using Bunit;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 using System.Reactive.Subjects;
 
-using Bunit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Tests;
+
 using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Components;
 
 public class DownloadProgressPanelTests : BunitContext
 {
@@ -24,8 +29,8 @@ public class DownloadProgressPanelTests : BunitContext
 
     public DownloadProgressPanelTests()
     {
-        Services.AddSingleton<IDownloadProgressSource>(_source);
-        Services.AddSingleton<IStringLocalizer<SharedResources>>(new TaggingLocalizer());
+        _ = Services.AddSingleton<IDownloadProgressSource>(_source);
+        _ = Services.AddSingleton<IStringLocalizer<SharedResources>>(new TaggingLocalizer());
     }
 
     private static DownloadProgressSnapshot BuildSnapshot(int completed = 1, int total = 4, IReadOnlyList<string>? activity = null)
@@ -103,6 +108,7 @@ public class DownloadProgressPanelTests : BunitContext
             count++;
             index += value.Length;
         }
+
         return count;
     }
 }

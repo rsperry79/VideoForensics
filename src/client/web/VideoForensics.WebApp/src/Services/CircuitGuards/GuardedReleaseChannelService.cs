@@ -1,9 +1,9 @@
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards release-channel changes. Matches PUT /api/v1/release-channel, which requires SuperAdminLocal; reading stays open.
@@ -16,8 +16,10 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
         SessionNetworkContext network) : IReleaseChannelService
     {
         /// <inheritdoc />
-        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default) =>
-            inner.GetReleaseChannelAsync(cancellationToken);
+        public Task<UpdateReleaseChannel> GetReleaseChannelAsync(CancellationToken cancellationToken = default)
+        {
+            return inner.GetReleaseChannelAsync(cancellationToken);
+        }
 
         /// <inheritdoc />
         public async Task<UpdateReleaseChannel> SetReleaseChannelAsync(UpdateReleaseChannel channel, CancellationToken cancellationToken = default)

@@ -1,6 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// Host-agnostic source of "a thumbnail was just produced" events, so an open evidence view can show a new still

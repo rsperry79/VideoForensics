@@ -2,12 +2,11 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -65,9 +64,9 @@ namespace VideoForensics.Client.Core.Tests
                 Sha256Hash = "h",
                 ThumbnailPath = "clip.thumb.png",
             };
-            _mediaItemRepositoryMock
+            _ = _mediaItemRepositoryMock
                 .Setup(r => r.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaItem> { item });
+                .ReturnsAsync([item]);
 
             _ = await _orchestrator.VerifyLocalIntegrityAsync(deviceId, CancellationToken.None);
 
@@ -80,8 +79,8 @@ namespace VideoForensics.Client.Core.Tests
             // Arrange: Setup mocks
             var deviceId = Guid.NewGuid();
             string injectedDeviceId = "device-123\r\nFAKE ADMIN LOG: Unauthorized access granted";
-            var fromDate = DateTime.UtcNow.AddDays(-7);
-            var toDate = DateTime.UtcNow;
+            DateTime fromDate = DateTime.UtcNow.AddDays(-7);
+            DateTime toDate = DateTime.UtcNow;
 
             _ = _eventServiceMock
                 .Setup(s => s.GetEventsAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))

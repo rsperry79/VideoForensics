@@ -1,30 +1,28 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Runtime.CompilerServices;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 using Moq;
 
+using System.Net;
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Exercises the real routing and authorization of the chat endpoints (including the SSE stream)
@@ -43,9 +41,11 @@ namespace VideoForensics.WebApp.Tests.Api
             protected override Task<AuthenticateResult> HandleAuthenticateAsync()
             {
                 if (Request.Headers.ContainsKey("X-Test-Anonymous"))
+                {
                     return Task.FromResult(AuthenticateResult.NoResult());
+                }
 
-                string role = Request.Headers.TryGetValue("X-Test-Role", out var r) ? r.ToString() : "ReadOnly";
+                string role = Request.Headers.TryGetValue("X-Test-Role", out StringValues r) ? r.ToString() : "ReadOnly";
                 var identity = new ClaimsIdentity(
                 [
                     new Claim(VideoForensicsClaimTypes.Role, role),
@@ -62,15 +62,19 @@ namespace VideoForensics.WebApp.Tests.Api
             public Mock<IChatService> Inner { get; } = new();
 
             public Task<ChatTurnResult> SendMessageAsync(IReadOnlyList<ChatTurn> history, string message, CancellationToken ct)
-                => Inner.Object.SendMessageAsync(history, message, ct);
+            {
+                return Inner.Object.SendMessageAsync(history, message, ct);
+            }
 
             public IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(IReadOnlyList<ChatTurn> history, string message, CancellationToken ct)
-                => Stream(history, message);
+            {
+                return Stream(history, message);
+            }
         }
 
         private static async IAsyncEnumerable<ChatStreamEvent> Events(params ChatStreamEvent[] events)
         {
-            foreach (var e in events)
+            foreach (ChatStreamEvent e in events)
             {
                 await Task.Yield();
                 yield return e;
@@ -92,7 +96,7 @@ namespace VideoForensics.WebApp.Tests.Api
 
         private static async Task<TestHost> StartAsync(IChatService chat)
         {
-            var builder = WebApplication.CreateBuilder();
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
             _ = builder.Services.AddSingleton(chat);
@@ -113,20 +117,30 @@ namespace VideoForensics.WebApp.Tests.Api
         private static HttpRequestMessage Post(string url, object body, string? role = "ReadOnly", bool anonymous = false)
         {
             var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };
-            if (anonymous) req.Headers.Add("X-Test-Anonymous", "1");
-            else if (role != null) req.Headers.Add("X-Test-Role", role);
+            if (anonymous)
+            {
+                req.Headers.Add("X-Test-Anonymous", "1");
+            }
+            else if (role != null)
+            {
+                req.Headers.Add("X-Test-Role", role);
+            }
+
             return req;
         }
 
-        private static ChatRequestDto Req(string message) => new(Array.Empty<ChatMessageDto>(), message);
+        private static ChatRequestDto Req(string message)
+        {
+            return new(Array.Empty<ChatMessageDto>(), message);
+        }
 
         [Fact]
         public async Task PostChat_Anonymous_Returns401()
         {
             var chat = new FakeChatService { Stream = (_, _) => Events() };
-            await using var host = await StartAsync(chat);
+            await using TestHost host = await StartAsync(chat);
 
-            var resp = await host.Client.SendAsync(Post("/api/v1/chat", Req("hi"), anonymous: true));
+            HttpResponseMessage resp = await host.Client.SendAsync(Post("/api/v1/chat", Req("hi"), anonymous: true));
 
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
         }
@@ -143,9 +157,9 @@ namespace VideoForensics.WebApp.Tests.Api
                     new ChatTextDelta("lo"),
                     new ChatTurnCompleted(result))
             };
-            await using var host = await StartAsync(chat);
+            await using TestHost host = await StartAsync(chat);
 
-            var resp = await host.Client.SendAsync(Post("/api/v1/chat/stream", Req("hi")));
+            HttpResponseMessage resp = await host.Client.SendAsync(Post("/api/v1/chat/stream", Req("hi")));
             string body = await resp.Content.ReadAsStringAsync();
 
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
@@ -160,9 +174,9 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task PostChat_EmptyMessage_Returns400(string url)
         {
             var chat = new FakeChatService { Stream = (_, _) => Events() };
-            await using var host = await StartAsync(chat);
+            await using TestHost host = await StartAsync(chat);
 
-            var resp = await host.Client.SendAsync(Post(url, Req("   ")));
+            HttpResponseMessage resp = await host.Client.SendAsync(Post(url, Req("   ")));
 
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
@@ -171,14 +185,14 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task PostChat_ReadOnly_ReturnsReplyFromService()
         {
             var chat = new FakeChatService { Stream = (_, _) => Events() };
-            chat.Inner.Setup(c => c.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), "hi", It.IsAny<CancellationToken>()))
+            _ = chat.Inner.Setup(c => c.SendMessageAsync(It.IsAny<IReadOnlyList<ChatTurn>>(), "hi", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatTurnResult { Reply = "pong", ToolsInvoked = ["t1"] });
-            await using var host = await StartAsync(chat);
+            await using TestHost host = await StartAsync(chat);
 
-            var resp = await host.Client.SendAsync(Post("/api/v1/chat", Req("hi")));
+            HttpResponseMessage resp = await host.Client.SendAsync(Post("/api/v1/chat", Req("hi")));
 
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            var dto = await resp.Content.ReadFromJsonAsync<ChatResponseDto>(WebJson);
+            ChatResponseDto? dto = await resp.Content.ReadFromJsonAsync<ChatResponseDto>(WebJson);
             Assert.NotNull(dto);
             Assert.Equal("pong", dto.Reply);
             Assert.Equal(new[] { "t1" }, dto.ToolsInvoked);
@@ -187,7 +201,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void ToSseFrame_TextDelta_ReturnsDeltaWithText()
         {
-            var (name, data) = ChatEndpoints.ToSseFrame(new ChatTextDelta("abc"));
+            (string name, string data) = ChatEndpoints.ToSseFrame(new ChatTextDelta("abc"));
 
             Assert.Equal("delta", name);
             using var doc = JsonDocument.Parse(data);
@@ -197,7 +211,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void ToSseFrame_ToolInvoked_ReturnsToolWithName()
         {
-            var (name, data) = ChatEndpoints.ToSseFrame(new ChatToolInvoked("my_tool"));
+            (string name, string data) = ChatEndpoints.ToSseFrame(new ChatToolInvoked("my_tool"));
 
             Assert.Equal("tool", name);
             using var doc = JsonDocument.Parse(data);
@@ -207,7 +221,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void ToSseFrame_TurnCompleted_ReturnsDoneWithResultDto()
         {
-            var (name, data) = ChatEndpoints.ToSseFrame(new ChatTurnCompleted(new ChatTurnResult { Reply = "r", ToolsInvoked = ["a", "b"] }));
+            (string name, string data) = ChatEndpoints.ToSseFrame(new ChatTurnCompleted(new ChatTurnResult { Reply = "r", ToolsInvoked = ["a", "b"] }));
 
             Assert.Equal("done", name);
             using var doc = JsonDocument.Parse(data);

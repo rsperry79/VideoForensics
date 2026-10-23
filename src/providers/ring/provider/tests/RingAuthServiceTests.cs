@@ -2,9 +2,9 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -289,7 +289,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var credentialRepository = new Mock<ICredentialRepository>();
             var userRepository = new Mock<IUserRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
-            IReadOnlyList<ProviderAccount> noAccounts = new List<ProviderAccount>();
+            IReadOnlyList<ProviderAccount> noAccounts = [];
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(noAccounts);
             var mockLogger = new Mock<ILogger>();
@@ -338,10 +338,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 .ReturnsAsync((ValueTuple<string, string>?)null);
             var userRepository = new Mock<IUserRepository>();
             var providerAccountRepository = new Mock<IProviderAccountRepository>();
-            IReadOnlyList<ProviderAccount> accounts = new List<ProviderAccount>
-            {
+            IReadOnlyList<ProviderAccount> accounts =
+            [
                 new ProviderAccount { Id = accountId, ProviderName = "Ring" },
-            };
+            ];
             _ = providerAccountRepository.Setup(par => par.ListActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accounts);
             var mockLogger = new Mock<ILogger>();
@@ -430,7 +430,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // Act
             try
             {
-                await service.AuthenticateWithTwoFactorAsync(testEmail, "password", null!, CancellationToken.None);
+                _ = await service.AuthenticateWithTwoFactorAsync(testEmail, "password", null!, CancellationToken.None);
             }
             catch
             {
@@ -447,6 +447,5 @@ namespace VideoForensics.Providers.Ring.Tests
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Never);
         }
-
     }
 }

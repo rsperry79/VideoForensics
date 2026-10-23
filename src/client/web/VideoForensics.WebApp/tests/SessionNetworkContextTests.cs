@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// SessionNetworkContext is the circuit-scoped record of a Blazor Server session's REAL network

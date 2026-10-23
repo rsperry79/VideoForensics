@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>One WiFi RSSI reading at a point in time, for plotting.</summary>
 public sealed record RssiSample(DateTime TimestampUtc, int Rssi);
@@ -33,17 +33,17 @@ public static class RssiPlot
             return string.Empty;
         }
 
-        var totalTicks = (double)(rangeEndUtc - rangeStartUtc).Ticks;
-        var rssiSpan = (double)(maxRssi - minRssi);
+        double totalTicks = (rangeEndUtc - rangeStartUtc).Ticks;
+        double rssiSpan = maxRssi - minRssi;
 
-        var points = samples
+        IEnumerable<string> points = samples
             .OrderBy(s => s.TimestampUtc)
             .Select(s =>
             {
-                var x = Math.Clamp((s.TimestampUtc - rangeStartUtc).Ticks / totalTicks * width, 0, width);
-                var clampedRssi = Math.Clamp(s.Rssi, minRssi, maxRssi);
-                var normalizedStrength = rssiSpan == 0 ? 0 : (clampedRssi - minRssi) / rssiSpan;
-                var y = height - (normalizedStrength * height); // stronger signal plots nearer the top
+                double x = Math.Clamp((s.TimestampUtc - rangeStartUtc).Ticks / totalTicks * width, 0, width);
+                int clampedRssi = Math.Clamp(s.Rssi, minRssi, maxRssi);
+                double normalizedStrength = rssiSpan == 0 ? 0 : (clampedRssi - minRssi) / rssiSpan;
+                double y = height - (normalizedStrength * height); // stronger signal plots nearer the top
                 return $"{x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
             });
 
@@ -57,12 +57,7 @@ public static class RssiPlot
     /// </summary>
     public static double MarkerX(DateTime timestampUtc, DateTime rangeStartUtc, DateTime rangeEndUtc, double width)
     {
-        var totalTicks = (rangeEndUtc - rangeStartUtc).Ticks;
-        if (totalTicks <= 0)
-        {
-            return 0;
-        }
-
-        return Math.Clamp((timestampUtc - rangeStartUtc).Ticks / (double)totalTicks * width, 0, width);
+        long totalTicks = (rangeEndUtc - rangeStartUtc).Ticks;
+        return totalTicks <= 0 ? 0 : Math.Clamp((timestampUtc - rangeStartUtc).Ticks / (double)totalTicks * width, 0, width);
     }
 }

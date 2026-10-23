@@ -1,8 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards capturing a still from the Evidence page in-process. Matches POST /api/v1/media/{id}/stills, which
@@ -19,12 +19,9 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             string capturedBy,
             CancellationToken ct)
         {
-            if (!gate.Allows(AccessPolicy.Review))
-            {
-                throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Review));
-            }
-
-            return inner.CaptureStillAsync(sourceMediaItemId, frameOffsetMs, clientPngBase64, caseId, pinReason, capturedBy, ct);
+            return !gate.Allows(AccessPolicy.Review)
+                ? throw new UnauthorizedAccessException(gate.Denial(AccessPolicy.Review))
+                : inner.CaptureStillAsync(sourceMediaItemId, frameOffsetMs, clientPngBase64, caseId, pinReason, capturedBy, ct);
         }
     }
 }

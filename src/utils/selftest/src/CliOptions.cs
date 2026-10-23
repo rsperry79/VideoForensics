@@ -8,10 +8,13 @@ namespace VideoForensics.Utils.SelfTest
     {
         /// <summary>Default SQLite path: the app's Database storage root plus videoforensics.db.
         /// Uses the same provider as the app so the default cannot drift.</summary>
-        internal static string DefaultDatabasePath() => Path.Combine(
+        internal static string DefaultDatabasePath()
+        {
+            return Path.Combine(
             new VideoForensics.Core.Helpers.Platform.StorageLocationProvider()
                 .GetDefaultRoot(VideoForensics.Core.Helpers.Platform.StorageCategory.Database),
             "videoforensics.db");
+        }
 
         public bool ShowHelp;
         public bool ListEndpoints;
@@ -71,17 +74,61 @@ namespace VideoForensics.Utils.SelfTest
             }
 
             var endpoints = new VideoForensics.Providers.Ring.RingEndpointOptions();
-            if (ClientsApiBaseUrl is not null) endpoints.ClientsApiBaseUrl = ClientsApiBaseUrl;
-            if (AppApiBaseUrl is not null) endpoints.AppApiBaseUrl = AppApiBaseUrl;
-            if (ModeApiBaseUrl is not null) endpoints.ModeApiBaseUrl = ModeApiBaseUrl;
-            if (MonitoringApiBaseUrl is not null) endpoints.MonitoringApiBaseUrl = MonitoringApiBaseUrl;
-            if (DevicesApiBaseUrl is not null) endpoints.DevicesApiBaseUrl = DevicesApiBaseUrl;
-            if (CommandsApiBaseUrl is not null) endpoints.CommandsApiBaseUrl = CommandsApiBaseUrl;
-            if (GroupsApiBaseUrl is not null) endpoints.GroupsApiBaseUrl = GroupsApiBaseUrl;
-            if (EvmApiBaseUrl is not null) endpoints.EvmApiBaseUrl = EvmApiBaseUrl;
-            if (IntegrationsApiBaseUrl is not null) endpoints.IntegrationsApiBaseUrl = IntegrationsApiBaseUrl;
-            if (RecordingsApiBaseUrl is not null) endpoints.RecordingsApiBaseUrl = RecordingsApiBaseUrl;
-            if (AppSnapsApiBaseUrl is not null) endpoints.AppSnapsApiBaseUrl = AppSnapsApiBaseUrl;
+            if (ClientsApiBaseUrl is not null)
+            {
+                endpoints.ClientsApiBaseUrl = ClientsApiBaseUrl;
+            }
+
+            if (AppApiBaseUrl is not null)
+            {
+                endpoints.AppApiBaseUrl = AppApiBaseUrl;
+            }
+
+            if (ModeApiBaseUrl is not null)
+            {
+                endpoints.ModeApiBaseUrl = ModeApiBaseUrl;
+            }
+
+            if (MonitoringApiBaseUrl is not null)
+            {
+                endpoints.MonitoringApiBaseUrl = MonitoringApiBaseUrl;
+            }
+
+            if (DevicesApiBaseUrl is not null)
+            {
+                endpoints.DevicesApiBaseUrl = DevicesApiBaseUrl;
+            }
+
+            if (CommandsApiBaseUrl is not null)
+            {
+                endpoints.CommandsApiBaseUrl = CommandsApiBaseUrl;
+            }
+
+            if (GroupsApiBaseUrl is not null)
+            {
+                endpoints.GroupsApiBaseUrl = GroupsApiBaseUrl;
+            }
+
+            if (EvmApiBaseUrl is not null)
+            {
+                endpoints.EvmApiBaseUrl = EvmApiBaseUrl;
+            }
+
+            if (IntegrationsApiBaseUrl is not null)
+            {
+                endpoints.IntegrationsApiBaseUrl = IntegrationsApiBaseUrl;
+            }
+
+            if (RecordingsApiBaseUrl is not null)
+            {
+                endpoints.RecordingsApiBaseUrl = RecordingsApiBaseUrl;
+            }
+
+            if (AppSnapsApiBaseUrl is not null)
+            {
+                endpoints.AppSnapsApiBaseUrl = AppSnapsApiBaseUrl;
+            }
+
             return endpoints;
         }
 
@@ -101,11 +148,11 @@ namespace VideoForensics.Utils.SelfTest
         public static (CliOptions? options, string? error) Parse(string[] args)
         {
             var options = new CliOptions();
-            var i = 0;
+            int i = 0;
 
             while (i < args.Length)
             {
-                var arg = args[i];
+                string arg = args[i];
 
                 switch (arg)
                 {
@@ -131,41 +178,77 @@ namespace VideoForensics.Utils.SelfTest
                         break;
 
                     case "--endpoints":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --endpoints");
-                        var endpoints = args[++i];
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --endpoints");
+                        }
+
+                        string endpoints = args[++i];
                         options.Endpoints.AddRange(endpoints.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                         break;
 
                     case "--output-dir":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --output-dir");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --output-dir");
+                        }
+
                         options.OutputDir = args[++i];
                         break;
 
                     case "--location-id":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --location-id");
-                        if (!Guid.TryParse(args[++i], out var locGuid))
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --location-id");
+                        }
+
+                        if (!Guid.TryParse(args[++i], out Guid locGuid))
+                        {
                             return (null, $"--location-id value '{args[i]}' is not a valid GUID");
+                        }
+
                         options.LocationId = locGuid;
                         break;
 
                     case "--doorbot-id":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --doorbot-id");
-                        if (!long.TryParse(args[++i], out var dbId))
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --doorbot-id");
+                        }
+
+                        if (!long.TryParse(args[++i], out long dbId))
+                        {
                             return (null, $"--doorbot-id value '{args[i]}' is not a valid integer");
+                        }
+
                         options.DoorbotId = dbId;
                         break;
 
                     case "--chime-id":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-id");
-                        if (!long.TryParse(args[++i], out var chId))
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --chime-id");
+                        }
+
+                        if (!long.TryParse(args[++i], out long chId))
+                        {
                             return (null, $"--chime-id value '{args[i]}' is not a valid integer");
+                        }
+
                         options.ChimeId = chId;
                         break;
 
                     case "--history-limit":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --history-limit");
-                        if (!int.TryParse(args[++i], out var hl) || hl <= 0)
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --history-limit");
+                        }
+
+                        if (!int.TryParse(args[++i], out int hl) || hl <= 0)
+                        {
                             return (null, $"--history-limit value '{args[i]}' must be a positive integer");
+                        }
+
                         options.HistoryLimit = hl;
                         break;
 
@@ -178,68 +261,127 @@ namespace VideoForensics.Utils.SelfTest
                         break;
 
                     case "--siren-duration-seconds":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --siren-duration-seconds");
-                        if (!int.TryParse(args[++i], out var sd) || sd <= 0)
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --siren-duration-seconds");
+                        }
+
+                        if (!int.TryParse(args[++i], out int sd) || sd <= 0)
+                        {
                             return (null, $"--siren-duration-seconds value '{args[i]}' must be a positive integer");
+                        }
+
                         options.SirenDurationSeconds = sd;
                         break;
 
                     case "--volume-level":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --volume-level");
-                        if (!int.TryParse(args[++i], out var vol) || vol < 0)
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --volume-level");
+                        }
+
+                        if (!int.TryParse(args[++i], out int vol) || vol < 0)
+                        {
                             return (null, $"--volume-level value '{args[i]}' must be a non-negative integer");
+                        }
+
                         options.VolumeLevel = vol;
                         break;
 
                     case "--chime-type-value":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --chime-type-value");
-                        if (!int.TryParse(args[++i], out var ct) || ct is < 0 or > 2)
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --chime-type-value");
+                        }
+
+                        if (!int.TryParse(args[++i], out int ct) || ct is < 0 or > 2)
+                        {
                             return (null, $"--chime-type-value value '{args[i]}' must be 0, 1 or 2");
+                        }
+
                         options.ChimeTypeValue = ct;
                         break;
 
                     case "--dnd-seconds":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --dnd-seconds");
-                        if (!int.TryParse(args[++i], out var dnd) || dnd <= 0)
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --dnd-seconds");
+                        }
+
+                        if (!int.TryParse(args[++i], out int dnd) || dnd <= 0)
+                        {
                             return (null, $"--dnd-seconds value '{args[i]}' must be a positive integer");
+                        }
+
                         options.DndSeconds = dnd;
                         break;
 
                     case "--location-mode-value":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --location-mode-value");
-                        var locationMode = args[++i];
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --location-mode-value");
+                        }
+
+                        string locationMode = args[++i];
                         if (locationMode is not ("home" or "away" or "disarmed"))
+                        {
                             return (null, $"--location-mode-value value '{locationMode}' must be one of: home, away, disarmed");
+                        }
+
                         options.LocationModeValue = locationMode;
                         break;
 
                     case "--ding-id":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --ding-id");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --ding-id");
+                        }
+
                         options.DingId = args[++i];
                         break;
 
                     case "--asset-uuid":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --asset-uuid");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --asset-uuid");
+                        }
+
                         options.AssetUuid = args[++i];
                         break;
 
                     case "--push-token":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --push-token");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --push-token");
+                        }
+
                         options.PushToken = args[++i];
                         break;
 
                     case "--username":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --username");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --username");
+                        }
+
                         options.UserName = args[++i];
                         break;
 
                     case "--password":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --password");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --password");
+                        }
+
                         options.Password = args[++i];
                         break;
 
                     case "--refresh-token":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --refresh-token");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --refresh-token");
+                        }
+
                         options.RefreshToken = args[++i];
                         break;
 
@@ -252,90 +394,174 @@ namespace VideoForensics.Utils.SelfTest
                         break;
 
                     case "--db-path":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --db-path");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --db-path");
+                        }
+
                         options.DbPath = args[++i];
                         break;
 
                     case "--clients-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --clients-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --clients-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? clientsUrl))
+                        {
                             return (null, $"--clients-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.ClientsApiBaseUrl = clientsUrl;
                         break;
 
                     case "--app-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --app-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --app-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? appUrl))
+                        {
                             return (null, $"--app-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.AppApiBaseUrl = appUrl;
                         break;
 
                     case "--mode-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --mode-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --mode-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? modeUrl))
+                        {
                             return (null, $"--mode-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.ModeApiBaseUrl = modeUrl;
                         break;
 
                     case "--monitoring-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --monitoring-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --monitoring-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? monitoringUrl))
+                        {
                             return (null, $"--monitoring-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.MonitoringApiBaseUrl = monitoringUrl;
                         break;
 
                     case "--devices-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --devices-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --devices-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? devicesUrl))
+                        {
                             return (null, $"--devices-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.DevicesApiBaseUrl = devicesUrl;
                         break;
 
                     case "--commands-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --commands-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --commands-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? commandsUrl))
+                        {
                             return (null, $"--commands-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.CommandsApiBaseUrl = commandsUrl;
                         break;
 
                     case "--groups-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --groups-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --groups-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? groupsUrl))
+                        {
                             return (null, $"--groups-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.GroupsApiBaseUrl = groupsUrl;
                         break;
 
                     case "--evm-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --evm-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --evm-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? evmUrl))
+                        {
                             return (null, $"--evm-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.EvmApiBaseUrl = evmUrl;
                         break;
 
                     case "--integrations-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --integrations-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --integrations-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? integrationsUrl))
+                        {
                             return (null, $"--integrations-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.IntegrationsApiBaseUrl = integrationsUrl;
                         break;
 
                     case "--recordings-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --recordings-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --recordings-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? recordingsUrl))
+                        {
                             return (null, $"--recordings-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.RecordingsApiBaseUrl = recordingsUrl;
                         break;
 
                     case "--app-snaps-api-base-url":
-                        if (i + 1 >= args.Length) return (null, "Missing value for --app-snaps-api-base-url");
+                        if (i + 1 >= args.Length)
+                        {
+                            return (null, "Missing value for --app-snaps-api-base-url");
+                        }
+
                         if (!TryParseHttpUrl(args[++i], out Uri? appSnapsUrl))
+                        {
                             return (null, $"--app-snaps-api-base-url value '{args[i]}' is not a valid absolute URL");
+                        }
+
                         options.AppSnapsApiBaseUrl = appSnapsUrl;
                         break;
 
                     default:
                         if (arg.StartsWith("--") || arg.StartsWith("-"))
+                        {
                             return (null, $"Unrecognized argument: {arg}");
+                        }
+
                         break;
                 }
 

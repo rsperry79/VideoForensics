@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
@@ -30,6 +31,7 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
                 "TPM 2.0, Windows DPAPI, or file-based encryption required.");
         }
 
+        [SupportedOSPlatform("windows")]
         public static IKeyStorageProvider CreateTpmProvider()
         {
             return new TpmKeyStorageProvider();
@@ -49,14 +51,18 @@ namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
         {
             var providers = new List<IKeyStorageProvider>();
 
-            // Try TPM first (most secure, hardware-based)
-            try
+            // Try TPM first (most secure, hardware-based). TPM is Windows-only, so skip it elsewhere
+            // rather than relying on the constructor to throw.
+            if (OperatingSystem.IsWindows())
             {
-                providers.Add(new TpmKeyStorageProvider());
-            }
-            catch
-            {
-                // TPM not available
+                try
+                {
+                    providers.Add(new TpmKeyStorageProvider());
+                }
+                catch
+                {
+                    // TPM not available
+                }
             }
 
             // Windows: Try DPAPI (currently placeholder)

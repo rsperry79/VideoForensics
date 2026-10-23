@@ -2,7 +2,7 @@ using VideoForensics.Data.Common.Contracts;
 
 using WebPush;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Manages VAPID (Voluntary Application Server Identification) key pairs for Web Push notifications.

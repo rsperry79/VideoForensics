@@ -1,5 +1,5 @@
-using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Client.Hosting.ServerDiscovery;
 
 namespace VideoForensics.Client.MCP.ServerDiscovery
 {

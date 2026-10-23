@@ -178,8 +178,10 @@ namespace VideoForensics.Providers.Ring
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
 
         private static int ringEventsFileCounter = 0;
 
@@ -512,7 +514,7 @@ namespace VideoForensics.Providers.Ring
 
                         if (!string.IsNullOrEmpty(health.RssiCategory))
                         {
-                            parts.Add($"wifi {health.RssiCategory}" + (health.Rssi.HasValue ? $" ({health.Rssi}dBm)" : ""));
+                            parts.Add($"wifi {health.RssiCategory}" + (health.Rssi.HasValue ? $" ({health.Rssi}dBm)" : string.Empty));
                         }
 
                         if (health.BatteryPercentage.HasValue && health.BatteryPercentage.Value > 0)
@@ -685,14 +687,14 @@ namespace VideoForensics.Providers.Ring
                     int videoCount = dings.Count >= Filter.VideoCount ? Filter.VideoCount : dings.Count;
 
                     // Print summary BEFORE starting downloads
-                    string limitmessage = "";
+                    string limitmessage = string.Empty;
                     int totalToDownload = videoCount;
                     if (dings.Count() > Filter.VideoCount)
                     {
                         limitmessage = $" (Will download {Filter.VideoCount} of {dings.Count()} based on MaxCount setting)";
                     }
 
-                    reporter.Info("");
+                    reporter.Info(string.Empty);
                     reporter.Highlight($"📊 Total Media: {dings.Count()} | Downloading: {totalToDownload}{limitmessage}");
 
                     // Print device breakdown
@@ -704,7 +706,7 @@ namespace VideoForensics.Providers.Ring
                         {
                             string name = deviceList.Devices.Where(d => d.Id == grp.FirstOrDefault().Doorbot.Id).FirstOrDefault().Name;
                             int count = grp.Count();
-                            string s = "";
+                            string s = string.Empty;
                             if (count > 1)
                             {
                                 s = "s";
@@ -720,7 +722,7 @@ namespace VideoForensics.Providers.Ring
                         }
                     }
 
-                    reporter.Info(""); // Blank line before downloads start
+                    reporter.Info(string.Empty); // Blank line before downloads start
 
                     // Every download gets its own persistent status row - grow the console buffer up front
                     // so a large batch never scrolls mid-run and corrupts previously written rows.
@@ -882,7 +884,7 @@ namespace VideoForensics.Providers.Ring
         {
 
             await semaphore.WaitAsync();
-            object item = reporter.BeginItem("");
+            object item = reporter.BeginItem(string.Empty);
             _ = Interlocked.Increment(ref activeDls);
             try
             {
@@ -1260,7 +1262,7 @@ namespace VideoForensics.Providers.Ring
                     {
                         DateTime eventTime = failure.CreatedAt.ToLocalTime();
                         TimeSpan tzInfo = TimeZoneInfo.Local.GetUtcOffset(failure.CreatedAt);
-                        string tzStr = $"UTC{(tzInfo.TotalHours >= 0 ? "+" : "")}{tzInfo.TotalHours:F0}";
+                        string tzStr = $"UTC{(tzInfo.TotalHours >= 0 ? "+" : string.Empty)}{tzInfo.TotalHours:F0}";
                         string line = $"{eventTime:yyyy-MM-dd}\t{eventTime:HH:mm:ss}\t{tzStr}\t{failure.LocationName}\t{failure.CameraName}\t{failure.CameraId}\t{failure.EventId}\t{failure.EventType}\t{failure.ErrorDescription}";
                         writer.WriteLine(line);
                     }
@@ -1299,14 +1301,14 @@ namespace VideoForensics.Providers.Ring
 
                 void AddRow(string name, long? id, string kind, Guid? locationId, DeviceHealth health)
                 {
-                    string locName = locationId.HasValue && locationNames.TryGetValue(locationId.Value, out string? ln) ? ln : "";
-                    string connected = health?.Connected?.ToString() ?? "";
-                    string batteryPct = health?.BatteryPercentage?.ToString() ?? "";
-                    string batteryVoltCat = health?.BatteryVoltageCategory ?? "";
-                    string rssiCat = health?.RssiCategory ?? "";
-                    string rssi = health?.Rssi?.ToString() ?? "";
-                    string fwStatus = health?.FirmwareVersionStatus ?? "";
-                    string ota = health?.OtaStatus ?? "";
+                    string locName = locationId.HasValue && locationNames.TryGetValue(locationId.Value, out string? ln) ? ln : string.Empty;
+                    string connected = health?.Connected?.ToString() ?? string.Empty;
+                    string batteryPct = health?.BatteryPercentage?.ToString() ?? string.Empty;
+                    string batteryVoltCat = health?.BatteryVoltageCategory ?? string.Empty;
+                    string rssiCat = health?.RssiCategory ?? string.Empty;
+                    string rssi = health?.Rssi?.ToString() ?? string.Empty;
+                    string fwStatus = health?.FirmwareVersionStatus ?? string.Empty;
+                    string ota = health?.OtaStatus ?? string.Empty;
                     rows.Add($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}\t{locName}\t{name}\t{id}\t{kind}\t{connected}\t{batteryPct}\t{batteryVoltCat}\t{rssiCat}\t{rssi}\t{fwStatus}\t{ota}");
                 }
 
@@ -1368,23 +1370,23 @@ namespace VideoForensics.Providers.Ring
                     }
 
                     DeviceHealth health = evt.Doorbot.Health;
-                    string timestamp = evt.CreatedAtDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? evt.CreatedAt ?? "";
-                    string eventId = evt.Id?.ToString() ?? "";
+                    string timestamp = evt.CreatedAtDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? evt.CreatedAt ?? string.Empty;
+                    string eventId = evt.Id?.ToString() ?? string.Empty;
                     string cameraId = evt.Doorbot.Id.ToString();
-                    string cameraName = evt.Doorbot.Description ?? "";
-                    string kind = evt.Kind ?? "";
-                    string batteryPct = health.BatteryPercentage?.ToString() ?? "";
-                    string batteryCategory = health.BatteryPercentageCategory ?? "";
-                    string signalStrength = health.LatestSignalStrength?.ToString("F1") ?? health.Rssi?.ToString("F1") ?? "";
-                    string signalCategory = health.LatestSignalCategory ?? health.RssiCategory ?? "";
-                    string packetLoss = health.PacketLoss?.ToString("F1") ?? "";
-                    string connected = health.Connected?.ToString() ?? "";
-                    string wifiName = health.WifiName ?? "";
-                    string fwVersion = evt.Doorbot.FirmwareVersion ?? "";
+                    string cameraName = evt.Doorbot.Description ?? string.Empty;
+                    string kind = evt.Kind ?? string.Empty;
+                    string batteryPct = health.BatteryPercentage?.ToString() ?? string.Empty;
+                    string batteryCategory = health.BatteryPercentageCategory ?? string.Empty;
+                    string signalStrength = health.LatestSignalStrength?.ToString("F1") ?? health.Rssi?.ToString("F1") ?? string.Empty;
+                    string signalCategory = health.LatestSignalCategory ?? health.RssiCategory ?? string.Empty;
+                    string packetLoss = health.PacketLoss?.ToString("F1") ?? string.Empty;
+                    string connected = health.Connected?.ToString() ?? string.Empty;
+                    string wifiName = health.WifiName ?? string.Empty;
+                    string fwVersion = evt.Doorbot.FirmwareVersion ?? string.Empty;
 
-                    string personDetected = evt.CvProperties?.PersonDetected?.ToString() ?? "";
-                    string detectionType = evt.CvProperties?.DetectionType ?? "";
-                    string confidence = evt.CvProperties?.Similarity?.ToString("F3") ?? evt.CvProperties?.Anomaly?.ToString("F3") ?? "";
+                    string personDetected = evt.CvProperties?.PersonDetected?.ToString() ?? string.Empty;
+                    string detectionType = evt.CvProperties?.DetectionType ?? string.Empty;
+                    string confidence = evt.CvProperties?.Similarity?.ToString("F3") ?? evt.CvProperties?.Anomaly?.ToString("F3") ?? string.Empty;
 
                     rows.Add($"{timestamp}\t{eventId}\t{cameraId}\t{cameraName}\t{kind}\t{batteryPct}\t{batteryCategory}\t{signalStrength}\t{signalCategory}\t{packetLoss}\t{connected}\t{wifiName}\t{fwVersion}\t{personDetected}\t{detectionType}\t{confidence}");
                 }

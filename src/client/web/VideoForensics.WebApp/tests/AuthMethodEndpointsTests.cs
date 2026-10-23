@@ -1,23 +1,28 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+
 using Moq;
-using VideoForensics.Core.Api.Contracts;
+
+using System.Reflection;
+using System.Security.Claims;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class AuthMethodEndpointsTests
     {
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId)
         {
             var context = new DefaultHttpContext();
-            var claims = new[]
+            Claim[] claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(ClaimTypes.Role, OperatorRole.SuperAdmin.ToString()),
@@ -31,7 +36,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<INetworkTierResolver> MockNetworkTierResolver()
         {
             var mock = new Mock<INetworkTierResolver>();
-            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+            _ = mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
@@ -40,11 +45,11 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var authMethodsService = new Mock<IAuthMethodSettingsService>();
-            authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AuthMethodSettingsDto(PasswordEnabled: true, PasskeyEnabled: true));
 
             // Act
-            var result = await AuthMethodEndpointsInvoker.GetAuthMethodsAsync(
+            object result = await AuthMethodEndpointsInvoker.GetAuthMethodsAsync(
                 authMethodsService.Object, CancellationToken.None);
 
             // Assert
@@ -57,11 +62,11 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var authMethodsService = new Mock<IAuthMethodSettingsService>();
-            authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AuthMethodSettingsDto(PasswordEnabled: false, PasskeyEnabled: true));
 
             // Act
-            var result = await AuthMethodEndpointsInvoker.GetAuthMethodsAsync(
+            object result = await AuthMethodEndpointsInvoker.GetAuthMethodsAsync(
                 authMethodsService.Object, CancellationToken.None);
 
             // Assert
@@ -74,11 +79,11 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var settings = new AuthMethodSettingsDto(PasswordEnabled: true, PasskeyEnabled: false);
             var authMethodsService = new Mock<IAuthMethodSettingsService>();
-            authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(settings);
 
             // Act
-            var result = await AuthMethodEndpointsInvoker.GetSettingsAsync(
+            object result = await AuthMethodEndpointsInvoker.GetSettingsAsync(
                 authMethodsService.Object, CancellationToken.None);
 
             // Assert
@@ -95,21 +100,21 @@ namespace VideoForensics.WebApp.Tests
             var updatedSettings = new AuthMethodSettingsDto(PasswordEnabled: true, PasskeyEnabled: false);
 
             var authMethodsService = new Mock<IAuthMethodSettingsService>();
-            authMethodsService.Setup(s => s.UpdateAsync(It.IsAny<UpdateAuthMethodSettingsRequest>(), It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.UpdateAsync(It.IsAny<UpdateAuthMethodSettingsRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
-            authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(updatedSettings);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            var tierResolver = MockNetworkTierResolver();
-            var context = CreateAuthenticatedHttpContext(operatorId);
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
+            HttpContext context = CreateAuthenticatedHttpContext(operatorId);
 
             // Act
-            var result = await AuthMethodEndpointsInvoker.UpdateSettingsAsync(
+            object result = await AuthMethodEndpointsInvoker.UpdateSettingsAsync(
                 request, authMethodsService.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -128,15 +133,15 @@ namespace VideoForensics.WebApp.Tests
             var request = new UpdateAuthMethodSettingsRequest(PasswordEnabled: false, PasskeyEnabled: false);
 
             var authMethodsService = new Mock<IAuthMethodSettingsService>();
-            authMethodsService.Setup(s => s.UpdateAsync(It.IsAny<UpdateAuthMethodSettingsRequest>(), It.IsAny<CancellationToken>()))
+            _ = authMethodsService.Setup(s => s.UpdateAsync(It.IsAny<UpdateAuthMethodSettingsRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            var tierResolver = MockNetworkTierResolver();
-            var context = CreateAuthenticatedHttpContext(operatorId);
+            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
+            HttpContext context = CreateAuthenticatedHttpContext(operatorId);
 
             // Act
-            var result = await AuthMethodEndpointsInvoker.UpdateSettingsAsync(
+            object result = await AuthMethodEndpointsInvoker.UpdateSettingsAsync(
                 request, authMethodsService.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -156,7 +161,7 @@ namespace VideoForensics.WebApp.Tests
             IAuthMethodSettingsService authMethodsService,
             CancellationToken ct)
         {
-            var method = typeof(AuthMethodEndpoints)
+            MethodInfo? method = typeof(AuthMethodEndpoints)
                 .GetMethod("GetAuthMethodsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -164,9 +169,11 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find GetAuthMethodsAsync method");
+            }
 
-            var result = method.Invoke(null, [authMethodsService, ct]);
+            object? result = method.Invoke(null, [authMethodsService, ct]);
             return await (dynamic)result;
         }
 
@@ -174,7 +181,7 @@ namespace VideoForensics.WebApp.Tests
             IAuthMethodSettingsService authMethodsService,
             CancellationToken ct)
         {
-            var method = typeof(AuthMethodEndpoints)
+            MethodInfo? method = typeof(AuthMethodEndpoints)
                 .GetMethod("GetSettingsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -182,9 +189,11 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find GetSettingsAsync method");
+            }
 
-            var result = method.Invoke(null, [authMethodsService, ct]);
+            object? result = method.Invoke(null, [authMethodsService, ct]);
             return await (dynamic)result;
         }
 
@@ -196,7 +205,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            var method = typeof(AuthMethodEndpoints)
+            MethodInfo? method = typeof(AuthMethodEndpoints)
                 .GetMethod("UpdateSettingsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -205,9 +214,11 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
+            {
                 throw new InvalidOperationException("Could not find UpdateSettingsAsync method");
+            }
 
-            var result = method.Invoke(null, [request, authMethodsService, auditLog, tierResolver, context, ct]);
+            object? result = method.Invoke(null, [request, authMethodsService, auditLog, tierResolver, context, ct]);
             return await (dynamic)result;
         }
     }
