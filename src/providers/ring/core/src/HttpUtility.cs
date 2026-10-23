@@ -364,7 +364,10 @@ namespace VideoForensics.Providers.Ring
             return new Exceptions.ThrottledException(
                 $"Ring has rate-limited this account for an extended period (this persists across app restarts). Stopping all requests until {hardBanUntil.ToLocalTime():t} local time (about {remaining.TotalMinutes:F0} more minute(s)) rather than continuing to retry.",
 
-                isHardBan: true);
+                isHardBan: true)
+            {
+                BlockedUntilUtc = hardBanUntil,
+            };
         }
 
         /// <summary>
