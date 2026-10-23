@@ -573,6 +573,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<decimal?>("BatteryVoltage2")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("CaptureMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("ChimeVolume")
                         .HasColumnType("INTEGER");
 
@@ -617,6 +620,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<string>("FirmwareVersion")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("HealthCaptureEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<bool?>("IsOnline")
                         .HasColumnType("INTEGER");

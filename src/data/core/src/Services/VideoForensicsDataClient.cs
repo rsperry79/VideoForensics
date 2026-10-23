@@ -766,7 +766,8 @@ namespace VideoForensics.Data.Core.Services
                                 LastSyncedUtc = DateTime.UtcNow,
                                 SyncStatus = SyncStatus.Synced,
                                 // Local operator setting, not a Ring value: carry it over so a move does not re-enable capture.
-                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled
+                                SnapshotCaptureEnabled = existingDevice.SnapshotCaptureEnabled,
+                                HealthCaptureEnabled = existingDevice.HealthCaptureEnabled
                             };
                             ApplyDetailFields(newDevice, details);
 

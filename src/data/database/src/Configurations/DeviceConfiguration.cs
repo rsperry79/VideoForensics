@@ -43,6 +43,7 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasMaxLength(256);
 
             _ = builder.Property(d => d.SnapshotCaptureEnabled).HasDefaultValue(true);
+            _ = builder.Property(d => d.HealthCaptureEnabled).HasDefaultValue(true);
 
             _ = builder.Property(d => d.MotionSnoozePresetProfile).HasMaxLength(256);
             _ = builder.Property(d => d.LiveViewPresetProfile).HasMaxLength(256);
