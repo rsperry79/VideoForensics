@@ -13,6 +13,9 @@ namespace VideoForensics.Client.WebApp.Api
     /// returns only enabled flags. The admin endpoints (GET/PUT /api/v1/auth-methods/settings) require
     /// SuperAdmin (Local for password sign-in; passkey from any tier) authorization.
     /// </summary>
+    /// <summary>Whether passkeys can run on the requested address.</summary>
+    public sealed record TransportStatus(bool PasskeyAvailable);
+
     public static class AuthMethodEndpoints
     {
         public static void MapAuthMethodEndpoints(this WebApplication app)
@@ -21,6 +24,10 @@ namespace VideoForensics.Client.WebApp.Api
             _ = app.MapGet("/api/v1/auth/methods", GetAuthMethodsAsync)
                 .RequireRateLimiting("auth")
                 .WithSummary("Get currently-enabled authentication methods");
+
+            // Anonymous: tells the sign-in page whether passkeys work on the address the page was loaded from.
+            _ = app.MapGet("/api/v1/auth/transport", GetTransportStatus)
+                .WithSummary("Whether passkeys can be used on the address this request arrived on");
 
             // Admin endpoints: get/update auth method settings
             RouteGroupBuilder group = app.MapGroup("/api/v1/auth-methods/settings")
@@ -32,6 +39,13 @@ namespace VideoForensics.Client.WebApp.Api
             _ = group.MapPut("/", UpdateSettingsAsync)
                 .WithName("UpdateAuthMethodSettings")
                 .AddEndpointFilter<StepUpEndpointFilter>();
+        }
+
+        // The middleware flags requests on a plain-http LAN address that has no secure alternative. Reads the flag, so it
+        // must run in the same request as the page that asks.
+        internal static TransportStatus GetTransportStatus(HttpContext context)
+        {
+            return new TransportStatus(PasskeyAvailable: context.Items[LocalTransportMiddleware.PasskeyUnavailableItemKey] is not true);
         }
 
         private static async Task<IResult> GetAuthMethodsAsync(

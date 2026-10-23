@@ -26,6 +26,11 @@
     else
     {
         <div class="d-flex flex-column gap-3">
+            @if (_passkeyBlockedByAddress)
+            {
+                <div class="alert alert-warning mb-0" role="alert" data-testid="passkey-unavailable">@L["PasskeyUnavailableHere"]</div>
+            }
+
             <!-- Password/Username Login -->
             @if (_authMethods.PasswordEnabled)
             {
@@ -123,6 +128,9 @@
     private IReadOnlyList<string> _twoFactorMethods = Array.Empty<string>();
     private const string TwoFactorMethodPasskey = "passkey";
     private bool _webAuthnAvailable;
+
+    /// <summary>True when the browser supports passkeys but this address does not (plain http on the LAN). Shows a message.</summary>
+    private bool _passkeyBlockedByAddress;
     private bool _isLoading = true;
     private string? _error;
     private AuthMethodsInfo _authMethods = new AuthMethodsInfo(
@@ -133,7 +141,9 @@
         if (firstRender)
         {
             await SessionState.EnsureLoadedAsync();
-            _webAuthnAvailable = await WebAuthn.IsAvailableAsync();
+            bool browserSupportsPasskeys = await WebAuthn.IsAvailableAsync();
+            _passkeyBlockedByAddress = browserSupportsPasskeys && !await WebAuthn.IsPasskeyAvailableOnThisAddressAsync();
+            _webAuthnAvailable = browserSupportsPasskeys && !_passkeyBlockedByAddress;
             _authMethods = await WebAuthn.GetAuthMethodsAsync();
             _isLoading = false;
             StateHasChanged();

@@ -314,4 +314,13 @@
   <data name="NotSavedText" xml:space="preserve">
     <value>Not saved</value>
   </data>
+  <data name="OfferLocalPasswordText" xml:space="preserve">
+    <value>Tunnel is running. Also turn on password sign-in for local access? Passkeys cannot run on the plain-http LAN address, so a password keeps local sign-in working.</value>
+  </data>
+  <data name="EnableLocalPasswordButton" xml:space="preserve">
+    <value>Enable local password</value>
+  </data>
+  <data name="NotNowButton" xml:space="preserve">
+    <value>Not now</value>
+  </data>
 </root>
