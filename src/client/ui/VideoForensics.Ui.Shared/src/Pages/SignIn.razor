@@ -148,7 +148,7 @@
         try
         {
             var (success, errorMessage, sessionToken, operatorId, role, mustChangePassword, hasPasskey, requiresTwoFactor, twoFactorCorrelationId, twoFactorMethods) =
-                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password);
+                await WebAuthn.SignInWithPasswordAsync(_username.Trim(), _password, _webAuthnAvailable);
 
             if (!success)
             {
