@@ -391,7 +391,9 @@ else
 
             // One snapshot per device per roll-up window, so the media view matches the loops.
             IReadOnlyDictionary<Guid, TimeSpan> windows = await LoadSnapshotWindowsAsync();
-            Func<Guid, TimeSpan> windowFor = id => windows.TryGetValue(id, out TimeSpan w) ? w : TimeSpan.FromMinutes(SyncSchedule.DefaultSnapshotRollupIntervalMinutes);
+            // A device with no saved window of its own uses the account setting, not a hardcoded default.
+            TimeSpan fallbackWindow = SnapshotWindowFallback.Resolve(windows.Values);
+            Func<Guid, TimeSpan> windowFor = id => windows.TryGetValue(id, out TimeSpan w) ? w : fallbackWindow;
             IReadOnlyList<EvidenceItem> shown = TimeLapseCoverage.HideCovered(SnapshotWindowThinning.Apply(result.Items, windowFor), windowFor);
             _vm = new EvidenceViewModel(result, shown);
             _pinnedIds = await LoadPinnedIdsAsync(CancellationToken.None);
