@@ -138,6 +138,14 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
             services.TryAddSingleton(TimeProvider.System);
             _ = services.AddHostedService<SnapshotCaptureService>();
+
+            // Loops beat into ThreadHeartbeats; the watchdog logs any loop that stops ticking for five minutes.
+            services.TryAddSingleton<ThreadHeartbeats>();
+            _ = services.AddHostedService(sp => new ThreadWatchdogService(
+                sp.GetRequiredService<ThreadHeartbeats>(),
+                sp.GetRequiredService<ILogger<ThreadWatchdogService>>(),
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
             return services;
         }
 

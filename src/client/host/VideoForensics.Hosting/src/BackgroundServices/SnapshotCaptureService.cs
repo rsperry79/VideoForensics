@@ -60,18 +60,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         // to hold across ticks. Keyed by internal GUIDs; never logged.
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _accountPausedUntil = new();
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _deviceRetryAfter = new();
+        private readonly ThreadHeartbeats? _heartbeats;
 
         /// <summary>Creates the capture service.</summary>
         public SnapshotCaptureService(
             IServiceScopeFactory scopeFactory,
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotCaptureService> logger,
-            TimeProvider time)
+            TimeProvider time,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _heartbeats = heartbeats;
         }
 
         /// <inheritdoc />
@@ -83,6 +86,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    _heartbeats?.Beat(nameof(SnapshotCaptureService), _time.GetUtcNow());
                     try
                     {
                         await RunOneTickAsync(stoppingToken);
