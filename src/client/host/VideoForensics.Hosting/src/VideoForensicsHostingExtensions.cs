@@ -21,7 +21,6 @@ using VideoForensics.Core.Telemetry.DependencyInjection;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.DependencyInjection;
-using VideoForensics.Data.Database;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
@@ -810,13 +809,6 @@ namespace VideoForensics.Client.Hosting
             IDbContextFactory<VideoForensicsLogsDbContext> logsFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsLogsDbContext>>();
             await using VideoForensicsLogsDbContext logsDb = await logsFactory.CreateDbContextAsync(ct);
             _ = await logsDb.Database.EnsureCreatedAsync(ct);
-
-            // One-time copy of operational rows left in the main database. Rows are copied, not moved; running it again adds nothing.
-            int copiedLogRows = await OperationalLogCopier.CopyAsync(dbFactory, logsFactory, ct);
-            if (copiedLogRows > 0)
-            {
-                logger.LogInformation("Copied {Count} operational log rows from the main database to logs.db", copiedLogRows);
-            }
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
             // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the
