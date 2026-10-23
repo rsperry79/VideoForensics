@@ -805,6 +805,11 @@ namespace VideoForensics.Client.Hosting
             IDbContextFactory<VideoForensicsDbContext> dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
             await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct, services.GetServices<IReferenceDataSource>());
 
+            // Operational logs (logs.db) are created on first run. Schema changes to them need migrations once they exist.
+            IDbContextFactory<VideoForensicsLogsDbContext> logsFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsLogsDbContext>>();
+            await using VideoForensicsLogsDbContext logsDb = await logsFactory.CreateDbContextAsync(ct);
+            _ = await logsDb.Database.EnsureCreatedAsync(ct);
+
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
             // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the
             // registrations were fixed to be Scoped (see AddVideoForensicsServerCore), they can't be

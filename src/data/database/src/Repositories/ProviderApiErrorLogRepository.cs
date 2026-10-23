@@ -9,23 +9,23 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for ProviderApiErrorLog rows.</summary>
     public class ProviderApiErrorLogRepository : IProviderApiErrorLogRepository
     {
-        private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IDbContextFactory<VideoForensicsLogsDbContext> _factory;
 
-        public ProviderApiErrorLogRepository(IDbContextFactory<VideoForensicsDbContext> factory)
+        public ProviderApiErrorLogRepository(IDbContextFactory<VideoForensicsLogsDbContext> factory)
         {
             _factory = factory;
         }
 
         public async Task RecordAsync(ProviderApiErrorLog entry, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             _ = db.ProviderApiErrorLogs.Add(entry);
             _ = await db.SaveChangesAsync(ct);
         }
 
         public async Task<IReadOnlyList<ProviderApiErrorLog>> GetByEventIdAsync(Guid eventId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderApiErrorLogs
                 .Where(e => e.EventId == eventId)
                 .OrderBy(e => e.OccurredAtUtc)
@@ -34,7 +34,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<IReadOnlyList<ProviderApiErrorLog>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             return await db.ProviderApiErrorLogs
                 .Where(e => e.DeviceId == deviceId)
                 .OrderBy(e => e.OccurredAtUtc)
@@ -43,7 +43,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task<int> PruneOlderThanAsync(TimeSpan age, CancellationToken ct)
         {
-            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsLogsDbContext db = await _factory.CreateDbContextAsync(ct);
             DateTime cutoff = DateTime.UtcNow - age;
             return await db.ProviderApiErrorLogs
                 .Where(e => e.OccurredAtUtc < cutoff)

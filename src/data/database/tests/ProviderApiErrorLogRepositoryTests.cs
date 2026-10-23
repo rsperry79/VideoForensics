@@ -7,12 +7,12 @@ namespace VideoForensics.Data.Database.Tests
 {
     public class ProviderApiErrorLogRepositoryTests : IAsyncLifetime
     {
-        private SqliteInMemoryFixture _fixture = null!;
+        private SqliteLogsInMemoryFixture _fixture = null!;
         private ProviderApiErrorLogRepository _repository = null!;
 
         public async ValueTask InitializeAsync()
         {
-            _fixture = new SqliteInMemoryFixture();
+            _fixture = new SqliteLogsInMemoryFixture();
             await _fixture.InitializeAsync();
             _repository = new ProviderApiErrorLogRepository(_fixture.Factory);
         }
