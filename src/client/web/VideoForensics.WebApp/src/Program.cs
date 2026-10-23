@@ -551,7 +551,8 @@ WebApplication app = builder.Build();
 Microsoft.Extensions.Logging.ILogger ringApiLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("VideoForensics.Providers.Ring.Api");
 VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
     ringApiLogger.LogDebug(
-        "Ring API {Method} {Target} -> {StatusCode} ({BodyLength} chars)",
+        "Ring API call #{CallNumber} {Method} {Target} -> {StatusCode} ({BodyLength} chars)",
+        call.Sequence,
         call.Method,
         Uri.TryCreate(call.Url, UriKind.Absolute, out Uri? target) ? target.PathAndQuery : call.Url,
         call.StatusCode,
