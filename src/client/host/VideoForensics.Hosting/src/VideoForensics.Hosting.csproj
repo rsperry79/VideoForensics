@@ -49,7 +49,7 @@
         <PackageReference Include="Certes" Version="4.1.0" />
         <PackageReference Include="CloudflaredKit" Version="0.1.2" />
         <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
-        <PackageReference Include="MailKit" Version="4.18.1" />
+        <PackageReference Include="MailKit" Version="4.18.2" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
         <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.13" Condition="'$(BuildIOS)' == 'true' OR '$(BuildAndroid)' == 'true'" />

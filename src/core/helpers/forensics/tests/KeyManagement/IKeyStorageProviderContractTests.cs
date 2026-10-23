@@ -1,3 +1,5 @@
+using System.Runtime.Versioning;
+
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
@@ -154,6 +156,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
     /// <summary>
     /// Test TpmKeyStorageProvider against the contract.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     internal class TpmKeyStorageProviderContractTests : IKeyStorageProviderContractTests
     {
         protected override IKeyStorageProvider CreateProvider()

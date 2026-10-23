@@ -102,7 +102,7 @@ namespace VideoForensics.WebApp.Services
             string certPem = ExtractPemBlock(certificate.PemBundle, "CERTIFICATE");
             string keyPem = ExtractPemBlock(certificate.PemBundle, "PRIVATE KEY");
             using var pem = X509Certificate2.CreateFromPem(certPem, keyPem);
-            return new X509Certificate2(pem.Export(X509ContentType.Pfx), (string?)null, X509KeyStorageFlags.EphemeralKeySet);
+            return X509CertificateLoader.LoadPkcs12(pem.Export(X509ContentType.Pfx), (string?)null, X509KeyStorageFlags.EphemeralKeySet);
         }
 
         /// <summary>Returns the first PEM block whose label ends with <paramref name="label"/>.</summary>

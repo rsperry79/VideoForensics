@@ -1,3 +1,5 @@
+using System.Runtime.Versioning;
+
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
@@ -55,6 +57,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
         }
 
         [Fact]
+        [SupportedOSPlatform("windows")]
         public void CreateTpmProvider_Always_ReturnsTpmProvider()
         {
             // Act
@@ -178,7 +181,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Assert
             Assert.True(provider.IsAvailable);
-            if (new TpmKeyStorageProvider().IsAvailable)
+            if (OperatingSystem.IsWindows() && new TpmKeyStorageProvider().IsAvailable)
             {
                 Assert.Equal("TPM 2.0", provider.ProviderName);
             }
