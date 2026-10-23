@@ -327,7 +327,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed,
+                            IsOnline: d.Health?.Connected,
                             Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                             Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
@@ -347,7 +347,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -368,7 +368,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -1115,7 +1115,7 @@ namespace VideoForensics.Providers.Ring.Services
                             Name: d.Description ?? "Unknown Device",
                             Type: "doorbot",
                             LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                            IsOnline: d.Health?.Connected ?? d.Subscribed,
+                            IsOnline: d.Health?.Connected,
                             Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                             Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                         );
@@ -1134,7 +1134,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );
@@ -1154,7 +1154,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: s.Description ?? "Unknown Device",
                                 Type: "stickup_cam",
                                 LocationId: s.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: s.Health?.Connected ?? s.Subscribed,
+                                IsOnline: s.Health?.Connected,
                                 Metadata: DeviceMetadata(s.Kind, s.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(s)
                             );
@@ -1174,7 +1174,7 @@ namespace VideoForensics.Providers.Ring.Services
                                 Name: d.Description ?? "Unknown Device",
                                 Type: "authorized_doorbot",
                                 LocationId: d.LocationId?.ToString() ?? UnknownLocationId,
-                                IsOnline: d.Health?.Connected ?? d.Subscribed,
+                                IsOnline: d.Health?.Connected,
                                 Metadata: DeviceMetadata(d.Kind, d.TimeZone),
                                 Details: RingDeviceDetailsMapper.ToDeviceFields(d)
                             );

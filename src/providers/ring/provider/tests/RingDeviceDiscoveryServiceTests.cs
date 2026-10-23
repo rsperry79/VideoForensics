@@ -451,6 +451,34 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task GetDevicesAsync_IsOnline_IgnoresSubscribedWhenHealthMissing()
+        {
+            // Subscribed is a push-subscription flag, not connectivity. A flood/stickup with no health reading
+            // must not be reported online just because it is subscribed.
+            string locationId = "66666666-6666-6666-6666-666666666666";
+            var doorbot = new Doorbot
+            {
+                Id = 302,
+                Description = "Flood Sensor",
+                LocationId = Guid.Parse(locationId),
+                Subscribed = true,
+                Health = null
+            };
+
+            var session = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = session.Setup(s => s.GetRingDevices(It.IsAny<Guid?>()))
+                .ReturnsAsync(new Devices { Doorbots = [doorbot] });
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session.Object);
+            var service = new RingDeviceDiscoveryService(new Mock<ILogger>().Object, sessionProvider.Object);
+
+            IReadOnlyList<Device> result = await service.GetDevicesAsync(locationId);
+
+            Device device = Assert.Single(result);
+            Assert.Null(device.IsOnline);
+        }
+
+        [Fact]
         public async Task GetDevicesAsync_IsOnline_TrueWhenHealthConnected()
         {
             string locationId = "66666666-6666-6666-6666-666666666666";
