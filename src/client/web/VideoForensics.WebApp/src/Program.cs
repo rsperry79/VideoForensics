@@ -629,6 +629,7 @@ app.MapLockoutPolicyEndpoints();
 app.MapBannedIpsEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
+app.MapDeviceCaptureModeEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();
