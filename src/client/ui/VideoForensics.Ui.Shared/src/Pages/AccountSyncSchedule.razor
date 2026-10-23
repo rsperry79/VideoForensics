@@ -93,6 +93,35 @@ else
                     </label>
                 </div>
 
+                <div class="card border-secondary mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">@L["DeviceCaptureModesHeading"]</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">@L["DeviceCaptureModesHelp"]</p>
+                        @if (_deviceModes.Count == 0)
+                        {
+                            <p class="text-muted mb-0">@L["NoDevicesForSchedule"]</p>
+                        }
+                        else
+                        {
+                            @foreach (DeviceModeRow row in _deviceModes)
+                            {
+                                string label = DeviceLabel.For(row.Name, row.ProviderDeviceId);
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <span class="flex-grow-1">@label</span>
+                                    <select class="form-select form-select-sm" style="max-width: 220px;" aria-label="@label" value="@row.Mode" disabled="@_isBusy"
+                                            @onchange="e => SetDeviceModeAsync(row, e.Value?.ToString())">
+                                        <option value="Capture">@L["DeviceModeCapture"]</option>
+                                        <option value="HealthOnly">@L["DeviceModeHealthOnly"]</option>
+                                        <option value="Off">@L["DeviceModeOff"]</option>
+                                    </select>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
                 @if (_useAdvancedJammingSchedule)
                 {
                     <div class="card border-secondary mb-4">
@@ -269,6 +298,51 @@ else
     /// <summary>
     /// GET against the account API with the paired-device bearer token.
     /// </summary>
+    /// <summary>One device on the schedule page: its capture choice, saved as "Capture", "HealthOnly", or "Off".</summary>
+    private sealed record DeviceModeRow(Guid DeviceId, string Name, string ProviderDeviceId, string Mode);
+
+    private List<DeviceModeRow> _deviceModes = new();
+
+    private async Task LoadDeviceModesAsync()
+    {
+        try
+        {
+            _deviceModes = await GetApiAsync<List<DeviceModeRow>>($"api/v1/device-capture-modes?providerAccountId={Id}") ?? new List<DeviceModeRow>();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = L["FailedToLoadDeviceModes", ex.Message];
+            _statusIsError = true;
+        }
+    }
+
+    private async Task SetDeviceModeAsync(DeviceModeRow row, string? mode)
+    {
+        if (string.IsNullOrEmpty(mode) || mode == row.Mode)
+        {
+            return;
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await SendApiAsync(HttpMethod.Put, $"api/v1/device-capture-modes/{row.DeviceId}", new { mode });
+            response.EnsureSuccessStatusCode();
+            int index = _deviceModes.IndexOf(row);
+            if (index >= 0)
+            {
+                _deviceModes[index] = row with { Mode = mode };
+            }
+
+            _statusMessage = L["DeviceModeSaved", DeviceLabel.For(row.Name, row.ProviderDeviceId)];
+            _statusIsError = false;
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = L["FailedToSaveDeviceMode", ex.Message];
+            _statusIsError = true;
+        }
+    }
+
     private async Task<T?> GetApiAsync<T>(string relativePath)
     {
         using HttpResponseMessage response = await SendApiAsync(HttpMethod.Get, relativePath);
@@ -349,6 +423,7 @@ else
         }
         finally
         {
+            await LoadDeviceModesAsync();
             _isLoading = false;
         }
     }
