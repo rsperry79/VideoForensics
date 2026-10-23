@@ -74,6 +74,8 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
+    // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
+    .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.WebApp")
     // Text format: human-readable with structured properties appended
@@ -543,6 +545,17 @@ builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 WebApplication app = builder.Build();
+
+// Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
+// they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.
+Microsoft.Extensions.Logging.ILogger ringApiLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("VideoForensics.Providers.Ring.Api");
+VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
+    ringApiLogger.LogDebug(
+        "Ring API {Method} {Target} -> {StatusCode} ({BodyLength} chars)",
+        call.Method,
+        Uri.TryCreate(call.Url, UriKind.Absolute, out Uri? target) ? target.PathAndQuery : call.Url,
+        call.StatusCode,
+        call.Body?.Length ?? 0);
 
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
 // keep the RP ID on the saved address for the current request.

@@ -485,6 +485,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             string responseText = await response.Content.ReadAsStringAsync();
+            ApiRawLogger.Raise(request.Method.Method, url.ToString(), (int)response.StatusCode, responseText);
 
             switch (response.StatusCode)
             {
@@ -554,6 +555,7 @@ namespace VideoForensics.Providers.Ring
             }
 
             string responseText = await response.Content.ReadAsStringAsync();
+            ApiRawLogger.Raise(request.Method.Method, url.ToString(), (int)response.StatusCode, responseText);
             return responseText;
         }
 
@@ -604,6 +606,7 @@ namespace VideoForensics.Providers.Ring
 
             // Get the response body
             string responseText = await response.Content.ReadAsStringAsync();
+            ApiRawLogger.Raise(request.Method.Method, url.ToString(), (int)response.StatusCode, responseText);
 
             switch (response.StatusCode)
             {
