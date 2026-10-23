@@ -27,6 +27,7 @@ public class LocalTransportMiddlewareTests
         string query = "")
     {
         var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Get;
         context.Request.Scheme = https ? "https" : "http";
         context.Request.Host = new HostString(host);
         context.Request.Path = path;
@@ -101,5 +102,24 @@ public class LocalTransportMiddlewareTests
 
         Assert.True(nextCalled);
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public void LanHttp_ApiPost_IsNotRedirected()
+    {
+        // The tunnel is started by a POST to /api. A redirect would drop the body, so API calls always pass through.
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.Scheme = "http";
+        context.Request.Host = new HostString("192.168.1.5:5000");
+        context.Request.Path = "/api/remote-access/start";
+        context.Connection.RemoteIpAddress = Lan;
+
+        bool nextCalled = false;
+        var middleware = new LocalTransportMiddleware(_ => { nextCalled = true; return Task.CompletedTask; }, NullLogger<LocalTransportMiddleware>.Instance);
+        middleware.InvokeAsync(context, TunnelStopped(), HttpsReady()).GetAwaiter().GetResult();
+
+        Assert.True(nextCalled);
+        Assert.False(context.Response.Headers.ContainsKey("Location"));
     }
 }

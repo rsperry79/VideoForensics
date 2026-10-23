@@ -26,6 +26,34 @@ public sealed class LocalTransportMiddleware
 
     public async Task InvokeAsync(HttpContext context, ICloudflaredTunnelService tunnels, LocalTransportOptions options)
     {
+        if (!IsPageRequest(context.Request))
+        {
+            await _next(context);
+            return;
+        }
+
+        await ApplyPolicyAsync(context, tunnels, options);
+    }
+
+    /// <summary>
+    /// Only GET and HEAD page loads are redirected. API calls (which carry bodies, such as starting the tunnel), SignalR and
+    /// Blazor connections, and other non-GET requests always pass through, since a redirect would drop them.
+    /// </summary>
+    internal static bool IsPageRequest(HttpRequest request)
+    {
+        if (!HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method))
+        {
+            return false;
+        }
+
+        string path = request.Path.Value ?? string.Empty;
+        return !(path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/_", StringComparison.Ordinal)
+            || path.StartsWith("/hubs/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task ApplyPolicyAsync(HttpContext context, ICloudflaredTunnelService tunnels, LocalTransportOptions options)
+    {
         TunnelState tunnel = tunnels.GetState();
         bool tunnelRunning = tunnel.Status == TunnelStatus.Running
             && Uri.TryCreate(tunnel.PublicUrl, UriKind.Absolute, out _);
