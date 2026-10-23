@@ -67,7 +67,7 @@ namespace VideoForensics.Core.Telemetry.Tests
         [Fact]
         public void NullTelemetryProvider_ImplementsITelemetryProvider()
         {
-            Assert.IsAssignableFrom<ITelemetryProvider>(_provider);
+            _ = Assert.IsAssignableFrom<ITelemetryProvider>(_provider);
         }
     }
 }

@@ -1,32 +1,34 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-using Microsoft.AspNetCore.Components;
+
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
+
+using VideoForensics.Client.Ui.Shared.Components.Dump;
+
 using Xunit;
-using VideoForensics.Ui.Shared.Components.Dump;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class DumpView_Rendering_Tests : BunitContext
 {
     public DumpView_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     [Fact]
     public void Renders_ScalarString_WithStringCssClass()
     {
         // Arrange
-        var json = "\"hello\"";
+        string json = "\"hello\"";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var elem = component.Find(".dump-string");
+        AngleSharp.Dom.IElement elem = component.Find(".dump-string");
         Assert.NotNull(elem);
         Assert.Contains("hello", elem.TextContent);
     }
@@ -35,14 +37,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_ScalarNumber_WithNumberCssClass()
     {
         // Arrange
-        var json = "42";
+        string json = "42";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var elem = component.Find(".dump-number");
+        AngleSharp.Dom.IElement elem = component.Find(".dump-number");
         Assert.NotNull(elem);
         Assert.Contains("42", elem.TextContent);
     }
@@ -51,14 +53,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_ScalarBoolean_WithBoolCssClass()
     {
         // Arrange
-        var json = "true";
+        string json = "true";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var elem = component.Find(".dump-bool");
+        AngleSharp.Dom.IElement elem = component.Find(".dump-bool");
         Assert.NotNull(elem);
         Assert.Contains("true", elem.TextContent);
     }
@@ -67,14 +69,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_ScalarNull_WithNullCssClass()
     {
         // Arrange
-        var json = "null";
+        string json = "null";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var elem = component.Find(".dump-null");
+        AngleSharp.Dom.IElement elem = component.Find(".dump-null");
         Assert.NotNull(elem);
         Assert.Contains("null", elem.TextContent);
     }
@@ -83,15 +85,15 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_TabularArray_AsTable()
     {
         // Arrange
-        var json = "[{\"id\":1,\"name\":\"a\"},{\"id\":2,\"name\":\"b\"}]";
+        string json = "[{\"id\":1,\"name\":\"a\"},{\"id\":2,\"name\":\"b\"}]";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert - verify component renders without error
         Assert.NotNull(component.Markup);
-        var tables = component.FindAll("table");
+        IReadOnlyList<AngleSharp.Dom.IElement> tables = component.FindAll("table");
         Assert.NotEmpty(tables);
     }
 
@@ -99,14 +101,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_Object_AsKeyValueTable()
     {
         // Arrange
-        var json = "{\"name\":\"test\",\"count\":5}";
+        string json = "{\"name\":\"test\",\"count\":5}";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var table = component.Find("table");
+        AngleSharp.Dom.IElement table = component.Find("table");
         Assert.NotNull(table);
     }
 
@@ -114,15 +116,15 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_ExpandableNode_WithCaretToggle()
     {
         // Arrange
-        var json = "{\"nested\":{\"key\":\"value\"}}";
+        string json = "{\"nested\":{\"key\":\"value\"}}";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 0));
 
         // Assert - verify carets are rendered
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("expand-toggle", markup);
     }
 
@@ -130,14 +132,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_NodeWithDataPath_Attribute()
     {
         // Arrange
-        var json = "{\"device\":{\"name\":\"cam1\"}}";
+        string json = "{\"device\":{\"name\":\"cam1\"}}";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert - verify data-path attributes are rendered
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("data-path=", markup);
     }
 
@@ -145,14 +147,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_InvalidJson_ShowsAlert()
     {
         // Arrange
-        var json = "{invalid}";
+        string json = "{invalid}";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var alert = component.Find(".alert");
+        AngleSharp.Dom.IElement alert = component.Find(".alert");
         Assert.NotNull(alert);
         Assert.Contains("Invalid JSON", alert.TextContent);
     }
@@ -164,11 +166,11 @@ public class DumpView_Rendering_Tests : BunitContext
         var obj = new { Name = "TestValue" };
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Value, obj));
 
         // Assert - verify component renders successfully with object value
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.NotNull(markup);
         Assert.NotEmpty(markup);
     }
@@ -177,12 +179,12 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_SearchBox_WhenShowSearchTrue()
     {
         // Arrange & Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, "{\"test\":1}")
             .Add(p => p.ShowSearch, true));
 
         // Assert
-        var searchInput = component.Find("input[type='text']");
+        AngleSharp.Dom.IElement searchInput = component.Find("input[type='text']");
         Assert.NotNull(searchInput);
     }
 
@@ -190,12 +192,12 @@ public class DumpView_Rendering_Tests : BunitContext
     public void HidesSearchBox_WhenShowSearchFalse()
     {
         // Arrange & Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, "{\"test\":1}")
             .Add(p => p.ShowSearch, false));
 
         // Assert
-        var searchInputs = component.FindAll("input[type='text']");
+        IReadOnlyList<AngleSharp.Dom.IElement> searchInputs = component.FindAll("input[type='text']");
         Assert.Empty(searchInputs);
     }
 
@@ -205,13 +207,13 @@ public class DumpView_Rendering_Tests : BunitContext
         // This test verifies search infrastructure is in place, but full search
         // filtering is tested in DumpNodeBuilderTests.Matches_*
         // Arrange
-        var json = "{\"device\":\"camera\"}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"device\":\"camera\"}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.ShowSearch, true));
 
         // Act
-        var searchInput = component.Find("input[type='text']");
+        AngleSharp.Dom.IElement searchInput = component.Find("input[type='text']");
         Assert.NotNull(searchInput);
 
         // Assert - component renders successfully with search box
@@ -222,12 +224,12 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Renders_CopyButton_WhenShowCopyTrue()
     {
         // Arrange & Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, "{\"test\":1}")
             .Add(p => p.ShowCopy, true));
 
         // Assert
-        var copyButton = component.FindAll("button").FirstOrDefault(b => b.TextContent.Contains("Copy"));
+        AngleSharp.Dom.IElement? copyButton = component.FindAll("button").FirstOrDefault(b => b.TextContent.Contains("Copy"));
         Assert.NotNull(copyButton);
     }
 
@@ -235,12 +237,12 @@ public class DumpView_Rendering_Tests : BunitContext
     public void HidesCopyButton_WhenShowCopyFalse()
     {
         // Arrange & Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, "{\"test\":1}")
             .Add(p => p.ShowCopy, false));
 
         // Assert
-        var copyButton = component.FindAll("button").FirstOrDefault(b => b.TextContent.Contains("Copy"));
+        AngleSharp.Dom.IElement? copyButton = component.FindAll("button").FirstOrDefault(b => b.TextContent.Contains("Copy"));
         Assert.Null(copyButton);
     }
 
@@ -248,20 +250,20 @@ public class DumpView_Rendering_Tests : BunitContext
     public void CopyButton_InvokesClipboardWriteText()
     {
         // Arrange
-        var json = "{\"test\":1}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"test\":1}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.ShowCopy, true));
 
         // Setup JSInterop
-        this.JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        _ = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
 
         // Act
-        var copyButton = component.FindAll("button").First(b => b.TextContent.Contains("Copy"));
+        AngleSharp.Dom.IElement copyButton = component.FindAll("button").First(b => b.TextContent.Contains("Copy"));
         copyButton.Click();
 
         // Assert - Verify the JS interop was called
-        var invocations = this.JSInterop.Invocations.Where(i => i.Identifier == "navigator.clipboard.writeText").ToList();
+        var invocations = JSInterop.Invocations.Where(i => i.Identifier == "navigator.clipboard.writeText").ToList();
         Assert.NotEmpty(invocations);
     }
 
@@ -269,14 +271,14 @@ public class DumpView_Rendering_Tests : BunitContext
     public void TabularArray_DisplaysItemCount()
     {
         // Arrange
-        var json = "[{\"id\":1},{\"id\":2},{\"id\":3}]";
+        string json = "[{\"id\":1},{\"id\":2},{\"id\":3}]";
 
         // Act
-        var component = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json));
 
         // Assert
-        var content = component.Markup;
+        string content = component.Markup;
         Assert.Contains("3", content);
     }
 
@@ -284,23 +286,23 @@ public class DumpView_Rendering_Tests : BunitContext
     public void InitialExpandDepth_ControlsNodeExpansion()
     {
         // Arrange
-        var json = "{\"level1\":{\"level2\":{\"level3\":\"value\"}}}";
+        string json = "{\"level1\":{\"level2\":{\"level3\":\"value\"}}}";
 
         // Act
-        var componentDepth0 = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> componentDepth0 = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 0));
 
-        var componentDepth2 = Render<DumpView>(parameters => parameters
+        IRenderedComponent<DumpView> componentDepth2 = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 2));
 
         // Assert
         // At depth 0, level2 should be collapsed initially
-        var level2InDepth0 = componentDepth0.FindAll("[data-path='$.level1.level2']");
+        IReadOnlyList<AngleSharp.Dom.IElement> level2InDepth0 = componentDepth0.FindAll("[data-path='$.level1.level2']");
         // Should be fewer elements visible in depth 0
 
-        var level2InDepth2 = componentDepth2.FindAll("[data-path='$.level1.level2']");
+        IReadOnlyList<AngleSharp.Dom.IElement> level2InDepth2 = componentDepth2.FindAll("[data-path='$.level1.level2']");
         // Should be more elements visible in depth 2
         Assert.True(level2InDepth2.Count >= level2InDepth0.Count);
     }
@@ -309,8 +311,8 @@ public class DumpView_Rendering_Tests : BunitContext
     public void ExpandToggle_ClickOnCollapsedNode_RevealsDeeperPath()
     {
         // Arrange - InitialExpandDepth 1 opens the root ($) but leaves $.level1 (depth 1) collapsed
-        var json = "{\"level1\":{\"level2\":{\"level3\":\"deep\"}}}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"level1\":{\"level2\":{\"level3\":\"deep\"}}}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 1));
 
@@ -327,8 +329,8 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Search_Input_FiltersNonMatchingSiblingsAndMarksMatch()
     {
         // Arrange
-        var json = "{\"alpha\":\"one\",\"beta\":\"two\"}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"alpha\":\"one\",\"beta\":\"two\"}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.ShowSearch, true));
 
@@ -337,7 +339,7 @@ public class DumpView_Rendering_Tests : BunitContext
 
         // Assert
         Assert.DoesNotContain("alpha", component.Markup);
-        var match = component.Find(".dump-match");
+        AngleSharp.Dom.IElement match = component.Find(".dump-match");
         Assert.Equal("two", match.TextContent);
     }
 
@@ -346,8 +348,8 @@ public class DumpView_Rendering_Tests : BunitContext
     {
         // Arrange - "keep" starts expanded (depth 1 < InitialExpandDepth 2), revealing its
         // nested object "$.keep.nested" (only Object/Array nodes carry a data-path wrapper)
-        var json = "{\"keep\":{\"nested\":{\"deep\":\"x\"}},\"other\":\"findme\"}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"keep\":{\"nested\":{\"deep\":\"x\"}},\"other\":\"findme\"}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 2)
             .Add(p => p.ShowSearch, true));
@@ -362,7 +364,7 @@ public class DumpView_Rendering_Tests : BunitContext
         Assert.Empty(component.FindAll("[data-path='$.keep.nested']"));
 
         // Clear the search
-        component.Find("input").Input("");
+        component.Find("input").Input(string.Empty);
 
         // Assert - "keep" is still collapsed, i.e. the manual choice survived the search round-trip
         Assert.Empty(component.FindAll("[data-path='$.keep.nested']"));
@@ -372,8 +374,8 @@ public class DumpView_Rendering_Tests : BunitContext
     public void Search_AutoExpandsMatchBelowInitialExpandDepth_ThenCollapsesWhenCleared()
     {
         // Arrange - InitialExpandDepth 0 means every node starts fully collapsed
-        var json = "{\"level1\":{\"level2\":{\"level3\":\"deep\"}}}";
-        var component = Render<DumpView>(parameters => parameters
+        string json = "{\"level1\":{\"level2\":{\"level3\":\"deep\"}}}";
+        IRenderedComponent<DumpView> component = Render<DumpView>(parameters => parameters
             .Add(p => p.Json, json)
             .Add(p => p.InitialExpandDepth, 0)
             .Add(p => p.ShowSearch, true));
@@ -383,11 +385,11 @@ public class DumpView_Rendering_Tests : BunitContext
         component.Find("input").Input("deep");
 
         // Assert - the match is rendered, auto-expanded past the collapsed manual state
-        var match = component.Find(".dump-match");
+        AngleSharp.Dom.IElement match = component.Find(".dump-match");
         Assert.Equal("deep", match.TextContent);
 
         // Clearing the search collapses everything back to the manual (closed) state
-        component.Find("input").Input("");
+        component.Find("input").Input(string.Empty);
         Assert.Empty(component.FindAll("[data-path='$.level1']"));
     }
 }

@@ -2,7 +2,7 @@ using CloudflaredKit;
 
 using Microsoft.Extensions.Options;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     public enum TunnelKind
     {
@@ -73,13 +73,13 @@ namespace VideoForensics.Hosting
 
             try
             {
-                _optionsCache.TryRemove(Options.DefaultName);
-                _optionsCache.TryAdd(Options.DefaultName, new CloudflaredOptions
+                _ = _optionsCache.TryRemove(Options.DefaultName);
+                _ = _optionsCache.TryAdd(Options.DefaultName, new CloudflaredOptions
                 {
                     TunnelToken = tunnelToken
                 });
 
-                await _cloudflared.StartAsync(ct);
+                _ = await _cloudflared.StartAsync(ct);
                 lock (_gate)
                 {
                     _state = _state with { Status = TunnelStatus.Running };

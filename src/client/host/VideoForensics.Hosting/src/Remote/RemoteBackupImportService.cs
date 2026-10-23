@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed implementation of <see cref="IBackupImportService"/> that calls the server's Minimal API

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>Publishing side of the account-linked stream, used by the add-account wizard after a link succeeds.</summary>
     public interface IAccountLinkedNotifier

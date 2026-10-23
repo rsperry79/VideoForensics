@@ -4,11 +4,9 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteAccountExportServiceTests
     {
@@ -35,8 +33,10 @@ namespace VideoForensics.Hosting.Tests
             }
         }
 
-        private static HttpResponseMessage Json(HttpStatusCode code, object body) =>
-            new(code) { Content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json") };
+        private static HttpResponseMessage Json(HttpStatusCode code, object body)
+        {
+            return new(code) { Content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json") };
+        }
 
         [Fact]
         public async Task RemoteAccountExportService_QueueExportAsync_PostsExportsRoute()

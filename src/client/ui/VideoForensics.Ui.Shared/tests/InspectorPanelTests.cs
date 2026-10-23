@@ -1,19 +1,26 @@
-namespace VideoForensics.Ui.Shared.Tests;
+
+using AngleSharp.Dom;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Components.Inspector;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
+
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class InspectorPanel_Rendering_Tests : BunitContext
 {
@@ -23,31 +30,34 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     public InspectorPanel_Rendering_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
 
         // Defaults: no active case, no signed-in operator. Pin tests override these with
         // RegisterCaseState / RegisterRoleAsync (later registrations win).
-        RegisterCaseState(activeCase: null);
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = RegisterCaseState(activeCase: null);
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         // Defaults for the evidence-actions section (hold/release/verify); most tests never touch
         // these but InspectorPanel now injects them unconditionally.
-        Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
-        Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
+        _ = Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
+        _ = Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
     }
 
     private static ForensicCase MakeCase(
         string caseNumber = "CASE-001",
         string title = "Test Case",
-        CaseStatus status = CaseStatus.Open) => new()
+        CaseStatus status = CaseStatus.Open)
     {
-        Id = Guid.NewGuid(),
-        CaseNumber = caseNumber,
-        Title = title,
-        Status = status,
-        CreatedBy = "test",
-        CreatedAtUtc = DateTime.UtcNow
-    };
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            CaseNumber = caseNumber,
+            Title = title,
+            Status = status,
+            CreatedBy = "test",
+            CreatedAtUtc = DateTime.UtcNow
+        };
+    }
 
     private (CaseState CaseState, Mock<ICaseRepository> Repository) RegisterCaseState(
         ForensicCase? activeCase,
@@ -60,7 +70,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             caseState._setActiveCaseForTest(activeCase);
         }
 
-        Services.AddScoped(_ => caseState);
+        _ = Services.AddScoped(_ => caseState);
         return (caseState, repository);
     }
 
@@ -68,7 +78,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
-        Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => session);
     }
 
     [Fact]
@@ -76,10 +86,10 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         // Arrange
         var state = new InspectorState();
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         Assert.Empty(component.Markup.Trim());
@@ -94,13 +104,13 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Title: "Test Device",
             Fields: new { Id = 1, Name = "Device1" });
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("Test Device", markup);
     }
 
@@ -113,13 +123,13 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Title: "TestTitle",
             Fields: new { TestField = "TestValue" });
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
-        var activeTab = component.Find("[data-testid='inspector-tab-fields'].active");
+        IElement activeTab = component.Find("[data-testid='inspector-tab-fields'].active");
         Assert.NotNull(activeTab);
     }
 
@@ -132,13 +142,13 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Title: "TestTitle",
             Fields: new { });
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
-        var closeButton = component.Find("[data-testid='inspector-close']");
+        IElement closeButton = component.Find("[data-testid='inspector-close']");
         Assert.NotNull(closeButton);
     }
 
@@ -151,12 +161,12 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Title: "TestTitle",
             Fields: new { });
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act
-        var closeButton = component.Find("[data-testid='inspector-close']");
+        IElement closeButton = component.Find("[data-testid='inspector-close']");
         closeButton.Click();
 
         // Assert
@@ -169,22 +179,22 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         // Arrange
         var state = new InspectorState();
-        var rawJson = "{\"metadata\":\"value\"}";
+        string rawJson = "{\"metadata\":\"value\"}";
         var model = new InspectorModel(
             Title: "TestTitle",
             Fields: new { },
             RawJson: rawJson);
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act
-        var rawTab = component.Find("[data-testid='inspector-tab-raw']");
+        IElement rawTab = component.Find("[data-testid='inspector-tab-raw']");
         rawTab.Click();
 
         // Assert
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("metadata", markup);
         Assert.Contains("value", markup);
     }
@@ -199,16 +209,16 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Fields: new { },
             RawJson: null);
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act
-        var rawTab = component.Find("[data-testid='inspector-tab-raw']");
+        IElement rawTab = component.Find("[data-testid='inspector-tab-raw']");
         rawTab.Click();
 
         // Assert
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("No raw provider data", markup);
     }
 
@@ -217,7 +227,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         // Arrange
         var state = new InspectorState();
-        var related = new[]
+        InspectorLink[] related = new[]
         {
             new InspectorLink(Text: "Link1", Href: "/path1"),
             new InspectorLink(Text: "Link2", Href: "/path2")
@@ -227,16 +237,16 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Fields: new { },
             Related: related);
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act
-        var relatedTab = component.Find("[data-testid='inspector-tab-related']");
+        IElement relatedTab = component.Find("[data-testid='inspector-tab-related']");
         relatedTab.Click();
 
         // Assert
-        var links = component.FindAll("a");
+        IReadOnlyList<IElement> links = component.FindAll("a");
         Assert.Contains(links, a => a.TextContent == "Link1" && a.GetAttribute("href") == "/path1");
         Assert.Contains(links, a => a.TextContent == "Link2" && a.GetAttribute("href") == "/path2");
     }
@@ -246,7 +256,7 @@ public class InspectorPanel_Rendering_Tests : BunitContext
     {
         // Arrange
         var state = new InspectorState();
-        var provenance = new[]
+        KeyValuePair<string, string>[] provenance = new[]
         {
             new KeyValuePair<string, string>("Source", "API"),
             new KeyValuePair<string, string>("Timestamp", "2025-01-01")
@@ -256,16 +266,16 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Fields: new { },
             Provenance: provenance);
         state.Show(model);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Act
-        var provenanceTab = component.Find("[data-testid='inspector-tab-provenance']");
+        IElement provenanceTab = component.Find("[data-testid='inspector-tab-provenance']");
         provenanceTab.Click();
 
         // Assert
-        var markup = component.Markup;
+        string markup = component.Markup;
         Assert.Contains("Source", markup);
         Assert.Contains("API", markup);
         Assert.Contains("Timestamp", markup);
@@ -282,12 +292,12 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Fields: new { Value = "First" },
             RawJson: "{\"raw\":\"data1\"}");
         state.Show(model1);
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Verify raw tab can be clicked
-        var rawTab = component.Find("[data-testid='inspector-tab-raw']");
+        IElement rawTab = component.Find("[data-testid='inspector-tab-raw']");
         rawTab.Click();
         Assert.NotNull(component.Find("[data-testid='inspector-tab-raw'].active"));
 
@@ -296,13 +306,13 @@ public class InspectorPanel_Rendering_Tests : BunitContext
             Title: "Title2",
             Fields: new { Value = "Second" });
 
-        component.InvokeAsync(() =>
+        _ = component.InvokeAsync(() =>
         {
             state.Show(model2);
         });
 
         // Assert - fields tab should be active again
-        var fieldsTab = component.Find("[data-testid='inspector-tab-fields'].active");
+        IElement fieldsTab = component.Find("[data-testid='inspector-tab-fields'].active");
         Assert.NotNull(fieldsTab);
 
         // Verify new model's title is displayed
@@ -315,10 +325,10 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, Guid.NewGuid())));
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         Assert.Contains("Select a case in the left panel to pin evidence.", component.Markup);
@@ -331,12 +341,12 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, Guid.NewGuid())));
-        Services.AddScoped(_ => state);
-        RegisterCaseState(MakeCase());
+        _ = Services.AddScoped(_ => state);
+        _ = RegisterCaseState(MakeCase());
         await RegisterRoleAsync(OperatorRole.Review);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         Assert.NotEmpty(component.FindAll("[data-testid='pin-to-case']"));
@@ -348,12 +358,12 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, Guid.NewGuid())));
-        Services.AddScoped(_ => state);
-        RegisterCaseState(MakeCase());
+        _ = Services.AddScoped(_ => state);
+        _ = RegisterCaseState(MakeCase());
         await RegisterRoleAsync(OperatorRole.Review);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         var button = (AngleSharp.Html.Dom.IHtmlButtonElement)component.Find("[data-testid='pin-to-case']");
@@ -367,22 +377,22 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         var eventId = Guid.NewGuid();
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, eventId)));
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var testCase = MakeCase();
+        ForensicCase testCase = MakeCase();
         var repository = new Mock<ICaseRepository>();
-        repository
+        _ = repository
             .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, "Confirmed match", It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = eventId, Reason = "Confirmed match", AddedBy = "test" });
-        RegisterCaseState(testCase, repository);
+        _ = RegisterCaseState(testCase, repository);
         await RegisterRoleAsync(OperatorRole.Review);
 
-        var component = Render<InspectorPanel>();
-        var reasonBox = component.Find("[data-testid='pin-reason']");
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
+        IElement reasonBox = component.Find("[data-testid='pin-reason']");
         reasonBox.Input("Confirmed match");
 
         // Act
-        var button = component.Find("[data-testid='pin-to-case']");
+        IElement button = component.Find("[data-testid='pin-to-case']");
         button.Click();
 
         // Assert
@@ -397,17 +407,17 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         var eventId = Guid.NewGuid();
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, eventId)));
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var testCase = MakeCase();
+        ForensicCase testCase = MakeCase();
         var repository = new Mock<ICaseRepository>();
-        repository
+        _ = repository
             .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Item is already pinned to this case."));
-        RegisterCaseState(testCase, repository);
+        _ = RegisterCaseState(testCase, repository);
         await RegisterRoleAsync(OperatorRole.Review);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
         component.Find("[data-testid='pin-reason']").Input("Duplicate reason");
 
         // Act
@@ -423,11 +433,11 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, Guid.NewGuid())));
-        Services.AddScoped(_ => state);
-        RegisterCaseState(MakeCase(status: CaseStatus.Closed));
+        _ = Services.AddScoped(_ => state);
+        _ = RegisterCaseState(MakeCase(status: CaseStatus.Closed));
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         Assert.Empty(component.FindAll("[data-testid='pin-to-case']"));
@@ -439,12 +449,12 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "TestTitle", Pin: new PinTarget(CaseItemKind.Event, Guid.NewGuid())));
-        Services.AddScoped(_ => state);
-        RegisterCaseState(MakeCase());
+        _ = Services.AddScoped(_ => state);
+        _ = RegisterCaseState(MakeCase());
         await RegisterRoleAsync(OperatorRole.ReadOnly);
 
         // Act
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         // Assert
         Assert.Empty(component.FindAll("[data-testid='pin-to-case']"));
@@ -458,17 +468,17 @@ public class InspectorPanel_Rendering_Tests : BunitContext
         var eventId2 = Guid.NewGuid();
         var state = new InspectorState();
         state.Show(new InspectorModel(Title: "Title1", Pin: new PinTarget(CaseItemKind.Event, eventId1)));
-        Services.AddScoped(_ => state);
+        _ = Services.AddScoped(_ => state);
 
-        var testCase = MakeCase();
+        ForensicCase testCase = MakeCase();
         var repository = new Mock<ICaseRepository>();
-        repository
+        _ = repository
             .Setup(r => r.AddItemAsync(testCase.Id, CaseItemKind.Event, eventId1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CaseItem { Id = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = eventId1, Reason = "r", AddedBy = "test" });
-        RegisterCaseState(testCase, repository);
+        _ = RegisterCaseState(testCase, repository);
         await RegisterRoleAsync(OperatorRole.Review);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
         component.Find("[data-testid='pin-reason']").Input("Confirmed match");
         component.Find("[data-testid='pin-to-case']").Click();
         Assert.Contains($"Pinned to {testCase.CaseNumber}", component.Markup);
@@ -501,16 +511,18 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     public InspectorPanel_EvidenceActions_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddScoped(_ => new CaseState(new Mock<ICaseRepository>().Object, new ScopeState()));
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped(_ => _legalHoldRepository.Object);
-        Services.AddScoped(_ => _evidenceValidationService.Object);
-        Services.AddScoped(_ => _state);
+        _ = Services.AddLocalization();
+        _ = Services.AddScoped(_ => new CaseState(new Mock<ICaseRepository>().Object, new ScopeState()));
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(_ => _legalHoldRepository.Object);
+        _ = Services.AddScoped(_ => _evidenceValidationService.Object);
+        _ = Services.AddScoped(_ => _state);
     }
 
-    private void Show(EvidenceActionState? actions) =>
+    private void Show(EvidenceActionState? actions)
+    {
         _state.Show(new InspectorModel(Title: "TestTitle", Actions: actions));
+    }
 
     /// <summary>
     /// Signs in an operator for this test (later registration wins, same pattern as
@@ -521,7 +533,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         var operatorId = Guid.NewGuid();
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", operatorId, "Review");
-        Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => session);
         return operatorId;
     }
 
@@ -530,7 +542,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         Show(null);
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
         Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
@@ -545,7 +557,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         // means none of the actions apply, even though DeviceId is set.
         Show(new EvidenceActionState(MediaItemId: null, DeviceId: Guid.NewGuid(), ActiveHoldId: null));
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
         Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
@@ -558,7 +570,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: null));
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         Assert.NotEmpty(component.FindAll("[data-testid='place-legal-hold']"));
         Assert.Empty(component.FindAll("[data-testid='release-legal-hold']"));
@@ -571,7 +583,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: Guid.NewGuid()));
 
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         Assert.Empty(component.FindAll("[data-testid='place-legal-hold']"));
         Assert.NotEmpty(component.FindAll("[data-testid='release-legal-hold']"));
@@ -581,7 +593,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     public void PlaceHoldButton_Click_RevealsReasonAndConfirmDisabledWhenBlank()
     {
         Show(new EvidenceActionState(Guid.NewGuid(), Guid.NewGuid(), ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
 
@@ -594,14 +606,14 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        var operatorId = await SignInOperatorAsync();
+        Guid operatorId = await SignInOperatorAsync();
         var placedHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "Active investigation", CreatedBy = "op" };
-        _legalHoldRepository
+        _ = _legalHoldRepository
             .Setup(r => r.PlaceAsync(mediaItemId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(placedHold);
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
         component.Find("[data-testid='hold-reason']").Input("Active investigation");
@@ -623,7 +635,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
 
         // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
         component.Find("[data-testid='hold-reason']").Input("Active investigation");
@@ -641,13 +653,13 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
         var activeHoldId = Guid.NewGuid();
-        var operatorId = await SignInOperatorAsync();
-        _legalHoldRepository
+        Guid operatorId = await SignInOperatorAsync();
+        _ = _legalHoldRepository
             .Setup(r => r.ReleaseAsync(activeHoldId, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: activeHoldId));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
         component.Find("[data-testid='hold-reason']").Input("No longer needed");
@@ -670,7 +682,7 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
 
         // No SignInOperatorAsync() call: PairedSessionState.OperatorId stays null.
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: activeHoldId));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='release-legal-hold']").Click();
         component.Find("[data-testid='hold-reason']").Input("No longer needed");
@@ -687,16 +699,16 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        _evidenceValidationService
+        _ = _evidenceValidationService
             .Setup(s => s.VerifyLocalIntegrityAsync(deviceId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<MediaVerificationResult>
-            {
+            .ReturnsAsync(
+            [
                 new() { MediaItemId = mediaItemId, FileName = "a.jpg", Status = "verified" },
                 new() { MediaItemId = Guid.NewGuid(), FileName = "b.jpg", Status = "failed", FailureReason = "hash mismatch" }
-            });
+            ]);
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         await component.InvokeAsync(() => component.Find("[data-testid='verify-integrity']").Click());
 
@@ -709,11 +721,11 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         var mediaItemId = Guid.NewGuid();
         Show(new EvidenceActionState(mediaItemId, Guid.NewGuid(), ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='export-evidence']").Click();
 
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"/review/export?ids={mediaItemId}", nav.Uri);
     }
 
@@ -722,13 +734,13 @@ public class InspectorPanel_EvidenceActions_Tests : BunitContext
     {
         var mediaItemId = Guid.NewGuid();
         var deviceId = Guid.NewGuid();
-        await SignInOperatorAsync();
-        _legalHoldRepository
+        _ = await SignInOperatorAsync();
+        _ = _legalHoldRepository
             .Setup(r => r.PlaceAsync(mediaItemId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaItemId, Reason = "r", CreatedBy = "op" });
 
         Show(new EvidenceActionState(mediaItemId, deviceId, ActiveHoldId: null));
-        var component = Render<InspectorPanel>();
+        IRenderedComponent<InspectorPanel> component = Render<InspectorPanel>();
 
         component.Find("[data-testid='place-legal-hold']").Click();
         component.Find("[data-testid='hold-reason']").Input("reason");

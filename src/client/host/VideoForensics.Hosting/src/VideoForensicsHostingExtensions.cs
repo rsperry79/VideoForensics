@@ -6,8 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
-using System.Linq;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
@@ -16,7 +14,6 @@ using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Implementations;
-using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Telemetry.Configuration;
@@ -29,18 +26,17 @@ using VideoForensics.Data.Database.DependencyInjection;
 using VideoForensics.Data.Database.Repositories;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Hosting.Services;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Providers.Ring;
-using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
 using VideoForensics.Providers.Wyze.Services;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Shared DI registration for every VideoForensics host. Extracted from the console app's and
@@ -126,7 +122,7 @@ namespace VideoForensics.Hosting
 
         /// <summary>
         /// Registers <see cref="SnapshotCaptureService"/> and the Ring snapshot service it calls. On by default: SnapshotCapture:Enabled=false
-        /// registers nothing. Server tier only (VideoForensics.WebApp); never call this from a client host.
+        /// registers nothing. Server tier only (VideoForensics.Client.WebApp); never call this from a client host.
         /// </summary>
         public static IServiceCollection AddVideoForensicsSnapshotCapture(this IServiceCollection services, IConfiguration configuration)
         {
@@ -289,7 +285,7 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<IReferenceDataSource, RingReferenceDataSource>();
 
             // App-lock (plan §5.9) is device-local and only meaningful on MAUI - every host gets
-            // this no-op default; VideoForensics.MauiApp registers the real Preferences-backed
+            // this no-op default; VideoForensics.Client.MauiApp registers the real Preferences-backed
             // implementation afterward, which wins by DI's last-registration-wins rule.
             _ = services.AddSingleton<IAppLockPreferencesStore, NullAppLockPreferencesStore>();
 
@@ -301,7 +297,7 @@ namespace VideoForensics.Hosting
         /// per CLAUDE.md's "Adding a New Provider" convention) plus the download-orchestration and
         /// evidence-workflow services built on top of them. Today supports "Ring" (default) or "Uniview".
         /// Only ever called by a host that is allowed to talk to a provider directly (console, MCP, and
-        /// later VideoForensics.WebApp as "the server") - never by a thin client such as the planned MAUI app.
+        /// later VideoForensics.Client.WebApp as "the server") - never by a thin client such as the planned MAUI app.
         /// </summary>
         /// <param name="services">The service collection to register into.</param>
         /// <param name="activeProviderName">Name of the active provider ("Ring" or "Uniview"); defaults to "Ring" for backward compatibility.</param>
@@ -341,7 +337,7 @@ namespace VideoForensics.Hosting
             });
 
             // Sync console lines: written by the sync runner and first-sync coordinator, drained by the progress broadcaster.
-            _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Hosting.Services.SyncActivityLog>();
+            _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Client.Hosting.Services.SyncActivityLog>();
 
             // Provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
@@ -500,7 +496,7 @@ namespace VideoForensics.Hosting
             );
 
             // Server-tier release channel: reads/persists IForensicsConfiguration directly (client hosts get RemoteReleaseChannelService).
-            _ = services.AddScoped<IReleaseChannelService, VideoForensics.Hosting.Local.LocalReleaseChannelService>();
+            _ = services.AddScoped<IReleaseChannelService, VideoForensics.Client.Hosting.Local.LocalReleaseChannelService>();
 
             // Constructor-injected (all dependencies already registered above)
             _ = services.AddScoped<JammingToolsOrchestrator>();
@@ -545,8 +541,8 @@ namespace VideoForensics.Hosting
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("VideoForensics-UpdateCheck/1.0");
             });
             _ = services.AddSingleton<IUpdateInstaller, UpdateInstaller>();
-            _ = services.AddSingleton<Client.Common.Contracts.IUpdateCheckService, VideoForensics.Hosting.BackgroundServices.UpdateCheckService>();
-            _ = services.AddHostedService(sp => (VideoForensics.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
+            _ = services.AddSingleton<Client.Common.Contracts.IUpdateCheckService, VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService>();
+            _ = services.AddHostedService(sp => (VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
 
             // Media storage seam (plan §4/M5) - only LocalDiskMediaStorageProvider behind it today.
             _ = services.AddSingleton<IMediaStorageProvider, LocalDiskMediaStorageProvider>();
@@ -642,13 +638,13 @@ namespace VideoForensics.Hosting
                         providerName,
                         (provider, key) =>
                         {
-                            var logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
-                            var sessionProvider = provider.GetRequiredService<ISessionProvider>();
-                            var accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+                            ILogger<RingHealthSource> logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
+                            ISessionProvider sessionProvider = provider.GetRequiredService<ISessionProvider>();
+                            IProviderAccountRepository accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
                             // Must be resolved keyed by "Ring", not the unkeyed IProviderAuthService - this loop
                             // registers Ring/Uniview/Wyze side by side, and the unkeyed overload only ever
                             // returns whichever provider's factory happened to run last in the loop above.
-                            var authService = provider.GetRequiredKeyedService<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>(providerName);
+                            IProviderAuthService authService = provider.GetRequiredKeyedService<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>(providerName);
                             return new RingHealthSource(logger, sessionProvider, accountRepository, authService);
                         });
                 }
@@ -698,8 +694,8 @@ namespace VideoForensics.Hosting
             // Register default implementations for hosts where server location info is not tracked
             // (e.g., WebApp where the current process IS the server). MAUI and other clients
             // override these with their own implementations after this call.
-            services.TryAddSingleton<VideoForensics.Ui.Shared.Services.IServerLocationInformationService, VideoForensics.Ui.Shared.Services.DefaultServerLocationInformationService>();
-            services.TryAddSingleton<VideoForensics.Ui.Shared.Services.IServerConnectivityState, VideoForensics.Ui.Shared.Services.DefaultServerConnectivityState>();
+            services.TryAddSingleton<VideoForensics.Client.Ui.Shared.Services.IServerLocationInformationService, VideoForensics.Client.Ui.Shared.Services.DefaultServerLocationInformationService>();
+            services.TryAddSingleton<VideoForensics.Client.Ui.Shared.Services.IServerConnectivityState, VideoForensics.Client.Ui.Shared.Services.DefaultServerConnectivityState>();
 
             return services;
         }
@@ -756,7 +752,7 @@ namespace VideoForensics.Hosting
             _ = services.AddHttpClient<Contracts.ILockoutPolicyService, Remote.RemoteLockoutPolicyService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<Contracts.ITwoFactorPolicyService, Remote.RemoteTwoFactorPolicyService>(c => c.BaseAddress = serverAddress);
             // IAdminOperatorService/ISecurityEventsService live in VideoForensics.Client.Common.Contracts,
-            // not VideoForensics.Hosting.Contracts (the "Contracts." shorthand above) - unlike the lockout/
+            // not VideoForensics.Client.Hosting.Contracts (the "Contracts." shorthand above) - unlike the lockout/
             // two-factor policy services, these are also injected directly by Ui.Shared Razor pages (the
             // SuperAdmin operator picker, the Security Events page), and Ui.Shared cannot reference this
             // Hosting project (Hosting already depends on Ui.Shared for PairedSessionState) without a cycle.
@@ -779,11 +775,11 @@ namespace VideoForensics.Hosting
             _ = services.AddSingleton<RealtimeHub>(sp => new RealtimeHub(serverAddress, sp));
             _ = services.AddSingleton<IRealtimeHub>(sp => sp.GetRequiredService<RealtimeHub>());
             _ = services.AddSingleton<IRealtimeStore>(sp => new RealtimeStore(sp.GetRequiredService<IRealtimeHub>()));
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDownloadProgressSource, Remote.RemoteDownloadProgressSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 
             return services;
         }
@@ -804,7 +800,7 @@ namespace VideoForensics.Hosting
             // resolved directly from the root `services` provider passed in here (that throws
             // "Cannot resolve scoped service ... from root provider" under strict scope validation,
             // which ASP.NET Core enables by default in the Development environment - caught by
-            // actually running VideoForensics.WebApp, not by any build). Create an explicit scope.
+            // actually running VideoForensics.Client.WebApp, not by any build). Create an explicit scope.
             using IServiceScope scope = services.CreateScope();
             IServiceProvider sp = scope.ServiceProvider;
 

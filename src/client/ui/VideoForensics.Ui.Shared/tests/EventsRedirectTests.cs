@@ -1,11 +1,14 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using VideoForensics.Ui.Shared.Pages.Redirects;
 
+using VideoForensics.Client.Ui.Shared.Pages.Redirects;
+
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// The retired Events page's old route now redirects to Evidence's Grid view, preserving the
 /// global forensic scope's query keys (devices/from/to/q - see ScopeState) so a bookmarked or
@@ -16,10 +19,10 @@ public class EventsRedirect_Tests : BunitContext
     [Fact]
     public void Render_NoQueryString_RedirectsToEvidenceGridView()
     {
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/events", replace: true);
 
-        Render<EventsRedirect>();
+        _ = Render<EventsRedirect>();
 
         Assert.EndsWith("/media?view=grid", nav.Uri);
     }
@@ -27,12 +30,12 @@ public class EventsRedirect_Tests : BunitContext
     [Fact]
     public void Render_WithScopeQueryKeys_PreservesThemAndAddsGridView()
     {
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/events?devices=11111111-1111-1111-1111-111111111111&from=2026-01-01&to=2026-01-08&q=motion", replace: true);
 
-        Render<EventsRedirect>();
+        _ = Render<EventsRedirect>();
 
-        var uri = nav.Uri;
+        string uri = nav.Uri;
         Assert.Contains("devices=11111111-1111-1111-1111-111111111111", uri);
         Assert.Contains("from=2026-01-01", uri);
         Assert.Contains("to=2026-01-08", uri);
@@ -44,10 +47,10 @@ public class EventsRedirect_Tests : BunitContext
     [Fact]
     public void Render_WithUnrelatedQueryKeys_DropsThem()
     {
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/events?somethingElse=1&from=2026-01-01", replace: true);
 
-        Render<EventsRedirect>();
+        _ = Render<EventsRedirect>();
 
         Assert.DoesNotContain("somethingElse", nav.Uri);
         Assert.Contains("from=2026-01-01", nav.Uri);
@@ -56,10 +59,10 @@ public class EventsRedirect_Tests : BunitContext
     [Fact]
     public void Render_WithExistingViewParam_IsOverriddenToGrid()
     {
-        var nav = Services.GetRequiredService<NavigationManager>();
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/events?view=timeline", replace: true);
 
-        Render<EventsRedirect>();
+        _ = Render<EventsRedirect>();
 
         Assert.Contains("view=grid", nav.Uri);
         Assert.DoesNotContain("view=timeline", nav.Uri);

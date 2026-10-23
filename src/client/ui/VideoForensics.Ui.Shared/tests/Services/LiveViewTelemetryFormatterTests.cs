@@ -1,10 +1,10 @@
 using System.Globalization;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests.Services
+namespace VideoForensics.Client.Ui.Shared.Tests.Services
 {
     public class LiveViewTelemetryFormatterTests
     {

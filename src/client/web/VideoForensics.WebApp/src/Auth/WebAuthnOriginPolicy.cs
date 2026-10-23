@@ -1,10 +1,8 @@
 using Fido2NetLib;
 
-using Microsoft.Extensions.Options;
-
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.WebApp.Auth;
+namespace VideoForensics.Client.WebApp.Auth;
 
 internal static class WebAuthnOriginPolicy
 {

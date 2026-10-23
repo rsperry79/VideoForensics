@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>A pending pairing invitation, valid until first use or expiry.</summary>
     public record PairingTokenInfo(string Token, OperatorRole Role, DateTime ExpiresAtUtc, bool IsAnonymousInitiation = false);

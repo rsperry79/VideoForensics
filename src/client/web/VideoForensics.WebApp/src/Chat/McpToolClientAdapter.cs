@@ -1,6 +1,6 @@
 using ModelContextProtocol.Client;
 
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>
     /// Production adapter that wraps McpClient and delegates to its ListToolsAsync and CallToolAsync methods.

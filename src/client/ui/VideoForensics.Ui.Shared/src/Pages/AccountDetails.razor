@@ -1,6 +1,6 @@
 @page "/accounts/{Id:guid}"
 @inherits AccountTabPageBase
-@using VideoForensics.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services
 @inject IForensicsConfiguration ForensicsConfig
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject IMultiProviderAuthService MultiProviderAuthService
@@ -137,7 +137,7 @@ else
                 _showReauthentication = true;
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _credentialStatus = L["CredentialValidationFailed"];
             _showReauthentication = true;

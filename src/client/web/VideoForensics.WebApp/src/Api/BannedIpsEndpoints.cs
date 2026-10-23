@@ -1,15 +1,18 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+
 using System.Net;
 using System.Net.Sockets;
-using Microsoft.AspNetCore.Http.HttpResults;
-using VideoForensics.Core.Api.Contracts;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for active banned IP ranges (manual and system auto-bans): list and unban.
@@ -40,7 +43,7 @@ namespace VideoForensics.WebApp.Api
         {
             // RemoveAsync silently ignores an unknown id, so existence is checked against the same active
             // set the list shows. An expired ban is not in that set and answers 404.
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             BannedIpRange? ban = (await repository.GetActiveAsync(ct))
                 .FirstOrDefault(range => range.Id == id && (range.ExpiresAtUtc is null || range.ExpiresAtUtc > now));
             if (ban is null)
@@ -94,7 +97,7 @@ namespace VideoForensics.WebApp.Api
             IBannedIpRangeRepository repository,
             CancellationToken ct)
         {
-            var now = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
             IReadOnlyList<BannedIpRangeDto> bans = (await repository.GetActiveAsync(ct))
                 .Where(range => range.ExpiresAtUtc is null || range.ExpiresAtUtc > now)
                 .Select(range => range.ToDto())

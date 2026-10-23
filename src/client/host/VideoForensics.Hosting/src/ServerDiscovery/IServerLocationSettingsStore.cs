@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.ServerDiscovery
+namespace VideoForensics.Client.Hosting.ServerDiscovery
 {
     /// <summary>
     /// Manages persistent storage of server location settings, including cached Internet server URLs

@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Null implementation of IThreatIntelBlocklistService that always returns false (never blocks).

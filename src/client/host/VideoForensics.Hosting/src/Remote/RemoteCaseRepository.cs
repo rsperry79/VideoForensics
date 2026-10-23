@@ -5,7 +5,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="ICaseRepository"/> that calls the server's Minimal API
@@ -65,7 +65,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/{id}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);
@@ -77,7 +79,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/cases/by-number/{Uri.EscapeDataString(caseNumber)}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             ForensicCaseDto? dto = await response.Content.ReadFromJsonAsync<ForensicCaseDto>(JsonOptions, ct);

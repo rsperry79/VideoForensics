@@ -1,4 +1,6 @@
-namespace VideoForensics.WebApp.Api
+using VideoForensics.Client.WebApp.Services;
+
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Streams a backup-export archive to the browser as a file download, resolved via a short-lived,
@@ -14,7 +16,7 @@ namespace VideoForensics.WebApp.Api
             _ = app.MapGet("/api/export-download/{token:guid}", (
                 Guid token,
                 string? fileName,
-                VideoForensics.WebApp.Services.ExportDownloadTokenStore tokenStore) =>
+                ExportDownloadTokenStore tokenStore) =>
             {
                 string? filePath = tokenStore.TryConsume(token);
                 if (filePath is null || !File.Exists(filePath))

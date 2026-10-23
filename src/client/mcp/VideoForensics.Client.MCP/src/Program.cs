@@ -7,8 +7,8 @@ using ModelContextProtocol.Client;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.Client.MCP.ServerDiscovery;
+using VideoForensics.Client.Hosting.ServerDiscovery;
 
 namespace VideoForensics.Client.MCP
 {
@@ -18,8 +18,8 @@ namespace VideoForensics.Client.MCP
     /// as a "client host" that may not reference providers-common/providers-core/any concrete
     /// provider/data.*, or bootstrap AddVideoForensicsDataLayer()/AddVideoForensicsServerCore()), it
     /// is a pure stdio&lt;-&gt;HTTP proxy: every MCP request received over stdio from Claude Desktop is
-    /// forwarded to the server's own MCP tool implementations at VideoForensics.WebApp's /mcp endpoint
-    /// (see VideoForensics.WebApp.Mcp.Tools.*), and the response is relayed back unchanged.
+    /// forwarded to the server's own MCP tool implementations at VideoForensics.Client.WebApp's /mcp endpoint
+    /// (see VideoForensics.Client.WebApp.Mcp.Tools.*), and the response is relayed back unchanged.
     ///
     /// EXTERNAL DOCUMENTATION:
     /// - E2E testing guide: see _docs_external/E2E_TESTING_GUIDE.md
@@ -107,7 +107,7 @@ namespace VideoForensics.Client.MCP
 
             // Step 1: Request a device code
             var deviceCodeEndpoint = new Uri(serverUri, "/api/v1/pairing/device-code");
-            using HttpResponseMessage deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(""), ct);
+            using HttpResponseMessage deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(string.Empty), ct);
             _ = deviceCodeResponse.EnsureSuccessStatusCode();
 
             string deviceCodeContent = await deviceCodeResponse.Content.ReadAsStringAsync(ct);
@@ -139,7 +139,7 @@ namespace VideoForensics.Client.MCP
             {
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
 
-                using HttpResponseMessage pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(""), ct);
+                using HttpResponseMessage pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(string.Empty), ct);
                 string pollContent = await pollResponse.Content.ReadAsStringAsync(ct);
 
                 using var pollDoc = JsonDocument.Parse(pollContent);

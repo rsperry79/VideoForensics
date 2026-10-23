@@ -1,8 +1,11 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+
+using System;
+using System.Threading.Tasks;
+
 using VideoForensics.Data.Database.DbContext;
+
 using Xunit;
 
 namespace VideoForensics.Utils.Diagnostics.Tests

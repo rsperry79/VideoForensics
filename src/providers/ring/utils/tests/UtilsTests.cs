@@ -259,7 +259,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             {
                 EndpointRegistry.DingId = null;
                 EndpointDescriptor descriptor = EndpointRegistry.Find("ding-recording")!;
-                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+                _ = await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
             }
             finally
             {
@@ -287,7 +287,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             {
                 EndpointRegistry.DingId = null;
                 EndpointDescriptor descriptor = EndpointRegistry.Find("ding-share-play")!;
-                await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
+                _ = await Assert.ThrowsAsync<InvalidOperationException>(() => descriptor.Invoke(null!, EndpointTarget.None));
             }
             finally
             {
@@ -337,14 +337,14 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void Runner_ResolveSelection_ExplicitTriggerAlarm_IsSelected()
         {
             List<EndpointDescriptor> selected = Runner.ResolveSelection(["trigger-alarm"], destructive: true, noPhysical: false);
-            Assert.Single(selected);
+            _ = Assert.Single(selected);
             Assert.Equal("trigger-alarm", selected[0].Key);
         }
 
         [Fact]
         public void Runner_ResolveSelection_ExplicitTriggerAlarmWithoutDestructive_Throws()
         {
-            Assert.Throws<ArgumentException>(() => Runner.ResolveSelection(["trigger-alarm"], destructive: false, noPhysical: false));
+            _ = Assert.Throws<ArgumentException>(() => Runner.ResolveSelection(["trigger-alarm"], destructive: false, noPhysical: false));
         }
 
         [Fact]
@@ -371,7 +371,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void Runner_ResolveSelection_ExplicitIntercomUnlock_IsSelected()
         {
             List<EndpointDescriptor> selected = Runner.ResolveSelection(["intercom-unlock"], destructive: true, noPhysical: false);
-            Assert.Single(selected);
+            _ = Assert.Single(selected);
             Assert.Equal("intercom-unlock", selected[0].Key);
         }
 
@@ -381,7 +381,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             EndpointDescriptor? result = EndpointRegistry.Find("intercom-unlock");
             Assert.NotNull(result);
             // The id check runs before the session is touched, so a null session is safe here.
-            Assert.Throws<InvalidOperationException>(() => result.Invoke(null!, EndpointTarget.None).GetAwaiter().GetResult());
+            _ = Assert.Throws<InvalidOperationException>(() => result.Invoke(null!, EndpointTarget.None).GetAwaiter().GetResult());
         }
 
         [Fact]
@@ -926,8 +926,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void HttpCallRecord_HasDefaultEmptyStrings()
         {
             var record = new HttpCallRecord();
-            Assert.Equal("", record.Method);
-            Assert.Equal("", record.Url);
+            Assert.Equal(string.Empty, record.Method);
+            Assert.Equal(string.Empty, record.Url);
             Assert.Equal("test", record.Phase);
         }
 
@@ -964,9 +964,9 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         public void SchemaIssueRecord_HasDefaultEmptyStrings()
         {
             var issue = new SchemaIssueRecord();
-            Assert.Equal("", issue.Path);
-            Assert.Equal("", issue.IssueType);
-            Assert.Equal("", issue.Severity);
+            Assert.Equal(string.Empty, issue.Path);
+            Assert.Equal(string.Empty, issue.IssueType);
+            Assert.Equal(string.Empty, issue.Severity);
         }
     }
 
@@ -1717,8 +1717,8 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
     }
     public class CliHostOverrideTests
     {
-        public static TheoryData<string> Flags => new()
-        {
+        public static TheoryData<string> Flags =>
+        [
             "--clients-api-base-url",
             "--app-api-base-url",
             "--mode-api-base-url",
@@ -1730,23 +1730,26 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             "--integrations-api-base-url",
             "--recordings-api-base-url",
             "--app-snaps-api-base-url",
-        };
+        ];
 
-        private static Uri? Read(CliOptions o, string flag) => flag switch
+        private static Uri? Read(CliOptions o, string flag)
         {
-            "--clients-api-base-url" => o.ClientsApiBaseUrl,
-            "--app-api-base-url" => o.AppApiBaseUrl,
-            "--mode-api-base-url" => o.ModeApiBaseUrl,
-            "--monitoring-api-base-url" => o.MonitoringApiBaseUrl,
-            "--devices-api-base-url" => o.DevicesApiBaseUrl,
-            "--commands-api-base-url" => o.CommandsApiBaseUrl,
-            "--groups-api-base-url" => o.GroupsApiBaseUrl,
-            "--evm-api-base-url" => o.EvmApiBaseUrl,
-            "--integrations-api-base-url" => o.IntegrationsApiBaseUrl,
-            "--recordings-api-base-url" => o.RecordingsApiBaseUrl,
-            "--app-snaps-api-base-url" => o.AppSnapsApiBaseUrl,
-            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
-        };
+            return flag switch
+            {
+                "--clients-api-base-url" => o.ClientsApiBaseUrl,
+                "--app-api-base-url" => o.AppApiBaseUrl,
+                "--mode-api-base-url" => o.ModeApiBaseUrl,
+                "--monitoring-api-base-url" => o.MonitoringApiBaseUrl,
+                "--devices-api-base-url" => o.DevicesApiBaseUrl,
+                "--commands-api-base-url" => o.CommandsApiBaseUrl,
+                "--groups-api-base-url" => o.GroupsApiBaseUrl,
+                "--evm-api-base-url" => o.EvmApiBaseUrl,
+                "--integrations-api-base-url" => o.IntegrationsApiBaseUrl,
+                "--recordings-api-base-url" => o.RecordingsApiBaseUrl,
+                "--app-snaps-api-base-url" => o.AppSnapsApiBaseUrl,
+                _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+            };
+        }
 
         [Theory]
         [MemberData(nameof(Flags))]
@@ -1810,21 +1813,24 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Null(options!.ToEndpointOptions());
         }
 
-        private static Uri MappedUri(Ring.RingEndpointOptions e, string flag) => flag switch
+        private static Uri MappedUri(Ring.RingEndpointOptions e, string flag)
         {
-            "--clients-api-base-url" => e.ClientsApiBaseUrl,
-            "--app-api-base-url" => e.AppApiBaseUrl,
-            "--mode-api-base-url" => e.ModeApiBaseUrl,
-            "--monitoring-api-base-url" => e.MonitoringApiBaseUrl,
-            "--devices-api-base-url" => e.DevicesApiBaseUrl,
-            "--commands-api-base-url" => e.CommandsApiBaseUrl,
-            "--groups-api-base-url" => e.GroupsApiBaseUrl,
-            "--evm-api-base-url" => e.EvmApiBaseUrl,
-            "--integrations-api-base-url" => e.IntegrationsApiBaseUrl,
-            "--recordings-api-base-url" => e.RecordingsApiBaseUrl,
-            "--app-snaps-api-base-url" => e.AppSnapsApiBaseUrl,
-            _ => throw new ArgumentOutOfRangeException(nameof(flag)),
-        };
+            return flag switch
+            {
+                "--clients-api-base-url" => e.ClientsApiBaseUrl,
+                "--app-api-base-url" => e.AppApiBaseUrl,
+                "--mode-api-base-url" => e.ModeApiBaseUrl,
+                "--monitoring-api-base-url" => e.MonitoringApiBaseUrl,
+                "--devices-api-base-url" => e.DevicesApiBaseUrl,
+                "--commands-api-base-url" => e.CommandsApiBaseUrl,
+                "--groups-api-base-url" => e.GroupsApiBaseUrl,
+                "--evm-api-base-url" => e.EvmApiBaseUrl,
+                "--integrations-api-base-url" => e.IntegrationsApiBaseUrl,
+                "--recordings-api-base-url" => e.RecordingsApiBaseUrl,
+                "--app-snaps-api-base-url" => e.AppSnapsApiBaseUrl,
+                _ => throw new ArgumentOutOfRangeException(nameof(flag)),
+            };
+        }
 
         [Theory]
         [MemberData(nameof(Flags))]

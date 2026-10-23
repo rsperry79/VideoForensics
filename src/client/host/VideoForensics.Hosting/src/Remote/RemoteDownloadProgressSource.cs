@@ -1,10 +1,10 @@
 using System.Reactive.Linq;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// <see cref="IDownloadProgressSource"/> for remote (MAUI) hosts. It forwards the server's download progress
@@ -30,20 +30,15 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public IObservable<DownloadProgressSnapshot> Progress
-        {
-            get
-            {
-                // Read per subscription, not at construction, so each panel sees whether the store already
-                // held a value when it subscribed.
-                return Observable.Defer(() =>
+        public IObservable<DownloadProgressSnapshot> Progress =>
+            // Read per subscription, not at construction, so each panel sees whether the store already
+            // held a value when it subscribed.
+            Observable.Defer(() =>
                 {
                     bool replaysLatest = _store.LatestDownloadProgress is not null;
                     return _store.DownloadProgress.Select(
                         (dto, index) => ToSnapshot(dto, includeActivity: !(replaysLatest && index == 0)));
                 });
-            }
-        }
 
         private static DownloadProgressSnapshot ToSnapshot(DownloadProgressDto dto, bool includeActivity)
         {

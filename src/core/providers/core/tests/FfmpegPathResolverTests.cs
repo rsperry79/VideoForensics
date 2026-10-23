@@ -8,11 +8,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithConfiguredPath_ReturnsConfiguredPathUnchanged()
         {
             // Arrange
-            var configuredPath = "/custom/path/to/ffmpeg";
-            var executableBaseName = "ffmpeg";
+            string configuredPath = "/custom/path/to/ffmpeg";
+            string executableBaseName = "ffmpeg";
 
             // Act
-            var result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName);
+            string result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName);
 
             // Assert
             Assert.Equal(configuredPath, result);
@@ -22,10 +22,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithNullConfiguredPathAndNoBundledBinary_ReturnsBareExecutableName()
         {
             // Arrange
-            var executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
+            string executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
 
             // Act
-            var result = FfmpegPathResolver.Resolve(null, executableBaseName);
+            string result = FfmpegPathResolver.Resolve(null, executableBaseName);
 
             // Assert
             Assert.Equal(executableBaseName, result);
@@ -35,10 +35,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithEmptyConfiguredPath_ReturnsBareExecutableName()
         {
             // Arrange
-            var executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
+            string executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
 
             // Act
-            var result = FfmpegPathResolver.Resolve("", executableBaseName);
+            string result = FfmpegPathResolver.Resolve(string.Empty, executableBaseName);
 
             // Assert
             Assert.Equal(executableBaseName, result);
@@ -48,10 +48,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithWhitespaceConfiguredPath_ReturnsBareExecutableName()
         {
             // Arrange
-            var executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
+            string executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
 
             // Act
-            var result = FfmpegPathResolver.Resolve("   ", executableBaseName);
+            string result = FfmpegPathResolver.Resolve("   ", executableBaseName);
 
             // Assert
             Assert.Equal(executableBaseName, result);
@@ -61,11 +61,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithBundledBinaryPresent_ReturnsFullPathToBundledBinary()
         {
             // Arrange
-            var executableBaseName = "test-ffmpeg-resolver-temp";
-            var executableName = OperatingSystem.IsWindows()
+            string executableBaseName = "test-ffmpeg-resolver-temp";
+            string executableName = OperatingSystem.IsWindows()
                 ? executableBaseName + ".exe"
                 : executableBaseName;
-            var tempFilePath = Path.Combine(AppContext.BaseDirectory, executableName);
+            string tempFilePath = Path.Combine(AppContext.BaseDirectory, executableName);
 
             try
             {
@@ -74,7 +74,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 Assert.True(File.Exists(tempFilePath), "Temp file should exist before test");
 
                 // Act
-                var result = FfmpegPathResolver.Resolve(null, executableBaseName);
+                string result = FfmpegPathResolver.Resolve(null, executableBaseName);
 
                 // Assert
                 Assert.Equal(tempFilePath, result);
@@ -92,16 +92,16 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_ExplicitConfiguredPathAndBinDirectoryWithExe_ReturnsConfiguredPath()
         {
-            var executableBaseName = "test-bindir-explicit-wins";
-            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            string executableBaseName = "test-bindir-explicit-wins";
+            string dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
-            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            string exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
             File.WriteAllText(Path.Combine(dir, exeName), "dummy");
             try
             {
-                var configuredPath = "/explicitly/configured/ffmpeg";
+                string configuredPath = "/explicitly/configured/ffmpeg";
 
-                var result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName, dir);
+                string result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName, dir);
 
                 Assert.Equal(configuredPath, result);
             }
@@ -114,15 +114,15 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_BinDirectoryContainsExe_ReturnsFullPathInBinDirectory()
         {
-            var executableBaseName = "test-bindir-exe-present";
-            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            string executableBaseName = "test-bindir-exe-present";
+            string dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
-            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
-            var exePath = Path.Combine(dir, exeName);
+            string exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            string exePath = Path.Combine(dir, exeName);
             File.WriteAllText(exePath, "dummy");
             try
             {
-                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
+                string result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
 
                 Assert.Equal(exePath, result);
             }
@@ -135,12 +135,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_BinDirectoryWithoutExe_FallsThroughToBareName()
         {
-            var executableBaseName = "test-bindir-exe-missing";
-            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            string executableBaseName = "test-bindir-exe-missing";
+            string dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
             try
             {
-                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
+                string result = FfmpegPathResolver.Resolve(null, executableBaseName, dir);
 
                 Assert.Equal(executableBaseName, result);
             }
@@ -153,9 +153,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_TwoArgCall_BehavesAsBeforeWithNoBinDirectory()
         {
-            var executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
+            string executableBaseName = "nonexistent-ffmpeg-xyz-test-binary";
 
-            var result = FfmpegPathResolver.Resolve(null, executableBaseName);
+            string result = FfmpegPathResolver.Resolve(null, executableBaseName);
 
             Assert.Equal(executableBaseName, result);
         }
@@ -164,12 +164,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Resolve_WithBundledBinaryPresentAndConfiguredPath_ReturnsConfiguredPath()
         {
             // Arrange
-            var configuredPath = "/explicitly/configured/ffmpeg";
-            var executableBaseName = "test-ffmpeg-resolver-temp2";
-            var executableName = OperatingSystem.IsWindows()
+            string configuredPath = "/explicitly/configured/ffmpeg";
+            string executableBaseName = "test-ffmpeg-resolver-temp2";
+            string executableName = OperatingSystem.IsWindows()
                 ? executableBaseName + ".exe"
                 : executableBaseName;
-            var tempFilePath = Path.Combine(AppContext.BaseDirectory, executableName);
+            string tempFilePath = Path.Combine(AppContext.BaseDirectory, executableName);
 
             try
             {
@@ -178,7 +178,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 Assert.True(File.Exists(tempFilePath), "Temp file should exist before test");
 
                 // Act
-                var result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName);
+                string result = FfmpegPathResolver.Resolve(configuredPath, executableBaseName);
 
                 // Assert
                 // Configured path should take precedence over bundled binary
@@ -197,10 +197,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_NoConfigAndDiscoverFinds_ReturnsDiscoveredPath()
         {
-            var executableBaseName = "test-discover-finds-xyz";
-            var expected = "C:/found/" + executableBaseName;
+            string executableBaseName = "test-discover-finds-xyz";
+            string expected = "C:/found/" + executableBaseName;
 
-            var result = FfmpegPathResolver.Resolve(null, executableBaseName, null, name => "C:/found/" + name);
+            string result = FfmpegPathResolver.Resolve(null, executableBaseName, null, name => "C:/found/" + name);
 
             Assert.Equal(expected, result);
         }
@@ -208,9 +208,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_NoConfigAndDiscoverReturnsNull_ReturnsBareName()
         {
-            var executableBaseName = "test-discover-null-xyz";
+            string executableBaseName = "test-discover-null-xyz";
 
-            var result = FfmpegPathResolver.Resolve(null, executableBaseName, null, _ => null);
+            string result = FfmpegPathResolver.Resolve(null, executableBaseName, null, _ => null);
 
             Assert.Equal(executableBaseName, result);
         }
@@ -218,15 +218,15 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_BinDirectoryHasExe_DoesNotCallDiscover()
         {
-            var executableBaseName = "test-discover-bindir-wins";
-            var dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
+            string executableBaseName = "test-discover-bindir-wins";
+            string dir = Path.Combine(Path.GetTempPath(), "vf-resolver-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
-            var exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
-            var exePath = Path.Combine(dir, exeName);
+            string exeName = OperatingSystem.IsWindows() ? executableBaseName + ".exe" : executableBaseName;
+            string exePath = Path.Combine(dir, exeName);
             File.WriteAllText(exePath, "dummy");
             try
             {
-                var result = FfmpegPathResolver.Resolve(null, executableBaseName, dir, _ => throw new InvalidOperationException());
+                string result = FfmpegPathResolver.Resolve(null, executableBaseName, dir, _ => throw new InvalidOperationException());
 
                 Assert.Equal(exePath, result);
             }
@@ -239,9 +239,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Resolve_ConfiguredPath_DoesNotCallDiscover()
         {
-            var configuredPath = "/explicitly/configured/ffmpeg";
+            string configuredPath = "/explicitly/configured/ffmpeg";
 
-            var result = FfmpegPathResolver.Resolve(configuredPath, "test-discover-config-wins", null, _ => throw new InvalidOperationException());
+            string result = FfmpegPathResolver.Resolve(configuredPath, "test-discover-config-wins", null, _ => throw new InvalidOperationException());
 
             Assert.Equal(configuredPath, result);
         }

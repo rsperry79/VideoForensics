@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IMultiProviderAuthService"/> that lists providers via the server's

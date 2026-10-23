@@ -1,7 +1,8 @@
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
-using VideoForensics.Ui.Shared.Services.Scope;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class ForensicScope_Default_Tests
 {
@@ -64,7 +65,7 @@ public class ForensicScope_Default_Tests
     {
         // Act
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: DateTime.UtcNow,
             ToUtc: DateTime.UtcNow.AddDays(1),
             Search: null);
@@ -83,7 +84,7 @@ public class ScopeState_Set_Tests
         var state = new ScopeState();
         var device1 = Guid.NewGuid();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid> { device1 },
+            DeviceIds: [device1],
             FromUtc: new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
             ToUtc: new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc),
             Search: "test");
@@ -101,8 +102,8 @@ public class ScopeState_Set_Tests
     {
         // Arrange
         var state = new ScopeState();
-        var scope = new ForensicScope(new List<Guid>(), DateTime.UtcNow, DateTime.UtcNow.AddDays(1), null);
-        var changeRaised = false;
+        var scope = new ForensicScope([], DateTime.UtcNow, DateTime.UtcNow.AddDays(1), null);
+        bool changeRaised = false;
         state.OnChange += () => changeRaised = true;
 
         // Act
@@ -125,7 +126,7 @@ public class ScopeState_Set_Tests
             Search: "test");
         state.Set(scope);
 
-        var changeRaised = false;
+        bool changeRaised = false;
         state.OnChange += () => changeRaised = true;
 
         // Act
@@ -151,7 +152,7 @@ public class ScopeState_Set_Tests
         state.Set(scope);
 
         // Assert
-        Assert.Single(state.Current.DeviceIds);
+        _ = Assert.Single(state.Current.DeviceIds);
         Assert.Equal(device1, state.Current.DeviceIds[0]);
     }
 
@@ -163,7 +164,7 @@ public class ScopeState_Set_Tests
         var from = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: from,
             ToUtc: to,
             Search: null);
@@ -182,7 +183,7 @@ public class ScopeState_Set_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: DateTime.UtcNow,
             ToUtc: DateTime.UtcNow.AddDays(1),
             Search: "   ");
@@ -200,7 +201,7 @@ public class ScopeState_Set_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: DateTime.UtcNow,
             ToUtc: DateTime.UtcNow.AddDays(1),
             Search: "test search");
@@ -225,7 +226,7 @@ public class ScopeState_ToQueryString_Tests
         state.Set(ForensicScope.Default(fixedTime));
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Empty(query);
@@ -246,7 +247,7 @@ public class ScopeState_ToQueryString_Tests
         state.Set(scope);
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Contains($"devices={device1:D},{device2:D}", query);
@@ -258,14 +259,14 @@ public class ScopeState_ToQueryString_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
             ToUtc: new DateTime(2026, 9, 25, 0, 0, 0, DateTimeKind.Utc),
             Search: null);
         state.Set(scope);
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Contains("from=2026-09-01", query);
@@ -277,14 +278,14 @@ public class ScopeState_ToQueryString_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
             ToUtc: new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc),
             Search: null);
         state.Set(scope);
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Contains("to=2026-09-20", query);
@@ -296,14 +297,14 @@ public class ScopeState_ToQueryString_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: DateTime.UtcNow,
             ToUtc: DateTime.UtcNow.AddDays(1),
             Search: "test search");
         state.Set(scope);
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Contains("q=", query);
@@ -316,19 +317,19 @@ public class ScopeState_ToQueryString_Tests
         // Arrange
         var state = new ScopeState();
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid>(),
+            DeviceIds: [],
             FromUtc: DateTime.UtcNow,
             ToUtc: DateTime.UtcNow.AddDays(1),
             Search: "a b&c");
         state.Set(scope);
 
         // Act
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Assert
         Assert.Contains("q=", query);
         // Verify that when decoded, the search term is preserved correctly
-        var decoded = System.Web.HttpUtility.UrlDecode(query.Substring(query.IndexOf("q=") + 2));
+        string decoded = System.Web.HttpUtility.UrlDecode(query[(query.IndexOf("q=") + 2)..]);
         Assert.Equal("a b&c", decoded);
     }
 }
@@ -342,7 +343,7 @@ public class ScopeState_ApplyQueryString_Tests
         var state = new ScopeState();
 
         // Act
-        var changed = state.ApplyQueryString("");
+        bool changed = state.ApplyQueryString(string.Empty);
 
         // Assert
         Assert.False(changed);
@@ -356,7 +357,7 @@ public class ScopeState_ApplyQueryString_Tests
         var device1 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"?devices={device1:D}&from=2026-09-01&to=2026-09-10");
+        bool changed = state.ApplyQueryString($"?devices={device1:D}&from=2026-09-01&to=2026-09-10");
 
         // Assert
         Assert.True(changed);
@@ -373,7 +374,7 @@ public class ScopeState_ApplyQueryString_Tests
         var device1 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"devices={device1:D}&from=2026-09-01&to=2026-09-10");
+        bool changed = state.ApplyQueryString($"devices={device1:D}&from=2026-09-01&to=2026-09-10");
 
         // Assert
         Assert.True(changed);
@@ -389,7 +390,7 @@ public class ScopeState_ApplyQueryString_Tests
         var device2 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"devices={device1:D},{device2:D}");
+        bool changed = state.ApplyQueryString($"devices={device1:D},{device2:D}");
 
         // Assert
         Assert.True(changed);
@@ -406,11 +407,11 @@ public class ScopeState_ApplyQueryString_Tests
         var device1 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"devices=invalid,{device1:D}");
+        bool changed = state.ApplyQueryString($"devices=invalid,{device1:D}");
 
         // Assert
         Assert.True(changed);
-        Assert.Single(state.Current.DeviceIds);
+        _ = Assert.Single(state.Current.DeviceIds);
         Assert.Contains(device1, state.Current.DeviceIds);
     }
 
@@ -421,7 +422,7 @@ public class ScopeState_ApplyQueryString_Tests
         var state = new ScopeState();
 
         // Act
-        var changed = state.ApplyQueryString("from=not-a-date");
+        _ = state.ApplyQueryString("from=not-a-date");
 
         // Assert
         // Should fall back to default or ignore the key
@@ -435,7 +436,7 @@ public class ScopeState_ApplyQueryString_Tests
         var state = new ScopeState();
 
         // Act
-        var changed = state.ApplyQueryString("q=test%20search");
+        bool changed = state.ApplyQueryString("q=test%20search");
 
         // Assert
         Assert.True(changed);
@@ -450,7 +451,7 @@ public class ScopeState_ApplyQueryString_Tests
         var device1 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"devices={device1:D}&unknown=value");
+        bool changed = state.ApplyQueryString($"devices={device1:D}&unknown=value");
 
         // Assert
         Assert.True(changed);
@@ -470,12 +471,12 @@ public class ScopeState_ApplyQueryString_Tests
             ToUtc: new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc),
             Search: "test");
         state1.Set(originalScope);
-        var query = state1.ToQueryString();
+        string query = state1.ToQueryString();
 
         var state2 = new ScopeState();
 
         // Act
-        state2.ApplyQueryString(query);
+        _ = state2.ApplyQueryString(query);
 
         // Assert
         Assert.Equal(originalScope, state2.Current);
@@ -489,7 +490,7 @@ public class ScopeState_ApplyQueryString_Tests
         var device1 = Guid.NewGuid();
 
         // Act
-        var changed = state.ApplyQueryString($"devices={device1:D}");
+        bool changed = state.ApplyQueryString($"devices={device1:D}");
 
         // Assert
         Assert.True(changed);
@@ -504,15 +505,15 @@ public class ScopeState_ApplyQueryString_Tests
         var fromDate = new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc);
         var toDate = new DateTime(2026, 9, 25, 0, 0, 0, DateTimeKind.Utc);
         var scope = new ForensicScope(
-            DeviceIds: new List<Guid> { device1 },
+            DeviceIds: [device1],
             FromUtc: fromDate,
             ToUtc: toDate,
             Search: null);
         state.Set(scope);
-        var query = state.ToQueryString();
+        string query = state.ToQueryString();
 
         // Act
-        var changed = state.ApplyQueryString(query);
+        bool changed = state.ApplyQueryString(query);
 
         // Assert
         Assert.False(changed);

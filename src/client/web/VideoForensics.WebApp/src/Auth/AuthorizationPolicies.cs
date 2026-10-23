@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     /// <summary>Requires the caller's OperatorRole to be at least <see cref="MinimumRole"/> (roles are ordered, so this is a numeric >= comparison - plan §5.10).</summary>
     public class MinimumRoleRequirement : IAuthorizationRequirement

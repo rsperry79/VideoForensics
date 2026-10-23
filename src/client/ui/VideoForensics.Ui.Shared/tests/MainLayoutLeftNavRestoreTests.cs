@@ -1,12 +1,14 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
-using VideoForensics.Ui.Shared.Layout;
+
+using VideoForensics.Client.Ui.Shared.Layout;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Restoring the saved left-nav collapse state on a circuit reconnect. The Syncfusion splitter's JS
 /// widget may not be initialised yet, so the imperative CollapseAsync call can throw a JSException.
@@ -22,18 +24,18 @@ public class MainLayoutLeftNavRestoreTests : SimpleModeLayoutTestBase
 
     public MainLayoutLeftNavRestoreTests()
     {
-        Services.AddLogging();
+        _ = Services.AddLogging();
         // bUnit's sync interop path wraps setup exceptions in InvalidOperationException, so a real
         // JSException is raised by this decorator for the splitter collapse call instead.
         _runtime = new CollapseJSRuntime(JSInterop.JSRuntime);
-        Services.AddSingleton<IJSRuntime>(_runtime);
+        _ = Services.AddSingleton<IJSRuntime>(_runtime);
     }
 
     [Fact]
     public async Task MainLayout_LeftNavRestoreThrowsJSException_RenderDoesNotThrow()
     {
         // Arrange - the saved state says the left nav is collapsed, but the splitter JS is not ready
-        JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
         _runtime.FailCollapse = true;
 
         // Act
@@ -52,7 +54,7 @@ public class MainLayoutLeftNavRestoreTests : SimpleModeLayoutTestBase
     public async Task MainLayout_LeftNavRestoreFailedOnFirstRender_RetriedOnLaterRenderUntilSuccess()
     {
         // Arrange - the first collapse fails, later ones succeed
-        JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
+        _ = JSInterop.Setup<string?>("vfLayoutPrefs.get", LeftNavKey).SetResult("true");
         _runtime.FailCollapse = true;
 
         IRenderedComponent<MainLayout> component = Render<MainLayout>();

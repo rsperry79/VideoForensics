@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.SignalR;
 
 using Moq;
 
+using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Hubs;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class LiveViewTelemetryBroadcastServiceTests
     {
@@ -16,10 +16,10 @@ namespace VideoForensics.WebApp.Tests
         {
             var group = new Mock<IClientProxy>();
             var clients = new Mock<IHubClients>();
-            clients.Setup(c => c.Group(It.IsAny<string>())).Returns(group.Object);
+            _ = clients.Setup(c => c.Group(It.IsAny<string>())).Returns(group.Object);
 
             var hubContext = new Mock<IHubContext<LiveHub>>();
-            hubContext.Setup(h => h.Clients).Returns(clients.Object);
+            _ = hubContext.Setup(h => h.Clients).Returns(clients.Object);
 
             return (new LiveViewTelemetryBroadcastService(hubContext.Object), clients, group);
         }
@@ -42,7 +42,7 @@ namespace VideoForensics.WebApp.Tests
             (LiveViewTelemetryBroadcastService service, _, Mock<IClientProxy> group) = Build();
             var session = new LiveViewSession { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid() };
             LiveViewSessionDto? sent = null;
-            group.Setup(p => p.SendCoreAsync(LiveHubMethods.LiveViewSessionChanged, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            _ = group.Setup(p => p.SendCoreAsync(LiveHubMethods.LiveViewSessionChanged, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .Callback<string, object?[], CancellationToken>((_, args, _) => sent = args[0] as LiveViewSessionDto)
                 .Returns(Task.CompletedTask);
 
@@ -72,7 +72,7 @@ namespace VideoForensics.WebApp.Tests
             var sample = new LiveViewTelemetrySample { Id = Guid.NewGuid(), SessionId = Guid.NewGuid(), CapturedAtUtc = DateTime.UtcNow, FractionLost = 12 };
             object? sentPayload = null;
             string? sentMethod = null;
-            group.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            _ = group.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .Callback<string, object?[], CancellationToken>((method, args, _) =>
                 {
                     sentMethod = method;

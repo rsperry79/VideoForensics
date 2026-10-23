@@ -17,10 +17,10 @@ namespace VideoForensics.Core.Logging.Services
 
         private readonly int _capacity;
         private readonly List<LogRecord> _entries;
-        private readonly object _syncRoot = new();
+        private readonly Lock _syncRoot = new();
         private long _nextSequence = 1;
         private bool _disposed;
-        private Subscriber[] _subscribers = Array.Empty<Subscriber>();
+        private Subscriber[] _subscribers = [];
 
         /// <summary>
         /// Gets the highest sequence number currently in the buffer.
@@ -47,7 +47,9 @@ namespace VideoForensics.Core.Logging.Services
         public InMemoryLogBuffer(int capacity = DefaultCapacity)
         {
             if (capacity <= 0)
+            {
                 throw new ArgumentException("Capacity must be greater than 0", nameof(capacity));
+            }
 
             _capacity = capacity;
             _entries = new List<LogRecord>(capacity);
@@ -62,12 +64,14 @@ namespace VideoForensics.Core.Logging.Services
         public void Append(ref LogRecord entry)
         {
             if (_disposed)
+            {
                 return;
+            }
 
             lock (_syncRoot)
             {
                 // Assign the next sequence number
-                var sequence = _nextSequence++;
+                long sequence = _nextSequence++;
 
                 // Create the final entry with the assigned sequence
                 var finalEntry = new LogRecord(
@@ -89,7 +93,7 @@ namespace VideoForensics.Core.Logging.Services
 
                 // TryWrite on a DropOldest channel never blocks, so publishing under the lock keeps live
                 // delivery in sequence order without letting a slow reader stall writers.
-                foreach (var subscriber in _subscribers)
+                foreach (Subscriber subscriber in _subscribers)
                 {
                     subscriber.TryPublish(finalEntry);
                 }
@@ -116,26 +120,23 @@ namespace VideoForensics.Core.Logging.Services
         {
             var filtered = new List<LogRecord>();
 
-            foreach (var entry in _entries)
+            foreach (LogRecord entry in _entries)
             {
                 if (Matches(entry, minLevel, search, afterSequence))
+                {
                     filtered.Add(entry);
+                }
             }
 
             // If limit is exceeded and afterSequence is null, return the newest (highest sequence) entries
             if (filtered.Count > limit && afterSequence == null)
             {
-                var startIndex = filtered.Count - limit;
+                int startIndex = filtered.Count - limit;
                 return filtered.GetRange(startIndex, limit);
             }
 
             // Otherwise, respect the limit from the start
-            if (filtered.Count > limit)
-            {
-                return filtered.GetRange(0, limit);
-            }
-
-            return filtered;
+            return filtered.Count > limit ? filtered.GetRange(0, limit) : filtered;
         }
 
         /// <summary>
@@ -161,8 +162,8 @@ namespace VideoForensics.Core.Logging.Services
         {
             lock (_syncRoot)
             {
-                var backlog = SnapshotLocked(minLevel, search, afterSequence, afterSequence.HasValue ? int.MaxValue : backlogLimit);
-                var live = RegisterLocked(minLevel, search, _nextSequence - 1, ct);
+                List<LogRecord> backlog = SnapshotLocked(minLevel, search, afterSequence, afterSequence.HasValue ? int.MaxValue : backlogLimit);
+                IAsyncEnumerable<LogRecord> live = RegisterLocked(minLevel, search, _nextSequence - 1, ct);
                 return (backlog, live);
             }
         }
@@ -176,14 +177,16 @@ namespace VideoForensics.Core.Logging.Services
             lock (_syncRoot)
             {
                 if (_disposed)
+                {
                     return;
+                }
 
                 _disposed = true;
                 toComplete = _subscribers;
-                _subscribers = Array.Empty<Subscriber>();
+                _subscribers = [];
             }
 
-            foreach (var subscriber in toComplete)
+            foreach (Subscriber subscriber in toComplete)
             {
                 subscriber.Complete();
             }
@@ -213,7 +216,7 @@ namespace VideoForensics.Core.Logging.Services
             subscriber.Complete();
         }
 
-        private sealed class Subscriber
+        private sealed class Subscriber(string? minLevel, string? search, long? afterSequence)
         {
             private const int ChannelCapacity = 1000;
 
@@ -226,16 +229,9 @@ namespace VideoForensics.Core.Logging.Services
                     AllowSynchronousContinuations = false
                 });
 
-            private readonly string? _minLevel;
-            private readonly string? _search;
-            private readonly long? _afterSequence;
-
-            public Subscriber(string? minLevel, string? search, long? afterSequence)
-            {
-                _minLevel = minLevel;
-                _search = search;
-                _afterSequence = afterSequence;
-            }
+            private readonly string? _minLevel = minLevel;
+            private readonly string? _search = search;
+            private readonly long? _afterSequence = afterSequence;
 
             public CancellationTokenRegistration CancellationRegistration { get; set; }
 
@@ -259,7 +255,7 @@ namespace VideoForensics.Core.Logging.Services
             {
                 try
                 {
-                    await foreach (var record in _channel.Reader.ReadAllAsync(ct))
+                    await foreach (LogRecord record in _channel.Reader.ReadAllAsync(ct))
                     {
                         yield return record;
                     }
@@ -273,19 +269,13 @@ namespace VideoForensics.Core.Logging.Services
 
         private static bool Matches(LogRecord entry, string? minLevel, string? search, long? afterSequence)
         {
-            if (afterSequence.HasValue && entry.Sequence <= afterSequence.Value)
-                return false;
-
-            if (minLevel != null && !PassesMinLevelFilter(entry.Level, minLevel))
-                return false;
-
-            return search == null || PassesSearchFilter(entry, search);
+            return (!afterSequence.HasValue || entry.Sequence > afterSequence.Value) && (minLevel == null || PassesMinLevelFilter(entry.Level, minLevel)) && (search == null || PassesSearchFilter(entry, search));
         }
 
         private static bool PassesMinLevelFilter(string entryLevel, string minLevel)
         {
-            var entryPriority = GetLogLevelPriority(entryLevel);
-            var minPriority = GetLogLevelPriority(minLevel);
+            int entryPriority = GetLogLevelPriority(entryLevel);
+            int minPriority = GetLogLevelPriority(minLevel);
             return entryPriority >= minPriority;
         }
 
@@ -305,7 +295,7 @@ namespace VideoForensics.Core.Logging.Services
 
         private static bool PassesSearchFilter(LogRecord entry, string search)
         {
-            var searchLower = search.ToLower();
+            string searchLower = search.ToLower();
             return entry.Message.Contains(searchLower, StringComparison.OrdinalIgnoreCase)
                 || entry.Category.Contains(searchLower, StringComparison.OrdinalIgnoreCase)
                 || (!string.IsNullOrEmpty(entry.Exception) && entry.Exception.Contains(searchLower, StringComparison.OrdinalIgnoreCase));

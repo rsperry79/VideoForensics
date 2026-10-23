@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Obtains the step-up token a destructive or system change needs. A passkey session confirms with a passkey
@@ -61,12 +61,9 @@ namespace VideoForensics.Ui.Shared.Services
             }
 
             string? password = await _passwordPrompt();
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("Password confirmation was cancelled.");
-            }
-
-            return await _webAuthn.StepUpWithPasswordAsync(token, password);
+            return string.IsNullOrEmpty(password)
+                ? throw new InvalidOperationException("Password confirmation was cancelled.")
+                : await _webAuthn.StepUpWithPasswordAsync(token, password);
         }
     }
 }

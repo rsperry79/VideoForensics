@@ -1,8 +1,8 @@
-using VideoForensics.WebApp.Chat;
+using VideoForensics.Client.WebApp.Chat;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// Opt-in live test against the real Anthropic API; skipped unless ANTHROPIC_API_KEY is set.
@@ -59,14 +59,14 @@ namespace VideoForensics.WebApp.Tests
             var provider = new AnthropicChatProvider(new AnthropicChatOptions { ApiKey = key!, Model = model }, http);
 
             var events = new List<LlmStreamEvent>();
-            await foreach (var e in provider.StreamCompleteAsync(
+            await foreach (LlmStreamEvent e in provider.StreamCompleteAsync(
                 [new LlmMessage("user", "Reply with exactly the word: pong")], [], TestContext.Current.CancellationToken))
             {
                 events.Add(e);
             }
 
             Assert.Contains(events, e => e is LlmTextDelta);
-            var completed = Assert.IsType<LlmStepCompleted>(events[^1]);
+            LlmStepCompleted completed = Assert.IsType<LlmStepCompleted>(events[^1]);
             Assert.False(string.IsNullOrWhiteSpace(completed.Result.TextReply));
         }
     }

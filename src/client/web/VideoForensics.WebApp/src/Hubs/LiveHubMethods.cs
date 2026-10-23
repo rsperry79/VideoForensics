@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Wire method names pushed from <see cref="LiveHub"/> to connected clients. Each name is defined
@@ -29,6 +29,9 @@ namespace VideoForensics.WebApp.Hubs
         /// <c>SubscribeLiveView</c> for this session are members, so session pushes never go to All.
         /// </summary>
         /// <param name="sessionId">The live-view session the group represents.</param>
-        public static string LiveViewGroup(Guid sessionId) => $"live-view:{sessionId:D}";
+        public static string LiveViewGroup(Guid sessionId)
+        {
+            return $"live-view:{sessionId:D}";
+        }
     }
 }

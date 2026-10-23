@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "ProviderAccountLocations",
                 columns: table => new
                 {
@@ -20,14 +19,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ProviderAccountLocations", x => new { x.ProviderAccountId, x.LocationId });
-                    table.ForeignKey(
+                    _ = table.PrimaryKey("PK_ProviderAccountLocations", x => new { x.ProviderAccountId, x.LocationId });
+                    _ = table.ForeignKey(
                         name: "FK_ProviderAccountLocations_Locations_LocationId",
                         column: x => x.LocationId,
                         principalTable: "Locations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
+                    _ = table.ForeignKey(
                         name: "FK_ProviderAccountLocations_ProviderAccounts_ProviderAccountId",
                         column: x => x.ProviderAccountId,
                         principalTable: "ProviderAccounts",
@@ -37,10 +36,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
 
             // Locations were not account-scoped before, so link every existing location to every
             // existing account to preserve current pull behavior.
-            migrationBuilder.Sql(
+            _ = migrationBuilder.Sql(
                 "INSERT INTO ProviderAccountLocations (ProviderAccountId, LocationId) SELECT a.Id, l.Id FROM ProviderAccounts a CROSS JOIN Locations l;");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_ProviderAccountLocations_LocationId",
                 table: "ProviderAccountLocations",
                 column: "LocationId");
@@ -49,7 +48,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "ProviderAccountLocations");
         }
     }

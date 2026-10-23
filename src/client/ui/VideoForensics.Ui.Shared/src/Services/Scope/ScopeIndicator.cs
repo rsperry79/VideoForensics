@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Client.Ui.Shared.Services.Scope;
 
 /// <summary>
 /// Pure helper to determine if a forensic scope differs from the default.

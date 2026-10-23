@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
-using VideoForensics.Hosting.Local;
+using VideoForensics.Client.Hosting.Local;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class LocalLogViewerServiceTests
     {
@@ -14,9 +14,14 @@ namespace VideoForensics.Hosting.Tests
         private static readonly DateTimeOffset Timestamp = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
         private static LogRecord Rec(string level, string category, string message, string? exception = null)
-            => new(0, Timestamp, level, category, message, exception);
+        {
+            return new(0, Timestamp, level, category, message, exception);
+        }
 
-        private static void Append(InMemoryLogBuffer buffer, LogRecord record) => buffer.Append(ref record);
+        private static void Append(InMemoryLogBuffer buffer, LogRecord record)
+        {
+            buffer.Append(ref record);
+        }
 
         [Fact]
         public async Task GetPageAsync_FiltersByMinLevelAndSearch_ReturnsMatchingEntries()
@@ -58,6 +63,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 Append(buffer, Rec("Information", "Cat", $"msg {i}"));
             }
+
             var service = new LocalLogViewerService(buffer);
 
             LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), CancellationToken.None);
@@ -75,6 +81,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 Append(buffer, Rec("Information", "Cat", $"msg {i}"));
             }
+
             var service = new LocalLogViewerService(buffer);
 
             LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 2), CancellationToken.None);
@@ -91,6 +98,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 Append(buffer, Rec("Information", "Cat", $"msg {i}"));
             }
+
             var service = new LocalLogViewerService(buffer);
 
             LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 0), CancellationToken.None);
@@ -107,6 +115,7 @@ namespace VideoForensics.Hosting.Tests
             {
                 Append(buffer, Rec("Information", "Cat", $"msg {i}"));
             }
+
             var service = new LocalLogViewerService(buffer);
 
             LogPage page = await service.GetPageAsync(new LogQuery(null, null, null, Limit: 5000), CancellationToken.None);
@@ -157,15 +166,16 @@ namespace VideoForensics.Hosting.Tests
 
             var received = new List<LogEntry>();
             var backlogSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            Task consume = Task.Run(async () =>
+            var consume = Task.Run(async () =>
             {
                 await foreach (LogEntry entry in service.StreamAsync(EmptyQuery, cts.Token))
                 {
                     received.Add(entry);
                     if (received.Count == 1)
                     {
-                        backlogSeen.TrySetResult();
+                        _ = backlogSeen.TrySetResult();
                     }
+
                     if (received.Count == 2)
                     {
                         break;
@@ -193,7 +203,8 @@ namespace VideoForensics.Hosting.Tests
             // Matches the Remote implementation: a cancelled token surfaces as OperationCanceledException, nothing else.
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             {
-                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, cts.Token)) { }
+                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, cts.Token))
+                { }
             });
         }
 
@@ -206,7 +217,7 @@ namespace VideoForensics.Hosting.Tests
             using ServiceProvider provider = services.BuildServiceProvider();
 
             ILogViewerService resolved = provider.GetRequiredService<ILogViewerService>();
-            Assert.IsType<LocalLogViewerService>(resolved);
+            _ = Assert.IsType<LocalLogViewerService>(resolved);
         }
     }
 }

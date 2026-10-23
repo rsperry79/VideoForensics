@@ -24,7 +24,7 @@ namespace VideoForensics.Core.Telemetry.Tests
             ITelemetryProvider telemetryProvider = provider.GetRequiredService<ITelemetryProvider>();
 
             // Assert
-            Assert.IsType<NullTelemetryProvider>(telemetryProvider);
+            _ = Assert.IsType<NullTelemetryProvider>(telemetryProvider);
         }
 
         [Fact]
@@ -40,7 +40,7 @@ namespace VideoForensics.Core.Telemetry.Tests
             ITelemetryProvider telemetryProvider = provider.GetRequiredService<ITelemetryProvider>();
 
             // Assert
-            Assert.IsType<OpenTelemetryProvider>(telemetryProvider);
+            _ = Assert.IsType<OpenTelemetryProvider>(telemetryProvider);
         }
 
         [Fact]

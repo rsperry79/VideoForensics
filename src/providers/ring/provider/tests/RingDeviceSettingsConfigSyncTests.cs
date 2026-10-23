@@ -1,8 +1,9 @@
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using System.Collections.Concurrent;
 using System.Net;
-
-using Microsoft.Extensions.Logging;
-using Moq;
 
 using VideoForensics.Core.Providers.Common;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -53,8 +54,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceSettingsConfigSync_ConfigDue_WritesSettingsAndZonesOncePerDevice()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger());
 
@@ -70,7 +71,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.All(frontDoor.Settings.Zones, z => Assert.Equal("motion", z.Source));
 
             DeviceWrite backDoor = Assert.Single(writes, w => w.DeviceId == BackDoorGuid);
-            Assert.Single(backDoor.Settings!.Zones!);
+            _ = Assert.Single(backDoor.Settings!.Zones!);
 
             DeviceWrite garageCam = Assert.Single(writes, w => w.DeviceId == GarageCamGuid);
             Assert.NotNull(garageCam.Settings);
@@ -80,8 +81,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceSettingsConfigSync_ConfigWithinInterval_DoesNotCallGetDeviceSettings()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
             _ = await SyncAsync(handler, data, state, clock, new RecordingLogger());
@@ -99,8 +100,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceSettingsConfigSync_OneDeviceFails_OtherDevicesStillWritten()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             handler.Routes[BackDoorSettingsUrl] = (HttpStatusCode.InternalServerError, "{}");
             var logger = new RecordingLogger();
 
@@ -110,19 +111,19 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Contains(writes, w => w.DeviceId == GarageCamGuid);
             Assert.DoesNotContain(writes, w => w.DeviceId == BackDoorGuid);
 
-            (LogLevel Level, string Message) warning = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Debug, warning.Level);
-            Assert.DoesNotContain("api.ring.com", warning.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("devices/1002", warning.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(AccessToken, warning.Message, StringComparison.Ordinal);
+            (LogLevel Level, string Message) = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Debug, Level);
+            Assert.DoesNotContain("api.ring.com", Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("devices/1002", Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(AccessToken, Message, StringComparison.Ordinal);
         }
 
         [Fact]
         public async Task RingDeviceSettingsConfigSync_DeviceSettingsNotFound_LogsInformationAndSkipsDevice()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             handler.Routes[GarageCamSettingsUrl] = (HttpStatusCode.NotFound, "{\"error\":\"Not found\"}");
             var logger = new RecordingLogger();
 
@@ -131,16 +132,16 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.DoesNotContain(writes, w => w.DeviceId == GarageCamGuid);
             Assert.Contains(writes, w => w.DeviceId == FrontDoorGuid);
             Assert.Contains(writes, w => w.DeviceId == BackDoorGuid);
-            (LogLevel Level, string Message) info = Assert.Single(logger.Entries, e => e.Message.Contains("Garage Cam", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Debug, info.Level);
+            (LogLevel Level, string Message) = Assert.Single(logger.Entries, e => e.Message.Contains("Garage Cam", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Debug, Level);
         }
 
         [Fact]
         public async Task RingDeviceSettingsConfigSync_ChimePresent_ChimeSettingsNotRequested()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             handler.Routes[ChimeSettingsUrl] = (HttpStatusCode.OK, "{}");
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger());
@@ -152,11 +153,11 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceSettingsConfigSync_DeviceMissingFromDatabase_SkipsWriteWithoutFailing()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             var logger = new RecordingLogger();
             var tally = new SyncRunTally();
-            var devices = CreateDeviceRepository(includeBackDoor: false);
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false);
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), logger, tally, devices);
 
@@ -171,8 +172,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceSettingsConfigSync_ConfigRun_TallyCountsStoredDevices()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             var tally = new SyncRunTally();
 
             _ = await SyncAsync(handler, data, new InMemorySyncState(), new ManualTimeProvider(StartUtc), new RecordingLogger(), tally);
@@ -187,11 +188,11 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDeviceDiscoveryService_ConfigSync_SkippedDeviceSettings_DoesNotMarkConfigComplete()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             var state = new InMemorySyncState();
             var logger = new RecordingLogger();
-            var devices = CreateDeviceRepository(includeBackDoor: false);
+            Mock<IDeviceRepository> devices = CreateDeviceRepository(includeBackDoor: false);
 
             _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), logger, devices: devices);
 
@@ -199,16 +200,16 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.DoesNotContain(writes, w => w.DeviceId == BackDoorGuid);
             Assert.Equal(0, state.MarkCount);
             Assert.Null(state.LastConfigSyncUtc);
-            (LogLevel Level, string Message) skipped = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Debug, skipped.Level);
+            (LogLevel Level, string Message) = Assert.Single(logger.Entries, e => e.Message.Contains("Back Door", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Debug, Level);
         }
 
         [Fact]
         public async Task RingDeviceDiscoveryService_ConfigSync_AllDeviceSettingsStored_MarksConfigComplete()
         {
             var writes = new ConcurrentBag<DeviceWrite>();
-            var data = CreateDataClient(writes);
-            var handler = CreateHandler();
+            Mock<IVideoForensicsDataClient> data = CreateDataClient(writes);
+            StubSessionHandler handler = CreateHandler();
             var state = new InMemorySyncState();
 
             _ = await SyncAsync(handler, data, state, new ManualTimeProvider(StartUtc), new RecordingLogger());
@@ -303,8 +304,10 @@ namespace VideoForensics.Providers.Ring.Tests
             return handler;
         }
 
-        private static string ReadFixture(string name) =>
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+        private static string ReadFixture(string name)
+        {
+            return File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+        }
 
         private sealed record DeviceWrite(Guid DeviceId, DeviceSettingsChildren? Settings);
 
@@ -317,8 +320,10 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public int MarkCount { get; private set; }
 
-            public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct) =>
-                Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
+            public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct)
+            {
+                return Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
+            }
 
             public Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)
             {
@@ -339,11 +344,20 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             private DateTimeOffset _now;
 
-            public ManualTimeProvider(DateTime startUtc) => _now = new DateTimeOffset(startUtc, TimeSpan.Zero);
+            public ManualTimeProvider(DateTime startUtc)
+            {
+                _now = new DateTimeOffset(startUtc, TimeSpan.Zero);
+            }
 
-            public void Advance(TimeSpan by) => _now = _now.Add(by);
+            public void Advance(TimeSpan by)
+            {
+                _now = _now.Add(by);
+            }
 
-            public override DateTimeOffset GetUtcNow() => _now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return _now;
+            }
         }
 
         /// <summary>Answers OAuth and the configured URLs exactly; anything else is a 404. Never reaches the network.</summary>
@@ -352,11 +366,17 @@ namespace VideoForensics.Providers.Ring.Tests
             private readonly string _accessToken;
             private readonly List<string> _requestedUrls = [];
 
-            public StubSessionHandler(string accessToken) => _accessToken = accessToken;
+            public StubSessionHandler(string accessToken)
+            {
+                _accessToken = accessToken;
+            }
 
             public Dictionary<string, (HttpStatusCode Status, string Body)> Routes { get; } = [];
 
-            public int CountRequests(string url) => _requestedUrls.Count(u => u == url);
+            public int CountRequests(string url)
+            {
+                return _requestedUrls.Count(u => u == url);
+            }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -384,12 +404,20 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public IReadOnlyList<(LogLevel Level, string Message)> Entries => _entries.ToArray();
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
                 _entries.Enqueue((logLevel, formatter(state, exception)));
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -55,8 +56,10 @@ namespace VideoForensics.Data.Core.Services
         /// File name of a clip's thumbnail: the stem plus ".thumb.png". It is stored on the row relative to the clip's
         /// folder, so the folder comes from the clip and the archive can move without rewriting rows.
         /// </summary>
-        public static string ThumbnailFileNameFor(string mediaFilePath) =>
-            Path.GetFileNameWithoutExtension(mediaFilePath) + ".thumb.png";
+        public static string ThumbnailFileNameFor(string mediaFilePath)
+        {
+            return Path.GetFileNameWithoutExtension(mediaFilePath) + ".thumb.png";
+        }
 
         /// <summary>Full path of the thumbnail beside the clip.</summary>
         public static string ThumbnailPathFor(string mediaFilePath)
@@ -102,12 +105,7 @@ namespace VideoForensics.Data.Core.Services
         /// <inheritdoc />
         public async Task<string?> ResolveThumbnailPathAsync(MediaItem media, CancellationToken ct)
         {
-            if (!IsVideo(media.MediaFormat))
-            {
-                return media.FilePath;
-            }
-
-            return await EnsureThumbnailAsync(media, ct) ? ThumbnailPathFor(media.FilePath) : null;
+            return !IsVideo(media.MediaFormat) ? media.FilePath : await EnsureThumbnailAsync(media, ct) ? ThumbnailPathFor(media.FilePath) : null;
         }
 
         /// <inheritdoc />
@@ -190,9 +188,11 @@ namespace VideoForensics.Data.Core.Services
         }
 
         /// <summary>Same rule the UI uses to pick a thumbnail source: the format name contains "video" or "mp4".</summary>
-        internal static bool IsVideo(string? format) =>
-            !string.IsNullOrEmpty(format) && (
+        internal static bool IsVideo(string? format)
+        {
+            return !string.IsNullOrEmpty(format) && (
                 format.Contains("mp4", StringComparison.OrdinalIgnoreCase) ||
                 format.Contains("video", StringComparison.OrdinalIgnoreCase));
+        }
     }
 }

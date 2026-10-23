@@ -1,9 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Utils.Diagnostics.Contracts;
 
@@ -23,8 +25,8 @@ namespace VideoForensics.Utils.Diagnostics
 
         public async Task<IReadOnlyList<DuplicateGroup>> FindDuplicateDevicesAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var result = await db.Devices
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<DuplicateGroup> result = await db.Devices
                 .GroupBy(d => new { d.LocationId, d.ProviderDeviceId })
                 .Where(g => g.Count() > 1)
                 .Select(g => new DuplicateGroup(
@@ -32,15 +34,15 @@ namespace VideoForensics.Utils.Diagnostics
                     null,
                     g.Key.ProviderDeviceId,
                     g.Count(),
-                    g.Select(d => d.Id).ToList() as IReadOnlyList<Guid>))
+                    g.Select(d => d.Id).ToList()))
                 .ToListAsync(ct);
             return result;
         }
 
         public async Task<IReadOnlyList<DuplicateGroup>> FindDuplicateEventsAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var result = await db.Events
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            List<DuplicateGroup> result = await db.Events
                 .GroupBy(e => new { e.DeviceId, e.ProviderEventId })
                 .Where(g => g.Count() > 1)
                 .Select(g => new DuplicateGroup(
@@ -48,23 +50,23 @@ namespace VideoForensics.Utils.Diagnostics
                     g.Key.DeviceId,
                     g.Key.ProviderEventId,
                     g.Count(),
-                    g.Select(e => e.Id).ToList() as IReadOnlyList<Guid>))
+                    g.Select(e => e.Id).ToList()))
                 .ToListAsync(ct);
             return result;
         }
 
         public async Task<DetectionRedundancySummary> GetDetectionRedundancySummaryAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var mediaDetectionCount = await db.MediaItemDetections.CountAsync(ct);
-            var eventDetectionCount = await db.EventDetections.CountAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            int mediaDetectionCount = await db.MediaItemDetections.CountAsync(ct);
+            int eventDetectionCount = await db.EventDetections.CountAsync(ct);
 
             double? avgDetectionsPerMediaItem = null;
             double? avgDetectionsPerEvent = null;
 
             if (mediaDetectionCount > 0)
             {
-                var mediaItemCount = await db.MediaItems.CountAsync(ct);
+                int mediaItemCount = await db.MediaItems.CountAsync(ct);
                 if (mediaItemCount > 0)
                 {
                     avgDetectionsPerMediaItem = Math.Round((double)mediaDetectionCount / mediaItemCount, 2);
@@ -73,7 +75,7 @@ namespace VideoForensics.Utils.Diagnostics
 
             if (eventDetectionCount > 0)
             {
-                var eventCount = await db.Events.CountAsync(ct);
+                int eventCount = await db.Events.CountAsync(ct);
                 if (eventCount > 0)
                 {
                     avgDetectionsPerEvent = Math.Round((double)eventDetectionCount / eventCount, 2);
@@ -89,10 +91,10 @@ namespace VideoForensics.Utils.Diagnostics
 
         public async Task<DeviceHealthSummary> GetDeviceHealthSummaryAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var deviceHealthCount = await db.DeviceHealths.CountAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            int deviceHealthCount = await db.DeviceHealths.CountAsync(ct);
 
-            var healthDates = await db.DeviceHealths
+            List<DateHealthCount> healthDates = await db.DeviceHealths
                 .GroupBy(h => h.CapturedAtUtc.Date)
                 .OrderByDescending(g => g.Key)
                 .Select(g => new DateHealthCount(g.Key, g.Count()))
@@ -104,25 +106,25 @@ namespace VideoForensics.Utils.Diagnostics
 
         public async Task<DeviceFeatureOverlapSummary> GetDeviceFeatureOverlapAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
-            var deviceCapabilitiesCount = await db.DeviceCapabilities.CountAsync(ct);
-            var deviceFeaturesCount = await db.DeviceFeatures.CountAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            int deviceCapabilitiesCount = await db.DeviceCapabilities.CountAsync(ct);
+            int deviceFeaturesCount = await db.DeviceFeatures.CountAsync(ct);
 
-            var devicesWithBothIds = await db.DeviceCapabilities
+            List<Guid> devicesWithBothIds = await db.DeviceCapabilities
                 .Join(db.DeviceFeatures, dc => dc.DeviceId, df => df.DeviceId, (dc, df) => new { dc.DeviceId })
                 .Select(x => x.DeviceId)
                 .Distinct()
                 .ToListAsync(ct);
 
-            var devicesWithBoth = devicesWithBothIds.Count;
+            int devicesWithBoth = devicesWithBothIds.Count;
 
-            var capOnlyCount = await db.DeviceCapabilities
+            int capOnlyCount = await db.DeviceCapabilities
                 .Where(dc => !db.DeviceFeatures.Any(df => df.DeviceId == dc.DeviceId))
                 .Select(x => x.DeviceId)
                 .Distinct()
                 .CountAsync(ct);
 
-            var featuresOnlyCount = await db.DeviceFeatures
+            int featuresOnlyCount = await db.DeviceFeatures
                 .Where(df => !db.DeviceCapabilities.Any(dc => dc.DeviceId == df.DeviceId))
                 .Select(x => x.DeviceId)
                 .Distinct()
@@ -139,34 +141,34 @@ namespace VideoForensics.Utils.Diagnostics
 
         public async Task<OrphanedRecordSummary> FindOrphanedRecordsAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
 
-            var orphanedEventIds = await db.Events
+            List<Guid> orphanedEventIds = await db.Events
                 .Where(e => !db.Devices.Any(d => d.Id == e.DeviceId))
                 .Select(e => e.Id)
                 .ToListAsync(ct);
 
-            var orphanedMediaItemIds = await db.MediaItems
+            List<Guid> orphanedMediaItemIds = await db.MediaItems
                 .Where(m => !db.Devices.Any(d => d.Id == m.DeviceId))
                 .Select(m => m.Id)
                 .ToListAsync(ct);
 
-            var orphanedMediaItemDetectionIds = await db.MediaItemDetections
+            List<Guid> orphanedMediaItemDetectionIds = await db.MediaItemDetections
                 .Where(mid => !db.MediaItems.Any(m => m.Id == mid.MediaItemId))
                 .Select(mid => mid.Id)
                 .ToListAsync(ct);
 
-            var orphanedEventDetectionIds = await db.EventDetections
+            List<Guid> orphanedEventDetectionIds = await db.EventDetections
                 .Where(ed => !db.Events.Any(e => e.Id == ed.EventId))
                 .Select(ed => ed.Id)
                 .ToListAsync(ct);
 
-            var orphanedDeviceIds = await db.Devices
+            List<Guid> orphanedDeviceIds = await db.Devices
                 .Where(d => !db.Locations.Any(l => l.Id == d.LocationId))
                 .Select(d => d.Id)
                 .ToListAsync(ct);
 
-            var orphanedDownloadEventIds = await db.DownloadEvents
+            List<Guid> orphanedDownloadEventIds = await db.DownloadEvents
                 .Where(de => !db.Devices.Any(d => d.Id == de.DeviceId))
                 .Select(de => de.Id)
                 .ToListAsync(ct);
@@ -188,7 +190,7 @@ namespace VideoForensics.Utils.Diagnostics
 
         public async Task<IReadOnlyList<TableSizeEntry>> GetTableSizesAsync(CancellationToken ct)
         {
-            await using var db = await _factory.CreateDbContextAsync(ct);
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
 
             var sizes = new List<TableSizeEntry>
             {

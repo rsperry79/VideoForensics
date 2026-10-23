@@ -364,7 +364,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
 
                 CreateHistoryOnlyDatabase(dbPath, current);
 
-                await DatabaseInitializer.InitializeAsync(factory, new TestLogger(new List<(LogLevel, string)>()));
+                await DatabaseInitializer.InitializeAsync(factory, new TestLogger([]));
             }
             finally
             {
@@ -383,7 +383,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 await using ServiceProvider provider = BuildProvider(dbPath);
                 IDbContextFactory<VideoForensicsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
 
-                await DatabaseInitializer.InitializeAsync(factory, new TestLogger(new List<(LogLevel, string)>()));
+                await DatabaseInitializer.InitializeAsync(factory, new TestLogger([]));
 
                 await using VideoForensicsDbContext context = await factory.CreateDbContextAsync();
                 Assert.Empty(await context.Database.GetPendingMigrationsAsync());
@@ -407,7 +407,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 {
                     await DatabaseInitializer.InitializeAsync(
                         migrated.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>(),
-                        new TestLogger(new List<(LogLevel, string)>()));
+                        new TestLogger([]));
                 }
 
                 await using (ServiceProvider created = BuildProvider(createdPath))

@@ -1,7 +1,8 @@
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
-using VideoForensics.Ui.Shared.Services.Evidence;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class ImageViewport_Initialization_Tests
 {
@@ -27,7 +28,7 @@ public class ImageViewport_ZoomIn_Tests
         var viewport = new ImageViewport();
 
         // Act
-        var result = viewport.ZoomIn();
+        ImageViewport result = viewport.ZoomIn();
 
         // Assert
         Assert.Equal(1.25, result.Scale);
@@ -42,7 +43,7 @@ public class ImageViewport_ZoomIn_Tests
         var viewport = new ImageViewport { Scale = 7 };
 
         // Act
-        var result = viewport.ZoomIn();
+        ImageViewport result = viewport.ZoomIn();
 
         // Assert
         Assert.Equal(8, result.Scale);
@@ -55,7 +56,7 @@ public class ImageViewport_ZoomIn_Tests
         var viewport = new ImageViewport { Scale = 8 };
 
         // Act
-        var result = viewport.ZoomIn();
+        ImageViewport result = viewport.ZoomIn();
 
         // Assert
         Assert.Equal(8, result.Scale);
@@ -71,7 +72,7 @@ public class ImageViewport_ZoomOut_Tests
         var viewport = new ImageViewport { Scale = 2.5 };
 
         // Act
-        var result = viewport.ZoomOut();
+        ImageViewport result = viewport.ZoomOut();
 
         // Assert
         Assert.Equal(2, result.Scale, 0.01);
@@ -84,7 +85,7 @@ public class ImageViewport_ZoomOut_Tests
         var viewport = new ImageViewport { Scale = 1.1 };
 
         // Act
-        var result = viewport.ZoomOut();
+        ImageViewport result = viewport.ZoomOut();
 
         // Assert
         Assert.Equal(1, result.Scale, 0.01);
@@ -97,7 +98,7 @@ public class ImageViewport_ZoomOut_Tests
         var viewport = new ImageViewport { Scale = 1 };
 
         // Act
-        var result = viewport.ZoomOut();
+        ImageViewport result = viewport.ZoomOut();
 
         // Assert
         Assert.Equal(1, result.Scale);
@@ -118,7 +119,7 @@ public class ImageViewport_Fit_Tests
         };
 
         // Act
-        var result = viewport.Fit();
+        ImageViewport result = viewport.Fit();
 
         // Assert
         Assert.Equal(1, result.Scale);
@@ -136,7 +137,7 @@ public class ImageViewport_PanBy_Tests
         var viewport = new ImageViewport { Scale = 2, OffsetX = 10, OffsetY = 20 };
 
         // Act
-        var result = viewport.PanBy(5, -10);
+        ImageViewport result = viewport.PanBy(5, -10);
 
         // Assert
         Assert.Equal(15, result.OffsetX);
@@ -151,7 +152,7 @@ public class ImageViewport_PanBy_Tests
         var viewport = new ImageViewport { Scale = 1, OffsetX = 0, OffsetY = 0 };
 
         // Act
-        var result = viewport.PanBy(100, 100);
+        ImageViewport result = viewport.PanBy(100, 100);
 
         // Assert
         Assert.Equal(0, result.OffsetX);
@@ -166,7 +167,7 @@ public class ImageViewport_PanBy_Tests
         var viewport = new ImageViewport { Scale = 2, OffsetX = 50, OffsetY = 50 };
 
         // Act
-        var result = viewport.PanBy(-20, -30);
+        ImageViewport result = viewport.PanBy(-20, -30);
 
         // Assert
         Assert.Equal(30, result.OffsetX);
@@ -183,7 +184,7 @@ public class ImageViewport_ToCssTransform_Tests
         var viewport = new ImageViewport();
 
         // Act
-        var transform = viewport.ToCssTransform();
+        string transform = viewport.ToCssTransform();
 
         // Assert
         Assert.Equal("translate(0px, 0px) scale(1)", transform);
@@ -196,7 +197,7 @@ public class ImageViewport_ToCssTransform_Tests
         var viewport = new ImageViewport { Scale = 2, OffsetX = 10, OffsetY = 15 };
 
         // Act
-        var transform = viewport.ToCssTransform();
+        string transform = viewport.ToCssTransform();
 
         // Assert
         Assert.Equal("translate(10px, 15px) scale(2)", transform);
@@ -209,7 +210,7 @@ public class ImageViewport_ToCssTransform_Tests
         var viewport = new ImageViewport { Scale = 1.25, OffsetX = 5, OffsetY = -5 };
 
         // Act
-        var transform = viewport.ToCssTransform();
+        string transform = viewport.ToCssTransform();
 
         // Assert
         // Should use invariant culture for decimal separator
@@ -226,7 +227,7 @@ public class ImageViewport_Immutability_Tests
         var viewport = new ImageViewport();
 
         // Act
-        var result = viewport.ZoomIn();
+        ImageViewport result = viewport.ZoomIn();
 
         // Assert
         Assert.NotSame(viewport, result);
@@ -241,7 +242,7 @@ public class ImageViewport_Immutability_Tests
         var viewport = new ImageViewport { Scale = 2 };
 
         // Act
-        var result = viewport.PanBy(10, 20);
+        ImageViewport result = viewport.PanBy(10, 20);
 
         // Assert
         Assert.NotSame(viewport, result);

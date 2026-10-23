@@ -1,6 +1,6 @@
 using Fido2NetLib;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     /// <summary>
     /// Builds the Fido2NetLib user-handle ownership callback for passkey assertions.
@@ -29,12 +29,7 @@ namespace VideoForensics.WebApp.Auth
         /// </summary>
         public static bool IsOwner(Guid operatorId, byte[]? userHandle)
         {
-            if (userHandle == null)
-            {
-                return true;
-            }
-
-            return userHandle.AsSpan().SequenceEqual(operatorId.ToByteArray());
+            return userHandle == null || userHandle.AsSpan().SequenceEqual(operatorId.ToByteArray());
         }
     }
 }

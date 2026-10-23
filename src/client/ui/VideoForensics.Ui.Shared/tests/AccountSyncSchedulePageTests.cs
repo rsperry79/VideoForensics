@@ -1,20 +1,23 @@
-namespace VideoForensics.Ui.Shared.Tests;
-
-using System.Net;
-using System.Text.Json;
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
+
 using Moq;
+
+using System.Text.Json;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts/{Id}/schedule page tests: the sync-schedule repository mock, the real
 /// <see cref="PairedSessionState"/> over the bUnit JS runtime, and the stub <see cref="HttpClient"/> used for
@@ -29,35 +32,46 @@ public abstract class AccountSyncSchedulePageTestBase : BunitContext
     protected AccountSyncSchedulePageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         var scheduleRepository = new Mock<ISyncScheduleRepository>();
-        scheduleRepository
+        _ = scheduleRepository
             .Setup(r => r.GetByProviderAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SyncSchedule?)null);
 
-        Services.AddScoped(_ => scheduleRepository.Object);
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        Services.AddScoped(_ => Handler);
-        Services.AddScoped(_ => new HttpClient(Handler));
+        _ = Services.AddScoped(_ => scheduleRepository.Object);
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(_ => Handler);
+        _ = Services.AddScoped(_ => new HttpClient(Handler));
 
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
     protected IStringLocalizer<AccountSyncSchedule> Strings => Services.GetRequiredService<IStringLocalizer<AccountSyncSchedule>>();
 
-    protected IRenderedComponent<AccountSyncSchedule> RenderPage() =>
-        Render<AccountSyncSchedule>(p => p.Add(c => c.Id, AccountId));
+    protected IRenderedComponent<AccountSyncSchedule> RenderPage()
+    {
+        return Render<AccountSyncSchedule>(p => p.Add(c => c.Id, AccountId));
+    }
 
     /// <summary>Absolute path (as the page requests it) for a sub-route of this account.</summary>
-    protected static string ApiPath(string suffix) => $"/api/v1/accounts/provider-accounts/{AccountId}{suffix}";
+    protected static string ApiPath(string suffix)
+    {
+        return $"/api/v1/accounts/provider-accounts/{AccountId}{suffix}";
+    }
 
-    protected void SetJson(string suffix, object body) => Handler.Bodies[ApiPath(suffix)] = body;
+    protected void SetJson(string suffix, object body)
+    {
+        Handler.Bodies[ApiPath(suffix)] = body;
+    }
 
-    protected void FailJson(string suffix) => Handler.FailingPaths.Add(ApiPath(suffix));
+    protected void FailJson(string suffix)
+    {
+        _ = Handler.FailingPaths.Add(ApiPath(suffix));
+    }
 }
 
 public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSchedulePageTestBase
@@ -69,7 +83,7 @@ public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSched
     {
         SetJson("/config-sync-interval", new ConfigSyncIntervalDto(24));
 
-        var cut = RenderPage();
+        IRenderedComponent<AccountSyncSchedule> cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Equal("24", cut.WaitForElement(ConfigIntervalInputId).GetAttribute("value")));
         Assert.Contains(Strings["ConfigSyncIntervalLabel"], cut.Find("#config-sync-interval").TextContent);
@@ -80,7 +94,7 @@ public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSched
     {
         FailJson("/config-sync-interval");
 
-        var cut = RenderPage();
+        IRenderedComponent<AccountSyncSchedule> cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Equal("24", cut.WaitForElement(ConfigIntervalInputId).GetAttribute("value")));
     }
@@ -90,11 +104,11 @@ public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSched
     {
         SetJson("/config-sync-interval", new ConfigSyncIntervalDto(24));
 
-        var cut = RenderPage();
+        IRenderedComponent<AccountSyncSchedule> cut = RenderPage();
         cut.WaitForElement(ConfigIntervalInputId).Change("48");
 
         cut.WaitForAssertion(() => Assert.Contains(Handler.Sent, s => s.Method == HttpMethod.Put && s.Path == ApiPath("/config-sync-interval")));
-        var body = Handler.Sent.Single(s => s.Method == HttpMethod.Put).Body!;
+        string body = Handler.Sent.Single(s => s.Method == HttpMethod.Put).Body!;
         Assert.Equal(48, JsonDocument.Parse(body).RootElement.GetProperty("hours").GetInt32());
     }
 
@@ -103,7 +117,7 @@ public class AccountSyncSchedulePage_ConfigSyncInterval_Tests : AccountSyncSched
     {
         SetJson("/config-sync-interval", new ConfigSyncIntervalDto(24));
 
-        var cut = RenderPage();
+        IRenderedComponent<AccountSyncSchedule> cut = RenderPage();
         cut.WaitForElement(ConfigIntervalInputId).Change("0");
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["ConfigSyncIntervalInvalid"], cut.Find("#config-sync-interval").TextContent));

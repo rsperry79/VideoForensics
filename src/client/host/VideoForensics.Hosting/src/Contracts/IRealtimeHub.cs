@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>
     /// Client-side view of the server's LiveHub. Each stream is an <see cref="IObservable{T}"/> of raw pushes

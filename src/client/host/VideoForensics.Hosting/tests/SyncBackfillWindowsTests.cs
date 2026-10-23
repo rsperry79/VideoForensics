@@ -1,8 +1,4 @@
-using VideoForensics.Hosting.Services;
-
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     /// <summary>The first sync backfills forward from a year ago, one month at a time, oldest first, ending at now.</summary>
     public class SyncBackfillWindowsTests
@@ -12,7 +8,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void MonthlyWindows_StartsAYearAgoAndStepsAMonth()
         {
-            var windows = AccountSyncRunner.MonthlyWindows(Now);
+            IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.MonthlyWindows(Now);
 
             Assert.Equal(new DateTime(2025, 10, 21, 9, 30, 0, DateTimeKind.Utc), windows[0].From);
             Assert.Equal(windows[0].From.AddMonths(1), windows[0].To);
@@ -21,17 +17,16 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void MonthlyWindows_SecondWindowIsElevenMonthsAgoToTenMonthsAgo()
         {
-            var windows = AccountSyncRunner.MonthlyWindows(Now);
+            IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.MonthlyWindows(Now);
 
             Assert.Equal(Now.AddMonths(-11), windows[1].From);
             Assert.Equal(Now.AddMonths(-10), windows[1].To);
         }
 
-
         [Fact]
         public void MonthlyWindows_AreContiguousAndOldestFirst()
         {
-            var windows = AccountSyncRunner.MonthlyWindows(Now);
+            IReadOnlyList<(DateTime From, DateTime To)> windows = AccountSyncRunner.MonthlyWindows(Now);
 
             for (int i = 1; i < windows.Count; i++)
             {

@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Configuration for the browser-side live view WebRTC leg. Bound from the

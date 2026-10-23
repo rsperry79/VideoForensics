@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting.BackgroundServices;
-using VideoForensics.Hosting.Services;
+using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>DI registration for the server-side scheduled per-account sync.</summary>
     public static class ScheduledSyncRegistrationExtensions
@@ -14,7 +14,7 @@ namespace VideoForensics.Hosting
         /// <summary>
         /// Registers <see cref="ScheduledSyncService"/> plus the keyed provider services it needs, but only when
         /// ScheduledTasks:EnabledProviders is non-empty; otherwise registers nothing. Server tier only
-        /// (VideoForensics.WebApp) - never call this from MAUI or any client host. An unknown provider name throws
+        /// (VideoForensics.Client.WebApp) - never call this from MAUI or any client host. An unknown provider name throws
         /// (fail fast, via AddVideoForensicsMultiProviderServices).
         /// </summary>
         public static IServiceCollection AddVideoForensicsScheduledSync(this IServiceCollection services, IConfiguration configuration)
@@ -37,7 +37,7 @@ namespace VideoForensics.Hosting
 
         /// <summary>
         /// Registers the background account export (<see cref="IAccountExportService"/> plus its queue-draining hosted
-        /// service). Server tier only (VideoForensics.WebApp) - never call this from MAUI or any client host.
+        /// service). Server tier only (VideoForensics.Client.WebApp) - never call this from MAUI or any client host.
         /// Independent of ScheduledTasks:EnabledProviders: exporting needs no provider access.
         /// </summary>
         public static IServiceCollection AddVideoForensicsAccountExport(this IServiceCollection services)

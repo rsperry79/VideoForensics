@@ -2,12 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Remote;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteProviderAuthServiceTests
     {

@@ -9,7 +9,7 @@
 ;
 ; Independently selectable components:
 ;   - server:  VideoForensics.WebApp, installed as a Windows Service (LocalSystem, auto-start)
-;   - desktop: VideoForensics.MauiApp, a plain unpackaged desktop client (no service, no MSIX)
+;   - desktop: VideoForensics.Client.MauiApp, a plain unpackaged desktop client (no service, no MSIX)
 ;   - tools:   Optional Tools - VideoForensics.DbSetup, VideoForensics.DbDiagnostics, and
 ;              VideoForensics.DbRepair CLI utilities (advanced/opt-in, unchecked by default)
 ;   - mcp:     MCP Bridge (VideoForensics.Client.MCP) for AI-assistant hosts like Claude Desktop
@@ -54,7 +54,7 @@
 ; component - the install then "succeeds" but creates a desktop shortcut pointing at an exe that
 ; was never copied in (Flags: skipifsourcedoesntexist on the [Files] line lets the file copy skip
 ; silently), producing Windows' "Missing Shortcut" dialog the first time someone double-clicks it.
-#define DesktopExeExists FileExists(DesktopPublishDir + "\VideoForensics.MauiApp.exe")
+#define DesktopExeExists FileExists(DesktopPublishDir + "\VideoForensics.Client.MauiApp.exe")
 ; Same guard pattern for the "Optional Tools" utilities and the MCP bridge - each is its own
 ; separate publish that a local/dev compile may not have produced.
 #define DbSetupExeExists FileExists(DbSetupPublishDir + "\VideoForensics.DbSetup.exe")
@@ -194,8 +194,8 @@ Source: "{#McpPublishDir}\*"; DestDir: "{app}\Mcp"; Components: mcp; Flags: igno
 
 [Icons]
 #if DesktopExeExists
-Name: "{group}\VideoForensics Desktop Client"; Filename: "{app}\Desktop\VideoForensics.MauiApp.exe"; Components: desktop
-Name: "{commondesktop}\VideoForensics"; Filename: "{app}\Desktop\VideoForensics.MauiApp.exe"; Components: desktop; Tasks: shortcuts
+Name: "{group}\VideoForensics Desktop Client"; Filename: "{app}\Desktop\VideoForensics.Client.MauiApp.exe"; Components: desktop
+Name: "{commondesktop}\VideoForensics"; Filename: "{app}\Desktop\VideoForensics.Client.MauiApp.exe"; Components: desktop; Tasks: shortcuts
 #endif
 
 ; Opens Explorer at the default Logs folder - available whenever the server component is installed

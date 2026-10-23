@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Short-lived server-side cache bridging a WebAuthn ceremony's two HTTP round-trips (options ->
@@ -34,7 +34,7 @@ namespace VideoForensics.Hosting
         public string Store(string optionsJson)
         {
             string nonce = Guid.NewGuid().ToString("N");
-            _cache.Set(nonce, optionsJson, new MemoryCacheEntryOptions
+            _ = _cache.Set(nonce, optionsJson, new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = CeremonyLifetime
             });

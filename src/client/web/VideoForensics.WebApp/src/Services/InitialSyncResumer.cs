@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>Re-runs the first sync for every active account whose first sync never finished.</summary>
     public class InitialSyncResumer

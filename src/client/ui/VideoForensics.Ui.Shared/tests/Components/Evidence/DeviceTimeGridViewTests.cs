@@ -1,16 +1,22 @@
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
+
+using AngleSharp.Dom;
 
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
+
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
+
 using Xunit;
-using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Services.Evidence;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Components.Evidence;
 
 public class DeviceTimeGridViewTests : BunitContext
 {
     public DeviceTimeGridViewTests()
     {
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
     }
 
     private static DeviceTimeGridResult BuildResult(out Guid deviceAId, out Guid deviceBId)
@@ -25,34 +31,34 @@ public class DeviceTimeGridViewTests : BunitContext
             new(2026, 9, 20, 2, 0, 0, DateTimeKind.Utc),
         };
 
-        var rowA = new DeviceTimeRow(deviceAId, "Front Door", new List<DeviceTimeBucket>
-        {
+        var rowA = new DeviceTimeRow(deviceAId, "Front Door",
+        [
             new(bucketStarts[0], bucketStarts[0].AddHours(1), EventCount: 2, SnapshotCount: 0, IsGap: false),
             new(bucketStarts[1], bucketStarts[1].AddHours(1), EventCount: 0, SnapshotCount: 0, IsGap: true),
             new(bucketStarts[2], bucketStarts[2].AddHours(1), EventCount: 0, SnapshotCount: 1, IsGap: false),
-        });
+        ]);
 
-        var rowB = new DeviceTimeRow(deviceBId, "Back Yard", new List<DeviceTimeBucket>
-        {
+        var rowB = new DeviceTimeRow(deviceBId, "Back Yard",
+        [
             new(bucketStarts[0], bucketStarts[0].AddHours(1), EventCount: 0, SnapshotCount: 0, IsGap: false),
             new(bucketStarts[1], bucketStarts[1].AddHours(1), EventCount: 0, SnapshotCount: 0, IsGap: false),
             new(bucketStarts[2], bucketStarts[2].AddHours(1), EventCount: 0, SnapshotCount: 0, IsGap: false),
-        });
+        ]);
 
-        return new DeviceTimeGridResult(bucketStarts, TimeSpan.FromHours(1), new List<DeviceTimeRow> { rowA, rowB });
+        return new DeviceTimeGridResult(bucketStarts, TimeSpan.FromHours(1), [rowA, rowB]);
     }
 
     [Fact]
     public void Renders_OneColumnHeaderPerBucket_AndOneRowPerDevice()
     {
-        var result = BuildResult(out _, out _);
+        DeviceTimeGridResult result = BuildResult(out _, out _);
 
-        var component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
 
-        var headers = component.FindAll(".device-time-grid-col-header");
+        IReadOnlyList<IElement> headers = component.FindAll(".device-time-grid-col-header");
         Assert.Equal(3, headers.Count);
 
-        var rows = component.FindAll("tbody tr");
+        IReadOnlyList<IElement> rows = component.FindAll("tbody tr");
         Assert.Equal(2, rows.Count);
         Assert.Contains("Front Door", rows[0].TextContent);
         Assert.Contains("Back Yard", rows[1].TextContent);
@@ -61,12 +67,12 @@ public class DeviceTimeGridViewTests : BunitContext
     [Fact]
     public void GapCell_HasGapCssClass()
     {
-        var result = BuildResult(out var deviceAId, out _);
+        DeviceTimeGridResult result = BuildResult(out Guid deviceAId, out _);
 
-        var component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
 
-        var row = component.Find($"tr[data-key='{deviceAId}']");
-        var cells = row.QuerySelectorAll("td");
+        IElement row = component.Find($"tr[data-key='{deviceAId}']");
+        IHtmlCollection<IElement> cells = row.QuerySelectorAll("td");
         Assert.Contains("gap", cells[1].ClassName);
         Assert.DoesNotContain("gap", cells[0].ClassName);
     }
@@ -74,12 +80,12 @@ public class DeviceTimeGridViewTests : BunitContext
     [Fact]
     public void ActiveCell_ShowsEventAndMediaMarkers()
     {
-        var result = BuildResult(out var deviceAId, out _);
+        DeviceTimeGridResult result = BuildResult(out Guid deviceAId, out _);
 
-        var component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p.Add(x => x.Result, result));
 
-        var row = component.Find($"tr[data-key='{deviceAId}']");
-        var cells = row.QuerySelectorAll("td");
+        IElement row = component.Find($"tr[data-key='{deviceAId}']");
+        IHtmlCollection<IElement> cells = row.QuerySelectorAll("td");
         Assert.Contains("2", cells[0].TextContent);
         Assert.Contains("1", cells[2].TextContent);
     }
@@ -87,14 +93,14 @@ public class DeviceTimeGridViewTests : BunitContext
     [Fact]
     public void ClickCell_InvokesOnCellClick_WithDeviceAndBucketRange()
     {
-        var result = BuildResult(out var deviceAId, out _);
+        DeviceTimeGridResult result = BuildResult(out Guid deviceAId, out _);
         DeviceTimeCellClickArgs? captured = null;
 
-        var component = Render<DeviceTimeGridView>(p => p
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p
             .Add(x => x.Result, result)
             .Add(x => x.OnCellClick, args => captured = args));
 
-        var row = component.Find($"tr[data-key='{deviceAId}']");
+        IElement row = component.Find($"tr[data-key='{deviceAId}']");
         row.QuerySelectorAll("td")[0].Click();
 
         Assert.NotNull(captured);
@@ -105,10 +111,10 @@ public class DeviceTimeGridViewTests : BunitContext
     [Fact]
     public void ClickDeviceRowHeader_InvokesOnDeviceSelected()
     {
-        var result = BuildResult(out var deviceAId, out _);
+        DeviceTimeGridResult result = BuildResult(out Guid deviceAId, out _);
         Guid? selected = null;
 
-        var component = Render<DeviceTimeGridView>(p => p
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p
             .Add(x => x.Result, result)
             .Add(x => x.OnDeviceSelected, id => selected = id));
 
@@ -120,13 +126,13 @@ public class DeviceTimeGridViewTests : BunitContext
     [Fact]
     public void SelectedDeviceId_MarksMatchingRowHeaderAsSelected()
     {
-        var result = BuildResult(out var deviceAId, out _);
+        DeviceTimeGridResult result = BuildResult(out Guid deviceAId, out _);
 
-        var component = Render<DeviceTimeGridView>(p => p
+        IRenderedComponent<DeviceTimeGridView> component = Render<DeviceTimeGridView>(p => p
             .Add(x => x.Result, result)
             .Add(x => x.SelectedDeviceId, deviceAId));
 
-        var header = component.Find($"tr[data-key='{deviceAId}'] .device-time-grid-row-header");
+        IElement header = component.Find($"tr[data-key='{deviceAId}'] .device-time-grid-row-header");
         Assert.Contains("selected", header.ClassName);
     }
 }

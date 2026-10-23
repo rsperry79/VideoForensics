@@ -1,7 +1,7 @@
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Value-based comparison for <see cref="DownloadProgressDto"/> send-on-change.
@@ -21,12 +21,7 @@ namespace VideoForensics.Hosting
         /// <inheritdoc />
         public bool HasChanged(DownloadProgressDto? previous, DownloadProgressDto current)
         {
-            if (previous is null)
-            {
-                return true;
-            }
-
-            return !previous.Progress.Equals(current.Progress)
+            return previous is null || !previous.Progress.Equals(current.Progress)
                 || previous.CurrentDeviceIndex != current.CurrentDeviceIndex
                 || previous.CurrentDeviceTotal != current.CurrentDeviceTotal
                 || previous.CurrentDeviceName != current.CurrentDeviceName

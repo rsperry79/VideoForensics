@@ -1,12 +1,12 @@
-using System.Net;
-
 using Microsoft.AspNetCore.Http;
 
-using VideoForensics.WebApp.Api;
+using System.Net;
+
+using VideoForensics.Client.WebApp.Api;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class IsDirectLocalRequestTests
     {

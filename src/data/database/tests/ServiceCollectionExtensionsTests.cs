@@ -1,7 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
@@ -24,7 +23,7 @@ namespace VideoForensics.Data.Database.Tests
             _ = services.AddLogging();
 
             // Set up in-memory SQLite DbContextFactory (prerequisite for repositories)
-            SqliteConnection connection = new SqliteConnection("DataSource=:memory:");
+            var connection = new SqliteConnection("DataSource=:memory:");
             connection.Open();
 
             try
@@ -33,7 +32,7 @@ namespace VideoForensics.Data.Database.Tests
                     .UseSqlite(connection)
                     .Options;
 
-                services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(
+                _ = services.AddSingleton<IDbContextFactory<VideoForensicsDbContext>>(
                     new TestDbContextFactory(options));
 
                 // Act

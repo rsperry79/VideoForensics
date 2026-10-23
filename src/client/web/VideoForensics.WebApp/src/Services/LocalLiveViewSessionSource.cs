@@ -1,9 +1,9 @@
 using System.Reactive.Linq;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="ILiveViewSessionSource"/> for the WebApp. The WebApp runs live view in-process and is not a client
@@ -23,9 +23,15 @@ namespace VideoForensics.WebApp.Services
         public bool IsConnected => false;
 
         /// <inheritdoc />
-        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
 
         /// <inheritdoc />
-        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

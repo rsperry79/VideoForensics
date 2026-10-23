@@ -1,10 +1,12 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Services.Time;
+
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Services.Time;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>Displays a stored UTC instant in the user's zone, with a fallback for missing values.</summary>
 public class LocalTimeTextTests : BunitContext
 {
@@ -14,7 +16,7 @@ public class LocalTimeTextTests : BunitContext
     [Fact]
     public void WithUserZone_ShowsValueInThatZone()
     {
-        var rendered = Render<LocalTimeText>(p => p
+        IRenderedComponent<LocalTimeText> rendered = Render<LocalTimeText>(p => p
             .AddCascadingValue(new UserTimeZone(Plus9))
             .Add(c => c.Value, (DateTime?)NoonUtc)
             .Add(c => c.Format, "HH:mm"));
@@ -26,7 +28,7 @@ public class LocalTimeTextTests : BunitContext
     [Fact]
     public void WithoutUserZone_ShowsMachineLocalTime()
     {
-        var rendered = Render<LocalTimeText>(p => p
+        IRenderedComponent<LocalTimeText> rendered = Render<LocalTimeText>(p => p
             .Add(c => c.Value, (DateTime?)NoonUtc)
             .Add(c => c.Format, "HH:mm"));
 
@@ -36,8 +38,8 @@ public class LocalTimeTextTests : BunitContext
     [Fact]
     public void NullValue_ShowsFallback()
     {
-        var rendered = Render<LocalTimeText>(p => p
-            .Add(c => c.Value, (DateTime?)null)
+        IRenderedComponent<LocalTimeText> rendered = Render<LocalTimeText>(p => p
+            .Add(c => c.Value, null)
             .Add(c => c.Fallback, "Never"));
 
         Assert.Equal("Never", rendered.Markup.Trim());

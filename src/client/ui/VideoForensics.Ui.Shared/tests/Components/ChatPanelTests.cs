@@ -1,15 +1,19 @@
-namespace VideoForensics.Ui.Shared.Tests.Components;
 
-using System.Runtime.CompilerServices;
 using Bunit;
+
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.JSInterop;
+
+using System.Runtime.CompilerServices;
+
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Ui.Shared.Components;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Components;
+using VideoForensics.Client.Ui.Shared.Resources;
+
 using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Components;
 
 public class ChatPanelTests : BunitContext
 {
@@ -20,7 +24,9 @@ public class ChatPanelTests : BunitContext
         public List<(List<ChatTurn> History, string Message)> Calls { get; } = [];
 
         public Task<ChatTurnResult> SendMessageAsync(IReadOnlyList<ChatTurn> history, string message, CancellationToken ct)
-            => throw new NotSupportedException();
+        {
+            throw new NotSupportedException();
+        }
 
         public IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(IReadOnlyList<ChatTurn> history, string message, CancellationToken ct)
         {
@@ -35,12 +41,12 @@ public class ChatPanelTests : BunitContext
     public ChatPanelTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddLocalization();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddSingleton<IChatService>(_chat);
-        Services.AddSingleton(_localizer);
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddSingleton<IChatService>(_chat);
+        _ = Services.AddSingleton(_localizer);
     }
 
     private static async IAsyncEnumerable<ChatStreamEvent> Stream(
@@ -75,9 +81,9 @@ public class ChatPanelTests : BunitContext
     {
         var gate = new TaskCompletionSource();
         _chat.Scripts.Enqueue(() => Stream(gate.Task, ["Hel", "lo"], new ChatTurnResult { Reply = "Hello" }));
-        var cut = Render<ChatPanel>();
+        IRenderedComponent<ChatPanel> cut = Render<ChatPanel>();
 
-        var send = Send(cut, "Hi");
+        Task send = Send(cut, "Hi");
 
         cut.WaitForAssertion(() =>
         {
@@ -91,8 +97,8 @@ public class ChatPanelTests : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            var assistant = cut.FindAll(".assistant-message .chat-message-content");
-            Assert.Single(assistant);
+            IReadOnlyList<AngleSharp.Dom.IElement> assistant = cut.FindAll(".assistant-message .chat-message-content");
+            _ = Assert.Single(assistant);
             Assert.Equal("Hello", assistant[0].TextContent.Trim());
         });
     }
@@ -101,14 +107,14 @@ public class ChatPanelTests : BunitContext
     public async Task ChatPanel_Completion_FinalReplyReplacesStreamedText()
     {
         _chat.Scripts.Enqueue(() => Stream(null, ["par", "tial"], new ChatTurnResult { Reply = "Final answer" }));
-        var cut = Render<ChatPanel>();
+        IRenderedComponent<ChatPanel> cut = Render<ChatPanel>();
 
         await Send(cut, "Hi");
 
         cut.WaitForAssertion(() =>
         {
-            var assistant = cut.FindAll(".assistant-message .chat-message-content");
-            Assert.Single(assistant);
+            IReadOnlyList<AngleSharp.Dom.IElement> assistant = cut.FindAll(".assistant-message .chat-message-content");
+            _ = Assert.Single(assistant);
             Assert.Contains("Final answer", assistant[0].TextContent);
             Assert.DoesNotContain("partial", cut.Markup);
             Assert.DoesNotContain(_localizer["ChatThinking"].Value, cut.Markup);
@@ -120,7 +126,7 @@ public class ChatPanelTests : BunitContext
     {
         _chat.Scripts.Enqueue(() => Stream(null, ["x"], new ChatTurnResult { Reply = "First reply" }));
         _chat.Scripts.Enqueue(() => Stream(null, ["y"], new ChatTurnResult { Reply = "Second reply" }));
-        var cut = Render<ChatPanel>();
+        IRenderedComponent<ChatPanel> cut = Render<ChatPanel>();
 
         await Send(cut, "Earlier");
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".assistant-message")));
@@ -129,12 +135,12 @@ public class ChatPanelTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".assistant-message").Count));
 
         Assert.Equal(2, _chat.Calls.Count);
-        var (history, message) = _chat.Calls[1];
+        (List<ChatTurn>? history, string? message) = _chat.Calls[1];
         Assert.Equal("Hi", message);
         Assert.Equal(["Earlier", "First reply"], history.Select(t => t.Content).ToArray());
         Assert.DoesNotContain(history, t => t.Content == "Hi");
 
-        var userBubbles = cut.FindAll(".user-message .chat-message-content");
+        IReadOnlyList<AngleSharp.Dom.IElement> userBubbles = cut.FindAll(".user-message .chat-message-content");
         Assert.Equal(1, userBubbles.Count(b => b.TextContent.Trim() == "Hi"));
     }
 }

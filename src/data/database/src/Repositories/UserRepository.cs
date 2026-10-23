@@ -97,11 +97,15 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
 
         /// <summary>Masks a string for logging to prevent exposure of sensitive information like email addresses.</summary>
-        private static string MaskForLog(string value) =>
-            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+        private static string MaskForLog(string value)
+        {
+            return string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
+        }
     }
 }

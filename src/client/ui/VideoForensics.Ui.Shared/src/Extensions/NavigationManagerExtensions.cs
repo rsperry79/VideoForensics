@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
-using VideoForensics.Ui.Shared.Services;
 
-namespace VideoForensics.Ui.Shared.Extensions
+namespace VideoForensics.Client.Ui.Shared.Extensions
 {
     public static class NavigationManagerExtensions
     {
@@ -16,6 +15,5 @@ namespace VideoForensics.Ui.Shared.Extensions
             string returnUrl = "/" + navigationManager.ToBaseRelativePath(navigationManager.Uri);
             return $"/signin?returnUrl={Uri.EscapeDataString(returnUrl)}";
         }
-
     }
 }

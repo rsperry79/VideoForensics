@@ -456,5 +456,5 @@ namespace VideoForensics.Data.Database.Tests
 
             Assert.Null(retrieved);
         }
-}
+    }
 }

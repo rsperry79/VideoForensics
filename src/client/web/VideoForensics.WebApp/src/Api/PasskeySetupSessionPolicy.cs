@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Limits a passkey-setup session (issued by POST /api/v1/auth/login/password/create-passkey). Such a session
@@ -37,12 +37,7 @@ namespace VideoForensics.WebApp.Api
         /// </summary>
         public static bool IsSupersededByPasskeyCreation(IReadOnlyList<OperatorCredential> credentials, DateTime issuedAtUtc)
         {
-            if (issuedAtUtc == default)
-            {
-                return false;
-            }
-
-            return credentials.Any(c => c.CreatedAtUtc > issuedAtUtc);
+            return issuedAtUtc != default && credentials.Any(c => c.CreatedAtUtc > issuedAtUtc);
         }
     }
 }

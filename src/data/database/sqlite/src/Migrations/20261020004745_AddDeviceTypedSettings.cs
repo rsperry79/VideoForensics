@@ -1,4 +1,3 @@
-﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceDetectionThresholds",
                 columns: table => new
                 {
@@ -22,10 +21,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceDetectionThresholds", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceDetectionThresholds", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceDetectionTypes",
                 columns: table => new
                 {
@@ -39,10 +38,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceDetectionTypes", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceDetectionTypes", x => x.Id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "DeviceOfflineMotionSettings",
                 columns: table => new
                 {
@@ -57,20 +56,20 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceOfflineMotionSettings", x => x.Id);
+                    _ = table.PrimaryKey("PK_DeviceOfflineMotionSettings", x => x.Id);
                 });
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceDetectionThresholds_DeviceId",
                 table: "DeviceDetectionThresholds",
                 column: "DeviceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceDetectionTypes_DeviceId",
                 table: "DeviceDetectionTypes",
                 column: "DeviceId");
 
-            migrationBuilder.CreateIndex(
+            _ = migrationBuilder.CreateIndex(
                 name: "IX_DeviceOfflineMotionSettings_DeviceId",
                 table: "DeviceOfflineMotionSettings",
                 column: "DeviceId");
@@ -79,13 +78,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceDetectionThresholds");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceDetectionTypes");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "DeviceOfflineMotionSettings");
         }
     }

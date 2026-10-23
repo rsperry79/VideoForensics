@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Default <see cref="ISelfApiHttpClientFactory"/> for hosts (e.g. MAUI) with no self-call
@@ -26,7 +26,10 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <inheritdoc/>
-        public HttpClient CreateClient() => CreateClient(_sessionState.SessionToken);
+        public HttpClient CreateClient()
+        {
+            return CreateClient(_sessionState.SessionToken);
+        }
 
         /// <inheritdoc/>
         public HttpClient CreateClient(string? bearerToken)

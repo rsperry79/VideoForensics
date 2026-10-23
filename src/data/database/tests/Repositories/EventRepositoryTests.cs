@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -20,7 +21,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         {
             // Arrange: Create an event with a ProviderEventId containing CRLF (log injection attempt)
             var deviceId = Guid.NewGuid();
-            var injectedEventId = "event123\r\nFAKE LOG ENTRY: Unauthorized access";
+            string injectedEventId = "event123\r\nFAKE LOG ENTRY: Unauthorized access";
             var @event = new Event
             {
                 Id = Guid.NewGuid(),
@@ -33,16 +34,14 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
 
             // Act: Upsert the event (logs it)
-            await _repository.UpsertAsync(@event, CancellationToken.None);
+            _ = await _repository.UpsertAsync(@event, CancellationToken.None);
 
             // Assert: Verify the event was persisted with the raw ProviderEventId intact
-            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
-            {
-                Event? persistedEvent = await db.Events.FindAsync(new object[] { @event.Id }, cancellationToken: CancellationToken.None);
-                Assert.NotNull(persistedEvent);
-                // The raw ProviderEventId (with newlines) should be stored in the database
-                Assert.Equal(injectedEventId, persistedEvent.ProviderEventId);
-            }
+            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
+            Event? persistedEvent = await db.Events.FindAsync(new object[] { @event.Id }, cancellationToken: CancellationToken.None);
+            Assert.NotNull(persistedEvent);
+            // The raw ProviderEventId (with newlines) should be stored in the database
+            Assert.Equal(injectedEventId, persistedEvent.ProviderEventId);
         }
     }
 }

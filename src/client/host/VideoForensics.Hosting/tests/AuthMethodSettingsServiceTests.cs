@@ -1,9 +1,6 @@
-using Moq;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Data.Common.Contracts;
-using Xunit;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class AuthMethodSettingsServiceTests
     {
@@ -20,11 +17,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_WithDefaults_ReturnsBothEnabled()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             // Act
-            var result = await _service.GetAsync(CancellationToken.None);
+            AuthMethodSettingsDto result = await _service.GetAsync(CancellationToken.None);
 
             // Assert
             Assert.True(result.PasswordEnabled);
@@ -35,13 +32,13 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_WithPasswordDisabled_ReturnsCorrectValues()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
-            _mockSettings.Setup(s => s.GetAsync("AuthPasskeyEnabled", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthPasskeyEnabled", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
             // Act
-            var result = await _service.GetAsync(CancellationToken.None);
+            AuthMethodSettingsDto result = await _service.GetAsync(CancellationToken.None);
 
             // Assert
             Assert.False(result.PasswordEnabled);
@@ -52,15 +49,15 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateAsync_WithValidUpdate_PersistsSettings()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
-            _mockSettings.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var request = new UpdateAuthMethodSettingsRequest(PasswordEnabled: false, PasskeyEnabled: true);
 
             // Act
-            var result = await _service.UpdateAsync(request, CancellationToken.None);
+            bool result = await _service.UpdateAsync(request, CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -73,13 +70,13 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateAsync_WhenBothMethodsDisabled_ReturnsFalse()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             var request = new UpdateAuthMethodSettingsRequest(PasswordEnabled: false, PasskeyEnabled: false);
 
             // Act
-            var result = await _service.UpdateAsync(request, CancellationToken.None);
+            bool result = await _service.UpdateAsync(request, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -90,15 +87,15 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateAsync_WithPartialUpdate_PersistsOnlyChangedField()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
-            _mockSettings.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var request = new UpdateAuthMethodSettingsRequest(PasswordEnabled: false);
 
             // Act
-            var result = await _service.UpdateAsync(request, CancellationToken.None);
+            bool result = await _service.UpdateAsync(request, CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -111,11 +108,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetLastUpdatedAtUtcAsync_WhenNeverUpdated_ReturnsMinValue()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync("AuthMethodsUpdatedAtUtc", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthMethodsUpdatedAtUtc", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             // Act
-            var result = await _service.GetLastUpdatedAtUtcAsync(CancellationToken.None);
+            DateTime result = await _service.GetLastUpdatedAtUtcAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(DateTime.MinValue, result);
@@ -126,12 +123,12 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var expectedTime = new DateTime(2026, 10, 2, 14, 30, 0, DateTimeKind.Utc);
-            var isoString = expectedTime.ToString("O");
-            _mockSettings.Setup(s => s.GetAsync("AuthMethodsUpdatedAtUtc", It.IsAny<CancellationToken>()))
+            string isoString = expectedTime.ToString("O");
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthMethodsUpdatedAtUtc", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(isoString);
 
             // Act
-            var result = await _service.GetLastUpdatedAtUtcAsync(CancellationToken.None);
+            DateTime result = await _service.GetLastUpdatedAtUtcAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(expectedTime, result);
@@ -141,11 +138,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task IsEnabledAsync_WithPasswordMethod_ChecksPasswordEnabled()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("false");
 
             // Act
-            var result = await _service.IsEnabledAsync("password", CancellationToken.None);
+            bool result = await _service.IsEnabledAsync("password", CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -155,11 +152,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task IsEnabledAsync_WithPasskeyMethod_ChecksPasskeyEnabled()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync("AuthPasskeyEnabled", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthPasskeyEnabled", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
             // Act
-            var result = await _service.IsEnabledAsync("passkey", CancellationToken.None);
+            bool result = await _service.IsEnabledAsync("passkey", CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -169,11 +166,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task IsEnabledAsync_WithCaseInsensitiveMethod_ReturnsCorrectValue()
         {
             // Arrange
-            _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
+            _ = _mockSettings.Setup(s => s.GetAsync("AuthPasswordEnabled", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("true");
 
             // Act
-            var result = await _service.IsEnabledAsync("PASSWORD", CancellationToken.None);
+            bool result = await _service.IsEnabledAsync("PASSWORD", CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -183,7 +180,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task IsEnabledAsync_WithUnknownMethod_ReturnsFalse()
         {
             // Act
-            var result = await _service.IsEnabledAsync("unknown", CancellationToken.None);
+            bool result = await _service.IsEnabledAsync("unknown", CancellationToken.None);
 
             // Assert
             Assert.False(result);

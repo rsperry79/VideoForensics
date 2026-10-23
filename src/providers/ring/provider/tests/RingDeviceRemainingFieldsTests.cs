@@ -88,7 +88,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ToDeviceFields_DoorbotMotionSnoozeObject_StoredAsRawJson()
         {
-            using JsonDocument doc = JsonDocument.Parse("{\"until\":5}");
+            using var doc = JsonDocument.Parse("{\"until\":5}");
 
             DeviceDetailFields? f = DoorbotFields(new Doorbot { Id = 1, MotionSnooze = doc.RootElement.Clone() });
 

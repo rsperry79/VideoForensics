@@ -42,8 +42,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
 
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
 
@@ -57,8 +57,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
 
             clock.Advance(TimeSpan.FromHours(1));
@@ -70,9 +70,9 @@ namespace VideoForensics.Providers.Ring.Tests
             writer.Verify(w => w.ReplaceProfileAsync(It.IsAny<RingAccountProfile>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal(2, handler.CountRequests(LocationEventsUrl));
             Assert.Equal(StartUtc, state.LastConfigSyncUtc);
-            (LogLevel Level, string Message) gateLine = Assert.Single(logger.Entries, e => e.Message.Contains("config sync not due", StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Debug, gateLine.Level);
-            Assert.DoesNotContain(AccountId.ToString(), gateLine.Message, StringComparison.OrdinalIgnoreCase);
+            (LogLevel Level, string Message) = Assert.Single(logger.Entries, e => e.Message.Contains("config sync not due", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Debug, Level);
+            Assert.DoesNotContain(AccountId.ToString(), Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(logger.Entries, e => e.Message.Contains(AccessToken, StringComparison.Ordinal));
         }
 
@@ -81,8 +81,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
 
             clock.Advance(TimeSpan.FromHours(25));
@@ -98,8 +98,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
 
             state.IntervalHours = 6;
@@ -115,10 +115,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
+            StubSessionHandler handler = CreateHandler();
             handler.Routes[ProfileUrl] = (HttpStatusCode.InternalServerError, "{}");
             handler.Routes[RingtonesUrl] = (HttpStatusCode.InternalServerError, "{}");
-            var writer = CreateWriter();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
 
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
             Assert.Null(state.LastConfigSyncUtc);
@@ -149,8 +149,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             var tally = new SyncRunTally();
             RingDeviceDiscoveryService service = await BuildServiceAsync(handler, writer, state, clock, new RecordingLogger(), tally);
             _ = await service.GetLocationsAsync(AccountId);
@@ -173,8 +173,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             var tally = new SyncRunTally();
             RingDeviceDiscoveryService service = await BuildServiceAsync(handler, writer, state, clock, new RecordingLogger(), tally);
             _ = await service.GetLocationsAsync(AccountId);
@@ -196,8 +196,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
             clock.Advance(TimeSpan.FromHours(1));
             var tally = new SyncRunTally();
@@ -214,8 +214,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger());
 
             clock.Advance(TimeSpan.FromHours(1));
@@ -231,8 +231,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             var eventsOnly = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.SinceLast) };
 
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), runOptions: eventsOnly);
@@ -248,8 +248,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var state = new InMemorySyncState();
             var clock = new ManualTimeProvider(StartUtc);
-            var handler = CreateHandler();
-            var writer = CreateWriter();
+            StubSessionHandler handler = CreateHandler();
+            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
             var snapshotsOnly = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Snapshots, SyncRangeKind.SinceLast) };
 
             _ = await SyncAsync(handler, writer, state, clock, new RecordingLogger(), runOptions: snapshotsOnly);
@@ -316,8 +316,10 @@ namespace VideoForensics.Providers.Ring.Tests
             return writer;
         }
 
-        private static string ReadFixture(string name) =>
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+        private static string ReadFixture(string name)
+        {
+            return File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+        }
 
         /// <summary>In-memory gate state; the interval and last-run time are settable so tests control the schedule.</summary>
         private sealed class InMemorySyncState : IRingAccountSyncState
@@ -326,11 +328,16 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public DateTime? LastConfigSyncUtc { get; private set; }
 
-            public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct) =>
-                Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
+            public Task<RingConfigSyncState> GetConfigSyncStateAsync(Guid providerAccountId, CancellationToken ct)
+            {
+                return Task.FromResult(new RingConfigSyncState(IntervalHours, LastConfigSyncUtc));
+            }
 
             /// <summary>Simulates a state with no completed config run, as after a fresh account or a reset.</summary>
-            public void ForgetLastConfigSync() => LastConfigSyncUtc = null;
+            public void ForgetLastConfigSync()
+            {
+                LastConfigSyncUtc = null;
+            }
 
             public Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)
             {
@@ -350,11 +357,20 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             private DateTimeOffset _now;
 
-            public ManualTimeProvider(DateTime startUtc) => _now = new DateTimeOffset(startUtc, TimeSpan.Zero);
+            public ManualTimeProvider(DateTime startUtc)
+            {
+                _now = new DateTimeOffset(startUtc, TimeSpan.Zero);
+            }
 
-            public void Advance(TimeSpan by) => _now = _now.Add(by);
+            public void Advance(TimeSpan by)
+            {
+                _now = _now.Add(by);
+            }
 
-            public override DateTimeOffset GetUtcNow() => _now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return _now;
+            }
         }
 
         /// <summary>Answers OAuth and the configured URLs exactly; anything else is a 404. Never reaches the network.</summary>
@@ -363,11 +379,17 @@ namespace VideoForensics.Providers.Ring.Tests
             private readonly string _accessToken;
             private readonly List<string> _requestedUrls = [];
 
-            public StubSessionHandler(string accessToken) => _accessToken = accessToken;
+            public StubSessionHandler(string accessToken)
+            {
+                _accessToken = accessToken;
+            }
 
             public Dictionary<string, (HttpStatusCode Status, string Body)> Routes { get; } = [];
 
-            public int CountRequests(string url) => _requestedUrls.Count(u => u == url);
+            public int CountRequests(string url)
+            {
+                return _requestedUrls.Count(u => u == url);
+            }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -395,12 +417,20 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public IReadOnlyList<(LogLevel Level, string Message)> Entries => _entries.ToArray();
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
                 _entries.Enqueue((logLevel, formatter(state, exception)));
+            }
         }
     }
 }

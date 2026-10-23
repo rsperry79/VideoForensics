@@ -1,7 +1,8 @@
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
 
 using Xunit;
-using VideoForensics.Ui.Shared.Services.Inspector;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class InspectorState_Show_Tests
 {
@@ -25,7 +26,7 @@ public class InspectorState_Show_Tests
         // Arrange
         var state = new InspectorState();
         var model = new InspectorModel(Title: "TestTitle", Fields: new { Name = "Test" });
-        var changeRaised = false;
+        bool changeRaised = false;
         state.OnChange += () => changeRaised = true;
 
         // Act
@@ -45,9 +46,9 @@ public class InspectorState_Show_Tests
 
         // Act
         state.Show(model1);
-        var firstCurrent = state.Current;
+        InspectorModel? firstCurrent = state.Current;
         state.Show(model2);
-        var secondCurrent = state.Current;
+        InspectorModel? secondCurrent = state.Current;
 
         // Assert
         Assert.Equal(model1, firstCurrent);
@@ -80,7 +81,7 @@ public class InspectorState_Clear_Tests
         var state = new InspectorState();
         var model = new InspectorModel(Title: "TestTitle", Fields: new { Name = "Test" });
         state.Show(model);
-        var changeRaised = false;
+        bool changeRaised = false;
         state.OnChange += () => changeRaised = true;
 
         // Act
@@ -95,7 +96,7 @@ public class InspectorState_Clear_Tests
     {
         // Arrange
         var state = new InspectorState();
-        var changeRaised = false;
+        bool changeRaised = false;
         state.OnChange += () => changeRaised = true;
 
         // Act
@@ -110,7 +111,7 @@ public class InspectorState_Clear_Tests
     {
         // Arrange
         var state = new InspectorState();
-        var changeCount = 0;
+        int changeCount = 0;
         state.OnChange += () => changeCount++;
 
         // Act

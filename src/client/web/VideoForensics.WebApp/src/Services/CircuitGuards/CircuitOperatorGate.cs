@@ -1,13 +1,13 @@
-using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using Microsoft.Extensions.Localization;
-using VideoForensics.Hosting;
-using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.WebApp.Contracts;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Services;
+
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Evaluates the same <see cref="PageAccessRules"/> the UI uses, but on the server and from validated state:
@@ -51,7 +51,10 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             }
         }
 
-        public string StepUpDenial() => localizer["Denied_StepUp"].Value;
+        public string StepUpDenial()
+        {
+            return localizer["Denied_StepUp"].Value;
+        }
 
         public bool IsStepUpValid(string? stepUpToken)
         {

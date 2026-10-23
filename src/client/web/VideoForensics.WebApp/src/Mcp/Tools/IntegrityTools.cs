@@ -2,7 +2,7 @@ using ModelContextProtocol.Server;
 
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.WebApp.Mcp.Tools
+namespace VideoForensics.Client.WebApp.Mcp.Tools
 {
     /// <summary>Phase 2 forensics tools: Evidence Integrity</summary>
     [McpServerToolType]

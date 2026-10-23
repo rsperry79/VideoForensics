@@ -1,20 +1,25 @@
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
+
+using AngleSharp.Dom;
 
 using Bunit;
+
+using VideoForensics.Client.Ui.Shared.Components.Evidence;
+
 using Xunit;
-using VideoForensics.Ui.Shared.Components.Evidence;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Components.Evidence;
 
 public class MediaThumbTests : BunitContext
 {
     [Fact]
     public void Image_RendersImgWithUrl_AndNoVideoElement()
     {
-        var component = Render<MediaThumb>(p => p
+        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "https://cdn.test/a.jpg?ticket=1")
             .Add(x => x.IsVideo, false)
             .Add(x => x.Alt, "Front Door"));
 
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         Assert.Equal("https://cdn.test/a.jpg?ticket=1", img.GetAttribute("src"));
         Assert.Empty(component.FindAll("video"));
     }
@@ -26,7 +31,7 @@ public class MediaThumbTests : BunitContext
     [Fact]
     public void MediaThumb_Render_SetsLazyLoading()
     {
-        var component = Render<MediaThumb>(p => p
+        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "https://cdn.test/a.jpg?ticket=1")
             .Add(x => x.IsVideo, false)
             .Add(x => x.Alt, "Front Door"));
@@ -41,12 +46,12 @@ public class MediaThumbTests : BunitContext
     [Fact]
     public void Video_RendersImgWithServerThumbnailUrl_AndNoVideoElement()
     {
-        var component = Render<MediaThumb>(p => p
+        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "/api/v1/media/abc/content?ticket=2")
             .Add(x => x.IsVideo, true)
             .Add(x => x.Alt, "Driveway"));
 
-        var img = component.Find("img");
+        IElement img = component.Find("img");
         Assert.Equal("/api/v1/media/abc/thumbnail?ticket=2", img.GetAttribute("src"));
         Assert.Empty(component.FindAll("video"));
     }

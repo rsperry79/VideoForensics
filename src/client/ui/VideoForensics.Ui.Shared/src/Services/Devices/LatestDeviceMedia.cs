@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Devices;
+namespace VideoForensics.Client.Ui.Shared.Services.Devices;
 
 /// <summary>
 /// Picks the one snapshot and the one roll-up loop to show for a device on its Devices tab. Older snapshots and loops stay
@@ -38,13 +38,17 @@ public static class LatestDeviceMedia
         return new Selection(snapshot, loop);
     }
 
-    private static bool IsSnapshot(MediaItem item) =>
-        string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
+    private static bool IsSnapshot(MediaItem item)
+    {
+        return string.Equals(item.MediaFormat, "jpg", StringComparison.OrdinalIgnoreCase)
         && item.MetadataJson is not null
         && item.MetadataJson.Contains(SnapshotMarker, StringComparison.Ordinal);
+    }
 
-    private static bool IsLoop(MediaItem item) =>
-        string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase)
+    private static bool IsLoop(MediaItem item)
+    {
+        return string.Equals(item.MediaFormat, "mp4", StringComparison.OrdinalIgnoreCase)
         && item.MetadataJson is not null
         && item.MetadataJson.Contains(LoopMarker, StringComparison.Ordinal);
+    }
 }

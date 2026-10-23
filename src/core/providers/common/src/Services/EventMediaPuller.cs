@@ -49,7 +49,7 @@ namespace VideoForensics.Core.Providers.Common.Services
             // One request in flight, spaced by the minimum interval, for every pull this run makes.
             downloads.SetRequestPacing(1, _minRequestInterval);
 
-            var deviceTotals = request.Devices.Select(d => new DeviceTotals(d.DeviceId)).ToArray();
+            DeviceTotals[] deviceTotals = request.Devices.Select(d => new DeviceTotals(d.DeviceId)).ToArray();
             int feedsFailed = 0;
             int batchesCompleted = 0;
             DateTime? watermark = null;
@@ -145,7 +145,10 @@ namespace VideoForensics.Core.Providers.Common.Services
             private int _alreadyPresent;
             private int _notPulled;
 
-            public DeviceTotals(string deviceId) => _deviceId = deviceId;
+            public DeviceTotals(string deviceId)
+            {
+                _deviceId = deviceId;
+            }
 
             public void Add(DeviceBatchOutcome outcome)
             {
@@ -154,7 +157,10 @@ namespace VideoForensics.Core.Providers.Common.Services
                 _notPulled += outcome.NotPulled;
             }
 
-            public MediaPullDeviceResult ToResult() => new(_deviceId, _pulled, _alreadyPresent, _notPulled);
+            public MediaPullDeviceResult ToResult()
+            {
+                return new(_deviceId, _pulled, _alreadyPresent, _notPulled);
+            }
         }
     }
 }

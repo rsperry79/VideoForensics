@@ -1,14 +1,14 @@
-namespace VideoForensics.Hosting.Tests.Services
-{
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
-    using VideoForensics.Core.Providers.Common.Contracts;
-    using VideoForensics.Data.Common.Contracts;
-    using VideoForensics.Hosting.Contracts;
-    using VideoForensics.Data.Common.Entities;
-    using VideoForensics.Hosting.Services;
-    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Client.Hosting.Contracts;
+
+using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
+namespace VideoForensics.Client.Hosting.Tests.Services
+{
     /// <summary>The manual sync honours the sync type and date range the account page asked for.</summary>
     public class AccountSyncRunnerRequestTests
     {
@@ -18,11 +18,11 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IProviderSyncRunRepository> _runs = new();
         private readonly Mock<ISnapshotSyncService> _snapshots = new();
         private readonly Guid _id = Guid.NewGuid();
-        private readonly List<ProviderSyncRun> _recorded = new();
+        private readonly List<ProviderSyncRun> _recorded = [];
 
         public AccountSyncRunnerRequestTests()
         {
-            _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(new ProviderAccountEntity
+            _ = _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(new ProviderAccountEntity
             {
                 Id = _id,
                 UserId = Guid.NewGuid(),
@@ -31,21 +31,26 @@ namespace VideoForensics.Hosting.Tests.Services
                 LastSuccessfulAuthUtc = new DateTime(2026, 10, 14, 0, 0, 0, DateTimeKind.Utc),
                 IsActive = true
             });
-            _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _runs.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
+            _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _runs.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
                 .Callback<ProviderSyncRun, CancellationToken>((run, _) => _recorded.Add(run))
                 .Returns(Task.CompletedTask);
         }
 
-        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
-            new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull)
+        {
+            return new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
+        }
 
-        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
+        private AccountSyncRunner Sut()
+        {
+            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
+        }
 
         [Fact]
         public async Task RunAsync_EventsWithFromDate_PullsFromThatDate()
         {
-            var from = DateTime.UtcNow.AddDays(-5);
+            DateTime from = DateTime.UtcNow.AddDays(-5);
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, from, null, false), CancellationToken.None);
 

@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Circuit-scoped holder for the current paired-device session (plan §5.1/§5.11) - the WebAuthn

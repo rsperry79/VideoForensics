@@ -1,13 +1,11 @@
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
-using Microsoft.Extensions.Logging;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// <see cref="IDownloadProgressSource"/> for the WebApp, which runs downloads in-process and has no realtime
@@ -57,17 +55,11 @@ namespace VideoForensics.WebApp.Services
         }
 
         /// <inheritdoc />
-        public IObservable<DownloadProgressSnapshot> Progress
-        {
-            get
-            {
-                return Observable.Defer(() =>
-                {
-                    EnsureSampling();
-                    return _snapshots.AsObservable();
-                });
-            }
-        }
+        public IObservable<DownloadProgressSnapshot> Progress => Observable.Defer(() =>
+                                                                              {
+                                                                                  EnsureSampling();
+                                                                                  return _snapshots.AsObservable();
+                                                                              });
 
         /// <summary>
         /// Takes one sample and emits it if the state changed or activity arrived. The sampling loop calls this on
@@ -186,12 +178,7 @@ namespace VideoForensics.WebApp.Services
         /// </summary>
         private static bool HasStateChanged(DownloadProgressSnapshot? previous, DownloadProgressSnapshot current)
         {
-            if (previous is null)
-            {
-                return true;
-            }
-
-            return previous.IsDownloading != current.IsDownloading
+            return previous is null || previous.IsDownloading != current.IsDownloading
                 || previous.FilesCompleted != current.FilesCompleted
                 || previous.FilesTotal != current.FilesTotal
                 || previous.BytesDownloaded != current.BytesDownloaded

@@ -1,10 +1,13 @@
+
+using Fido2NetLib;
+
 using Fido2NetLib.Objects;
 
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class PasskeyUserHandleVerifierTests
     {
@@ -14,7 +17,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task ForOperator_UserHandleMatchesOperatorId_ReturnsTrue()
         {
             var operatorId = Guid.NewGuid();
-            var callback = PasskeyUserHandleVerifier.ForOperator(operatorId);
+            IsUserHandleOwnerOfCredentialIdAsync callback = PasskeyUserHandleVerifier.ForOperator(operatorId);
 
             bool result = await callback(
                 new IsUserHandleOwnerOfCredentialIdParams(CredentialId, operatorId.ToByteArray()),
@@ -28,7 +31,7 @@ namespace VideoForensics.WebApp.Tests
         {
             var operatorId = Guid.NewGuid();
             var otherOperatorId = Guid.NewGuid();
-            var callback = PasskeyUserHandleVerifier.ForOperator(operatorId);
+            IsUserHandleOwnerOfCredentialIdAsync callback = PasskeyUserHandleVerifier.ForOperator(operatorId);
 
             bool result = await callback(
                 new IsUserHandleOwnerOfCredentialIdParams(CredentialId, otherOperatorId.ToByteArray()),
@@ -42,7 +45,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Non-discoverable login: no user handle is sent. Identity comes from the credential ID lookup
             // plus the signature check against the stored key, so there is no claim to contradict.
-            var callback = PasskeyUserHandleVerifier.ForOperator(Guid.NewGuid());
+            IsUserHandleOwnerOfCredentialIdAsync callback = PasskeyUserHandleVerifier.ForOperator(Guid.NewGuid());
 
             bool result = await callback(
                 new IsUserHandleOwnerOfCredentialIdParams(CredentialId, null),

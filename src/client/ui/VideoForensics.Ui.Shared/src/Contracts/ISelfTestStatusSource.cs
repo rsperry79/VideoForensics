@@ -1,6 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// Host-agnostic source of Ring self-test run status for <c>RingSelfTest</c>. The page subscribes instead of

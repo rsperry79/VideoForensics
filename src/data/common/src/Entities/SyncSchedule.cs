@@ -76,7 +76,7 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>Snapshot/RSSI floor in seconds. One second is the smallest interval an operator can set.</summary>
         public const int MinimumSnapshotIntervalSeconds = 1;
 
-/// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
+        /// <summary>Default event poll interval for a newly linked account, in minutes.</summary>
         public const int DefaultEventPollIntervalMinutes = 60;
 
         /// <summary>

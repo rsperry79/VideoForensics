@@ -3,12 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
-using VideoForensics.Hosting;
-using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Client.Hosting;
 
 // VideoForensics.Utils.DbSetup: creates/migrates the VideoForensics SQLite database at a specified path,
 // without needing to start the full server. Intended for provisioning a database ahead of first
@@ -54,7 +54,7 @@ for (int i = 0; i < args.Length; i++)
     }
 }
 
-if (networkTierArg is not null && networkTierArg != "Local" && networkTierArg != "Network")
+if (networkTierArg is not null and not "Local" and not "Network")
 {
     Console.Error.WriteLine($"Invalid --set-network-tier value: '{networkTierArg}'. Must be 'Local' or 'Network'.");
     return 1;
@@ -122,7 +122,7 @@ static async Task<int> SetNetworkTierAsync(IDbContextFactory<VideoForensicsDbCon
     }
     else
     {
-        context.AppSettings.Add(new AppSetting
+        _ = context.AppSettings.Add(new AppSetting
         {
             Id = Guid.NewGuid(),
             Key = "ConfiguredNetworkTier",
@@ -131,7 +131,7 @@ static async Task<int> SetNetworkTierAsync(IDbContextFactory<VideoForensicsDbCon
         });
     }
 
-    await context.SaveChangesAsync(ct);
+    _ = await context.SaveChangesAsync(ct);
     Console.WriteLine($"Network tier set to '{tierValue}'.");
     return 0;
 }

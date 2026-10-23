@@ -28,8 +28,10 @@ namespace VideoForensics.Providers.Ring.Tests
                 new Mock<ISessionProvider>().Object,
                 new Mock<IVideoForensicsDataClient>().Object,
                 metadataTagger: null,
-                notificationDispatcher: dispatcher.Object);
-            service.PacerClock = utcNow;
+                notificationDispatcher: dispatcher.Object)
+            {
+                PacerClock = utcNow
+            };
             return (service, dispatcher);
         }
 
@@ -300,11 +302,17 @@ namespace VideoForensics.Providers.Ring.Tests
         /// <summary>Collects log entries so tests can assert a failure was logged without a Moq expression over generic Log.</summary>
         private sealed class CapturingLogger : ILogger
         {
-            public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+            public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
@@ -317,15 +325,10 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var repository = new Mock<ISyncScheduleRepository>();
             var logger = new CapturingLogger();
-            if (loadFailure != null)
-            {
-                _ = repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>())).ThrowsAsync(loadFailure);
-            }
-            else
-            {
-                _ = repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()))
+            _ = loadFailure != null
+                ? repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>())).ThrowsAsync(loadFailure)
+                : repository.Setup(r => r.GetByProviderAccountIdAsync(AccountA, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new SyncSchedule { ProviderAccountId = AccountA, SnapshotIntervalSeconds = storedSeconds });
-            }
 
             var service = new RingMediaDownloadService(
                 logger,
@@ -340,8 +343,10 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         // Session is null in these tests, so the download returns before any Ring call; the stored interval loads first in the entry point.
-        private static Task<DownloadResult> DownloadOnceAsync(RingMediaDownloadService service) =>
-            service.DownloadVideosAsync("device-1", Path.GetTempPath(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, cancellationToken: CancellationToken.None);
+        private static Task<DownloadResult> DownloadOnceAsync(RingMediaDownloadService service)
+        {
+            return service.DownloadVideosAsync("device-1", Path.GetTempPath(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, cancellationToken: CancellationToken.None);
+        }
 
         [Fact]
         public async Task DownloadVideosAsync_StoredIntervalAboveBase_RaisesPacerToStoredInterval()
@@ -386,7 +391,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(LogLevel.Error, level);
             Assert.Contains("Ring account", message);
             Assert.DoesNotContain(AccountA.ToString(), message);
-            Assert.IsType<InvalidOperationException>(exception);
+            _ = Assert.IsType<InvalidOperationException>(exception);
         }
 
         [Fact]

@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Periodically pushes the server's own download progress out over <see cref="LiveHub"/> (plan
@@ -52,7 +52,7 @@ namespace VideoForensics.WebApp.Hubs
                     using IServiceScope scope = _scopeFactory.CreateScope();
                     IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
 
-                    DownloadProgressDto payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
+                    var payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

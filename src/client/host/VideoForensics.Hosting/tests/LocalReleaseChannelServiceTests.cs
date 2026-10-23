@@ -1,9 +1,7 @@
-using Moq;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Hosting.Local;
-using Xunit;
+using VideoForensics.Client.Hosting.Local;
 
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class LocalReleaseChannelServiceTests
     {

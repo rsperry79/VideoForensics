@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting.Contracts
+namespace VideoForensics.Client.Hosting.Contracts
 {
     /// <summary>Outcome of one account's snapshot roll-up.</summary>
     /// <param name="DevicesAttempted">Devices of the account that were considered.</param>

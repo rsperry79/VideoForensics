@@ -1,22 +1,20 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 using System.Buffers;
-using System.Globalization;
 using System.Net.ServerSentEvents;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Logging.Services;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>Tunables for the log SSE stream.</summary>
     public sealed class LogStreamOptions
@@ -139,12 +137,20 @@ namespace VideoForensics.WebApp.Api
         }
 
         private static bool IsValidMinLevel(string? minLevel)
-            => string.IsNullOrEmpty(minLevel) || ValidLogLevels.Contains(minLevel, StringComparer.OrdinalIgnoreCase);
+        {
+            return string.IsNullOrEmpty(minLevel) || ValidLogLevels.Contains(minLevel, StringComparer.OrdinalIgnoreCase);
+        }
 
-        private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
+        private static string? NullIfEmpty(string? value)
+        {
+            return string.IsNullOrEmpty(value) ? null : value;
+        }
 
         /// <summary>Omitted, zero or negative limits mean "use the default"; anything above the maximum is capped.</summary>
-        private static int ClampLimit(int limit) => limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
+        private static int ClampLimit(int limit)
+        {
+            return limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
+        }
 
         private static Guid? ExtractOperatorId(HttpContext context)
         {

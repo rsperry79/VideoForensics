@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Circuit-scoped orchestration of the active UI layout mode (Standard/Simple),
@@ -58,7 +58,7 @@ namespace VideoForensics.Ui.Shared.Services
         public async Task SetModeAsync(string mode)
         {
             // Validate mode
-            if (mode != "Standard" && mode != "Simple")
+            if (mode is not "Standard" and not "Simple")
             {
                 throw new ArgumentException($"Invalid UI mode '{mode}'. Must be 'Standard' or 'Simple'.", nameof(mode));
             }
@@ -117,6 +117,7 @@ namespace VideoForensics.Ui.Shared.Services
                     IsLocked = refreshed.UiModeLocked;
                     OnChange?.Invoke();
                 }
+
                 throw;
             }
         }

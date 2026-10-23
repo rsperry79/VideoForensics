@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="ILiveViewSessionService"/> that calls the server's Minimal API under

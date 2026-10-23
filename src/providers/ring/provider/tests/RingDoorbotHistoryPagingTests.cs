@@ -1,17 +1,16 @@
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Text;
-using System.Text.Json;
-
-using Microsoft.Extensions.Logging;
-using Moq;
 
 using VideoForensics.Core.Providers.Common;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -41,7 +40,7 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDoorbotHistoryPaging_ThreePages_RequestsOlderThanFromPreviousOldestAndWritesEachOnce()
         {
             // 100, 100, 37: the third page is short, so the loop must stop after it.
-            var handler = CreateHandler(olderThan =>
+            PagingStubHandler handler = CreateHandler(olderThan =>
             {
                 long start = olderThan ?? 1000;
                 return start switch
@@ -52,7 +51,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     _ => "[]",
                 };
             });
-            var writer = CreateWriter(out List<string> written);
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out List<string> written);
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -70,8 +69,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingDoorbotHistoryPaging_EmptyFirstPage_MakesOneRequestAndWritesNothing()
         {
-            var handler = CreateHandler(_ => "[]");
-            var writer = CreateWriter(out List<string> written);
+            PagingStubHandler handler = CreateHandler(_ => "[]");
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out List<string> written);
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -83,8 +82,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public async Task RingDoorbotHistoryPaging_RepeatedOldestId_StopsWithoutRequestingTheSameCursorAgain()
         {
             // Every request returns the same full page, so the oldest id never moves past the cursor.
-            var handler = CreateHandler(_ => Page(1000, 100));
-            var writer = CreateWriter(out List<string> written);
+            PagingStubHandler handler = CreateHandler(_ => Page(1000, 100));
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out List<string> written);
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -102,8 +101,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Every page is full and older than the last, so only the cap can end the loop.
             // older_than is exclusive, so the page after cursor X starts at X - 1.
-            var handler = CreateHandler(olderThan => Page(olderThan.HasValue ? olderThan.Value - 1 : 1_000_000, PageSize));
-            var writer = CreateWriter(out List<string> written);
+            PagingStubHandler handler = CreateHandler(olderThan => Page(olderThan.HasValue ? olderThan.Value - 1 : 1_000_000, PageSize));
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out List<string> written);
             var logger = new RecordingLogger();
 
             await SyncAsync(handler, writer, logger);
@@ -124,21 +123,21 @@ namespace VideoForensics.Providers.Ring.Tests
             // are written; the page's oldest event is before the start, so no further page is requested.
             DateTime rangeEnd = new(2026, 10, 16, 0, 0, 0, DateTimeKind.Utc);
             DateTime rangeStart = rangeEnd.AddHours(-50);
-            var handler = CreateHandler(_ => HourlyPage(1000, 100, rangeEnd));
-            var writer = CreateWriter(out List<string> written);
+            PagingStubHandler handler = CreateHandler(_ => HourlyPage(1000, 100, rangeEnd));
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out List<string> written);
             var holder = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Custom, StartUtc: rangeStart, EndUtc: rangeEnd) };
 
             await SyncAsync(handler, writer, new RecordingLogger(), holder);
 
-            Assert.Single(handler.HistoryQueries);
+            _ = Assert.Single(handler.HistoryQueries);
             Assert.Equal(51, written.Count);
         }
 
         [Fact]
         public async Task RingVideoSearch_RangeStart_SendsStartAsDateFrom()
         {
-            var handler = CreateHandler(_ => "[]");
-            var writer = CreateWriter(out _);
+            PagingStubHandler handler = CreateHandler(_ => "[]");
+            Mock<IRingEventHistoryWriter> writer = CreateWriter(out _);
             DateTime rangeStart = new(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
             var holder = new SyncRunOptionsHolder { Current = new SyncRunOptions(SyncRunKind.Events, SyncRangeKind.Custom, StartUtc: rangeStart, EndUtc: rangeStart.AddDays(1)) };
 
@@ -156,11 +155,13 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 if (i > 0)
                 {
-                    sb.Append(',');
+                    _ = sb.Append(',');
                 }
+
                 string createdAt = newest.AddHours(-i).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
-                sb.Append(CultureInfo.InvariantCulture, $"{{\"id\":{newestId - i},\"created_at\":\"{createdAt}\",\"answered\":false,\"kind\":\"ding\",\"events\":[]}}");
+                _ = sb.Append(CultureInfo.InvariantCulture, $"{{\"id\":{newestId - i},\"created_at\":\"{createdAt}\",\"answered\":false,\"kind\":\"ding\",\"events\":[]}}");
             }
+
             return sb.Append(']').ToString();
         }
 
@@ -172,7 +173,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = sessionProvider.Setup(sp => sp.GetSession(AccountId)).Returns(session);
             var service = new RingDeviceDiscoveryService(logger, sessionProvider.Object, eventHistoryWriter: writer.Object, syncRunOptions: runOptions);
 
-            await session.Authenticate();
+            _ = await session.Authenticate();
             _ = await service.GetLocationsAsync(AccountId);
         }
 
@@ -215,11 +216,11 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 if (i > 0)
                 {
-                    sb.Append(',');
+                    _ = sb.Append(',');
                 }
 
                 long id = newestId - i;
-                sb.Append(CultureInfo.InvariantCulture, $"{{\"id\":{id},\"created_at\":\"2026-01-01T00:00:00Z\",\"answered\":false,\"kind\":\"ding\",\"events\":[]}}");
+                _ = sb.Append(CultureInfo.InvariantCulture, $"{{\"id\":{id},\"created_at\":\"2026-01-01T00:00:00Z\",\"answered\":false,\"kind\":\"ding\",\"events\":[]}}");
             }
 
             return sb.Append(']').ToString();
@@ -305,12 +306,20 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public IReadOnlyList<(LogLevel Level, string Message)> Entries => _entries.ToArray();
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
 
-            public bool IsEnabled(LogLevel logLevel) => true;
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
                 _entries.Enqueue((logLevel, formatter(state, exception)));
+            }
         }
     }
 }

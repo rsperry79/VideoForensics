@@ -37,7 +37,7 @@ namespace VideoForensics.Providers.Ring.Services
             string tmpPath = BuildTempPath(mediaFilePath);
             try
             {
-                var psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
+                ProcessStartInfo psi = BuildTaggingProcessInfo(mediaFilePath, eventId, tmpPath);
 
                 using var process = Process.Start(psi);
                 if (process == null)
@@ -162,7 +162,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                var psi = BuildReadingProcessInfo(mediaFilePath);
+                ProcessStartInfo psi = BuildReadingProcessInfo(mediaFilePath);
 
                 using var process = Process.Start(psi);
                 if (process == null)

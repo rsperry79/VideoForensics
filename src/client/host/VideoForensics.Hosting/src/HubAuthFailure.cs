@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Classifies a SignalR failure as an authentication rejection (HTTP 401). A 401 means the paired-device token

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
-namespace VideoForensics.WebApp.Hubs
+namespace VideoForensics.Client.WebApp.Hubs
 {
     /// <summary>
     /// Pushes urgent security events (plan §5.6) to every connected <see cref="LiveHub"/> client -

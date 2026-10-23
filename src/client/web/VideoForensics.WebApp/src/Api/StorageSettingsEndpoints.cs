@@ -1,8 +1,9 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Storage settings management endpoints (SuperAdmin-only via Local network tier):

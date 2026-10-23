@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Services;
 using Session = VideoForensics.Providers.Ring.Session;

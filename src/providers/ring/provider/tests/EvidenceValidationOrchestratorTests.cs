@@ -4,10 +4,10 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -498,7 +498,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = _mockEventRepository.Setup(r => r.ListByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([storedEvent]);
             _ = _mockEventAndConfigService.Setup(s => s.GetEventsAsync(providerDeviceId, fromUtc, toUtc, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<DeviceEvent>());
+                .ReturnsAsync([]);
             _ = _mockReconciliationService.Setup(s => s.AutoFixDiscrepanciesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<Func<string, DateTime, DateTime, CancellationToken, Task<IReadOnlyList<Event>>>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AutoFixResult { NewEventsInserted = 0, MetadataUpdated = 0, Failed = 0, ErrorDetails = [] });
             _ = _mockReconciliationService.Setup(s => s.RecordReconciliationRunAsync(deviceId, It.IsAny<IReadOnlyList<ReconciliationDiscrepancy>>(), It.IsAny<CancellationToken>()))
@@ -525,9 +525,12 @@ namespace VideoForensics.Providers.Ring.Tests
         /// <summary>Synchronous progress sink that records every reported line in order.</summary>
         private sealed class ProgressCollector : IProgress<string>
         {
-            public List<string> Lines { get; } = new();
+            public List<string> Lines { get; } = [];
 
-            public void Report(string value) => Lines.Add(value);
+            public void Report(string value)
+            {
+                Lines.Add(value);
+            }
         }
     }
 }

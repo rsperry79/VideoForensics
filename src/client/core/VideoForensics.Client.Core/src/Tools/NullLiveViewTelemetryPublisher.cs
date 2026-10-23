@@ -10,9 +10,15 @@ namespace VideoForensics.Client.Core.Tools
     public sealed class NullLiveViewTelemetryPublisher : ILiveViewTelemetryPublisher
     {
         /// <inheritdoc />
-        public Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct) => Task.CompletedTask;
+        public Task PublishSessionChangedAsync(LiveViewSession session, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
 
         /// <inheritdoc />
-        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct) => Task.CompletedTask;
+        public Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

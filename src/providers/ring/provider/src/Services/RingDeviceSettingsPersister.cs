@@ -55,6 +55,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 await _dataClient.UpdateDeviceDetailFieldsAsync(deviceId, details.DeviceFields, ct);
             }
+
             return true;
         }
 

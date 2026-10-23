@@ -1,19 +1,23 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Resources;
+
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Resources;
+using VideoForensics.Client.Ui.Shared.Layout;
+using VideoForensics.Client.Ui.Shared.Resources;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Pins the reviewed policy for every admin page. Each row was checked against the endpoints the page calls (see the
 /// comment on the matching row in <see cref="PageAccessRules"/>). Changing a row must be a deliberate review decision.
 /// </summary>
 public class AdminNavConfiguration_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false) =>
-        new(role is not null, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
+    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false)
+    {
+        return new(role is not null, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
+    }
 
     [Theory]
     [InlineData("/settings/security-events", AccessPolicy.ReadOnly)]
@@ -112,7 +116,7 @@ public class AdminNavConfiguration_Tests
         ];
         var group = new NavGroup("test", "Test", "/settings", items);
 
-        var sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRole.SuperAdmin, false, IsLocalTier: true));
+        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(group, new NavContext(true, OperatorRole.SuperAdmin, false, IsLocalTier: true));
 
         Assert.Equal(2, sections.Count);
         Assert.Equal("Security", sections[0].Title);
@@ -126,7 +130,7 @@ public class AdminNavConfiguration_Tests
         var resources = new ResourceManager(typeof(SharedResources));
         NavGroup admin = NavGroups.All.First(g => g.Key == "admin");
 
-        var keys = admin.Items.Select(i => i.Text)
+        IEnumerable<string> keys = admin.Items.Select(i => i.Text)
             .Concat(admin.Items.Where(i => i.Section is not null).Select(i => i.Section!))
             .Concat(["Admin", "Settings", "Navigation"])
             .Distinct();

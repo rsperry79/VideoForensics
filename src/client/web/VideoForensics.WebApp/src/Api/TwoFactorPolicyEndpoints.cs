@@ -1,11 +1,12 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Admin endpoints for managing two-factor authentication policy settings: per-role requirements
@@ -27,7 +28,7 @@ namespace VideoForensics.WebApp.Api
             ITwoFactorRoleRequirementRepository repository,
             CancellationToken ct)
         {
-            var requirements = await repository.GetAllAsync(ct);
+            IReadOnlyList<TwoFactorRoleRequirement> requirements = await repository.GetAllAsync(ct);
             var dtos = requirements.Select(r => r.ToDto()).ToList();
             return Results.Ok(dtos);
         }

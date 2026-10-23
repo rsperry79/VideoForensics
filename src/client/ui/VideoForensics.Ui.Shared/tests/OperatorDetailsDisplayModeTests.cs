@@ -1,15 +1,19 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the "Display mode" section of OperatorDetails.razor. The page's own operator fetch uses a
 /// raw HttpClient that cannot succeed under bUnit, so these also prove the section does not depend on
@@ -26,20 +30,20 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public OperatorDetailsDisplayModeTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        Services.AddLocalization();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddLocalization();
 
-        Services.AddScoped(_ => _admin.Object);
-        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
-        Services.AddScoped<StepUpService>();
+        _ = Services.AddScoped(_ => _admin.Object);
+        _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        _ = Services.AddScoped<StepUpService>();
         _session = new PairedSessionState(JSInterop.JSRuntime);
-        Services.AddScoped(_ => _session);
+        _ = Services.AddScoped(_ => _session);
 
-        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OperatorUiMode("Standard", false));
-        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
@@ -51,10 +55,14 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     }
 
     private IRenderedComponent<OperatorDetails> RenderPage()
-        => Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
+    {
+        return Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
+    }
 
     private static string? SelectedValue(IRenderedComponent<OperatorDetails> cut)
-        => cut.FindAll("select.display-mode-select option").FirstOrDefault(o => o.HasAttribute("selected"))?.GetAttribute("value");
+    {
+        return cut.FindAll("select.display-mode-select option").FirstOrDefault(o => o.HasAttribute("selected"))?.GetAttribute("value");
+    }
 
     [Theory]
     [InlineData(OperatorRole.Admin)]
@@ -63,7 +71,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(role);
 
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
 
         cut.WaitForAssertion(() =>
         {
@@ -80,7 +88,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(role);
 
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
 
         Assert.Empty(cut.FindAll("select.display-mode-select"));
         Assert.Empty(cut.FindAll("button.display-mode-save"));
@@ -90,7 +98,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     [Fact]
     public void Page_SignedOutViewer_DoesNotRenderDisplayModeSection()
     {
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
 
         Assert.Empty(cut.FindAll("select.display-mode-select"));
         Assert.Empty(cut.FindAll("button.display-mode-save"));
@@ -101,10 +109,10 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Page_StoredSimpleAndLocked_ShowsStoredValues()
     {
         await SignInAsync(OperatorRole.SuperAdmin);
-        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OperatorUiMode("Simple", true));
 
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
 
         cut.WaitForAssertion(() =>
         {
@@ -117,7 +125,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ChangedModeAndLock_CallsSetUiModeOnceAndShowsSuccess()
     {
         await SignInAsync(OperatorRole.Admin);
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("select.display-mode-select")));
 
         cut.Find("select.display-mode-select").Change("Simple");
@@ -133,7 +141,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ViewingOwnOperator_StillAllowed()
     {
         await SignInAsync(OperatorRole.SuperAdmin, operatorId: TargetId);
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();
@@ -146,9 +154,9 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ServiceThrows_ShowsErrorAndNoSuccessMessage()
     {
         await SignInAsync(OperatorRole.Admin);
-        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("boom-from-server"));
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();
@@ -162,10 +170,10 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Load_ServiceThrows_ShowsLoadFailedAndRestOfPageStillRenders()
     {
         await SignInAsync(OperatorRole.Admin);
-        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("load-boom"));
 
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains("Could not load the display mode", cut.Markup));
         Assert.Contains("Operator Details", cut.Markup);
@@ -176,9 +184,9 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(OperatorRole.Admin);
         var gate = new TaskCompletionSource();
-        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Returns(gate.Task);
-        var cut = RenderPage();
+        IRenderedComponent<OperatorDetails> cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();

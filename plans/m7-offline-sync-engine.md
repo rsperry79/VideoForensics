@@ -28,9 +28,9 @@ STILL OPEN. Greps on origin/dev for `offline`, `SyncEngine`, `OfflineSync`, `Con
 | `src/client/host/VideoForensics.Hosting/Remote/RemoteSyncSource.cs` (NEW) | HTTP client for change feed with bearer + `CancellationToken` | Follows `Remote*` pattern |
 | `src/client/web/VideoForensics.WebApp/Api/SyncApiEndpoints.cs` (NEW; sibling of existing `MediaApiEndpoints.cs`) | `GET /api/v1/sync/changes` | Server change feed, uses ToDto mapping |
 | `src/client/host/VideoForensics.Hosting/VideoForensicsHostingExtensions.cs` | Register sync services (client vs server tier) | DI wiring |
-| `src/client/maui/VideoForensics.MauiApp/MauiProgram.cs` | Register cache store, trigger sync on `MauiServerConnectivityState` change | Wire into app |
-| `src/client/maui/VideoForensics.MauiApp/Services/MauiServerConnectivityState.cs` | Raise reconnect event if not already exposed | Sync trigger |
-| `src/client/maui/VideoForensics.MauiApp/VideoForensics.MauiApp.csproj` | Add SQLite NuGet; fix stale comment | Local store |
+| `src/client/maui/VideoForensics.Client.MauiApp/MauiProgram.cs` | Register cache store, trigger sync on `MauiServerConnectivityState` change | Wire into app |
+| `src/client/maui/VideoForensics.Client.MauiApp/Services/MauiServerConnectivityState.cs` | Raise reconnect event if not already exposed | Sync trigger |
+| `src/client/maui/VideoForensics.Client.MauiApp/src/VideoForensics.Client.MauiApp.csproj` | Add SQLite NuGet; fix stale comment | Local store |
 | Ui.Shared offline banner/status (path TBD) | Offline/last-synced indicator, localized via `IStringLocalizer<SharedResources>` + .resx | Required localization |
 | New `.csproj` files (if any) | Must include `Microsoft.CodeAnalysis` PackageReference | Repo convention |
 

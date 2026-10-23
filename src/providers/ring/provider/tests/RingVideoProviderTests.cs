@@ -2,8 +2,8 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;

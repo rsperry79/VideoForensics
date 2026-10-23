@@ -1,7 +1,7 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Ui.Shared.Layout
+namespace VideoForensics.Client.Ui.Shared.Layout
 {
     /// <summary>
     /// A single left-nav item within a top-level tab group. Who may see it comes from <see cref="PageAccessRules"/>;
@@ -208,7 +208,7 @@ namespace VideoForensics.Ui.Shared.Layout
             {
                 items.Add(new("Change Password", "/change-password"));
                 items.Add(new("My Passkeys", "/settings/passkeys"));
-                
+
                 // Add UI mode toggle if not locked
                 if (!ctx.UiModeLocked)
                 {
@@ -221,7 +221,7 @@ namespace VideoForensics.Ui.Shared.Layout
                         items.Add(new("Switch to Standard view", Action: "set-ui-mode:Standard"));
                     }
                 }
-                
+
                 items.Add(new("Sign Out", null)); // No path - handled by click handler
             }
             else

@@ -3,7 +3,7 @@ using Syncfusion.Blazor.QueryBuilder;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace VideoForensics.Ui.Shared.Services;
+namespace VideoForensics.Client.Ui.Shared.Services;
 
 /// <summary>
 /// Provides extension methods to convert Syncfusion QueryBuilder rules to LINQ predicates

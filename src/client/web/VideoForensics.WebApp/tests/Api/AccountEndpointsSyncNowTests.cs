@@ -1,9 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -15,19 +9,23 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
-using VideoForensics.Client.Common.Contracts;
+using System.Net;
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Pipeline tests for POST sync-now (sync type and range) and GET/PUT config-sync-interval. Requests go through an
@@ -52,7 +50,7 @@ namespace VideoForensics.WebApp.Tests.Api
 
         public async ValueTask InitializeAsync()
         {
-            _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccount
                 {
                     Id = _accountId,
@@ -63,12 +61,12 @@ namespace VideoForensics.WebApp.Tests.Api
                     InitialSyncCompleted = true
                 });
 
-            _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()))
+            _ = _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<Guid, AccountSyncRequest, CancellationToken>((_, request, _) => _ranWith.TrySetResult(request))
                 .Returns(Task.CompletedTask);
 
             // No body takes the legacy overload, which has no request to inspect.
-            _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = _runner.Setup(r => r.RunAsync(_accountId, It.IsAny<CancellationToken>()))
                 .Callback<Guid, CancellationToken>((_, _) => _ranLegacy.TrySetResult())
                 .Returns(Task.CompletedTask);
 
@@ -81,7 +79,7 @@ namespace VideoForensics.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<ICaseRepository>());
             _ = builder.Services.AddSingleton(_runner.Object);
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
-            _ = builder.Services.AddSingleton(Mock.Of<VideoForensics.Client.Common.Contracts.IAccountExportService>());
+            _ = builder.Services.AddSingleton(Mock.Of<Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddSingleton(_syncState.Object);
 
             // The account routes require SuperAdmin on the Local tier; the test scheme always signs in such an operator.
@@ -108,7 +106,10 @@ namespace VideoForensics.WebApp.Tests.Api
             await _app.DisposeAsync();
         }
 
-        private static StringContent Json(string body) => new(body, System.Text.Encoding.UTF8, "application/json");
+        private static StringContent Json(string body)
+        {
+            return new(body, System.Text.Encoding.UTF8, "application/json");
+        }
 
         private const string TestScheme = "SyncNowTest";
 
@@ -235,7 +236,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public async Task ConfigSyncInterval_Get_ReturnsStoredHours()
         {
-            _syncState.Setup(s => s.GetConfigSyncStateAsync(_accountId, It.IsAny<CancellationToken>()))
+            _ = _syncState.Setup(s => s.GetConfigSyncStateAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new RingConfigSyncState(48, null));
 
             ConfigSyncIntervalDto? dto = await _client.GetFromJsonAsync<ConfigSyncIntervalDto>(IntervalUrl, WebJson);
@@ -246,7 +247,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public async Task ConfigSyncInterval_PutValid_StoresHours()
         {
-            _syncState.Setup(s => s.SetConfigIntervalHoursAsync(_accountId, 48, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _ = _syncState.Setup(s => s.SetConfigIntervalHoursAsync(_accountId, 48, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             HttpResponseMessage response = await _client.PutAsync(IntervalUrl, Json("{\"hours\":48}"));
 
@@ -268,7 +269,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public async Task ConfigSyncInterval_PutWithoutRingRow_Returns404()
         {
-            _syncState.Setup(s => s.SetConfigIntervalHoursAsync(_accountId, 12, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _ = _syncState.Setup(s => s.SetConfigIntervalHoursAsync(_accountId, 12, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
             HttpResponseMessage response = await _client.PutAsync(IntervalUrl, Json("{\"hours\":12}"));
 

@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Contracts
+namespace VideoForensics.Client.Ui.Shared.Contracts
 {
     /// <summary>
     /// Host-agnostic source of "an account was just linked" events, so an open accounts list can refresh without a

@@ -34,7 +34,10 @@ namespace VideoForensics.Providers.Ring.Tests
         public IAccessAuditLogRepository AccessAuditLogs { get; set; } = null!;
         public IExportAuditRecordRepository ExportAuditRecords { get; set; } = null!;
         public IDetectionEntityProvider DetectionEntities { get; set; } = null!;
-        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+        public Task SaveChangesAsync(CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     public class BackupImportOrchestratorTests

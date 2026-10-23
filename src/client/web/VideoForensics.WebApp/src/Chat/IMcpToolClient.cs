@@ -1,4 +1,4 @@
-namespace VideoForensics.WebApp.Chat
+namespace VideoForensics.Client.WebApp.Chat
 {
     /// <summary>
     /// Minimal abstraction over McpClient's tool-listing and tool-invocation operations,

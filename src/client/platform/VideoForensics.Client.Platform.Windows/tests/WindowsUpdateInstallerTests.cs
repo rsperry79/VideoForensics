@@ -1,5 +1,3 @@
-using VideoForensics.Client.Platform.Windows;
-
 using Xunit;
 
 namespace VideoForensics.Client.Platform.Windows.Tests

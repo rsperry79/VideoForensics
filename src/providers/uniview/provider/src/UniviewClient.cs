@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+
 using VideoForensics.Core.Providers.Core;
 
 namespace VideoForensics.Providers.Uniview;
@@ -678,7 +679,7 @@ public sealed class UniviewClient : IDisposable
             ["u8RecvSendFlag"] = 2,
             ["u16Port"] = 33598,
             ["stIPAddress"] = localIp,
-            ["szRecordFileName"] = "",
+            ["szRecordFileName"] = string.Empty,
             ["u32RecordType"] = segment.RecordType,
             ["u32Begin"] = segment.Begin.ToUnixTimeSeconds(),
             ["u32End"] = segment.End.ToUnixTimeSeconds(),

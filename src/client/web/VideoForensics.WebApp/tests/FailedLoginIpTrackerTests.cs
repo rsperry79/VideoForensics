@@ -3,13 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     public class FailedLoginIpTrackerTests
     {
@@ -21,8 +21,8 @@ namespace VideoForensics.WebApp.Tests
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
             var audit = new Mock<ISecurityAuditLogger>();
-            var tracker = CreateTracker(time, store, audit);
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, audit);
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             bool first = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
             bool second = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
@@ -31,7 +31,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.False(first);
             Assert.False(second);
             Assert.True(third);
-            Assert.Single(store);
+            _ = Assert.Single(store);
             audit.Verify(a => a.LogAsync(SecurityAuditEventTypes.AutoBanCreated, null, null, AttackerIp,
                 It.IsAny<string?>(), true, It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -41,9 +41,9 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
-            Guid sameOperator = Guid.NewGuid();
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
+            var sameOperator = Guid.NewGuid();
 
             for (int i = 0; i < 5; i++)
             {
@@ -59,8 +59,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
@@ -73,8 +73,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3, windowMinutes: 60);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3, windowMinutes: 60);
 
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
@@ -87,7 +87,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.Empty(store);
 
             Assert.True(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
-            Assert.Single(store);
+            _ = Assert.Single(store);
         }
 
         [Fact]
@@ -96,8 +96,8 @@ namespace VideoForensics.WebApp.Tests
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
             var audit = new Mock<ISecurityAuditLogger>();
-            var tracker = CreateTracker(time, store, audit);
-            var policy = CreatePolicy(autoBan: false, threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, audit);
+            LockoutPolicySettings policy = CreatePolicy(autoBan: false, threshold: 3);
 
             for (int i = 0; i < 10; i++)
             {
@@ -122,8 +122,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             for (int i = 0; i < 5; i++)
             {
@@ -140,8 +140,8 @@ namespace VideoForensics.WebApp.Tests
             // CF-Connecting-IP header is present; banning it would block every Internet-tier user.
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             for (int i = 0; i < 5; i++)
             {
@@ -157,12 +157,12 @@ namespace VideoForensics.WebApp.Tests
             var store = new List<BannedIpRange>();
             var now = DateTimeOffset.Parse("2026-10-10T12:00:00Z");
             var time = new ManualTimeProvider(now);
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3, durationMinutes: 1440);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3, durationMinutes: 1440);
 
             for (int i = 0; i < 3; i++)
             {
-                await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
+                _ = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
             }
 
             BannedIpRange ban = Assert.Single(store);
@@ -180,8 +180,8 @@ namespace VideoForensics.WebApp.Tests
             // v1 is IPv4-only: no IPv6 Cloudflare edge ranges exist in the resolver, so an IPv6 edge peer must never be banned.
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             for (int i = 0; i < 3; i++)
             {
@@ -195,10 +195,10 @@ namespace VideoForensics.WebApp.Tests
         public async Task FailedLoginIpTracker_IPv6AddressAfterThreshold_ReturnsFalseAndWritesNoBan()
         {
             var store = new List<BannedIpRange>();
-            var repository = CreateBannedRangeRepository(store);
+            Mock<IBannedIpRangeRepository> repository = CreateBannedRangeRepository(store);
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             for (int i = 0; i < 5; i++)
             {
@@ -223,17 +223,17 @@ namespace VideoForensics.WebApp.Tests
                     ExpiresAtUtc = DateTime.UtcNow.AddHours(1)
                 }
             };
-            var repository = CreateBannedRangeRepository(store);
+            Mock<IBannedIpRangeRepository> repository = CreateBannedRangeRepository(store);
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             for (int i = 0; i < 3; i++)
             {
                 Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             }
 
-            Assert.Single(store);
+            _ = Assert.Single(store);
             repository.Verify(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -242,34 +242,34 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 50);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 50);
 
             // 49 distinct accounts in parallel: one short of the threshold, so no ban yet.
             bool[] belowThreshold = await Task.WhenAll(Enumerable.Range(0, 49).Select(_ =>
                 Task.Run(() => tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None))));
-            Assert.All(belowThreshold, banned => Assert.False(banned));
+            Assert.All(belowThreshold, Assert.False);
             Assert.Empty(store);
 
             // The 50th distinct account crosses the threshold exactly once.
             Assert.True(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
-            Assert.Single(store);
+            _ = Assert.Single(store);
         }
 
         [Fact]
         public async Task FailedLoginIpTracker_ConcurrentRecordsOverThreshold_BansExactlyOnce()
         {
             var store = new List<BannedIpRange>();
-            var repository = CreateBannedRangeRepository(store);
+            Mock<IBannedIpRangeRepository> repository = CreateBannedRangeRepository(store);
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             bool[] results = await Task.WhenAll(Enumerable.Range(0, 40).Select(_ =>
                 Task.Run(() => tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None))));
 
             Assert.Equal(1, results.Count(banned => banned));
-            Assert.Single(store);
+            _ = Assert.Single(store);
             repository.Verify(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -278,8 +278,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
@@ -297,17 +297,17 @@ namespace VideoForensics.WebApp.Tests
             // After an unban, the tracker must not stay silent for the old ban's duration: a fresh
             // threshold crossing should be able to write a new ban immediately.
             var store = new List<BannedIpRange>();
-            var repository = CreateBannedRangeRepository(store);
+            Mock<IBannedIpRangeRepository> repository = CreateBannedRangeRepository(store);
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3, durationMinutes: 1440);
+            FailedLoginIpTracker tracker = CreateTracker(time, repository, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3, durationMinutes: 1440);
 
             for (int i = 0; i < 3; i++)
             {
                 _ = await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None);
             }
 
-            Assert.Single(store);
+            _ = Assert.Single(store);
             store.Clear();
             await tracker.ClearAsync(AttackerIp, CancellationToken.None);
 
@@ -318,7 +318,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             Assert.True(rebanned);
-            Assert.Single(store);
+            _ = Assert.Single(store);
         }
 
         [Fact]
@@ -326,8 +326,8 @@ namespace VideoForensics.WebApp.Tests
         {
             var store = new List<BannedIpRange>();
             var time = new ManualTimeProvider(DateTimeOffset.Parse("2026-10-10T12:00:00Z"));
-            var tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
-            var policy = CreatePolicy(threshold: 3);
+            FailedLoginIpTracker tracker = CreateTracker(time, store, new Mock<ISecurityAuditLogger>());
+            LockoutPolicySettings policy = CreatePolicy(threshold: 3);
 
             // Never seen this address: clearing must complete without throwing or touching other counters.
             await tracker.ClearAsync("198.51.100.99", CancellationToken.None);
@@ -335,7 +335,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             Assert.False(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
             Assert.True(await tracker.RecordLockoutAsync(AttackerIp, Guid.NewGuid(), policy, CancellationToken.None));
-            Assert.Single(store);
+            _ = Assert.Single(store);
         }
 
         private static LockoutPolicySettings CreatePolicy(
@@ -360,9 +360,9 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<IBannedIpRangeRepository> CreateBannedRangeRepository(List<BannedIpRange> store)
         {
             var repository = new Mock<IBannedIpRangeRepository>();
-            repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            _ = repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => store.ToList());
-            repository.Setup(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()))
+            _ = repository.Setup(r => r.AddAsync(It.IsAny<BannedIpRange>(), It.IsAny<CancellationToken>()))
                 .Callback<BannedIpRange, CancellationToken>((range, _) => store.Add(range))
                 .Returns(Task.CompletedTask);
             return repository;
@@ -397,11 +397,20 @@ namespace VideoForensics.WebApp.Tests
         {
             private DateTimeOffset _now;
 
-            public ManualTimeProvider(DateTimeOffset start) => _now = start;
+            public ManualTimeProvider(DateTimeOffset start)
+            {
+                _now = start;
+            }
 
-            public override DateTimeOffset GetUtcNow() => _now;
+            public override DateTimeOffset GetUtcNow()
+            {
+                return _now;
+            }
 
-            public void Advance(TimeSpan by) => _now = _now.Add(by);
+            public void Advance(TimeSpan by)
+            {
+                _now = _now.Add(by);
+            }
         }
     }
 }

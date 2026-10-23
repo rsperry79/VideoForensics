@@ -30,10 +30,7 @@ namespace VideoForensics.Core.Logging.Providers
         /// </summary>
         public ILogger CreateLogger(string categoryName)
         {
-            if (_disposed)
-                return new NoOpLogger();
-
-            return new InMemoryLogBufferLogger(categoryName, _buffer, this);
+            return _disposed ? new NoOpLogger() : new InMemoryLogBufferLogger(categoryName, _buffer, this);
         }
 
         /// <summary>
@@ -42,15 +39,25 @@ namespace VideoForensics.Core.Logging.Providers
         public void Dispose()
         {
             if (_disposed)
+            {
                 return;
+            }
 
             _disposed = true;
         }
 
         private sealed class NoOpLogger : ILogger
         {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-            public bool IsEnabled(LogLevel logLevel) => false;
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                return null;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return false;
+            }
+
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
         }
 
@@ -85,7 +92,9 @@ namespace VideoForensics.Core.Logging.Providers
                 Func<TState, Exception?, string> formatter)
             {
                 if (!IsEnabled(logLevel) || _provider._disposed)
+                {
                     return;
+                }
 
                 // Format the message
                 string message = formatter(state, exception);
@@ -101,7 +110,7 @@ namespace VideoForensics.Core.Logging.Providers
                     // Truncate to 4000 characters
                     if (exceptionText.Length > 4000)
                     {
-                        exceptionText = exceptionText.Substring(0, 4000);
+                        exceptionText = exceptionText[..4000];
                     }
                 }
 
@@ -121,7 +130,7 @@ namespace VideoForensics.Core.Logging.Providers
             private static string FormatException(Exception exception)
             {
                 // Format: Type: Message + newline + StackTrace
-                var result = $"{exception.GetType().FullName}: {exception.Message}";
+                string result = $"{exception.GetType().FullName}: {exception.Message}";
                 if (!string.IsNullOrEmpty(exception.StackTrace))
                 {
                     result += $"{Environment.NewLine}{exception.StackTrace}";

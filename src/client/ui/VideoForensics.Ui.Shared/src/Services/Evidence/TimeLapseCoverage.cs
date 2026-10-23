@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 /// <summary>
 /// Hides the snapshots that a Time Lapse stands in for, in the media view only. A Time Lapse covers the window that ends at
@@ -20,13 +20,16 @@ public static class TimeLapseCoverage
             return list.AsReadOnly();
         }
 
-        bool Covered(EvidenceItem item) => item.Kind == EvidenceKind.Snapshot && lapses.Any(lapse =>
+        bool Covered(EvidenceItem item)
+        {
+            return item.Kind == EvidenceKind.Snapshot && lapses.Any(lapse =>
         {
             TimeSpan window = windowFor(lapse.DeviceId);
             DateTime end = lapse.Media!.RecordedAtUtc;
             DateTime start = end - window;
             return lapse.DeviceId == item.DeviceId && item.OccurredAtUtc >= start && item.OccurredAtUtc < end;
         });
+        }
 
         return list.Where(item => !Covered(item)).ToList().AsReadOnly();
     }

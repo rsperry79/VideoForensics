@@ -85,9 +85,11 @@ namespace VideoForensics.Data.Database.Tests
         private Task WriteAsync(
             IReadOnlyList<DeviceOfflineMotionSettings>? offline = null,
             IReadOnlyList<DeviceDetectionType>? types = null,
-            IReadOnlyList<DeviceDetectionThreshold>? thresholds = null) =>
-            _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
+            IReadOnlyList<DeviceDetectionThreshold>? thresholds = null)
+        {
+            return _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None,
                 new DeviceSettingsChildren(MotionSnoozePresets: [], LiveViewPresets: [], AdvancedMotionZones: [], OfflineMotion: offline, DetectionTypes: types, DetectionThresholds: thresholds));
+        }
 
         private async Task<DeviceSettingChange> SingleChangeAsync(string fieldName)
         {
@@ -95,8 +97,14 @@ namespace VideoForensics.Data.Database.Tests
             return await db.DeviceSettingChanges.SingleAsync(c => c.FieldName == fieldName);
         }
 
-        private static DeviceDetectionType Type(string name, bool enabled) => new() { Id = Guid.NewGuid(), DetectionType = name, Enabled = enabled, Mode = "cloud" };
+        private static DeviceDetectionType Type(string name, bool enabled)
+        {
+            return new() { Id = Guid.NewGuid(), DetectionType = name, Enabled = enabled, Mode = "cloud" };
+        }
 
-        private static DeviceDetectionThreshold Threshold(string name, double value) => new() { Id = Guid.NewGuid(), DetectionType = name, Threshold = value };
+        private static DeviceDetectionThreshold Threshold(string name, double value)
+        {
+            return new() { Id = Guid.NewGuid(), DetectionType = name, Threshold = value };
+        }
     }
 }

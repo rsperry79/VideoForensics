@@ -1,14 +1,11 @@
-using Microsoft.AspNetCore.Http;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Core;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Infrastructure;
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Infrastructure;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Cloudflare Tunnel setup for the Internet tier. Every route is SuperAdmin-gated; starting a tunnel and
@@ -274,13 +271,17 @@ namespace VideoForensics.WebApp.Api
         }
 
         internal static bool IsSafeDomain(string? value)
-            => Uri.TryCreate($"https://{value}", UriKind.Absolute, out Uri? uri)
-                && uri.Host == value?.Trim().TrimEnd('.').ToLowerInvariant()
-                && uri.Host.Contains('.', StringComparison.Ordinal);
+        {
+            return Uri.TryCreate($"https://{value}", UriKind.Absolute, out Uri? uri)
+                        && uri.Host == value?.Trim().TrimEnd('.').ToLowerInvariant()
+                        && uri.Host.Contains('.', StringComparison.Ordinal);
+        }
 
         /// <summary>Builds the lower-case public hostname from a validated prefix and domain.</summary>
         internal static string BuildFqdn(string prefix, string domain)
-            => $"{prefix.Trim().ToLowerInvariant()}.{domain.Trim().TrimEnd('.').ToLowerInvariant()}";
+        {
+            return $"{prefix.Trim().ToLowerInvariant()}.{domain.Trim().TrimEnd('.').ToLowerInvariant()}";
+        }
 
         /// <summary>
         /// Loads the stored API token and confirms the domain is one of the zones that token can see. The

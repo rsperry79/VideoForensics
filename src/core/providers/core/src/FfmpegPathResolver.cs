@@ -42,14 +42,14 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // Build the executable file name for the current platform
-            var executableName = OperatingSystem.IsWindows()
+            string executableName = OperatingSystem.IsWindows()
                 ? executableBaseName + ".exe"
                 : executableBaseName;
 
             // Configured bin directory wins over the app directory when the executable is present there
             if (!string.IsNullOrWhiteSpace(binDirectory))
             {
-                var binCandidate = Path.Combine(binDirectory, executableName);
+                string binCandidate = Path.Combine(binDirectory, executableName);
                 if (File.Exists(binCandidate))
                 {
                     return binCandidate;
@@ -57,7 +57,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // Build the candidate path for a bundled binary next to the app
-            var candidatePath = Path.Combine(AppContext.BaseDirectory, executableName);
+            string candidatePath = Path.Combine(AppContext.BaseDirectory, executableName);
 
             // If the bundled binary exists, return its full path
             if (File.Exists(candidatePath))
@@ -66,7 +66,7 @@ namespace VideoForensics.Core.Providers.Core
             }
 
             // Discover on the registry PATHs so a fresh install is found without a process restart
-            var discovered = discover(executableBaseName);
+            string? discovered = discover(executableBaseName);
             if (!string.IsNullOrWhiteSpace(discovered))
             {
                 return discovered;

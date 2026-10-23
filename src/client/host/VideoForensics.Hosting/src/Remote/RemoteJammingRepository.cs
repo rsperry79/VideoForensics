@@ -6,7 +6,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed <see cref="IJammingRepository"/> that calls the server's Minimal API
@@ -82,7 +82,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/incidents/{incidentId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             JammingIncidentDto? dto = await response.Content.ReadFromJsonAsync<JammingIncidentDto>(JsonOptions, ct);
@@ -94,7 +96,9 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/stats/{deviceId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
                 return null;
+            }
 
             _ = response.EnsureSuccessStatusCode();
             JammingStatsSummaryDto? dto = await response.Content.ReadFromJsonAsync<JammingStatsSummaryDto>(JsonOptions, ct);

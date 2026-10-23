@@ -1,12 +1,12 @@
-namespace VideoForensics.Ui.Shared.Services
+namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Builds an <see cref="HttpClient"/> for a Blazor page in <c>Pages/Security*.razor</c> (and any
     /// similar page) to call this same app's own <c>/api/v1/...</c> Minimal API - a "self-call" back
     /// into the host process rather than a remote server.
     ///
-    /// <c>VideoForensics.Ui.Shared</c> cannot reference <c>VideoForensics.Hosting</c> or
-    /// <c>VideoForensics.WebApp</c> (doing so would be circular - both reference Ui.Shared), so it
+    /// <c>VideoForensics.Client.Ui.Shared</c> cannot reference <c>VideoForensics.Client.Hosting</c> or
+    /// <c>VideoForensics.Client.WebApp</c> (doing so would be circular - both reference Ui.Shared), so it
     /// cannot itself build the WebApp's network-tier-aware handler chain
     /// (see WebApp's <c>SelfHttpServiceExtensions</c>). Instead, each host registers the
     /// implementation appropriate to it:

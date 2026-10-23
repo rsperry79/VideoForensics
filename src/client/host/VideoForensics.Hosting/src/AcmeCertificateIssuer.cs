@@ -2,7 +2,7 @@ using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Publishes and removes the TXT record a DNS-01 challenge needs.</summary>
     public interface IDnsChallengePublisher
@@ -66,7 +66,7 @@ namespace VideoForensics.Hosting
             var acme = new AcmeContext(server, accountKey);
             _ = await acme.NewAccount(contactEmail, true);
 
-            IOrderContext order = await acme.NewOrder(new List<string> { domain });
+            IOrderContext order = await acme.NewOrder([domain]);
             foreach (IAuthorizationContext authorization in await order.Authorizations())
             {
                 await CompleteDnsChallengeAsync(acme, order, authorization, domain, dns, ct);
@@ -101,7 +101,7 @@ namespace VideoForensics.Hosting
                 for (int poll = 0; poll < MaxPolls; poll++)
                 {
                     Order current = await order.Resource();
-                    if (current.Status == OrderStatus.Ready || current.Status == OrderStatus.Valid)
+                    if (current.Status is OrderStatus.Ready or OrderStatus.Valid)
                     {
                         return;
                     }

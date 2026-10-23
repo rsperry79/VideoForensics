@@ -3,11 +3,9 @@ using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Remote;
+using VideoForensics.Client.Hosting.Remote;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class RemoteDeviceHealthRepositoryTests
     {
@@ -99,8 +97,8 @@ namespace VideoForensics.Hosting.Tests
         {
             var cts = new CancellationTokenSource();
             var deviceId = Guid.NewGuid();
-            var fromUtc = DateTime.UtcNow.AddDays(-1);
-            var toUtc = DateTime.UtcNow;
+            DateTime fromUtc = DateTime.UtcNow.AddDays(-1);
+            DateTime toUtc = DateTime.UtcNow;
             string json = JsonSerializer.Serialize(new List<DeviceHealthDto>(), JsonOptions);
             CancellationToken? capturedToken = null;
 

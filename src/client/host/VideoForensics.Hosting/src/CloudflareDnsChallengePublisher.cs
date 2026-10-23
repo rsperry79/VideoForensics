@@ -1,4 +1,4 @@
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Publishes DNS-01 challenge records through the Cloudflare API for one zone. The API token and zone id
@@ -42,7 +42,9 @@ namespace VideoForensics.Hosting
         public static readonly TimeSpan RenewBefore = TimeSpan.FromDays(30);
 
         public static bool IsRenewalDue(DateTimeOffset? notAfter, DateTimeOffset now)
-            => notAfter is null || notAfter.Value - now <= RenewBefore;
+        {
+            return notAfter is null || notAfter.Value - now <= RenewBefore;
+        }
 
         /// <summary>
         /// Returns the zone that contains <paramref name="hostname"/>, choosing the longest matching name so that

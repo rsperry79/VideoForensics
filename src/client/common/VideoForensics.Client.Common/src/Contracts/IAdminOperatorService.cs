@@ -17,7 +17,7 @@ namespace VideoForensics.Client.Common.Contracts
     /// Service for admin-level operator management operations (approve, deactivate, unlock, etc).
     /// On a client host (MAUI), this is backed by HTTP calls to the server's device management endpoints;
     /// the WebApp's own Blazor UI uses the same HTTP-backed implementation calling back into its own
-    /// Minimal API (see <c>VideoForensics.WebApp.Services.SelfHttpServiceExtensions</c>).
+    /// Minimal API (see <c>VideoForensics.Client.WebApp.Services.SelfHttpServiceExtensions</c>).
     /// </summary>
     public interface IAdminOperatorService
     {

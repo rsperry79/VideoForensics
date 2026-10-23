@@ -1,8 +1,9 @@
-using Xunit;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
+using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+using Xunit;
+
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 public class EvidenceView_ParseView_Tests
 {
@@ -10,7 +11,7 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_WithNull_ReturnsTimeline()
     {
         // Act
-        var result = EvidenceViewModel.ParseView(null);
+        EvidenceView result = EvidenceViewModel.ParseView(null);
 
         // Assert
         Assert.Equal(EvidenceView.Timeline, result);
@@ -20,7 +21,7 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_WithTimeline_ReturnsTimeline()
     {
         // Act
-        var result = EvidenceViewModel.ParseView("timeline");
+        EvidenceView result = EvidenceViewModel.ParseView("timeline");
 
         // Assert
         Assert.Equal(EvidenceView.Timeline, result);
@@ -30,7 +31,7 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_WithGrid_ReturnsGrid()
     {
         // Act
-        var result = EvidenceViewModel.ParseView("grid");
+        EvidenceView result = EvidenceViewModel.ParseView("grid");
 
         // Assert
         Assert.Equal(EvidenceView.Grid, result);
@@ -40,7 +41,7 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_WithGallery_ReturnsGallery()
     {
         // Act
-        var result = EvidenceViewModel.ParseView("gallery");
+        EvidenceView result = EvidenceViewModel.ParseView("gallery");
 
         // Assert
         Assert.Equal(EvidenceView.Gallery, result);
@@ -50,9 +51,9 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_CaseInsensitive()
     {
         // Act
-        var result1 = EvidenceViewModel.ParseView("TIMELINE");
-        var result2 = EvidenceViewModel.ParseView("Grid");
-        var result3 = EvidenceViewModel.ParseView("GALLERY");
+        EvidenceView result1 = EvidenceViewModel.ParseView("TIMELINE");
+        EvidenceView result2 = EvidenceViewModel.ParseView("Grid");
+        EvidenceView result3 = EvidenceViewModel.ParseView("GALLERY");
 
         // Assert
         Assert.Equal(EvidenceView.Timeline, result1);
@@ -64,7 +65,7 @@ public class EvidenceView_ParseView_Tests
     public void ParseView_WithInvalid_ReturnsTimeline()
     {
         // Act
-        var result = EvidenceViewModel.ParseView("invalid");
+        EvidenceView result = EvidenceViewModel.ParseView("invalid");
 
         // Assert
         Assert.Equal(EvidenceView.Timeline, result);
@@ -121,7 +122,7 @@ public class EvidenceViewModel_Open_Tests
         {
             Items = new[] { item1, item2 },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
@@ -150,7 +151,7 @@ public class EvidenceViewModel_Open_Tests
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
@@ -182,7 +183,7 @@ public class EvidenceViewModel_Close_Tests
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
@@ -225,7 +226,7 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
@@ -264,7 +265,7 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item2, item1 },  // Descending order
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
@@ -303,14 +304,14 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:2");
 
         // Act
-        var hasNext = vm.HasNext;
+        bool hasNext = vm.HasNext;
 
         // Assert
         Assert.True(hasNext);
@@ -333,14 +334,14 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
 
         // Act
-        var hasNext = vm.HasNext;
+        bool hasNext = vm.HasNext;
 
         // Assert
         Assert.False(hasNext);
@@ -372,14 +373,14 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item2, item1 },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
 
         // Act
-        var hasPrevious = vm.HasPrevious;
+        bool hasPrevious = vm.HasPrevious;
 
         // Assert
         Assert.True(hasPrevious);
@@ -402,14 +403,14 @@ public class EvidenceViewModel_Navigation_Tests
         {
             Items = new[] { item },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
         vm.Open("media:1");
 
         // Act
-        var hasPrevious = vm.HasPrevious;
+        bool hasPrevious = vm.HasPrevious;
 
         // Assert
         Assert.False(hasPrevious);
@@ -445,16 +446,16 @@ public class EvidenceViewModel_GalleryItems_Tests
         {
             Items = new[] { viewableItem, nonViewableItem },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
 
         // Act
-        var galleryItems = vm.GalleryItems;
+        IReadOnlyList<EvidenceItem> galleryItems = vm.GalleryItems;
 
         // Assert
-        Assert.Single(galleryItems);
+        _ = Assert.Single(galleryItems);
         Assert.Equal(viewableItem, galleryItems[0]);
     }
 }
@@ -499,13 +500,13 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
         {
             Items = new[] { item1, item2, item3 },
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
 
         // Act
-        var ids = vm.ThumbnailMediaIds(max: 3);
+        IReadOnlyList<Guid> ids = vm.ThumbnailMediaIds(max: 3);
 
         // Assert
         Assert.Equal(3, ids.Count);
@@ -532,13 +533,13 @@ public class EvidenceViewModel_ThumbnailMediaIds_Tests
         {
             Items = imageIds,
             Errors = new Dictionary<Guid, string>(),
-            IntegrityRecords = new List<IntegrityRecord>(),
+            IntegrityRecords = [],
             ActiveHoldsByMediaItemId = new Dictionary<Guid, LegalHold>()
         };
         var vm = new EvidenceViewModel(result);
 
         // Act
-        var ids = vm.ThumbnailMediaIds(max: 50);
+        IReadOnlyList<Guid> ids = vm.ThumbnailMediaIds(max: 50);
 
         // Assert
         Assert.Equal(50, ids.Count);

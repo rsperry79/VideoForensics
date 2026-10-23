@@ -1,8 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class MediaContentRoutesTests
     {

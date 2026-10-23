@@ -1,12 +1,7 @@
-using Moq;
-
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 
-using Xunit;
-
-namespace VideoForensics.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests
 {
     public class DownloadStatusDtoMappingTests
     {
@@ -26,14 +21,14 @@ namespace VideoForensics.Hosting.Tests
             var status = new DownloadStatus(true, 1, 4, 100L, "a.mp4", 2, 8, 200L, 3, 1.5);
 
             var service = new Mock<IVideoDownloadService>();
-            service.Setup(s => s.GetProgress()).Returns(status);
-            service.Setup(s => s.GetCurrentDevice()).Returns((2, 5, "Front door"));
-            service.Setup(s => s.DrainActivityLog()).Returns(new List<string> { "line one" });
-            service.Setup(s => s.GetPreScanCounts()).Returns(new Dictionary<string, int> { ["dev-1"] = 6 });
-            service.Setup(s => s.GetLastError()).Returns("Disk full");
-            service.Setup(s => s.GetRemainingReason()).Returns("Rate limited by provider");
+            _ = service.Setup(s => s.GetProgress()).Returns(status);
+            _ = service.Setup(s => s.GetCurrentDevice()).Returns((2, 5, "Front door"));
+            _ = service.Setup(s => s.DrainActivityLog()).Returns(["line one"]);
+            _ = service.Setup(s => s.GetPreScanCounts()).Returns(new Dictionary<string, int> { ["dev-1"] = 6 });
+            _ = service.Setup(s => s.GetLastError()).Returns("Disk full");
+            _ = service.Setup(s => s.GetRemainingReason()).Returns("Rate limited by provider");
 
-            DownloadProgressDto dto = service.Object.ToDownloadProgressDto();
+            var dto = service.Object.ToDownloadProgressDto();
 
             Assert.Equal(status.ToDto(), dto.Progress);
             Assert.Equal(2, dto.CurrentDeviceIndex);

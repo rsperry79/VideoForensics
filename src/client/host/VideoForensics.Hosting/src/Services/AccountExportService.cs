@@ -1,16 +1,16 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Threading.Channels;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Hosting.Services
+namespace VideoForensics.Client.Hosting.Services
 {
     /// <summary>
     /// Queues account exports and runs them one at a time (drained by
@@ -46,7 +46,7 @@ namespace VideoForensics.Hosting.Services
         {
             // Purge deletes only the account's own rows (its credentials, schedule, sync history and links). Locations,
             // devices and events are shared through ProviderAccountLocation and are never deleted with the account.
-            Guid jobId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
             _jobs[jobId] = new ExportJobStatus(jobId, accountId, ExportJobState.Queued, null, null, purgeAfterExport, _time.GetUtcNow().UtcDateTime, null);
             _latestJobByAccount[accountId] = jobId;
             await _queue.Writer.WriteAsync(jobId, ct);
@@ -184,7 +184,7 @@ namespace VideoForensics.Hosting.Services
 
         private static async Task<string> ResolveExportsFolderAsync(IServiceProvider sp, CancellationToken ct)
         {
-            IForensicsConfiguration config = await sp.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync("", ct);
+            IForensicsConfiguration config = await sp.GetRequiredService<IForensicsConfigurationService>().LoadConfigurationAsync(string.Empty, ct);
             return sp.GetRequiredService<IStorageLocationProvider>().GetEffectiveRoot(StorageCategory.Exports, config.ExportsLocation);
         }
 

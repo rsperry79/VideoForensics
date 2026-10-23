@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// Stores the SMTP password for email notifications (plan §5.6) encrypted via the existing

@@ -1,8 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.Ui.Shared.Layout;
 
-namespace VideoForensics.WebApp.Services.CircuitGuards
+namespace VideoForensics.Client.WebApp.Services.CircuitGuards
 {
     /// <summary>
     /// Guards the in-process evidence export that the Export Evidence page runs. The HTTP export also requires
@@ -23,12 +23,9 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             }
 
             // Matches the HTTP export, which requires step-up through the endpoint filter.
-            if (!gate.IsStepUpValid(stepUpToken))
-            {
-                throw new UnauthorizedAccessException(gate.StepUpDenial());
-            }
-
-            return inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
+            return !gate.IsStepUpValid(stepUpToken)
+                ? throw new UnauthorizedAccessException(gate.StepUpDenial())
+                : inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
         }
     }
 }

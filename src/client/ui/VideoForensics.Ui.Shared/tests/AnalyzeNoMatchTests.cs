@@ -1,9 +1,13 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Moq;
+
+using VideoForensics.Client.Ui.Shared.Pages;
+
 using Xunit;
 
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>When the filters match no device, Analyze shows a notice and runs no report.</summary>
 public class Analyze_NoMatch_Tests : AnalyzePageTestBase
 {
@@ -12,7 +16,7 @@ public class Analyze_NoMatch_Tests : AnalyzePageTestBase
     {
         ScopeState.Set(ScopeState.Current with { MatchesNoDevices = true });
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.NotEmpty(component.FindAll("[data-testid='no-devices-match']"));
         ReportGenerationServiceMock.Verify(

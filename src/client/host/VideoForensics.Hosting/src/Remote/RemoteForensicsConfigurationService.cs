@@ -1,6 +1,6 @@
 using VideoForensics.Client.Common.Contracts;
 
-namespace VideoForensics.Hosting.Remote
+namespace VideoForensics.Client.Hosting.Remote
 {
     /// <summary>
     /// HTTP-backed, limited <see cref="IForensicsConfigurationService"/> that provides access to the server's

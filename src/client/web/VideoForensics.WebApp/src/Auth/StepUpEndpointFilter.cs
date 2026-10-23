@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Primitives;
 
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.Auth
+namespace VideoForensics.Client.WebApp.Auth
 {
     /// <summary>
     /// Requires a valid "X-StepUp-Token" header (issued by POST /api/auth/webauthn/stepup-complete or /api/v1/auth/stepup/password)

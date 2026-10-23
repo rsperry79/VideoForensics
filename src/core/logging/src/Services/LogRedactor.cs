@@ -1,4 +1,3 @@
-using System;
 using System.Text.RegularExpressions;
 
 namespace VideoForensics.Core.Logging.Services
@@ -16,10 +15,14 @@ namespace VideoForensics.Core.Logging.Services
         public static string? Redact(string? input)
         {
             if (input == null)
+            {
                 return null;
+            }
 
             if (string.IsNullOrEmpty(input))
+            {
                 return input;
+            }
 
             string result = input;
 

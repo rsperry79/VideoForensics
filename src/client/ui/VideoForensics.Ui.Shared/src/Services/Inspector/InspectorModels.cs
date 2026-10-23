@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Services.Inspector
+namespace VideoForensics.Client.Ui.Shared.Services.Inspector
 {
     /// <summary>
     /// Represents a hyperlink in the Inspector's Related tab.

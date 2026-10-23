@@ -56,8 +56,8 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             User user = TestDataBuilder.BuildUser();
             ProviderAccount account = TestDataBuilder.BuildProviderAccount(user.Id, providerName);
-            db.Users.Add(user);
-            db.ProviderAccounts.Add(account);
+            _ = db.Users.Add(user);
+            _ = db.ProviderAccounts.Add(account);
             _ = await db.SaveChangesAsync();
             return account.Id;
         }
@@ -67,9 +67,9 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Location location = TestDataBuilder.BuildLocation();
             Device device = TestDataBuilder.BuildDevice(location.Id);
-            db.Locations.Add(location);
-            db.Devices.Add(device);
-            db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = providerAccountId, LocationId = location.Id });
+            _ = db.Locations.Add(location);
+            _ = db.Devices.Add(device);
+            _ = db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = providerAccountId, LocationId = location.Id });
             _ = await db.SaveChangesAsync();
             return device;
         }
@@ -79,8 +79,8 @@ namespace VideoForensics.Data.Database.Tests
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
             Location location = TestDataBuilder.BuildLocation();
             Device device = TestDataBuilder.BuildDevice(location.Id);
-            db.Locations.Add(location);
-            db.Devices.Add(device);
+            _ = db.Locations.Add(location);
+            _ = db.Devices.Add(device);
             _ = await db.SaveChangesAsync();
             return device;
         }

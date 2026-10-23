@@ -21,7 +21,7 @@ namespace VideoForensics.Data.Database.Tests
             await _fixture.InitializeAsync();
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             var services = new ServiceCollection();
-            services.AddSingleton<ILogger<UnitOfWork>>(new Logger<UnitOfWork>(loggerFactory));
+            _ = services.AddSingleton<ILogger<UnitOfWork>>(new Logger<UnitOfWork>(loggerFactory));
             _unitOfWork = new UnitOfWork(_fixture.Factory, services.BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
         }
 
@@ -43,11 +43,11 @@ namespace VideoForensics.Data.Database.Tests
                 Location location = TestDataBuilder.BuildLocation();
                 device = TestDataBuilder.BuildDevice(location.Id);
                 accountId = account.Id;
-                db.Users.Add(user);
-                db.ProviderAccounts.Add(account);
-                db.Locations.Add(location);
-                db.Devices.Add(device);
-                db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = accountId, LocationId = location.Id });
+                _ = db.Users.Add(user);
+                _ = db.ProviderAccounts.Add(account);
+                _ = db.Locations.Add(location);
+                _ = db.Devices.Add(device);
+                _ = db.ProviderAccountLocations.Add(new ProviderAccountLocation { ProviderAccountId = accountId, LocationId = location.Id });
                 _ = await db.SaveChangesAsync();
             }
 

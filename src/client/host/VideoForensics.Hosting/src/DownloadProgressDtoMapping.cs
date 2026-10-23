@@ -1,7 +1,7 @@
-using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Api.Contracts;
 
-namespace VideoForensics.Hosting
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>Builds the download-progress wire payload from the server's local download service.</summary>
     public static class DownloadProgressDtoMapping

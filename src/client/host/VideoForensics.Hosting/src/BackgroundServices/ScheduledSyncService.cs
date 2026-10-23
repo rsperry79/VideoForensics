@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Runs each enabled per-account <see cref="SyncSchedule"/>: when an account's event poll is due it pulls
@@ -21,7 +21,7 @@ namespace VideoForensics.Hosting.BackgroundServices
     /// GetSession() call sites remain in the provider layer, so two same-provider runs in parallel could race on
     /// the shared session; poll intervals are tens of minutes, so sequential processing costs nothing.
     ///
-    /// Server-tier only (VideoForensics.WebApp, registered through AddVideoForensicsScheduledSync): a client host
+    /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsScheduledSync): a client host
     /// must never call a provider directly. Snapshot/RSSI scheduling is a later milestone; RSSI polling stays with
     /// <see cref="DeviceHealthSyncService"/>. Logs use the provider name ("Ring account"), never the account GUID.
     /// </summary>
@@ -41,7 +41,7 @@ namespace VideoForensics.Hosting.BackgroundServices
         internal static readonly TimeSpan RollupRetryBackoff = TimeSpan.FromMinutes(5);
 
         /// <summary>Per account: the time before which a failed roll-up is not retried.</summary>
-        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = new();
+        private readonly Dictionary<Guid, DateTimeOffset> _rollupRetryAfter = [];
 
         /// <summary>Creates the scheduler.</summary>
         public ScheduledSyncService(
@@ -92,7 +92,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
         }
 
-        /// <summary>Internal for direct testability (VideoForensics.Hosting.Tests) without driving the BackgroundService lifecycle/timer.</summary>
+        /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the BackgroundService lifecycle/timer.</summary>
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
@@ -323,6 +323,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                     {
                         _logger.LogInformation("Scheduled sync start limited to one month back for {ProviderName} account", providerName);
                     }
+
                     DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
@@ -362,6 +363,7 @@ namespace VideoForensics.Hosting.BackgroundServices
                     {
                         counts = await pull.PullAccountEventsAsync(accountId, from, toTimestampUtc: null, ct);
                     }
+
                     await budgetGuard.RecordCallAsync(providerName, ct);
                     _logger.LogInformation("Scheduled event sync completed for {ProviderName} account", providerName);
 
@@ -412,7 +414,6 @@ namespace VideoForensics.Hosting.BackgroundServices
                 _logger.LogError(ex, "Could not record the completed scheduled sync");
             }
         }
-
 
         /// <summary>
         /// An enabled schedule whose account was deleted: record the failed attempt and back off a full interval, so the

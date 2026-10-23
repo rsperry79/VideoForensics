@@ -1,4 +1,4 @@
-namespace VideoForensics.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests;
 
 /// <summary>
 /// A fake time provider that returns a fixed time for testing.
@@ -12,5 +12,8 @@ internal sealed class FakeTimeProvider : TimeProvider
         _fixedTime = fixedTime;
     }
 
-    public override DateTimeOffset GetUtcNow() => new(_fixedTime, TimeSpan.Zero);
+    public override DateTimeOffset GetUtcNow()
+    {
+        return new(_fixedTime, TimeSpan.Zero);
+    }
 }

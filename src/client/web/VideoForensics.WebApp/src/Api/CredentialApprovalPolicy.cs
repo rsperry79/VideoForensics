@@ -1,6 +1,6 @@
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.WebApp.Api
+namespace VideoForensics.Client.WebApp.Api
 {
     /// <summary>
     /// Decides whether a newly registered operator passkey is approved on creation, or left pending admin approval.
@@ -22,18 +22,8 @@ namespace VideoForensics.WebApp.Api
         /// </summary>
         public static bool ShouldAutoApprove(Operator op, bool hasApprovedCredential)
         {
-            if (hasApprovedCredential)
-            {
-                return false;
-            }
-
-            if (op.IsPrimarySuperAdmin)
-            {
-                return true;
-            }
-
-            return op.PasswordUpdatedAtUtc is DateTime updated
-                && updated - op.CreatedAtUtc > ResetGracePeriod;
+            return !hasApprovedCredential && (op.IsPrimarySuperAdmin || (op.PasswordUpdatedAtUtc is DateTime updated
+                && updated - op.CreatedAtUtc > ResetGracePeriod));
         }
     }
 }

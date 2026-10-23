@@ -67,12 +67,9 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static DateTime? ToUpdatedAtUtc(string? updatedAt)
         {
-            if (string.IsNullOrWhiteSpace(updatedAt))
-            {
-                return null;
-            }
-
-            return DateTimeOffset.TryParse(updatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset when)
+            return string.IsNullOrWhiteSpace(updatedAt)
+                ? null
+                : DateTimeOffset.TryParse(updatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset when)
                 ? when.UtcDateTime
                 : null;
         }

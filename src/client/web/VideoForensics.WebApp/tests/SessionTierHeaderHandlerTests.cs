@@ -1,12 +1,12 @@
 using Moq;
 
+using VideoForensics.Client.WebApp.Services;
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Services;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests
 {
     /// <summary>
     /// SessionTierHeaderHandler is the outgoing half of the session-tier-header fix: it attaches

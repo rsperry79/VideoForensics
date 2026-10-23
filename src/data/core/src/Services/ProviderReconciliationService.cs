@@ -276,7 +276,9 @@ namespace VideoForensics.Data.Core.Services
             }
         }
 
-        private static string SanitizeForLog(string value) =>
-            value.Replace('\r', '_').Replace('\n', '_');
+        private static string SanitizeForLog(string value)
+        {
+            return value.Replace('\r', '_').Replace('\n', '_');
+        }
     }
 }

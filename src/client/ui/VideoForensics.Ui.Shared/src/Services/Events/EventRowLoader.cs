@@ -1,10 +1,10 @@
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
-using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Core.Models;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Services.Events;
+namespace VideoForensics.Client.Ui.Shared.Services.Events;
 
 /// <summary>
 /// Loads event rows for a forensic scope, handling device fan-out, merging, searching, and legal holds.
@@ -39,38 +39,31 @@ public class EventRowLoader
         bool onlyUnansweredOrFlagged,
         CancellationToken ct)
     {
-        var devicesToLoad = scope.IncludesAllDevices ? allDeviceIds : scope.DeviceIds;
+        IReadOnlyList<Guid> devicesToLoad = scope.IncludesAllDevices ? allDeviceIds : scope.DeviceIds;
         var allRows = new List<EventRow>();
         var perDeviceErrors = new Dictionary<Guid, string>();
         var activeHoldsByMediaItemId = new Dictionary<Guid, LegalHold>();
         var integrityRecords = new List<IntegrityRecord>();
 
         // Load events per device
-        foreach (var deviceId in devicesToLoad)
+        foreach (Guid deviceId in devicesToLoad)
         {
             try
             {
-                IReadOnlyList<Event> events;
-
-                if (onlyUnansweredOrFlagged)
-                {
-                    events = await _eventRepository.ListUnansweredOrFlaggedAsync(deviceId, ct);
-                }
-                else
-                {
-                    events = await _eventRepository.ListByDeviceAndDateRangeAsync(
+                IReadOnlyList<Event> events = onlyUnansweredOrFlagged
+                    ? await _eventRepository.ListUnansweredOrFlaggedAsync(deviceId, ct)
+                    : await _eventRepository.ListByDeviceAndDateRangeAsync(
                         deviceId,
                         scope.FromUtc,
                         scope.ToUtc,
                         ct);
-                }
 
                 var rows = events.Select(e => new EventRow { Event = e, DeviceId = deviceId }).ToList();
 
                 // For date-range queries, fetch media and holds
                 if (!onlyUnansweredOrFlagged && events.Count > 0)
                 {
-                    var report = await _reportGenerationService.BuildEvidenceReviewAsync(
+                    EvidenceReviewReport report = await _reportGenerationService.BuildEvidenceReviewAsync(
                         deviceId,
                         scope.FromUtc,
                         scope.ToUtc,
@@ -79,30 +72,30 @@ public class EventRowLoader
                     // Media is joined to events by ProviderEventId, not Event.Id: the report's links carry the
                     // provider event id per media item, and Event and DownloadEvent share ProviderEventId per device.
                     var providerEventIdByMediaItemId = new Dictionary<Guid, string>();
-                    foreach (var link in report.MediaProviderEventLinks)
+                    foreach (MediaProviderEventLink link in report.MediaProviderEventLinks)
                     {
-                        providerEventIdByMediaItemId.TryAdd(link.MediaItemId, link.ProviderEventId);
+                        _ = providerEventIdByMediaItemId.TryAdd(link.MediaItemId, link.ProviderEventId);
                     }
 
                     var mediaByProviderEventId = new Dictionary<string, MediaItem>();
-                    foreach (var media in report.MediaItems)
+                    foreach (MediaItem media in report.MediaItems)
                     {
-                        if (providerEventIdByMediaItemId.TryGetValue(media.Id, out var providerEventId))
+                        if (providerEventIdByMediaItemId.TryGetValue(media.Id, out string? providerEventId))
                         {
-                            mediaByProviderEventId.TryAdd(providerEventId, media);
+                            _ = mediaByProviderEventId.TryAdd(providerEventId, media);
                         }
                     }
 
-                    foreach (var row in rows)
+                    foreach (EventRow? row in rows)
                     {
-                        if (mediaByProviderEventId.TryGetValue(row.Event.ProviderEventId, out var mediaItem))
+                        if (mediaByProviderEventId.TryGetValue(row.Event.ProviderEventId, out MediaItem? mediaItem))
                         {
                             row.MediaItem = mediaItem;
                         }
                     }
 
                     // Collect integrity records from all devices
-                    foreach (var record in report.IntegrityRecords)
+                    foreach (IntegrityRecord record in report.IntegrityRecords)
                     {
                         if (!integrityRecords.Any(r => r.Id == record.Id))
                         {
@@ -122,12 +115,12 @@ public class EventRowLoader
         // Apply search filter (case-insensitive substring matching)
         if (!string.IsNullOrWhiteSpace(scope.Search))
         {
-            var searchLower = scope.Search.ToLowerInvariant();
+            string searchLower = scope.Search.ToLowerInvariant();
             allRows = allRows
                 .Where(r =>
                     r.EventType.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
                     r.ProviderEventId.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
-                    (r.MediaItem?.FileName ?? "").Contains(searchLower, StringComparison.OrdinalIgnoreCase))
+                    (r.MediaItem?.FileName ?? string.Empty).Contains(searchLower, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
 
@@ -142,8 +135,8 @@ public class EventRowLoader
             var mediaItemIds = allRows.Where(r => r.MediaItem is not null).Select(r => r.MediaItem!.Id).ToList();
             if (mediaItemIds.Count > 0)
             {
-                var activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
-                foreach (var hold in activeHolds)
+                IReadOnlyList<LegalHold> activeHolds = await _legalHoldRepository.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
+                foreach (LegalHold hold in activeHolds)
                 {
                     activeHoldsByMediaItemId[hold.MediaItemId] = hold;
                 }

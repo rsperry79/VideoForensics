@@ -1,9 +1,10 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using VideoForensics.Data.Core.Services;
 
-namespace VideoForensics.Hosting.BackgroundServices
+namespace VideoForensics.Client.Hosting.BackgroundServices
 {
     /// <summary>
     /// Runs the analysis backfill on a timer, so media that was never analysed (old clips, and rows written without analysis,

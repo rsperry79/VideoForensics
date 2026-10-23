@@ -14,13 +14,23 @@ using Serilog;
 
 using Syncfusion.Blazor;
 
-using System.Threading.RateLimiting;
-
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.RateLimiting;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
-
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.WebApp.Auth;
+using VideoForensics.Client.WebApp.Chat;
+using VideoForensics.Client.WebApp.Contracts;
+using VideoForensics.Client.WebApp.Discovery;
+using VideoForensics.Client.WebApp.Hubs;
+using VideoForensics.Client.WebApp.Infrastructure;
+using VideoForensics.Client.WebApp.Mcp;
+using VideoForensics.Client.WebApp.Mcp.Tools;
+using VideoForensics.Client.WebApp.RateLimiting;
+using VideoForensics.Client.WebApp.Services;
+using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
@@ -29,31 +39,19 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Database.Repositories;
-using VideoForensics.Hosting;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Hosting.Remote;
-using VideoForensics.Hosting.Services;
-using VideoForensics.Ui.Shared;
-using VideoForensics.Ui.Shared.Contracts;
-using VideoForensics.Ui.Shared.Formatting;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Cases;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.QueryApi;
-using VideoForensics.Ui.Shared.Services.Scope;
-using VideoForensics.WebApp.Api;
-using VideoForensics.WebApp.Auth;
-using VideoForensics.WebApp.Chat;
-using VideoForensics.WebApp.Components;
-using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Discovery;
-using VideoForensics.WebApp.Hubs;
-using VideoForensics.WebApp.Infrastructure;
-using VideoForensics.WebApp.Mcp;
-using VideoForensics.WebApp.Mcp.Tools;
-using VideoForensics.WebApp.RateLimiting;
-using VideoForensics.WebApp.Services;
-using VideoForensics.WebApp.Services.CircuitGuards;
+using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Remote;
+using VideoForensics.Client.Hosting.Services;
+using VideoForensics.Client.Ui.Shared;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Formatting;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Cases;
+using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.QueryApi;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Client.WebApp.Components;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -77,7 +75,7 @@ Log.Logger = new LoggerConfiguration()
     // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
     .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "VideoForensics.WebApp")
+    .Enrich.WithProperty("Application", "VideoForensics.Client.WebApp")
     // Text format: human-readable with structured properties appended
     .WriteTo.File(
         path: Path.Combine(logsDir, "audit-.txt"),
@@ -123,7 +121,7 @@ builder.WebHost.ConfigureKestrel(options =>
         {
             if (string.Compare(endpoint.Scheme, "https", StringComparison.Ordinal) == 0)
             {
-                listenOptions.UseHttps(https => https.ServerCertificateSelector = (_, _) => certificateHolder.Current);
+                _ = listenOptions.UseHttps(https => https.ServerCertificateSelector = (_, _) => certificateHolder.Current);
             }
         }
 
@@ -184,7 +182,7 @@ builder.Services.AddScoped<IFido2>(sp =>
     var origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
     if (Uri.TryCreate(forensics.InternetServerUrl, UriKind.Absolute, out Uri? internetUrl))
     {
-        origins.Add(internetUrl.GetLeftPart(UriPartial.Authority));
+        _ = origins.Add(internetUrl.GetLeftPart(UriPartial.Authority));
     }
 
     return new Fido2(new Fido2Configuration
@@ -239,14 +237,9 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 if (OperatingSystem.IsWindows())
 {
     X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
-    if (tpmCertificate is not null)
-    {
-        _ = dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate);
-    }
-    else
-    {
-        _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
-    }
+    _ = tpmCertificate is not null
+        ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
+        : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -337,7 +330,7 @@ builder.Services.AddRateLimiter(options =>
 // Shared data layer + server-tier provider/orchestrator registrations (session provider,
 // active provider's four services, download/evidence orchestrators, JammingToolsOrchestrator) - see
 // VideoForensics.Hosting/VideoForensicsHostingExtensions.cs. This is a deliberate, temporary
-// bootstrap shape for this milestone: VideoForensics.WebApp owns its own local SQLite DB and talks
+// bootstrap shape for this milestone: VideoForensics.Client.WebApp owns its own local SQLite DB and talks
 // to the active provider directly, same as console/MCP today. The long-term plan has this host as
 // "the server" behind a future client/server API split that MAUI will consume instead - that split
 // is separately scoped, later work.
@@ -350,7 +343,7 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 // registers the Debian default first, so this registration comes after it and wins.
 if (OperatingSystem.IsWindows())
 {
-    builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+    _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
 }
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
@@ -465,8 +458,8 @@ builder.Services.AddHostedService<CloudflareTunnelAutostart>();
 // tier later still leaves the socket listening but firewalled (the exact bug being fixed).
 builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
     OperatingSystem.IsWindows()
-        ? (new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>()))
-        : (new NullFirewallRuleManager()));
+        ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
+        : new NullFirewallRuleManager());
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk
@@ -517,7 +510,7 @@ builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IUiModeService, UiModeService>();
 builder.Services.AddScoped<SimpleHomeBuilder>(sp => new SimpleHomeBuilder(
     sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<IMediaContentUrlProvider>(),
-    sp.GetRequiredService<IStringLocalizer<VideoForensics.Ui.Shared.Resources.SharedResources>>()));
+    sp.GetRequiredService<IStringLocalizer<VideoForensics.Client.Ui.Shared.Resources.SharedResources>>()));
 builder.Services.AddScoped<IViewportService, DefaultViewportService>();
 builder.Services.AddSingleton<ICultureSwitcher, CultureSwitcher>();
 builder.Services.AddLocalization();
@@ -662,7 +655,7 @@ app.MapHub<LiveViewSignalingHub>("/hubs/liveview-signaling");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     // Routable pages (Dashboard.razor, SignIn.razor, Accounts.razor) live in the shared RCL
-    // (VideoForensics.Ui.Shared), a different assembly than App itself - without this,
+    // (VideoForensics.Client.Ui.Shared), a different assembly than App itself - without this,
     // MapRazorComponents only discovers routes in App's own assembly and every RCL page 404s
     // at the ASP.NET Core routing level (confirmed by actually running the app: GET / returned
     // a real HTTP 404, not a rendered Blazor "not found" page, which is what tipped this off).

@@ -1,6 +1,3 @@
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
-
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -8,12 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Hosting.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Services;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
-namespace VideoForensics.Hosting
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
+
+namespace VideoForensics.Client.Hosting
 {
     /// <summary>
     /// SignalR-backed <see cref="IRealtimeHub"/> for the server's /hubs/live. It is the only type that touches
@@ -46,7 +46,7 @@ namespace VideoForensics.Hosting
         // Guards the subscription set only. It is separate from _gate so a subscriber that re-enters a subscribe call
         // from inside an emission cannot deadlock on the hub's state lock.
         private readonly object _subscriptionGate = new();
-        private readonly HashSet<Guid> _liveViewSubscriptions = new();
+        private readonly HashSet<Guid> _liveViewSubscriptions = [];
         private readonly Func<string, Guid, CancellationToken, Task>? _invokeOverride;
         private HubConnection? _hubConnection;
         private CancellationTokenSource _lifetime = new();
@@ -421,8 +421,8 @@ namespace VideoForensics.Hosting
             _ = connection.On<DownloadProgressDto>("DownloadProgress", payload => Emit(_downloadProgress, payload));
             _ = connection.On<NotificationEvent>("UrgentEvent", notificationEvent => Emit(_urgentEvents, notificationEvent));
             _ = connection.On<SelfTestStatusDto>("SelfTestStatus", status => Emit(_selfTestStatus, status));
-            _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", dto => EmitLiveViewSessionChanged(dto));
-            _ = connection.On<LiveViewTelemetrySampleDto>("LiveViewTelemetry", dto => EmitLiveViewTelemetry(dto));
+            _ = connection.On<LiveViewSessionDto>("LiveViewSessionChanged", EmitLiveViewSessionChanged);
+            _ = connection.On<LiveViewTelemetrySampleDto>("LiveViewTelemetry", EmitLiveViewTelemetry);
             _ = connection.On<ThumbnailReadyDto>("ThumbnailReady", dto => Emit(_thumbnailReady, dto));
             _ = connection.On<EvidenceChangedDto>("EvidenceChanged", dto => Emit(_evidenceChanged, dto));
 
@@ -440,7 +440,10 @@ namespace VideoForensics.Hosting
 
         // Reads the current paired-session token on each connect and reconnect. Read here rather than captured,
         // so a re-pair takes effect without rebuilding the connection.
-        private Task<string?> GetSessionTokenAsync() => Task.FromResult(_sessionState.SessionToken);
+        private Task<string?> GetSessionTokenAsync()
+        {
+            return Task.FromResult(_sessionState.SessionToken);
+        }
 
         private async Task ClearExpiredSessionAsync()
         {
@@ -470,13 +473,19 @@ namespace VideoForensics.Hosting
         /// Routes a "LiveViewSessionChanged" push to subscribers. The hub binding calls this; it is internal so tests
         /// can drive it without a network.
         /// </summary>
-        internal void EmitLiveViewSessionChanged(LiveViewSessionDto dto) => Emit(_liveViewSessionChanged, dto);
+        internal void EmitLiveViewSessionChanged(LiveViewSessionDto dto)
+        {
+            Emit(_liveViewSessionChanged, dto);
+        }
 
         /// <summary>
         /// Routes a "LiveViewTelemetry" push to subscribers. The hub binding calls this; it is internal so tests
         /// can drive it without a network.
         /// </summary>
-        internal void EmitLiveViewTelemetry(LiveViewTelemetrySampleDto dto) => Emit(_liveViewTelemetry, dto);
+        internal void EmitLiveViewTelemetry(LiveViewTelemetrySampleDto dto)
+        {
+            Emit(_liveViewTelemetry, dto);
+        }
 
         private void Emit<T>(Subject<T> subject, T value)
         {
@@ -566,12 +575,9 @@ namespace VideoForensics.Hosting
                 connection = _hubConnection;
             }
 
-            if (connection is null)
-            {
-                throw new InvalidOperationException("Live hub connection has not been built");
-            }
-
-            return connection.InvokeAsync(method, sessionId, cancellationToken);
+            return connection is null
+                ? throw new InvalidOperationException("Live hub connection has not been built")
+                : connection.InvokeAsync(method, sessionId, cancellationToken);
         }
     }
 }

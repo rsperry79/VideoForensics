@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Tools
 {

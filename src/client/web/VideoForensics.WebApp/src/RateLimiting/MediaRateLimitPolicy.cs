@@ -1,11 +1,9 @@
 using System.Threading.RateLimiting;
 
-using Microsoft.AspNetCore.Http;
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting;
+using VideoForensics.Client.Hosting;
 
-namespace VideoForensics.WebApp.RateLimiting
+namespace VideoForensics.Client.WebApp.RateLimiting
 {
     /// <summary>
     /// Builds the per-request partition for the "media" rate-limit policy (plan §5.7), covering
@@ -33,18 +31,15 @@ namespace VideoForensics.WebApp.RateLimiting
 
             string key = resolver.ResolveClientIp(httpContext);
 
-            if (resolver.ResolveTier(httpContext) == NetworkTier.Local)
-            {
-                return RateLimitPartition.GetNoLimiter(key);
-            }
-
-            return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-            {
-                PermitLimit = 120,
-                Window = TimeSpan.FromMinutes(1),
-                SegmentsPerWindow = 4,
-                QueueLimit = 0
-            });
+            return resolver.ResolveTier(httpContext) == NetworkTier.Local
+                ? RateLimitPartition.GetNoLimiter(key)
+                : RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 120,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 4,
+                    QueueLimit = 0
+                });
         }
     }
 }

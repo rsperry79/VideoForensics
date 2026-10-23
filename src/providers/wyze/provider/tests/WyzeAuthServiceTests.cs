@@ -28,7 +28,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             // Assert
             Assert.NotNull(result);
             Assert.False(result.Success);
-            Assert.Contains("not yet implemented", result.ErrorMessage ?? "", StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("not yet implemented", result.ErrorMessage ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace VideoForensics.Providers.Wyze.Tests
             const string testUsername = "user@example.com";
 
             // Act
-            await service.AuthenticateAsync(testUsername, "password");
+            _ = await service.AuthenticateAsync(testUsername, "password");
 
             // Assert - verify LogInformation was called, but NOT with the raw username
             mockLogger.Verify(
@@ -131,10 +131,13 @@ namespace VideoForensics.Providers.Wyze.Tests
             var mockLogger = new Mock<ILogger>();
             var service = new WyzeAuthService(mockLogger.Object);
             const string testUsername = "user@example.com";
-            var twoFactorProvider = () => Task.FromResult("123456");
+            static Task<string> twoFactorProvider()
+            {
+                return Task.FromResult("123456");
+            }
 
             // Act
-            await service.AuthenticateWithTwoFactorAsync(testUsername, "password", twoFactorProvider);
+            _ = await service.AuthenticateWithTwoFactorAsync(testUsername, "password", twoFactorProvider);
 
             // Assert - verify LogInformation was called, but NOT with the raw username
             mockLogger.Verify(

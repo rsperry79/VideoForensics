@@ -1,8 +1,8 @@
 using Microsoft.JSInterop;
 
-using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.WebApp.Services
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// Web-host implementation of IFileDialogService: triggers a normal browser file download rather than

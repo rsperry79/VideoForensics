@@ -31,9 +31,9 @@ namespace VideoForensics.Client.Platform.Windows
 
                 using (var client = new HttpClient())
                 {
-                    await using var response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct);
-                    await using var fileStream = File.Create(tempPath);
-                    await response.CopyToAsync(fileStream, ct);
+                    await using Stream response = await client.GetStreamAsync(asset.BrowserDownloadUrl, ct).ConfigureAwait(true);
+                    await using FileStream fileStream = File.Create(tempPath);
+                    await response.CopyToAsync(fileStream, ct).ConfigureAwait(true);
                 }
 
                 // Fire-and-forget: CliWrap owns the process lifecycle, and awaiting it would block the update.

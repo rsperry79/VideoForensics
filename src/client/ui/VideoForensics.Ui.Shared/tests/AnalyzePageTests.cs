@@ -1,23 +1,28 @@
-namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+
 using Moq;
-using Xunit;
+
 using VideoForensics.Client.Core.Tools;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-using Device = VideoForensics.Data.Common.Entities.Device;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Ui.Shared.Pages;
-using VideoForensics.Ui.Shared.Services;
-using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
 
+using Xunit;
+
+using Device = VideoForensics.Data.Common.Entities.Device;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for Analyze.razor + its four Components/Analysis panels: a signed-in auth
 /// service, an empty device list by default, a real <see cref="ScopeState"/>, a
@@ -44,81 +49,95 @@ public abstract class AnalyzePageTestBase : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        Services.AddLocalization();
+        _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
-        Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
-        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        _ = Services.AddScoped<RightPanelContentService>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
-        AuthServiceMock
+        _ = AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        DeviceRepositoryMock
+        _ = DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Device>());
+            .ReturnsAsync([]);
 
-        ReportGenerationServiceMock
+        _ = ReportGenerationServiceMock
             .Setup(m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ForensicAnalysisReport());
-        ReportGenerationServiceMock
+        _ = ReportGenerationServiceMock
             .Setup(m => m.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SignalAnomalyReport());
-        ReportGenerationServiceMock
+        _ = ReportGenerationServiceMock
             .Setup(m => m.BuildAccessControlReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AccessControlReport());
 
-        DeviceHealthRepositoryMock
+        _ = DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<DeviceHealth>());
-        JammingRepositoryMock
+            .ReturnsAsync([]);
+        _ = JammingRepositoryMock
             .Setup(m => m.RecomputeStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new JammingStatsSummary());
-        JammingRepositoryMock
+        _ = JammingRepositoryMock
             .Setup(m => m.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((JammingStatsSummary?)null);
-        JammingRepositoryMock
+        _ = JammingRepositoryMock
             .Setup(m => m.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<JammingIncidentRecord>());
+            .ReturnsAsync([]);
 
         ScopeState = new ScopeState(new FakeTimeProvider(FixedNowUtc));
 
-        Services.AddScoped(_ => AuthServiceMock.Object);
-        Services.AddScoped(_ => DeviceRepositoryMock.Object);
-        Services.AddScoped(_ => ReportGenerationServiceMock.Object);
-        Services.AddScoped(_ => ScopeState);
-        Services.AddScoped(_ => new JammingToolsOrchestrator(
+        _ = Services.AddScoped(_ => AuthServiceMock.Object);
+        _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        _ = Services.AddScoped(_ => ReportGenerationServiceMock.Object);
+        _ = Services.AddScoped(_ => ScopeState);
+        _ = Services.AddScoped(_ => new JammingToolsOrchestrator(
             Mock.Of<ILogger<JammingToolsOrchestrator>>(),
             JammingRepositoryMock.Object,
             DeviceHealthRepositoryMock.Object));
 
-        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SignInOperatorAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>Signs in a paired operator so the page's operator gate passes (the default for these tests).</summary>
-    protected Task SignInOperatorAsync() =>
-        Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+    protected Task SignInOperatorAsync()
+    {
+        return Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+    }
 
     /// <summary>Clears the operator session, so the page shows its signed-out sign-in prompt.</summary>
-    protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
-
-    protected static Device CreateTestDevice(string name = "Test Device") => new()
+    protected Task SignOutOperatorAsync()
     {
-        Id = Guid.NewGuid(),
-        LocationId = Guid.NewGuid(),
-        ProviderDeviceId = Guid.NewGuid().ToString(),
-        Name = name,
-        Type = "camera"
-    };
+        return Services.GetRequiredService<PairedSessionState>().ClearAsync();
+    }
+
+    protected static Device CreateTestDevice(string name = "Test Device")
+    {
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            LocationId = Guid.NewGuid(),
+            ProviderDeviceId = Guid.NewGuid().ToString(),
+            Name = name,
+            Type = "camera"
+        };
+    }
 
     protected NavigationManager Nav => Services.GetRequiredService<NavigationManager>();
 
     /// <summary>Navigates to /analyze?analysis=&lt;key&gt; before the page is rendered, simulating a deep link.</summary>
-    protected void NavigateToAnalysis(string key) => Nav.NavigateTo($"/analyze?analysis={key}", replace: true);
+    protected void NavigateToAnalysis(string key)
+    {
+        Nav.NavigateTo($"/analyze?analysis={key}", replace: true);
+    }
 
-    protected IRenderedComponent<Analyze> RenderPage() => Render<Analyze>();
+    protected IRenderedComponent<Analyze> RenderPage()
+    {
+        return Render<Analyze>();
+    }
 }
 
 /// <summary>
@@ -132,11 +151,11 @@ public class Analyze_OperatorGate_Tests : AnalyzePageTestBase
     {
         // Provider account linked, but no operator session: the sign-in prompt must render.
         await SignOutOperatorAsync();
-        AuthServiceMock
+        _ = AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.Contains("You are not signed in.", component.Markup);
         Assert.Empty(component.FindAll("[data-testid='analysis-reports']"));
@@ -148,11 +167,11 @@ public class Analyze_OperatorGate_Tests : AnalyzePageTestBase
         // Operator signed in, no provider account linked: reports read the server DB only, so the
         // analysis tabs must render and the sign-in prompt must not.
         await SignInOperatorAsync();
-        AuthServiceMock
+        _ = AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.DoesNotContain("You are not signed in.", component.Markup);
         Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
@@ -164,12 +183,12 @@ public class Analyze_DefaultTab_Tests : AnalyzePageTestBase
     [Fact]
     public void DefaultLoad_ReportsTabActive_QueriesAllDevices()
     {
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
-        var reportsButtonClass = component.Find("[data-testid='analysis-reports']").GetAttribute("class");
+        string? reportsButtonClass = component.Find("[data-testid='analysis-reports']").GetAttribute("class");
         Assert.Contains("active", reportsButtonClass);
 
-        var anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
+        string? anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
         Assert.DoesNotContain("active", anomaliesButtonClass);
 
         ReportGenerationServiceMock.Verify(
@@ -182,7 +201,7 @@ public class Analyze_DefaultTab_Tests : AnalyzePageTestBase
     {
         await SignOutOperatorAsync();
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.Contains("not signed in", component.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(component.FindAll("[data-testid='analysis-reports']"));
@@ -199,10 +218,10 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     [Fact]
     public void OneDeviceScope_Reports_CallsWithThatDeviceId()
     {
-        var device = CreateTestDevice();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        Device device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [device.Id] });
 
-        RenderPage();
+        _ = RenderPage();
 
         ReportGenerationServiceMock.Verify(
             m => m.BuildForensicAnalysisReportAsync(device.Id, ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, It.IsAny<CancellationToken>()),
@@ -214,9 +233,9 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [first, second] });
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
@@ -230,11 +249,11 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     [Fact]
     public void OneDeviceScope_Anomalies_CallsWithThatDeviceId()
     {
-        var device = CreateTestDevice();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        Device device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [device.Id] });
         NavigateToAnalysis("anomalies");
 
-        RenderPage();
+        _ = RenderPage();
 
         ReportGenerationServiceMock.Verify(
             m => m.BuildSignalAnomalyReportAsync(device.Id, ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, It.IsAny<CancellationToken>()),
@@ -246,10 +265,10 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [first, second] });
         NavigateToAnalysis("anomalies");
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
@@ -263,11 +282,11 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     [Fact]
     public void OneDeviceScope_Access_CallsWithThatDeviceId()
     {
-        var device = CreateTestDevice();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        Device device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [device.Id] });
         NavigateToAnalysis("access");
 
-        RenderPage();
+        _ = RenderPage();
 
         ReportGenerationServiceMock.Verify(
             m => m.BuildAccessControlReportAsync(device.Id, ScopeState.Current.FromUtc, ScopeState.Current.ToUtc, It.IsAny<CancellationToken>()),
@@ -279,10 +298,10 @@ public class Analyze_DeviceScoping_Tests : AnalyzePageTestBase
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first, second } });
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [first, second] });
         NavigateToAnalysis("access");
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.DoesNotContain("Select a single device", component.Markup);
         ReportGenerationServiceMock.Verify(
@@ -304,7 +323,7 @@ public class Analyze_TabSwitch_Tests : AnalyzePageTestBase
         var deviceId = Guid.NewGuid();
         Nav.NavigateTo($"/analyze?case=CASE-1&from=2026-01-01&devices={deviceId:D}&analysis=reports", replace: true);
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
         ReportGenerationServiceMock.Invocations.Clear();
 
         component.Find("[data-testid='analysis-anomalies']").Click();
@@ -320,7 +339,7 @@ public class Analyze_TabSwitch_Tests : AnalyzePageTestBase
         Assert.Equal(1, CountOccurrences(Nav.Uri, "case="));
         Assert.Equal(1, CountOccurrences(Nav.Uri, "analysis="));
 
-        var anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
+        string? anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
         Assert.Contains("active", anomaliesButtonClass);
 
         ReportGenerationServiceMock.Verify(
@@ -349,7 +368,7 @@ public class Analyze_ScopeChange_Tests : AnalyzePageTestBase
     [Fact]
     public async Task ScopeWindowChange_ActivePanelRequeriesWithNewDates()
     {
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
         ReportGenerationServiceMock.Invocations.Clear();
 
         var newFrom = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -365,7 +384,7 @@ public class Analyze_ScopeChange_Tests : AnalyzePageTestBase
     [Fact]
     public async Task SwitchingTabs_DoesNotLeavePreviousPanelRequeryingOnScopeChange()
     {
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
         ReportGenerationServiceMock.Verify(
             m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Once);
@@ -406,11 +425,11 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
     public async Task JammingDeepLink_ReadOnlyOperator_FallsBackToReportsTab_NoJammingPanel()
     {
         await Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "ReadOnly");
-        var device = CreateTestDevice();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        Device device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [device.Id] });
         NavigateToAnalysis("jamming");
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.Empty(component.FindAll("[data-testid='analysis-jamming']"));
         Assert.NotEmpty(component.FindAll("[data-testid='analysis-reports']"));
@@ -420,11 +439,11 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
     [Fact]
     public void OneDevice_JammingPanelShown_OrchestratorInvokedForThatDevice()
     {
-        var device = CreateTestDevice();
-        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { device.Id } });
+        Device device = CreateTestDevice();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = [device.Id] });
         NavigateToAnalysis("jamming");
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(device.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         JammingRepositoryMock.Verify(m => m.RecomputeStatsAsync(device.Id, It.IsAny<CancellationToken>()), Times.Once);
@@ -436,7 +455,7 @@ public class Analyze_JammingDeepLink_Tests : AnalyzePageTestBase
     {
         NavigateToAnalysis("jamming");
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.Contains("Select a device", component.Markup);
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -449,11 +468,11 @@ public class Analyze_ErrorHandling_Tests : AnalyzePageTestBase
     [Fact]
     public void ReportsServiceThrows_ShowsError_TabSwitchStillWorks()
     {
-        ReportGenerationServiceMock
+        _ = ReportGenerationServiceMock
             .Setup(m => m.BuildForensicAnalysisReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("report store unreachable"));
 
-        var component = RenderPage();
+        IRenderedComponent<Analyze> component = RenderPage();
 
         Assert.Contains("report store unreachable", component.Markup);
 
@@ -464,7 +483,7 @@ public class Analyze_ErrorHandling_Tests : AnalyzePageTestBase
             m => m.BuildSignalAnomalyReportAsync(It.IsAny<Guid?>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
-        var anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
+        string? anomaliesButtonClass = component.Find("[data-testid='analysis-anomalies']").GetAttribute("class");
         Assert.Contains("active", anomaliesButtonClass);
     }
 }
@@ -485,7 +504,7 @@ public class AnalyzeRedirectPages_Tests : BunitContext
     {
         Nav.NavigateTo("/analyze/reports?from=2026-09-01", replace: true);
 
-        Render<ForensicReports>();
+        _ = Render<ForensicReports>();
 
         Assert.Contains("/analyze?analysis=reports", Nav.Uri);
         Assert.Contains("from=2026-09-01", Nav.Uri);
@@ -496,7 +515,7 @@ public class AnalyzeRedirectPages_Tests : BunitContext
     {
         Nav.NavigateTo("/analyze/signal-anomalies?from=2026-09-01", replace: true);
 
-        Render<SignalAnomalies>();
+        _ = Render<SignalAnomalies>();
 
         Assert.Contains("/analyze?analysis=anomalies", Nav.Uri);
         Assert.Contains("from=2026-09-01", Nav.Uri);
@@ -507,7 +526,7 @@ public class AnalyzeRedirectPages_Tests : BunitContext
     {
         Nav.NavigateTo("/analyze/access-control?from=2026-09-01", replace: true);
 
-        Render<AccessControl>();
+        _ = Render<AccessControl>();
 
         Assert.Contains("/analyze?analysis=access", Nav.Uri);
         Assert.Contains("from=2026-09-01", Nav.Uri);
@@ -518,7 +537,7 @@ public class AnalyzeRedirectPages_Tests : BunitContext
     {
         Nav.NavigateTo("/analyze/jamming?from=2026-09-01", replace: true);
 
-        Render<JammingAnalysis>();
+        _ = Render<JammingAnalysis>();
 
         Assert.Contains("/analyze?analysis=jamming", Nav.Uri);
         Assert.Contains("from=2026-09-01", Nav.Uri);

@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Options;
-using VideoForensics.Hosting.BackgroundServices;
 
-namespace VideoForensics.WebApp.Services
+using VideoForensics.Client.Hosting.BackgroundServices;
+
+namespace VideoForensics.Client.WebApp.Services
 {
     /// <summary>
     /// On server start, re-runs the first sync for accounts that were interrupted before it finished. Nothing is in flight

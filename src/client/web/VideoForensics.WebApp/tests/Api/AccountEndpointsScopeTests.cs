@@ -4,12 +4,12 @@ using Microsoft.Extensions.Hosting;
 
 using Moq;
 
-using VideoForensics.Hosting.Services;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.Hosting.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Regression guard for the root-provider resolution of the scoped <see cref="IEventPullService"/>.
@@ -20,8 +20,8 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void MapAccountEndpoints_ScopedEventPullService_MapsWithoutRootResolution()
         {
-            var builder = WebApplication.CreateBuilder();
-            builder.Host.UseDefaultServiceProvider(options =>
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            _ = builder.Host.UseDefaultServiceProvider(options =>
             {
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
@@ -30,7 +30,7 @@ namespace VideoForensics.WebApp.Tests.Api
 
             WebApplication app = builder.Build();
 
-            var ex = Record.Exception(() => app.MapAccountEndpoints());
+            Exception? ex = Record.Exception(app.MapAccountEndpoints);
             Assert.Null(ex);
         }
     }

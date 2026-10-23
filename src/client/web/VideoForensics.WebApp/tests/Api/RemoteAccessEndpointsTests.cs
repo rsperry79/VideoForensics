@@ -1,11 +1,13 @@
+using Microsoft.Extensions.Configuration;
+
 using Moq;
 
-using VideoForensics.Hosting;
-using VideoForensics.WebApp.Api;
+using VideoForensics.Client.WebApp.Api;
+using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests.Api
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class RemoteAccessEndpointsTests
     {
@@ -109,7 +111,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void RemoteAccessEndpoints_PasskeyOrigins_IncludesSavedInternetOriginOnce()
         {
-            var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+            IConfigurationRoot configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
 
             string[] origins = RemoteAccessEndpoints.PasskeyOrigins(configuration, "https://video.example.com");
 
@@ -120,7 +122,7 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void RemoteAccessEndpoints_PasskeyOrigins_NoInternetAddress_ListsOnlyLocalOrigins()
         {
-            var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+            IConfigurationRoot configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
 
             string[] origins = RemoteAccessEndpoints.PasskeyOrigins(configuration, null);
 
