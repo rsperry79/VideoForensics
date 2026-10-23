@@ -253,7 +253,7 @@ else
     private string StatusText(bool? isOnline) =>
         isOnline switch
         {
-            null => L["Unknown"],
+            null => L["No"],
             true => L["Yes"],
             false => L["No"]
         };

@@ -160,7 +160,7 @@
             <Template>
                 @{
                     var device = (Device)context;
-                    @(device.IsOnline == null ? L["Unknown"] : device.IsOnline == true ? L["Yes"] : L["No"])
+                    @(device.IsOnline == true ? L["Yes"] : L["No"])
                 }
             </Template>
         </GridColumn>
