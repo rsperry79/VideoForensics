@@ -3,118 +3,98 @@ using System.Text;
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
+using Xunit;
+
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 {
-    public class TpmKeyStorageProviderTests
+    public class TpmKeyStorageProviderTests : IDisposable
     {
-        private readonly TpmKeyStorageProvider _provider = new();
+        private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-tpm-tests-" + Guid.NewGuid().ToString("N"));
+        private readonly TpmKeyStorageProvider _provider;
 
-        [Fact]
-        public void IsAvailable_Always_ReturnsFalse()
+        public TpmKeyStorageProviderTests()
         {
-            // Act & Assert
-            Assert.False(_provider.IsAvailable);
+            _ = Directory.CreateDirectory(_root);
+            _provider = new TpmKeyStorageProvider(Path.Combine(_root, "tpm-keys.txt"));
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_root))
+            {
+                Directory.Delete(_root, true);
+            }
         }
 
         [Fact]
-        public void ProviderName_Always_ReturnsExpectedName()
+        public void TpmKeyStorageProvider_ProviderName_IsTpm20()
         {
-            // Act & Assert
             Assert.Equal("TPM 2.0", _provider.ProviderName);
         }
 
-        [Fact]
-        public async Task GenerateKeyPairAsync_Always_ThrowsForensicAnalysisException()
+        [Theory]
+        [InlineData("")]
+        [InlineData("has space")]
+        [InlineData("../escape")]
+        public async Task TpmKeyStorageProvider_GetPublicKeyAsync_InvalidKeyId_Throws(string keyId)
         {
-            // Act & Assert
-            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.GenerateKeyPairAsync("test-key"));
+            // Key ids become CNG key names, so anything outside the allowed set is refused before the TPM is touched.
+            _ = await Assert.ThrowsAnyAsync<Exception>(() => _provider.GetPublicKeyAsync(keyId));
         }
 
         [Fact]
-        public async Task GetPublicKeyAsync_Always_ThrowsForensicAnalysisException()
+        public async Task TpmKeyStorageProvider_DeleteKeyAsync_NoOfficer_IsRefusedWithoutTpm()
         {
-            // Act & Assert
-            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.GetPublicKeyAsync("test-key"));
+            ForensicAnalysisException exception = await Assert.ThrowsAsync<ForensicAnalysisException>(() =>
+                _provider.DeleteKeyAsync("key-1", " "));
+
+            Assert.Contains("authorizing officer", exception.Message);
         }
 
         [Fact]
-        public async Task SignDataAsync_Always_ThrowsForensicAnalysisException()
+        public async Task TpmKeyStorageProvider_ListKeysAsync_ReadsKeyIdsFromManifest()
         {
-            // Arrange
-            byte[] data = Encoding.UTF8.GetBytes("Test data");
+            File.WriteAllText(Path.Combine(_root, "tpm-keys.txt"),
+                "alpha\t2026-10-22T10:00:00.0000000Z" + Environment.NewLine +
+                "beta\t2026-10-22T11:00:00.0000000Z" + Environment.NewLine);
 
-            // Act & Assert
-            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.SignDataAsync("test-key", data));
-        }
-
-        [Fact]
-        public async Task VerifySignatureAsync_Always_ThrowsForensicAnalysisException()
-        {
-            // Arrange
-            byte[] data = Encoding.UTF8.GetBytes("Test data");
-            string signature = "test-signature";
-
-            // Act & Assert
-            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.VerifySignatureAsync("test-key", data, signature));
-        }
-
-        [Fact]
-        public async Task DeleteKeyAsync_Always_ThrowsForensicAnalysisException()
-        {
-            // Act & Assert
-            _ = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.DeleteKeyAsync("test-key", "officer-001"));
-        }
-
-        [Fact]
-        public async Task ListKeysAsync_Always_ReturnsEmptyList()
-        {
-            // Act
             IEnumerable<string> keys = await _provider.ListKeysAsync();
 
-            // Assert
+            Assert.Equal(new[] { "alpha", "beta" }, keys);
+        }
+
+        [Fact]
+        public async Task TpmKeyStorageProvider_ListKeysAsync_NoManifest_ReturnsEmpty()
+        {
+            IEnumerable<string> keys = await _provider.ListKeysAsync();
+
             Assert.Empty(keys);
         }
 
         [Fact]
-        public async Task GetKeyMetadataAsync_WithAnyKeyId_ReturnsBasicMetadata()
+        public async Task TpmKeyStorageProvider_SignAndVerify_RoundTripsWithTpmKey()
         {
-            // Arrange
-            string keyId = "test-key";
+            if (!_provider.IsAvailable)
+            {
+                Assert.Skip("TPM 2.0 key storage needs a TPM and an elevated process to create machine keys.");
+            }
 
-            // Act
-            KeyMetadata metadata = await _provider.GetKeyMetadataAsync(keyId);
+            string keyId = "test" + Guid.NewGuid().ToString("N")[..12];
+            try
+            {
+                string thumbprint = await _provider.GenerateKeyPairAsync(keyId);
+                byte[] data = Encoding.UTF8.GetBytes("evidence");
 
-            // Assert
-            Assert.NotNull(metadata);
-            Assert.Equal(keyId, metadata.KeyId);
-            Assert.Equal("TPM 2.0", metadata.StorageProvider);
-        }
+                string signature = await _provider.SignDataAsync(keyId, data);
 
-        [Fact]
-        public async Task ExceptionMessages_AreInformative()
-        {
-            // Act & Assert
-            ForensicAnalysisException exception = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.GenerateKeyPairAsync("test-key"));
-
-            Assert.Contains("TPM", exception.Message);
-            Assert.Contains("not currently available", exception.Message);
-        }
-
-        [Fact]
-        public async Task ExceptionMessages_MentionFallback_ForGenerateKeyPair()
-        {
-            // Act & Assert
-            ForensicAnalysisException exception = await Assert.ThrowsAsync<ForensicAnalysisException>(async () =>
-                await _provider.GenerateKeyPairAsync("test-key"));
-
-            Assert.Contains("Falling back", exception.Message);
-            Assert.Contains("DPAPI", exception.Message);
+                Assert.True(await _provider.VerifySignatureAsync(keyId, data, signature));
+                Assert.False(await _provider.VerifySignatureAsync(keyId, Encoding.UTF8.GetBytes("tampered"), signature));
+                Assert.Equal(thumbprint, (await _provider.GetKeyMetadataAsync(keyId)).CertificateThumbprint);
+            }
+            finally
+            {
+                await _provider.DeleteKeyAsync(keyId, "test-officer");
+            }
         }
     }
 }

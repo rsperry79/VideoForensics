@@ -1,9 +1,10 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+
 using Xunit;
 
-namespace VideoForensics.Core.Api.Tests
+namespace VideoForensics.Core.Api.Contracts.Tests
 {
     /// <summary>The typed settings DTO carries every stored row, including an absent offline row as null.</summary>
     public class DeviceTypedSettingsDtoTests

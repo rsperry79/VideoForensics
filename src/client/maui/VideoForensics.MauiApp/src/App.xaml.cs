@@ -10,14 +10,18 @@ public partial class App : Application
 
     public App(IServiceProvider services)
     {
+        StartupTrace.Mark("App constructor: start");
         InitializeComponent();
         _services = services;
+        StartupTrace.Mark("App constructor: done");
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
+        StartupTrace.Mark("CreateWindow: start");
         var window = new Window { Title = "VideoForensics" };
         window.Page = BuildLockPage(window);
+        StartupTrace.Mark("CreateWindow: lock page set");
 
         // App-lock idle timeout (plan §5.9): re-lock after the configured time spent backgrounded,
         // not on every momentary focus loss (Deactivated fires on plain alt-tab, which would be

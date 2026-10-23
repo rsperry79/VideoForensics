@@ -1,11 +1,16 @@
-using System;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using System;
+
 using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
+
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Provider.Tests
+namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// A throttle during a discovery feed is a handled state, so it is logged as a warning with its message only. An error with a

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Providers.Ring.Contracts;
 
 namespace VideoForensics.Providers.Ring
 {

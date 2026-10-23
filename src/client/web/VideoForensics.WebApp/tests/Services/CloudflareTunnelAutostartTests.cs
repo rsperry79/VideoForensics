@@ -3,7 +3,7 @@ using VideoForensics.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.WebApp.Tests.Services
 {
     public class CloudflareTunnelAutostartTests
     {

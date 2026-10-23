@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace VideoForensics.MauiApp.WebAuthn
+namespace VideoForensics.MauiApp.Platforms.Windows.WebAuthn
 {
     /// <summary>
     /// Raw P/Invoke declarations for Windows' native webauthn.dll (Windows 10 1903+), which backs

@@ -203,6 +203,22 @@ namespace VideoForensics.WebApp.Api
             return Results.Ok(new { nonce, options = JsonSerializer.Deserialize<JsonElement>(options.ToJson()) });
         }
 
+        /// <summary>
+        /// True only for a request that reached Kestrel directly from this machine on localhost. Tunnel traffic also
+        /// arrives from loopback (cloudflared connects to localhost), so a Cloudflare header or a public Host also disqualifies it.
+        /// </summary>
+        internal static bool IsDirectLocalRequest(HttpContext context)
+        {
+            if (context.Request.Headers.ContainsKey("CF-Connecting-IP"))
+            {
+                return false;
+            }
+
+            string host = context.Request.Host.Host;
+            bool localHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.Equals("127.0.0.1", StringComparison.Ordinal);
+            return localHost && context.Connection.RemoteIpAddress is { } remote && System.Net.IPAddress.IsLoopback(remote);
+        }
+
         private static async Task<IResult> UsernameAssertionCompleteAsync(
             ILogger<Program> logger,
             UsernameAssertionCompleteRequest request,
@@ -832,6 +848,14 @@ namespace VideoForensics.WebApp.Api
             // Check two-factor authentication requirement
             bool requiresTwoFactor = await TwoFactorPolicyResolver.ResolveTwoFactorRequirementAsync(op, twoFactorRequirements, ct);
 
+            // Windows Hello disabled on this machine: a local password sign-in may complete without the passkey second factor.
+            if (requiresTwoFactor && !request.PasskeyAvailable && IsDirectLocalRequest(context))
+            {
+                requiresTwoFactor = false;
+                await auditLog.LogAsync(SecurityAuditEventTypes.AuthSuccess, op.Id, null, sourceIpString,
+                    "Passkey second factor skipped: local password sign-in with Windows Hello disabled", isUrgent: true, ct);
+            }
+
             if (requiresTwoFactor)
             {
                 // Operator requires 2FA - check if they have at least one approved passkey
@@ -1184,7 +1208,8 @@ namespace VideoForensics.WebApp.Api
     public record CredentialRegisterOptionsRequest(string Label);
     public record CredentialRegisterCompleteRequest(string Nonce, JsonElement AttestationResponse, string Label);
     public record RegisterRequest(string Username, string Password, string FirstName, string LastName, string Email, string? Phone = null, string? DisplayName = null);
-    public record LoginPasswordRequest(string Username, string Password);
+    /// <param name="PasskeyAvailable">False when this device cannot run a passkey ceremony (Windows Hello disabled). Only honored for a direct local request.</param>
+    public record LoginPasswordRequest(string Username, string Password, bool PasskeyAvailable = true);
     public record ChangePasswordRequest(string? CurrentPassword, string NewPassword);
     public record StepUpPasswordRequest(string Password);
 

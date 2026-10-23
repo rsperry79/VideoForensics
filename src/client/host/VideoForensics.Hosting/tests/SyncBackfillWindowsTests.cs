@@ -1,7 +1,8 @@
 using VideoForensics.Hosting.Services;
+
 using Xunit;
 
-namespace VideoForensics.Hosting.Tests.Services
+namespace VideoForensics.Hosting.Tests
 {
     /// <summary>The first sync backfills forward from a year ago, one month at a time, oldest first, ending at now.</summary>
     public class SyncBackfillWindowsTests
@@ -44,7 +45,12 @@ namespace VideoForensics.Hosting.Tests.Services
         {
             Assert.Equal(Now, AccountSyncRunner.MonthlyWindows(Now)[^1].To);
         }
-[Fact]        public void OneMonthFloor_OlderStartIsRaisedToOneMonthBack()        {            Assert.Equal(Now.AddMonths(-1), AccountSyncRunner.OneMonthFloor(Now.AddMonths(-6), Now));        }        [Fact]        public void OneMonthFloor_RecentStartIsKept()        {            DateTime recent = Now.AddDays(-3);            Assert.Equal(recent, AccountSyncRunner.OneMonthFloor(recent, Now));        }        [Fact]        public void OneMonthFloor_NoStartBecomesOneMonthBack()        {            Assert.Equal(Now.AddMonths(-1), AccountSyncRunner.OneMonthFloor(null, Now));        }
-[Fact]        public void NextBackfillEnd_IsOneMonthOn()        {            DateTime start = Now.AddMonths(-11);            Assert.Equal(Now.AddMonths(-10), AccountSyncRunner.NextBackfillEnd(start, Now));        }        [Fact]        public void NextBackfillEnd_StopsAtNow()        {            Assert.Equal(Now, AccountSyncRunner.NextBackfillEnd(Now.AddDays(-3), Now));        }        [Fact]        public void WasLimited_OlderThanAMonth_IsTrue()        {            Assert.True(AccountSyncRunner.WasLimited(Now.AddMonths(-3), Now));        }        [Fact]        public void WasLimited_WithinAMonthOrNoStart_IsFalse()        {            Assert.False(AccountSyncRunner.WasLimited(Now.AddDays(-3), Now));            Assert.False(AccountSyncRunner.WasLimited(null, Now));        }
+        [Fact] public void OneMonthFloor_OlderStartIsRaisedToOneMonthBack() { Assert.Equal(Now.AddMonths(-1), AccountSyncRunner.OneMonthFloor(Now.AddMonths(-6), Now)); }
+        [Fact] public void OneMonthFloor_RecentStartIsKept() { DateTime recent = Now.AddDays(-3); Assert.Equal(recent, AccountSyncRunner.OneMonthFloor(recent, Now)); }
+        [Fact] public void OneMonthFloor_NoStartBecomesOneMonthBack() { Assert.Equal(Now.AddMonths(-1), AccountSyncRunner.OneMonthFloor(null, Now)); }
+        [Fact] public void NextBackfillEnd_IsOneMonthOn() { DateTime start = Now.AddMonths(-11); Assert.Equal(Now.AddMonths(-10), AccountSyncRunner.NextBackfillEnd(start, Now)); }
+        [Fact] public void NextBackfillEnd_StopsAtNow() { Assert.Equal(Now, AccountSyncRunner.NextBackfillEnd(Now.AddDays(-3), Now)); }
+        [Fact] public void WasLimited_OlderThanAMonth_IsTrue() { Assert.True(AccountSyncRunner.WasLimited(Now.AddMonths(-3), Now)); }
+        [Fact] public void WasLimited_WithinAMonthOrNoStart_IsFalse() { Assert.False(AccountSyncRunner.WasLimited(Now.AddDays(-3), Now)); Assert.False(AccountSyncRunner.WasLimited(null, Now)); }
     }
 }

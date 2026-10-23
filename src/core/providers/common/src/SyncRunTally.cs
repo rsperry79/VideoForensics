@@ -1,4 +1,6 @@
-namespace VideoForensics.Core.Providers.Common.Contracts
+using VideoForensics.Core.Providers.Common.Contracts;
+
+namespace VideoForensics.Core.Providers.Common
 {
     /// <summary>
     /// Default <see cref="ISyncRunTally"/>: plain counters. Not thread-safe; a sync run is sequential within one DI scope.

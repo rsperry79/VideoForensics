@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
-using static VideoForensics.MauiApp.WebAuthn.WebAuthnNative;
+using static VideoForensics.MauiApp.Platforms.Windows.WebAuthn.WebAuthnNative;
 
-namespace VideoForensics.MauiApp.WebAuthn
+namespace VideoForensics.MauiApp.Platforms.Windows.WebAuthn
 {
     /// <summary>
     /// Drives a real Windows Hello passkey ceremony via webauthn.dll (see WebAuthnNative's doc

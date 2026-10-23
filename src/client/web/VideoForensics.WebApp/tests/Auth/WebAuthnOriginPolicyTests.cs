@@ -7,7 +7,7 @@ using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests
+namespace VideoForensics.WebApp.Tests.Auth
 {
     public class WebAuthnOriginPolicyTests
     {

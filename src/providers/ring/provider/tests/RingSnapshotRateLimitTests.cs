@@ -5,7 +5,7 @@ using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
 
-namespace VideoForensics.Providers.Ring.Provider.Tests
+namespace VideoForensics.Providers.Ring.Tests
 {
     /// <summary>
     /// A 429 on the snapshot update call must count as a rate limit, so the account is paused instead of the capture loop

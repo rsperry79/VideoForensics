@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Threading.Tasks;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
@@ -105,6 +107,27 @@ namespace VideoForensics.Providers.Ring.Core.Tests
                 Assert.True(_captured.Exists(c => c.Method == "WS-RECV" && c.Body.Contains("DeviceInfoDocGetList")),
                     "Expected a WS-RECV raw log entry for the device discovery response");
             }
+        }
+
+        [Fact]
+        public void ApiRawLogger_Raise_ConcurrentCalls_GetUniqueSequentialNumbers()
+        {
+            // Other tests in this process may raise events at the same time, so only this test's own calls are checked.
+            var sequences = new System.Collections.Concurrent.ConcurrentBag<long>();
+            void Handler(RawApiCall call) => sequences.Add(call.Sequence);
+
+            ApiRawLogger.OnRawResponse += Handler;
+            try
+            {
+                _ = Parallel.For(0, 500, _ => ApiRawLogger.Raise("GET", "https://example.test/x", 200, string.Empty));
+            }
+            finally
+            {
+                ApiRawLogger.OnRawResponse -= Handler;
+            }
+
+            Assert.True(sequences.Count >= 500);
+            Assert.Equal(sequences.Count, sequences.Distinct().Count());
         }
     }
 }

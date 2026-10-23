@@ -16,9 +16,12 @@ using Syncfusion.Blazor;
 
 using System.Threading.RateLimiting;
 
+using System.Security.Cryptography.X509Certificates;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
 
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -69,6 +72,10 @@ Directory.CreateDirectory(logsDir);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
+    // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
+    .MinimumLevel.Override("VideoForensics.Providers.Ring.Api", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "VideoForensics.WebApp")
     // Text format: human-readable with structured properties appended
@@ -227,9 +234,19 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // The WebApp may run interactively during development and as LocalSystem in production. Use
 // machine scope so a key ring created by one of those identities remains usable by the service.
 // Access to the key directory is still restricted by its filesystem ACL.
+// When the TPM is usable, the key ring is encrypted to a TPM-held certificate, so only this machine's TPM can
+// decrypt it. Otherwise DPAPI (machine scope) protects it.
 if (OperatingSystem.IsWindows())
 {
-    _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
+    if (tpmCertificate is not null)
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate);
+    }
+    else
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    }
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -528,6 +545,18 @@ builder.Services.AddCircuitOperatorGuards();
 builder.Services.AddScoped<IMcpCallerAuthorizer, McpCallerAuthorizer>();
 
 WebApplication app = builder.Build();
+
+// Debug trace of every Ring API call: method, path and query, and status. Response bodies are not logged because
+// they hold camera and account data; enable the "VideoForensics.Providers.Ring.Api" category at Debug to see the trace.
+Microsoft.Extensions.Logging.ILogger ringApiLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("VideoForensics.Providers.Ring.Api");
+VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
+    ringApiLogger.LogDebug(
+        "Ring API call #{CallNumber} {Method} {Target} -> {StatusCode} ({BodyLength} chars)",
+        call.Sequence,
+        call.Method,
+        Uri.TryCreate(call.Url, UriKind.Absolute, out Uri? target) ? target.PathAndQuery : call.Url,
+        call.StatusCode,
+        call.Body?.Length ?? 0);
 
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
 // keep the RP ID on the saved address for the current request.
