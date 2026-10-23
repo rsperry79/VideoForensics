@@ -56,7 +56,7 @@ namespace VideoForensics.WebApp.Api
                 Password = password
             };
 
-            _ = _cache.Set(attemptId, data, new MemoryCacheEntryOptions
+            _cache.Set(attemptId, data, new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = _ttl
             });

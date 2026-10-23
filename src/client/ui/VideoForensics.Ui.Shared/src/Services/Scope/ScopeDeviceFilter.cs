@@ -28,18 +28,18 @@ public static class ScopeDeviceFilter
 
         // Invert account -> locations into location -> accounts so each device is a single lookup.
         var accountsByLocation = new Dictionary<Guid, List<ProviderAccount>>();
-        foreach ((Guid accountId, IReadOnlyList<Guid>? locationIds) in locationIdsByAccount)
+        foreach (var (accountId, locationIds) in locationIdsByAccount)
         {
-            if (!accountById.TryGetValue(accountId, out ProviderAccount? account))
+            if (!accountById.TryGetValue(accountId, out var account))
             {
                 continue;
             }
 
-            foreach (Guid locationId in locationIds)
+            foreach (var locationId in locationIds)
             {
-                if (!accountsByLocation.TryGetValue(locationId, out List<ProviderAccount>? list))
+                if (!accountsByLocation.TryGetValue(locationId, out var list))
                 {
-                    list = [];
+                    list = new List<ProviderAccount>();
                     accountsByLocation[locationId] = list;
                 }
 
@@ -48,14 +48,14 @@ public static class ScopeDeviceFilter
         }
 
         var result = new List<DeviceOwnership>();
-        foreach (Device device in devices)
+        foreach (var device in devices)
         {
-            if (!accountsByLocation.TryGetValue(device.LocationId, out List<ProviderAccount>? owners))
+            if (!accountsByLocation.TryGetValue(device.LocationId, out var owners))
             {
                 continue;
             }
 
-            foreach (ProviderAccount owner in owners)
+            foreach (var owner in owners)
             {
                 result.Add(new DeviceOwnership(device.Id, owner.Id, owner.ProviderName));
             }
@@ -89,10 +89,8 @@ public static class ScopeDeviceFilter
     }
 
     /// <summary>Accounts offered by the Account filter: all of them, or only those of <paramref name="providerName"/>.</summary>
-    public static IReadOnlyList<ProviderAccount> AccountsForProvider(IEnumerable<ProviderAccount> accounts, string? providerName)
-    {
-        return providerName is null
+    public static IReadOnlyList<ProviderAccount> AccountsForProvider(IEnumerable<ProviderAccount> accounts, string? providerName) =>
+        providerName is null
             ? accounts.ToList()
             : accounts.Where(a => string.Equals(a.ProviderName, providerName, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
 }

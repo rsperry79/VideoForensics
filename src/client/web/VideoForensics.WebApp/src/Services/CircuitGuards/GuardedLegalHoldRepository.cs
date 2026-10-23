@@ -23,10 +23,8 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             return inner.ReleaseAsync(legalHoldId, releasedBy, releaseReason, ct);
         }
 
-        public Task<IReadOnlyList<LegalHold>> GetActiveByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct)
-        {
-            return inner.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
-        }
+        public Task<IReadOnlyList<LegalHold>> GetActiveByMediaItemIdsAsync(IEnumerable<Guid> mediaItemIds, CancellationToken ct) =>
+            inner.GetActiveByMediaItemIdsAsync(mediaItemIds, ct);
 
         private void Require()
         {

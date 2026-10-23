@@ -1,8 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Moq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.BackgroundServices;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -213,7 +217,7 @@ namespace VideoForensics.Hosting.Tests
 
             UpdateCheckState state = service.GetState();
             Assert.NotNull(state.ErrorMessage);
-            _ = Assert.NotNull(state.LastCheckedUtc);
+            Assert.NotNull(state.LastCheckedUtc);
         }
 
         [Fact]
@@ -256,7 +260,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.True(state.UpdateAvailable);
             Assert.Equal("99.0.0", state.LatestVersion);
             Assert.Equal($"GitHub update check is rate limited; retrying after {reset:u}.", state.ErrorMessage);
-            _ = Assert.NotNull(state.LastCheckedUtc);
+            Assert.NotNull(state.LastCheckedUtc);
         }
 
         [Fact]
@@ -292,7 +296,7 @@ namespace VideoForensics.Hosting.Tests
 
             UpdateCheckState state = service.GetState();
             Assert.NotNull(state.ErrorMessage);
-            _ = Assert.NotNull(state.LastCheckedUtc);
+            Assert.NotNull(state.LastCheckedUtc);
         }
 
         [Fact]
@@ -346,11 +350,11 @@ namespace VideoForensics.Hosting.Tests
         public void UpdateCheckService_ResolvedViaContainer_DoesNotThrowWhenCurrentVersionProviderNotRegistered()
         {
             var services = new ServiceCollection();
-            _ = services.AddLogging();
-            _ = services.AddSingleton(Mock.Of<IForensicsConfiguration>());
-            _ = services.AddSingleton(Mock.Of<IGitHubReleaseClient>());
-            _ = services.AddSingleton(Mock.Of<IUpdateInstaller>());
-            _ = services.AddSingleton<UpdateCheckService>();
+            services.AddLogging();
+            services.AddSingleton(Mock.Of<IForensicsConfiguration>());
+            services.AddSingleton(Mock.Of<IGitHubReleaseClient>());
+            services.AddSingleton(Mock.Of<IUpdateInstaller>());
+            services.AddSingleton<UpdateCheckService>();
 
             using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
 

@@ -57,9 +57,12 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         public BitrateBaseline? Get(LightingMode mode, Season season)
         {
-            return _buckets.TryGetValue(new BaselineBucket(mode, season), out BitrateBaseline? seasonal)
-                ? seasonal
-                : _buckets.TryGetValue(new BaselineBucket(mode, null), out BitrateBaseline? modeWide) ? modeWide : null;
+            if (_buckets.TryGetValue(new BaselineBucket(mode, season), out BitrateBaseline? seasonal))
+            {
+                return seasonal;
+            }
+
+            return _buckets.TryGetValue(new BaselineBucket(mode, null), out BitrateBaseline? modeWide) ? modeWide : null;
         }
     }
 
@@ -78,7 +81,7 @@ namespace VideoForensics.Core.Providers.Core
         /// </summary>
         public static BaselineSnapshot Build(IReadOnlyList<BaselineSample> samples)
         {
-            var clean = samples.Where(s => !s.Flagged).ToList();
+            List<BaselineSample> clean = samples.Where(s => !s.Flagged).ToList();
             var buckets = new Dictionary<BaselineBucket, BitrateBaseline>();
 
             foreach (IGrouping<LightingMode, BaselineSample> byMode in clean.GroupBy(s => s.Mode))
@@ -111,7 +114,7 @@ namespace VideoForensics.Core.Providers.Core
                 return;
             }
 
-            var baseline = BitrateBaseline.From(bitrates);
+            BitrateBaseline? baseline = BitrateBaseline.From(bitrates);
             if (baseline is not null)
             {
                 buckets[key] = baseline;

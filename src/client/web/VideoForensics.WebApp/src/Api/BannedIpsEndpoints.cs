@@ -1,10 +1,8 @@
-using Microsoft.AspNetCore.Http.HttpResults;
-
 using System.Net;
 using System.Net.Sockets;
-
-using VideoForensics.Client.Common.Contracts;
+using Microsoft.AspNetCore.Http.HttpResults;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -42,7 +40,7 @@ namespace VideoForensics.WebApp.Api
         {
             // RemoveAsync silently ignores an unknown id, so existence is checked against the same active
             // set the list shows. An expired ban is not in that set and answers 404.
-            DateTime now = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
             BannedIpRange? ban = (await repository.GetActiveAsync(ct))
                 .FirstOrDefault(range => range.Id == id && (range.ExpiresAtUtc is null || range.ExpiresAtUtc > now));
             if (ban is null)
@@ -96,7 +94,7 @@ namespace VideoForensics.WebApp.Api
             IBannedIpRangeRepository repository,
             CancellationToken ct)
         {
-            DateTime now = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
             IReadOnlyList<BannedIpRangeDto> bans = (await repository.GetActiveAsync(ct))
                 .Where(range => range.ExpiresAtUtc is null || range.ExpiresAtUtc > now)
                 .Select(range => range.ToDto())

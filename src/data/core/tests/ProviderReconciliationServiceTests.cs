@@ -385,10 +385,10 @@ namespace VideoForensics.Data.Core.Tests
                     await work(mockContext.Object));
 
             // Act
-            AutoFixResult result = await _service.AutoFixDiscrepanciesAsync(
+            var result = await _service.AutoFixDiscrepanciesAsync(
                 deviceId,
                 discrepancies,
-                async (eventId, start, end, ct) => [fetchedEvent],
+                async (eventId, start, end, ct) => new List<Event> { fetchedEvent },
                 CancellationToken.None);
 
             // Assert

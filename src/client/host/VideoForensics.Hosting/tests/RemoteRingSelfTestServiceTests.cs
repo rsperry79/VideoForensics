@@ -4,6 +4,8 @@ using System.Text.Json;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteRingSelfTestServiceTests
@@ -42,8 +44,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListEndpointsAsync_WithValidResponse_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             var endpoints = new List<SelfTestEndpointDto>
             {
                 new("endpoint1", "Test 1", "Tests something", "Session", "GET", "/api/test1", "PerLocation", false, false, "Ring"),
@@ -52,7 +54,7 @@ namespace VideoForensics.Hosting.Tests
 
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -176,11 +178,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task StartRunAsync_On202Accepted_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 var response = new HttpResponseMessage(HttpStatusCode.Accepted)
                 {
@@ -313,11 +315,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetStatusAsync_WithValidResponse_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -434,11 +436,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetResultAsync_On204NoContent_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
             });
@@ -592,9 +594,9 @@ namespace VideoForensics.Hosting.Tests
 
             // Assert
             Assert.NotNull(retrieved);
-            _ = Assert.Single(retrieved!.Calls);
-            _ = Assert.Single(retrieved.Calls[0].HttpCalls);
-            SelfTestHttpCallDto retrievedHttpCall = retrieved.Calls[0].HttpCalls[0];
+            Assert.Single(retrieved!.Calls);
+            Assert.Single(retrieved.Calls[0].HttpCalls);
+            var retrievedHttpCall = retrieved.Calls[0].HttpCalls[0];
             Assert.Equal("GET", retrievedHttpCall.Method);
             Assert.Equal("https://example.com/api?token=secret", retrievedHttpCall.Url);
             Assert.Equal(200, retrievedHttpCall.StatusCode);

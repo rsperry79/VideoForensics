@@ -1,4 +1,3 @@
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -13,7 +12,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
-            SnapshotCaptureAttempt attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, jpeg);
+            var attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, jpeg);
 
             Assert.Equal(200, attempt.HttpStatus);
             Assert.Same(jpeg, attempt.Image);
@@ -26,7 +25,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // The status is what Ring returned. A 200 with a non-image body is still a 200; the caller treats it as a failed capture.
             byte[] json = "{\"error\":\"not found\"}"u8.ToArray();
 
-            SnapshotCaptureAttempt attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, json);
+            var attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, json);
 
             Assert.Equal(200, attempt.HttpStatus);
             Assert.Null(attempt.Image);
@@ -37,7 +36,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             byte[] json = "{\"error\":\"not found\"}"u8.ToArray();
 
-            SnapshotCaptureAttempt attempt = RingMediaDownloadService.ClassifySnapshotResponse(404, json);
+            var attempt = RingMediaDownloadService.ClassifySnapshotResponse(404, json);
 
             Assert.Equal(404, attempt.HttpStatus);
             Assert.Null(attempt.Image);
@@ -49,7 +48,7 @@ namespace VideoForensics.Providers.Ring.Tests
             // A non-200 status never carries an image, even when the bytes look like a JPEG.
             byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
-            SnapshotCaptureAttempt attempt = RingMediaDownloadService.ClassifySnapshotResponse(502, jpeg);
+            var attempt = RingMediaDownloadService.ClassifySnapshotResponse(502, jpeg);
 
             Assert.Equal(502, attempt.HttpStatus);
             Assert.Null(attempt.Image);
@@ -58,7 +57,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void ClassifySnapshotResponse_200WithEmptyBody_Returns200WithNoImage()
         {
-            SnapshotCaptureAttempt attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, []);
+            var attempt = RingMediaDownloadService.ClassifySnapshotResponse(200, []);
 
             Assert.Equal(200, attempt.HttpStatus);
             Assert.Null(attempt.Image);

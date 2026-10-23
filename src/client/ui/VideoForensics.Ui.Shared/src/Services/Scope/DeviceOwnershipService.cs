@@ -46,20 +46,20 @@ public sealed class DeviceOwnershipService
             var accounts = (await _accounts.ListAsync(ct)).ToList();
 
             var locationIdsByAccount = new Dictionary<Guid, IReadOnlyList<Guid>>();
-            foreach (ProviderAccount? account in accounts)
+            foreach (var account in accounts)
             {
-                IReadOnlyList<Location> locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
+                var locations = await _locations.ListByProviderAccountIdAsync(account.Id, ct);
                 locationIdsByAccount[account.Id] = locations.Select(l => l.Id).ToList();
             }
 
-            IReadOnlyList<DeviceOwnership> ownership = ScopeDeviceFilter.BuildOwnership(devices, accounts, locationIdsByAccount);
+            var ownership = ScopeDeviceFilter.BuildOwnership(devices, accounts, locationIdsByAccount);
             var providerNames = accounts
                 .Select(a => a.ProviderName)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            IReadOnlyDictionary<Guid, string> names = await LoadAccountNamesAsync(accounts, ct);
+            var names = await LoadAccountNamesAsync(accounts, ct);
             return new DeviceOwnershipSnapshot(accounts, names, providerNames, ownership);
         }
         catch
@@ -77,12 +77,12 @@ public sealed class DeviceOwnershipService
         CancellationToken ct)
     {
         var names = new Dictionary<Guid, string>();
-        foreach (ProviderAccount account in accounts)
+        foreach (var account in accounts)
         {
-            string name = account.ProviderName;
+            var name = account.ProviderName;
             try
             {
-                User? user = await _users.GetAsync(account.UserId, ct);
+                var user = await _users.GetAsync(account.UserId, ct);
                 if (user is not null)
                 {
                     name = user.DisplayName;

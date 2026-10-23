@@ -1,15 +1,10 @@
-
-using AngleSharp.Dom;
+namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
 
 using Bunit;
-
+using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Evidence;
 using VideoForensics.Ui.Shared.Services.Evidence;
-
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
 
 public class SnapshotStripTests : BunitContext
 {
@@ -39,29 +34,29 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void Renders_OneThumbnailPerItem_WithTicketedUrl()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
             .Add(x => x.RangeEndUtc, RangeEnd));
 
-        IReadOnlyList<IElement> thumbs = component.FindAll("[data-testid='snapshot-strip-thumb']");
+        var thumbs = component.FindAll("[data-testid='snapshot-strip-thumb']");
         Assert.Equal(2, thumbs.Count);
 
-        IElement img = component.Find($"[data-key='{items[0].Key}'] img");
+        var img = component.Find($"[data-key='{items[0].Key}'] img");
         Assert.Equal(urls[items[0].Media!.Id], img.GetAttribute("src"));
     }
 
     [Fact]
     public void ClickThumbnail_InvokesOnSelect_AndUpdatesSelectedIndex()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
         EvidenceItem? selected = null;
         int? selectedIndex = null;
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
@@ -79,10 +74,10 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void ArrowRightKey_MovesSelectionForward()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
         int? selectedIndex = null;
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
@@ -98,10 +93,10 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void ArrowLeftKey_AtStart_DoesNotGoNegative()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
         int? selectedIndex = null;
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
@@ -117,10 +112,10 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void ArrowRightKey_AtEnd_DoesNotExceedLastIndex()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
         int? selectedIndex = null;
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
@@ -136,8 +131,8 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void NoItems_DoesNotRenderScrubber()
     {
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
-            .Add(x => x.Items, [])
+        var component = Render<SnapshotStrip>(p => p
+            .Add(x => x.Items, new List<EvidenceItem>())
             .Add(x => x.RangeStartUtc, RangeStart)
             .Add(x => x.RangeEndUtc, RangeEnd));
 
@@ -147,26 +142,26 @@ public class SnapshotStripTests : BunitContext
     [Fact]
     public void RssiSamples_RenderPolyline()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
         var rssi = new List<RssiSample> { new(RangeStart.AddHours(1), -60), new(RangeStart.AddHours(2), -55) };
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)
             .Add(x => x.RangeEndUtc, RangeEnd)
             .Add(x => x.RssiSamples, rssi));
 
-        IElement polyline = component.Find("[data-testid='snapshot-strip-rssi'] polyline");
+        var polyline = component.Find("[data-testid='snapshot-strip-rssi'] polyline");
         Assert.False(string.IsNullOrWhiteSpace(polyline.GetAttribute("points")));
     }
 
     [Fact]
     public void SelectedIndex_RendersScrubPositionMarker()
     {
-        (List<EvidenceItem>? items, Dictionary<Guid, string>? urls) = BuildItems(Guid.NewGuid());
+        var (items, urls) = BuildItems(Guid.NewGuid());
 
-        IRenderedComponent<SnapshotStrip> component = Render<SnapshotStrip>(p => p
+        var component = Render<SnapshotStrip>(p => p
             .Add(x => x.Items, items)
             .Add(x => x.ThumbnailUrls, urls)
             .Add(x => x.RangeStartUtc, RangeStart)

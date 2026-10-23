@@ -60,9 +60,12 @@ namespace VideoForensics.WebApp.Api
             string providerDeviceId, SetSirenRequest body, IDeviceRepository devices, IDeviceControlService control,
             ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
-            return body.DurationSeconds is { } duration && (duration < 1 || duration > 3600)
-                ? Task.FromResult(Results.BadRequest())
-                : ControlAsync(providerDeviceId, devices, logger, ct,
+            if (body.DurationSeconds is { } duration && (duration < 1 || duration > 3600))
+            {
+                return Task.FromResult(Results.BadRequest());
+            }
+
+            return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetSirenAsync(providerId, body.On, body.DurationSeconds, ct));
         }
 
@@ -70,9 +73,12 @@ namespace VideoForensics.WebApp.Api
             string providerDeviceId, SetVolumeRequest body, IDeviceRepository devices, IDeviceControlService control,
             ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
-            return body.Volume is < 0 or > 11
-                ? Task.FromResult(Results.BadRequest())
-                : ControlAsync(providerDeviceId, devices, logger, ct,
+            if (body.Volume < 0 || body.Volume > 11)
+            {
+                return Task.FromResult(Results.BadRequest());
+            }
+
+            return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetVolumeAsync(providerId, body.Volume, ct));
         }
 
@@ -96,9 +102,12 @@ namespace VideoForensics.WebApp.Api
             string providerDeviceId, SetDoNotDisturbRequest body, IDeviceRepository devices, IDeviceControlService control,
             ILogger<DeviceControlLog> logger, CancellationToken ct)
         {
-            return body.Seconds is < 1 or > 86400
-                ? Task.FromResult(Results.BadRequest())
-                : ControlAsync(providerDeviceId, devices, logger, ct,
+            if (body.Seconds < 1 || body.Seconds > 86400)
+            {
+                return Task.FromResult(Results.BadRequest());
+            }
+
+            return ControlAsync(providerDeviceId, devices, logger, ct,
                 providerId => control.SetDoNotDisturbAsync(providerId, body.Seconds, ct));
         }
 

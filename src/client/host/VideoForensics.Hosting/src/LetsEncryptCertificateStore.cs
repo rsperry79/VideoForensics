@@ -39,17 +39,18 @@ namespace VideoForensics.Hosting
         }
 
         public Task SaveAccountAsync(AcmeAccountState account, CancellationToken ct)
-        {
-            return SetEncryptedAsync(EncryptedAccountKey, account.AccountKeyPem, ct);
-        }
+            => SetEncryptedAsync(EncryptedAccountKey, account.AccountKeyPem, ct);
 
         public async Task<IssuedCertificate?> GetCertificateAsync(CancellationToken ct)
         {
             string? pem = await GetDecryptedAsync(EncryptedCertificate, ct);
             string? notAfter = await _settings.GetAsync(CertificateNotAfter, ct);
-            return pem is null || !DateTimeOffset.TryParse(notAfter, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out DateTimeOffset expiry)
-                ? null
-                : new IssuedCertificate(pem, expiry, string.Empty);
+            if (pem is null || !DateTimeOffset.TryParse(notAfter, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out DateTimeOffset expiry))
+            {
+                return null;
+            }
+
+            return new IssuedCertificate(pem, expiry, string.Empty);
         }
 
         public async Task SaveCertificateAsync(IssuedCertificate certificate, CancellationToken ct)
@@ -58,15 +59,10 @@ namespace VideoForensics.Hosting
             await _settings.SetAsync(CertificateNotAfter, certificate.NotAfter.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ct);
         }
 
-        public Task<string?> GetContactEmailAsync(CancellationToken ct)
-        {
-            return _settings.GetAsync(ContactEmail, ct);
-        }
+        public Task<string?> GetContactEmailAsync(CancellationToken ct) => _settings.GetAsync(ContactEmail, ct);
 
         public Task SetContactEmailAsync(string email, CancellationToken ct)
-        {
-            return _settings.SetAsync(ContactEmail, email.Trim(), ct);
-        }
+            => _settings.SetAsync(ContactEmail, email.Trim(), ct);
 
         private async Task SetEncryptedAsync(string key, string plain, CancellationToken ct)
         {

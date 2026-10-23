@@ -1,40 +1,36 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
 using Moq;
-
+using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components.Scope;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Cases;
 using VideoForensics.Ui.Shared.Services.Scope;
-
-using Xunit;
-
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>An account whose filter matches no device must mark the scope as no-match, not as all devices.</summary>
 public class ScopeRail_NoMatch_Tests : BunitContext
 {
     public ScopeRail_NoMatch_Tests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton(TimeProvider.System);
-        _ = Services.AddScoped(_ => new ScopeState());
+        Services.AddLocalization();
+        Services.AddSingleton(TimeProvider.System);
+        Services.AddScoped(_ => new ScopeState());
 
         var caseRepository = new Mock<ICaseRepository>();
-        _ = caseRepository
+        caseRepository
             .Setup(r => r.ListAsync(It.IsAny<CaseStatus?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _ = Services.AddScoped(_ => caseRepository.Object);
-        _ = Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+            .ReturnsAsync(new List<ForensicCase>());
+        Services.AddScoped(_ => caseRepository.Object);
+        Services.AddScoped(sp => new CaseState(sp.GetRequiredService<ICaseRepository>(), sp.GetRequiredService<ScopeState>()));
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     [Fact]
@@ -45,10 +41,10 @@ public class ScopeRail_NoMatch_Tests : BunitContext
         var device = new Device { Id = Guid.NewGuid(), LocationId = otherLocation.Id, ProviderDeviceId = "d", Name = "Camera", Type = "camera" };
 
         var deviceRepository = new Mock<IDeviceRepository>();
-        _ = deviceRepository
+        deviceRepository
             .Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([device]);
-        _ = Services.AddScoped(_ => deviceRepository.Object);
+            .ReturnsAsync(new List<Device> { device });
+        Services.AddScoped(_ => deviceRepository.Object);
 
         // The account has no locations, so none of the devices belong to it.
         ScopeOwnershipTestDoubles.Register(
@@ -56,10 +52,10 @@ public class ScopeRail_NoMatch_Tests : BunitContext
             new[] { idleAccount },
             new Dictionary<Guid, IReadOnlyList<Location>> { [idleAccount.Id] = Array.Empty<Location>() });
 
-        IRenderedComponent<ScopeRail> component = Render<ScopeRail>();
+        var component = Render<ScopeRail>();
         component.Find("[data-testid='scope-account-filter']").Change(idleAccount.Id.ToString());
 
-        ForensicScope scope = Services.GetRequiredService<ScopeState>().Current;
+        var scope = Services.GetRequiredService<ScopeState>().Current;
         Assert.True(scope.MatchesNoDevices);
         Assert.False(scope.IncludesAllDevices);
         Assert.Empty(component.FindAll("input[data-device-id]"));

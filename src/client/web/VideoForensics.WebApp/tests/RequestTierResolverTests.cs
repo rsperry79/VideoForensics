@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 
 using Moq;
 
@@ -35,7 +36,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<INetworkTierResolver> MockTierResolver(NetworkTier tier)
         {
             var mock = new Mock<INetworkTierResolver>();
-            _ = mock.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(tier);
+            mock.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(tier);
             return mock;
         }
 
@@ -64,7 +65,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Internet;
             Guid? outOperatorId = null;
-            _ = headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolvePreAuth(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance);
 
@@ -79,7 +80,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
             Guid? outOperatorId = null;
-            _ = headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolvePreAuth(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance);
 
@@ -96,7 +97,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
             Guid? outOperatorId = Guid.NewGuid();
-            _ = headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolvePreAuth(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance);
 
@@ -111,7 +112,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = default;
             Guid? outOperatorId = null;
-            _ = headerProtector.Setup(p => p.TryUnprotect("bad-header", out outTier, out outOperatorId)).Returns(false);
+            headerProtector.Setup(p => p.TryUnprotect("bad-header", out outTier, out outOperatorId)).Returns(false);
 
             NetworkTier result = RequestTierResolver.ResolvePreAuth(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance);
 
@@ -128,7 +129,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
             Guid? outOperatorId = null;
-            _ = headerProtector.Setup(p => p.TryUnprotect(It.IsAny<string>(), out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect(It.IsAny<string>(), out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolvePreAuth(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance);
 
@@ -141,13 +142,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void ResolveForOperator_MatchingOperatorBoundHeaderOnLoopback_ReturnsHeaderTier()
         {
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             HttpContext context = CreateContext(NetworkTier.Local, "operator-header");
             Mock<INetworkTierResolver> tierResolver = MockTierResolver(NetworkTier.Local);
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Internet;
             Guid? outOperatorId = operatorId;
-            _ = headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolveForOperator(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance, operatorId);
 
@@ -160,13 +161,13 @@ namespace VideoForensics.WebApp.Tests
             // A pre-auth header (no operator bound at all) must never be honored on an ALREADY
             // authenticated request - it isn't bound to this (or any) operator, so it can't be trusted
             // to carry that operator's real tier.
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             HttpContext context = CreateContext(NetworkTier.Local, "pre-auth-header");
             Mock<INetworkTierResolver> tierResolver = MockTierResolver(NetworkTier.Local);
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
             Guid? outOperatorId = null; // pre-auth payload: no operator bound
-            _ = headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("pre-auth-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolveForOperator(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance, operatorId);
 
@@ -181,7 +182,7 @@ namespace VideoForensics.WebApp.Tests
             var headerProtector = new Mock<ISessionTierHeaderProtector>();
             NetworkTier outTier = NetworkTier.Local;
             Guid? outOperatorId = Guid.NewGuid();
-            _ = headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
+            headerProtector.Setup(p => p.TryUnprotect("operator-header", out outTier, out outOperatorId)).Returns(true);
 
             NetworkTier result = RequestTierResolver.ResolveForOperator(context, tierResolver.Object, headerProtector.Object, NullLogger.Instance, Guid.NewGuid());
 

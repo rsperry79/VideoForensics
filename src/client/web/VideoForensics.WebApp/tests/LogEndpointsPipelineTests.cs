@@ -1,25 +1,26 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
-
-using Moq;
-
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using Moq;
+
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Core.Logging.Services;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
@@ -47,23 +48,18 @@ namespace VideoForensics.WebApp.Tests
             protected override Task<AuthenticateResult> HandleAuthenticateAsync()
             {
                 if (Request.Headers.ContainsKey("X-Test-Anonymous"))
-                {
                     return Task.FromResult(AuthenticateResult.NoResult());
-                }
 
-                string role = Request.Headers.TryGetValue("X-Test-Role", out StringValues r) ? r.ToString() : "SuperAdmin";
-                string tier = Request.Headers.TryGetValue("X-Test-Tier", out StringValues t) ? t.ToString() : "Local";
+                string role = Request.Headers.TryGetValue("X-Test-Role", out var r) ? r.ToString() : "SuperAdmin";
+                string tier = Request.Headers.TryGetValue("X-Test-Tier", out var t) ? t.ToString() : "Local";
                 var identity = new ClaimsIdentity(
                 [
                     new Claim(VideoForensicsClaimTypes.Role, role),
                     new Claim(VideoForensicsClaimTypes.NetworkTier, tier),
                     new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
                 ], TestScheme);
-                if (Request.Headers.TryGetValue("X-Test-CredentialKind", out StringValues ck))
-                {
+                if (Request.Headers.TryGetValue("X-Test-CredentialKind", out var ck))
                     identity.AddClaim(new Claim(VideoForensicsClaimTypes.CredentialKind, ck.ToString()));
-                }
-
                 return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), TestScheme)));
             }
         }
@@ -86,7 +82,7 @@ namespace VideoForensics.WebApp.Tests
 
         private static async Task<TestHost> StartAsync(TimeSpan? heartbeat = null, bool stepUpValid = true)
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            var builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
             var buffer = new InMemoryLogBuffer(capacity: 5000);
@@ -129,10 +125,7 @@ namespace VideoForensics.WebApp.Tests
         {
             var req = new HttpRequestMessage(HttpMethod.Get, url);
             if (stepUp != null)
-            {
                 req.Headers.Add("X-StepUp-Token", stepUp);
-            }
-
             configure?.Invoke(req);
             return req;
         }
@@ -145,7 +138,7 @@ namespace VideoForensics.WebApp.Tests
 
         private static async Task<(HttpResponseMessage Response, StreamReader Reader)> OpenStreamAsync(TestHost host, string url, CancellationToken ct, Action<HttpRequestMessage>? configure = null)
         {
-            HttpResponseMessage response = await host.Client.SendAsync(Get(url, "valid", configure), HttpCompletionOption.ResponseHeadersRead, ct);
+            var response = await host.Client.SendAsync(Get(url, "valid", configure), HttpCompletionOption.ResponseHeadersRead, ct);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             return (response, new StreamReader(await response.Content.ReadAsStreamAsync(ct)));
         }
@@ -160,10 +153,7 @@ namespace VideoForensics.WebApp.Tests
                 string? line = await reader.ReadLineAsync(cts.Token);
                 Assert.NotNull(line);
                 if (line.Length == 0)
-                {
                     return lines;
-                }
-
                 lines.Add(line);
             }
         }
@@ -172,11 +162,9 @@ namespace VideoForensics.WebApp.Tests
         {
             while (true)
             {
-                List<string> frame = await ReadFrameAsync(reader);
+                var frame = await ReadFrameAsync(reader);
                 if (!frame.All(l => l.StartsWith(':')))
-                {
                     return frame;
-                }
             }
         }
 
@@ -189,7 +177,7 @@ namespace VideoForensics.WebApp.Tests
 
         private static async Task WaitForAsync(Func<bool> condition)
         {
-            DateTime deadline = DateTime.UtcNow + ReadTimeout;
+            var deadline = DateTime.UtcNow + ReadTimeout;
             while (!condition())
             {
                 Assert.True(DateTime.UtcNow < deadline, "Condition not met in time");
@@ -204,8 +192,8 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("/api/v1/logs/stream")]
         public async Task Logs_NonSuperAdminRole_IsForbidden(string url)
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Role", "Admin")), HttpCompletionOption.ResponseHeadersRead);
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Role", "Admin")), HttpCompletionOption.ResponseHeadersRead);
             Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
             host.Audit.VerifyNoOtherCalls();
         }
@@ -215,8 +203,8 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("/api/v1/logs/stream")]
         public async Task Logs_NonLocalTier_IsForbidden(string url)
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Tier", "Network")), HttpCompletionOption.ResponseHeadersRead);
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Tier", "Network")), HttpCompletionOption.ResponseHeadersRead);
             Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
             host.Audit.VerifyNoOtherCalls();
         }
@@ -226,8 +214,8 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("/api/v1/logs/stream")]
         public async Task Logs_Unauthenticated_IsUnauthorized(string url)
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Anonymous", "1")), HttpCompletionOption.ResponseHeadersRead);
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get(url, "valid", r => r.Headers.Add("X-Test-Anonymous", "1")), HttpCompletionOption.ResponseHeadersRead);
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
         }
 
@@ -236,8 +224,8 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("Internet")]
         public async Task Logs_PasskeySessionOnNonLocalTier_IsReadable(string tier)
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
             {
                 r.Headers.Add("X-Test-Tier", tier);
                 r.Headers.Add("X-Test-CredentialKind", "OperatorPasskey");
@@ -248,8 +236,8 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Logs_PasswordSessionOnNetworkTier_IsForbidden()
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get("/api/v1/logs", "valid", r =>
             {
                 r.Headers.Add("X-Test-Tier", "Network");
                 r.Headers.Add("X-Test-CredentialKind", "Password");
@@ -263,8 +251,8 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("/api/v1/logs/stream")]
         public async Task Logs_NoStepUpToken_IsReadable(string url)
         {
-            await using TestHost host = await StartAsync();
-            HttpResponseMessage resp = await host.Client.SendAsync(Get(url, stepUp: null), HttpCompletionOption.ResponseHeadersRead);
+            await using var host = await StartAsync();
+            var resp = await host.Client.SendAsync(Get(url, stepUp: null), HttpCompletionOption.ResponseHeadersRead);
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         }
 
@@ -273,10 +261,10 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetLogs_ValidCall_AuditsExactlyOnceWithoutSearchText()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             Add(host.Buffer, message: "contains distinctive-needle-xyz");
 
-            HttpResponseMessage resp = await host.Client.SendAsync(Get("/api/v1/logs?search=distinctive-needle-xyz&minLevel=Information"));
+            var resp = await host.Client.SendAsync(Get("/api/v1/logs?search=distinctive-needle-xyz&minLevel=Information"));
 
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
             host.Audit.Verify(a => a.LogAsync(SecurityAuditEventTypes.LogViewed, It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -289,11 +277,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_Open_AuditsExactlyOnceWithoutSearchText()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             Add(host.Buffer, message: "contains distinctive-needle-xyz");
             using var cts = new CancellationTokenSource(ReadTimeout);
 
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?search=distinctive-needle-xyz", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?search=distinctive-needle-xyz", cts.Token);
             _ = await ReadDataFrameAsync(reader);
 
             host.Audit.Verify(a => a.LogAsync(SecurityAuditEventTypes.LogViewed, It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -314,16 +302,14 @@ namespace VideoForensics.WebApp.Tests
         [InlineData(99999, 2000)]
         public async Task GetLogs_Limit_IsClamped(int? limit, int expectedCount)
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             for (int i = 0; i < 2100; i++)
-            {
                 Add(host.Buffer);
-            }
 
             string url = limit.HasValue ? $"/api/v1/logs?limit={limit}" : "/api/v1/logs";
-            HttpResponseMessage resp = await host.Client.SendAsync(Get(url));
+            var resp = await host.Client.SendAsync(Get(url));
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            LogPageDto? page = await resp.Content.ReadFromJsonAsync<LogPageDto>(WebJson);
+            var page = await resp.Content.ReadFromJsonAsync<LogPageDto>(WebJson);
 
             Assert.NotNull(page);
             Assert.Equal(expectedCount, page.Entries.Count);
@@ -335,18 +321,18 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_Backlog_UsesSseIdAndSingleDataLine()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             Add(host.Buffer, message: "one");
             Add(host.Buffer, message: "two");
             using var cts = new CancellationTokenSource(ReadTimeout);
 
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
 
             Assert.Equal("text/event-stream", resp.Content.Headers.ContentType?.MediaType);
-            List<string> f1 = await ReadDataFrameAsync(reader);
+            var f1 = await ReadDataFrameAsync(reader);
             Assert.Contains("id: 1", f1);
             Assert.Equal("one", ParseData(f1).Message);
-            List<string> f2 = await ReadDataFrameAsync(reader);
+            var f2 = await ReadDataFrameAsync(reader);
             Assert.Contains("id: 2", f2);
             Assert.Equal("two", ParseData(f2).Message);
             resp.Dispose();
@@ -355,16 +341,16 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_EntryLoggedAfterOpen_IsDelivered()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             Add(host.Buffer, message: "old");
             using var cts = new CancellationTokenSource(ReadTimeout);
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
             _ = await ReadDataFrameAsync(reader);
 
             Add(host.Buffer, message: "fresh");
             Add(host.Buffer, message: "fresher");
 
-            List<string> f = await ReadDataFrameAsync(reader);
+            var f = await ReadDataFrameAsync(reader);
             Assert.Contains("id: 2", f);
             Assert.Equal("fresh", ParseData(f).Message);
             Assert.Equal(3, ParseData(await ReadDataFrameAsync(reader)).Sequence);
@@ -374,15 +360,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_LastEventId_ResumesWithoutDuplicates()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             for (int i = 0; i < 3; i++)
-            {
                 Add(host.Buffer);
-            }
-
             using var cts = new CancellationTokenSource(ReadTimeout);
 
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token, r => r.Headers.Add("Last-Event-ID", "2"));
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token, r => r.Headers.Add("Last-Event-ID", "2"));
 
             Assert.Equal(3, ParseData(await ReadDataFrameAsync(reader)).Sequence);
             Add(host.Buffer);
@@ -393,9 +376,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_MinLevelAndSearch_ApplyToLiveEntries()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             using var cts = new CancellationTokenSource(ReadTimeout);
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?minLevel=Warning&search=needle", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?minLevel=Warning&search=needle", cts.Token);
             await WaitForAsync(() => host.Buffer.SubscriberCount == 1);
 
             Add(host.Buffer, "Information", "needle but too quiet");
@@ -409,15 +392,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_NoAfterSequence_BacklogCappedToNewestLimit()
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             for (int i = 0; i < 10; i++)
-            {
                 Add(host.Buffer);
-            }
-
             using var cts = new CancellationTokenSource(ReadTimeout);
 
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?limit=3", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream?limit=3", cts.Token);
 
             Assert.Equal(8, ParseData(await ReadDataFrameAsync(reader)).Sequence);
             Assert.Equal(9, ParseData(await ReadDataFrameAsync(reader)).Sequence);
@@ -432,16 +412,13 @@ namespace VideoForensics.WebApp.Tests
         [InlineData(99999, 2000)]
         public async Task StreamLogs_Limit_DefaultsAndClampsBacklogCap(int? limit, int expectedBacklogSize)
         {
-            await using TestHost host = await StartAsync();
+            await using var host = await StartAsync();
             for (int i = 0; i < 2100; i++)
-            {
                 Add(host.Buffer);
-            }
-
             using var cts = new CancellationTokenSource(ReadTimeout);
 
             string url = limit.HasValue ? $"/api/v1/logs/stream?limit={limit}" : "/api/v1/logs/stream";
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, url, cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, url, cts.Token);
 
             Assert.Equal(2100 - expectedBacklogSize + 1, ParseData(await ReadDataFrameAsync(reader)).Sequence);
             resp.Dispose();
@@ -450,11 +427,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_Idle_SendsHeartbeatCommentFrames()
         {
-            await using TestHost host = await StartAsync(heartbeat: TimeSpan.FromMilliseconds(50));
+            await using var host = await StartAsync(heartbeat: TimeSpan.FromMilliseconds(50));
             using var cts = new CancellationTokenSource(ReadTimeout);
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
 
-            List<string> frame = await ReadFrameAsync(reader);
+            var frame = await ReadFrameAsync(reader);
 
             Assert.Equal([": heartbeat"], frame);
             resp.Dispose();
@@ -463,9 +440,9 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task StreamLogs_ClientDisconnects_RemovesSubscriber()
         {
-            await using TestHost host = await StartAsync(heartbeat: TimeSpan.FromMilliseconds(50));
+            await using var host = await StartAsync(heartbeat: TimeSpan.FromMilliseconds(50));
             using var cts = new CancellationTokenSource(ReadTimeout);
-            (HttpResponseMessage? resp, StreamReader? reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
+            var (resp, reader) = await OpenStreamAsync(host, "/api/v1/logs/stream", cts.Token);
             _ = await ReadFrameAsync(reader);
             Assert.Equal(1, host.Buffer.SubscriberCount);
 
@@ -484,22 +461,17 @@ namespace VideoForensics.WebApp.Tests
         {
             var services = new ServiceCollection();
             if (registerBufferFirst)
-            {
                 _ = services.AddInMemoryLogBuffer();
-            }
-
-            _ = services.AddLogging(b => b.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: false, enableSyslog: false));
+            _ = services.AddLogging(b => b.AddVideoForensicsLogging("", LogLevel.Information, enableEventLog: false, enableSyslog: false));
             if (!registerBufferFirst)
-            {
                 _ = services.AddInMemoryLogBuffer();
-            }
 
-            using ServiceProvider sp = services.BuildServiceProvider();
-            InMemoryLogBuffer buffer = sp.GetRequiredService<InMemoryLogBuffer>();
+            using var sp = services.BuildServiceProvider();
+            var buffer = sp.GetRequiredService<InMemoryLogBuffer>();
             sp.GetRequiredService<ILogger<LogEndpointsPipelineTests>>().LogWarning("wiring-marker-{Id}", 42);
 
-            List<LogRecord> entries = buffer.GetSnapshot(null, "wiring-marker-42", null, 10);
-            _ = Assert.Single(entries);
+            var entries = buffer.GetSnapshot(null, "wiring-marker-42", null, 10);
+            Assert.Single(entries);
         }
     }
 }

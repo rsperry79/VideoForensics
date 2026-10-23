@@ -1,5 +1,4 @@
 using VideoForensics.Providers.Ring.Services;
-
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Tests

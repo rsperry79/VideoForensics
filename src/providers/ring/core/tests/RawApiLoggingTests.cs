@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Threading.Tasks;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
@@ -36,7 +38,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task SetLight_RaisesApiRawLoggerEvent()
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_on", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_on", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession.Authenticate();
 
             await _mockSession.SetLight(123456, true);
@@ -54,7 +56,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task SetVolume_RaisesApiRawLoggerEventWithRequestAndResponseBody()
         {
             MockHttpMessageHandler mockHandler = _mockHelper.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession.Authenticate();
 
             await _mockSession.SetVolume(123456, 7, "Front Door");
@@ -112,10 +114,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Other tests in this process may raise events at the same time, so only this test's own calls are checked.
             var sequences = new System.Collections.Concurrent.ConcurrentBag<long>();
-            void Handler(RawApiCall call)
-            {
-                sequences.Add(call.Sequence);
-            }
+            void Handler(RawApiCall call) => sequences.Add(call.Sequence);
 
             ApiRawLogger.OnRawResponse += Handler;
             try

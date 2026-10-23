@@ -3,6 +3,7 @@ using Fido2NetLib;
 using Microsoft.AspNetCore.Http;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.WebApp.Auth;
 
 using Xunit;
 
@@ -18,15 +19,12 @@ namespace VideoForensics.WebApp.Tests.Auth
             return context;
         }
 
-        private static Fido2Configuration Fido2()
-        {
-            return new() { Origins = new HashSet<string>(StringComparer.Ordinal) };
-        }
+        private static Fido2Configuration Fido2() => new() { Origins = new HashSet<string>(StringComparer.Ordinal) };
 
         [Fact]
         public void WebAuthnOriginPolicy_Apply_RequestOnConfiguredInternetHost_AddsOrigin()
         {
-            Fido2Configuration configuration = Fido2();
+            var configuration = Fido2();
             var forensics = new ForensicsConfiguration { InternetServerUrl = "https://video.example.com" };
 
             WebAuthnOriginPolicy.Apply(Request("https", "video.example.com"), configuration, forensics);
@@ -37,7 +35,7 @@ namespace VideoForensics.WebApp.Tests.Auth
         [Fact]
         public void WebAuthnOriginPolicy_Apply_RequestOnOtherHost_DoesNotAddOrigin()
         {
-            Fido2Configuration configuration = Fido2();
+            var configuration = Fido2();
             var forensics = new ForensicsConfiguration { InternetServerUrl = "https://video.example.com" };
 
             WebAuthnOriginPolicy.Apply(Request("https", "attacker.example.net"), configuration, forensics);
@@ -48,7 +46,7 @@ namespace VideoForensics.WebApp.Tests.Auth
         [Fact]
         public void WebAuthnOriginPolicy_Apply_ConfiguredHostWithDifferentCase_AddsOrigin()
         {
-            Fido2Configuration configuration = Fido2();
+            var configuration = Fido2();
             var forensics = new ForensicsConfiguration { InternetServerUrl = "https://Video.Example.com" };
 
             WebAuthnOriginPolicy.Apply(Request("https", "video.example.com"), configuration, forensics);
@@ -59,7 +57,7 @@ namespace VideoForensics.WebApp.Tests.Auth
         [Fact]
         public void WebAuthnOriginPolicy_Apply_ConfiguredInternetAddress_SetsRpIdOnEveryRequest()
         {
-            Fido2Configuration configuration = Fido2();
+            var configuration = Fido2();
             configuration.RPID = "localhost";
             var forensics = new ForensicsConfiguration { InternetServerUrl = "https://video.example.com" };
 
@@ -71,7 +69,7 @@ namespace VideoForensics.WebApp.Tests.Auth
         [Fact]
         public void WebAuthnOriginPolicy_Apply_NoInternetAddress_LeavesRpIdUnchanged()
         {
-            Fido2Configuration configuration = Fido2();
+            var configuration = Fido2();
             configuration.RPID = "localhost";
             var forensics = new ForensicsConfiguration { InternetServerUrl = null };
 

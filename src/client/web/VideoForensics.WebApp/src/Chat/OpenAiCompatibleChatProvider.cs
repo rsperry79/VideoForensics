@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -39,14 +40,12 @@ namespace VideoForensics.WebApp.Chat
             [EnumeratorCancellation] CancellationToken ct)
         {
             if (messages == null || messages.Count == 0)
-            {
                 throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
-            }
 
-            string baseUrl = _options.BaseUrl ?? "https://api.openai.com";
-            string endpoint = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
+            var baseUrl = _options.BaseUrl ?? "https://api.openai.com";
+            var endpoint = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
 
-            OpenAiRequest request = BuildRequest(messages, tools);
+            var request = BuildRequest(messages, tools);
             request.Stream = true;
             var content = JsonContent.Create(request, options: _jsonOptions);
 
@@ -57,8 +56,8 @@ namespace VideoForensics.WebApp.Chat
 
             httpRequest.Headers.Add("Authorization", $"Bearer {_options.ApiKey}");
 
-            using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-            _ = response.EnsureSuccessStatusCode();
+            using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
 
             await using Stream body = await response.Content.ReadAsStreamAsync(ct);
 
@@ -69,20 +68,14 @@ namespace VideoForensics.WebApp.Chat
             {
                 // OpenAI terminates the stream with a literal [DONE] sentinel rather than a JSON event.
                 if (sse.Data == "[DONE]")
-                {
                     break;
-                }
 
                 using var doc = JsonDocument.Parse(sse.Data);
                 if (!doc.RootElement.TryGetProperty("choices", out JsonElement choices) || choices.GetArrayLength() == 0)
-                {
                     continue;
-                }
 
                 if (!choices[0].TryGetProperty("delta", out JsonElement delta))
-                {
                     continue;
-                }
 
                 if (delta.TryGetProperty("content", out JsonElement contentElement) && contentElement.ValueKind == JsonValueKind.String)
                 {
@@ -106,21 +99,15 @@ namespace VideoForensics.WebApp.Chat
                         }
 
                         if (call.TryGetProperty("id", out JsonElement idElement) && idElement.ValueKind == JsonValueKind.String)
-                        {
                             partial.Id ??= idElement.GetString();
-                        }
 
                         if (call.TryGetProperty("function", out JsonElement function))
                         {
                             if (function.TryGetProperty("name", out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String)
-                            {
                                 partial.Name = nameElement.GetString() ?? string.Empty;
-                            }
 
                             if (function.TryGetProperty("arguments", out JsonElement argsElement) && argsElement.ValueKind == JsonValueKind.String)
-                            {
                                 _ = partial.Arguments.Append(argsElement.GetString());
-                            }
                         }
                     }
                 }
@@ -137,9 +124,10 @@ namespace VideoForensics.WebApp.Chat
                 yield break;
             }
 
-            yield return text.Length == 0
-                ? throw new InvalidOperationException("No valid content type found in OpenAI response")
-                : (LlmStreamEvent)new LlmStepCompleted(new LlmCompletionResult(
+            if (text.Length == 0)
+                throw new InvalidOperationException("No valid content type found in OpenAI response");
+
+            yield return new LlmStepCompleted(new LlmCompletionResult(
                 TextReply: text.ToString(),
                 ToolCallId: null,
                 ToolName: null,
@@ -220,17 +208,20 @@ namespace VideoForensics.WebApp.Chat
 
         private static object? ParseJsonToObject(string? json)
         {
-            return string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<object>(json);
+            if (string.IsNullOrEmpty(json))
+                return null;
+
+            return JsonSerializer.Deserialize<object>(json);
         }
 
         // DTO classes for OpenAI API
         private class OpenAiRequest
         {
             [JsonPropertyName("model")]
-            public string Model { get; set; } = string.Empty;
+            public string Model { get; set; } = "";
 
             [JsonPropertyName("messages")]
-            public List<OpenAiMessage> Messages { get; set; } = [];
+            public List<OpenAiMessage> Messages { get; set; } = new();
 
             [JsonPropertyName("tools")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -243,7 +234,7 @@ namespace VideoForensics.WebApp.Chat
         private class OpenAiMessage
         {
             [JsonPropertyName("role")]
-            public string Role { get; set; } = string.Empty;
+            public string Role { get; set; } = "";
 
             [JsonPropertyName("content")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -261,10 +252,10 @@ namespace VideoForensics.WebApp.Chat
         private class OpenAiToolCall
         {
             [JsonPropertyName("id")]
-            public string Id { get; set; } = string.Empty;
+            public string Id { get; set; } = "";
 
             [JsonPropertyName("type")]
-            public string Type { get; set; } = string.Empty;
+            public string Type { get; set; } = "";
 
             [JsonPropertyName("function")]
             public OpenAiFunction? Function { get; set; }
@@ -273,7 +264,7 @@ namespace VideoForensics.WebApp.Chat
         private class OpenAiFunction
         {
             [JsonPropertyName("name")]
-            public string Name { get; set; } = string.Empty;
+            public string Name { get; set; } = "";
 
             [JsonPropertyName("arguments")]
             public string Arguments { get; set; } = "{}";
@@ -282,7 +273,7 @@ namespace VideoForensics.WebApp.Chat
         private class OpenAiTool
         {
             [JsonPropertyName("type")]
-            public string Type { get; set; } = string.Empty;
+            public string Type { get; set; } = "";
 
             [JsonPropertyName("function")]
             public OpenAiFunctionDefinition? Function { get; set; }
@@ -291,13 +282,14 @@ namespace VideoForensics.WebApp.Chat
         private class OpenAiFunctionDefinition
         {
             [JsonPropertyName("name")]
-            public string Name { get; set; } = string.Empty;
+            public string Name { get; set; } = "";
 
             [JsonPropertyName("description")]
-            public string Description { get; set; } = string.Empty;
+            public string Description { get; set; } = "";
 
             [JsonPropertyName("parameters")]
             public object? Parameters { get; set; }
         }
+
     }
 }

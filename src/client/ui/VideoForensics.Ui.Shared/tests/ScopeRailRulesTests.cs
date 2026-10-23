@@ -1,56 +1,45 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Scope;
-
 using Xunit;
-
+using VideoForensics.Ui.Shared.Services.Scope;
 using Device = VideoForensics.Data.Common.Entities.Device;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class ScopeRailRulesTests
 {
-    private static ProviderAccount MakeAccount(string providerName, Guid? id = null)
+    private static ProviderAccount MakeAccount(string providerName, Guid? id = null) => new()
     {
-        return new()
-        {
-            Id = id ?? Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            ProviderName = providerName,
-            LinkedUtc = DateTime.UtcNow,
-        };
-    }
+        Id = id ?? Guid.NewGuid(),
+        UserId = Guid.NewGuid(),
+        ProviderName = providerName,
+        LinkedUtc = DateTime.UtcNow,
+    };
 
-    private static Device MakeDevice(Guid? id = null)
+    private static Device MakeDevice(Guid? id = null) => new()
     {
-        return new()
-        {
-            Id = id ?? Guid.NewGuid(),
-            LocationId = Guid.NewGuid(),
-            ProviderDeviceId = Guid.NewGuid().ToString(),
-            Name = "Camera",
-            Type = "camera",
-        };
-    }
+        Id = id ?? Guid.NewGuid(),
+        LocationId = Guid.NewGuid(),
+        ProviderDeviceId = Guid.NewGuid().ToString(),
+        Name = "Camera",
+        Type = "camera",
+    };
 
     private static ForensicScope MakeScope(
         IReadOnlyList<Guid>? deviceIds = null,
         DateTime? from = null,
         DateTime? to = null,
         string? search = null,
-        bool matchesNoDevices = false)
-    {
-        return new(deviceIds ?? [], from ?? new DateTime(2026, 9, 1), to ?? new DateTime(2026, 9, 30), search, matchesNoDevices);
-    }
+        bool matchesNoDevices = false) =>
+        new(deviceIds ?? new List<Guid>(), from ?? new DateTime(2026, 9, 1), to ?? new DateTime(2026, 9, 30), search, matchesNoDevices);
 
     // ---- Visible devices -------------------------------------------------
 
     [Fact]
     public void VisibleDevices_NoFilters_ReturnsAllDevices()
     {
-        Device[] devices = new[] { MakeDevice(), MakeDevice() };
+        var devices = new[] { MakeDevice(), MakeDevice() };
 
-        IReadOnlyList<Device> visible = ScopeRailRules.VisibleDevices(devices, Array.Empty<DeviceOwnership>(), null, null);
+        var visible = ScopeRailRules.VisibleDevices(devices, Array.Empty<DeviceOwnership>(), null, null);
 
         Assert.Equal(devices.Length, visible.Count);
     }
@@ -58,17 +47,17 @@ public class ScopeRailRulesTests
     [Fact]
     public void VisibleDevices_ProviderFilter_DelegatesToScopeDeviceFilter()
     {
-        Device ringDevice = MakeDevice();
-        Device wyzeDevice = MakeDevice();
-        DeviceOwnership[] ownership = new[]
+        var ringDevice = MakeDevice();
+        var wyzeDevice = MakeDevice();
+        var ownership = new[]
         {
             new DeviceOwnership(ringDevice.Id, Guid.NewGuid(), "Ring"),
             new DeviceOwnership(wyzeDevice.Id, Guid.NewGuid(), "Wyze"),
         };
 
-        IReadOnlyList<Device> visible = ScopeRailRules.VisibleDevices(new[] { ringDevice, wyzeDevice }, ownership, "Ring", null);
+        var visible = ScopeRailRules.VisibleDevices(new[] { ringDevice, wyzeDevice }, ownership, "Ring", null);
 
-        Device only = Assert.Single(visible);
+        var only = Assert.Single(visible);
         Assert.Equal(ringDevice.Id, only.Id);
     }
 
@@ -77,9 +66,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_WhitespaceValue_MeansAllProviders()
     {
-        ProviderAccount[] accounts = new[] { MakeAccount("Ring") };
+        var accounts = new[] { MakeAccount("Ring") };
 
-        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(accounts, null, "   ");
+        var (provider, _) = ScopeRailRules.ApplyProviderPick(accounts, null, "   ");
 
         Assert.Null(provider);
     }
@@ -87,7 +76,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_EmptyValue_MeansAllProviders()
     {
-        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, string.Empty);
+        var (provider, _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, "");
 
         Assert.Null(provider);
     }
@@ -95,7 +84,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_ProviderValue_IsReturnedAsIs()
     {
-        (string? provider, Guid? _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, "Ring");
+        var (provider, _) = ScopeRailRules.ApplyProviderPick(Array.Empty<ProviderAccount>(), null, "Ring");
 
         Assert.Equal("Ring", provider);
     }
@@ -103,11 +92,11 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_SelectedAccountOutsideNewProvider_ClearsAccountFilter()
     {
-        ProviderAccount wyze = MakeAccount("Wyze");
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount[] accounts = new[] { wyze, ring };
+        var wyze = MakeAccount("Wyze");
+        var ring = MakeAccount("Ring");
+        var accounts = new[] { wyze, ring };
 
-        (string? provider, Guid? account) = ScopeRailRules.ApplyProviderPick(accounts, wyze.Id, "Ring");
+        var (provider, account) = ScopeRailRules.ApplyProviderPick(accounts, wyze.Id, "Ring");
 
         Assert.Equal("Ring", provider);
         Assert.Null(account);
@@ -116,10 +105,10 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_SelectedAccountInNewProvider_KeepsAccountFilter()
     {
-        ProviderAccount ring = MakeAccount("Ring");
-        ProviderAccount[] accounts = new[] { ring };
+        var ring = MakeAccount("Ring");
+        var accounts = new[] { ring };
 
-        (string _, Guid? account) = ScopeRailRules.ApplyProviderPick(accounts, ring.Id, "Ring");
+        var (_, account) = ScopeRailRules.ApplyProviderPick(accounts, ring.Id, "Ring");
 
         Assert.Equal(ring.Id, account);
     }
@@ -127,9 +116,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyProviderPick_AllProvidersWithAccountSelected_KeepsAccountFilter()
     {
-        ProviderAccount ring = MakeAccount("Ring");
+        var ring = MakeAccount("Ring");
 
-        (string? provider, Guid? account) = ScopeRailRules.ApplyProviderPick(new[] { ring }, ring.Id, string.Empty);
+        var (provider, account) = ScopeRailRules.ApplyProviderPick(new[] { ring }, ring.Id, "");
 
         Assert.Null(provider);
         Assert.Equal(ring.Id, account);
@@ -154,7 +143,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ParseAccountPick_EmptyValue_ReturnsNull()
     {
-        Assert.Null(ScopeRailRules.ParseAccountPick(string.Empty));
+        Assert.Null(ScopeRailRules.ParseAccountPick(""));
         Assert.Null(ScopeRailRules.ParseAccountPick(null));
     }
 
@@ -165,9 +154,9 @@ public class ScopeRailRulesTests
     {
         var visibleA = Guid.NewGuid();
         var visibleB = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [Guid.NewGuid()]);
+        var current = MakeScope(deviceIds: new List<Guid> { Guid.NewGuid() });
 
-        ForensicScope result = ScopeRailRules.ApplyFilters(current, new[] { visibleA, visibleB }, "Ring", null);
+        var result = ScopeRailRules.ApplyFilters(current, new[] { visibleA, visibleB }, "Ring", null);
 
         Assert.Equal(new[] { visibleA, visibleB }, result.DeviceIds);
         Assert.False(result.MatchesNoDevices);
@@ -176,9 +165,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplyFilters_AccountFilterActiveWithNoVisibleDevices_SetsMatchesNoDevices()
     {
-        ForensicScope current = MakeScope();
+        var current = MakeScope();
 
-        ForensicScope result = ScopeRailRules.ApplyFilters(current, Array.Empty<Guid>(), null, Guid.NewGuid());
+        var result = ScopeRailRules.ApplyFilters(current, Array.Empty<Guid>(), null, Guid.NewGuid());
 
         Assert.Empty(result.DeviceIds);
         Assert.True(result.MatchesNoDevices);
@@ -188,9 +177,9 @@ public class ScopeRailRulesTests
     public void ApplyFilters_NoFilters_ClearsNoMatchAndKeepsDeviceIds()
     {
         var kept = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [kept], matchesNoDevices: true);
+        var current = MakeScope(deviceIds: new List<Guid> { kept }, matchesNoDevices: true);
 
-        ForensicScope result = ScopeRailRules.ApplyFilters(current, new[] { Guid.NewGuid() }, null, null);
+        var result = ScopeRailRules.ApplyFilters(current, new[] { Guid.NewGuid() }, null, null);
 
         Assert.Equal(new[] { kept }, result.DeviceIds);
         Assert.False(result.MatchesNoDevices);
@@ -201,9 +190,9 @@ public class ScopeRailRulesTests
     {
         var from = new DateTime(2026, 9, 1);
         var to = new DateTime(2026, 9, 30);
-        ForensicScope current = MakeScope(from: from, to: to, search: "door");
+        var current = MakeScope(from: from, to: to, search: "door");
 
-        ForensicScope result = ScopeRailRules.ApplyFilters(current, new[] { Guid.NewGuid() }, "Ring", null);
+        var result = ScopeRailRules.ApplyFilters(current, new[] { Guid.NewGuid() }, "Ring", null);
 
         Assert.Equal(from, result.FromUtc);
         Assert.Equal(to, result.ToUtc);
@@ -217,9 +206,9 @@ public class ScopeRailRulesTests
     {
         var existing = Guid.NewGuid();
         var added = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [existing]);
+        var current = MakeScope(deviceIds: new List<Guid> { existing });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, added, true, null, null);
+        var result = ScopeRailRules.ToggleDevice(current, added, true, null, null);
 
         Assert.Equal(new[] { existing, added }, result.DeviceIds);
     }
@@ -228,9 +217,9 @@ public class ScopeRailRulesTests
     public void ToggleDevice_CheckedAlreadySelectedDevice_DoesNotDuplicate()
     {
         var id = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [id]);
+        var current = MakeScope(deviceIds: new List<Guid> { id });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, id, true, null, null);
+        var result = ScopeRailRules.ToggleDevice(current, id, true, null, null);
 
         Assert.Equal(new[] { id }, result.DeviceIds);
     }
@@ -240,9 +229,9 @@ public class ScopeRailRulesTests
     {
         var keep = Guid.NewGuid();
         var drop = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [keep, drop]);
+        var current = MakeScope(deviceIds: new List<Guid> { keep, drop });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, drop, false, null, null);
+        var result = ScopeRailRules.ToggleDevice(current, drop, false, null, null);
 
         Assert.Equal(new[] { keep }, result.DeviceIds);
     }
@@ -251,9 +240,9 @@ public class ScopeRailRulesTests
     public void ToggleDevice_UncheckLastDeviceUnderProviderFilter_SetsMatchesNoDevices()
     {
         var id = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [id]);
+        var current = MakeScope(deviceIds: new List<Guid> { id });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, id, false, "Ring", null);
+        var result = ScopeRailRules.ToggleDevice(current, id, false, "Ring", null);
 
         Assert.Empty(result.DeviceIds);
         Assert.True(result.MatchesNoDevices);
@@ -263,9 +252,9 @@ public class ScopeRailRulesTests
     public void ToggleDevice_UncheckLastDeviceUnderAccountFilter_SetsMatchesNoDevices()
     {
         var id = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [id]);
+        var current = MakeScope(deviceIds: new List<Guid> { id });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, id, false, null, Guid.NewGuid());
+        var result = ScopeRailRules.ToggleDevice(current, id, false, null, Guid.NewGuid());
 
         Assert.True(result.MatchesNoDevices);
     }
@@ -274,9 +263,9 @@ public class ScopeRailRulesTests
     public void ToggleDevice_UncheckLastDeviceWithoutFilter_LeavesMatchesNoDevicesFalse()
     {
         var id = Guid.NewGuid();
-        ForensicScope current = MakeScope(deviceIds: [id]);
+        var current = MakeScope(deviceIds: new List<Guid> { id });
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, id, false, null, null);
+        var result = ScopeRailRules.ToggleDevice(current, id, false, null, null);
 
         Assert.Empty(result.DeviceIds);
         Assert.False(result.MatchesNoDevices);
@@ -286,9 +275,9 @@ public class ScopeRailRulesTests
     public void ToggleDevice_CheckUnderFilter_ClearsMatchesNoDevices()
     {
         var id = Guid.NewGuid();
-        ForensicScope current = MakeScope(matchesNoDevices: true);
+        var current = MakeScope(matchesNoDevices: true);
 
-        ForensicScope result = ScopeRailRules.ToggleDevice(current, id, true, "Ring", null);
+        var result = ScopeRailRules.ToggleDevice(current, id, true, "Ring", null);
 
         Assert.Equal(new[] { id }, result.DeviceIds);
         Assert.False(result.MatchesNoDevices);
@@ -299,7 +288,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void TryParseDateInput_IsoDate_ReturnsUtcDate()
     {
-        bool parsed = ScopeRailRules.TryParseDateInput("2026-09-10", out DateTime date);
+        var parsed = ScopeRailRules.TryParseDateInput("2026-09-10", out var date);
 
         Assert.True(parsed);
         Assert.Equal(new DateTime(2026, 9, 10), date);
@@ -314,7 +303,7 @@ public class ScopeRailRulesTests
     [InlineData("2026-13-01")]
     public void TryParseDateInput_InvalidText_ReturnsFalse(string? text)
     {
-        bool parsed = ScopeRailRules.TryParseDateInput(text, out DateTime date);
+        var parsed = ScopeRailRules.TryParseDateInput(text, out var date);
 
         Assert.False(parsed);
         Assert.Equal(default, date);
@@ -323,9 +312,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void SetFromDate_PickedDate_StoresFromUtcAsIs()
     {
-        ForensicScope current = MakeScope();
+        var current = MakeScope();
 
-        ForensicScope result = ScopeRailRules.SetFromDate(current, new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc));
+        var result = ScopeRailRules.SetFromDate(current, new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc));
 
         Assert.Equal(new DateTime(2026, 9, 10), result.FromUtc);
     }
@@ -333,9 +322,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void SetToDate_PickedDate_StoresExclusiveUpperBound()
     {
-        ForensicScope current = MakeScope();
+        var current = MakeScope();
 
-        ForensicScope result = ScopeRailRules.SetToDate(current, new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc));
+        var result = ScopeRailRules.SetToDate(current, new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc));
 
         Assert.Equal(new DateTime(2026, 9, 11), result.ToUtc);
     }
@@ -344,7 +333,7 @@ public class ScopeRailRulesTests
     public void SetToDate_ThenFormatToDate_RoundTripsPickedDay()
     {
         var picked = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
-        ForensicScope scope = ScopeRailRules.SetToDate(MakeScope(), picked);
+        var scope = ScopeRailRules.SetToDate(MakeScope(), picked);
 
         Assert.Equal("2026-09-10", ScopeRailRules.FormatToDate(scope.ToUtc));
     }
@@ -373,9 +362,9 @@ public class ScopeRailRulesTests
     public void ApplyQuickRange_SevenDaysBack_SpansFromTodayMinusSevenToTomorrowExclusive()
     {
         var today = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
-        ForensicScope current = MakeScope(deviceIds: [Guid.NewGuid()], search: "x");
+        var current = MakeScope(deviceIds: new List<Guid> { Guid.NewGuid() }, search: "x");
 
-        ForensicScope result = ScopeRailRules.ApplyQuickRange(current, today, 7);
+        var result = ScopeRailRules.ApplyQuickRange(current, today, 7);
 
         Assert.Equal(new DateTime(2026, 9, 17), result.FromUtc);
         Assert.Equal(new DateTime(2026, 9, 25), result.ToUtc);
@@ -388,7 +377,7 @@ public class ScopeRailRulesTests
     {
         var today = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
 
-        ForensicScope result = ScopeRailRules.ApplyQuickRange(MakeScope(), today, 1);
+        var result = ScopeRailRules.ApplyQuickRange(MakeScope(), today, 1);
 
         Assert.Equal(new DateTime(2026, 9, 23), result.FromUtc);
         Assert.Equal(new DateTime(2026, 9, 25), result.ToUtc);
@@ -399,7 +388,7 @@ public class ScopeRailRulesTests
     {
         var today = new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc);
 
-        ForensicScope result = ScopeRailRules.ApplyQuickRange(MakeScope(), today, 30);
+        var result = ScopeRailRules.ApplyQuickRange(MakeScope(), today, 30);
 
         Assert.Equal(new DateTime(2026, 8, 25), result.FromUtc);
         Assert.Equal(new DateTime(2026, 9, 25), result.ToUtc);
@@ -411,7 +400,7 @@ public class ScopeRailRulesTests
     public void NormalizeSearch_WhitespaceOnly_ReturnsNull()
     {
         Assert.Null(ScopeRailRules.NormalizeSearch("   "));
-        Assert.Null(ScopeRailRules.NormalizeSearch(string.Empty));
+        Assert.Null(ScopeRailRules.NormalizeSearch(""));
         Assert.Null(ScopeRailRules.NormalizeSearch(null));
     }
 
@@ -424,9 +413,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplySearch_WhitespaceDraft_SetsSearchToNull()
     {
-        ForensicScope current = MakeScope(search: "old");
+        var current = MakeScope(search: "old");
 
-        ForensicScope result = ScopeRailRules.ApplySearch(current, "  ");
+        var result = ScopeRailRules.ApplySearch(current, "  ");
 
         Assert.Null(result.Search);
     }
@@ -434,7 +423,7 @@ public class ScopeRailRulesTests
     [Fact]
     public void ApplySearch_TextDraft_SetsSearch()
     {
-        ForensicScope result = ScopeRailRules.ApplySearch(MakeScope(), "porch");
+        var result = ScopeRailRules.ApplySearch(MakeScope(), "porch");
 
         Assert.Equal("porch", result.Search);
     }
@@ -444,9 +433,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ClearOrphanedNoMatch_NoMatchWithBothFiltersNull_ClearsFlag()
     {
-        ForensicScope current = MakeScope(matchesNoDevices: true);
+        var current = MakeScope(matchesNoDevices: true);
 
-        ForensicScope result = ScopeRailRules.ClearOrphanedNoMatch(current, null, null);
+        var result = ScopeRailRules.ClearOrphanedNoMatch(current, null, null);
 
         Assert.False(result.MatchesNoDevices);
     }
@@ -454,9 +443,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ClearOrphanedNoMatch_NoMatchWithProviderFilter_KeepsFlag()
     {
-        ForensicScope current = MakeScope(matchesNoDevices: true);
+        var current = MakeScope(matchesNoDevices: true);
 
-        ForensicScope result = ScopeRailRules.ClearOrphanedNoMatch(current, "Ring", null);
+        var result = ScopeRailRules.ClearOrphanedNoMatch(current, "Ring", null);
 
         Assert.True(result.MatchesNoDevices);
     }
@@ -464,9 +453,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ClearOrphanedNoMatch_NoMatchWithAccountFilter_KeepsFlag()
     {
-        ForensicScope current = MakeScope(matchesNoDevices: true);
+        var current = MakeScope(matchesNoDevices: true);
 
-        ForensicScope result = ScopeRailRules.ClearOrphanedNoMatch(current, null, Guid.NewGuid());
+        var result = ScopeRailRules.ClearOrphanedNoMatch(current, null, Guid.NewGuid());
 
         Assert.True(result.MatchesNoDevices);
     }
@@ -474,9 +463,9 @@ public class ScopeRailRulesTests
     [Fact]
     public void ClearOrphanedNoMatch_FlagAlreadyFalse_ReturnsScopeUnchanged()
     {
-        ForensicScope current = MakeScope();
+        var current = MakeScope();
 
-        ForensicScope result = ScopeRailRules.ClearOrphanedNoMatch(current, null, null);
+        var result = ScopeRailRules.ClearOrphanedNoMatch(current, null, null);
 
         Assert.Equal(current, result);
     }

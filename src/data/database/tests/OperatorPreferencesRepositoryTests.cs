@@ -413,7 +413,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var operatorId = Guid.NewGuid();
 
-            _ = await Assert.ThrowsAsync<ArgumentException>(() =>
+            await Assert.ThrowsAsync<ArgumentException>(() =>
                 _repository.SetUiModeAsync(operatorId, "Bogus", false, CancellationToken.None));
 
             OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
@@ -425,7 +425,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var operatorId = Guid.NewGuid();
 
-            _ = await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
 
             var updated = new OperatorPreferences
             {
@@ -437,7 +437,7 @@ namespace VideoForensics.Data.Database.Tests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _repository.UpsertAsync(updated, CancellationToken.None));
 
             OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
@@ -450,7 +450,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             var operatorId = Guid.NewGuid();
 
-            _ = await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
 
             var updated = new OperatorPreferences
             {
@@ -535,9 +535,9 @@ namespace VideoForensics.Data.Database.Tests
         {
             var operatorId = Guid.NewGuid();
 
-            _ = await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
+            await _repository.SetUiModeAsync(operatorId, "Standard", true, CancellationToken.None);
 
-            _ = await _repository.SetUiModeAsync(operatorId, "Standard", false, CancellationToken.None);
+            await _repository.SetUiModeAsync(operatorId, "Standard", false, CancellationToken.None);
 
             OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
             Assert.NotNull(retrieved);

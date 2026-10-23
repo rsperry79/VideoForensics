@@ -56,8 +56,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public void RedactUrl_EmptyString_ReturnsEmpty()
         {
-            string result = RawApiRedactor.RedactUrl(string.Empty);
-            Assert.Equal(string.Empty, result);
+            string result = RawApiRedactor.RedactUrl("");
+            Assert.Equal("", result);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace VideoForensics.Client.Core.Tests
             string result = RawApiRedactor.RedactBody(body);
 
             var doc = JsonDocument.Parse(result);
-            JsonElement items = doc.RootElement.GetProperty("items");
+            var items = doc.RootElement.GetProperty("items");
             int index = 0;
             foreach (JsonElement item in items.EnumerateArray())
             {
@@ -133,14 +133,14 @@ namespace VideoForensics.Client.Core.Tests
         public void RedactBody_Null_ReturnsEmpty()
         {
             string result = RawApiRedactor.RedactBody(null);
-            Assert.Equal(string.Empty, result);
+            Assert.Equal("", result);
         }
 
         [Fact]
         public void RedactBody_Empty_ReturnsEmpty()
         {
-            string result = RawApiRedactor.RedactBody(string.Empty);
-            Assert.Equal(string.Empty, result);
+            string result = RawApiRedactor.RedactBody("");
+            Assert.Equal("", result);
         }
 
         [Fact]

@@ -23,15 +23,9 @@ namespace VideoForensics.WebApp.Services
         public bool IsConnected => false;
 
         /// <inheritdoc />
-        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
 
         /// <inheritdoc />
-        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
+        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

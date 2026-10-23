@@ -6,7 +6,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 {
     public class FfmpegMediaFrameExtractorTests : IDisposable
     {
-        private readonly List<string> _tempScripts = [];
+        private readonly List<string> _tempScripts = new();
 
         [Fact]
         public async Task ExtractFrameAsync_NegativeOffset_ReturnsFailureWithoutRunningProcess()
@@ -237,9 +237,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         {
             foreach (string path in _tempScripts)
             {
-                try
-                { File.Delete(path); }
-                catch { }
+                try { File.Delete(path); } catch { }
             }
         }
     }

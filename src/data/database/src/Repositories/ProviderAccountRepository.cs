@@ -217,10 +217,8 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value)
-        {
-            return value.Replace('\r', '_').Replace('\n', '_');
-        }
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
 
         /// <summary>A newly linked account is enabled for scheduled sync by default; an existing schedule is left alone.</summary>
         internal static async Task AddDefaultScheduleIfMissingAsync(VideoForensicsDbContext db, Guid providerAccountId, CancellationToken ct)

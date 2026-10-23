@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
 
 using VideoForensics.Client.Common;
-using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Core.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Providers.Ring;
 

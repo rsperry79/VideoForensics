@@ -156,24 +156,18 @@ namespace VideoForensics.Ui.Shared.Services
         /// or create a passkey with <see cref="CreatePasskeyLoginAsync"/>. Every other field is then default.
         /// </summary>
         public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password)
-        {
-            return SignInWithPasswordAsync(username, password, passkeyAvailable: true);
-        }
+            => SignInWithPasswordAsync(username, password, passkeyAvailable: true);
 
         /// <param name="passkeyAvailable">False when this device cannot run a passkey ceremony, so a local sign-in may skip the passkey second factor.</param>
         public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> SignInWithPasswordAsync(string username, string password, bool passkeyAvailable)
-        {
-            return PostPasswordLoginAsync("api/v1/auth/login/password", username, password, passkeyAvailable);
-        }
+            => PostPasswordLoginAsync("api/v1/auth/login/password", username, password, passkeyAvailable);
 
         /// <summary>
         /// Password sign-in that issues a LIMITED passkey-setup session (only passkey registration is accepted).
         /// Used when the operator has to create a passkey before a second factor can be completed.
         /// </summary>
         public virtual Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> CreatePasskeyLoginAsync(string username, string password)
-        {
-            return PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
-        }
+            => PostPasswordLoginAsync("api/v1/auth/login/password/create-passkey", username, password);
 
         private async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role, bool MustChangePassword, bool HasPasskey, bool RequiresTwoFactor, string? TwoFactorCorrelationId, IReadOnlyList<string> TwoFactorMethods)> PostPasswordLoginAsync(string path, string username, string password, bool passkeyAvailable = true)
         {
@@ -185,13 +179,13 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(response), null, default, string.Empty, false, false, false, null, Array.Empty<string>());
+                return (false, await ExtractErrorAsync(response), null, default, "", false, false, false, null, Array.Empty<string>());
             }
 
             JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
             if (IsTwoFactorRequired(result))
             {
-                return (true, null, null, default, string.Empty, false, false, true, ReadTwoFactorCorrelationId(result), ReadTwoFactorMethods(result));
+                return (true, null, null, default, "", false, false, true, ReadTwoFactorCorrelationId(result), ReadTwoFactorMethods(result));
             }
 
             EnsureSignInFieldsPresent(result);
@@ -208,12 +202,10 @@ namespace VideoForensics.Ui.Shared.Services
                 Array.Empty<string>());
         }
 
-        private static bool IsTwoFactorRequired(JsonElement body)
-        {
-            return body.ValueKind == JsonValueKind.Object
+        private static bool IsTwoFactorRequired(JsonElement body) =>
+            body.ValueKind == JsonValueKind.Object
             && body.TryGetProperty("requiresTwoFactor", out JsonElement flag)
             && flag.ValueKind == JsonValueKind.True;
-        }
 
         /// <summary>
         /// Second-factor methods the server accepts (e.g. "passkey"). A missing field defaults to passkey so
@@ -222,9 +214,12 @@ namespace VideoForensics.Ui.Shared.Services
         /// </summary>
         private static IReadOnlyList<string> ReadTwoFactorMethods(JsonElement body)
         {
-            return !body.TryGetProperty("twoFactorMethods", out JsonElement methods) || methods.ValueKind != JsonValueKind.Array
-                ? (new[] { "passkey" })
-                : methods.EnumerateArray()
+            if (!body.TryGetProperty("twoFactorMethods", out JsonElement methods) || methods.ValueKind != JsonValueKind.Array)
+            {
+                return new[] { "passkey" };
+            }
+
+            return methods.EnumerateArray()
                 .Where(m => m.ValueKind == JsonValueKind.String)
                 .Select(m => m.GetString()!)
                 .ToList();
@@ -232,9 +227,12 @@ namespace VideoForensics.Ui.Shared.Services
 
         private static string ReadTwoFactorCorrelationId(JsonElement body)
         {
-            return !body.TryGetProperty("twoFactorCorrelationId", out JsonElement correlation) || correlation.ValueKind != JsonValueKind.String
-                ? throw new InvalidOperationException("Sign-in response is missing 'twoFactorCorrelationId'.")
-                : correlation.GetString()!;
+            if (!body.TryGetProperty("twoFactorCorrelationId", out JsonElement correlation) || correlation.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidOperationException("Sign-in response is missing 'twoFactorCorrelationId'.");
+            }
+
+            return correlation.GetString()!;
         }
 
         /// <summary>
@@ -253,7 +251,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!optionsResponse.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(optionsResponse), null, default, string.Empty, false, false);
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "", false, false);
             }
 
             JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -269,7 +267,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!completeResponse.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(completeResponse), null, default, string.Empty, false, false);
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "", false, false);
             }
 
             JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -307,7 +305,7 @@ namespace VideoForensics.Ui.Shared.Services
 
         private static string RedactedSnippet(JsonElement body)
         {
-            var node = System.Text.Json.Nodes.JsonNode.Parse(body.GetRawText());
+            System.Text.Json.Nodes.JsonNode? node = System.Text.Json.Nodes.JsonNode.Parse(body.GetRawText());
             if (node is System.Text.Json.Nodes.JsonObject obj && obj.ContainsKey("sessionToken"))
             {
                 obj["sessionToken"] = "<redacted>";
@@ -318,7 +316,7 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <param name="allCredentials">False offers only the most recently used passkey (the first attempt). True offers every approved passkey, for when that one is not on this device.</param>
-        public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username, bool allCredentials = false)
+    public virtual async Task<(bool Success, string? ErrorMessage, string? SessionToken, Guid OperatorId, string Role)> SignInWithUsernameAsync(string username, bool allCredentials = false)
         {
             using HttpClient client = CreateClient(null);
 
@@ -328,7 +326,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!optionsResponse.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(optionsResponse), null, default, string.Empty);
+                return (false, await ExtractErrorAsync(optionsResponse), null, default, "");
             }
 
             JsonElement optionsBody = await optionsResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -344,7 +342,7 @@ namespace VideoForensics.Ui.Shared.Services
 
             if (!completeResponse.IsSuccessStatusCode)
             {
-                return (false, await ExtractErrorAsync(completeResponse), null, default, string.Empty);
+                return (false, await ExtractErrorAsync(completeResponse), null, default, "");
             }
 
             JsonElement result = await completeResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -494,8 +492,8 @@ namespace VideoForensics.Ui.Shared.Services
 
                 JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
                 return new AuthMethodsInfo(
-                    PasswordEnabled: !result.TryGetProperty("password", out JsonElement p) || p.GetBoolean(),
-                    PasskeyEnabled: !result.TryGetProperty("passkey", out JsonElement pk) || pk.GetBoolean());
+                    PasswordEnabled: result.TryGetProperty("password", out var p) ? p.GetBoolean() : true,
+                    PasskeyEnabled: result.TryGetProperty("passkey", out var pk) ? pk.GetBoolean() : true);
             }
             catch
             {
@@ -504,10 +502,7 @@ namespace VideoForensics.Ui.Shared.Services
             }
         }
 
-        private HttpClient CreateClient(string? bearerToken)
-        {
-            return _clientFactory.CreateClient(bearerToken);
-        }
+        private HttpClient CreateClient(string? bearerToken) => _clientFactory.CreateClient(bearerToken);
 
         private static async Task<string> ExtractErrorAsync(HttpResponseMessage response)
         {

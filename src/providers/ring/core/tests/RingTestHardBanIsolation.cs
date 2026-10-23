@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 // HttpUtility's throttle and hard-ban state is process-wide static by design. Test classes that run in
@@ -16,7 +18,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     internal static class RingTestHardBanIsolation
     {
         /// <summary>Per-process store used for every test in this assembly.</summary>
-        internal static readonly FileHardBanStateStore Store = new(
+        internal static readonly FileHardBanStateStore Store = new FileHardBanStateStore(
             Path.Combine(Path.GetTempPath(), "vf-ring-core-tests-" + Guid.NewGuid().ToString("N")));
 
         /// <summary>

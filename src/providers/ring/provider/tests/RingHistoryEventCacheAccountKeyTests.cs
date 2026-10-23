@@ -30,15 +30,13 @@ namespace VideoForensics.Providers.Ring.Tests
             }
         }
 
-        private static RingHistoryEventCache CreateCache()
-        {
-            return new(new MemoryCache(new MemoryCacheOptions()), NullLogger.Instance);
-        }
+        private static RingHistoryEventCache CreateCache() =>
+            new(new MemoryCache(new MemoryCacheOptions()), NullLogger.Instance);
 
         [Fact]
         public async Task GetEventsAsync_SecondAccount_IsNotServedFirstAccountsEntry()
         {
-            RingHistoryEventCache cache = CreateCache();
+            var cache = CreateCache();
             var first = new CountingSession("first@example.com");
             var second = new CountingSession("second@example.com");
 
@@ -52,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task IsCached_OtherAccountHasCachedTheRange_ReturnsFalse()
         {
-            RingHistoryEventCache cache = CreateCache();
+            var cache = CreateCache();
             var first = new CountingSession("first@example.com");
             var second = new CountingSession("second@example.com");
             _ = await cache.GetEventsAsync(first, Day, Day.AddDays(5), CancellationToken.None);
@@ -64,7 +62,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task GetEventsAsync_SessionWithoutAccountIdentity_FetchesEveryTimeAndIsNotCached()
         {
-            RingHistoryEventCache cache = CreateCache();
+            var cache = CreateCache();
             var anonymous = new CountingSession(string.Empty);
 
             _ = await cache.GetEventsAsync(anonymous, Day, Day.AddDays(5), CancellationToken.None);

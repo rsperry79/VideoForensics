@@ -1,18 +1,14 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.Extensions.DependencyInjection;
-
+using Microsoft.JSInterop;
 using Moq;
-
 using System.Net;
 using System.Text;
-
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Covers the passkey-setup-only flag on PairedSessionState: set by a create-passkey sign-in, persisted
 /// alongside the other session fields, and cleared with the session.
@@ -57,7 +53,7 @@ public class PairedSessionStateTests : BunitContext
         Assert.True(state.PasskeySetupOnly);
         string saved = JSInterop.Invocations.Single(i => i.Identifier == "vfWebAuthn.saveSession").Arguments[0]!.ToString()!;
 
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(saved);
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(saved);
         var reloaded = new PairedSessionState(JSInterop.JSRuntime);
         await reloaded.EnsureLoadedAsync();
         Assert.True(reloaded.PasskeySetupOnly);
@@ -82,8 +78,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange - stored session has no flag (e.g. written before it existed); the server says it is limited
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"ReadOnly\",\"MustChangePassword\":false}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-        (Mock<ISelfApiHttpClientFactory>? factory, IServiceProvider? services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":true}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (factory, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":true}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
 
         // Act
@@ -99,9 +95,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange - stored session still carries the limited flag, but the server says the session is full
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"ReadOnly\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-
-        (_, IServiceProvider? services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (factory, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
 
         // Act
@@ -117,9 +112,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange - the session-kind call fails; the stored flag is the fallback and the session must stay signed in
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"ReadOnly\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-
-        (_, IServiceProvider? services) = CreateFactory(HttpStatusCode.InternalServerError, "{}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (factory, services) = CreateFactory(HttpStatusCode.InternalServerError, "{}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
 
         // Act
@@ -135,12 +129,12 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange - loaded as setup-only (server said so), then the server ends the session after passkey registration
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
         string body = "{\"passkeySetupOnly\":true}";
         var factory = new Mock<ISelfApiHttpClientFactory>();
         _ = factory.Setup(f => f.CreateClient(It.IsAny<string?>()))
             .Returns(() => new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://localhost/") });
-        ServiceProvider services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
         await state.EnsureLoadedAsync();
         Assert.True(state.PasskeySetupOnly);
@@ -158,8 +152,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false,\"PasskeySetupOnly\":true}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-        (_, IServiceProvider? services) = CreateFactory(HttpStatusCode.InternalServerError, "{}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.InternalServerError, "{}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
         await state.EnsureLoadedAsync();
 
@@ -176,8 +170,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-        (_, IServiceProvider? services) = CreateFactory(HttpStatusCode.Unauthorized, "{}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.Unauthorized, "{}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
         await state.EnsureLoadedAsync();
 
@@ -193,8 +187,8 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
-        (_, IServiceProvider? services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        var (_, services) = CreateFactory(HttpStatusCode.OK, "{\"passkeySetupOnly\":false}");
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
         await state.EnsureLoadedAsync();
 
@@ -210,10 +204,10 @@ public class PairedSessionStateTests : BunitContext
     {
         // Arrange - the call throws; a transient failure must not sign the operator out
         string stored = "{\"SessionToken\":\"token\",\"OperatorId\":\"" + Guid.NewGuid() + "\",\"Role\":\"SuperAdmin\",\"MustChangePassword\":false}";
-        _ = JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
+        JSInterop.Setup<string?>("vfWebAuthn.loadSession").SetResult(stored);
         var factory = new Mock<ISelfApiHttpClientFactory>();
         _ = factory.Setup(f => f.CreateClient(It.IsAny<string?>())).Throws(new HttpRequestException("network down"));
-        ServiceProvider services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
         var state = new PairedSessionState(JSInterop.JSRuntime, services);
         await state.EnsureLoadedAsync();
 
@@ -231,7 +225,7 @@ public class PairedSessionStateTests : BunitContext
         var factory = new Mock<ISelfApiHttpClientFactory>();
         _ = factory.Setup(f => f.CreateClient(It.IsAny<string?>()))
             .Returns(() => new HttpClient(new StubHandler(status, body)) { BaseAddress = new Uri("https://localhost/") });
-        ServiceProvider services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(factory.Object).BuildServiceProvider();
         return (factory, services);
     }
 

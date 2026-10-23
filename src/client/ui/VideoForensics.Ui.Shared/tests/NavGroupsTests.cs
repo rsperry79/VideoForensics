@@ -1,12 +1,9 @@
-
-using System.Reflection;
-
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Data.Common.Entities;
+using System.Reflection;
 
 public class NavGroups_Tests
 {
@@ -26,7 +23,7 @@ public class NavGroups_Tests
     [Fact]
     public void Media_GroupHasCorrectProperties()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
+        var group = NavGroups.All.First(g => g.Key == "media");
         Assert.Equal("Media", group.Text);
         Assert.Equal("/media", group.Path);
 
@@ -43,7 +40,7 @@ public class NavGroups_Tests
         // The Events page ("Event Grid") was retired in phase 8: its actions moved to Media's
         // Grid context menu and Inspector (see EvidenceActions/EvidenceInspectorMapper), and the
         // old /events route now just redirects (see EventsRedirect).
-        NavGroup group = NavGroups.All.First(g => g.Key == "media");
+        var group = NavGroups.All.First(g => g.Key == "media");
         var itemPaths = group.Items.Select(i => i.Path).ToList();
         Assert.DoesNotContain("/events", itemPaths);
         Assert.DoesNotContain(group.Items, i => i.Text == "Event Grid");
@@ -52,7 +49,7 @@ public class NavGroups_Tests
     [Fact]
     public void Cases_GroupHasCorrectProperties()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "cases");
+        var group = NavGroups.All.First(g => g.Key == "cases");
         Assert.Equal("Cases", group.Text);
         Assert.Equal("/cases", group.Path);
 
@@ -65,7 +62,7 @@ public class NavGroups_Tests
         Assert.Contains("/review/export", itemPaths);
 
         // Verify Analyze is nested under Cases with its sub-items
-        NavItem? analyzeItem = group.Items.FirstOrDefault(i => i.Path == "/analyze");
+        var analyzeItem = group.Items.FirstOrDefault(i => i.Path == "/analyze");
         Assert.NotNull(analyzeItem);
         Assert.NotNull(analyzeItem.Children);
         var analyzeChildPaths = analyzeItem.Children.Select(c => c.Path).ToList();
@@ -80,12 +77,12 @@ public class NavGroups_Tests
     {
         // Analyze moved from the Media group to be nested under Cases.
         // Verify it doesn't exist as a top-level group anymore.
-        NavGroup? analyzeGroup = NavGroups.All.FirstOrDefault(g => g.Key == "analyze");
+        var analyzeGroup = NavGroups.All.FirstOrDefault(g => g.Key == "analyze");
         Assert.Null(analyzeGroup);
 
         // Verify it exists as a nested item under Cases instead
-        NavGroup casesGroup = NavGroups.All.First(g => g.Key == "cases");
-        NavItem analyzeItem = casesGroup.Items.First(i => i.Path == "/analyze");
+        var casesGroup = NavGroups.All.First(g => g.Key == "cases");
+        var analyzeItem = casesGroup.Items.First(i => i.Path == "/analyze");
         Assert.Equal("Analyze", analyzeItem.Text);
         Assert.NotNull(analyzeItem.Children);
     }
@@ -93,7 +90,7 @@ public class NavGroups_Tests
     [Fact]
     public void Sources_GroupHasCorrectProperties()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "sources");
+        var group = NavGroups.All.First(g => g.Key == "sources");
         Assert.Equal("Sources", group.Text);
         Assert.Equal("/accounts", group.Path);
 
@@ -108,7 +105,7 @@ public class NavGroups_Tests
     [Fact]
     public void Admin_GroupHasCorrectProperties()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        var group = NavGroups.All.First(g => g.Key == "admin");
         Assert.Equal("Admin", group.Text);
         Assert.Equal("/settings", group.Path);
 
@@ -130,8 +127,8 @@ public class NavGroups_Tests
     [Fact]
     public void CaseNew_RequiresReviewRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "cases");
-        NavItem newCaseItem = group.Items.First(i => i.Path == "/cases/new");
+        var group = NavGroups.All.First(g => g.Key == "cases");
+        var newCaseItem = group.Items.First(i => i.Path == "/cases/new");
 
         // Should NOT be visible to ReadOnly
         var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
@@ -145,8 +142,8 @@ public class NavGroups_Tests
     [Fact]
     public void ServerLogs_RequiresSuperAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem logsItem = group.Items.First(i => i.Path == "/settings/logs");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var logsItem = group.Items.First(i => i.Path == "/settings/logs");
 
         Assert.Equal("Server Logs", logsItem.Text);
         Assert.True(logsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
@@ -169,8 +166,8 @@ public class NavGroups_Tests
     [Fact]
     public void Operators_RequiresSuperAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem operatorsItem = group.Items.First(i => i.Path == "/settings/operators");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var operatorsItem = group.Items.First(i => i.Path == "/settings/operators");
 
         // Should NOT be visible to Admin
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
@@ -184,8 +181,8 @@ public class NavGroups_Tests
     [Fact]
     public void SecurityDevices_RequiresSuperAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem devicesItem = group.Items.First(i => i.Path == "/settings/devices");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var devicesItem = group.Items.First(i => i.Path == "/settings/devices");
 
         // Should NOT be visible to Admin
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
@@ -199,8 +196,8 @@ public class NavGroups_Tests
     [Fact]
     public void LockoutPolicy_RequiresSuperAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem lockoutPolicyItem = group.Items.First(i => i.Path == "/settings/lockout-policy");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var lockoutPolicyItem = group.Items.First(i => i.Path == "/settings/lockout-policy");
 
         // Should NOT be visible to Admin
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
@@ -214,8 +211,8 @@ public class NavGroups_Tests
     [Fact]
     public void LoginMethods_RequiresSuperAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem loginMethodsItem = group.Items.First(i => i.Path == "/settings/auth-methods");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var loginMethodsItem = group.Items.First(i => i.Path == "/settings/auth-methods");
 
         // Should NOT be visible to Admin
         var adminCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
@@ -229,8 +226,8 @@ public class NavGroups_Tests
     [Fact]
     public void Notifications_RequiresAdminRole()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem notificationsItem = group.Items.First(i => i.Path == "/settings/notifications");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var notificationsItem = group.Items.First(i => i.Path == "/settings/notifications");
 
         // Should NOT be visible to ReadOnly
         var readOnlyCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.ReadOnly, AppLockSupported: false);
@@ -244,8 +241,8 @@ public class NavGroups_Tests
     [Fact]
     public void AppLock_RequiresAppLockSupport()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
-        NavItem appLockItem = group.Items.First(i => i.Path == "/settings/app-lock");
+        var group = NavGroups.All.First(g => g.Key == "admin");
+        var appLockItem = group.Items.First(i => i.Path == "/settings/app-lock");
 
         // Should NOT be visible if AppLock not supported
         var noLockCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false);
@@ -263,23 +260,23 @@ public class NavGroups_Tests
         // depends on NavContext, so both the signed-in and signed-out shapes are unioned; "Sign
         // Out" has no Path (it's a click handler, not a route) and is naturally skipped.
         var navPaths = new HashSet<string>();
-        foreach (NavGroup group in NavGroups.All)
+        foreach (var group in NavGroups.All)
         {
             // Extract path portion before query string
-            string groupPath = group.Path.Split('?')[0];
-            _ = navPaths.Add(groupPath);
-            foreach (NavItem item in group.Items)
+            var groupPath = group.Path.Split('?')[0];
+            navPaths.Add(groupPath);
+            foreach (var item in group.Items)
             {
                 // Extract path portion before query string
-                string itemPath = item.Path.Split('?')[0];
-                _ = navPaths.Add(itemPath);
+                var itemPath = item.Path.Split('?')[0];
+                navPaths.Add(itemPath);
                 // Also check nested children
                 if (item.Children != null)
                 {
-                    foreach (NavItem child in item.Children)
+                    foreach (var child in item.Children)
                     {
-                        string childPath = child.Path.Split('?')[0];
-                        _ = navPaths.Add(childPath);
+                        var childPath = child.Path.Split('?')[0];
+                        navPaths.Add(childPath);
                     }
                 }
             }
@@ -287,19 +284,19 @@ public class NavGroups_Tests
 
         var signedInCtx = new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: true);
         var signedOutCtx = new NavContext(IsSignedIn: false, Role: null, AppLockSupported: false);
-        foreach (UserMenu.UserMenuItem? item in UserMenu.Items(signedInCtx).Concat(UserMenu.Items(signedOutCtx)))
+        foreach (var item in UserMenu.Items(signedInCtx).Concat(UserMenu.Items(signedOutCtx)))
         {
             if (item.Path is not null)
             {
                 // Extract path portion before query string
-                string path = item.Path.Split('?')[0];
-                _ = navPaths.Add(path);
+                var path = item.Path.Split('?')[0];
+                navPaths.Add(path);
             }
         }
 
         // Every route actually declared via @page in this assembly (excluding parameterized
         // templates, e.g. "/cases/{id}", which a plain nav path never matches literally).
-        HashSet<string> declaredRoutes = CollectRouteTemplates(typeof(NavGroups).Assembly);
+        var declaredRoutes = CollectRouteTemplates(typeof(NavGroups).Assembly);
 
         var missingRoutes = navPaths.Where(p => !declaredRoutes.Contains(p)).ToList();
         Assert.Empty(missingRoutes);
@@ -308,14 +305,14 @@ public class NavGroups_Tests
     private static HashSet<string> CollectRouteTemplates(Assembly assembly)
     {
         var routes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Type type in assembly.GetTypes())
+        foreach (var type in assembly.GetTypes())
         {
-            foreach (object attribute in type.GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), inherit: false))
+            foreach (var attribute in type.GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), inherit: false))
             {
-                string template = ((Microsoft.AspNetCore.Components.RouteAttribute)attribute).Template;
+                var template = ((Microsoft.AspNetCore.Components.RouteAttribute)attribute).Template;
                 if (!template.Contains('{'))
                 {
-                    _ = routes.Add(template);
+                    routes.Add(template);
                 }
             }
         }

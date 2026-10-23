@@ -1,3 +1,4 @@
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
@@ -11,7 +12,7 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         [Fact]
         public void DeviceTypedSettingsDto_ToDto_MapsOfflineTypesAndThresholds()
         {
-            var deviceId = Guid.NewGuid();
+            Guid deviceId = Guid.NewGuid();
             var settings = new DeviceTypedSettings(
                 new DeviceOfflineMotionSettings { DeviceId = deviceId, Subscribed = true, MaxUploadKb = 5000, PeriodAfterSecs = 30 },
                 [new DeviceDetectionType { DeviceId = deviceId, DetectionType = "human", Enabled = true, Mode = "cloud", Record = false, Notification = true }],

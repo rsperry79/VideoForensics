@@ -31,7 +31,7 @@ public class EvidenceLoader
         IReadOnlyList<Device> allDevices,
         CancellationToken ct)
     {
-        IReadOnlyList<Guid> allDeviceIds = scope.IncludesAllDevices
+        var allDeviceIds = scope.IncludesAllDevices
             ? allDevices.Select(d => d.Id).ToList()
             : scope.DeviceIds;
 
@@ -43,12 +43,12 @@ public class EvidenceLoader
         var mediaItemsAttachedToEvents = new HashSet<Guid>();
 
         // Step 1: Load events
-        EventLoadResult eventLoadResult = await _eventRowLoader.LoadAsync(scope, allDeviceIds, false, ct);
+        var eventLoadResult = await _eventRowLoader.LoadAsync(scope, allDeviceIds, false, ct);
 
         // Add event items and collect attached media
-        foreach (EventRow row in eventLoadResult.Rows)
+        foreach (var row in eventLoadResult.Rows)
         {
-            string deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out Device? device)
+            var deviceName = devicesByIdMap.TryGetValue(row.DeviceId, out var device)
                 ? device.Name
                 : row.DeviceId.ToString("D")[..8];
 
@@ -67,17 +67,17 @@ public class EvidenceLoader
 
             if (row.MediaItem is not null)
             {
-                _ = mediaItemsAttachedToEvents.Add(row.MediaItem.Id);
+                mediaItemsAttachedToEvents.Add(row.MediaItem.Id);
             }
         }
 
         // Merge event holds and integrity records
-        foreach (KeyValuePair<Guid, LegalHold> kvp in eventLoadResult.ActiveHoldsByMediaItemId)
+        foreach (var kvp in eventLoadResult.ActiveHoldsByMediaItemId)
         {
             activeHoldsByMediaItemId[kvp.Key] = kvp.Value;
         }
 
-        foreach (IntegrityRecord record in eventLoadResult.IntegrityRecords)
+        foreach (var record in eventLoadResult.IntegrityRecords)
         {
             if (!integrityRecords.Any(r => r.Id == record.Id))
             {
@@ -85,27 +85,27 @@ public class EvidenceLoader
             }
         }
 
-        foreach (KeyValuePair<Guid, string> kvp in eventLoadResult.PerDeviceErrors)
+        foreach (var kvp in eventLoadResult.PerDeviceErrors)
         {
             perDeviceErrors[kvp.Key] = kvp.Value;
         }
 
         // Step 2: Load media per device and add media-only items
-        foreach (Guid deviceId in allDeviceIds)
+        foreach (var deviceId in allDeviceIds)
         {
             try
             {
-                IReadOnlyList<MediaItem> mediaItems = await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
+                var mediaItems = await _mediaItemRepository.GetByDeviceAndDateRangeAsync(
                     deviceId,
                     scope.FromUtc,
                     scope.ToUtc,
                     ct);
 
-                string deviceName = devicesByIdMap.TryGetValue(deviceId, out Device? device)
+                var deviceName = devicesByIdMap.TryGetValue(deviceId, out var device)
                     ? device.Name
                     : deviceId.ToString("D")[..8];
 
-                foreach (MediaItem media in mediaItems)
+                foreach (var media in mediaItems)
                 {
                     // Skip purged media
                     if (media.IsPurged)
@@ -120,7 +120,7 @@ public class EvidenceLoader
                     }
 
                     // Classify by format
-                    EvidenceKind kind = ClassifyMediaKind(media.MediaFormat);
+                    var kind = ClassifyMediaKind(media.MediaFormat);
 
                     var item = new EvidenceItem
                     {
@@ -145,7 +145,7 @@ public class EvidenceLoader
         // Step 3: Apply search filter to media-only items
         if (!string.IsNullOrWhiteSpace(scope.Search))
         {
-            string searchLower = scope.Search.ToLowerInvariant();
+            var searchLower = scope.Search.ToLowerInvariant();
             allItems = allItems
                 .Where(i =>
                 {
@@ -156,7 +156,7 @@ public class EvidenceLoader
                     }
 
                     // Media-only items: match by FileName, Label, and DeviceName
-                    return (i.Media?.FileName ?? string.Empty).Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
+                    return (i.Media?.FileName ?? "").Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
                            i.Label.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
                            i.DeviceName.Contains(searchLower, StringComparison.OrdinalIgnoreCase);
                 })
@@ -179,16 +179,25 @@ public class EvidenceLoader
 
     private static EvidenceKind ClassifyMediaKind(string mediaFormat)
     {
-        return string.IsNullOrEmpty(mediaFormat)
-            ? EvidenceKind.File
-            : mediaFormat.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+        if (string.IsNullOrEmpty(mediaFormat))
+        {
+            return EvidenceKind.File;
+        }
+
+        if (mediaFormat.Contains("image", StringComparison.OrdinalIgnoreCase) ||
             mediaFormat.Contains("jpg", StringComparison.OrdinalIgnoreCase) ||
             mediaFormat.Contains("jpeg", StringComparison.OrdinalIgnoreCase) ||
-            mediaFormat.Contains("png", StringComparison.OrdinalIgnoreCase)
-            ? EvidenceKind.Snapshot
-            : mediaFormat.Contains("video", StringComparison.OrdinalIgnoreCase) ||
-            mediaFormat.Contains("mp4", StringComparison.OrdinalIgnoreCase)
-            ? EvidenceKind.Video
-            : EvidenceKind.File;
+            mediaFormat.Contains("png", StringComparison.OrdinalIgnoreCase))
+        {
+            return EvidenceKind.Snapshot;
+        }
+
+        if (mediaFormat.Contains("video", StringComparison.OrdinalIgnoreCase) ||
+            mediaFormat.Contains("mp4", StringComparison.OrdinalIgnoreCase))
+        {
+            return EvidenceKind.Video;
+        }
+
+        return EvidenceKind.File;
     }
 }

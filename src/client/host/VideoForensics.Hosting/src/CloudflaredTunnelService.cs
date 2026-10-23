@@ -73,13 +73,13 @@ namespace VideoForensics.Hosting
 
             try
             {
-                _ = _optionsCache.TryRemove(Options.DefaultName);
-                _ = _optionsCache.TryAdd(Options.DefaultName, new CloudflaredOptions
+                _optionsCache.TryRemove(Options.DefaultName);
+                _optionsCache.TryAdd(Options.DefaultName, new CloudflaredOptions
                 {
                     TunnelToken = tunnelToken
                 });
 
-                _ = await _cloudflared.StartAsync(ct);
+                await _cloudflared.StartAsync(ct);
                 lock (_gate)
                 {
                     _state = _state with { Status = TunnelStatus.Running };

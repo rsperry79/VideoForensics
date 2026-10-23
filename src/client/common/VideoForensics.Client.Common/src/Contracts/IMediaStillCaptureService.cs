@@ -63,16 +63,12 @@ namespace VideoForensics.Client.Common.Contracts
         public MediaStillInfo? Still { get; set; }
 
         /// <summary>Builds a successful result.</summary>
-        public static MediaStillCaptureResult Ok(MediaStillInfo still)
-        {
-            return new() { Error = MediaStillCaptureError.None, Still = still };
-        }
+        public static MediaStillCaptureResult Ok(MediaStillInfo still) =>
+            new() { Error = MediaStillCaptureError.None, Still = still };
 
         /// <summary>Builds a failed result.</summary>
-        public static MediaStillCaptureResult Fail(MediaStillCaptureError error, string message)
-        {
-            return new() { Error = error, ErrorMessage = message };
-        }
+        public static MediaStillCaptureResult Fail(MediaStillCaptureError error, string message) =>
+            new() { Error = error, ErrorMessage = message };
     }
 
     /// <summary>

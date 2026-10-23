@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -60,10 +59,8 @@ namespace VideoForensics.Hosting.Services
         internal const string SnapshotsSyncType = "Snapshots";
 
         /// <summary>Maps the pull's start date to a sync type: no start date means the full history was pulled.</summary>
-        internal static string SyncTypeFor(DateTime? fromTimestampUtc)
-        {
-            return fromTimestampUtc is null ? FullSyncType : IncrementalSyncType;
-        }
+        internal static string SyncTypeFor(DateTime? fromTimestampUtc) =>
+            fromTimestampUtc is null ? FullSyncType : IncrementalSyncType;
 
         /// <summary>Maximum stored length of ProviderSyncRun.ErrorMessage (matches the column's max length).</summary>
         internal const int MaxErrorMessageLength = 1024;
@@ -78,10 +75,8 @@ namespace VideoForensics.Hosting.Services
         /// Outcome of a pull: null when the account is present and the pull left no error on it, otherwise the error
         /// the pull recorded. A missing account is a failure, never a success.
         /// </summary>
-        internal static string? OutcomeAfterPull(ProviderAccount? account)
-        {
-            return account is null ? AccountNotFoundMessage : account.LastErrorMessage;
-        }
+        internal static string? OutcomeAfterPull(ProviderAccount? account) =>
+            account is null ? AccountNotFoundMessage : account.LastErrorMessage;
 
         /// <summary>
         /// Writes one completed run row. Success is true only when <paramref name="errorMessage"/> is null.
@@ -158,22 +153,16 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <inheritdoc />
-        public Task RunAsync(Guid accountId, CancellationToken cancellationToken)
-        {
-            return SyncAsync(accountId, fullHistory: false, cancellationToken);
-        }
+        public Task RunAsync(Guid accountId, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, fullHistory: false, cancellationToken);
 
         /// <inheritdoc />
-        public Task RunAsync(Guid accountId, AccountSyncRequest request, CancellationToken cancellationToken)
-        {
-            return SyncAsync(accountId, request.AllHistory, cancellationToken, request);
-        }
+        public Task RunAsync(Guid accountId, AccountSyncRequest request, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, request.AllHistory, cancellationToken, request);
 
         /// <inheritdoc />
-        public Task RunInitialAsync(Guid accountId, CancellationToken cancellationToken)
-        {
-            return SyncAsync(accountId, fullHistory: true, cancellationToken);
-        }
+        public Task RunInitialAsync(Guid accountId, CancellationToken cancellationToken) =>
+            SyncAsync(accountId, fullHistory: true, cancellationToken);
 
         private async Task SyncAsync(Guid accountId, bool fullHistory, CancellationToken cancellationToken, AccountSyncRequest? request = null)
         {
@@ -217,24 +206,18 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <summary>Short name of the sync for the console: Everything, Events, Snapshots, or Initial for a first sync.</summary>
-        private static string SyncLabel(bool fullHistory, AccountSyncRequest? request)
+        private static string SyncLabel(bool fullHistory, AccountSyncRequest? request) => request?.Type switch
         {
-            return request?.Type switch
-            {
-                AccountSyncType.Snapshots => "Snapshots",
-                AccountSyncType.All => "Everything",
-                AccountSyncType.Events => "Events",
-                _ => fullHistory ? "Initial" : "Events",
-            };
-        }
+            AccountSyncType.Snapshots => "Snapshots",
+            AccountSyncType.All => "Everything",
+            AccountSyncType.Events => "Events",
+            _ => fullHistory ? "Initial" : "Events",
+        };
 
         /// <summary>A sync's failure message (null on success) and the counts its pull reported (null if it never pulled).</summary>
         private readonly record struct SyncOutcome(string? Error, EventPullResult? Counts = null, int? SnapshotsSynced = null)
         {
-            public static implicit operator SyncOutcome(string? error)
-            {
-                return new(error);
-            }
+            public static implicit operator SyncOutcome(string? error) => new(error);
         }
 
         /// <summary>
@@ -309,7 +292,6 @@ namespace VideoForensics.Hosting.Services
                 _activity.Append($"{initial.ProviderName}: history limited to one month per pull");
                 _logger.LogInformation("Sync start limited to one month back for {ProviderName} account", initial.ProviderName);
             }
-
             DateTime? from = AccountSyncRunner.OneMonthFloor(requestedFrom, DateTime.UtcNow);
             DateTime? to = request?.ToUtc;
 
@@ -325,7 +307,6 @@ namespace VideoForensics.Hosting.Services
             {
                 counts = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
             }
-
             LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
@@ -352,10 +333,8 @@ namespace VideoForensics.Hosting.Services
         }
 
         /// <summary>True when a requested start is older than one month, so the pull will be cut short. Callers report it.</summary>
-        internal static bool WasLimited(DateTime? requested, DateTime nowUtc)
-        {
-            return requested is { } start && start < nowUtc.AddMonths(-1);
-        }
+        internal static bool WasLimited(DateTime? requested, DateTime nowUtc) =>
+            requested is { } start && start < nowUtc.AddMonths(-1);
 
         /// <summary>
         /// No single pull reaches further back than one month: a start older than that, or no start at all, becomes one month before now.
@@ -366,6 +345,7 @@ namespace VideoForensics.Hosting.Services
             DateTime floor = nowUtc.AddMonths(-1);
             return from is { } start && start > floor ? start : floor;
         }
+
 
         /// <summary>
         /// The windows of an initial backfill: one month each, from a year ago up to now, oldest first. The last window ends at now.
@@ -451,7 +431,7 @@ namespace VideoForensics.Hosting.Services
 
         private async Task RecordErrorAsync(Guid accountId, string message, CancellationToken cancellationToken)
         {
-            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            var account = await _accounts.GetAsync(accountId, cancellationToken);
             if (account is null)
             {
                 return;

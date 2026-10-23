@@ -1,4 +1,8 @@
+using System.Text.Json;
+
 using Microsoft.AspNetCore.DataProtection;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -34,8 +38,8 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Act
-            MediaAccessTicket ticket = service.Issue(mediaItemId, operatorId);
-            Guid? validatedOperatorId = service.Validate(ticket.Token, mediaItemId);
+            var ticket = service.Issue(mediaItemId, operatorId);
+            var validatedOperatorId = service.Validate(ticket.Token, mediaItemId);
 
             // Assert
             Assert.Equal(operatorId, validatedOperatorId);
@@ -52,8 +56,8 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Act
-            MediaAccessTicket ticket = service.Issue(mediaItemId, operatorId);
-            Guid? validatedOperatorId = service.Validate(ticket.Token, wrongMediaItemId);
+            var ticket = service.Issue(mediaItemId, operatorId);
+            var validatedOperatorId = service.Validate(ticket.Token, wrongMediaItemId);
 
             // Assert
             Assert.Null(validatedOperatorId);
@@ -70,9 +74,9 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Act
-            MediaAccessTicket ticket = service.Issue(mediaItemId, operatorId);
+            var ticket = service.Issue(mediaItemId, operatorId);
             fakeTime.SetUtcNow(fakeTime.GetUtcNow().UtcDateTime.AddMinutes(11)); // Advance past 10-minute lifetime
-            Guid? validatedOperatorId = service.Validate(ticket.Token, mediaItemId);
+            var validatedOperatorId = service.Validate(ticket.Token, mediaItemId);
 
             // Assert
             Assert.Null(validatedOperatorId);
@@ -90,7 +94,7 @@ namespace VideoForensics.Hosting.Tests
             var mediaItemId = Guid.NewGuid();
 
             // Act
-            Guid? validatedOperatorId = service.Validate(token, mediaItemId);
+            var validatedOperatorId = service.Validate(token, mediaItemId);
 
             // Assert
             Assert.Null(validatedOperatorId);
@@ -101,7 +105,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var fakeTime = new FakeTimeProvider();
-            DateTime initialTime = DateTime.UtcNow;
+            var initialTime = DateTime.UtcNow;
             fakeTime.SetUtcNow(initialTime);
             var provider = new EphemeralDataProtectionProvider();
             var service = new MediaAccessTicketService(provider, fakeTime);
@@ -109,7 +113,7 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Act
-            MediaAccessTicket ticket = service.Issue(mediaItemId, operatorId);
+            var ticket = service.Issue(mediaItemId, operatorId);
 
             // Assert
             Assert.Equal(initialTime.AddMinutes(10), ticket.ExpiresAtUtc, TimeSpan.FromMilliseconds(100));

@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-
 using Moq;
-
 using System.Threading.RateLimiting;
-
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Api

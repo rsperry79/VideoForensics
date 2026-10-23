@@ -1,10 +1,8 @@
-
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Services.Evidence;
 
 public class EvidenceTimeline_Group_Tests
 {
@@ -57,7 +55,7 @@ public class EvidenceTimeline_Group_Tests
         };
 
         // Act
-        IReadOnlyList<EvidenceDayGroup> groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
+        var groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
 
         // Assert
         Assert.Equal(2, groups.Count);
@@ -70,7 +68,7 @@ public class EvidenceTimeline_Group_Tests
     public void Group_WithMultipleDevices_GroupsByDeviceWithinDay()
     {
         // Arrange
-        TimeZoneInfo tz = TimeZoneInfo.Utc;
+        var tz = TimeZoneInfo.Utc;
         var device1Id = Guid.NewGuid();
         var device2Id = Guid.NewGuid();
 
@@ -117,11 +115,11 @@ public class EvidenceTimeline_Group_Tests
         };
 
         // Act
-        IReadOnlyList<EvidenceDayGroup> groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
+        var groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
 
         // Assert
-        _ = Assert.Single(groups);
-        EvidenceDayGroup dayGroup = groups[0];
+        Assert.Single(groups);
+        var dayGroup = groups[0];
         Assert.Equal(new DateOnly(2026, 9, 20), dayGroup.Day);
         Assert.Equal(2, dayGroup.Devices.Count);
         // Devices should be ordered by name
@@ -133,7 +131,7 @@ public class EvidenceTimeline_Group_Tests
     public void Group_ItemsWithinDay_SortedDescending()
     {
         // Arrange
-        TimeZoneInfo tz = TimeZoneInfo.Utc;
+        var tz = TimeZoneInfo.Utc;
         var deviceId = Guid.NewGuid();
 
         var event1 = new Event
@@ -179,13 +177,13 @@ public class EvidenceTimeline_Group_Tests
         };
 
         // Act
-        IReadOnlyList<EvidenceDayGroup> groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
+        var groups = EvidenceTimeline.Group(new[] { item1, item2 }, tz);
 
         // Assert
-        _ = Assert.Single(groups);
-        EvidenceDayGroup dayGroup = groups[0];
-        _ = Assert.Single(dayGroup.Devices);
-        EvidenceDeviceGroup deviceGroup = dayGroup.Devices[0];
+        Assert.Single(groups);
+        var dayGroup = groups[0];
+        Assert.Single(dayGroup.Devices);
+        var deviceGroup = dayGroup.Devices[0];
         // Items should be descending (newer first)
         Assert.Equal(2, deviceGroup.Items.Count);
         Assert.Equal(event2.OccurredAtUtc, deviceGroup.Items[0].OccurredAtUtc);
@@ -196,7 +194,7 @@ public class EvidenceTimeline_Group_Tests
     public void Group_CalculatesTotalCount()
     {
         // Arrange
-        TimeZoneInfo tz = TimeZoneInfo.Utc;
+        var tz = TimeZoneInfo.Utc;
         var deviceId = Guid.NewGuid();
 
         var items = Enumerable.Range(0, 5)
@@ -213,11 +211,11 @@ public class EvidenceTimeline_Group_Tests
             .ToList();
 
         // Act
-        IReadOnlyList<EvidenceDayGroup> groups = EvidenceTimeline.Group(items, tz);
+        var groups = EvidenceTimeline.Group(items, tz);
 
         // Assert
-        _ = Assert.Single(groups);
-        EvidenceDayGroup dayGroup = groups[0];
+        Assert.Single(groups);
+        var dayGroup = groups[0];
         Assert.Equal(5, dayGroup.TotalCount);
     }
 }
@@ -249,7 +247,6 @@ public class EvidenceTimeline_Neighbours_Tests
                 Media = null
             });
         }
-
         return items;
     }
 
@@ -257,10 +254,10 @@ public class EvidenceTimeline_Neighbours_Tests
     public void Neighbours_AtStart_ReturnsPreviousNullAndNext()
     {
         // Arrange
-        List<EvidenceItem> items = CreateOrderedItems(3);
+        var items = CreateOrderedItems(3);
 
         // Act
-        (EvidenceItem? prev, EvidenceItem? next) = EvidenceTimeline.Neighbours(items, items[0].Key, false);
+        var (prev, next) = EvidenceTimeline.Neighbours(items, items[0].Key, false);
 
         // Assert
         Assert.Null(prev);
@@ -271,10 +268,10 @@ public class EvidenceTimeline_Neighbours_Tests
     public void Neighbours_AtEnd_ReturnsPreviousAndNextNull()
     {
         // Arrange
-        List<EvidenceItem> items = CreateOrderedItems(3);
+        var items = CreateOrderedItems(3);
 
         // Act
-        (EvidenceItem? prev, EvidenceItem? next) = EvidenceTimeline.Neighbours(items, items[2].Key, false);
+        var (prev, next) = EvidenceTimeline.Neighbours(items, items[2].Key, false);
 
         // Assert
         Assert.Equal(items[1].Key, prev?.Key);
@@ -285,10 +282,10 @@ public class EvidenceTimeline_Neighbours_Tests
     public void Neighbours_InMiddle_ReturnsBoth()
     {
         // Arrange
-        List<EvidenceItem> items = CreateOrderedItems(3);
+        var items = CreateOrderedItems(3);
 
         // Act
-        (EvidenceItem? prev, EvidenceItem? next) = EvidenceTimeline.Neighbours(items, items[1].Key, false);
+        var (prev, next) = EvidenceTimeline.Neighbours(items, items[1].Key, false);
 
         // Assert
         Assert.Equal(items[0].Key, prev?.Key);
@@ -302,7 +299,8 @@ public class EvidenceTimeline_Neighbours_Tests
         var deviceId = Guid.NewGuid();
         var items = new List<EvidenceItem>
         {
-            new() {
+            new EvidenceItem
+            {
                 Key = "media:1",
                 Kind = EvidenceKind.Snapshot,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc),
@@ -321,7 +319,8 @@ public class EvidenceTimeline_Neighbours_Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 }
             },
-            new() {
+            new EvidenceItem
+            {
                 Key = "media:2",
                 Kind = EvidenceKind.Snapshot,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 1, 0, DateTimeKind.Utc),
@@ -340,7 +339,8 @@ public class EvidenceTimeline_Neighbours_Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 }
             },
-            new() {
+            new EvidenceItem
+            {
                 Key = "media:3",
                 Kind = EvidenceKind.Snapshot,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 2, 0, DateTimeKind.Utc),
@@ -362,7 +362,7 @@ public class EvidenceTimeline_Neighbours_Tests
         };
 
         // Act
-        (EvidenceItem? prev, EvidenceItem? next) = EvidenceTimeline.Neighbours(items, items[1].Key, viewableOnly: true);
+        var (prev, next) = EvidenceTimeline.Neighbours(items, items[1].Key, viewableOnly: true);
 
         // Assert
         Assert.Equal(items[0].Key, prev?.Key);
@@ -376,7 +376,8 @@ public class EvidenceTimeline_Neighbours_Tests
         var deviceId = Guid.NewGuid();
         var items = new List<EvidenceItem>
         {
-            new() {
+            new EvidenceItem
+            {
                 Key = "media:1",
                 Kind = EvidenceKind.Snapshot,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 0, 0, DateTimeKind.Utc),
@@ -395,7 +396,8 @@ public class EvidenceTimeline_Neighbours_Tests
                     DownloadedAtUtc = DateTime.UtcNow
                 }
             },
-            new() {
+            new EvidenceItem
+            {
                 Key = "event:nonviewable",
                 Kind = EvidenceKind.Event,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 1, 0, DateTimeKind.Utc),
@@ -412,7 +414,8 @@ public class EvidenceTimeline_Neighbours_Tests
                 },
                 Media = null // No media = not viewable
             },
-            new() {
+            new EvidenceItem
+            {
                 Key = "media:3",
                 Kind = EvidenceKind.Snapshot,
                 OccurredAtUtc = new DateTime(2026, 9, 20, 12, 2, 0, DateTimeKind.Utc),
@@ -434,7 +437,7 @@ public class EvidenceTimeline_Neighbours_Tests
         };
 
         // Act
-        (EvidenceItem? prev, EvidenceItem? next) = EvidenceTimeline.Neighbours(items, items[1].Key, viewableOnly: true);
+        var (prev, next) = EvidenceTimeline.Neighbours(items, items[1].Key, viewableOnly: true);
 
         // Assert
         Assert.Equal(items[0].Key, prev?.Key);

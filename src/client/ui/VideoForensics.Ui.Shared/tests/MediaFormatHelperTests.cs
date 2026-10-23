@@ -1,9 +1,7 @@
-
-using VideoForensics.Ui.Shared.Services;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Ui.Shared.Services;
 
 public class MediaFormatHelper_IsImage_Tests
 {
@@ -20,7 +18,7 @@ public class MediaFormatHelper_IsImage_Tests
     [InlineData("IMAGE/JPEG")]
     public void IsImage_WithImageFormats_ReturnsTrue(string format)
     {
-        bool result = MediaFormatHelper.IsImage(format);
+        var result = MediaFormatHelper.IsImage(format);
         Assert.True(result);
     }
 
@@ -32,7 +30,7 @@ public class MediaFormatHelper_IsImage_Tests
     [InlineData("application/octet-stream")]
     public void IsImage_WithNonImageFormats_ReturnsFalse(string? format)
     {
-        bool result = MediaFormatHelper.IsImage(format);
+        var result = MediaFormatHelper.IsImage(format);
         Assert.False(result);
     }
 }
@@ -48,7 +46,7 @@ public class MediaFormatHelper_IsVideo_Tests
     [InlineData("VIDEO/MP4")]
     public void IsVideo_WithVideoFormats_ReturnsTrue(string format)
     {
-        bool result = MediaFormatHelper.IsVideo(format);
+        var result = MediaFormatHelper.IsVideo(format);
         Assert.True(result);
     }
 
@@ -60,7 +58,7 @@ public class MediaFormatHelper_IsVideo_Tests
     [InlineData("application/octet-stream")]
     public void IsVideo_WithNonVideoFormats_ReturnsFalse(string? format)
     {
-        bool result = MediaFormatHelper.IsVideo(format);
+        var result = MediaFormatHelper.IsVideo(format);
         Assert.False(result);
     }
 }

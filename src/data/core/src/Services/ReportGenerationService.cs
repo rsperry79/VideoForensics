@@ -2,16 +2,17 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
+using VideoForensics.Core.Helpers.Platform;
+
 // Aliased: importing the whole providers-common namespace makes `Device` ambiguous with Data.Common.Entities.Device.
 using INotificationDispatcher = VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher;
-using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
 using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
 using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
+using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
 
 namespace VideoForensics.Data.Core.Services
 {
@@ -326,7 +327,17 @@ namespace VideoForensics.Data.Core.Services
         /// </summary>
         private static bool IsForDevice(ActionLogEntry entry, Guid? deviceId)
         {
-            return deviceId is not { } id || entry.EntityId == id || (entry.DetailsJson?.Contains(id.ToString("D"), StringComparison.OrdinalIgnoreCase) ?? false);
+            if (deviceId is not { } id)
+            {
+                return true;
+            }
+
+            if (entry.EntityId == id)
+            {
+                return true;
+            }
+
+            return entry.DetailsJson?.Contains(id.ToString("D"), StringComparison.OrdinalIgnoreCase) ?? false;
         }
 
         /// <summary>

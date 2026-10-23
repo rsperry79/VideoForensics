@@ -2,6 +2,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -18,7 +19,7 @@ namespace VideoForensics.WebApp.Api
     {
         public static void MapCaseEndpoints(this WebApplication app)
         {
-            RouteGroupBuilder group = app.MapGroup("/api/v1/cases").RequireAuthorization();
+            var group = app.MapGroup("/api/v1/cases").RequireAuthorization();
 
             // Case read operations
             _ = group.MapGet("/", GetCasesAsync)
@@ -103,7 +104,7 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             CaseStatus? statusFilter = null;
-            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<CaseStatus>(status, ignoreCase: true, out CaseStatus parsedStatus))
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<CaseStatus>(status, ignoreCase: true, out var parsedStatus))
             {
                 statusFilter = parsedStatus;
             }
@@ -120,9 +121,7 @@ namespace VideoForensics.WebApp.Api
         {
             ForensicCase? @case = await cases.GetAsync(id, ct);
             if (@case == null)
-            {
                 return Results.NotFound();
-            }
 
             IReadOnlyList<Guid> deviceIds = await cases.GetDeviceIdsAsync(id, ct);
             return Results.Ok(@case.ToDto(deviceIds));
@@ -136,9 +135,7 @@ namespace VideoForensics.WebApp.Api
         {
             ForensicCase? @case = await cases.GetByNumberAsync(caseNumber, ct);
             if (@case == null)
-            {
                 return Results.NotFound();
-            }
 
             IReadOnlyList<Guid> deviceIds = await cases.GetDeviceIdsAsync(@case.Id, ct);
             return Results.Ok(@case.ToDto(deviceIds));
@@ -162,9 +159,7 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct = default)
         {
             if (cases == null)
-            {
                 return Results.BadRequest("ICaseRepository not provided");
-            }
 
             IReadOnlyList<CaseItem> items = await cases.ListItemsAsync(id, includeRemoved, ct);
             return Results.Ok(items.Select(i => i.ToDto()));
@@ -178,14 +173,10 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(kind) || !targetId.HasValue)
-            {
                 return Results.BadRequest("kind and targetId query parameters are required");
-            }
 
-            if (!Enum.TryParse<CaseItemKind>(kind, ignoreCase: true, out CaseItemKind itemKind))
-            {
+            if (!Enum.TryParse<CaseItemKind>(kind, ignoreCase: true, out var itemKind))
                 return Results.BadRequest("Invalid kind value");
-            }
 
             IReadOnlyList<ForensicCase> result = await cases.ListCasesContainingAsync(itemKind, targetId.Value, ct);
             // For simplicity, return with empty device lists since this is a list operation
@@ -201,30 +192,20 @@ namespace VideoForensics.WebApp.Api
         {
             // Validate input
             if (request.CaseNumber != null && request.CaseNumber.Length > 64)
-            {
                 return Results.BadRequest("CaseNumber must not exceed 64 characters");
-            }
 
             if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length > 256)
-            {
                 return Results.BadRequest("Title is required and must not exceed 256 characters");
-            }
 
             if (request.Description != null && request.Description.Length > 4000)
-            {
                 return Results.BadRequest("Description must not exceed 4000 characters");
-            }
 
             if (request.ScopeFromUtc.HasValue && request.ScopeToUtc.HasValue && request.ScopeFromUtc > request.ScopeToUtc)
-            {
                 return Results.BadRequest("ScopeFromUtc must be <= ScopeToUtc");
-            }
 
             string? createdBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(createdBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -259,20 +240,14 @@ namespace VideoForensics.WebApp.Api
         {
             // Validate input
             if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length > 256)
-            {
                 return Results.BadRequest("Title is required and must not exceed 256 characters");
-            }
 
             if (request.Description != null && request.Description.Length > 4000)
-            {
                 return Results.BadRequest("Description must not exceed 4000 characters");
-            }
 
             string? updatedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(updatedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -295,15 +270,11 @@ namespace VideoForensics.WebApp.Api
         {
             // Validate input
             if (request.ScopeFromUtc.HasValue && request.ScopeToUtc.HasValue && request.ScopeFromUtc > request.ScopeToUtc)
-            {
                 return Results.BadRequest("ScopeFromUtc must be <= ScopeToUtc");
-            }
 
             string? updatedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(updatedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -326,25 +297,17 @@ namespace VideoForensics.WebApp.Api
         {
             // Validate input
             if (string.IsNullOrWhiteSpace(request.Kind))
-            {
                 return Results.BadRequest("Kind is required");
-            }
 
             if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length > 1024)
-            {
                 return Results.BadRequest("Reason is required and must not exceed 1024 characters");
-            }
 
-            if (!Enum.TryParse<CaseItemKind>(request.Kind, ignoreCase: true, out CaseItemKind itemKind))
-            {
+            if (!Enum.TryParse<CaseItemKind>(request.Kind, ignoreCase: true, out var itemKind))
                 return Results.BadRequest("Invalid Kind value");
-            }
 
             string? addedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(addedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -367,15 +330,11 @@ namespace VideoForensics.WebApp.Api
         {
             // Validate input
             if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length > 1024)
-            {
                 return Results.BadRequest("Reason is required and must not exceed 1024 characters");
-            }
 
             string? removedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(removedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -397,9 +356,7 @@ namespace VideoForensics.WebApp.Api
         {
             string? closedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(closedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {
@@ -421,9 +378,7 @@ namespace VideoForensics.WebApp.Api
         {
             string? reopenedBy = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId)?.Value;
             if (string.IsNullOrWhiteSpace(reopenedBy))
-            {
                 return Results.Unauthorized();
-            }
 
             try
             {

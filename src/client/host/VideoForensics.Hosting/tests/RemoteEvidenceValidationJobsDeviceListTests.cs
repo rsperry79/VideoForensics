@@ -3,7 +3,10 @@ using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -13,8 +16,8 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StartIntegrityForDevicesAsync_SendsEveryDeviceInOneRequest()
         {
-            var first = Guid.NewGuid();
-            var second = Guid.NewGuid();
+            Guid first = Guid.NewGuid();
+            Guid second = Guid.NewGuid();
             string? capturedBody = null;
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
@@ -37,13 +40,13 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StartIntegrityForDevicesAsync_ReadsBackDeviceIdOnResults()
         {
-            var device = Guid.NewGuid();
-            EvidenceValidationJobDto dto = BuildDto(Guid.NewGuid()) with
+            Guid device = Guid.NewGuid();
+            var dto = BuildDto(Guid.NewGuid()) with
             {
-                IntegrityResults =
-                [
+                IntegrityResults = new List<MediaVerificationResultDto>
+                {
                     new(Guid.NewGuid(), "a.mp4", "verified", null, device),
-                ]
+                }
             };
             var handler = new CaptureHttpMessageHandler((request, ct) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -66,15 +69,11 @@ namespace VideoForensics.Hosting.Tests
                 _handler = handler;
             }
 
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                return _handler(request, cancellationToken);
-            }
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+                _handler(request, cancellationToken);
         }
 
-        private static EvidenceValidationJobDto BuildDto(Guid id)
-        {
-            return new(
+        private static EvidenceValidationJobDto BuildDto(Guid id) => new(
             Id: id,
             Kind: "Integrity",
             State: "Running",
@@ -84,6 +83,5 @@ namespace VideoForensics.Hosting.Tests
             IntegrityResults: null,
             Discrepancies: null,
             ErrorMessage: null);
-        }
     }
 }

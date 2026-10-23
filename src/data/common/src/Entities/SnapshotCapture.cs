@@ -59,22 +59,28 @@ namespace VideoForensics.Data.Common.Entities
             bool hasMediaPath = !string.IsNullOrWhiteSpace(mediaFilePath);
 
             // A non-200 attempt produced no media; a 200 must have media to be "current".
-            return !isCurrent && mediaFilePath is not null
-                ? throw new ArgumentException("A non-200 capture attempt cannot have a media file path.", nameof(mediaFilePath))
-                : isCurrent && !hasMediaPath
-                ? throw new ArgumentException("A 200 capture must have a media file path.", nameof(mediaFilePath))
-                : new SnapshotCapture
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceId,
-                    // Store the instant in UTC so ordering by the column is correct across offsets.
-                    CapturedAtUtc = capturedAtUtc.ToUniversalTime(),
-                    Trigger = trigger,
-                    HttpStatus = httpStatus,
-                    IsCurrent = isCurrent,
-                    MediaFilePath = isCurrent ? mediaFilePath : null,
-                    DeviceHealthId = deviceHealthId,
-                };
+            if (!isCurrent && mediaFilePath is not null)
+            {
+                throw new ArgumentException("A non-200 capture attempt cannot have a media file path.", nameof(mediaFilePath));
+            }
+
+            if (isCurrent && !hasMediaPath)
+            {
+                throw new ArgumentException("A 200 capture must have a media file path.", nameof(mediaFilePath));
+            }
+
+            return new SnapshotCapture
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                // Store the instant in UTC so ordering by the column is correct across offsets.
+                CapturedAtUtc = capturedAtUtc.ToUniversalTime(),
+                Trigger = trigger,
+                HttpStatus = httpStatus,
+                IsCurrent = isCurrent,
+                MediaFilePath = isCurrent ? mediaFilePath : null,
+                DeviceHealthId = deviceHealthId,
+            };
         }
     }
 }

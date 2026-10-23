@@ -18,10 +18,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             _inner = inner;
         }
 
-        public void AddProvider(ILoggerProvider provider)
-        {
-            _inner.AddProvider(provider);
-        }
+        public void AddProvider(ILoggerProvider provider) => _inner.AddProvider(provider);
 
         public ILogger CreateLogger(string categoryName)
         {
@@ -43,25 +40,14 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 _inner = inner;
             }
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                return _inner.BeginScope(state);
-            }
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => _inner.BeginScope(state);
 
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                return _inner.IsEnabled(Remap(logLevel));
-            }
+            public bool IsEnabled(LogLevel logLevel) => _inner.IsEnabled(Remap(logLevel));
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                _inner.Log(Remap(logLevel), eventId, state, exception, formatter);
-            }
+                => _inner.Log(Remap(logLevel), eventId, state, exception, formatter);
 
-            private static LogLevel Remap(LogLevel level)
-            {
-                return level == LogLevel.Information ? LogLevel.Debug : level;
-            }
+            private static LogLevel Remap(LogLevel level) => level == LogLevel.Information ? LogLevel.Debug : level;
         }
     }
 }

@@ -2,7 +2,10 @@ using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -39,11 +42,11 @@ namespace VideoForensics.Hosting.Tests
         {
             var history = new List<ChatTurn>
             {
-                new() { Role = "user", Content = "Hello" },
-                new() { Role = "assistant", Content = "Hi there!" }
+                new ChatTurn { Role = "user", Content = "Hello" },
+                new ChatTurn { Role = "assistant", Content = "Hi there!" }
             };
             string userMessage = "What's the weather?";
-            var response = new ChatResponseDto("It's sunny", ["weather_tool"]);
+            var response = new ChatResponseDto("It's sunny", new List<string> { "weather_tool" });
             string json = JsonSerializer.Serialize(response, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -64,7 +67,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
             Assert.Equal("/api/v1/chat", handler.CapturedRequest.RequestUri?.PathAndQuery);
             Assert.Equal("It's sunny", result.Reply);
-            _ = Assert.Single(result.ToolsInvoked);
+            Assert.Single(result.ToolsInvoked);
             Assert.Equal("weather_tool", result.ToolsInvoked[0]);
         }
 
@@ -74,7 +77,7 @@ namespace VideoForensics.Hosting.Tests
             var cts = new CancellationTokenSource();
             var history = new List<ChatTurn>();
             string userMessage = "Test";
-            var response = new ChatResponseDto("Reply", []);
+            var response = new ChatResponseDto("Reply", new List<string>());
             string json = JsonSerializer.Serialize(response, JsonOptions);
             CancellationToken? capturedToken = null;
 
@@ -102,7 +105,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var history = new List<ChatTurn>();
             string userMessage = "Hello";
-            var response = new ChatResponseDto("Hi", []);
+            var response = new ChatResponseDto("Hi", new List<string>());
             string json = JsonSerializer.Serialize(response, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -128,7 +131,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var history = new List<ChatTurn>();
             string userMessage = "Test";
-            var response = new ChatResponseDto("Reply", []);
+            var response = new ChatResponseDto("Reply", new List<string>());
             string json = JsonSerializer.Serialize(response, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -153,12 +156,12 @@ namespace VideoForensics.Hosting.Tests
         {
             var history = new List<ChatTurn>
             {
-                new() { Role = "user", Content = "First message" },
-                new() { Role = "assistant", Content = "First reply" },
-                new() { Role = "user", Content = "Second message" }
+                new ChatTurn { Role = "user", Content = "First message" },
+                new ChatTurn { Role = "assistant", Content = "First reply" },
+                new ChatTurn { Role = "user", Content = "Second message" }
             };
             string userMessage = "Third message";
-            var response = new ChatResponseDto("Third reply", []);
+            var response = new ChatResponseDto("Third reply", new List<string>());
             string json = JsonSerializer.Serialize(response, JsonOptions);
 
             ChatRequestDto? capturedRequest = null;
@@ -169,7 +172,6 @@ namespace VideoForensics.Hosting.Tests
                     string content = await req.Content.ReadAsStringAsync();
                     capturedRequest = JsonSerializer.Deserialize<ChatRequestDto>(content, JsonOptions);
                 }
-
                 await Task.Yield();
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -242,13 +244,10 @@ namespace VideoForensics.Hosting.Tests
             Assert.Contains("500", ex.Message);
         }
 
-        private static HttpResponseMessage SseResponse(string body)
+        private static HttpResponseMessage SseResponse(string body) => new(HttpStatusCode.OK)
         {
-            return new(HttpStatusCode.OK)
-            {
-                Content = new StringContent(body, System.Text.Encoding.UTF8, "text/event-stream")
-            };
-        }
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "text/event-stream")
+        };
 
         private static async Task<List<ChatStreamEvent>> DrainAsync(IAsyncEnumerable<ChatStreamEvent> events)
         {
@@ -257,7 +256,6 @@ namespace VideoForensics.Hosting.Tests
             {
                 list.Add(evt);
             }
-
             return list;
         }
 
@@ -271,7 +269,7 @@ namespace VideoForensics.Hosting.Tests
             });
             var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
 
-            _ = await DrainAsync(service.StreamMessageAsync([], "Hi", CancellationToken.None));
+            _ = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Post, handler.CapturedRequest.Method);
@@ -294,7 +292,7 @@ namespace VideoForensics.Hosting.Tests
             });
             var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
 
-            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync([], "Hi", CancellationToken.None));
+            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
 
             Assert.Collection(events,
                 e => Assert.Equal("Checking", Assert.IsType<ChatTextDelta>(e).Text),
@@ -321,7 +319,7 @@ namespace VideoForensics.Hosting.Tests
             });
             var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
 
-            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync([], "Hi", CancellationToken.None));
+            List<ChatStreamEvent> events = await DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None));
 
             ChatStreamEvent only = Assert.Single(events);
             Assert.Equal("ok", Assert.IsType<ChatTurnCompleted>(only).Result.Reply);
@@ -338,7 +336,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteChatService(CreateHttpClientWithHandler(handler));
 
             _ = await Assert.ThrowsAsync<HttpRequestException>(
-                () => DrainAsync(service.StreamMessageAsync([], "Hi", CancellationToken.None)));
+                () => DrainAsync(service.StreamMessageAsync(new List<ChatTurn>(), "Hi", CancellationToken.None)));
         }
     }
 }

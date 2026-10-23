@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Ring.Entities;
 
 using CommonContracts = VideoForensics.Core.Providers.Common.Contracts;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
@@ -75,9 +76,12 @@ namespace VideoForensics.Providers.Ring.Services
 
         private static long ParseId(string providerDeviceId)
         {
-            return !long.TryParse(providerDeviceId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long id)
-                ? throw new ArgumentException("Provider device id must be a numeric Ring id.", nameof(providerDeviceId))
-                : id;
+            if (!long.TryParse(providerDeviceId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long id))
+            {
+                throw new ArgumentException("Provider device id must be a numeric Ring id.", nameof(providerDeviceId));
+            }
+
+            return id;
         }
 
         // Resolved once per control: the Ring SDK session for the device's single linked account, the numeric
@@ -97,7 +101,7 @@ namespace VideoForensics.Providers.Ring.Services
                 ?? throw new KeyNotFoundException("Device was not found.");
 
             IReadOnlyList<ProviderAccount> linked = await _locations.ListProviderAccountsForLocationAsync(device.LocationId, ct);
-            var ringAccounts = linked
+            List<ProviderAccount> ringAccounts = linked
                 .Where(a => string.Equals(a.ProviderName, RingProviderName, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 

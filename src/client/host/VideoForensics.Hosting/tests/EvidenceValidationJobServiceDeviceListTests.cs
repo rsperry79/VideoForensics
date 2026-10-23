@@ -1,7 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Moq;
+
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Services;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -13,23 +19,20 @@ namespace VideoForensics.Hosting.Tests
         private static EvidenceValidationJobService CreateService(Mock<IEvidenceValidationService> validation)
         {
             ServiceCollection services = new();
-            _ = services.AddSingleton(validation.Object);
+            services.AddSingleton(validation.Object);
             ServiceProvider provider = services.BuildServiceProvider();
             return new EvidenceValidationJobService(
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 NullLogger<EvidenceValidationJobService>.Instance);
         }
 
-        private static MediaVerificationResult Result(string fileName, string status, string? reason = null)
+        private static MediaVerificationResult Result(string fileName, string status, string? reason = null) => new()
         {
-            return new()
-            {
-                MediaItemId = Guid.NewGuid(),
-                FileName = fileName,
-                Status = status,
-                FailureReason = reason
-            };
-        }
+            MediaItemId = Guid.NewGuid(),
+            FileName = fileName,
+            Status = status,
+            FailureReason = reason
+        };
 
         private static async Task<EvidenceValidationJob> WaitForCompletionAsync(EvidenceValidationJobService service)
         {
@@ -49,13 +52,13 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StartIntegrityForDevicesAsync_VerifiesEachDeviceOnce_AndTagsEveryResult()
         {
-            var first = Guid.NewGuid();
-            var second = Guid.NewGuid();
+            Guid first = Guid.NewGuid();
+            Guid second = Guid.NewGuid();
             Mock<IEvidenceValidationService> validation = new();
-            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(first, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                .ReturnsAsync([Result("a.mp4", "verified")]);
-            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(second, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                .ReturnsAsync([Result("b.mp4", "failed", "hash mismatch")]);
+            validation.Setup(v => v.VerifyLocalIntegrityAsync(first, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                .ReturnsAsync(new List<MediaVerificationResult> { Result("a.mp4", "verified") });
+            validation.Setup(v => v.VerifyLocalIntegrityAsync(second, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                .ReturnsAsync(new List<MediaVerificationResult> { Result("b.mp4", "failed", "hash mismatch") });
             EvidenceValidationJobService service = CreateService(validation);
 
             _ = await service.StartIntegrityForDevicesAsync(new[] { first, second }, CancellationToken.None);
@@ -73,10 +76,10 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StartIntegrityForDevicesAsync_DuplicateDeviceIds_VerifiesEachDeviceOnce()
         {
-            var device = Guid.NewGuid();
+            Guid device = Guid.NewGuid();
             Mock<IEvidenceValidationService> validation = new();
-            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(device, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-                .ReturnsAsync([]);
+            validation.Setup(v => v.VerifyLocalIntegrityAsync(device, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+                .ReturnsAsync(new List<MediaVerificationResult>());
             EvidenceValidationJobService service = CreateService(validation);
 
             _ = await service.StartIntegrityForDevicesAsync(new[] { device, device }, CancellationToken.None);
@@ -88,11 +91,11 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StartIntegrityForDevicesAsync_WhileADifferentSetRuns_Throws_AndSameSetJoins()
         {
-            var running = Guid.NewGuid();
-            var other = Guid.NewGuid();
+            Guid running = Guid.NewGuid();
+            Guid other = Guid.NewGuid();
             TaskCompletionSource<IReadOnlyList<MediaVerificationResult>> gate = new();
             Mock<IEvidenceValidationService> validation = new();
-            _ = validation.Setup(v => v.VerifyLocalIntegrityAsync(running, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            validation.Setup(v => v.VerifyLocalIntegrityAsync(running, It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
                 .Returns(gate.Task);
             EvidenceValidationJobService service = CreateService(validation);
 
@@ -106,7 +109,7 @@ namespace VideoForensics.Hosting.Tests
             EvidenceValidationJob joined = await service.StartIntegrityForDevicesAsync(new[] { running }, CancellationToken.None);
             Assert.Equal(EvidenceValidationJobState.Running, joined.State);
 
-            gate.SetResult([]);
+            gate.SetResult(new List<MediaVerificationResult>());
             _ = await WaitForCompletionAsync(service);
         }
 

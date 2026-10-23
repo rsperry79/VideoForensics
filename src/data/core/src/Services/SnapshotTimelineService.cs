@@ -44,7 +44,7 @@ namespace VideoForensics.Data.Core.Services
                 await _captures.GetAttemptsForDeviceAsync(deviceId, fromUtc, toUtc, cancellationToken);
 
             // Failed attempts are kept: the mapper uses them to end a still's hold, so outages show as gaps.
-            var records = rows
+            List<SnapshotStillRecord> records = rows
                 .Select(row => new SnapshotStillRecord(row.DeviceId, row.CapturedAtUtc, row.HttpStatus, row.MediaFilePath))
                 .ToList();
 

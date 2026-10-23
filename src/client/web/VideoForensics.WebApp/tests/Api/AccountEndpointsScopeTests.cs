@@ -20,8 +20,8 @@ namespace VideoForensics.WebApp.Tests.Api
         [Fact]
         public void MapAccountEndpoints_ScopedEventPullService_MapsWithoutRootResolution()
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Host.UseDefaultServiceProvider(options =>
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
             {
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
@@ -30,7 +30,7 @@ namespace VideoForensics.WebApp.Tests.Api
 
             WebApplication app = builder.Build();
 
-            Exception? ex = Record.Exception(app.MapAccountEndpoints);
+            var ex = Record.Exception(() => app.MapAccountEndpoints());
             Assert.Null(ex);
         }
     }

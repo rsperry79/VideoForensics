@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
 
@@ -51,7 +50,7 @@ namespace VideoForensics.Hosting.Local
             IEnumerable<LogRecord> kept = truncated && query.AfterSequence is null
                 ? snapshot.Skip(snapshot.Count - clampedLimit)
                 : snapshot.Take(clampedLimit);
-            var entries = kept.Select(ToEntry).ToList();
+            List<LogEntry> entries = kept.Select(ToEntry).ToList();
 
             return Task.FromResult(new LogPage(entries, _buffer.LatestSequence, truncated));
         }
@@ -92,19 +91,11 @@ namespace VideoForensics.Hosting.Local
             }
         }
 
-        private static int ClampLimit(int limit)
-        {
-            return limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
-        }
+        private static int ClampLimit(int limit) => limit <= 0 ? DefaultLimit : Math.Min(limit, MaxLimit);
 
-        private static string? NullIfEmpty(string? value)
-        {
-            return string.IsNullOrEmpty(value) ? null : value;
-        }
+        private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
         private static LogEntry ToEntry(LogRecord record)
-        {
-            return new(record.Sequence, record.TimestampUtc, record.Level, record.Category, record.Message, record.Exception);
-        }
+            => new(record.Sequence, record.TimestampUtc, record.Level, record.Category, record.Message, record.Exception);
     }
 }

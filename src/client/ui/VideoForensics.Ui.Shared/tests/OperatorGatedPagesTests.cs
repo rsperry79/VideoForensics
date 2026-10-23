@@ -1,23 +1,23 @@
-
-using Bunit;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-
-using Moq;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Reactive.Subjects;
 
+using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+using Moq;
+using Xunit;
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
+using Device = VideoForensics.Data.Common.Entities.Device;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Shared gate setup for the CollectVideos and CollectSnapshots pages. Each
 /// needs an operator session (<see cref="PairedSessionState"/>) AND a linked provider (Ring)
@@ -38,35 +38,35 @@ public abstract class OperatorGatedPageTestBase : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddSingleton<IDownloadProgressSource>(new IdleProgressSource());
+        Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddSingleton<IDownloadProgressSource>(new IdleProgressSource());
 
         // Default: a Ring account is linked, no devices, no provider accounts to pick from.
-        _ = AuthServiceMock
+        AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _ = ProviderAccountRepositoryMock
+        ProviderAccountRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _ = DeviceRepositoryMock
+            .ReturnsAsync(new List<ProviderAccount>());
+        DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _ = TypedSettingsReaderMock
+            .ReturnsAsync(new List<Device>());
+        TypedSettingsReaderMock
             .Setup(m => m.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new DeviceTypedSettings(null, [], []));
 
-        _ = Services.AddScoped(_ => AuthServiceMock.Object);
-        _ = Services.AddScoped(_ => TypedSettingsReaderMock.Object);
-        _ = Services.AddScoped(_ => DownloadServiceMock.Object);
-        _ = Services.AddScoped(_ => ProviderAccountRepositoryMock.Object);
-        _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
-        _ = Services.AddScoped(_ => DeviceConfigRepositoryMock.Object);
-        _ = Services.AddScoped<RightPanelContentService>();
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(_ => AuthServiceMock.Object);
+        Services.AddScoped(_ => TypedSettingsReaderMock.Object);
+        Services.AddScoped(_ => DownloadServiceMock.Object);
+        Services.AddScoped(_ => ProviderAccountRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        Services.AddScoped(_ => DeviceConfigRepositoryMock.Object);
+        Services.AddScoped<RightPanelContentService>();
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
 
         SignInOperatorAsync().GetAwaiter().GetResult();
     }
@@ -77,30 +77,23 @@ public abstract class OperatorGatedPageTestBase : BunitContext
         public IObservable<DownloadProgressSnapshot> Progress { get; } = new Subject<DownloadProgressSnapshot>();
     }
 
-    protected Task SignInOperatorAsync()
-    {
-        return Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
-    }
+    protected Task SignInOperatorAsync() =>
+        Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
 
-    protected Task SignOutOperatorAsync()
-    {
-        return Services.GetRequiredService<PairedSessionState>().ClearAsync();
-    }
+    protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
 
     /// <summary>Signs in a SuperAdmin on the Local tier - the only operator who may open the account wizard.</summary>
     protected async Task SignInAsSuperAdminLocalAsync()
     {
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("test-token", Guid.NewGuid(), "SuperAdmin");
         session.SetServerSessionKind(localTier: true, passkeySession: false);
     }
 
-    protected void ProviderAccountLinked(bool linked)
-    {
-        _ = AuthServiceMock
+    protected void ProviderAccountLinked(bool linked) =>
+        AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(linked);
-    }
 
     /// <summary>Markup of the "operator signed in, no provider account" message (its data-testid is the contract).</summary>
     protected const string NoProviderAccountTestId = "no-provider-account";
@@ -114,9 +107,9 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInOperatorAsync();
         ProviderAccountLinked(false);
 
-        IRenderedComponent<CollectVideos> component = Render<CollectVideos>();
+        var component = Render<CollectVideos>();
 
-        _ = Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
         Assert.Empty(component.FindAll("a[href='/accounts/add']"));
         Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
     }
@@ -127,7 +120,7 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignOutOperatorAsync();
         ProviderAccountLinked(true);
 
-        IRenderedComponent<CollectVideos> component = Render<CollectVideos>();
+        var component = Render<CollectVideos>();
 
         Assert.Contains("You are not signed in.", component.Markup);
         Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
@@ -139,10 +132,10 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
-        IRenderedComponent<CollectVideos> component = Render<CollectVideos>();
+        var component = Render<CollectVideos>();
 
         Assert.DoesNotContain("You are not signed in.", component.Markup);
-        _ = Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
         Assert.NotEmpty(component.FindAll("a[href='/accounts/add']"));
     }
 
@@ -152,7 +145,7 @@ public class CollectVideos_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInOperatorAsync();
         ProviderAccountLinked(true);
 
-        IRenderedComponent<CollectVideos> component = Render<CollectVideos>();
+        var component = Render<CollectVideos>();
 
         Assert.DoesNotContain("You are not signed in.", component.Markup);
         Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
@@ -168,9 +161,9 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInOperatorAsync();
         ProviderAccountLinked(false);
 
-        IRenderedComponent<CollectSnapshots> component = Render<CollectSnapshots>();
+        var component = Render<CollectSnapshots>();
 
-        _ = Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
         Assert.Empty(component.FindAll("a[href='/accounts/add']"));
         Assert.Contains("Ask an administrator to link a provider account.", component.Markup);
     }
@@ -181,7 +174,7 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignOutOperatorAsync();
         ProviderAccountLinked(true);
 
-        IRenderedComponent<CollectSnapshots> component = Render<CollectSnapshots>();
+        var component = Render<CollectSnapshots>();
 
         Assert.Contains("You are not signed in.", component.Markup);
         Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
@@ -193,10 +186,10 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInAsSuperAdminLocalAsync();
         ProviderAccountLinked(false);
 
-        IRenderedComponent<CollectSnapshots> component = Render<CollectSnapshots>();
+        var component = Render<CollectSnapshots>();
 
         Assert.DoesNotContain("You are not signed in.", component.Markup);
-        _ = Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
+        Assert.Single(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));
         Assert.NotEmpty(component.FindAll("a[href='/accounts/add']"));
     }
 
@@ -206,7 +199,7 @@ public class CollectSnapshots_OperatorGate_Tests : OperatorGatedPageTestBase
         await SignInOperatorAsync();
         ProviderAccountLinked(true);
 
-        IRenderedComponent<CollectSnapshots> component = Render<CollectSnapshots>();
+        var component = Render<CollectSnapshots>();
 
         Assert.DoesNotContain("You are not signed in.", component.Markup);
         Assert.Empty(component.FindAll($"[data-testid='{NoProviderAccountTestId}']"));

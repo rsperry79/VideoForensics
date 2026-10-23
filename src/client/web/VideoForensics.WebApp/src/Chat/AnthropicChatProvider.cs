@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -40,14 +41,12 @@ namespace VideoForensics.WebApp.Chat
             [EnumeratorCancellation] CancellationToken ct)
         {
             if (messages == null || messages.Count == 0)
-            {
                 throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
-            }
 
-            string baseUrl = _options.BaseUrl ?? "https://api.anthropic.com";
-            string endpoint = $"{baseUrl.TrimEnd('/')}/v1/messages";
+            var baseUrl = _options.BaseUrl ?? "https://api.anthropic.com";
+            var endpoint = $"{baseUrl.TrimEnd('/')}/v1/messages";
 
-            AnthropicRequest request = BuildRequest(messages, tools);
+            var request = BuildRequest(messages, tools);
             request.Stream = true;
             var content = JsonContent.Create(request, options: _jsonOptions);
 
@@ -59,17 +58,14 @@ namespace VideoForensics.WebApp.Chat
             httpRequest.Headers.Add("x-api-key", _options.ApiKey);
             httpRequest.Headers.Add("anthropic-version", "2023-06-01");
 
-            using HttpResponseMessage response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
             {
                 // Why: the response body carries the error reason (e.g. unknown model, invalid request) that
                 // EnsureSuccessStatusCode discards. The API key is only sent in the request header, so it is never echoed here.
                 string errorBody = await response.Content.ReadAsStringAsync(ct);
                 if (errorBody.Length > 500)
-                {
                     errorBody = errorBody[..500];
-                }
-
                 throw new HttpRequestException(
                     $"Anthropic API returned {(int)response.StatusCode} ({response.StatusCode}): {errorBody}", null, response.StatusCode);
             }
@@ -96,7 +92,6 @@ namespace VideoForensics.WebApp.Chat
                             toolCallId = block.GetProperty("id").GetString();
                             toolName = block.GetProperty("name").GetString();
                         }
-
                         break;
                     }
 
@@ -113,14 +108,12 @@ namespace VideoForensics.WebApp.Chat
                                     _ = text.Append(fragment);
                                     yield return new LlmTextDelta(fragment);
                                 }
-
                                 break;
 
                             case "input_json_delta":
                                 _ = toolArgumentsJson.Append(delta.GetProperty("partial_json").GetString());
                                 break;
                         }
-
                         break;
                     }
 
@@ -132,7 +125,7 @@ namespace VideoForensics.WebApp.Chat
                 }
             }
 
-Done:
+            Done:
             if (sawToolUse)
             {
                 yield return new LlmStepCompleted(new LlmCompletionResult(
@@ -143,9 +136,10 @@ Done:
                 yield break;
             }
 
-            yield return text.Length == 0
-                ? throw new InvalidOperationException("No valid content type found in Anthropic response")
-                : (LlmStreamEvent)new LlmStepCompleted(new LlmCompletionResult(
+            if (text.Length == 0)
+                throw new InvalidOperationException("No valid content type found in Anthropic response");
+
+            yield return new LlmStepCompleted(new LlmCompletionResult(
                 TextReply: text.ToString(),
                 ToolCallId: null,
                 ToolName: null,
@@ -218,20 +212,23 @@ Done:
 
         private static object? ParseJsonToObject(string? json)
         {
-            return string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<object>(json);
+            if (string.IsNullOrEmpty(json))
+                return null;
+
+            return JsonSerializer.Deserialize<object>(json);
         }
 
         // DTO classes for Anthropic API
         private class AnthropicRequest
         {
             [JsonPropertyName("model")]
-            public string Model { get; set; } = string.Empty;
+            public string Model { get; set; } = "";
 
             [JsonPropertyName("max_tokens")]
             public int MaxTokens { get; set; }
 
             [JsonPropertyName("messages")]
-            public List<AnthropicMessage> Messages { get; set; } = [];
+            public List<AnthropicMessage> Messages { get; set; } = new();
 
             [JsonPropertyName("tools")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -244,7 +241,7 @@ Done:
         private class AnthropicMessage
         {
             [JsonPropertyName("role")]
-            public string Role { get; set; } = string.Empty;
+            public string Role { get; set; } = "";
 
             [JsonPropertyName("content")]
             public AnthropicContent[]? Content { get; set; }
@@ -253,7 +250,7 @@ Done:
         private class AnthropicContent
         {
             [JsonPropertyName("type")]
-            public string Type { get; set; } = string.Empty;
+            public string Type { get; set; } = "";
 
             [JsonPropertyName("text")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -283,10 +280,10 @@ Done:
         private class AnthropicTool
         {
             [JsonPropertyName("name")]
-            public string Name { get; set; } = string.Empty;
+            public string Name { get; set; } = "";
 
             [JsonPropertyName("description")]
-            public string Description { get; set; } = string.Empty;
+            public string Description { get; set; } = "";
 
             [JsonPropertyName("input_schema")]
             public object? InputSchema { get; set; }

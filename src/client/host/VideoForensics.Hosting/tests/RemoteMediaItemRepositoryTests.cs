@@ -5,6 +5,8 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteMediaItemRepositoryTests
@@ -195,6 +197,7 @@ namespace VideoForensics.Hosting.Tests
             _ = Assert.NotNull(capturedToken);
             Assert.Equal(cts.Token, capturedToken.Value);
         }
+
 
         [Fact]
         public async Task GetByHashAsync_Throws_NotSupportedException()
@@ -505,7 +508,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetAsync_MediaItemExists_ReturnsItem()
         {
             var mediaItemId = Guid.NewGuid();
-            MediaItemDto dto = CreateMediaItemDto(mediaItemId);
+            var dto = CreateMediaItemDto(mediaItemId);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async _ =>
@@ -562,7 +565,7 @@ namespace VideoForensics.Hosting.Tests
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteMediaItemRepository(httpClient);
 
-            _ = await Assert.ThrowsAsync<HttpRequestException>(
+            await Assert.ThrowsAsync<HttpRequestException>(
                 () => repo.GetAsync(mediaItemId, CancellationToken.None));
         }
 
@@ -571,7 +574,7 @@ namespace VideoForensics.Hosting.Tests
         {
             var cts = new CancellationTokenSource();
             var mediaItemId = Guid.NewGuid();
-            MediaItemDto dto = CreateMediaItemDto(mediaItemId);
+            var dto = CreateMediaItemDto(mediaItemId);
             string json = JsonSerializer.Serialize(dto, JsonOptions);
             CancellationToken? capturedToken = null;
 

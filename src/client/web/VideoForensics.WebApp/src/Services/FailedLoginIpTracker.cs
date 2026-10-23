@@ -2,6 +2,10 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -64,8 +68,8 @@ namespace VideoForensics.WebApp.Services
 
             string key = address.ToString();
             DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
-            var window = TimeSpan.FromMinutes(policy.AutoBanWindowMinutes);
-            var duration = TimeSpan.FromMinutes(policy.AutoBanDurationMinutes);
+            TimeSpan window = TimeSpan.FromMinutes(policy.AutoBanWindowMinutes);
+            TimeSpan duration = TimeSpan.FromMinutes(policy.AutoBanDurationMinutes);
             int threshold = Math.Max(1, policy.AutoBanDistinctAccountThreshold);
 
             if (_windows.Count > SweepThreshold)
@@ -97,7 +101,12 @@ namespace VideoForensics.WebApp.Services
                 return (true, count);
             });
 
-            return crossed && await WriteBanAsync(key, address, now, duration, window, distinctAccounts, ct);
+            if (!crossed)
+            {
+                return false;
+            }
+
+            return await WriteBanAsync(key, address, now, duration, window, distinctAccounts, ct);
         }
 
         /// <inheritdoc />
@@ -129,8 +138,8 @@ namespace VideoForensics.WebApp.Services
             try
             {
                 await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
-                IBannedIpRangeRepository bannedRanges = scope.ServiceProvider.GetRequiredService<IBannedIpRangeRepository>();
-                ISecurityAuditLogger auditLog = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogger>();
+                var bannedRanges = scope.ServiceProvider.GetRequiredService<IBannedIpRangeRepository>();
+                var auditLog = scope.ServiceProvider.GetRequiredService<ISecurityAuditLogger>();
 
                 string cidr = CidrForHost(address);
                 IReadOnlyList<BannedIpRange> active = await bannedRanges.GetActiveAsync(ct);
@@ -163,7 +172,7 @@ namespace VideoForensics.WebApp.Services
             catch (Exception ex)
             {
                 // Release the suppression so a later lockout can retry the write.
-                _ = WithWindow(key, w => { w.SuppressedUntilUtc = null; return 0; });
+                WithWindow(key, w => { w.SuppressedUntilUtc = null; return 0; });
                 if (ex is OperationCanceledException)
                 {
                     throw;
@@ -277,7 +286,7 @@ namespace VideoForensics.WebApp.Services
         private sealed class IpWindow
         {
             public readonly object Gate = new();
-            public readonly Dictionary<Guid, DateTime> LastLockoutByOperator = [];
+            public readonly Dictionary<Guid, DateTime> LastLockoutByOperator = new();
             public DateTime? SuppressedUntilUtc;
             public bool Retired;
         }

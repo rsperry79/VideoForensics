@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -8,49 +10,40 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using Moq;
-
-using System.Security.Claims;
-using System.Text.Encodings.Web;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Services;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
 {
     public class BannedIpsEndpointsTests
     {
-        private static BannedIpRange CreateBan(string cidr, Guid createdBy, DateTime? expiresAtUtc = null)
+        private static BannedIpRange CreateBan(string cidr, Guid createdBy, DateTime? expiresAtUtc = null) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                CidrRange = cidr,
-                Reason = "Auto-ban: 3 accounts locked in 60 min",
-                CreatedAtUtc = DateTime.UtcNow.AddMinutes(-5),
-                CreatedByOperatorId = createdBy,
-                ExpiresAtUtc = expiresAtUtc
-            };
-        }
+            Id = Guid.NewGuid(),
+            CidrRange = cidr,
+            Reason = "Auto-ban: 3 accounts locked in 60 min",
+            CreatedAtUtc = DateTime.UtcNow.AddMinutes(-5),
+            CreatedByOperatorId = createdBy,
+            ExpiresAtUtc = expiresAtUtc
+        };
 
         [Fact]
         public async Task ListBannedIps_ReturnsActiveBansAsDtos()
         {
             // Arrange
-            BannedIpRange manualBan = CreateBan("203.0.113.0/24", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            BannedIpRange systemBan = CreateBan("198.51.100.7/32", BannedIpRangeDtoMapping.SystemAutoBanOperatorId, DateTime.UtcNow.AddHours(24));
+            var manualBan = CreateBan("203.0.113.0/24", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var systemBan = CreateBan("198.51.100.7/32", BannedIpRangeDtoMapping.SystemAutoBanOperatorId, DateTime.UtcNow.AddHours(24));
             var repository = new Mock<IBannedIpRangeRepository>();
-            _ = repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([manualBan, systemBan]);
+            repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<BannedIpRange> { manualBan, systemBan });
 
             // Act
             Ok<IReadOnlyList<BannedIpRangeDto>> result = await BannedIpsEndpoints.ListAsync(repository.Object, CancellationToken.None);
@@ -71,10 +64,10 @@ namespace VideoForensics.WebApp.Tests
         public async Task ListBannedIps_SystemOperatorBan_IsFlaggedAsAutoBan()
         {
             // Arrange
-            BannedIpRange systemBan = CreateBan("198.51.100.7/32", BannedIpRangeDtoMapping.SystemAutoBanOperatorId, DateTime.UtcNow.AddHours(24));
+            var systemBan = CreateBan("198.51.100.7/32", BannedIpRangeDtoMapping.SystemAutoBanOperatorId, DateTime.UtcNow.AddHours(24));
             var repository = new Mock<IBannedIpRangeRepository>();
-            _ = repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([systemBan]);
+            repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<BannedIpRange> { systemBan });
 
             // Act
             Ok<IReadOnlyList<BannedIpRangeDto>> result = await BannedIpsEndpoints.ListAsync(repository.Object, CancellationToken.None);
@@ -88,11 +81,11 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange: the repository contract promises only active bans, but a stale or mis-mocked
             // repository must not leak an expired ban to the admin list.
-            BannedIpRange active = CreateBan("203.0.113.0/24", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            BannedIpRange expired = CreateBan("192.0.2.0/24", Guid.NewGuid(), DateTime.UtcNow.AddMinutes(-1));
+            var active = CreateBan("203.0.113.0/24", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var expired = CreateBan("192.0.2.0/24", Guid.NewGuid(), DateTime.UtcNow.AddMinutes(-1));
             var repository = new Mock<IBannedIpRangeRepository>();
-            _ = repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([active, expired]);
+            repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<BannedIpRange> { active, expired });
 
             // Act
             Ok<IReadOnlyList<BannedIpRangeDto>> result = await BannedIpsEndpoints.ListAsync(repository.Object, CancellationToken.None);
@@ -108,8 +101,8 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             using var cts = new CancellationTokenSource();
             var repository = new Mock<IBannedIpRangeRepository>();
-            _ = repository.Setup(r => r.GetActiveAsync(cts.Token))
-                .ReturnsAsync([]);
+            repository.Setup(r => r.GetActiveAsync(cts.Token))
+                .ReturnsAsync(new List<BannedIpRange>());
 
             // Act
             _ = await BannedIpsEndpoints.ListAsync(repository.Object, cts.Token);
@@ -124,10 +117,10 @@ namespace VideoForensics.WebApp.Tests
             // Arrange: map the routes onto a real endpoint table; a non-admin is rejected by the
             // SuperAdminLocalOrPasskey policy, so the route metadata must carry that policy name.
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
-            _ = builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
-            _ = builder.Services.AddSingleton(new Mock<IFailedLoginIpTracker>().Object);
-            _ = builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
+            builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
+            builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
+            builder.Services.AddSingleton(new Mock<IFailedLoginIpTracker>().Object);
+            builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
             WebApplication app = builder.Build();
 
             // Act
@@ -145,10 +138,10 @@ namespace VideoForensics.WebApp.Tests
         public void MapBannedIpsEndpoints_DeleteRoute_RequiresSuperAdminLocalOrPasskeyAndAcceptsDelete()
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
-            _ = builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
-            _ = builder.Services.AddSingleton(new Mock<IFailedLoginIpTracker>().Object);
-            _ = builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
+            builder.Services.AddSingleton(new Mock<IBannedIpRangeRepository>().Object);
+            builder.Services.AddSingleton(new Mock<ISecurityAuditLogger>().Object);
+            builder.Services.AddSingleton(new Mock<IFailedLoginIpTracker>().Object);
+            builder.Services.AddSingleton(new Mock<INetworkTierResolver>().Object);
             WebApplication app = builder.Build();
 
             app.MapBannedIpsEndpoints();
@@ -234,8 +227,8 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_ValidStepUpToken_Returns204AndRemovesBan()
         {
             // Arrange
-            BannedIpRange ban = CreateBan("203.0.113.7/32", Guid.NewGuid());
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith(ban);
+            var ban = CreateBan("203.0.113.7/32", Guid.NewGuid());
+            var repository = RepositoryWith(ban);
             await using WebApplication app = await StartPipelineAsync(repository, stepUpValid: true);
             using HttpClient client = app.GetTestClient();
             using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/banned-ips/{ban.Id}");
@@ -249,14 +242,11 @@ namespace VideoForensics.WebApp.Tests
             repository.Verify(r => r.RemoveAsync(ban.Id, It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        private static DefaultHttpContext OperatorContext(Guid operatorId)
+        private static DefaultHttpContext OperatorContext(Guid operatorId) => new()
         {
-            return new()
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
+            User = new ClaimsPrincipal(new ClaimsIdentity(
                 new[] { new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()) }, "test"))
-            };
-        }
+        };
 
         private static Mock<INetworkTierResolver> TierResolver(string clientIp = "198.51.100.9")
         {
@@ -268,7 +258,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<IBannedIpRangeRepository> RepositoryWith(params BannedIpRange[] active)
         {
             var repository = new Mock<IBannedIpRangeRepository>();
-            _ = repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(active.ToList());
             return repository;
         }
@@ -277,8 +267,8 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_KnownActiveId_RemovesRangeAndReturns204()
         {
             // Arrange
-            BannedIpRange ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith(ban);
+            var ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var repository = RepositoryWith(ban);
 
             // Act
             Results<NoContent, NotFound> result = await BannedIpsEndpoints.UnbanAsync(
@@ -286,7 +276,7 @@ namespace VideoForensics.WebApp.Tests
                 TierResolver().Object, OperatorContext(Guid.NewGuid()), CancellationToken.None);
 
             // Assert
-            _ = Assert.IsType<NoContent>(result.Result);
+            Assert.IsType<NoContent>(result.Result);
             repository.Verify(r => r.RemoveAsync(ban.Id, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -294,7 +284,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_UnknownId_Returns404AndChangesNothing()
         {
             // Arrange
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith();
+            var repository = RepositoryWith();
             var tracker = new Mock<IFailedLoginIpTracker>();
             var audit = new Mock<ISecurityAuditLogger>();
 
@@ -304,7 +294,7 @@ namespace VideoForensics.WebApp.Tests
                 TierResolver().Object, OperatorContext(Guid.NewGuid()), CancellationToken.None);
 
             // Assert
-            _ = Assert.IsType<NotFound>(result.Result);
+            Assert.IsType<NotFound>(result.Result);
             repository.Verify(r => r.RemoveAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
             audit.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string?>(),
                 It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -315,8 +305,8 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_Success_WritesUnbanAuditEntryWithActorAndRange()
         {
             // Arrange
-            BannedIpRange ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith(ban);
+            var ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var repository = RepositoryWith(ban);
             var audit = new Mock<ISecurityAuditLogger>();
             var actor = Guid.NewGuid();
 
@@ -335,10 +325,10 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_HostBan_ClearsTrackerForBannedAddress()
         {
             // Arrange
-            BannedIpRange ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith(ban);
+            var ban = CreateBan("203.0.113.10/32", Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var repository = RepositoryWith(ban);
             var tracker = new Mock<IFailedLoginIpTracker>();
-            _ = tracker.Setup(t => t.ClearAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            tracker.Setup(t => t.ClearAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             // Act
             _ = await BannedIpsEndpoints.UnbanAsync(
@@ -356,10 +346,10 @@ namespace VideoForensics.WebApp.Tests
         public async Task UnbanBannedIp_RangeOrIpv6Host_ClearsTrackerOnlyForSingleHost(string cidr, string? expectedClearedIp)
         {
             // Arrange: a wider prefix covers many addresses, so the tracker must not drop counters for them.
-            BannedIpRange ban = CreateBan(cidr, Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
-            Mock<IBannedIpRangeRepository> repository = RepositoryWith(ban);
+            var ban = CreateBan(cidr, Guid.NewGuid(), DateTime.UtcNow.AddHours(1));
+            var repository = RepositoryWith(ban);
             var tracker = new Mock<IFailedLoginIpTracker>();
-            _ = tracker.Setup(t => t.ClearAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            tracker.Setup(t => t.ClearAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             // Act
             _ = await BannedIpsEndpoints.UnbanAsync(

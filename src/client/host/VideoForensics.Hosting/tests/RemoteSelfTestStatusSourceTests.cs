@@ -1,8 +1,12 @@
 using System.Reactive.Subjects;
 
+using Moq;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -13,8 +17,8 @@ namespace VideoForensics.Hosting.Tests
         private static Mock<IRealtimeStore> BuildStore(Subject<SelfTestStatusDto> subject)
         {
             var store = new Mock<IRealtimeStore>();
-            _ = store.SetupGet(s => s.SelfTestStatus).Returns(subject);
-            _ = store.SetupGet(s => s.LatestSelfTestStatus).Returns((SelfTestStatusDto?)null);
+            store.SetupGet(s => s.SelfTestStatus).Returns(subject);
+            store.SetupGet(s => s.LatestSelfTestStatus).Returns((SelfTestStatusDto?)null);
             return store;
         }
 
@@ -29,7 +33,7 @@ namespace VideoForensics.Hosting.Tests
             using IDisposable subscription = source.Status.Subscribe(received.Add);
             subject.OnNext(running);
 
-            _ = Assert.Single(received);
+            Assert.Single(received);
             Assert.Same(running, received[0]);
         }
 

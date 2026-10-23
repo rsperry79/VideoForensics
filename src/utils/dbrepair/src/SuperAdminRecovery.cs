@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Utils.DbRepair.Contracts;
@@ -34,16 +33,19 @@ public class SuperAdminRecovery : ISuperAdminRecovery
     {
         if (!string.IsNullOrWhiteSpace(username))
         {
-            Operator op = await _operatorRepo.GetByUsernameAsync(username, ct)
+            var op = await _operatorRepo.GetByUsernameAsync(username, ct)
                 ?? throw new InvalidOperationException($"Operator '{username}' not found.");
 
-            return op.Role != OperatorRole.SuperAdmin
-                ? throw new InvalidOperationException($"Operator '{username}' is not a SuperAdmin (role: {op.Role}).")
-                : op;
+            if (op.Role != OperatorRole.SuperAdmin)
+            {
+                throw new InvalidOperationException($"Operator '{username}' is not a SuperAdmin (role: {op.Role}).");
+            }
+
+            return op;
         }
 
         // No username provided: select the target automatically
-        IReadOnlyList<Operator> allOps = await _operatorRepo.ListAsync(ct);
+        var allOps = await _operatorRepo.ListAsync(ct);
         var superAdmins = allOps.Where(o => o.Role == OperatorRole.SuperAdmin).ToList();
 
         if (superAdmins.Count == 0)
@@ -52,7 +54,7 @@ public class SuperAdminRecovery : ISuperAdminRecovery
         }
 
         // Prefer the primary SuperAdmin if it exists
-        Operator? primary = superAdmins.FirstOrDefault(o => o.IsPrimarySuperAdmin);
+        var primary = superAdmins.FirstOrDefault(o => o.IsPrimarySuperAdmin);
         if (primary is not null)
         {
             return primary;
@@ -84,7 +86,12 @@ public class SuperAdminRecovery : ISuperAdminRecovery
         ValidatePassword(password);
 
         string confirmation = await _passwordPrompt.PromptConfirmationAsync(ct);
-        return password != confirmation ? throw new InvalidOperationException("Passwords do not match.") : password;
+        if (password != confirmation)
+        {
+            throw new InvalidOperationException("Passwords do not match.");
+        }
+
+        return password;
     }
 
     public async Task ResetPasswordAsync(Operator target, string newPassword, CancellationToken ct)
@@ -131,13 +138,13 @@ public class SuperAdminRecovery : ISuperAdminRecovery
             IsUrgent = true,
             Details = $"SuperAdmin password reset for {target.Username}"
         };
-        _ = await _auditRepo.AppendAsync(auditEntry, ct);
+        await _auditRepo.AppendAsync(auditEntry, ct);
     }
 
     public async Task<Operator> ExecuteAsync(string? username, bool skipConfirmation, CancellationToken ct)
     {
         // Step 1: Select target
-        Operator target = await SelectTargetAsync(username, ct);
+        var target = await SelectTargetAsync(username, ct);
         Console.WriteLine($"\nTarget SuperAdmin: {target.Username} (ID: {target.Id})");
 
         // Step 2: Prompt for new password

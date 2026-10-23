@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class DeviceCodePairingServiceTests

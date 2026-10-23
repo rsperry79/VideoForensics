@@ -1,9 +1,9 @@
-using VideoForensics.Core.Forensics.Implementations;
-using VideoForensics.Core.Forensics.Interfaces;
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Forensics.Tests
 {
+    using VideoForensics.Data.Common.Entities;
+    using VideoForensics.Core.Forensics.Implementations;
+    using VideoForensics.Core.Forensics.Interfaces;
+
     public class LiveViewInterferenceScorerTests
     {
         private readonly ILiveViewInterferenceScorer _scorer = new LiveViewInterferenceScorer();
@@ -37,10 +37,10 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, baseline, null);
+            var score = _scorer.ScoreSample(sample, baseline, null);
 
             // Assert
-            _ = Assert.NotNull(score);
+            Assert.NotNull(score);
             Assert.True(score < 0.1, "Bitrate at baseline should produce a low score near 0");
         }
 
@@ -73,10 +73,10 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, baseline, null);
+            var score = _scorer.ScoreSample(sample, baseline, null);
 
             // Assert
-            _ = Assert.NotNull(score);
+            Assert.NotNull(score);
             Assert.True(score < 0.1, "Bitrate above baseline should not count as degraded");
         }
 
@@ -109,10 +109,10 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, baseline, null);
+            var score = _scorer.ScoreSample(sample, baseline, null);
 
             // Assert
-            _ = Assert.NotNull(score);
+            Assert.NotNull(score);
             Assert.True(score > 0.5, "Bitrate several std-devs below baseline should produce high score");
         }
 
@@ -145,10 +145,10 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, null, deviceGlobalBaseline);
+            var score = _scorer.ScoreSample(sample, null, deviceGlobalBaseline);
 
             // Assert
-            _ = Assert.NotNull(score);
+            Assert.NotNull(score);
             Assert.True(score > 0.5, "Should score using device global fallback when bucket baseline is null");
         }
 
@@ -167,7 +167,7 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, null, null);
+            var score = _scorer.ScoreSample(sample, null, null);
 
             // Assert
             Assert.Null(score);
@@ -202,7 +202,7 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? score = _scorer.ScoreSample(sample, baseline, null);
+            var score = _scorer.ScoreSample(sample, baseline, null);
 
             // Assert
             Assert.Null(score);
@@ -247,12 +247,12 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act
-            double? scoreBitrateOnly = _scorer.ScoreSample(sampleBitrateOnly, baseline, null);
-            double? scoreCombined = _scorer.ScoreSample(sampleCombined, baseline, null);
+            var scoreBitrateOnly = _scorer.ScoreSample(sampleBitrateOnly, baseline, null);
+            var scoreCombined = _scorer.ScoreSample(sampleCombined, baseline, null);
 
             // Assert
-            _ = Assert.NotNull(scoreBitrateOnly);
-            _ = Assert.NotNull(scoreCombined);
+            Assert.NotNull(scoreBitrateOnly);
+            Assert.NotNull(scoreCombined);
             Assert.True(scoreCombined > scoreBitrateOnly, "Combined high loss+jitter+low bitrate should score higher than bitrate alone");
         }
 
@@ -285,10 +285,10 @@ namespace VideoForensics.Core.Forensics.Tests
             };
 
             // Act & Assert - should not throw
-            double? score = _scorer.ScoreSample(sample, baseline, null);
+            var score = _scorer.ScoreSample(sample, baseline, null);
 
-            _ = Assert.NotNull(score);
-            Assert.True(score is >= 0 and <= 1, "Score should be clamped to [0,1]");
+            Assert.NotNull(score);
+            Assert.True(score >= 0 && score <= 1, "Score should be clamped to [0,1]");
         }
     }
 }

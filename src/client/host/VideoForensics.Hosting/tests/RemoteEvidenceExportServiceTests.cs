@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -41,7 +43,7 @@ namespace VideoForensics.Hosting.Tests
             var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
             var service = new RemoteEvidenceExportService(httpClient);
 
-            var caseId = Guid.NewGuid();
+            Guid caseId = Guid.NewGuid();
             var cts = new CancellationTokenSource();
 
             // Act
@@ -188,7 +190,7 @@ namespace VideoForensics.Hosting.Tests
             string? stepUpHeader = null;
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out IEnumerable<string>? values) ? values.Single() : null;
+                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out var values) ? values.Single() : null;
                 var dto = new ExportResultDto(true, "/a.zip", "h", 1, [], null);
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -208,7 +210,7 @@ namespace VideoForensics.Hosting.Tests
             string? stepUpHeader = "unset";
             var handler = new CaptureHttpMessageHandler(async (request, ct) =>
             {
-                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out IEnumerable<string>? values) ? values.Single() : null;
+                stepUpHeader = request.Headers.TryGetValues("X-StepUp-Token", out var values) ? values.Single() : null;
                 var dto = new ExportResultDto(true, "/a.zip", "h", 1, [], null);
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -236,11 +238,11 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
             var service = new RemoteEvidenceExportService(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") });
-            var caseId = Guid.NewGuid();
+            Guid caseId = Guid.NewGuid();
 
             _ = await service.ExportEvidenceAsync(caseId, "recipient", null, CancellationToken.None);
 
-            using var doc = JsonDocument.Parse(body!);
+            using JsonDocument doc = JsonDocument.Parse(body!);
             Assert.Equal(caseId, doc.RootElement.GetProperty("CaseId").GetGuid());
             Assert.False(doc.RootElement.TryGetProperty("MediaItemIds", out _));
         }

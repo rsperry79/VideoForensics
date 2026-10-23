@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.WebApp.Api;
 
 using Xunit;
 
@@ -27,7 +28,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void StepUpComplete_OperatorPasskeySession_ApprovedOwnCredential_Succeeds()
         {
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             OperatorCredential credential = CreateCredential(operatorId, isApproved: true);
 
             bool allowed = StepUpCredentialPolicy.IsAcceptableOperatorPasskey(credential, operatorId);
@@ -38,7 +39,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void StepUpComplete_OperatorPasskeySession_CredentialOfAnotherOperator_Returns401()
         {
-            var sessionOperatorId = Guid.NewGuid();
+            Guid sessionOperatorId = Guid.NewGuid();
             OperatorCredential credential = CreateCredential(Guid.NewGuid(), isApproved: true);
 
             bool allowed = StepUpCredentialPolicy.IsAcceptableOperatorPasskey(credential, sessionOperatorId);
@@ -49,7 +50,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void StepUpComplete_OperatorPasskeySession_UnapprovedCredential_Returns401()
         {
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             OperatorCredential credential = CreateCredential(operatorId, isApproved: false);
 
             bool allowed = StepUpCredentialPolicy.IsAcceptableOperatorPasskey(credential, operatorId);
@@ -60,7 +61,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void StepUpComplete_OperatorPasskeySession_RevokedCredential_Returns401()
         {
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             OperatorCredential credential = CreateCredential(operatorId, isApproved: true, isRevoked: true);
 
             bool allowed = StepUpCredentialPolicy.IsAcceptableOperatorPasskey(credential, operatorId);
@@ -116,7 +117,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void AssertionOptions_OperatorPasskeySession_OffersOnlyTheSignedInPasskey()
         {
-            var operatorId = Guid.NewGuid();
+            Guid operatorId = Guid.NewGuid();
             OperatorCredential sessionPasskey = CreateCredential(operatorId, isApproved: true);
 
             string? allowed = StepUpCredentialPolicy.OperatorPasskeyAllowedCredentialId(sessionPasskey, operatorId);
@@ -127,7 +128,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void AssertionOptions_OperatorPasskeySession_AnotherOperatorsPasskey_OffersNothing()
         {
-            var sessionOperatorId = Guid.NewGuid();
+            Guid sessionOperatorId = Guid.NewGuid();
             OperatorCredential otherPasskey = CreateCredential(Guid.NewGuid(), isApproved: true);
 
             string? allowed = StepUpCredentialPolicy.OperatorPasskeyAllowedCredentialId(otherPasskey, sessionOperatorId);

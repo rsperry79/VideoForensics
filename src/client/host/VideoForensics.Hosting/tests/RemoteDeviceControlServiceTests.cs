@@ -1,9 +1,15 @@
 using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 
+using Moq;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Hosting;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Ui.Shared.Services;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests;
 
@@ -43,7 +49,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetLightAsync_OnTrue_PostsLightRouteWithOnBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetLightAsync("123", true, CancellationToken.None);
 
@@ -55,7 +61,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetSirenAsync_WithDuration_PostsSirenRouteWithOnAndDurationBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetSirenAsync("123", true, 30, CancellationToken.None);
 
@@ -68,7 +74,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetVolumeAsync_Volume_PostsVolumeRouteWithVolumeBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetVolumeAsync("123", 7, CancellationToken.None);
 
@@ -79,7 +85,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetNightModeAsync_Enabled_PostsNightModeRouteWithEnabledBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetNightModeAsync("123", false, CancellationToken.None);
 
@@ -90,7 +96,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetMotionDetectionAsync_Enabled_PostsMotionDetectionRouteWithEnabledBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetMotionDetectionAsync("123", true, CancellationToken.None);
 
@@ -101,7 +107,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetDoNotDisturbAsync_Seconds_PostsDoNotDisturbRouteWithSecondsBody()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage>? requests, List<string>? bodies) = Build();
+        var (service, requests, bodies) = Build();
 
         await service.SetDoNotDisturbAsync("123", 600, CancellationToken.None);
 
@@ -112,7 +118,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetLightAsync_NonSuccessResponse_ThrowsWithoutUrl()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage> _, List<string> _) = Build(HttpStatusCode.BadGateway);
+        var (service, _, _) = Build(HttpStatusCode.BadGateway);
 
         HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(
             () => service.SetLightAsync("123", true, CancellationToken.None));
@@ -124,7 +130,7 @@ public class RemoteDeviceControlServiceTests
     [Fact]
     public async Task SetLightAsync_CancelledToken_ThrowsOperationCanceled()
     {
-        (IDeviceControlService? service, List<HttpRequestMessage> _, List<string> _) = Build();
+        var (service, _, _) = Build();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

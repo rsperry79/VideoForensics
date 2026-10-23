@@ -1,24 +1,25 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
 using Xunit;
 
 namespace VideoForensics.Providers.Ring.Utils.Tests
 {
     public class CallStatusClassifierTests
     {
-        private static EndpointDescriptor CreateDescriptor(bool notApplicableWithoutAlarmHub, bool requiresPushRegistration = false)
+        private static EndpointDescriptor CreateDescriptor(bool notApplicableWithoutAlarmHub, bool requiresPushRegistration = false) => new()
         {
-            return new()
-            {
-                Key = "test-endpoint",
-                DisplayName = "Test Endpoint",
-                Description = "A test endpoint",
-                SessionMethod = "Session.Test()",
-                HttpMethod = "GET",
-                ApiPath = "https://api.example.com/test",
-                Invoke = (_, _) => Task.CompletedTask,
-                NotApplicableWithoutAlarmHub = notApplicableWithoutAlarmHub,
-                RequiresPushRegistration = requiresPushRegistration
-            };
-        }
+            Key = "test-endpoint",
+            DisplayName = "Test Endpoint",
+            Description = "A test endpoint",
+            SessionMethod = "Session.Test()",
+            HttpMethod = "GET",
+            ApiPath = "https://api.example.com/test",
+            Invoke = (_, _) => Task.CompletedTask,
+            NotApplicableWithoutAlarmHub = notApplicableWithoutAlarmHub,
+            RequiresPushRegistration = requiresPushRegistration
+        };
 
         [Fact]
         public void Classify_AlarmOnlyEndpointReturning404_ReturnsNotApplicable()
@@ -135,7 +136,7 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
         [InlineData("location-mode")]
         [InlineData("location-mode-settings")]
         [InlineData("location-mode-sharing")]
-        public void EndpointRegistry_ModeAndMonitoringEndpoint_IsNotFlaggedNotApplicable(string key)
+                public void EndpointRegistry_ModeAndMonitoringEndpoint_IsNotFlaggedNotApplicable(string key)
         {
             EndpointDescriptor? descriptor = EndpointRegistry.Find(key);
 

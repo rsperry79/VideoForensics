@@ -1,3 +1,4 @@
+using BlazorLocalTime;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Alerts;
 
@@ -10,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Blazor;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
@@ -19,6 +19,7 @@ using VideoForensics.Hosting.ServerDiscovery;
 using VideoForensics.MauiApp.AppLock;
 using VideoForensics.MauiApp.ServerDiscovery;
 using VideoForensics.Ui.Shared.Services;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.MauiApp
 {

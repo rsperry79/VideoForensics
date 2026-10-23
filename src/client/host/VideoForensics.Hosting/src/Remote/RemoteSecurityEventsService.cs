@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -37,7 +37,7 @@ namespace VideoForensics.Hosting.Remote
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/v1/security-events", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
             List<SecurityEventDto>? dtos = await response.Content.ReadFromJsonAsync<List<SecurityEventDto>>(JsonOptions, ct);
-            return (dtos ?? [])
+            return (dtos ?? new List<SecurityEventDto>())
                 .Select(dto => new SecurityEventSummary(
                     dto.Id,
                     dto.OperatorId,

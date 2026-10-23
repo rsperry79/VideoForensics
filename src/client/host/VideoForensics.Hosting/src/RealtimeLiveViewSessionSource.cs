@@ -37,16 +37,12 @@ namespace VideoForensics.Hosting
         public bool IsConnected => _hub.IsLiveHubConnected;
 
         /// <inheritdoc />
-        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
-        {
-            return _hub.SubscribeLiveViewAsync(sessionId, cancellationToken);
-        }
+        public Task SubscribeAsync(Guid sessionId, CancellationToken cancellationToken) =>
+            _hub.SubscribeLiveViewAsync(sessionId, cancellationToken);
 
         /// <inheritdoc />
-        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
-        {
-            return _hub.UnsubscribeLiveViewAsync(sessionId, cancellationToken);
-        }
+        public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) =>
+            _hub.UnsubscribeLiveViewAsync(sessionId, cancellationToken);
     }
 
     /// <summary>Maps live-view telemetry sample DTOs from the realtime hub back to domain entities.</summary>

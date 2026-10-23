@@ -1,11 +1,9 @@
+namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
+using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services.Evidence;
 using VideoForensics.Ui.Shared.Services.Inspector;
-
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
 public class EvidenceActions_ResolveOperatorActor_Tests
 {
@@ -18,7 +16,7 @@ public class EvidenceActions_ResolveOperatorActor_Tests
         // Events page's bug: that recorded the server process's OS account, not the operator).
         var operatorId = Guid.NewGuid();
 
-        string? actor = EvidenceActions.ResolveOperatorActor(operatorId);
+        var actor = EvidenceActions.ResolveOperatorActor(operatorId);
 
         Assert.Equal(operatorId.ToString(), actor);
     }
@@ -26,7 +24,7 @@ public class EvidenceActions_ResolveOperatorActor_Tests
     [Fact]
     public void ResolveOperatorActor_NoOperatorSignedIn_ReturnsNull()
     {
-        string? actor = EvidenceActions.ResolveOperatorActor(null);
+        var actor = EvidenceActions.ResolveOperatorActor(null);
 
         Assert.Null(actor);
     }
@@ -148,7 +146,7 @@ public class EvidenceActions_GetExportMediaItemIds_Tests
             MakeItem(deviceId, mediaId: null), // event-only, no media
         };
 
-        IReadOnlyList<Guid> ids = EvidenceActions.GetExportMediaItemIds(items);
+        var ids = EvidenceActions.GetExportMediaItemIds(items);
 
         Assert.Equal(new[] { mediaId1, mediaId2 }, ids);
     }
@@ -159,7 +157,7 @@ public class EvidenceActions_GetExportMediaItemIds_Tests
         var deviceId = Guid.NewGuid();
         var items = new List<EvidenceItem> { MakeItem(deviceId, mediaId: null) };
 
-        IReadOnlyList<Guid> ids = EvidenceActions.GetExportMediaItemIds(items);
+        var ids = EvidenceActions.GetExportMediaItemIds(items);
 
         Assert.Empty(ids);
     }
@@ -201,7 +199,7 @@ public class EvidenceActions_BuildExportUrl_Tests
     {
         var id = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-        string url = EvidenceActions.BuildExportUrl(new[] { id });
+        var url = EvidenceActions.BuildExportUrl(new[] { id });
 
         Assert.Equal($"/review/export?ids={id}", url);
     }
@@ -212,7 +210,7 @@ public class EvidenceActions_BuildExportUrl_Tests
         var id1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var id2 = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-        string url = EvidenceActions.BuildExportUrl(new[] { id1, id2 });
+        var url = EvidenceActions.BuildExportUrl(new[] { id1, id2 });
 
         Assert.Equal($"/review/export?ids={Uri.EscapeDataString($"{id1},{id2}")}", url);
     }
@@ -225,7 +223,7 @@ public class EvidenceActions_DetermineIntegrityStatus_Tests
     {
         var mediaId = Guid.NewGuid();
 
-        (string? text, string? color) = EvidenceActions.DetermineIntegrityStatus(mediaId, []);
+        var (text, color) = EvidenceActions.DetermineIntegrityStatus(mediaId, new List<IntegrityRecord>());
 
         Assert.Equal("Not verified", text);
         Assert.Equal("goldenrod", color);
@@ -240,7 +238,7 @@ public class EvidenceActions_DetermineIntegrityStatus_Tests
             new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "x", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
         };
 
-        (string? text, string? color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);
+        var (text, color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);
 
         Assert.Equal("Integrity failed", text);
         Assert.Equal("red", color);
@@ -255,7 +253,7 @@ public class EvidenceActions_DetermineIntegrityStatus_Tests
             new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "x", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
         };
 
-        (string? text, string? color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);
+        var (text, color) = EvidenceActions.DetermineIntegrityStatus(mediaId, records);
 
         Assert.Equal("Verified", text);
         Assert.Equal("green", color);

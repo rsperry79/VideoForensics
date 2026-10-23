@@ -5,10 +5,11 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Core.Models;
 
 using Xunit;
@@ -53,7 +54,7 @@ namespace VideoForensics.Client.Core.Tests
             _ = _integrity.Setup(s => s.VerifyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = _actionLog
                 .Setup(r => r.GetHistoryForEntityAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync((IReadOnlyList<ActionLogEntry>)[]);
             _ = _exportRecords
                 .Setup(s => s.RecordExportAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<IReadOnlyList<(Guid, string)>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ExportRecord { Id = Guid.NewGuid(), ExportedByUserName = "u", ArchiveFileName = "a.zip", ArchiveSha256Hash = "h", AppVersion = "1" });
@@ -90,22 +91,19 @@ namespace VideoForensics.Client.Core.Tests
             return item;
         }
 
-        private static CaseItem Pin(Guid caseId, MediaItem media)
+        private static CaseItem Pin(Guid caseId, MediaItem media) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                CaseId = caseId,
-                Kind = CaseItemKind.Media,
-                MediaItemId = media.Id,
-                Reason = "r",
-                AddedBy = "u"
-            };
-        }
+            Id = Guid.NewGuid(),
+            CaseId = caseId,
+            Kind = CaseItemKind.Media,
+            MediaItemId = media.Id,
+            Reason = "r",
+            AddedBy = "u"
+        };
 
         private Guid SetUpCase(IReadOnlyList<CaseItem> items, IReadOnlyList<Guid>? devices = null, bool withWindow = true)
         {
-            var caseId = Guid.NewGuid();
+            Guid caseId = Guid.NewGuid();
             _ = _cases.Setup(c => c.GetAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(new ForensicCase
             {
                 Id = caseId,
@@ -157,7 +155,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             MediaItem pinned = AddMedia("pinned.mp4");
             MediaItem other = AddMedia("other-case.mp4");
-            var caseId = Guid.NewGuid();
+            Guid caseId = Guid.NewGuid();
             caseId = SetUpCase([Pin(caseId, pinned)]);
 
             ExportResult result = await _orchestrator.ExportEvidenceAsync(caseId, null, null, CancellationToken.None);
@@ -188,8 +186,8 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ExportEvidenceAsync_CaseScoped_IncludesCaseReportsForEachScopeDevice()
         {
-            var deviceA = Guid.NewGuid();
-            var deviceB = Guid.NewGuid();
+            Guid deviceA = Guid.NewGuid();
+            Guid deviceB = Guid.NewGuid();
             MediaItem pinned = AddMedia("pinned3.mp4", deviceA);
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)], [deviceA, deviceB]);
 
@@ -233,7 +231,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ExportEvidenceAsync_ReportsOnlyCoverDevicesOfPinnedMedia()
         {
-            var deviceA = Guid.NewGuid();
+            Guid deviceA = Guid.NewGuid();
             MediaItem pinned = AddMedia("dev-a.mp4", deviceA, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
             Guid caseId = SetUpCase([Pin(Guid.Empty, pinned)]);
 
@@ -272,7 +270,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task ExportEvidenceAsync_CaseScoped_UnknownCase_ReturnsFailure()
         {
-            var unknown = Guid.NewGuid();
+            Guid unknown = Guid.NewGuid();
             _ = _cases.Setup(c => c.GetAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((ForensicCase?)null);
 
             ExportResult result = await _orchestrator.ExportEvidenceAsync(unknown, null, null, CancellationToken.None);

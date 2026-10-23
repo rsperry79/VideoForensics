@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 
 namespace VideoForensics.Core.Providers.Core
 {
@@ -21,10 +22,8 @@ namespace VideoForensics.Core.Providers.Core
         public const string StillFilterChain = "format=yuv420p,signalstats,metadata=mode=print:file=-";
 
         /// <summary>The filter chain for a file: stills use <see cref="StillFilterChain"/>, video uses <see cref="FilterChain"/>.</summary>
-        public static string FilterFor(string mediaFilePath)
-        {
-            return Path.GetExtension(mediaFilePath).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".bmp" ? StillFilterChain : FilterChain;
-        }
+        public static string FilterFor(string mediaFilePath) =>
+            Path.GetExtension(mediaFilePath).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".bmp" ? StillFilterChain : FilterChain;
 
         private readonly string _ffmpegPath;
 

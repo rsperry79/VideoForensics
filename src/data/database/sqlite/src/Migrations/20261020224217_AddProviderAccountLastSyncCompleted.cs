@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.AddColumn<DateTime>(
+            migrationBuilder.AddColumn<DateTime>(
                 name: "LastSyncCompletedUtc",
                 table: "ProviderAccounts",
                 type: "TEXT",
@@ -20,7 +21,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "LastSyncCompletedUtc",
                 table: "ProviderAccounts");
         }

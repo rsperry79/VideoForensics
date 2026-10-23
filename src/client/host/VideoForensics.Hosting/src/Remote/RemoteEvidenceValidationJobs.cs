@@ -2,8 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -23,10 +24,8 @@ namespace VideoForensics.Hosting.Remote
         }
 
         /// <inheritdoc />
-        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct)
-        {
-            return PostIntegrityAsync(new StartIntegrityJobRequest(deviceId), ct);
-        }
+        public Task<EvidenceValidationJob> StartIntegrityAsync(Guid? deviceId, CancellationToken ct) =>
+            PostIntegrityAsync(new StartIntegrityJobRequest(deviceId), ct);
 
         /// <inheritdoc />
         public Task<EvidenceValidationJob> StartIntegrityForDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken ct)

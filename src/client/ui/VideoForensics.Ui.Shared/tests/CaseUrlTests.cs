@@ -1,9 +1,7 @@
-
-using VideoForensics.Ui.Shared.Services.Cases;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Ui.Shared.Services.Cases;
 
 public class CaseUrl_Tests
 {
@@ -11,10 +9,10 @@ public class CaseUrl_Tests
     public void Merge_WithNullCaseId_RemovesCaseKeyFromUrl()
     {
         // Arrange
-        string currentUri = "http://example.com/?case=12345&devices=abc&from=2026-09-01";
+        var currentUri = "http://example.com/?case=12345&devices=abc&from=2026-09-01";
 
         // Act
-        string result = CaseUrl.Merge(currentUri, null);
+        var result = CaseUrl.Merge(currentUri, null);
 
         // Assert
         Assert.DoesNotContain("case=", result);
@@ -26,11 +24,11 @@ public class CaseUrl_Tests
     public void Merge_WithCaseId_AddsCaseKeyToUrl()
     {
         // Arrange
-        string currentUri = "http://example.com/?devices=abc&from=2026-09-01";
+        var currentUri = "http://example.com/?devices=abc&from=2026-09-01";
         var caseId = Guid.NewGuid();
 
         // Act
-        string result = CaseUrl.Merge(currentUri, caseId);
+        var result = CaseUrl.Merge(currentUri, caseId);
 
         // Assert
         Assert.Contains($"case={caseId:D}", result);
@@ -44,10 +42,10 @@ public class CaseUrl_Tests
         // Arrange
         var oldCaseId = Guid.NewGuid();
         var newCaseId = Guid.NewGuid();
-        string currentUri = $"http://example.com/?case={oldCaseId:D}&devices=abc";
+        var currentUri = $"http://example.com/?case={oldCaseId:D}&devices=abc";
 
         // Act
-        string result = CaseUrl.Merge(currentUri, newCaseId);
+        var result = CaseUrl.Merge(currentUri, newCaseId);
 
         // Assert
         Assert.Contains($"case={newCaseId:D}", result);
@@ -59,11 +57,11 @@ public class CaseUrl_Tests
     public void Merge_PreservesOtherQueryKeys()
     {
         // Arrange
-        string currentUri = "http://example.com/?tab=raw&devices=abc&search=test&from=2026-09-01";
+        var currentUri = "http://example.com/?tab=raw&devices=abc&search=test&from=2026-09-01";
         var caseId = Guid.NewGuid();
 
         // Act
-        string result = CaseUrl.Merge(currentUri, caseId);
+        var result = CaseUrl.Merge(currentUri, caseId);
 
         // Assert
         Assert.Contains($"case={caseId:D}", result);
@@ -77,11 +75,11 @@ public class CaseUrl_Tests
     public void Merge_WithoutQueryString_AddsCase()
     {
         // Arrange
-        string currentUri = "http://example.com/";
+        var currentUri = "http://example.com/";
         var caseId = Guid.NewGuid();
 
         // Act
-        string result = CaseUrl.Merge(currentUri, caseId);
+        var result = CaseUrl.Merge(currentUri, caseId);
 
         // Assert
         Assert.Contains($"case={caseId:D}", result);
@@ -93,10 +91,10 @@ public class CaseUrl_Tests
     {
         // Arrange
         var caseId = Guid.NewGuid();
-        string uri = $"http://example.com/?case={caseId:D}&devices=abc";
+        var uri = $"http://example.com/?case={caseId:D}&devices=abc";
 
         // Act
-        Guid? result = CaseUrl.Read(uri);
+        var result = CaseUrl.Read(uri);
 
         // Assert
         Assert.Equal(caseId, result);
@@ -106,10 +104,10 @@ public class CaseUrl_Tests
     public void Read_WithoutCaseKey_ReturnsNull()
     {
         // Arrange
-        string uri = "http://example.com/?devices=abc&from=2026-09-01";
+        var uri = "http://example.com/?devices=abc&from=2026-09-01";
 
         // Act
-        Guid? result = CaseUrl.Read(uri);
+        var result = CaseUrl.Read(uri);
 
         // Assert
         Assert.Null(result);
@@ -119,10 +117,10 @@ public class CaseUrl_Tests
     public void Read_WithInvalidCaseId_ReturnsNull()
     {
         // Arrange
-        string uri = "http://example.com/?case=not-a-guid&devices=abc";
+        var uri = "http://example.com/?case=not-a-guid&devices=abc";
 
         // Act
-        Guid? result = CaseUrl.Read(uri);
+        var result = CaseUrl.Read(uri);
 
         // Assert
         Assert.Null(result);
@@ -132,10 +130,10 @@ public class CaseUrl_Tests
     public void Read_WithEmptyCaseValue_ReturnsNull()
     {
         // Arrange
-        string uri = "http://example.com/?case=&devices=abc";
+        var uri = "http://example.com/?case=&devices=abc";
 
         // Act
-        Guid? result = CaseUrl.Read(uri);
+        var result = CaseUrl.Read(uri);
 
         // Assert
         Assert.Null(result);
@@ -146,11 +144,11 @@ public class CaseUrl_Tests
     {
         // Arrange
         var originalCaseId = Guid.NewGuid();
-        string uri = "http://example.com/?devices=abc";
+        var uri = "http://example.com/?devices=abc";
 
         // Act
-        string merged = CaseUrl.Merge(uri, originalCaseId);
-        Guid? read = CaseUrl.Read(merged);
+        var merged = CaseUrl.Merge(uri, originalCaseId);
+        var read = CaseUrl.Read(merged);
 
         // Assert
         Assert.Equal(originalCaseId, read);
@@ -162,10 +160,10 @@ public class CaseUrl_Tests
         // Arrange
         var caseId1 = Guid.NewGuid();
         var caseId2 = Guid.NewGuid();
-        string uri = $"http://example.com/?case={caseId1:D}&case={caseId2:D}";
+        var uri = $"http://example.com/?case={caseId1:D}&case={caseId2:D}";
 
         // Act
-        Guid? result = CaseUrl.Read(uri);
+        var result = CaseUrl.Read(uri);
 
         // Assert
         // Should parse the first occurrence
@@ -179,7 +177,7 @@ public class CaseUrl_Tests
         var caseId = Guid.NewGuid();
 
         // Act & Assert - should not throw
-        string result = CaseUrl.Merge(null, caseId);
+        var result = CaseUrl.Merge(null, caseId);
         Assert.Contains($"case={caseId:D}", result);
     }
 }

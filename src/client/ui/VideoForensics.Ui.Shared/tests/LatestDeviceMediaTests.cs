@@ -1,6 +1,5 @@
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services.Devices;
-
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
@@ -9,20 +8,17 @@ public class LatestDeviceMediaTests
 {
     private static readonly DateTime Now = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
 
-    private static MediaItem Item(string format, DateTime recordedAt, string? metadata)
+    private static MediaItem Item(string format, DateTime recordedAt, string? metadata) => new()
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            DeviceId = Guid.Empty,
-            FileName = "f." + format,
-            FilePath = "p",
-            MediaFormat = format,
-            RecordedAtUtc = recordedAt,
-            Sha256Hash = "h",
-            MetadataJson = metadata,
-        };
-    }
+        Id = Guid.NewGuid(),
+        DeviceId = Guid.Empty,
+        FileName = "f." + format,
+        FilePath = "p",
+        MediaFormat = format,
+        RecordedAtUtc = recordedAt,
+        Sha256Hash = "h",
+        MetadataJson = metadata,
+    };
 
     private const string Snapshot = "{\"eventId\":\"snapshot-1\",\"type\":\"snapshot\"}";
     private const string Loop = "{\"type\":\"snapshot-rollup\"}";

@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -51,7 +51,7 @@ namespace VideoForensics.Hosting.Remote
                 List<MediaTicketDto>? tickets = await response.Content.ReadFromJsonAsync<List<MediaTicketDto>>(JsonOptions, ct);
                 if (tickets != null)
                 {
-                    foreach (MediaTicketDto ticket in tickets)
+                    foreach (var ticket in tickets)
                     {
                         string contentUrl = ticket.ContentUrl;
 

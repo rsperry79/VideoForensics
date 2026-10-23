@@ -49,10 +49,7 @@ namespace VideoForensics.Ui.Shared.Tests.Services
                 return Task.CompletedTask;
             }
 
-            public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken)
-            {
-                return Task.CompletedTask;
-            }
+            public Task UnsubscribeAsync(Guid sessionId, CancellationToken cancellationToken) => Task.CompletedTask;
         }
 
         /// <summary>Stand-in for GetActiveSessionAsync. Each call returns the result for its 1-based call number.</summary>
@@ -74,18 +71,15 @@ namespace VideoForensics.Ui.Shared.Tests.Services
             }
         }
 
-        private static LiveViewSession Session(Guid id, LiveViewSessionState state)
+        private static LiveViewSession Session(Guid id, LiveViewSessionState state) => new()
         {
-            return new()
-            {
-                Id = id,
-                DeviceId = Guid.NewGuid(),
-                TriggerReason = LiveViewTriggerReason.Manual,
-                State = state,
-                StartedAtUtc = DateTime.UtcNow,
-                LastExtendedAtUtc = DateTime.UtcNow,
-            };
-        }
+            Id = id,
+            DeviceId = Guid.NewGuid(),
+            TriggerReason = LiveViewTriggerReason.Manual,
+            State = state,
+            StartedAtUtc = DateTime.UtcNow,
+            LastExtendedAtUtc = DateTime.UtcNow,
+        };
 
         [Fact]
         public async Task LiveViewActivationWaiter_SourceEmitsActive_ReturnsWithoutPolling()

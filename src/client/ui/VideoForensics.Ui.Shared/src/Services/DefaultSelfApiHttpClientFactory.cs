@@ -26,10 +26,7 @@ namespace VideoForensics.Ui.Shared.Services
         }
 
         /// <inheritdoc/>
-        public HttpClient CreateClient()
-        {
-            return CreateClient(_sessionState.SessionToken);
-        }
+        public HttpClient CreateClient() => CreateClient(_sessionState.SessionToken);
 
         /// <inheritdoc/>
         public HttpClient CreateClient(string? bearerToken)

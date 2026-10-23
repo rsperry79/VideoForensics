@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
-
+using System.Text.Json;
 using VideoForensics.Data.Common.Entities;
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -16,11 +17,11 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            CredentialKind kind = CredentialKind.ServiceDevice;
-            OperatorRole role = OperatorRole.Admin;
+            var kind = CredentialKind.ServiceDevice;
+            var role = OperatorRole.Admin;
 
             // Act
-            string token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
+            var token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
 
             // Assert
             Assert.NotNull(token);
@@ -37,12 +38,12 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            CredentialKind kind = CredentialKind.ServiceDevice;
-            OperatorRole role = OperatorRole.Admin;
+            var kind = CredentialKind.ServiceDevice;
+            var role = OperatorRole.Admin;
 
             // Act
-            string token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
-            SessionPrincipal? validated = service.Validate(token);
+            var token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
+            var validated = service.Validate(token);
 
             // Assert
             Assert.NotNull(validated);
@@ -61,12 +62,12 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            CredentialKind kind = CredentialKind.Password;
-            OperatorRole role = OperatorRole.Review;
+            var kind = CredentialKind.Password;
+            var role = OperatorRole.Review;
 
             // Act
-            string token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
-            SessionPrincipal? validated = service.Validate(token);
+            var token = service.Issue(operatorId, credentialId: null, kind, role, securityStamp);
+            var validated = service.Validate(token);
 
             // Assert
             Assert.NotNull(validated);
@@ -84,12 +85,12 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
             var credentialId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            CredentialKind kind = CredentialKind.OperatorPasskey;
-            OperatorRole role = OperatorRole.SuperAdmin;
+            var kind = CredentialKind.OperatorPasskey;
+            var role = OperatorRole.SuperAdmin;
 
             // Act
-            string token = service.Issue(operatorId, credentialId, kind, role, securityStamp);
-            SessionPrincipal? validated = service.Validate(token);
+            var token = service.Issue(operatorId, credentialId, kind, role, securityStamp);
+            var validated = service.Validate(token);
 
             // Assert
             Assert.NotNull(validated);
@@ -108,12 +109,12 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
             var credentialId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            CredentialKind kind = CredentialKind.OperatorPasskey;
-            OperatorRole role = OperatorRole.Admin;
+            var kind = CredentialKind.OperatorPasskey;
+            var role = OperatorRole.Admin;
 
             // Act
-            string token = service.Issue(operatorId, credentialId, kind, role, securityStamp);
-            SessionPrincipal? principal = service.Validate(token);
+            var token = service.Issue(operatorId, credentialId, kind, role, securityStamp);
+            var principal = service.Validate(token);
 
             // Assert
             Assert.NotNull(principal);
@@ -136,13 +137,13 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
 
-            OperatorRole[] roles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
+            var roles = new[] { OperatorRole.ReadOnly, OperatorRole.Review, OperatorRole.Admin, OperatorRole.SuperAdmin };
 
             // Act & Assert
-            foreach (OperatorRole role in roles)
+            foreach (var role in roles)
             {
-                string token = service.Issue(operatorId, null, CredentialKind.Password, role, securityStamp);
-                SessionPrincipal? principal = service.Validate(token);
+                var token = service.Issue(operatorId, null, CredentialKind.Password, role, securityStamp);
+                var principal = service.Validate(token);
                 Assert.NotNull(principal);
                 Assert.Equal(role, principal.Role);
             }
@@ -158,10 +159,10 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            string token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
 
             // Act
-            SessionPrincipal? result = service.Validate(token);
+            var result = service.Validate(token);
 
             // Assert
             Assert.NotNull(result);
@@ -176,13 +177,13 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            string token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
 
             // Act - flip a character to simulate tampering with the protected payload.
             char[] chars = token.ToCharArray();
             chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
-            string tampered = new(chars);
-            SessionPrincipal? result = service.Validate(tampered);
+            string tampered = new string(chars);
+            var result = service.Validate(tampered);
 
             // Assert
             Assert.Null(result);
@@ -196,15 +197,15 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
-            string token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
 
             // Act - flip a character and ensure no exception is thrown.
             char[] chars = token.ToCharArray();
             chars[^1] = chars[^1] == 'A' ? 'B' : 'A';
-            string tampered = new(chars);
+            string tampered = new string(chars);
 
             // Assert - should not throw, just return null
-            Exception? exception = Record.Exception(() => service.Validate(tampered));
+            var exception = Record.Exception(() => service.Validate(tampered));
             Assert.Null(exception);
         }
 
@@ -216,7 +217,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
 
             // Act
-            SessionPrincipal? result = service.Validate("not-a-valid-token");
+            var result = service.Validate("not-a-valid-token");
 
             // Assert
             Assert.Null(result);
@@ -230,7 +231,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(provider);
 
             // Act
-            SessionPrincipal? result = service.Validate(string.Empty);
+            var result = service.Validate(string.Empty);
 
             // Assert
             Assert.Null(result);
@@ -242,7 +243,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange - create a token and artificially set its expiry to the past
             // by directly creating a SessionPrincipal with past expiry and protecting it
             var provider = new EphemeralDataProtectionProvider();
-            IDataProtector protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
+            var protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var expiredPrincipal = new SessionPrincipal(
@@ -254,12 +255,12 @@ namespace VideoForensics.Hosting.Tests
                 DateTime.UtcNow.AddHours(-13),
                 DateTime.UtcNow.AddHours(-1)  // Already expired
             );
-            string json = System.Text.Json.JsonSerializer.Serialize(expiredPrincipal);
-            string token = protector.Protect(json);
+            var json = System.Text.Json.JsonSerializer.Serialize(expiredPrincipal);
+            var token = protector.Protect(json);
             var service = new SessionTokenService(provider);
 
             // Act
-            SessionPrincipal? result = service.Validate(token);
+            var result = service.Validate(token);
 
             // Assert
             Assert.Null(result);
@@ -270,7 +271,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange - create a token with far-future expiry
             var provider = new EphemeralDataProtectionProvider();
-            IDataProtector protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
+            var protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
             var futurePrincipal = new SessionPrincipal(
@@ -282,12 +283,12 @@ namespace VideoForensics.Hosting.Tests
                 DateTime.UtcNow.AddHours(-1),
                 DateTime.UtcNow.AddHours(23)  // Expires in 23 hours
             );
-            string json = System.Text.Json.JsonSerializer.Serialize(futurePrincipal);
-            string token = protector.Protect(json);
+            var json = System.Text.Json.JsonSerializer.Serialize(futurePrincipal);
+            var token = protector.Protect(json);
             var service = new SessionTokenService(provider);
 
             // Act
-            SessionPrincipal? result = service.Validate(token);
+            var result = service.Validate(token);
 
             // Assert
             Assert.NotNull(result);
@@ -307,10 +308,10 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
             var securityStamp = Guid.NewGuid();
 
-            string token = service1.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token = service1.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
 
             // Act - try to validate with a different provider (simulating key rotation or different instance)
-            SessionPrincipal? result = service2.Validate(token);
+            var result = service2.Validate(token);
 
             // Assert
             Assert.Null(result);
@@ -326,9 +327,9 @@ namespace VideoForensics.Hosting.Tests
             var securityStamp = Guid.NewGuid();
 
             // Act - issue two tokens in quick succession
-            string token1 = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token1 = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
             System.Threading.Thread.Sleep(10); // Small delay to ensure different IssuedAtUtc
-            string token2 = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var token2 = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
 
             // Assert - tokens should be different because IssuedAtUtc differs
             Assert.NotEqual(token1, token2);
@@ -344,11 +345,11 @@ namespace VideoForensics.Hosting.Tests
             var initialSecurityStamp = Guid.NewGuid();
             var newSecurityStamp = Guid.NewGuid();
 
-            string token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, initialSecurityStamp);
-            SessionPrincipal? principal = service.Validate(token);
+            var token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, initialSecurityStamp);
+            var principal = service.Validate(token);
 
             // Act - simulate password change (security stamp changes)
-            Guid changedSecurityStamp = principal!.SecurityStampAtIssuance;
+            var changedSecurityStamp = principal!.SecurityStampAtIssuance;
 
             // Assert - the principal carries the initial stamp; if we compare it against the new one, they differ
             Assert.Equal(initialSecurityStamp, changedSecurityStamp);
@@ -365,13 +366,13 @@ namespace VideoForensics.Hosting.Tests
             var securityStamp = Guid.NewGuid();
 
             // Act
-            string token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
-            SessionPrincipal? principal = service.Validate(token);
+            var token = service.Issue(operatorId, null, CredentialKind.Password, OperatorRole.Admin, securityStamp);
+            var principal = service.Validate(token);
 
             // Assert
             Assert.NotNull(principal);
             // ExpiresAtUtc should be exactly 12 hours after IssuedAtUtc
-            DateTime expectedExpiry = principal.IssuedAtUtc.AddHours(12);
+            var expectedExpiry = principal.IssuedAtUtc.AddHours(12);
             Assert.Equal(expectedExpiry, principal.ExpiresAtUtc);
             // ExpiresAtUtc should be in the future (not expired yet)
             Assert.True(principal.ExpiresAtUtc > DateTime.UtcNow);
@@ -382,16 +383,16 @@ namespace VideoForensics.Hosting.Tests
         {
             // Arrange
             var provider = new EphemeralDataProtectionProvider();
-            IDataProtector protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
+            var protector = provider.CreateProtector("VideoForensics.SessionTokens.v1");
             var service = new SessionTokenService(provider);
 
             // Create a token that deserializes to null (though this is edge case)
             // We'll just test that invalid JSON returns null gracefully
-            string invalidJson = "not json at all";
-            string token = protector.Protect(invalidJson);
+            var invalidJson = "not json at all";
+            var token = protector.Protect(invalidJson);
 
             // Act
-            SessionPrincipal? result = service.Validate(token);
+            var result = service.Validate(token);
 
             // Assert
             Assert.Null(result);
@@ -408,8 +409,8 @@ namespace VideoForensics.Hosting.Tests
             var securityStamp = Guid.NewGuid();
 
             // Act
-            string token = service.IssuePasskeySetupOnly(operatorId, OperatorRole.Admin, securityStamp);
-            SessionPrincipal? validated = service.Validate(token);
+            var token = service.IssuePasskeySetupOnly(operatorId, OperatorRole.Admin, securityStamp);
+            var validated = service.Validate(token);
 
             // Assert
             Assert.NotNull(validated);
@@ -427,7 +428,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
 
             // Act
-            SessionPrincipal? validated = service.Validate(service.IssuePasskeySetupOnly(Guid.NewGuid(), OperatorRole.Admin, Guid.NewGuid()));
+            var validated = service.Validate(service.IssuePasskeySetupOnly(Guid.NewGuid(), OperatorRole.Admin, Guid.NewGuid()));
 
             // Assert - the limited session must not outlive 15 minutes, unlike a normal 12-hour session
             Assert.NotNull(validated);
@@ -442,7 +443,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new SessionTokenService(new EphemeralDataProtectionProvider());
 
             // Act
-            SessionPrincipal? validated = service.Validate(service.Issue(Guid.NewGuid(), null, CredentialKind.Password, OperatorRole.Admin, Guid.NewGuid()));
+            var validated = service.Validate(service.Issue(Guid.NewGuid(), null, CredentialKind.Password, OperatorRole.Admin, Guid.NewGuid()));
 
             // Assert
             Assert.NotNull(validated);

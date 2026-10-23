@@ -25,26 +25,23 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static MediaItem Clip(Guid deviceId, int daysAgo)
+        private static MediaItem Clip(Guid deviceId, int daysAgo) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                FileName = $"clip-{daysAgo}.mp4",
-                FilePath = $"clip-{daysAgo}.mp4",
-                MediaFormat = "mp4",
-                Sha256Hash = Guid.NewGuid().ToString("N"),
-                RecordedAtUtc = DateTime.UtcNow.AddDays(-daysAgo),
-                DownloadedAtUtc = DateTime.UtcNow
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FileName = $"clip-{daysAgo}.mp4",
+            FilePath = $"clip-{daysAgo}.mp4",
+            MediaFormat = "mp4",
+            Sha256Hash = Guid.NewGuid().ToString("N"),
+            RecordedAtUtc = DateTime.UtcNow.AddDays(-daysAgo),
+            DownloadedAtUtc = DateTime.UtcNow
+        };
 
         [Fact]
         public async Task GetRecentByDeviceAsync_ReturnsNewestClipsUpToLimitForThatDeviceOnly()
         {
-            var device = Guid.NewGuid();
-            var other = Guid.NewGuid();
+            Guid device = Guid.NewGuid();
+            Guid other = Guid.NewGuid();
             foreach (int days in new[] { 5, 1, 3, 2, 4 })
             {
                 await _repository.AddAsync(Clip(device, days), CancellationToken.None);

@@ -245,7 +245,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
 
             var bitrateSamples = new List<long>();
-            liveView.OnBitrateSampleBps += bitrateSamples.Add;
+            liveView.OnBitrateSampleBps += bitrate => bitrateSamples.Add(bitrate);
 
             // Simulate receiving RTP packets with ~1000 bytes each
             for (int i = 0; i < 10; i++)
@@ -277,13 +277,13 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             RingLiveViewSession liveView = await _mockSession.StartLiveView(123456, transport, bitrateTimerIntervalMs: 100);
 
             var bitrateSamples = new List<long>();
-            liveView.OnBitrateSampleBps += bitrateSamples.Add;
+            liveView.OnBitrateSampleBps += bitrate => bitrateSamples.Add(bitrate);
 
             // Simulate some RTP packets
             liveView.SimulateRtpPacket(1000);
 
             // Poll rather than sleep a fixed window: the bitrate timer can miss a short fixed delay under parallel load.
-            DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+            var deadline = DateTime.UtcNow.AddSeconds(5);
             while (bitrateSamples.Count == 0 && DateTime.UtcNow < deadline)
             {
                 await Task.Delay(20);

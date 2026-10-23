@@ -1,23 +1,23 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
-
-using Moq;
-
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.RateLimiting;
 
-using VideoForensics.Client.Common.Contracts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using Moq;
+
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
@@ -50,10 +50,10 @@ namespace VideoForensics.WebApp.Tests
                     return Task.FromResult(AuthenticateResult.NoResult());
                 }
 
-                string role = Request.Headers.TryGetValue("X-Test-Role", out StringValues r) ? r.ToString() : "Admin";
+                string role = Request.Headers.TryGetValue("X-Test-Role", out var r) ? r.ToString() : "Admin";
                 var claims = new List<Claim> { new(VideoForensicsClaimTypes.Role, role) };
 
-                if (Request.Headers.TryGetValue("X-Test-Operator", out StringValues op))
+                if (Request.Headers.TryGetValue("X-Test-Operator", out var op))
                 {
                     claims.Add(new Claim(VideoForensicsClaimTypes.OperatorId, op.ToString()));
                 }
@@ -83,7 +83,7 @@ namespace VideoForensics.WebApp.Tests
 
         private static async Task<LiveViewHost> StartAsync()
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            var builder = WebApplication.CreateBuilder();
             _ = builder.WebHost.UseTestServer();
 
             var service = new Mock<ILiveViewSessionService>();
@@ -111,19 +111,16 @@ namespace VideoForensics.WebApp.Tests
             };
         }
 
-        private static LiveViewSession SampleSession(LiveViewSessionState state = LiveViewSessionState.Active)
+        private static LiveViewSession SampleSession(LiveViewSessionState state = LiveViewSessionState.Active) => new()
         {
-            return new()
-            {
-                Id = SessionId,
-                DeviceId = DeviceId,
-                TriggerReason = LiveViewTriggerReason.Manual,
-                State = state,
-                StartedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
-                LastExtendedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
-                OperatorId = OperatorId
-            };
-        }
+            Id = SessionId,
+            DeviceId = DeviceId,
+            TriggerReason = LiveViewTriggerReason.Manual,
+            State = state,
+            StartedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
+            LastExtendedAtUtc = new DateTime(2026, 10, 9, 12, 0, 0, DateTimeKind.Utc),
+            OperatorId = OperatorId
+        };
 
         private static HttpRequestMessage Req(HttpMethod method, string url, string? role = null, bool anonymous = false, bool noOperator = false, HttpContent? content = null)
         {
@@ -146,10 +143,7 @@ namespace VideoForensics.WebApp.Tests
             return req;
         }
 
-        private static JsonContent StartBody(string reason = "Manual")
-        {
-            return JsonContent.Create(new StartLiveViewRequestDto(DeviceId, reason));
-        }
+        private static JsonContent StartBody(string reason = "Manual") => JsonContent.Create(new StartLiveViewRequestDto(DeviceId, reason));
 
         private static string StartUrl => "/api/v1/live-view/start";
         private static string ExtendUrl => $"/api/v1/live-view/{SessionId}/extend";
@@ -163,7 +157,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_ValidRequest_Returns200WithSessionDto()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.StartAsync(DeviceId, LiveViewTriggerReason.Manual, OperatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SampleSession());
 
@@ -181,7 +175,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_UnknownReason_Returns400()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody("NotAReason")));
 
@@ -192,7 +186,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_NumericReason_Returns400()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody("99")));
 
@@ -202,7 +196,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_MissingOperatorClaim_Returns401()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "Admin", noOperator: true, content: StartBody()));
 
@@ -213,8 +207,8 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_UnparseableOperatorClaim_Returns401()
         {
-            await using LiveViewHost host = await StartAsync();
-            HttpRequestMessage req = Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody());
+            await using var host = await StartAsync();
+            var req = Req(HttpMethod.Post, StartUrl, "Admin", content: StartBody());
             req.Headers.Add("X-Test-Operator", "not-a-guid");
 
             HttpResponseMessage resp = await host.Client.SendAsync(req);
@@ -225,7 +219,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_ServiceNotFound_Returns404()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new KeyNotFoundException());
 
@@ -237,7 +231,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_ServiceInvalidOperation_Returns409()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Live view is disabled."));
 
@@ -249,7 +243,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_ServiceNotSupported_Returns501()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<LiveViewTriggerReason>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new NotSupportedException());
 
@@ -263,7 +257,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Extend_Valid_Returns204()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, ExtendUrl, "Admin"));
 
@@ -274,7 +268,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Extend_UnknownSession_Returns404()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.ExtendAsync(SessionId, It.IsAny<CancellationToken>())).ThrowsAsync(new KeyNotFoundException());
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, ExtendUrl, "Admin"));
@@ -287,7 +281,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Promote_Valid_Returns200WithDto()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.PromoteToSustainedAsync(SessionId, "Sustained bitrate degradation", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SampleSession(LiveViewSessionState.Sustained));
 
@@ -303,7 +297,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Demote_Valid_Returns200WithDto()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.DemoteFromSustainedAsync(SessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SampleSession(LiveViewSessionState.Active));
 
@@ -319,7 +313,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Stop_Valid_Returns204()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StopUrl, "Admin",
                 content: JsonContent.Create(new StopLiveViewRequestDto("ManualStop"))));
@@ -333,7 +327,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetActive_NoSession_Returns404()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.GetActiveSessionAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync((LiveViewSession?)null);
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Get, ActiveUrl, "ReadOnly"));
@@ -344,7 +338,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetActive_Session_Returns200WithDto()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             _ = host.Service.Setup(s => s.GetActiveSessionAsync(DeviceId, It.IsAny<CancellationToken>())).ReturnsAsync(SampleSession());
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Get, ActiveUrl, "ReadOnly"));
@@ -358,7 +352,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetActive_Anonymous_Returns401()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Get, ActiveUrl, anonymous: true));
 
@@ -370,7 +364,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Start_ReadOnlyRole_Returns403()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StartUrl, "ReadOnly", content: StartBody()));
 
@@ -381,7 +375,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Stop_ReadOnlyRole_Returns403()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             HttpResponseMessage resp = await host.Client.SendAsync(Req(HttpMethod.Post, StopUrl, "ReadOnly",
                 content: JsonContent.Create(new StopLiveViewRequestDto("ManualStop"))));
@@ -396,7 +390,7 @@ namespace VideoForensics.WebApp.Tests
         [InlineData("demote")]
         public async Task Mutations_ReviewRole_Returns403(string action)
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
             string url = action switch
             {
                 "extend" => ExtendUrl,
@@ -415,13 +409,13 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task Routes_AreVersioned_UnderApiV1LiveView()
         {
-            await using LiveViewHost host = await StartAsync();
+            await using var host = await StartAsync();
 
             IEnumerable<string> patterns = host.App.Services.GetRequiredService<EndpointDataSource>().Endpoints
                 .OfType<RouteEndpoint>()
                 .Select(e => e.RoutePattern.RawText ?? string.Empty);
 
-            var all = patterns.ToList();
+            List<string> all = patterns.ToList();
             Assert.NotEmpty(all);
             Assert.All(all, p => Assert.StartsWith("/api/v1/live-view/", p));
         }

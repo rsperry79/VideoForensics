@@ -3,9 +3,10 @@ using Microsoft.Extensions.Logging;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 

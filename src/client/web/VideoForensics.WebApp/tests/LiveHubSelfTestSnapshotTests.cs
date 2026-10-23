@@ -1,13 +1,13 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Hubs;
@@ -25,12 +25,12 @@ namespace VideoForensics.WebApp.Tests
             CancellationToken connectionAborted = default)
         {
             var download = new Mock<IVideoDownloadService>();
-            _ = download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(false, 0, 0, 0L, string.Empty, 0, 0, 0L, 0, 0.0));
-            _ = download.Setup(s => s.GetCurrentDevice()).Returns((0, 0, string.Empty));
-            _ = download.Setup(s => s.DrainActivityLog()).Returns([]);
+            download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(false, 0, 0, 0L, string.Empty, 0, 0, 0L, 0, 0.0));
+            download.Setup(s => s.GetCurrentDevice()).Returns((0, 0, string.Empty));
+            download.Setup(s => s.DrainActivityLog()).Returns(new List<string>());
 
             var selfTest = new Mock<IRingSelfTestService>();
-            _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Completed, null, null, null));
 
             IServiceProvider services = new ServiceCollection()
@@ -41,15 +41,15 @@ namespace VideoForensics.WebApp.Tests
 
             var caller = new Mock<ISingleClientProxy>();
             var clients = new Mock<IHubCallerClients>();
-            _ = clients.Setup(c => c.Caller).Returns(caller.Object);
+            clients.Setup(c => c.Caller).Returns(caller.Object);
 
-            ClaimsIdentity identity = roleClaim is null
+            var identity = roleClaim is null
                 ? new ClaimsIdentity()
                 : new ClaimsIdentity(new[] { new Claim(VideoForensicsClaimTypes.Role, roleClaim) });
             var context = new Mock<HubCallerContext>();
-            _ = context.Setup(c => c.ConnectionId).Returns("conn-1");
-            _ = context.Setup(c => c.User).Returns(new ClaimsPrincipal(identity));
-            _ = context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
+            context.Setup(c => c.ConnectionId).Returns("conn-1");
+            context.Setup(c => c.User).Returns(new ClaimsPrincipal(identity));
+            context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
 
             var groups = new Mock<IGroupManager>();
             var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
@@ -91,7 +91,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task LiveHub_SelfTestSnapshotThrows_StillCompletesConnectAndSendsNoSelfTestStatus()
         {
             (LiveHub hub, Mock<ISingleClientProxy> caller, _, Mock<IRingSelfTestService> selfTest) = BuildHub("Admin");
-            _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("self-test status unavailable"));
 
             await hub.OnConnectedAsync();
@@ -107,10 +107,10 @@ namespace VideoForensics.WebApp.Tests
             using var aborting = new CancellationTokenSource();
             aborting.Cancel();
             (LiveHub hub, _, _, Mock<IRingSelfTestService> selfTest) = BuildHub("Admin", aborting.Token);
-            _ = selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            selfTest.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("self-test status unavailable"));
 
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(hub.OnConnectedAsync);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => hub.OnConnectedAsync());
         }
 
         [Fact]

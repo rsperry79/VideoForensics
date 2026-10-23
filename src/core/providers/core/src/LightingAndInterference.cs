@@ -30,15 +30,18 @@ namespace VideoForensics.Core.Providers.Core
         {
             List<double> saturation = Values(SatAvg, signalstatsOutput);
             List<double> luma = Values(YAvg, signalstatsOutput);
-            return saturation.Count == 0 || luma.Count == 0 ? null : new ClipColorStats(saturation.Average(), luma.Average());
+            if (saturation.Count == 0 || luma.Count == 0)
+            {
+                return null;
+            }
+
+            return new ClipColorStats(saturation.Average(), luma.Average());
         }
 
-        private static List<double> Values(Regex pattern, string text)
-        {
-            return pattern.Matches(text)
+        private static List<double> Values(Regex pattern, string text) =>
+            pattern.Matches(text)
                 .Select(m => double.Parse(m.Groups["value"].Value, CultureInfo.InvariantCulture))
                 .ToList();
-        }
     }
 
     /// <summary>
@@ -56,9 +59,12 @@ namespace VideoForensics.Core.Providers.Core
         /// <summary>Classifies a clip. Bright footage is day regardless of colour; dark footage is IR or colour night.</summary>
         public static LightingMode Classify(ClipColorStats stats)
         {
-            return stats.MeanLuma >= DarkLumaCeiling
-                ? LightingMode.Day
-                : stats.MeanSaturation < GrayscaleSaturationCeiling ? LightingMode.Ir : LightingMode.ColorNight;
+            if (stats.MeanLuma >= DarkLumaCeiling)
+            {
+                return LightingMode.Day;
+            }
+
+            return stats.MeanSaturation < GrayscaleSaturationCeiling ? LightingMode.Ir : LightingMode.ColorNight;
         }
     }
 
@@ -73,7 +79,7 @@ namespace VideoForensics.Core.Providers.Core
                 return null;
             }
 
-            var sorted = bitrates.OrderBy(b => b).ToList();
+            List<long> sorted = bitrates.OrderBy(b => b).ToList();
             int mid = sorted.Count / 2;
             long median = sorted.Count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
             return new BitrateBaseline(median, sorted.Count);

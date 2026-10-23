@@ -6,14 +6,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Hosting;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
-
 using Session = VideoForensics.Providers.Ring.Session;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Utils.SelfTest
 {
@@ -437,7 +436,7 @@ namespace VideoForensics.Utils.SelfTest
                         Console.WriteLine("Two-factor authentication is enabled on this account - Ring just sent a code via text/e-mail.");
                         Console.Write("Enter the code: ");
                         await Task.CompletedTask;
-                        return Console.ReadLine() ?? string.Empty;
+                        return Console.ReadLine() ?? "";
                     });
 
                 if (!result.Success)
@@ -480,10 +479,10 @@ namespace VideoForensics.Utils.SelfTest
 
             if (Console.IsInputRedirected)
             {
-                return Console.ReadLine() ?? string.Empty;
+                return Console.ReadLine() ?? "";
             }
 
-            string password = string.Empty;
+            string password = "";
             ConsoleKeyInfo key;
             do
             {
@@ -529,10 +528,10 @@ namespace VideoForensics.Utils.SelfTest
             Console.WriteLine();
             foreach (EndpointDescriptor e in EndpointRegistry.All)
             {
-                string tags = string.Concat(e.Destructive ? " [destructive]" : string.Empty, e.Physical ? " [physical]" : string.Empty);
+                string tags = string.Concat(e.Destructive ? " [destructive]" : "", e.Physical ? " [physical]" : "");
                 Console.WriteLine($"  {e.Key,-22} {e.DisplayName}{tags}");
-                Console.WriteLine($"  {string.Empty,22} {e.SessionMethod} -> {e.HttpMethod} {e.ApiPath}");
-                Console.WriteLine($"  {string.Empty,22} {e.Description}");
+                Console.WriteLine($"  {"",22} {e.SessionMethod} -> {e.HttpMethod} {e.ApiPath}");
+                Console.WriteLine($"  {"",22} {e.Description}");
                 Console.WriteLine();
             }
         }

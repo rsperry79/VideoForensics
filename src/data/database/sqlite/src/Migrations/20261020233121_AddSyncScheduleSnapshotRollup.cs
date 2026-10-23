@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,14 +11,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.AddColumn<DateTime>(
+            migrationBuilder.AddColumn<DateTime>(
                 name: "LastRollupUtc",
                 table: "SyncSchedules",
                 type: "TEXT",
                 nullable: true);
 
             // Existing schedules get the 15-minute default; 0 would fail the 1-minute minimum on their next save.
-            _ = migrationBuilder.AddColumn<int>(
+            migrationBuilder.AddColumn<int>(
                 name: "SnapshotRollupIntervalMinutes",
                 table: "SyncSchedules",
                 type: "INTEGER",
@@ -28,11 +29,11 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "LastRollupUtc",
                 table: "SyncSchedules");
 
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "SnapshotRollupIntervalMinutes",
                 table: "SyncSchedules");
         }

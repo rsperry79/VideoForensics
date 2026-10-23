@@ -1,25 +1,20 @@
-
-using AngleSharp.Dom;
+namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
 
 using Bunit;
-
-using VideoForensics.Ui.Shared.Components.Evidence;
-
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Components.Evidence;
+using VideoForensics.Ui.Shared.Components.Evidence;
 
 public class MediaThumbTests : BunitContext
 {
     [Fact]
     public void Image_RendersImgWithUrl_AndNoVideoElement()
     {
-        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
+        var component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "https://cdn.test/a.jpg?ticket=1")
             .Add(x => x.IsVideo, false)
             .Add(x => x.Alt, "Front Door"));
 
-        IElement img = component.Find("img");
+        var img = component.Find("img");
         Assert.Equal("https://cdn.test/a.jpg?ticket=1", img.GetAttribute("src"));
         Assert.Empty(component.FindAll("video"));
     }
@@ -31,7 +26,7 @@ public class MediaThumbTests : BunitContext
     [Fact]
     public void MediaThumb_Render_SetsLazyLoading()
     {
-        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
+        var component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "https://cdn.test/a.jpg?ticket=1")
             .Add(x => x.IsVideo, false)
             .Add(x => x.Alt, "Front Door"));
@@ -46,12 +41,12 @@ public class MediaThumbTests : BunitContext
     [Fact]
     public void Video_RendersImgWithServerThumbnailUrl_AndNoVideoElement()
     {
-        IRenderedComponent<MediaThumb> component = Render<MediaThumb>(p => p
+        var component = Render<MediaThumb>(p => p
             .Add(x => x.Url, "/api/v1/media/abc/content?ticket=2")
             .Add(x => x.IsVideo, true)
             .Add(x => x.Alt, "Driveway"));
 
-        IElement img = component.Find("img");
+        var img = component.Find("img");
         Assert.Equal("/api/v1/media/abc/thumbnail?ticket=2", img.GetAttribute("src"));
         Assert.Empty(component.FindAll("video"));
     }

@@ -80,9 +80,19 @@ namespace VideoForensics.Providers.Ring.Services
             // device delay, not a correctness-critical read - a stale answer just means one call
             // waits (or doesn't) a few seconds longer/shorter than strictly necessary.
             string? key = KeyFor(session);
-            return key is not null && _cache.TryGetValue(key, out CachedHistoryRange? cachedRange) && cachedRange != null &&
+            if (key is null)
+            {
+                return false;
+            }
+
+            if (_cache.TryGetValue(key, out CachedHistoryRange? cachedRange))
+            {
+                return cachedRange != null &&
                        startDate >= cachedRange.Start &&
                        endDate <= cachedRange.End;
+            }
+
+            return false;
         }
 
         private List<DoorbotHistoryEvent>? TryServeFromCache(string key, DateTime startDate, DateTime endDate, out CachedHistoryRange? cachedRange)
@@ -126,7 +136,7 @@ namespace VideoForensics.Providers.Ring.Services
                 return await session.GetDoorbotsHistory(startDate, endDate) ?? [];
             }
 
-            List<DoorbotHistoryEvent>? served = TryServeFromCache(key, startDate, endDate, out _);
+            var served = TryServeFromCache(key, startDate, endDate, out _);
             if (served != null)
             {
                 return served;
@@ -136,7 +146,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 // Re-read inside the gate: another caller may have stored a range that now covers this request.
-                served = TryServeFromCache(key, startDate, endDate, out CachedHistoryRange? cachedRange);
+                served = TryServeFromCache(key, startDate, endDate, out var cachedRange);
                 if (served != null)
                 {
                     return served;
@@ -172,15 +182,18 @@ namespace VideoForensics.Providers.Ring.Services
                     CachedAt = DateTime.UtcNow
                 };
 
-                _ = _cache.Set(key, cacheEntry, new MemoryCacheEntryOptions
+                _cache.Set(key, cacheEntry, new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(CacheTtlHours)
                 });
 
                 // Return only the slice matching what was actually requested
-                return fetchStart == startDate && fetchEnd == endDate
-                    ? cacheEntry.Events
-                    : cacheEntry.Events
+                if (fetchStart == startDate && fetchEnd == endDate)
+                {
+                    return cacheEntry.Events;
+                }
+
+                return cacheEntry.Events
                     .Where(e => e.CreatedAtDateTime.HasValue &&
                                e.CreatedAtDateTime.Value >= startDate &&
                                e.CreatedAtDateTime.Value <= endDate)
@@ -188,7 +201,7 @@ namespace VideoForensics.Providers.Ring.Services
             }
             finally
             {
-                _ = _fetchGate.Release();
+                _fetchGate.Release();
             }
         }
     }

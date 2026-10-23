@@ -1,10 +1,9 @@
-
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Layout;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
+using VideoForensics.Ui.Shared.Layout;
+using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for <see cref="NavGroups.ActiveGroupFor"/>: picks the top tab whose matching item is the most specific,
 /// so "/analyze/chain-of-custody" lands on Cases rather than Evidence's broader "/analyze" item.

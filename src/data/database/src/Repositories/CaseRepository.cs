@@ -41,23 +41,23 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<string> GenerateCaseNumber(string prefix, CancellationToken ct)
         {
             DateTime now = _timeProvider.GetUtcNow().UtcDateTime;
-            var startOfMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+            DateTime startOfMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
             DateTime endOfMinute = startOfMinute.AddMinutes(1);
             string timePrefix = now.ToString("yyyy-MM-dd-HH-mm");
             string searchPattern = $"{prefix}-{timePrefix}-";
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-
+            
             // Get all case numbers that match the prefix and time window, extract indices
-            List<string> matchingNumbers = await db.Cases
+            var matchingNumbers = await db.Cases
                 .Where(c => c.CreatedAtUtc >= startOfMinute && c.CreatedAtUtc < endOfMinute && c.CaseNumber.StartsWith(searchPattern))
                 .Select(c => c.CaseNumber)
                 .ToListAsync(ct);
 
             int maxIndex = -1;
-            foreach (string number in matchingNumbers)
+            foreach (var number in matchingNumbers)
             {
-                if (int.TryParse(number[searchPattern.Length..], out int index))
+                if (int.TryParse(number.Substring(searchPattern.Length), out int index))
                 {
                     maxIndex = Math.Max(maxIndex, index);
                 }
@@ -115,7 +115,7 @@ namespace VideoForensics.Data.Database.Repositories
                 (string.IsNullOrEmpty(jammingEvent.Notes) ? string.Empty : $"Notes: {jammingEvent.Notes}");
 
             // Create case with callback that atomically creates alert and links incident
-            ForensicCase createdCase = await CreateCoreAsync(
+            var createdCase = await CreateCoreAsync(
                 null,
                 prefix,
                 alertTitle,
@@ -145,7 +145,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                     // Note: jammingEvent is already tracked by db.JammingIncidents if it was loaded from this context.
                     // If not tracked, we need to attach and mark as modified.
-                    JammingIncidentRecord? incident = db.JammingIncidentRecords.Find(jammingEvent.Id);
+                    var incident = db.JammingIncidentRecords.Find(jammingEvent.Id);
                     if (incident is not null)
                     {
                         incident.CaseId = forensicCase.Id;
@@ -158,10 +158,12 @@ namespace VideoForensics.Data.Database.Repositories
                     }
                 });
 
+            
             // Update the caller's object now that the save succeeded
-
+            
             jammingEvent.CaseId = createdCase.Id;
 
+            
             return createdCase;
         }
 
@@ -182,7 +184,7 @@ namespace VideoForensics.Data.Database.Repositories
             // Cap at 4000 chars as per Alert schema
             if (description.Length > 4000)
             {
-                description = description[..3997] + "...";
+                description = description.Substring(0, 3997) + "...";
             }
 
             return description;
@@ -198,9 +200,7 @@ namespace VideoForensics.Data.Database.Repositories
             IReadOnlyCollection<Guid> deviceIds,
             string createdBy,
             CancellationToken ct)
-        {
-            return CreateCoreAsync(caseNumber, "manual", title, description, leadOperatorId, scopeFromUtc, scopeToUtc, deviceIds, createdBy, ct);
-        }
+            => CreateCoreAsync(caseNumber, "manual", title, description, leadOperatorId, scopeFromUtc, scopeToUtc, deviceIds, createdBy, ct);
 
         private async Task<ForensicCase> CreateCoreAsync(
             string? explicitNumber,
@@ -235,7 +235,6 @@ namespace VideoForensics.Data.Database.Repositories
                             finalCaseNumber = await GenerateCaseNumber(generatedPrefix, ct);
                             continue;
                         }
-
                         throw new InvalidOperationException($"A case with number '{finalCaseNumber}' already exists.");
                     }
 
@@ -258,7 +257,7 @@ namespace VideoForensics.Data.Database.Repositories
 
                     // Add device scope entries
                     var deviceSet = new List<CaseDevice>();
-                    foreach (Guid deviceId in deviceIds)
+                    foreach (var deviceId in deviceIds)
                     {
                         deviceSet.Add(new CaseDevice
                         {
@@ -267,7 +266,6 @@ namespace VideoForensics.Data.Database.Repositories
                             AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
                         });
                     }
-
                     if (deviceSet.Count > 0)
                     {
                         db.CaseDevices.AddRange(deviceSet);
@@ -450,7 +448,7 @@ namespace VideoForensics.Data.Database.Repositories
                 db.CaseDevices.RemoveRange(existingDevices);
 
                 var newDevices = new List<CaseDevice>();
-                foreach (Guid deviceId in deviceIds)
+                foreach (var deviceId in deviceIds)
                 {
                     newDevices.Add(new CaseDevice
                     {
@@ -459,7 +457,6 @@ namespace VideoForensics.Data.Database.Repositories
                         AddedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
                     });
                 }
-
                 if (newDevices.Count > 0)
                 {
                     db.CaseDevices.AddRange(newDevices);
@@ -734,7 +731,7 @@ namespace VideoForensics.Data.Database.Repositories
                 _ => db.CaseItems.Where(ci => false)
             };
 
-            List<Guid> caseIds = await items.Select(ci => ci.CaseId).Distinct().ToListAsync(ct);
+            var caseIds = await items.Select(ci => ci.CaseId).Distinct().ToListAsync(ct);
 
             return await db.Cases
                 .Where(c => caseIds.Contains(c.Id))
@@ -743,4 +740,5 @@ namespace VideoForensics.Data.Database.Repositories
         }
     }
 }
+
 

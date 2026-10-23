@@ -4,8 +4,9 @@ using Moq;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Services;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -39,7 +40,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Create a unique temp directory for this test run
             _testTempPath = Path.Combine(Path.GetTempPath(), "videoforensics-test", Guid.NewGuid().ToString());
-            _ = Directory.CreateDirectory(_testTempPath);
+            Directory.CreateDirectory(_testTempPath);
 
             _adapter = new VideoDownloadServiceAdapter(
                 _loggerMock.Object,
@@ -235,7 +236,7 @@ namespace VideoForensics.Client.Core.Tests
                 FilesCompleted: 0,
                 FilesTotal: 0,
                 BytesDownloaded: 0,
-                CurrentFile: string.Empty,
+                CurrentFile: "",
                 TotalFilesCompleted: 0,
                 TotalFilesMatched: 0,
                 TotalBytesDownloaded: 0,
@@ -342,8 +343,8 @@ namespace VideoForensics.Client.Core.Tests
             VideoForensics.Core.Providers.Common.Contracts.Device device,
             string? locationAddress = null)
         {
-            var accountId = Guid.NewGuid();
-            var locationGuid = Guid.NewGuid();
+            Guid accountId = Guid.NewGuid();
+            Guid locationGuid = Guid.NewGuid();
             _ = _configMock.Setup(c => c.ActiveProviderAccountId).Returns(accountId);
 
             var location = new VideoForensics.Core.Providers.Common.Contracts.Location(device.LocationId, "Home", locationAddress);
@@ -464,7 +465,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             // Arrange - discovery exposes the metadata-persist capability; the Location row must exist before it runs.
             var device = new VideoForensics.Core.Providers.Common.Contracts.Device("dev-1", "Front", "doorbot", "loc-1", true);
-            var locationGuid = Guid.NewGuid();
+            Guid locationGuid = Guid.NewGuid();
             var discoveredLocation = new VideoForensics.Core.Providers.Common.Contracts.Location(
                 "loc-1", "Home", null, new Dictionary<string, string> { ["city"] = "Peoria" });
 

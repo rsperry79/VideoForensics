@@ -27,11 +27,11 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 // Return events spread across the requested range
                 var events = new List<DoorbotHistoryEvent>();
-                DateTime effectiveEnd = endDate ?? DateTime.MaxValue;
+                var effectiveEnd = endDate ?? DateTime.MaxValue;
 
                 if (effectiveEnd > startDate)
                 {
-                    DateTime current = startDate;
+                    var current = startDate;
                     int id = 1;
                     while (current < effectiveEnd && (effectiveEnd - current).TotalHours > 0)
                     {
@@ -73,9 +73,9 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public override async Task<List<DoorbotHistoryEvent>> GetDoorbotsHistory(DateTime startDate, DateTime? endDate, long? doorbotId = null)
             {
-                if (endDate.HasValue && _gates.TryGetValue((startDate, endDate.Value), out Gate? gate))
+                if (endDate.HasValue && _gates.TryGetValue((startDate, endDate.Value), out var gate))
                 {
-                    _ = gate.Entered.TrySetResult();
+                    gate.Entered.TrySetResult();
                     await gate.Release.Task;
                 }
 
@@ -88,7 +88,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
-            ILogger logger = new Mock<ILogger>().Object;
+            var logger = new Mock<ILogger>().Object;
             var cache = new RingHistoryEventCache(memoryCache, logger);
             var session = new TestSession();
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -122,7 +122,7 @@ namespace VideoForensics.Providers.Ring.Tests
                         end = baseDate.AddDays(40);
                     }
 
-                    List<DoorbotHistoryEvent> result = await cache.GetEventsAsync(session, start, end, cts.Token);
+                    var result = await cache.GetEventsAsync(session, start, end, cts.Token);
 
                     // Verify result is not null and contains events
                     Assert.NotNull(result);
@@ -138,8 +138,8 @@ namespace VideoForensics.Providers.Ring.Tests
             // The widest request range should become the cache bounds
             // widest start: baseDate - 10 days (from tasks 33-66)
             // widest end: baseDate + 40 days (from tasks 66-100)
-            DateTime expectedStart = baseDate.AddDays(-10);
-            DateTime expectedEnd = baseDate.AddDays(40);
+            var expectedStart = baseDate.AddDays(-10);
+            var expectedEnd = baseDate.AddDays(40);
 
             // Verify the cache marked the range as cached (hint check should return true)
             // This indirectly verifies that metadata was preserved through concurrent requests
@@ -161,7 +161,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
-            ILogger logger = new Mock<ILogger>().Object;
+            var logger = new Mock<ILogger>().Object;
             var cache = new RingHistoryEventCache(memoryCache, logger);
 
             var session = new TestSession();
@@ -170,7 +170,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var cts = new CancellationTokenSource();
 
             // Act: First request to populate cache
-            List<DoorbotHistoryEvent> firstResult = await cache.GetEventsAsync(
+            var firstResult = await cache.GetEventsAsync(
                 session,
                 baseDate,
                 baseDate.AddDays(20),
@@ -181,7 +181,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(firstResult.Count > 0);
 
             // Act: Second request within cached range
-            List<DoorbotHistoryEvent> secondResult = await cache.GetEventsAsync(
+            var secondResult = await cache.GetEventsAsync(
                 session,
                 baseDate.AddDays(8),
                 baseDate.AddDays(12),
@@ -192,9 +192,9 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.True(secondResult.Count > 0);
 
             // Verify all events in the result fall within the requested range
-            foreach (DoorbotHistoryEvent evt in secondResult)
+            foreach (var evt in secondResult)
             {
-                _ = Assert.NotNull(evt.CreatedAtDateTime);
+                Assert.NotNull(evt.CreatedAtDateTime);
                 Assert.True(evt.CreatedAtDateTime.Value >= baseDate.AddDays(8));
                 Assert.True(evt.CreatedAtDateTime.Value <= baseDate.AddDays(12));
             }
@@ -207,7 +207,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
-            ILogger logger = new Mock<ILogger>().Object;
+            var logger = new Mock<ILogger>().Object;
             var cache = new RingHistoryEventCache(memoryCache, logger);
 
             var session = new TestSession();
@@ -216,7 +216,7 @@ namespace VideoForensics.Providers.Ring.Tests
             var cts = new CancellationTokenSource();
 
             // Act: First request [0, 20]
-            List<DoorbotHistoryEvent> firstResult = await cache.GetEventsAsync(
+            var firstResult = await cache.GetEventsAsync(
                 session,
                 baseDate,
                 baseDate.AddDays(20),
@@ -225,7 +225,7 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.NotNull(firstResult);
 
             // Act: Second request that extends the range [0, 40]
-            _ = await cache.GetEventsAsync(
+            var secondResult = await cache.GetEventsAsync(
                 session,
                 baseDate,
                 baseDate.AddDays(40),
@@ -248,7 +248,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
-            ILogger logger = new Mock<ILogger>().Object;
+            var logger = new Mock<ILogger>().Object;
             var cache = new RingHistoryEventCache(memoryCache, logger);
             var baseDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -263,45 +263,45 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
-            ILogger logger = new Mock<ILogger>().Object;
+            var logger = new Mock<ILogger>().Object;
             var cache = new RingHistoryEventCache(memoryCache, logger);
             var session = new GatedSession();
             var d = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-            CancellationToken ct = timeout.Token;
+            var ct = timeout.Token;
 
             // Seed the cache with [D, D+5] before gating anything.
-            _ = await cache.GetEventsAsync(session, d, d.AddDays(5), ct);
+            await cache.GetEventsAsync(session, d, d.AddDays(5), ct);
 
             // X widens the start (fetch covers [D-10, D+5]) and is held in flight.
-            GatedSession.Gate xGate = session.AddGate(d.AddDays(-10), d.AddDays(5));
+            var xGate = session.AddGate(d.AddDays(-10), d.AddDays(5));
             // Y widens the end; if it reads the stale seed it fetches [D, D+40].
-            GatedSession.Gate yGate = session.AddGate(d, d.AddDays(40));
+            var yGate = session.AddGate(d, d.AddDays(40));
 
             // Act
-            Task<List<DoorbotHistoryEvent>> x = cache.GetEventsAsync(session, d.AddDays(-10), d.AddDays(5), ct);
+            var x = cache.GetEventsAsync(session, d.AddDays(-10), d.AddDays(5), ct);
             await xGate.Entered.Task.WaitAsync(ct);
 
-            Task<List<DoorbotHistoryEvent>> y = cache.GetEventsAsync(session, d, d.AddDays(40), ct);
-            _ = await Task.WhenAny(yGate.Entered.Task, Task.Delay(500));
+            var y = cache.GetEventsAsync(session, d, d.AddDays(40), ct);
+            await Task.WhenAny(yGate.Entered.Task, Task.Delay(500));
 
             if (yGate.Entered.Task.IsCompleted)
             {
                 // No lock: Y stored [D, D+40] first, then the slower X overwrites it with the narrower range.
                 yGate.Release.SetResult();
-                _ = await y.WaitAsync(ct);
+                await y.WaitAsync(ct);
                 xGate.Release.SetResult();
-                _ = await x.WaitAsync(ct);
+                await x.WaitAsync(ct);
             }
             else
             {
                 // Lock present: Y waits for X, then re-reads the cache and widens from X's stored range.
                 xGate.Release.SetResult();
-                _ = await x.WaitAsync(ct);
-                _ = await y.WaitAsync(ct);
+                await x.WaitAsync(ct);
+                await y.WaitAsync(ct);
             }
 
-            List<DoorbotHistoryEvent> yResult = await y;
+            var yResult = await y;
 
             // Assert
             Assert.True(

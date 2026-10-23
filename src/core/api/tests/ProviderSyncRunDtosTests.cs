@@ -6,18 +6,15 @@ namespace VideoForensics.Core.Api.Contracts.Tests
 {
     public class ProviderSyncRunDtosTests
     {
-        private static ProviderSyncRun CreateRun(bool success, string? errorMessage, DateTime? completedUtc)
+        private static ProviderSyncRun CreateRun(bool success, string? errorMessage, DateTime? completedUtc) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                ProviderAccountId = Guid.NewGuid(),
-                StartedUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-                CompletedUtc = completedUtc,
-                Success = success,
-                ErrorMessage = errorMessage
-            };
-        }
+            Id = Guid.NewGuid(),
+            ProviderAccountId = Guid.NewGuid(),
+            StartedUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            CompletedUtc = completedUtc,
+            Success = success,
+            ErrorMessage = errorMessage
+        };
 
         [Fact]
         public void ProviderSyncRunDtoMapping_ToDto_MapsAllFields()

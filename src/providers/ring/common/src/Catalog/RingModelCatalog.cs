@@ -75,6 +75,11 @@ public sealed class RingModelCatalog : IRingModelCatalog
     /// <inheritdoc />
     public RingModelInfo? Find(string? kind)
     {
-        return string.IsNullOrWhiteSpace(kind) ? null : ByKind.TryGetValue(kind, out RingModelInfo? info) ? info : null;
+        if (string.IsNullOrWhiteSpace(kind))
+        {
+            return null;
+        }
+
+        return ByKind.TryGetValue(kind, out RingModelInfo? info) ? info : null;
     }
 }

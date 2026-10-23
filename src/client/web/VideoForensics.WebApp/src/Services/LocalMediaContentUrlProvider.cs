@@ -1,5 +1,7 @@
-using VideoForensics.Client.Common.Contracts;
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;
 
@@ -64,9 +66,9 @@ namespace VideoForensics.WebApp.Services
 
             // Issue tickets for each distinct ID and build the result dictionary
             var result = new Dictionary<Guid, string>(distinctIds.Count);
-            foreach (Guid mediaId in distinctIds)
+            foreach (var mediaId in distinctIds)
             {
-                MediaAccessTicket ticket = _ticketService.Issue(mediaId, principal.OperatorId);
+                var ticket = _ticketService.Issue(mediaId, principal.OperatorId);
                 string url = MediaContentRoutes.ContentUrl(mediaId, ticket.Token);
                 result[mediaId] = url;
             }

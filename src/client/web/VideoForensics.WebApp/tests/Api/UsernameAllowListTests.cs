@@ -1,8 +1,6 @@
 using Fido2NetLib.Objects;
-
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Api;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Api;
@@ -10,24 +8,19 @@ namespace VideoForensics.WebApp.Tests.Api;
 /// <summary>Username sign-in offers approved, active passkeys, most recently used first, and keeps all of them.</summary>
 public class UsernameAllowListTests
 {
-    private static OperatorCredential Passkey(byte id, bool approved = true, bool active = true, DateTime? lastUsed = null)
+    private static OperatorCredential Passkey(byte id, bool approved = true, bool active = true, DateTime? lastUsed = null) => new()
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            WebAuthnCredentialId = Convert.ToBase64String(new[] { id }),
-            IsApproved = approved,
-            RevokedAtUtc = active ? null : new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-            Label = "passkey",
-            WebAuthnPublicKey = new byte[] { 0 },
-            LastUsedAtUtc = lastUsed,
-        };
-    }
+        Id = Guid.NewGuid(),
+        WebAuthnCredentialId = Convert.ToBase64String(new[] { id }),
+        IsApproved = approved,
+        RevokedAtUtc = active ? null : new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+        Label = "passkey",
+        WebAuthnPublicKey = new byte[] { 0 },
+        LastUsedAtUtc = lastUsed,
+    };
 
-    private static List<byte> Ids(IEnumerable<PublicKeyCredentialDescriptor> list)
-    {
-        return list.Select(d => d.Id[0]).ToList();
-    }
+    private static List<byte> Ids(IEnumerable<PublicKeyCredentialDescriptor> list) =>
+        list.Select(d => d.Id[0]).ToList();
 
     [Fact]
     public void DefaultOffer_IsOnlyTheMostRecentlyUsedPasskey()

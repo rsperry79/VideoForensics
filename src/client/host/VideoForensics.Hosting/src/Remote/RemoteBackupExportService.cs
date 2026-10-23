@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -102,10 +102,13 @@ namespace VideoForensics.Hosting.Remote
         {
             string fullRoot = Path.GetFullPath(root);
             string fullCandidate = Path.GetFullPath(candidatePath);
-            return !fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase)
-                ? throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.")
-                : fullCandidate;
+            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+            }
+
+            return fullCandidate;
         }
     }
 

@@ -10,7 +10,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_BearerToken_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("Authorization: Bearer sk-1234567890abcdef");
+            var result = LogRedactor.Redact("Authorization: Bearer sk-1234567890abcdef");
 
             // Assert
             Assert.Contains("[REDACTED]", result);
@@ -21,7 +21,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_XStepUpToken_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("X-StepUp-Token: some-long-token-value-123");
+            var result = LogRedactor.Redact("X-StepUp-Token: some-long-token-value-123");
 
             // Assert
             Assert.Contains("[REDACTED]", result);
@@ -32,7 +32,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_PasswordKeyValue_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("password=MySecurePassword123");
+            var result = LogRedactor.Redact("password=MySecurePassword123");
 
             // Assert
             Assert.Contains("password=[REDACTED]", result);
@@ -43,7 +43,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_PwdKeyValue_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("pwd=SecretPwd456");
+            var result = LogRedactor.Redact("pwd=SecretPwd456");
 
             // Assert
             Assert.Contains("pwd=[REDACTED]", result);
@@ -54,7 +54,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_TokenKeyValue_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("token=abc123xyz789");
+            var result = LogRedactor.Redact("token=abc123xyz789");
 
             // Assert
             Assert.Contains("token=[REDACTED]", result);
@@ -65,7 +65,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_SecretKeyValue_RedactsValue()
         {
             // Act
-            string? result = LogRedactor.Redact("secret=MyBigSecret");
+            var result = LogRedactor.Redact("secret=MyBigSecret");
 
             // Assert
             Assert.Contains("secret=[REDACTED]", result);
@@ -76,7 +76,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_CaseInsensitive_Password()
         {
             // Act
-            string? result = LogRedactor.Redact("PASSWORD=test123");
+            var result = LogRedactor.Redact("PASSWORD=test123");
 
             // Assert
             Assert.Contains("password=[REDACTED]", result);
@@ -87,7 +87,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_CaseInsensitive_Token()
         {
             // Act
-            string? result = LogRedactor.Redact("TOKEN=secrettoken");
+            var result = LogRedactor.Redact("TOKEN=secrettoken");
 
             // Assert
             Assert.Contains("token=[REDACTED]", result);
@@ -98,7 +98,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_NormalText_Untouched()
         {
             // Act
-            string? result = LogRedactor.Redact("User successfully logged in");
+            var result = LogRedactor.Redact("User successfully logged in");
 
             // Assert
             Assert.Equal("User successfully logged in", result);
@@ -108,7 +108,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_Null_ReturnsNull()
         {
             // Act
-            string? result = LogRedactor.Redact(null);
+            var result = LogRedactor.Redact(null);
 
             // Assert
             Assert.Null(result);
@@ -118,7 +118,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_Empty_ReturnsEmpty()
         {
             // Act
-            string? result = LogRedactor.Redact(string.Empty);
+            var result = LogRedactor.Redact(string.Empty);
 
             // Assert
             Assert.Equal(string.Empty, result);
@@ -128,7 +128,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_MultiplePatterns_AllRedacted()
         {
             // Act
-            string? result = LogRedactor.Redact("Bearer token123 and password=secret and X-StepUp-Token: xyz");
+            var result = LogRedactor.Redact("Bearer token123 and password=secret and X-StepUp-Token: xyz");
 
             // Assert
             Assert.DoesNotContain("token123", result);
@@ -141,7 +141,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_BearerToken_CaseInsensitive()
         {
             // Act
-            string? result = LogRedactor.Redact("bearer sk-token-123");
+            var result = LogRedactor.Redact("bearer sk-token-123");
 
             // Assert
             Assert.Contains("[REDACTED]", result);
@@ -152,7 +152,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_XStepUpToken_CaseInsensitive()
         {
             // Act
-            string? result = LogRedactor.Redact("x-stepup-token: my-step-up-value");
+            var result = LogRedactor.Redact("x-stepup-token: my-step-up-value");
 
             // Assert
             Assert.Contains("[REDACTED]", result);
@@ -163,7 +163,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_PasswordWithSpecialCharacters()
         {
             // Act
-            string? result = LogRedactor.Redact("password=P@$$w0rd!#%&");
+            var result = LogRedactor.Redact("password=P@$$w0rd!#%&");
 
             // Assert
             Assert.Contains("password=[REDACTED]", result);
@@ -174,7 +174,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void Redact_TokenWithQueryString()
         {
             // Act
-            string? result = LogRedactor.Redact("url?token=abc123&other=value");
+            var result = LogRedactor.Redact("url?token=abc123&other=value");
 
             // Assert
             Assert.Contains("token=[REDACTED]", result);

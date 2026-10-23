@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -60,9 +60,12 @@ namespace VideoForensics.Hosting.Remote
             }
 
             MediaStillDto? dto = await response.Content.ReadFromJsonAsync<MediaStillDto>(JsonOptions, ct);
-            return dto is null
-                ? MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "Server returned no content.")
-                : MediaStillCaptureResult.Ok(dto.ToDomain());
+            if (dto is null)
+            {
+                return MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "Server returned no content.");
+            }
+
+            return MediaStillCaptureResult.Ok(dto.ToDomain());
         }
     }
 }

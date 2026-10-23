@@ -25,9 +25,6 @@ namespace VideoForensics.Client.Common.Contracts
         /// </summary>
         /// <param name="sample">The telemetry sample in its persisted state.</param>
         /// <param name="ct">Cancellation token.</param>
-        Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct)
-        {
-            return Task.CompletedTask;
-        }
+        Task PublishSampleAsync(LiveViewTelemetrySample sample, CancellationToken ct) => Task.CompletedTask;
     }
 }

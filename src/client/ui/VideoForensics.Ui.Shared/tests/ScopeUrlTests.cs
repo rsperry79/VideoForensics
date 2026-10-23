@@ -1,9 +1,7 @@
-
-using VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Ui.Shared.Services.Scope;
 
 public class ScopeUrl_Merge_Tests
 {
@@ -11,29 +9,29 @@ public class ScopeUrl_Merge_Tests
     public void Merge_WithNoUnrelatedKeys_ReplacesQueryString()
     {
         // Arrange
-        string currentUri = "https://example.com/devices";
-        string scopeQuery = "devices=abc&from=2026-09-01&to=2026-09-10";
+        var currentUri = "https://example.com/devices";
+        var scopeQuery = "devices=abc&from=2026-09-01&to=2026-09-10";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("?", result);
         Assert.Contains("devices=abc", result);
         Assert.Contains("from=2026-09-01", result);
         Assert.Contains("to=2026-09-10", result);
-        Assert.DoesNotContain("#", result[..(result.IndexOf("?") + 1)]); // No fragment before query
+        Assert.DoesNotContain("#", result.Substring(0, result.IndexOf("?") + 1)); // No fragment before query
     }
 
     [Fact]
     public void Merge_KeepsUnrelatedKeys()
     {
         // Arrange
-        string currentUri = "https://example.com/page?tab=raw&filter=status";
-        string scopeQuery = "devices=abc";
+        var currentUri = "https://example.com/page?tab=raw&filter=status";
+        var scopeQuery = "devices=abc";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("tab=raw", result);
@@ -45,11 +43,11 @@ public class ScopeUrl_Merge_Tests
     public void Merge_RemovesScopeKeysWhenScopeQueryIsEmpty()
     {
         // Arrange
-        string currentUri = "https://example.com/page?devices=abc&from=2026-09-01&tab=raw";
-        string scopeQuery = string.Empty;
+        var currentUri = "https://example.com/page?devices=abc&from=2026-09-01&tab=raw";
+        var scopeQuery = "";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.DoesNotContain("devices=", result);
@@ -61,11 +59,11 @@ public class ScopeUrl_Merge_Tests
     public void Merge_PreservesPath()
     {
         // Arrange
-        string currentUri = "https://example.com/devices/list?old=query";
-        string scopeQuery = "devices=abc&from=2026-09-01";
+        var currentUri = "https://example.com/devices/list?old=query";
+        var scopeQuery = "devices=abc&from=2026-09-01";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("/devices/list", result);
@@ -75,11 +73,11 @@ public class ScopeUrl_Merge_Tests
     public void Merge_PreservesFragment()
     {
         // Arrange
-        string currentUri = "https://example.com/page?old=query#section1";
-        string scopeQuery = "devices=abc";
+        var currentUri = "https://example.com/page?old=query#section1";
+        var scopeQuery = "devices=abc";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("#section1", result);
@@ -90,11 +88,11 @@ public class ScopeUrl_Merge_Tests
     public void Merge_ReplacesExistingScopeKeys()
     {
         // Arrange
-        string currentUri = "https://example.com/page?devices=oldid&from=2026-01-01&to=2026-01-10&tab=raw";
-        string scopeQuery = "devices=newid&from=2026-09-01&to=2026-09-10";
+        var currentUri = "https://example.com/page?devices=oldid&from=2026-01-01&to=2026-01-10&tab=raw";
+        var scopeQuery = "devices=newid&from=2026-09-01&to=2026-09-10";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.DoesNotContain("devices=oldid", result);
@@ -108,11 +106,11 @@ public class ScopeUrl_Merge_Tests
     public void Merge_HandlesRelativeUri()
     {
         // Arrange
-        string currentUri = "/devices?old=query";
-        string scopeQuery = "devices=abc&from=2026-09-01";
+        var currentUri = "/devices?old=query";
+        var scopeQuery = "devices=abc&from=2026-09-01";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("/devices", result);
@@ -123,25 +121,26 @@ public class ScopeUrl_Merge_Tests
     public void Merge_HandlesNoExistingQuery()
     {
         // Arrange
-        string currentUri = "https://example.com/page";
-        string scopeQuery = "devices=abc";
+        var currentUri = "https://example.com/page";
+        var scopeQuery = "devices=abc";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("?devices=abc", result);
     }
 
+
     [Fact]
     public void Merge_HandlesEmptyCurrentUri()
     {
         // Arrange
-        string currentUri = string.Empty;
-        string scopeQuery = "devices=abc";
+        var currentUri = "";
+        var scopeQuery = "devices=abc";
 
         // Act
-        string result = ScopeUrl.Merge(currentUri, scopeQuery);
+        var result = ScopeUrl.Merge(currentUri, scopeQuery);
 
         // Assert
         Assert.Contains("devices=abc", result);

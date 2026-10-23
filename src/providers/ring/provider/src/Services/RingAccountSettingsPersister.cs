@@ -22,48 +22,36 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>Persists the profile. The authentication token is excluded by the mapper and never reaches the writer.</summary>
-        public Task PersistProfileAsync(Profile profile, Guid ringAccountId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("profile", () => _writer.ReplaceProfileAsync(RingAccountSettingsMapper.MapProfile(profile, ringAccountId), ct), ct);
-        }
+        public Task PersistProfileAsync(Profile profile, Guid ringAccountId, CancellationToken ct = default) =>
+            TryWriteAsync("profile", () => _writer.ReplaceProfileAsync(RingAccountSettingsMapper.MapProfile(profile, ringAccountId), ct), ct);
 
         /// <summary>Persists the ringtone list and the default ringtone row.</summary>
-        public Task PersistRingtonesAsync(RingtonesResponse response, Guid ringAccountId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("ringtone", () => _writer.ReplaceRingtonesAsync(
+        public Task PersistRingtonesAsync(RingtonesResponse response, Guid ringAccountId, CancellationToken ct = default) =>
+            TryWriteAsync("ringtone", () => _writer.ReplaceRingtonesAsync(
                 ringAccountId,
                 RingAccountSettingsMapper.MapRingtones(response, ringAccountId),
                 RingAccountSettingsMapper.MapRingtoneDefaults(response, ringAccountId),
                 ct), ct);
-        }
 
         /// <summary>Persists the Smart Lighting group set for a location.</summary>
-        public Task PersistLightGroupsAsync(GroupsResponse response, string providerLocationId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("light group", () => _writer.ReplaceLightGroupSetAsync(
+        public Task PersistLightGroupsAsync(GroupsResponse response, string providerLocationId, CancellationToken ct = default) =>
+            TryWriteAsync("light group", () => _writer.ReplaceLightGroupSetAsync(
                 RingAccountSettingsMapper.MapLightGroups(response, providerLocationId), ct), ct);
-        }
 
         /// <summary>Persists the current location mode for a location.</summary>
-        public Task PersistLocationModeAsync(LocationMode mode, string providerLocationId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("location mode", () => _writer.ReplaceLocationModeAsync(
+        public Task PersistLocationModeAsync(LocationMode mode, string providerLocationId, CancellationToken ct = default) =>
+            TryWriteAsync("location mode", () => _writer.ReplaceLocationModeAsync(
                 RingAccountSettingsMapper.MapLocationMode(mode, providerLocationId), ct), ct);
-        }
 
         /// <summary>Persists the location mode settings for a location.</summary>
-        public Task PersistLocationModeSettingsAsync(LocationModeSettingsResponse response, string providerLocationId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("location mode settings", () => _writer.ReplaceLocationModeSettingsAsync(
+        public Task PersistLocationModeSettingsAsync(LocationModeSettingsResponse response, string providerLocationId, CancellationToken ct = default) =>
+            TryWriteAsync("location mode settings", () => _writer.ReplaceLocationModeSettingsAsync(
                 RingAccountSettingsMapper.MapLocationModeSettings(response, providerLocationId), ct), ct);
-        }
 
         /// <summary>Persists the location mode sharing state for a location.</summary>
-        public Task PersistLocationModeSharingAsync(LocationModeSharingResponse response, string providerLocationId, CancellationToken ct = default)
-        {
-            return TryWriteAsync("location mode sharing", () => _writer.ReplaceLocationModeSharingAsync(
+        public Task PersistLocationModeSharingAsync(LocationModeSharingResponse response, string providerLocationId, CancellationToken ct = default) =>
+            TryWriteAsync("location mode sharing", () => _writer.ReplaceLocationModeSharingAsync(
                 RingAccountSettingsMapper.MapLocationModeSharing(response, providerLocationId), ct), ct);
-        }
 
         // Mapping runs inside the guarded call, so a malformed response is logged the same way as a failed write.
         private async Task TryWriteAsync(string area, Func<Task> write, CancellationToken ct)

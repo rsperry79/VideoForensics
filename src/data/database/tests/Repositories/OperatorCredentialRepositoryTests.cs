@@ -1,5 +1,4 @@
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -34,10 +33,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 Active = true
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.Operators.Add(@operator);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.Operators.Add(@operator);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             return operatorId;
@@ -64,10 +63,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 Active = true
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.Operators.Add(@operator);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.Operators.Add(@operator);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             var credential = new OperatorCredential
@@ -85,7 +84,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.AddAsync(credential, CancellationToken.None);
 
             // Assert: Verify credential was persisted
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? persisted = await db.OperatorCredentials.FindAsync(new object[] { credential.Id }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(persisted);
@@ -105,7 +104,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task GetAsync_ReturnsCredential_WhenFound()
         {
             // Arrange: Create parent operator and credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -119,10 +118,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 WebAuthnSignCount = 42
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -154,9 +153,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task GetByWebAuthnCredentialIdAsync_ReturnsCredential_WhenActive()
         {
             // Arrange: Create parent operator and an active (not revoked) credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
-            string webAuthnId = "webauthn-id-unique-1";
+            var webAuthnId = "webauthn-id-unique-1";
             var credential = new OperatorCredential
             {
                 Id = credentialId,
@@ -169,10 +168,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RevokedAtUtc = null  // Active
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -188,9 +187,9 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task GetByWebAuthnCredentialIdAsync_ReturnsNull_WhenRevoked()
         {
             // Arrange: Create parent operator and a revoked credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
-            string webAuthnId = "webauthn-id-unique-2";
+            var webAuthnId = "webauthn-id-unique-2";
             var credential = new OperatorCredential
             {
                 Id = credentialId,
@@ -203,10 +202,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RevokedAtUtc = DateTime.UtcNow.AddHours(-1)  // Revoked
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -234,7 +233,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ListForOperatorAsync_ReturnsAllCredentials_ForOperator()
         {
             // Arrange: Create parent operator and multiple credentials for it
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var cred1 = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -266,10 +265,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 IsApproved = false  // Not approved, but still listed
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 db.OperatorCredentials.AddRange(cred1, cred2, cred3);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -297,7 +296,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ListForOperatorAsync_IncludesRevoked_Credentials()
         {
             // Arrange: Create parent operator and an approved and a revoked credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var approvedCred = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -321,10 +320,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RevokedAtUtc = DateTime.UtcNow
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 db.OperatorCredentials.AddRange(approvedCred, revokedCred);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -342,8 +341,8 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ListPendingApprovalAsync_ReturnsPendingCredentials_Only()
         {
             // Arrange: Create various credentials with different states
-            Guid operatorId = await CreateOperatorAsync();
-            Guid operator2Id = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
+            var operator2Id = await CreateOperatorAsync();
             var pendingCred1 = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -386,10 +385,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 RevokedAtUtc = DateTime.UtcNow  // But got revoked
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 db.OperatorCredentials.AddRange(pendingCred1, pendingCred2, approvedCred, revokedPendingCred);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -408,7 +407,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ListPendingApprovalAsync_ReturnsEmpty_WhenNoPendingCredentials()
         {
             // Arrange: Create parent operator and only approved credentials
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var approvedCred = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -420,10 +419,10 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 IsApproved = true
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(approvedCred);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(approvedCred);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
@@ -441,7 +440,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task ApproveAsync_SetsApprovedFlag_WhenCredentialExists()
         {
             // Arrange: Create parent operator and a pending credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -454,17 +453,17 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 IsApproved = false
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
             await _repository.ApproveAsync(credentialId, CancellationToken.None);
 
             // Assert
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? updated = await db.OperatorCredentials.FindAsync(new object[] { credentialId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(updated);
@@ -489,7 +488,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task RevokeAsync_SanitizesLogOutput_WhenReasonContainsNewlines()
         {
             // Arrange: Create parent operator and credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -503,7 +502,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
 
             // Add the credential to the database first
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 _ = db.OperatorCredentials.Add(credential);
                 _ = await db.SaveChangesAsync(CancellationToken.None);
@@ -514,11 +513,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.RevokeAsync(credentialId, injectedReason, CancellationToken.None);
 
             // Assert: Verify the credential was revoked and the reason is stored as-is in the database
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? revokedCredential = await db.OperatorCredentials.FindAsync(new object[] { credentialId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(revokedCredential);
-                _ = Assert.NotNull(revokedCredential.RevokedAtUtc);
+                Assert.NotNull(revokedCredential.RevokedAtUtc);
                 // The raw reason (with newlines) should be stored in the database
                 Assert.Equal(injectedReason, revokedCredential.RevokedReason);
             }
@@ -528,7 +527,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task RevokeAsync_SuccessfullyRevokes_WhenCredentialExists()
         {
             // Arrange: Create parent operator and credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -542,7 +541,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
 
             // Add the credential to the database first
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 _ = db.OperatorCredentials.Add(credential);
                 _ = await db.SaveChangesAsync(CancellationToken.None);
@@ -553,11 +552,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.RevokeAsync(credentialId, reason, CancellationToken.None);
 
             // Assert: Verify the credential was revoked
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? revokedCredential = await db.OperatorCredentials.FindAsync(new object[] { credentialId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(revokedCredential);
-                _ = Assert.NotNull(revokedCredential.RevokedAtUtc);
+                Assert.NotNull(revokedCredential.RevokedAtUtc);
                 Assert.Equal(reason, revokedCredential.RevokedReason);
             }
         }
@@ -572,9 +571,11 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             await _repository.RevokeAsync(nonexistentId, "Some reason", CancellationToken.None);
 
             // Assert: No exception thrown, and database is unchanged
-            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
-            OperatorCredential? credential = await db.OperatorCredentials.FindAsync(new object[] { nonexistentId }, cancellationToken: CancellationToken.None);
-            Assert.Null(credential);
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                OperatorCredential? credential = await db.OperatorCredentials.FindAsync(new object[] { nonexistentId }, cancellationToken: CancellationToken.None);
+                Assert.Null(credential);
+            }
         }
 
         #endregion
@@ -585,7 +586,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task RecordSuccessfulAuthAsync_UpdatesSignCountAndLastUsedTime()
         {
             // Arrange: Create parent operator and credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -600,24 +601,24 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 LastUsedAtUtc = null
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act: Record a successful authentication with new signature count
-            DateTime beforeCall = DateTime.UtcNow;
+            var beforeCall = DateTime.UtcNow;
             await _repository.RecordSuccessfulAuthAsync(credentialId, 42, CancellationToken.None);
-            DateTime afterCall = DateTime.UtcNow;
+            var afterCall = DateTime.UtcNow;
 
             // Assert
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? updated = await db.OperatorCredentials.FindAsync(new object[] { credentialId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(updated);
                 Assert.Equal(42u, updated.WebAuthnSignCount);
-                _ = Assert.NotNull(updated.LastUsedAtUtc);
+                Assert.NotNull(updated.LastUsedAtUtc);
                 Assert.True(updated.LastUsedAtUtc >= beforeCall);
                 Assert.True(updated.LastUsedAtUtc <= afterCall);
             }
@@ -640,7 +641,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task MarkFirstLoginNotifiedAsync_SetsNotificationTime()
         {
             // Arrange: Create parent operator and credential
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var credentialId = Guid.NewGuid();
             var credential = new OperatorCredential
             {
@@ -654,23 +655,23 @@ namespace VideoForensics.Data.Database.Tests.Repositories
                 FirstLoginNotifiedAtUtc = null
             };
 
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
-                _ = db.OperatorCredentials.Add(credential);
-                _ = await db.SaveChangesAsync(CancellationToken.None);
+                db.OperatorCredentials.Add(credential);
+                await db.SaveChangesAsync(CancellationToken.None);
             }
 
             // Act
-            DateTime beforeCall = DateTime.UtcNow;
+            var beforeCall = DateTime.UtcNow;
             await _repository.MarkFirstLoginNotifiedAsync(credentialId, CancellationToken.None);
-            DateTime afterCall = DateTime.UtcNow;
+            var afterCall = DateTime.UtcNow;
 
             // Assert
-            await using (VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
             {
                 OperatorCredential? updated = await db.OperatorCredentials.FindAsync(new object[] { credentialId }, cancellationToken: CancellationToken.None);
                 Assert.NotNull(updated);
-                _ = Assert.NotNull(updated.FirstLoginNotifiedAtUtc);
+                Assert.NotNull(updated.FirstLoginNotifiedAtUtc);
                 Assert.True(updated.FirstLoginNotifiedAtUtc >= beforeCall);
                 Assert.True(updated.FirstLoginNotifiedAtUtc <= afterCall);
             }
@@ -693,7 +694,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
         public async Task AddAsync_HandlesConcurrentInserts_ForSameOperator()
         {
             // Arrange: Create parent operator and prepare two credentials for concurrent insert
-            Guid operatorId = await CreateOperatorAsync();
+            var operatorId = await CreateOperatorAsync();
             var cred1 = new OperatorCredential
             {
                 Id = Guid.NewGuid(),
@@ -714,14 +715,16 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             };
 
             // Act: Insert both concurrently
-            Task task1 = _repository.AddAsync(cred1, CancellationToken.None);
-            Task task2 = _repository.AddAsync(cred2, CancellationToken.None);
+            var task1 = _repository.AddAsync(cred1, CancellationToken.None);
+            var task2 = _repository.AddAsync(cred2, CancellationToken.None);
             await Task.WhenAll(task1, task2);
 
             // Assert: Both should be persisted without conflicts
-            await using VideoForensicsDbContext db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None);
-            int count = db.OperatorCredentials.Count(c => c.OperatorId == operatorId);
-            Assert.Equal(2, count);
+            await using (var db = await Fixture.Factory.CreateDbContextAsync(CancellationToken.None))
+            {
+                var count = db.OperatorCredentials.Count(c => c.OperatorId == operatorId);
+                Assert.Equal(2, count);
+            }
         }
 
         #endregion

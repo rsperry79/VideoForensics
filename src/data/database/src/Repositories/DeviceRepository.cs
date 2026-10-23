@@ -56,7 +56,7 @@ namespace VideoForensics.Data.Database.Repositories
             List<Device> devices = await db.Devices.ToListAsync(ct);
 
             // One lookup for all locations rather than one per device.
-            var links = (await db.ProviderAccountLocations
+            List<(Guid LocationId, string ProviderName)> links = (await db.ProviderAccountLocations
                 .AsNoTracking()
                 .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
                 .ToListAsync(ct))

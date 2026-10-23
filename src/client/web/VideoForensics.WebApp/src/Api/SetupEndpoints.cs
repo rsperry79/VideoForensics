@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;

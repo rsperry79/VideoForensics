@@ -177,7 +177,7 @@ namespace VideoForensics.WebApp.Auth
                 else if (principal.Kind == CredentialKind.OperatorPasskey)
                 {
                     // OperatorPasskey: credential is an OperatorCredential row.
-                    OperatorCredential? credential = await _operatorCredentialRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
+                    var credential = await _operatorCredentialRepository.GetAsync(principal.CredentialId!.Value, Context.RequestAborted);
                     if (credential == null || !credential.IsActive || !credential.IsApproved)
                     {
                         return AuthenticateResult.Fail("Invalid or expired credential.");

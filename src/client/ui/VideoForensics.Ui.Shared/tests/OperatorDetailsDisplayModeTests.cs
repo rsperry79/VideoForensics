@@ -1,19 +1,15 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
 using Moq;
-
+using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the "Display mode" section of OperatorDetails.razor. The page's own operator fetch uses a
 /// raw HttpClient that cannot succeed under bUnit, so these also prove the section does not depend on
@@ -30,20 +26,20 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public OperatorDetailsDisplayModeTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
 
-        _ = Services.AddScoped(_ => _admin.Object);
-        _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
-        _ = Services.AddScoped<StepUpService>();
+        Services.AddScoped(_ => _admin.Object);
+        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
         _session = new PairedSessionState(JSInterop.JSRuntime);
-        _ = Services.AddScoped(_ => _session);
+        Services.AddScoped(_ => _session);
 
-        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OperatorUiMode("Standard", false));
-        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
@@ -55,14 +51,10 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     }
 
     private IRenderedComponent<OperatorDetails> RenderPage()
-    {
-        return Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
-    }
+        => Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
 
     private static string? SelectedValue(IRenderedComponent<OperatorDetails> cut)
-    {
-        return cut.FindAll("select.display-mode-select option").FirstOrDefault(o => o.HasAttribute("selected"))?.GetAttribute("value");
-    }
+        => cut.FindAll("select.display-mode-select option").FirstOrDefault(o => o.HasAttribute("selected"))?.GetAttribute("value");
 
     [Theory]
     [InlineData(OperatorRole.Admin)]
@@ -71,7 +63,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(role);
 
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() =>
         {
@@ -88,7 +80,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(role);
 
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         Assert.Empty(cut.FindAll("select.display-mode-select"));
         Assert.Empty(cut.FindAll("button.display-mode-save"));
@@ -98,7 +90,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     [Fact]
     public void Page_SignedOutViewer_DoesNotRenderDisplayModeSection()
     {
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         Assert.Empty(cut.FindAll("select.display-mode-select"));
         Assert.Empty(cut.FindAll("button.display-mode-save"));
@@ -109,10 +101,10 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Page_StoredSimpleAndLocked_ShowsStoredValues()
     {
         await SignInAsync(OperatorRole.SuperAdmin);
-        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OperatorUiMode("Simple", true));
 
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() =>
         {
@@ -125,7 +117,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ChangedModeAndLock_CallsSetUiModeOnceAndShowsSuccess()
     {
         await SignInAsync(OperatorRole.Admin);
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("select.display-mode-select")));
 
         cut.Find("select.display-mode-select").Change("Simple");
@@ -141,7 +133,7 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ViewingOwnOperator_StillAllowed()
     {
         await SignInAsync(OperatorRole.SuperAdmin, operatorId: TargetId);
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();
@@ -154,9 +146,9 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Save_ServiceThrows_ShowsErrorAndNoSuccessMessage()
     {
         await SignInAsync(OperatorRole.Admin);
-        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("boom-from-server"));
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();
@@ -170,10 +162,10 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     public async Task Load_ServiceThrows_ShowsLoadFailedAndRestOfPageStillRenders()
     {
         await SignInAsync(OperatorRole.Admin);
-        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("load-boom"));
 
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains("Could not load the display mode", cut.Markup));
         Assert.Contains("Operator Details", cut.Markup);
@@ -184,9 +176,9 @@ public class OperatorDetailsDisplayModeTests : BunitContext
     {
         await SignInAsync(OperatorRole.Admin);
         var gate = new TaskCompletionSource();
-        _ = _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.SetUiModeAsync(TargetId, It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Returns(gate.Task);
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button.display-mode-save")));
 
         cut.Find("button.display-mode-save").Click();

@@ -2,8 +2,10 @@ using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+using VideoForensics.Core.Providers.Common.Contracts;
+
+using Xunit;
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteDeviceDiscoveryServiceTests

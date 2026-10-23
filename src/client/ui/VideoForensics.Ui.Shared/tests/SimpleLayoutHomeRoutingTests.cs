@@ -1,11 +1,8 @@
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-
-using VideoForensics.Ui.Shared.Layout.Simple;
-
 using Xunit;
+using VideoForensics.Ui.Shared.Layout.Simple;
 
 namespace VideoForensics.Ui.Shared.Tests;
 
@@ -15,7 +12,7 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
 
     private IRenderedComponent<SimpleLayout> RenderAt(string path)
     {
-        _ = RegisterSignedInSession();
+        RegisterSignedInSession();
         RegisterViewportService();
         RegisterUiModeService("Simple");
         Services.GetRequiredService<NavigationManager>().NavigateTo(path);
@@ -30,9 +27,9 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [InlineData("/#section")]
     public void SimpleLayout_AtHomeRoutes_ShowsSimpleHomeNotBody(string path)
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt(path);
+        var component = RenderAt(path);
 
-        _ = Assert.Single(component.FindComponents<SimpleHome>());
+        Assert.Single(component.FindComponents<SimpleHome>());
         Assert.Empty(component.FindAll("#routed-body"));
     }
 
@@ -45,23 +42,23 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [InlineData("/media/extra")]
     public void SimpleLayout_AtOtherRoutes_ShowsBodyNotSimpleHome(string path)
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt(path);
+        var component = RenderAt(path);
 
         Assert.Empty(component.FindComponents<SimpleHome>());
-        _ = Assert.Single(component.FindAll("#routed-body"));
+        Assert.Single(component.FindAll("#routed-body"));
     }
 
     [Fact]
     public void SimpleLayout_NavigatingFromChatToHome_SwapsToSimpleHome()
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt("/chat");
+        var component = RenderAt("/chat");
         Assert.Empty(component.FindComponents<SimpleHome>());
 
         Services.GetRequiredService<NavigationManager>().NavigateTo("/");
 
         component.WaitForAssertion(() =>
         {
-            _ = Assert.Single(component.FindComponents<SimpleHome>());
+            Assert.Single(component.FindComponents<SimpleHome>());
             Assert.Empty(component.FindAll("#routed-body"));
         });
     }
@@ -69,21 +66,21 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [Fact]
     public void SimpleLayout_NavigatingFromHomeToOtherRoute_SwapsToBody()
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt("/");
+        var component = RenderAt("/");
 
         Services.GetRequiredService<NavigationManager>().NavigateTo("/cases/42");
 
         component.WaitForAssertion(() =>
         {
             Assert.Empty(component.FindComponents<SimpleHome>());
-            _ = Assert.Single(component.FindAll("#routed-body"));
+            Assert.Single(component.FindAll("#routed-body"));
         });
     }
 
     [Fact]
     public void SimpleLayout_AtHome_KeepsHeaderAndChatPanel()
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt("/");
+        var component = RenderAt("/");
 
         Assert.NotNull(component.Find(".simple-layout-header"));
         Assert.NotNull(component.Find("button.simple-layout-signout"));
@@ -93,12 +90,12 @@ public class SimpleLayoutHomeRoutingTests : SimpleModeLayoutTestBase
     [Fact]
     public async Task SimpleLayout_AfterDispose_NavigationDoesNotThrow()
     {
-        IRenderedComponent<SimpleLayout> component = RenderAt("/chat");
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var component = RenderAt("/chat");
+        var nav = Services.GetRequiredService<NavigationManager>();
 
         await DisposeComponentsAsync();
 
-        Exception? ex = Record.Exception(() => nav.NavigateTo("/"));
+        var ex = Record.Exception(() => nav.NavigateTo("/"));
         Assert.Null(ex);
     }
 }

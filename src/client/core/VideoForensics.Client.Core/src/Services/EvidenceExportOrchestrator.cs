@@ -2,14 +2,16 @@ using ICSharpCode.SharpZipLib.Zip;
 
 using Microsoft.Extensions.Logging;
 
+using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Core.Models;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -77,7 +79,7 @@ namespace VideoForensics.Client.Core.Services
             }
 
             IReadOnlyList<CaseItem> pinned = await _caseRepository.ListItemsAsync(caseId, false, ct);
-            var mediaItemIds = pinned
+            List<Guid> mediaItemIds = pinned
                 .Where(i => i.Kind == CaseItemKind.Media && i.MediaItemId.HasValue)
                 .Select(i => i.MediaItemId!.Value)
                 .Distinct()
@@ -103,7 +105,7 @@ namespace VideoForensics.Client.Core.Services
 
             DateTime? fromUtc = forensicCase.ScopeFromUtc ?? earliest;
             DateTime? toUtc = forensicCase.ScopeToUtc
-                ?? latest?.AddSeconds(1) ?? (forensicCase.ScopeFromUtc is not null ? DateTime.UtcNow : null);
+                ?? (latest?.AddSeconds(1) ?? (forensicCase.ScopeFromUtc is not null ? DateTime.UtcNow : null));
 
             var reportEntries = new List<(string Name, string Json)>();
             if (fromUtc is not null && toUtc is not null)
@@ -138,10 +140,8 @@ namespace VideoForensics.Client.Core.Services
             string? recipientDescription,
             string? passphrase,
             CancellationToken ct,
-            string? stepUpToken = null)
-        {
-            return await ExportCoreAsync(mediaItemIds, ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
-        }
+            string? stepUpToken = null) =>
+            await ExportCoreAsync(mediaItemIds, ResolveSafeOutputDirectory(outputDirectory), caseReference, recipientDescription, passphrase, [], ct);
 
         /// <summary>Reads the stored ExportsLocation and resolves it to the effective exports root (default when unset).</summary>
         private async Task<string> ResolveExportsRootAsync(CancellationToken ct)
@@ -387,7 +387,7 @@ namespace VideoForensics.Client.Core.Services
             using var hashAlgorithm = SHA256.Create();
             using FileStream fileStream = File.OpenRead(filePath);
             byte[] hash = await hashAlgorithm.ComputeHashAsync(fileStream, ct);
-            return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
 
         private static string ResolveSafeOutputDirectory(string requestedOutputDirectory)
@@ -430,16 +430,17 @@ namespace VideoForensics.Client.Core.Services
         {
             string fullRoot = Path.GetFullPath(root);
             string fullCandidate = Path.GetFullPath(candidatePath);
-            return !fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase)
-                ? throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.")
-                : fullCandidate;
+            if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+            }
+
+            return fullCandidate;
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value)
-        {
-            return value.Replace('\r', '_').Replace('\n', '_');
-        }
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

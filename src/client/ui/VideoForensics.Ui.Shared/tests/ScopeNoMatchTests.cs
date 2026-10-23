@@ -1,9 +1,8 @@
-
-using VideoForensics.Ui.Shared.Services.Scope;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
+using VideoForensics.Ui.Shared.Services.Scope;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>A filter that matches no device must stay "no devices", never widen to "all devices".</summary>
 public class ScopeState_NoMatch_Tests
 {
@@ -46,7 +45,7 @@ public class ScopeState_NoMatch_Tests
     {
         var state = new ScopeState();
 
-        _ = state.ApplyQueryString("?devices=none");
+        state.ApplyQueryString("?devices=none");
 
         Assert.True(state.Current.MatchesNoDevices);
         Assert.False(state.Current.IncludesAllDevices);
@@ -56,9 +55,9 @@ public class ScopeState_NoMatch_Tests
     public void ApplyQueryString_WithoutDevicesKey_ClearsNoMatch()
     {
         var state = new ScopeState();
-        _ = state.ApplyQueryString("devices=none");
+        state.ApplyQueryString("devices=none");
 
-        _ = state.ApplyQueryString("from=2026-09-01");
+        state.ApplyQueryString("from=2026-09-01");
 
         Assert.False(state.Current.MatchesNoDevices);
         Assert.True(state.Current.IncludesAllDevices);

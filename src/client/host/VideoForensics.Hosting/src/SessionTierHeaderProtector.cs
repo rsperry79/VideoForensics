@@ -80,15 +80,9 @@ namespace VideoForensics.Hosting
             return ProtectPayload(new SessionTierHeaderPayload(tier, null, ExpiresAtUtc()));
         }
 
-        private DateTime ExpiresAtUtc()
-        {
-            return _timeProvider.GetUtcNow().UtcDateTime + MaxLifetime;
-        }
+        private DateTime ExpiresAtUtc() => _timeProvider.GetUtcNow().UtcDateTime + MaxLifetime;
 
-        private string ProtectPayload(SessionTierHeaderPayload payload)
-        {
-            return _protector.Protect(JsonSerializer.Serialize(payload));
-        }
+        private string ProtectPayload(SessionTierHeaderPayload payload) => _protector.Protect(JsonSerializer.Serialize(payload));
 
         public bool TryUnprotect(string headerValue, out NetworkTier tier, out Guid? operatorId)
         {

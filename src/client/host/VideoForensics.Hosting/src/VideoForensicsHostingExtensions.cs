@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
+using System.Linq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core;
 using VideoForensics.Client.Core.Contracts;
@@ -14,6 +16,7 @@ using VideoForensics.Client.Core.Services;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Forensics.Implementations;
+using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Telemetry.Configuration;
@@ -31,6 +34,7 @@ using VideoForensics.Hosting.Contracts;
 using VideoForensics.Hosting.Remote;
 using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Ring;
+using VideoForensics.Providers.Ring.Implementations;
 using VideoForensics.Providers.Ring.Services;
 using VideoForensics.Providers.Uniview;
 using VideoForensics.Providers.Uniview.Services;
@@ -638,13 +642,13 @@ namespace VideoForensics.Hosting
                         providerName,
                         (provider, key) =>
                         {
-                            ILogger<RingHealthSource> logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
-                            ISessionProvider sessionProvider = provider.GetRequiredService<ISessionProvider>();
-                            IProviderAccountRepository accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
+                            var logger = provider.GetRequiredService<ILogger<RingHealthSource>>();
+                            var sessionProvider = provider.GetRequiredService<ISessionProvider>();
+                            var accountRepository = provider.GetRequiredService<VideoForensics.Data.Common.Contracts.IProviderAccountRepository>();
                             // Must be resolved keyed by "Ring", not the unkeyed IProviderAuthService - this loop
                             // registers Ring/Uniview/Wyze side by side, and the unkeyed overload only ever
                             // returns whichever provider's factory happened to run last in the loop above.
-                            IProviderAuthService authService = provider.GetRequiredKeyedService<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>(providerName);
+                            var authService = provider.GetRequiredKeyedService<VideoForensics.Core.Providers.Common.Contracts.IProviderAuthService>(providerName);
                             return new RingHealthSource(logger, sessionProvider, accountRepository, authService);
                         });
                 }

@@ -1,10 +1,7 @@
-using System.Reflection;
-
+using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services.Evidence;
 using VideoForensics.Ui.Shared.Services.Inspector;
-
-using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
@@ -29,7 +26,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.Contains("Motion Detected", result.Title);
@@ -57,12 +54,12 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Fields);
-        Type fieldsType = result.Fields.GetType();
-        PropertyInfo? eventProperty = fieldsType.GetProperty("Event");
+        var fieldsType = result.Fields.GetType();
+        var eventProperty = fieldsType.GetProperty("Event");
         Assert.NotNull(eventProperty);
         Assert.Equal(evt, eventProperty?.GetValue(result.Fields));
     }
@@ -100,7 +97,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.Contains("Snapshot", result.Title);
@@ -144,12 +141,12 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Fields);
-        Type fieldsType = result.Fields.GetType();
-        PropertyInfo? mediaProperty = fieldsType.GetProperty("MediaItem");
+        var fieldsType = result.Fields.GetType();
+        var mediaProperty = fieldsType.GetProperty("MediaItem");
         Assert.NotNull(mediaProperty);
         Assert.Equal(media, mediaProperty?.GetValue(result.Fields));
     }
@@ -189,7 +186,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Provenance);
@@ -236,7 +233,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Provenance);
@@ -277,7 +274,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Provenance);
@@ -305,7 +302,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
@@ -347,7 +344,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
@@ -388,7 +385,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Pin);
@@ -431,7 +428,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var integrity = new List<IntegrityRecord>();
 
         // Act
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, integrity);
 
         // Assert
         Assert.NotNull(result.Provenance);
@@ -457,7 +454,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
 
         Assert.NotNull(result.Actions);
         Assert.Null(result.Actions!.MediaItemId);
@@ -493,7 +490,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), []);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
 
         Assert.NotNull(result.Actions);
         Assert.Equal(mediaId, result.Actions!.MediaItemId);
@@ -531,7 +528,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         var hold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = mediaId, Reason = "r", CreatedBy = "admin" };
         var holds = new Dictionary<Guid, LegalHold> { { mediaId, hold } };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, []);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, holds, new List<IntegrityRecord>());
 
         Assert.NotNull(result.Actions);
         Assert.Equal(hold.Id, result.Actions!.ActiveHoldId);
@@ -569,7 +566,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = true, VerifiedBy = "system" }
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Verified", provenanceDict["IntegrityStatus"]);
@@ -607,7 +604,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             new() { Id = Guid.NewGuid(), MediaItemId = mediaId, Sha256Hash = "abc", VerifiedAtUtc = DateTime.UtcNow, Passed = false, VerifiedBy = "system" }
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), integrity);
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Integrity failed", provenanceDict["IntegrityStatus"]);
@@ -641,7 +638,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = media
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), []);
+        var result = EvidenceInspectorMapper.ToInspector(mediaItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("Not verified", provenanceDict["IntegrityStatus"]);
@@ -662,7 +659,7 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
             Media = null
         };
 
-        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), []);
+        var result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>());
 
         var provenanceDict = result.Provenance!.ToDictionary(x => x.Key, x => x.Value);
         Assert.DoesNotContain("IntegrityStatus", provenanceDict.Keys);

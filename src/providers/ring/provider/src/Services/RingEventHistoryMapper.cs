@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Entities;

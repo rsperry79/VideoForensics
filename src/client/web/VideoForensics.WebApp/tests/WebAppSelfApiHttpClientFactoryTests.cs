@@ -53,25 +53,25 @@ namespace VideoForensics.WebApp.Tests
 
             var sessionState = new PairedSessionState(new Mock<IJSRuntime>().Object);
             sessionState.SetAsync(sessionToken, operatorId, OperatorRole.SuperAdmin.ToString()).GetAwaiter().GetResult();
-            _ = services.AddScoped(_ => sessionState);
+            services.AddScoped(_ => sessionState);
 
-            _ = services.AddScoped<NavigationManager>(_ => new TestNavigationManager("https://videoforensics.example.com/"));
+            services.AddScoped<NavigationManager>(_ => new TestNavigationManager("https://videoforensics.example.com/"));
 
             var networkContext = new SessionNetworkContext();
             networkContext.SetTier(tier);
-            _ = services.AddScoped(_ => networkContext);
+            services.AddScoped(_ => networkContext);
 
             var principal = new SessionPrincipal(operatorId, null, CredentialKind.Password, OperatorRole.SuperAdmin, Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(12));
             var tokenService = new Mock<ISessionTokenService>();
-            _ = tokenService.Setup(t => t.Validate(sessionToken)).Returns(principal);
-            _ = services.AddSingleton(tokenService.Object);
+            tokenService.Setup(t => t.Validate(sessionToken)).Returns(principal);
+            services.AddSingleton(tokenService.Object);
 
             var protector = new Mock<ISessionTierHeaderProtector>();
-            _ = protector.Setup(p => p.Protect(tier, operatorId)).Returns(protectedHeaderValue);
-            _ = services.AddSingleton(protector.Object);
+            protector.Setup(p => p.Protect(tier, operatorId)).Returns(protectedHeaderValue);
+            services.AddSingleton(protector.Object);
 
             var recorder = new RecordingHandler();
-            _ = services.AddScoped(sp => new WebAppSelfApiHttpClientFactory(sp, recorder));
+            services.AddScoped(sp => new WebAppSelfApiHttpClientFactory(sp, recorder));
 
             return (services.BuildServiceProvider(), recorder);
         }
@@ -87,7 +87,7 @@ namespace VideoForensics.WebApp.Tests
                 protectedHeaderValue: "protected-tier-value");
 
             using IServiceScope scope = provider.CreateScope();
-            WebAppSelfApiHttpClientFactory factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
+            var factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
 
             using HttpClient client = factory.CreateClient();
             _ = await client.GetAsync("/api/v1/lockout-policy");
@@ -110,7 +110,7 @@ namespace VideoForensics.WebApp.Tests
                 protectedHeaderValue: "protected-tier-value");
 
             using IServiceScope scope = provider.CreateScope();
-            WebAppSelfApiHttpClientFactory factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
+            var factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
 
             using HttpClient client = factory.CreateClient();
 
@@ -127,9 +127,9 @@ namespace VideoForensics.WebApp.Tests
                 protectedHeaderValue: "protected-tier-value");
 
             using IServiceScope scope = provider.CreateScope();
-            WebAppSelfApiHttpClientFactory factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
+            var factory = scope.ServiceProvider.GetRequiredService<WebAppSelfApiHttpClientFactory>();
 
-            _ = Assert.IsAssignableFrom<ISelfApiHttpClientFactory>(factory);
+            Assert.IsAssignableFrom<ISelfApiHttpClientFactory>(factory);
         }
     }
 }

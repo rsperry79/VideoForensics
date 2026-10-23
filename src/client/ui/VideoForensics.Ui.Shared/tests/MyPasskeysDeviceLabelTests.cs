@@ -1,18 +1,14 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
 using Moq;
-
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Covers the device-label prefill on MyPasskeys: the name field starts with a browser/OS label
 /// (for example "Chrome on Windows") and never overwrites text the operator already typed.
@@ -27,15 +23,15 @@ public class MyPasskeysDeviceLabelTests : BunitContext
     public MyPasskeysDeviceLabelTests()
     {
         // Registered before any service is resolved so the page and PairedSessionState both get it.
-        _ = Services.AddSingleton<IJSRuntime>(new DeviceLabelJSRuntime(() => _deviceLabel));
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddSingleton<IJSRuntime>(new DeviceLabelJSRuntime(() => _deviceLabel));
+        Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
-        _ = Services.AddScoped(_ => WebAuthn.Object);
-        _ = Services.AddScoped<StepUpService>();
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(_ => WebAuthn.Object);
+        Services.AddScoped<StepUpService>();
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -48,7 +44,7 @@ public class MyPasskeysDeviceLabelTests : BunitContext
         UseDeviceLabel(Task.FromResult<string?>("Chrome on Windows"));
 
         // Act
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
 
         // Assert
         component.WaitForAssertion(() => Assert.Equal("Chrome on Windows", component.Find(LabelInputSelector).GetAttribute("value")));
@@ -60,7 +56,7 @@ public class MyPasskeysDeviceLabelTests : BunitContext
         // Arrange - the operator types a name before the device label call finishes
         var gate = new TaskCompletionSource<string?>();
         UseDeviceLabel(gate.Task);
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
         component.Find(LabelInputSelector).Change("My work PC");
 
         // Act - the label arrives late
@@ -78,7 +74,7 @@ public class MyPasskeysDeviceLabelTests : BunitContext
         UseDeviceLabel(Task.FromException<string?>(new JSException("device label unavailable")));
 
         // Act
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
         await FlushAsync(component);
 
         // Assert - the field stays empty and the page still renders its controls
@@ -95,7 +91,7 @@ public class MyPasskeysDeviceLabelTests : BunitContext
     /// <summary>Lets queued render continuations run so the component has applied any late result.</summary>
     private static async Task FlushAsync(IRenderedComponent<MyPasskeys> component)
     {
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             await component.InvokeAsync(() => Task.CompletedTask);
         }
@@ -109,26 +105,15 @@ public class MyPasskeysDeviceLabelTests : BunitContext
     {
         private const string DeviceLabelFunction = "vfDeviceLabel.get";
 
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-        {
-            return Invoke<TValue>(identifier);
-        }
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => Invoke<TValue>(identifier);
 
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            return Invoke<TValue>(identifier);
-        }
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) => Invoke<TValue>(identifier);
 
-        private ValueTask<TValue> Invoke<TValue>(string identifier)
-        {
-            return identifier == DeviceLabelFunction
+        private ValueTask<TValue> Invoke<TValue>(string identifier) =>
+            identifier == DeviceLabelFunction
                 ? AwaitLabelAsync<TValue>(label())
                 : ValueTask.FromResult(default(TValue)!);
-        }
 
-        private static async ValueTask<TValue> AwaitLabelAsync<TValue>(Task<string?> pending)
-        {
-            return (TValue)(object)(await pending)!;
-        }
+        private static async ValueTask<TValue> AwaitLabelAsync<TValue>(Task<string?> pending) => (TValue)(object)(await pending)!;
     }
 }

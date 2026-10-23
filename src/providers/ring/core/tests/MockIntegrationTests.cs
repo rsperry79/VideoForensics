@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Core.Tests.Mocks;
@@ -534,7 +535,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_on", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_on", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             // Act
@@ -552,7 +553,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_off", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/floodlight_light_off", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             // Act
@@ -569,7 +570,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/siren_on", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/siren_on", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             // Act
@@ -588,7 +589,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/siren_off", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/siren_off", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             // Act
@@ -605,7 +606,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/play_sound", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/play_sound", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             // Act
@@ -653,7 +654,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetVolume_CallsDoorbotsEndpointWithPut()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetVolume(123456, 5, "Front Door");
@@ -681,7 +682,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetMotionDetection_CallsSettingsEndpointWithPatch()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetMotionDetection(123456, false);
@@ -695,7 +696,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetChimeType_CallsDoorbotsEndpointWithPut()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetChimeType(123456, 1, "Front Door", enabled: true, duration: 3);
@@ -717,7 +718,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetChimeType_OmitsEnableAndDurationWhenNotGiven()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetChimeType(123456, 2, "Front Door");
@@ -731,7 +732,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetDoNotDisturb_CallsChimeEndpointWithPost()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetDoNotDisturb(789012, 300);
@@ -748,7 +749,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetDoNotDisturb_SendsTimeInMinutesRoundedUp(int seconds, int expectedMinutes)
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetDoNotDisturb(789012, seconds);
@@ -763,7 +764,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetDoNotDisturb_ClampsTimeToMaxOf1440Minutes()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012/do_not_disturb", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetDoNotDisturb(789012, 10 * 24 * 60 * 60);
@@ -778,7 +779,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetNightMode_CallsDoorbotsEndpointWithPut()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetNightMode(123456, true);
@@ -794,7 +795,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SetMotionZones_CallsSettingsEndpointWithPatch()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/devices/v1/devices/123456/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             var zones = new Entities.AdvancedMotionZones
@@ -867,7 +868,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
                 $"api.ring.com/groups/v1/locations/{locationId:D}/groups/grp-1/devices",
-                System.Net.HttpStatusCode.OK, string.Empty);
+                System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetGroupLights(locationId, "grp-1", true, durationSeconds: 60);
@@ -943,7 +944,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             var locationId = Guid.NewGuid();
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}",
-                System.Net.HttpStatusCode.OK, string.Empty);
+                System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationMode(locationId, "home");
@@ -1025,7 +1026,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SubscribeToDingEvents_CallsSubscribeEndpoint()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/subscribe", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/subscribe", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SubscribeToDingEvents(123456);
@@ -1039,7 +1040,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_UnsubscribeFromDingEvents_CallsUnsubscribeEndpoint()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/unsubscribe", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/unsubscribe", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.UnsubscribeFromDingEvents(123456);
@@ -1053,7 +1054,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_SubscribeToMotionEvents_CallsMotionsSubscribeEndpoint()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_subscribe", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_subscribe", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SubscribeToMotionEvents(123456);
@@ -1067,7 +1068,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_UnsubscribeFromMotionEvents_CallsMotionsUnsubscribeEndpoint()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_unsubscribe", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/doorbots/123456/motions_unsubscribe", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.UnsubscribeFromMotionEvents(123456);
@@ -1260,7 +1261,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             Entities.LocationModeSettingsResponse settings = await _mockSession!.GetLocationModeSettings(locationId);
 
             Assert.Equal("home", settings.Options!.DefaultCameraOnlyMode);
-            _ = Assert.Single(settings.Home!);
+            Assert.Single(settings.Home!);
             Assert.Equal("dev-1", settings.Home![0].DeviceId);
             Assert.Equal(5L, settings.LastUpdateTimeMs);
         }
@@ -1270,7 +1271,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSettings(locationId, @"{ ""enabled"": false }");
@@ -1285,7 +1286,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings/setup", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.EnableLocationModes(locationId);
@@ -1300,7 +1301,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/settings", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.DisableLocationModes(locationId);
@@ -1332,7 +1333,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
             var locationId = Guid.NewGuid();
-            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse($"prd-api-us.prd.rings.solutions/api/v1/mode/location/{locationId:D}/sharing", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.SetLocationModeSharing(locationId, @"{ ""shareable"": false }");
@@ -1368,7 +1369,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             string assetUuid = "asset-1";
             mockHandler.SetupResponse(
                 $"prd-api-us.prd.rings.solutions/api/v1/rs/monitoring/accounts/{locationId:D}/assets/{assetUuid}/useralarm",
-                System.Net.HttpStatusCode.OK, string.Empty);
+                System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.TriggerAlarm(locationId, assetUuid);
@@ -1425,7 +1426,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_RegisterPushReceiver_CallsDeviceEndpointWithPatch()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/device", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/device", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.RegisterPushReceiver("push-token-abc");
@@ -1482,7 +1483,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_UpdateChime_CallsChimesEndpointWithPut()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/clients_api/chimes/789012", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.UpdateChime(789012, @"{ ""description"": ""Front Chime"" }");
@@ -1500,7 +1501,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             // Path corrected in Phase 16 (commands/v1, not devices/v1) - see
             // MockSession_UnlockIntercom_UsesCommandsV1Path for the path-specific assertion.
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.Unlock(555);
@@ -1614,7 +1615,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task MockSession_UnlockIntercom_UsesCommandsV1Path()
         {
             MockHttpMessageHandler mockHandler = _mockHelper!.GetMockHandler();
-            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, string.Empty);
+            mockHandler.SetupResponse("api.ring.com/commands/v1/devices/555/device_rpc", System.Net.HttpStatusCode.OK, "");
             _ = await _mockSession!.Authenticate();
 
             await _mockSession!.Unlock(555);
@@ -1706,10 +1707,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         }
 
         /// <summary>xUnit disposes each test's instance after the test: clear the throttle state it may have set.</summary>
-        public void Dispose()
-        {
-            RingTestHardBanIsolation.ResetForTest();
-        }
+        public void Dispose() => RingTestHardBanIsolation.ResetForTest();
     }
 }
 

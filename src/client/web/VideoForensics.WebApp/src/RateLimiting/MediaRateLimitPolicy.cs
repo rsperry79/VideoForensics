@@ -1,5 +1,7 @@
 using System.Threading.RateLimiting;
 
+using Microsoft.AspNetCore.Http;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 
@@ -31,15 +33,18 @@ namespace VideoForensics.WebApp.RateLimiting
 
             string key = resolver.ResolveClientIp(httpContext);
 
-            return resolver.ResolveTier(httpContext) == NetworkTier.Local
-                ? RateLimitPartition.GetNoLimiter(key)
-                : RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
-                {
-                    PermitLimit = 120,
-                    Window = TimeSpan.FromMinutes(1),
-                    SegmentsPerWindow = 4,
-                    QueueLimit = 0
-                });
+            if (resolver.ResolveTier(httpContext) == NetworkTier.Local)
+            {
+                return RateLimitPartition.GetNoLimiter(key);
+            }
+
+            return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 4,
+                QueueLimit = 0
+            });
         }
     }
 }

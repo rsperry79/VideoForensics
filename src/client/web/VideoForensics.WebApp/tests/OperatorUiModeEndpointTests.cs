@@ -1,18 +1,13 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-
 using Moq;
-
-using System.Reflection;
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Auth;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -22,7 +17,7 @@ namespace VideoForensics.WebApp.Tests
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, OperatorRole role = OperatorRole.Admin)
         {
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(ClaimTypes.Role, role.ToString()),
@@ -36,7 +31,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<INetworkTierResolver> MockNetworkTierResolver()
         {
             var mock = new Mock<INetworkTierResolver>();
-            _ = mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
@@ -48,18 +43,18 @@ namespace VideoForensics.WebApp.Tests
             var adminId = Guid.NewGuid();
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
                 operatorId, operators.Object, preferences.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            IStatusCodeHttpResult status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(404, status.StatusCode);
         }
 
@@ -71,20 +66,20 @@ namespace VideoForensics.WebApp.Tests
             var adminId = Guid.NewGuid();
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
-            _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((OperatorPreferences?)null);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
                 operatorId, operators.Object, preferences.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            Ok<OperatorUiModeDto> okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
+            var okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
             Assert.NotNull(okResult.Value);
             Assert.Equal("Standard", okResult.Value.Mode);
             Assert.False(okResult.Value.Locked);
@@ -98,7 +93,7 @@ namespace VideoForensics.WebApp.Tests
             var adminId = Guid.NewGuid();
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = "testop", FirstName = "Test", LastName = "Operator", Email = "test@example.com" });
 
             var storedPrefs = new OperatorPreferences
@@ -110,16 +105,16 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
-            _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(storedPrefs);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
                 operatorId, operators.Object, preferences.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            Ok<OperatorUiModeDto> okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
+            var okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
             Assert.NotNull(okResult.Value);
             Assert.Equal("Simple", okResult.Value.Mode);
             Assert.True(okResult.Value.Locked);
@@ -132,20 +127,20 @@ namespace VideoForensics.WebApp.Tests
             var operatorId = Guid.NewGuid();
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
-            _ = preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            preferences.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((OperatorPreferences?)null);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.GetUiModeAsync(
                 operatorId, operators.Object, preferences.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            Ok<OperatorUiModeDto> okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
+            var okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
             // Verify no audit logging occurs for GET (audit logger is not even injected into GetUiModeAsync)
         }
 
@@ -158,21 +153,21 @@ namespace VideoForensics.WebApp.Tests
             var request = new SetOperatorUiModeRequest("Simple", true);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(adminId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(adminId);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
                 operatorId, request, operators.Object, preferences.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            IStatusCodeHttpResult status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(404, status.StatusCode);
             preferences.Verify(r => r.SetUiModeAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
             auditLog.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
@@ -188,21 +183,21 @@ namespace VideoForensics.WebApp.Tests
             var request = new SetOperatorUiModeRequest("InvalidMode", false);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
             var auditLog = new Mock<ISecurityAuditLogger>();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(adminId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(adminId);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
                 operatorId, request, operators.Object, preferences.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            IStatusCodeHttpResult status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var status = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(400, status.StatusCode);
             preferences.Verify(r => r.SetUiModeAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
             auditLog.Verify(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
@@ -218,7 +213,7 @@ namespace VideoForensics.WebApp.Tests
             var request = new SetOperatorUiModeRequest("Simple", true);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test", Username = "test", FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var savedPrefs = new OperatorPreferences
@@ -230,24 +225,24 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
-            _ = preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
+            preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(savedPrefs);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(adminId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(adminId);
 
             // Act
-            object result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
+            var result = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
                 operatorId, request, operators.Object, preferences.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            Ok<OperatorUiModeDto> okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
+            var okResult = Assert.IsType<Ok<OperatorUiModeDto>>(result);
             Assert.NotNull(okResult.Value);
             Assert.Equal("Simple", okResult.Value.Mode);
             Assert.True(okResult.Value.Locked);
@@ -261,11 +256,11 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             var operatorId = Guid.NewGuid();
             var adminId = Guid.NewGuid();
-            string targetUsername = "testoperator";
+            var targetUsername = "testoperator";
             var request = new SetOperatorUiModeRequest("Simple", true);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator { Id = operatorId, DisplayName = "Test Operator", Username = targetUsername, FirstName = "Test", LastName = "Op", Email = "test@example.com" });
 
             var savedPrefs = new OperatorPreferences
@@ -277,19 +272,19 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var preferences = new Mock<IOperatorPreferencesRepository>();
-            _ = preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
+            preferences.Setup(r => r.SetUiModeAsync(operatorId, "Simple", true, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(savedPrefs);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(adminId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(adminId);
 
             // Act
-            _ = await OperatorUiModeEndpointInvoker.SetUiModeAsync(
+            await OperatorUiModeEndpointInvoker.SetUiModeAsync(
                 operatorId, request, operators.Object, preferences.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert - verify audit event includes target operator username and mode/locked values
@@ -312,7 +307,7 @@ namespace VideoForensics.WebApp.Tests
             IOperatorPreferencesRepository preferences,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
+            var method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
                 .GetMethod("GetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -321,12 +316,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find GetUiModeAsync method");
-            }
 
-            object? result = method.Invoke(null, [operatorId, operators, preferences, ct]);
-            return await result;
+            var result = method.Invoke(null, [operatorId, operators, preferences, ct]);
+            return await (dynamic)result;
         }
 
         public static async Task<object> SetUiModeAsync(
@@ -339,7 +332,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
+            var method = typeof(VideoForensics.WebApp.Api.DeviceManagementEndpoints)
                 .GetMethod("SetUiModeAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -349,12 +342,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find SetUiModeAsync method");
-            }
 
-            object? result = method.Invoke(null, [operatorId, request, operators, preferences, auditLog, tierResolver, context, ct]);
-            return await result;
+            var result = method.Invoke(null, [operatorId, request, operators, preferences, auditLog, tierResolver, context, ct]);
+            return await (dynamic)result;
         }
     }
 }

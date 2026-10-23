@@ -1,5 +1,5 @@
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -27,7 +27,7 @@ namespace VideoForensics.WebApp.Api
             ITwoFactorRoleRequirementRepository repository,
             CancellationToken ct)
         {
-            IReadOnlyList<TwoFactorRoleRequirement> requirements = await repository.GetAllAsync(ct);
+            var requirements = await repository.GetAllAsync(ct);
             var dtos = requirements.Select(r => r.ToDto()).ToList();
             return Results.Ok(dtos);
         }
@@ -47,7 +47,7 @@ namespace VideoForensics.WebApp.Api
                 Role = role,
                 RequireTwoFactor = request.RequireTwoFactor,
                 UpdatedAtUtc = DateTime.UtcNow,
-                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not string.Empty } claim
+                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not "" } claim
                     && Guid.TryParse(claim.Value, out Guid operatorId) ? operatorId : null
             };
 

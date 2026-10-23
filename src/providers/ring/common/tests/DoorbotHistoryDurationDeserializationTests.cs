@@ -1,5 +1,5 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Entities;
 
@@ -69,14 +69,12 @@ public class DecimalToIntConverter_Read_Tests
         public int? V { get; set; }
     }
 
-    private static int? Read(string json)
-    {
-        return JsonSerializer.Deserialize<Holder>(
+    private static int? Read(string json) =>
+        JsonSerializer.Deserialize<Holder>(
             $"{{\"v\":{json}}}", new JsonSerializerOptions
             {
                 Converters = { new VideoForensics.Providers.Ring.Converters.DecimalToIntConverter() }
             })!.V;
-    }
 
     [Fact]
     public void Read_NegativeHalf_RoundsAwayFromZero()

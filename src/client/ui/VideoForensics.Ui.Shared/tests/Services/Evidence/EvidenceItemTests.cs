@@ -1,10 +1,8 @@
-
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Services.Evidence;
 
 public class EvidenceItem_Label_Tests
 {
@@ -34,7 +32,7 @@ public class EvidenceItem_Label_Tests
         };
 
         // Act
-        string label = item.Label;
+        var label = item.Label;
 
         // Assert
         Assert.Equal("Motion Detected", label);
@@ -68,7 +66,7 @@ public class EvidenceItem_Label_Tests
         };
 
         // Act
-        string label = item.Label;
+        var label = item.Label;
 
         // Assert
         Assert.Equal("Snapshot", label);
@@ -90,7 +88,7 @@ public class EvidenceItem_Label_Tests
         };
 
         // Act
-        string label = item.Label;
+        var label = item.Label;
 
         // Assert
         Assert.Equal("Video", label);
@@ -112,7 +110,7 @@ public class EvidenceItem_Label_Tests
         };
 
         // Act
-        string label = item.Label;
+        var label = item.Label;
 
         // Assert
         Assert.Equal("File", label);
@@ -149,7 +147,7 @@ public class EvidenceItem_HasViewableMedia_Tests
         };
 
         // Act
-        bool hasViewable = item.HasViewableMedia;
+        var hasViewable = item.HasViewableMedia;
 
         // Assert
         Assert.True(hasViewable);
@@ -183,7 +181,7 @@ public class EvidenceItem_HasViewableMedia_Tests
         };
 
         // Act
-        bool hasViewable = item.HasViewableMedia;
+        var hasViewable = item.HasViewableMedia;
 
         // Assert
         Assert.True(hasViewable);
@@ -205,7 +203,7 @@ public class EvidenceItem_HasViewableMedia_Tests
         };
 
         // Act
-        bool hasViewable = item.HasViewableMedia;
+        var hasViewable = item.HasViewableMedia;
 
         // Assert
         Assert.False(hasViewable);
@@ -239,7 +237,7 @@ public class EvidenceItem_HasViewableMedia_Tests
         };
 
         // Act
-        bool hasViewable = item.HasViewableMedia;
+        var hasViewable = item.HasViewableMedia;
 
         // Assert
         Assert.False(hasViewable);

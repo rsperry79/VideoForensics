@@ -1,9 +1,8 @@
-using VideoForensics.Core.Providers.Common.Contracts;
-
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
-
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using VideoForensics.Core.Providers.Common.Contracts;
+    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
     /// <summary>The pull reports what it synced so a sync run can record real counts.</summary>
     public class EventPullServiceResultTests
     {
@@ -14,39 +13,25 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IDeviceDiscoveryService> _discovery = new();
         private readonly Guid _accountId = Guid.NewGuid();
 
-        private EventPullService Sut()
-        {
-            return new(_events.Object, _devices.Object, _locations.Object, _accounts.Object, _discovery.Object);
-        }
+        private EventPullService Sut() => new(_events.Object, _devices.Object, _locations.Object, _accounts.Object, _discovery.Object);
 
-        private void SetupAccount()
-        {
-            _ = _accounts
+        private void SetupAccount() => _accounts
             .Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true });
-        }
 
-        private static DeviceEntity Device(Guid locationId, string id)
+        private static DeviceEntity Device(Guid locationId, string id) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                LocationId = locationId,
-                ProviderDeviceId = id,
-                Name = id,
-                Type = "doorbell"
-            };
-        }
+            Id = Guid.NewGuid(),
+            LocationId = locationId,
+            ProviderDeviceId = id,
+            Name = id,
+            Type = "doorbell"
+        };
 
-        private static List<DeviceEvent> Events(string deviceId, int count)
-        {
-            return Enumerable.Range(0, count).Select(i => new DeviceEvent($"{deviceId}-{i}", deviceId, "motion", DateTime.UtcNow.AddMinutes(-i))).ToList();
-        }
+        private static List<DeviceEvent> Events(string deviceId, int count) =>
+            Enumerable.Range(0, count).Select(i => new DeviceEvent($"{deviceId}-{i}", deviceId, "motion", DateTime.UtcNow.AddMinutes(-i))).ToList();
 
-        private static DeviceConfig Config(string deviceId)
-        {
-            return new(deviceId, true, 50, "motion");
-        }
+        private static DeviceConfig Config(string deviceId) => new(deviceId, true, 50, "motion");
 
         [Fact]
         public async Task PullAccountEventsAsync_TwoDevicesWithEvents_ReturnsCounts()
@@ -56,10 +41,10 @@ namespace VideoForensics.Hosting.Tests.Services
             DeviceEntity a = Device(location.Id, "dev-a");
             DeviceEntity b = Device(location.Id, "dev-b");
             DiscoveryStub.Wire(_accountId, location, new[] { a, b }, _discovery, _locations, _devices);
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-a", 2));
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-b", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-b", 1));
-            _ = _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-a", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-a"));
-            _ = _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-b", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-b"));
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-a", 2));
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-b", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-b", 1));
+            _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-a", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-a"));
+            _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-b", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-b"));
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -74,9 +59,9 @@ namespace VideoForensics.Hosting.Tests.Services
             DeviceEntity a = Device(location.Id, "dev-a");
             DeviceEntity b = Device(location.Id, "dev-b");
             DiscoveryStub.Wire(_accountId, location, new[] { a, b }, _discovery, _locations, _devices);
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-a", 2));
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-b", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
-            _ = _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-a", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-a"));
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Events("dev-a", 2));
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-b", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
+            _events.Setup(s => s.GetDeviceConfigAsync(_accountId, "dev-a", It.IsAny<CancellationToken>())).ReturnsAsync(Config("dev-a"));
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -86,7 +71,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task PullAccountEventsAsync_AccountNotFound_ReturnsEmptyResult()
         {
-            _ = _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccountEntity?)null);
+            _accounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccountEntity?)null);
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -97,7 +82,7 @@ namespace VideoForensics.Hosting.Tests.Services
         public async Task PullAccountEventsAsync_DiscoveryFails_ReturnsEmptyResult()
         {
             SetupAccount();
-            _ = _discovery.Setup(d => d.GetLocationsAsync(_accountId, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("no network"));
+            _discovery.Setup(d => d.GetLocationsAsync(_accountId, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("no network"));
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
@@ -116,12 +101,12 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task PullAccountEventsAsync_ToProvided_PassesEndDateToProvider()
         {
-            _ = WireOneDevice();
+            WireOneDevice();
             var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
             var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", from, to, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", from, to, null, It.IsAny<CancellationToken>())).ReturnsAsync(new List<DeviceEvent>());
 
-            _ = await Sut().PullAccountEventsAsync(_accountId, from, to, CancellationToken.None);
+            await Sut().PullAccountEventsAsync(_accountId, from, to, CancellationToken.None);
 
             _events.Verify(s => s.GetEventsAsync(_accountId, "dev-a", from, to, null, It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -129,30 +114,30 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task PullAccountEventsAsync_ToNull_UsesNowAsEnd()
         {
-            _ = WireOneDevice();
+            WireOneDevice();
             DateTime? capturedEnd = null;
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
                 .Callback<Guid, string, DateTime, DateTime, string?, CancellationToken>((_, _, _, end, _, _) => capturedEnd = end)
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<DeviceEvent>());
             DateTime before = DateTime.UtcNow;
 
-            _ = await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+            await Sut().PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
-            _ = Assert.NotNull(capturedEnd);
+            Assert.NotNull(capturedEnd);
             Assert.InRange(capturedEnd!.Value, before, DateTime.UtcNow);
         }
 
         [Fact]
         public async Task PullAccountEventsAsync_ProviderReturnsEventsOutsideWindow_CountsOnlyEventsInWindow()
         {
-            _ = WireOneDevice();
+            WireOneDevice();
             var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
             var to = new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc);
             var inside = new DeviceEvent("in", "dev-a", "motion", new DateTime(2026, 9, 5, 0, 0, 0, DateTimeKind.Utc));
             var tooLate = new DeviceEvent("late", "dev-a", "motion", new DateTime(2026, 9, 11, 0, 0, 0, DateTimeKind.Utc));
             var tooEarly = new DeviceEvent("early", "dev-a", "motion", new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc));
-            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync([inside, tooLate, tooEarly]);
+            _events.Setup(s => s.GetEventsAsync(_accountId, "dev-a", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<DeviceEvent> { inside, tooLate, tooEarly });
 
             EventPullResult result = await Sut().PullAccountEventsAsync(_accountId, from, to, CancellationToken.None);
 

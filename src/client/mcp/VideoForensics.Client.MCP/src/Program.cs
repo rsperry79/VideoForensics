@@ -7,8 +7,8 @@ using ModelContextProtocol.Client;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-using VideoForensics.Client.MCP.ServerDiscovery;
 using VideoForensics.Hosting.ServerDiscovery;
+using VideoForensics.Client.MCP.ServerDiscovery;
 
 namespace VideoForensics.Client.MCP
 {
@@ -107,7 +107,7 @@ namespace VideoForensics.Client.MCP
 
             // Step 1: Request a device code
             var deviceCodeEndpoint = new Uri(serverUri, "/api/v1/pairing/device-code");
-            using HttpResponseMessage deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(string.Empty), ct);
+            using HttpResponseMessage deviceCodeResponse = await httpClient.PostAsync(deviceCodeEndpoint, new StringContent(""), ct);
             _ = deviceCodeResponse.EnsureSuccessStatusCode();
 
             string deviceCodeContent = await deviceCodeResponse.Content.ReadAsStringAsync(ct);
@@ -139,7 +139,7 @@ namespace VideoForensics.Client.MCP
             {
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
 
-                using HttpResponseMessage pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(string.Empty), ct);
+                using HttpResponseMessage pollResponse = await httpClient.PostAsync(pollEndpoint, new StringContent(""), ct);
                 string pollContent = await pollResponse.Content.ReadAsStringAsync(ct);
 
                 using var pollDoc = JsonDocument.Parse(pollContent);

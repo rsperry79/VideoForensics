@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
@@ -49,7 +50,7 @@ namespace VideoForensics.Providers.Ring.Services
             if (profile.Features is not null)
             {
                 result.SessionFeatures = MapSessionFeatures(profile.Features, result.Id);
-                foreach (KeyValuePair<string, object> flag in profile.Features.AdditionalFeatures ?? [])
+                foreach (KeyValuePair<string, object> flag in profile.Features.AdditionalFeatures ?? new Dictionary<string, object>())
                 {
                     AddFlag(result.Flags, result.Id, FeaturesScope, flag.Key, ToJsonElement(flag.Value));
                 }
@@ -251,49 +252,46 @@ namespace VideoForensics.Providers.Ring.Services
             };
         }
 
-        private static RingAccountSessionFeatures MapSessionFeatures(SessionFeatures f, Guid profileId)
+        private static RingAccountSessionFeatures MapSessionFeatures(SessionFeatures f, Guid profileId) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                RingAccountProfileId = profileId,
-                RemoteLoggingFormatStoring = f.RemoteLoggingFormatStoring,
-                RemoteLoggingLevel = f.RemoteLoggingLevel,
-                SubscriptionsEnabled = f.SubscriptionsEnabled,
-                StickupCamSetupEnabled = f.StickupcamSetupEnabled,
-                VodEnabled = f.VodEnabled,
-                NwEnabled = f.NwEnabled,
-                NwUserActivated = f.NwUserActivated,
-                RingPlusEnabled = f.RingPlusEnabled,
-                LpdEnabled = f.LdpEnabled,
-                ReactiveSnoozingEnabled = f.ReactiveSnoozingEnabled,
-                ProActiveSnoozingEnabled = f.ProActiveSnoozingEnabled,
-                OwnerProActiveSnoozingEnabled = f.OwnerProActiveSnoozingEnabled,
-                LiveviewSettingsEnabled = f.LiveviewSettingsEnabled,
-                DeleteAllSettingsEnabled = f.DeleteAllSettingsEnabled,
-                PowerCableEnabled = f.PowerCableEnabled,
-                DeviceHealthAlertsEnabled = f.DeviceHealthAlertsEnabled,
-                ChimeProEnabled = f.ChimeProEnabled,
-                MultipleCallsEnabled = f.MultipleCallsEnabled,
-                UjetEnabled = f.UjetEnabled,
-                MultipleDeleteEnabled = f.MultipleDeleteEnabled,
-                DeleteAllEnabled = f.DeleteAllEnabled,
-                LdpMotionAnnouncementEnabled = f.LdpMotionAnnouncementEnabled,
-                StarredEventsEnabled = f.StarredEventsEnabled,
-                ChimeDndEnabled = f.ChimeDndEnabled,
-                VideoSearchEnabled = f.VideoSearchEnabled,
-                FloodlightCamEnabled = f.FlooglightCamEnabled,
-                NwLargerAreaEnabled = f.NwLargerAreaEnabled,
-                RingCamBatteryEnabled = f.RingCamBatteryEnabled,
-                EliteCamEnabled = f.EliteCamEnabled,
-                DoorbellV2Enabled = f.DoorbellV2Enabled,
-                SpotlightBatteryDashboardControlsEnabled = f.SpotlightBatteryDashboardControlsEnabled,
-                BypassAccountVerification = f.ByPassAccountVerification,
-                LegacyCvrRetentionEnabled = f.LegacyCvrRetentionEnabled,
-                NewDashboardEnabled = f.NewDashboardEnabled,
-                RingCamEnabled = f.RingCamEnabled,
-            };
-        }
+            Id = Guid.NewGuid(),
+            RingAccountProfileId = profileId,
+            RemoteLoggingFormatStoring = f.RemoteLoggingFormatStoring,
+            RemoteLoggingLevel = f.RemoteLoggingLevel,
+            SubscriptionsEnabled = f.SubscriptionsEnabled,
+            StickupCamSetupEnabled = f.StickupcamSetupEnabled,
+            VodEnabled = f.VodEnabled,
+            NwEnabled = f.NwEnabled,
+            NwUserActivated = f.NwUserActivated,
+            RingPlusEnabled = f.RingPlusEnabled,
+            LpdEnabled = f.LdpEnabled,
+            ReactiveSnoozingEnabled = f.ReactiveSnoozingEnabled,
+            ProActiveSnoozingEnabled = f.ProActiveSnoozingEnabled,
+            OwnerProActiveSnoozingEnabled = f.OwnerProActiveSnoozingEnabled,
+            LiveviewSettingsEnabled = f.LiveviewSettingsEnabled,
+            DeleteAllSettingsEnabled = f.DeleteAllSettingsEnabled,
+            PowerCableEnabled = f.PowerCableEnabled,
+            DeviceHealthAlertsEnabled = f.DeviceHealthAlertsEnabled,
+            ChimeProEnabled = f.ChimeProEnabled,
+            MultipleCallsEnabled = f.MultipleCallsEnabled,
+            UjetEnabled = f.UjetEnabled,
+            MultipleDeleteEnabled = f.MultipleDeleteEnabled,
+            DeleteAllEnabled = f.DeleteAllEnabled,
+            LdpMotionAnnouncementEnabled = f.LdpMotionAnnouncementEnabled,
+            StarredEventsEnabled = f.StarredEventsEnabled,
+            ChimeDndEnabled = f.ChimeDndEnabled,
+            VideoSearchEnabled = f.VideoSearchEnabled,
+            FloodlightCamEnabled = f.FlooglightCamEnabled,
+            NwLargerAreaEnabled = f.NwLargerAreaEnabled,
+            RingCamBatteryEnabled = f.RingCamBatteryEnabled,
+            EliteCamEnabled = f.EliteCamEnabled,
+            DoorbellV2Enabled = f.DoorbellV2Enabled,
+            SpotlightBatteryDashboardControlsEnabled = f.SpotlightBatteryDashboardControlsEnabled,
+            BypassAccountVerification = f.ByPassAccountVerification,
+            LegacyCvrRetentionEnabled = f.LegacyCvrRetentionEnabled,
+            NewDashboardEnabled = f.NewDashboardEnabled,
+            RingCamEnabled = f.RingCamEnabled,
+        };
 
         private static void AddScope(List<RingAccountProfileFlag> flags, Guid profileId, string scope, IDictionary<string, JsonElement>? values)
         {
@@ -365,9 +363,7 @@ namespace VideoForensics.Providers.Ring.Services
             string valueKind,
             bool? boolValue = null,
             long? intValue = null,
-            string? stringValue = null)
-        {
-            return new()
+            string? stringValue = null) => new()
             {
                 Id = Guid.NewGuid(),
                 RingAccountProfileId = profileId,
@@ -378,13 +374,10 @@ namespace VideoForensics.Providers.Ring.Services
                 IntValue = intValue,
                 StringValue = stringValue,
             };
-        }
 
         /// <summary>The untyped feature values arrive as JsonElement, but a value set in code may be any object.</summary>
-        private static JsonElement ToJsonElement(object? value)
-        {
-            return value is JsonElement element ? element : JsonSerializer.SerializeToElement(value);
-        }
+        private static JsonElement ToJsonElement(object? value) =>
+            value is JsonElement element ? element : JsonSerializer.SerializeToElement(value);
 
         private static void AddModeEntries(RingLocationModeSettings settings, string mode, IEnumerable<LocationModeSettingsEntry>? entries)
         {
@@ -407,7 +400,7 @@ namespace VideoForensics.Providers.Ring.Services
                     row.Actions.Add(NewAction(row.Id, "enabled", null, actionPosition++, action));
                 }
 
-                foreach (KeyValuePair<string, List<string>> group in entry.SupportedActions ?? [])
+                foreach (KeyValuePair<string, List<string>> group in entry.SupportedActions ?? new Dictionary<string, List<string>>())
                 {
                     int groupActionPosition = 0;
                     foreach (string action in group.Value ?? [])
@@ -420,17 +413,14 @@ namespace VideoForensics.Providers.Ring.Services
             }
         }
 
-        private static RingLocationModeSettingsEntryAction NewAction(Guid entryId, string kind, string? actionGroup, int position, string actionName)
+        private static RingLocationModeSettingsEntryAction NewAction(Guid entryId, string kind, string? actionGroup, int position, string actionName) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                RingLocationModeSettingsEntryId = entryId,
-                Kind = kind,
-                ActionGroup = actionGroup,
-                Position = position,
-                ActionName = actionName,
-            };
-        }
+            Id = Guid.NewGuid(),
+            RingLocationModeSettingsEntryId = entryId,
+            Kind = kind,
+            ActionGroup = actionGroup,
+            Position = position,
+            ActionName = actionName,
+        };
     }
 }

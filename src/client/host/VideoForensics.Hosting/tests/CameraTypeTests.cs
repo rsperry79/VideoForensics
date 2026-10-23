@@ -1,4 +1,5 @@
 using VideoForensics.Hosting.BackgroundServices;
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {

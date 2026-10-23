@@ -4,11 +4,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
 {
     public class FfmpegBinDirectoryLocatorTests
     {
-        private static string Ext => OperatingSystem.IsWindows() ? ".exe" : string.Empty;
+        private static string Ext => OperatingSystem.IsWindows() ? ".exe" : "";
 
         private static string CreateTempDir()
         {
-            string dir = Path.Combine(Path.GetTempPath(), "vf-bindir-" + Guid.NewGuid().ToString("N"));
+            var dir = Path.Combine(Path.GetTempPath(), "vf-bindir-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
             return dir;
         }
@@ -21,14 +21,14 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FindBinDirectory_FirstDirWithBothExecutables_ReturnsThatDirectory()
         {
-            string empty = CreateTempDir();
-            string good = CreateTempDir();
+            var empty = CreateTempDir();
+            var good = CreateTempDir();
             try
             {
                 TouchFile(good, "ffmpeg");
                 TouchFile(good, "ffprobe");
 
-                string? result = FfmpegBinDirectoryLocator.FindBinDirectory(new[] { empty, good });
+                var result = FfmpegBinDirectoryLocator.FindBinDirectory(new[] { empty, good });
 
                 Assert.Equal(good, result);
             }
@@ -42,12 +42,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FindBinDirectory_OnlyFfmpegPresent_ReturnsNull()
         {
-            string dir = CreateTempDir();
+            var dir = CreateTempDir();
             try
             {
                 TouchFile(dir, "ffmpeg");
 
-                string? result = FfmpegBinDirectoryLocator.FindBinDirectory(new[] { dir });
+                var result = FfmpegBinDirectoryLocator.FindBinDirectory(new[] { dir });
 
                 Assert.Null(result);
             }
@@ -60,14 +60,14 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FindBinDirectory_NullAndWhitespaceCandidates_AreSkipped()
         {
-            string good = CreateTempDir();
+            var good = CreateTempDir();
             try
             {
                 TouchFile(good, "ffmpeg");
                 TouchFile(good, "ffprobe");
 
                 string?[] candidates = { null, "   ", good };
-                string? result = FfmpegBinDirectoryLocator.FindBinDirectory(candidates);
+                var result = FfmpegBinDirectoryLocator.FindBinDirectory(candidates);
 
                 Assert.Equal(good, result);
             }
@@ -80,13 +80,13 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FindExecutable_ReturnsFirstDirectoryContainingFile()
         {
-            string empty = CreateTempDir();
-            string good = CreateTempDir();
+            var empty = CreateTempDir();
+            var good = CreateTempDir();
             try
             {
                 TouchFile(good, "cloudflared");
 
-                string? result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { empty, good }, "cloudflared");
+                var result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { empty, good }, "cloudflared");
 
                 Assert.Equal(Path.Combine(good, "cloudflared" + Ext), result);
             }
@@ -100,10 +100,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FindExecutable_NoMatch_ReturnsNull()
         {
-            string dir = CreateTempDir();
+            var dir = CreateTempDir();
             try
             {
-                string? result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { dir, null }, "cloudflared");
+                var result = FfmpegBinDirectoryLocator.FindExecutable(new string?[] { dir, null }, "cloudflared");
 
                 Assert.Null(result);
             }
@@ -116,7 +116,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void DefaultCandidates_AppBaseThenPathEntries_YieldsInOrderAndSkipsEmpty()
         {
-            string pathVariable = string.Join(Path.PathSeparator, "C:\\first", string.Empty, "\"C:\\second\"", "C:\\third");
+            var pathVariable = string.Join(Path.PathSeparator, "C:\\first", "", "\"C:\\second\"", "C:\\third");
 
             var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\\app", pathVariable).ToList();
 
@@ -126,9 +126,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void DefaultCandidates_MultiplePathVariables_YieldsAppBaseThenEachInOrder()
         {
-            string processPath = "C:\\process";
-            string userPath = "C:\\user";
-            string machinePath = "C:\\machine";
+            var processPath = "C:\\process";
+            var userPath = "C:\\user";
+            var machinePath = "C:\\machine";
 
             var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\\app", new[] { processPath, null, userPath, machinePath }).ToList();
 
@@ -157,7 +157,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void DefaultCandidates_RelativeEntries_AreNotCandidates()
         {
             // A relative entry would resolve against the working directory and could be persisted as configuration.
-            string pathVariable = string.Join(Path.PathSeparator, ".", "bin", "C:\tools");
+            var pathVariable = string.Join(Path.PathSeparator, ".", "bin", "C:\tools");
 
             var result = FfmpegBinDirectoryLocator.DefaultCandidates("C:\app", pathVariable).ToList();
 

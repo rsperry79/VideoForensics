@@ -1,14 +1,22 @@
+using System.Globalization;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using Moq;
+
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Hosting.Services;
 using VideoForensics.Providers.Ring.Services;
+
+using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -55,7 +63,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task Scheduler_DueCamera_CapturesOnceAndWaitsForTheInterval()
         {
             var capture = new Mock<IProviderSnapshotCapture>();
-            _ = capture.Setup(c => c.CaptureAsync(_accountId, "100", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            capture.Setup(c => c.CaptureAsync(_accountId, "100", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await using ServiceProvider provider = await BuildProviderAsync(capture.Object);
@@ -68,23 +76,22 @@ namespace VideoForensics.Hosting.Tests
 
             capture.Verify(c => c.CaptureAsync(_accountId, "100", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
 
-            await using VideoForensicsDbContext db = await provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>().CreateDbContextAsync();
-            List<SnapshotCapture> rows = await db.SnapshotCaptures.Where(r => r.DeviceId == _deviceId).ToListAsync();
-            SnapshotCapture row = Assert.Single(rows);
-            Assert.Equal(200, row.HttpStatus);
-            Assert.NotNull(row.MediaFilePath);
-            // MediaFilePath is relative to SnapshotRoot; the JPEG must exist under it.
-            Assert.True(File.Exists(Path.Combine(_root, row.MediaFilePath!)));
+            await using (var db = await provider.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>().CreateDbContextAsync())
+            {
+                List<SnapshotCapture> rows = await db.SnapshotCaptures.Where(r => r.DeviceId == _deviceId).ToListAsync();
+                SnapshotCapture row = Assert.Single(rows);
+                Assert.Equal(200, row.HttpStatus);
+                Assert.NotNull(row.MediaFilePath);
+                // MediaFilePath is relative to SnapshotRoot; the JPEG must exist under it.
+                Assert.True(File.Exists(Path.Combine(_root, row.MediaFilePath!)));
+            }
         }
 
-        private SnapshotCaptureService BuildScheduler(IServiceProvider provider)
-        {
-            return new(
+        private SnapshotCaptureService BuildScheduler(IServiceProvider provider) => new(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotCaptureService>.Instance,
             TimeProvider.System);
-        }
 
         /// <summary>Builds the real data layer on a temp database, seeds one Ring account with one camera, and fakes only the provider.</summary>
         private async Task<ServiceProvider> BuildProviderAsync(IProviderSnapshotCapture capture)
@@ -94,7 +101,7 @@ namespace VideoForensics.Hosting.Tests
             _ = services.AddVideoForensicsDataLayer(_dbPath);
             _ = services.AddKeyedSingleton<IProviderSnapshotCapture>("Ring", capture);
             var auth = new Mock<IProviderAuthService>();
-            _ = auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", new RingDeviceOnlineStatus());
             _ = services.AddSingleton(Mock.Of<ISessionProvider>());

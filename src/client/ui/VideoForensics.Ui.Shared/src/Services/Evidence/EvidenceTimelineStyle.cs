@@ -27,10 +27,7 @@ public static class EvidenceTimelineStyle
     public const string InCaseTone = "timeline-tone-in-case";
 
     /// <summary>Label to show on the row: the item's label with its first letter capitalised.</summary>
-    public static string DisplayLabel(EvidenceItem item)
-    {
-        return TitleCase(item.Label);
-    }
+    public static string DisplayLabel(EvidenceItem item) => TitleCase(item.Label);
 
     /// <summary>
     /// Returns the tone CSS class for a row. A case always wins, so a pinned item is red regardless of its event type.
@@ -76,16 +73,12 @@ public static class EvidenceTimelineStyle
     /// <summary>
     /// Words separated by underscores or spaces, each capitalised: "on_demand" reads "On Demand". Null or empty input is returned as-is.
     /// </summary>
-    public static string TitleCase(string value)
-    {
-        return string.IsNullOrEmpty(value)
+    public static string TitleCase(string value) =>
+        string.IsNullOrEmpty(value)
             ? value
             : string.Join(" ", value.Split(new[] { '_', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(Capitalize));
-    }
 
     /// <summary>Upper-cases the first character and leaves the rest untouched. Null or empty input is returned as-is.</summary>
-    public static string Capitalize(string value)
-    {
-        return string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
-    }
+    public static string Capitalize(string value) =>
+        string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
 }

@@ -1,6 +1,8 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class SelfTestStatusChangeDetectorTests

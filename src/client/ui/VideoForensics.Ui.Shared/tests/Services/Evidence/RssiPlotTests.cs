@@ -1,9 +1,7 @@
-
-using VideoForensics.Ui.Shared.Services.Evidence;
+namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests.Services.Evidence;
+using VideoForensics.Ui.Shared.Services.Evidence;
 
 public class RssiPlot_Tests
 {
@@ -13,7 +11,7 @@ public class RssiPlot_Tests
     [Fact]
     public void BuildPolylinePoints_NoSamples_ReturnsEmptyString()
     {
-        string result = RssiPlot.BuildPolylinePoints(Array.Empty<RssiSample>(), RangeStart, RangeEnd, 100, 50);
+        var result = RssiPlot.BuildPolylinePoints(Array.Empty<RssiSample>(), RangeStart, RangeEnd, 100, 50);
 
         Assert.Equal(string.Empty, result);
     }
@@ -21,9 +19,9 @@ public class RssiPlot_Tests
     [Fact]
     public void BuildPolylinePoints_RangeEndNotAfterStart_ReturnsEmptyString()
     {
-        RssiSample[] samples = new[] { new RssiSample(RangeStart, -60) };
+        var samples = new[] { new RssiSample(RangeStart, -60) };
 
-        string result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeStart, 100, 50);
+        var result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeStart, 100, 50);
 
         Assert.Equal(string.Empty, result);
     }
@@ -31,13 +29,13 @@ public class RssiPlot_Tests
     [Fact]
     public void BuildPolylinePoints_SingleSampleAtStart_PlotsAtLeftEdge()
     {
-        RssiSample[] samples = new[] { new RssiSample(RangeStart, -65) }; // midpoint of -100..-30 range
+        var samples = new[] { new RssiSample(RangeStart, -65) }; // midpoint of -100..-30 range
 
-        string result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
+        var result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
 
-        string[] parts = result.Split(' ');
-        _ = Assert.Single(parts);
-        string[] xy = parts[0].Split(',');
+        var parts = result.Split(' ');
+        Assert.Single(parts);
+        var xy = parts[0].Split(',');
         Assert.Equal(0.0, double.Parse(xy[0]), 2);
         Assert.Equal(25.0, double.Parse(xy[1]), 2); // -65 is the midpoint -> mid-height
     }
@@ -45,12 +43,12 @@ public class RssiPlot_Tests
     [Fact]
     public void BuildPolylinePoints_SampleAtRangeMidpoint_PlotsAtHorizontalCenter()
     {
-        DateTime midTime = RangeStart.AddHours(5);
-        RssiSample[] samples = new[] { new RssiSample(midTime, -30) }; // strongest -> top (y=0)
+        var midTime = RangeStart.AddHours(5);
+        var samples = new[] { new RssiSample(midTime, -30) }; // strongest -> top (y=0)
 
-        string result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
+        var result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
 
-        string[] xy = result.Split(',');
+        var xy = result.Split(',');
         Assert.Equal(50.0, double.Parse(xy[0]), 2);
         Assert.Equal(0.0, double.Parse(xy[1]), 2);
     }
@@ -58,22 +56,22 @@ public class RssiPlot_Tests
     [Fact]
     public void BuildPolylinePoints_WeakestSignal_PlotsAtBottom()
     {
-        RssiSample[] samples = new[] { new RssiSample(RangeStart, -100) };
+        var samples = new[] { new RssiSample(RangeStart, -100) };
 
-        string result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
+        var result = RssiPlot.BuildPolylinePoints(samples, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
 
-        string[] xy = result.Split(',');
+        var xy = result.Split(',');
         Assert.Equal(50.0, double.Parse(xy[1]), 2); // bottom of the plot
     }
 
     [Fact]
     public void BuildPolylinePoints_RssiOutsideConfiguredRange_IsClamped()
     {
-        RssiSample[] strongerThanMax = new[] { new RssiSample(RangeStart, -10) };
-        RssiSample[] weakerThanMin = new[] { new RssiSample(RangeStart, -120) };
+        var strongerThanMax = new[] { new RssiSample(RangeStart, -10) };
+        var weakerThanMin = new[] { new RssiSample(RangeStart, -120) };
 
-        string strongResult = RssiPlot.BuildPolylinePoints(strongerThanMax, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
-        string weakResult = RssiPlot.BuildPolylinePoints(weakerThanMin, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
+        var strongResult = RssiPlot.BuildPolylinePoints(strongerThanMax, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
+        var weakResult = RssiPlot.BuildPolylinePoints(weakerThanMin, RangeStart, RangeEnd, 100, 50, minRssi: -100, maxRssi: -30);
 
         Assert.Equal(0.0, double.Parse(strongResult.Split(',')[1]), 2);
         Assert.Equal(50.0, double.Parse(weakResult.Split(',')[1]), 2);
@@ -85,11 +83,11 @@ public class RssiPlot_Tests
         var early = new RssiSample(RangeStart.AddHours(1), -60);
         var late = new RssiSample(RangeStart.AddHours(8), -60);
 
-        string result = RssiPlot.BuildPolylinePoints(new[] { late, early }, RangeStart, RangeEnd, 100, 50);
+        var result = RssiPlot.BuildPolylinePoints(new[] { late, early }, RangeStart, RangeEnd, 100, 50);
 
-        string[] points = result.Split(' ');
-        double firstX = double.Parse(points[0].Split(',')[0]);
-        double secondX = double.Parse(points[1].Split(',')[0]);
+        var points = result.Split(' ');
+        var firstX = double.Parse(points[0].Split(',')[0]);
+        var secondX = double.Parse(points[1].Split(',')[0]);
         Assert.True(firstX < secondX);
     }
 
@@ -99,9 +97,9 @@ public class RssiPlot_Tests
         var beforeRange = new RssiSample(RangeStart.AddHours(-2), -60);
         var afterRange = new RssiSample(RangeEnd.AddHours(2), -60);
 
-        string result = RssiPlot.BuildPolylinePoints(new[] { beforeRange, afterRange }, RangeStart, RangeEnd, 100, 50);
+        var result = RssiPlot.BuildPolylinePoints(new[] { beforeRange, afterRange }, RangeStart, RangeEnd, 100, 50);
 
-        string[] points = result.Split(' ');
+        var points = result.Split(' ');
         Assert.Equal(0.0, double.Parse(points[0].Split(',')[0]), 2);
         Assert.Equal(100.0, double.Parse(points[1].Split(',')[0]), 2);
     }
@@ -109,7 +107,7 @@ public class RssiPlot_Tests
     [Fact]
     public void MarkerX_AtRangeStart_ReturnsZero()
     {
-        double x = RssiPlot.MarkerX(RangeStart, RangeStart, RangeEnd, 100);
+        var x = RssiPlot.MarkerX(RangeStart, RangeStart, RangeEnd, 100);
 
         Assert.Equal(0.0, x, 2);
     }
@@ -117,7 +115,7 @@ public class RssiPlot_Tests
     [Fact]
     public void MarkerX_AtRangeEnd_ReturnsWidth()
     {
-        double x = RssiPlot.MarkerX(RangeEnd, RangeStart, RangeEnd, 100);
+        var x = RssiPlot.MarkerX(RangeEnd, RangeStart, RangeEnd, 100);
 
         Assert.Equal(100.0, x, 2);
     }
@@ -125,7 +123,7 @@ public class RssiPlot_Tests
     [Fact]
     public void MarkerX_AtMidpoint_ReturnsHalfWidth()
     {
-        double x = RssiPlot.MarkerX(RangeStart.AddHours(5), RangeStart, RangeEnd, 100);
+        var x = RssiPlot.MarkerX(RangeStart.AddHours(5), RangeStart, RangeEnd, 100);
 
         Assert.Equal(50.0, x, 2);
     }
@@ -133,7 +131,7 @@ public class RssiPlot_Tests
     [Fact]
     public void MarkerX_ZeroWidthRange_ReturnsZero()
     {
-        double x = RssiPlot.MarkerX(RangeStart, RangeStart, RangeStart, 100);
+        var x = RssiPlot.MarkerX(RangeStart, RangeStart, RangeStart, 100);
 
         Assert.Equal(0.0, x, 2);
     }
@@ -141,8 +139,8 @@ public class RssiPlot_Tests
     [Fact]
     public void MarkerX_TimestampOutsideRange_IsClamped()
     {
-        double beforeX = RssiPlot.MarkerX(RangeStart.AddHours(-5), RangeStart, RangeEnd, 100);
-        double afterX = RssiPlot.MarkerX(RangeEnd.AddHours(5), RangeStart, RangeEnd, 100);
+        var beforeX = RssiPlot.MarkerX(RangeStart.AddHours(-5), RangeStart, RangeEnd, 100);
+        var afterX = RssiPlot.MarkerX(RangeEnd.AddHours(5), RangeStart, RangeEnd, 100);
 
         Assert.Equal(0.0, beforeX, 2);
         Assert.Equal(100.0, afterX, 2);

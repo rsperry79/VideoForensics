@@ -1,21 +1,16 @@
+using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-
 using Moq;
-
-using System.Net;
-using System.Reflection;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Services;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests.Api
@@ -30,38 +25,38 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task LoginPasswordAsync_SuccessfulLogin_RecordsAuditEvent()
         {
             // Arrange - create operator with valid password
-            Operator op = CreateOperator();
+            var op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
-            _ = operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.ResetFailedLoginAttemptsAsync(op.Id, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            _ = operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.SetApprovalFirstLoginNotifiedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
-            _ = credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
-            _ = twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>()))
+            twoFactorRequirements.Setup(r => r.GetRequirementForRoleAsync(op.Role, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
-            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
-            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var lockoutPolicy = MockLockoutPolicyRepository();
             var auditService = new Mock<ISecurityAuditService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
-            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
 
-            HttpContext context = CreateHttpContext(NetworkTier.Network);
-            LoginPasswordRequest request = CreateLoginRequest(op.Username, TestPassword);
+            var context = CreateHttpContext(NetworkTier.Network);
+            var request = CreateLoginRequest(op.Username, TestPassword);
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -76,33 +71,33 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task LoginPasswordAsync_FailedPassword_RecordsFailureEvent()
         {
             // Arrange - operator exists but password is wrong
-            Operator op = CreateOperator();
+            var op = CreateOperator();
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
-            _ = operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
-            _ = credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
-            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
-            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var lockoutPolicy = MockLockoutPolicyRepository();
             var auditService = new Mock<ISecurityAuditService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
-            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
 
-            HttpContext context = CreateHttpContext(NetworkTier.Network);
-            LoginPasswordRequest request = CreateLoginRequest(op.Username, "WrongPassword123!");
+            var context = CreateHttpContext(NetworkTier.Network);
+            var request = CreateLoginRequest(op.Username, "WrongPassword123!");
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -117,15 +112,15 @@ namespace VideoForensics.WebApp.Tests.Api
         public async Task LoginPasswordAsync_LockedOutAfterThreshold_RecordsLockoutEvent()
         {
             // Arrange - operator at failed attempt threshold; 5th failure triggers lockout
-            Operator op = CreateOperator(failedLoginAttemptCount: 4);
+            var op = CreateOperator(failedLoginAttemptCount: 4);
             op.PasswordHash = PasswordHasher.HashPassword(op, TestPassword);
 
             var operators = new Mock<IOperatorRepository>();
-            _ = operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.GetByUsernameAsync(op.Username, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
 
             // Simulate IncrementFailedLoginAttemptAsync setting lockout
-            _ = operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            operators.Setup(r => r.IncrementFailedLoginAttemptAsync(op.Id, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .Callback((Guid id, int max, int duration, CancellationToken ct) =>
                 {
                     op.FailedLoginAttemptCount = max;
@@ -134,23 +129,23 @@ namespace VideoForensics.WebApp.Tests.Api
                 .Returns(Task.CompletedTask);
 
             var credentials = new Mock<IOperatorCredentialRepository>();
-            _ = credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+            credentials.Setup(c => c.ListForOperatorAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OperatorCredential>());
             var twoFactorRequirements = new Mock<ITwoFactorRoleRequirementRepository>();
             var twoFactorCache = new Mock<ITwoFactorPendingAuthCache>();
-            Mock<ISessionTokenService> sessionTokens = MockSessionTokenService();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver(NetworkTier.Network);
-            Mock<ILockoutPolicySettingsRepository> lockoutPolicy = MockLockoutPolicyRepository();
+            var sessionTokens = MockSessionTokenService();
+            var tierResolver = MockNetworkTierResolver(NetworkTier.Network);
+            var lockoutPolicy = MockLockoutPolicyRepository();
             var auditService = new Mock<ISecurityAuditService>();
             var auditLog = new Mock<ISecurityAuditLogger>();
             var notificationDispatcher = new Mock<INotificationDispatcher>();
-            (Mock<IBannedIpMatchService>? bannedIpService, Mock<IThreatIntelBlocklistService>? threatIntelService, Mock<IGeoIpLookupService>? geoIpService) = CreateDefaultGeoAndThreatMocks();
+            var (bannedIpService, threatIntelService, geoIpService) = CreateDefaultGeoAndThreatMocks();
 
-            HttpContext context = CreateHttpContext(NetworkTier.Network);
-            LoginPasswordRequest request = CreateLoginRequest(op.Username, "WrongPassword123!");
+            var context = CreateHttpContext(NetworkTier.Network);
+            var request = CreateLoginRequest(op.Username, "WrongPassword123!");
 
             // Act
-            IResult result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
+            var result = await OperatorAuthEndpointsInvoker.LoginPasswordAsync(
                 request, operators.Object, credentials.Object, sessionTokens.Object, auditLog.Object,
                 tierResolver.Object, NoOpHeaderProtector(), lockoutPolicy.Object, twoFactorRequirements.Object, twoFactorCache.Object,
                 notificationDispatcher.Object, bannedIpService.Object, threatIntelService.Object, geoIpService.Object,
@@ -202,7 +197,7 @@ namespace VideoForensics.WebApp.Tests.Api
         private static Mock<ISessionTokenService> MockSessionTokenService()
         {
             var mock = new Mock<ISessionTokenService>();
-            _ = mock.Setup(s => s.Issue(
+            mock.Setup(s => s.Issue(
                 It.IsAny<Guid>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<CredentialKind>(),
@@ -215,22 +210,19 @@ namespace VideoForensics.WebApp.Tests.Api
         private static Mock<INetworkTierResolver> MockNetworkTierResolver(NetworkTier tier)
         {
             var mock = new Mock<INetworkTierResolver>();
-            _ = mock.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(tier);
-            _ = mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+            mock.Setup(r => r.ResolveTier(It.IsAny<HttpContext>())).Returns(tier);
+            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
-        private static ISessionTierHeaderProtector NoOpHeaderProtector()
-        {
-            return new Mock<ISessionTierHeaderProtector>().Object;
-        }
+        private static ISessionTierHeaderProtector NoOpHeaderProtector() => new Mock<ISessionTierHeaderProtector>().Object;
 
         private static Mock<ILockoutPolicySettingsRepository> MockLockoutPolicyRepository(
             int maxFailedAttempts = 5,
             int lockoutDurationMinutes = 15)
         {
             var mock = new Mock<ILockoutPolicySettingsRepository>();
-            _ = mock.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            mock.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new LockoutPolicySettings
                 {
                     Id = Guid.NewGuid(),
@@ -244,15 +236,15 @@ namespace VideoForensics.WebApp.Tests.Api
         private static (Mock<IBannedIpMatchService>, Mock<IThreatIntelBlocklistService>, Mock<IGeoIpLookupService>) CreateDefaultGeoAndThreatMocks()
         {
             var bannedIpService = new Mock<IBannedIpMatchService>();
-            _ = bannedIpService.Setup(s => s.IsIpBannedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+            bannedIpService.Setup(s => s.IsIpBannedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             var threatIntelService = new Mock<IThreatIntelBlocklistService>();
-            _ = threatIntelService.Setup(s => s.IsIpBlockedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+            threatIntelService.Setup(s => s.IsIpBlockedAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
             var geoIpService = new Mock<IGeoIpLookupService>();
-            _ = geoIpService.Setup(s => s.LookupCountryCodeAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
+            geoIpService.Setup(s => s.LookupCountryCodeAsync(It.IsAny<IPAddress>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             return (bannedIpService, threatIntelService, geoIpService);
@@ -289,7 +281,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ILogger<Program> logger,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(VideoForensics.WebApp.Api.OperatorAuthEndpoints)
+            var method = typeof(VideoForensics.WebApp.Api.OperatorAuthEndpoints)
                 .GetMethod("LoginPasswordAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -301,15 +293,13 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find LoginPasswordAsync method");
-            }
 
             var authMethodSettings = new Mock<IAuthMethodSettingsService>();
-            _ = authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            authMethodSettings.Setup(s => s.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-            IFailedLoginIpTracker failedLoginIpTracker = new Mock<IFailedLoginIpTracker>().Object;
-            object? result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, failedLoginIpTracker, context, logger, ct]);
+            var failedLoginIpTracker = new Mock<IFailedLoginIpTracker>().Object;
+            var result = method.Invoke(null, [request, operators, credentials, sessionTokens, auditLog, tierResolver, headerProtector, lockoutPolicy, twoFactorRequirements, twoFactorPendingAuthCache, notificationDispatcher, bannedIpService, threatIntelService, geoIpService, auditService, authMethodSettings.Object, failedLoginIpTracker, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
     }

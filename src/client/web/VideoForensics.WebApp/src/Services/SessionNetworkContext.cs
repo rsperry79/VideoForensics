@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 

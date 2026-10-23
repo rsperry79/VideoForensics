@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Ui.Shared.Services.Evidence;
 

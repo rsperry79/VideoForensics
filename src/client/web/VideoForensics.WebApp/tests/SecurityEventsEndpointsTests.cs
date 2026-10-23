@@ -1,14 +1,14 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using System.Reflection;
-using System.Security.Claims;
-
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
 
@@ -29,7 +29,7 @@ namespace VideoForensics.WebApp.Tests
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, NetworkTier claimedTier, OperatorRole role = OperatorRole.SuperAdmin)
         {
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(VideoForensicsClaimTypes.Role, role.ToString()),
@@ -45,7 +45,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct = default)
         {
-            MethodInfo? method = typeof(SecurityEventsEndpoints)
+            var method = typeof(SecurityEventsEndpoints)
                 .GetMethod("GetSecurityEventsAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -59,7 +59,7 @@ namespace VideoForensics.WebApp.Tests
             }
 
             ILogger<Program> logger = LoggerFactory.Create(b => { }).CreateLogger<Program>();
-            object? result = method.Invoke(null, [request, auditService, context, logger, ct]);
+            var result = method.Invoke(null, [request, auditService, context, logger, ct]);
             return await (Task<IResult>)result!;
         }
 
@@ -82,7 +82,7 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await InvokeAsync(request, auditService.Object, context);
 
             // Assert
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
         }
 
@@ -104,7 +104,7 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await InvokeAsync(request, auditService.Object, context);
 
             // Assert
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
         }
 

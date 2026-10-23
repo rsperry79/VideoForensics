@@ -1,3 +1,7 @@
+using VideoForensics.Hosting;
+
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class CertificateRenewalPolicyTests
@@ -31,7 +35,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void CertificateRenewalPolicy_FindZoneForHost_ChoosesLongestMatchingZone()
         {
-            CloudflareZone[] zones = new[]
+            var zones = new[]
             {
                 new CloudflareZone("parent", "example.com", "acct"),
                 new CloudflareZone("child", "lab.example.com", "acct"),
@@ -45,7 +49,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void CertificateRenewalPolicy_FindZoneForHost_ApexHostnameMatchesZone()
         {
-            CloudflareZone[] zones = new[] { new CloudflareZone("parent", "Example.com", "acct") };
+            var zones = new[] { new CloudflareZone("parent", "Example.com", "acct") };
 
             Assert.Equal("parent", CertificateRenewalPolicy.FindZoneForHost(zones, "example.com.")?.Id);
         }
@@ -53,7 +57,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void CertificateRenewalPolicy_FindZoneForHost_NoCoveringZone_ReturnsNull()
         {
-            CloudflareZone[] zones = new[] { new CloudflareZone("parent", "example.com", "acct") };
+            var zones = new[] { new CloudflareZone("parent", "example.com", "acct") };
 
             Assert.Null(CertificateRenewalPolicy.FindZoneForHost(zones, "notexample.com"));
         }
@@ -61,7 +65,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void CertificateRenewalPolicy_FindZoneForHost_SuffixWithoutDotDoesNotMatch()
         {
-            CloudflareZone[] zones = new[] { new CloudflareZone("parent", "ample.com", "acct") };
+            var zones = new[] { new CloudflareZone("parent", "ample.com", "acct") };
 
             Assert.Null(CertificateRenewalPolicy.FindZoneForHost(zones, "example.com"));
         }

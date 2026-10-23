@@ -1,7 +1,7 @@
+namespace VideoForensics.Ui.Shared.Services.Evidence;
 
 using System.Globalization;
 
-namespace VideoForensics.Ui.Shared.Services.Evidence;
 /// <summary>
 /// Immutable viewport state for image pan and zoom operations.
 /// </summary>
@@ -21,7 +21,7 @@ public sealed class ImageViewport
     /// </summary>
     public ImageViewport ZoomIn()
     {
-        double newScale = Math.Min(Scale * 1.25, 8);
+        var newScale = Math.Min(Scale * 1.25, 8);
         return new ImageViewport { Scale = newScale, OffsetX = OffsetX, OffsetY = OffsetY };
     }
 
@@ -30,7 +30,7 @@ public sealed class ImageViewport
     /// </summary>
     public ImageViewport ZoomOut()
     {
-        double newScale = Math.Max(Scale / 1.25, 1);
+        var newScale = Math.Max(Scale / 1.25, 1);
         return new ImageViewport { Scale = newScale, OffsetX = OffsetX, OffsetY = OffsetY };
     }
 
@@ -67,9 +67,9 @@ public sealed class ImageViewport
     /// </summary>
     public string ToCssTransform()
     {
-        string offsetXStr = OffsetX.ToString("0", CultureInfo.InvariantCulture);
-        string offsetYStr = OffsetY.ToString("0", CultureInfo.InvariantCulture);
-        string scaleStr = Scale.ToString("G", CultureInfo.InvariantCulture);
+        var offsetXStr = OffsetX.ToString("0", CultureInfo.InvariantCulture);
+        var offsetYStr = OffsetY.ToString("0", CultureInfo.InvariantCulture);
+        var scaleStr = Scale.ToString("G", CultureInfo.InvariantCulture);
         return $"translate({offsetXStr}px, {offsetYStr}px) scale({scaleStr})";
     }
 }

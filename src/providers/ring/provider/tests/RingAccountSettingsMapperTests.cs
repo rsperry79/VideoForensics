@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 
 using VideoForensics.Data.Common.Entities;
@@ -41,14 +42,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private static JsonElement FixtureRoot(string name)
         {
-            using var doc = JsonDocument.Parse(ReadFixture(name));
+            using JsonDocument doc = JsonDocument.Parse(ReadFixture(name));
             return doc.RootElement.Clone();
         }
 
-        private static Profile CapturedProfile()
-        {
-            return JsonSerializer.Deserialize<ProfileResponse>(ReadFixture("profile-sanitized.json"))!.Profile;
-        }
+        private static Profile CapturedProfile() =>
+            JsonSerializer.Deserialize<ProfileResponse>(ReadFixture("profile-sanitized.json"))!.Profile;
 
         [Fact]
         public void RingAccountSettingsMapper_CapturedProfile_StoresTypedFields()
@@ -110,7 +109,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             RingAccountProfile result = RingAccountSettingsMapper.MapProfile(CapturedProfile(), AccountId);
 
-            var featureFlags = result.Flags.Where(f => f.Scope == "features").ToList();
+            List<RingAccountProfileFlag> featureFlags = result.Flags.Where(f => f.Scope == "features").ToList();
             Assert.Equal(catchAllKeys.Length, featureFlags.Count);
             Assert.Equal(catchAllKeys.OrderBy(k => k), featureFlags.Select(f => f.Name).OrderBy(k => k));
             Assert.DoesNotContain(featureFlags, f => TypedFeatureKeys.Contains(f.Name));
@@ -176,7 +175,7 @@ namespace VideoForensics.Providers.Ring.Tests
             JsonElement root = FixtureRoot("ringtones-sanitized.json");
             RingtonesResponse response = JsonSerializer.Deserialize<RingtonesResponse>(ReadFixture("ringtones-sanitized.json"))!;
 
-            var rows = RingAccountSettingsMapper.MapRingtones(response, AccountId).ToList();
+            List<RingAccountRingtone> rows = RingAccountSettingsMapper.MapRingtones(response, AccountId).ToList();
 
             JsonElement first = root.GetProperty("audios")[0];
             Assert.Equal(root.GetProperty("audios").GetArrayLength(), rows.Count);

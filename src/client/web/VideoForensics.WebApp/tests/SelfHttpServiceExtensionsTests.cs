@@ -27,21 +27,21 @@ namespace VideoForensics.WebApp.Tests
         private static ServiceCollection MakeServices(string baseUri = "https://videoforensics.example.com/")
         {
             var services = new ServiceCollection();
-            _ = services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
-            _ = services.AddScoped<NavigationManager>(_ => new TestNavigationManager(baseUri));
-            _ = services.AddScoped(_ => new SessionNetworkContext());
-            _ = services.AddSingleton(new Mock<ISessionTokenService>().Object);
-            _ = services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
+            services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
+            services.AddScoped<NavigationManager>(_ => new TestNavigationManager(baseUri));
+            services.AddScoped(_ => new SessionNetworkContext());
+            services.AddSingleton(new Mock<ISessionTokenService>().Object);
+            services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
             return services;
         }
 
         [Fact]
         public void AddSelfHttpService_ResolvesServiceWithBaseAddressFromNavigationManager()
         {
-            ServiceCollection services = MakeServices("https://videoforensics.example.com/");
+            var services = MakeServices("https://videoforensics.example.com/");
 
             HttpClient? capturedClient = null;
-            _ = services.AddSelfHttpService<string>(http =>
+            services.AddSelfHttpService<string>(http =>
             {
                 capturedClient = http;
                 return "fake-service";
@@ -64,16 +64,16 @@ namespace VideoForensics.WebApp.Tests
             // NavigationManager.BaseUri values for the SAME running WebApp instance - the factory
             // must read it per-scope, not cache a value from the first resolution.
             var services = new ServiceCollection();
-            _ = services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
-            _ = services.AddScoped(_ => new SessionNetworkContext());
-            _ = services.AddSingleton(new Mock<ISessionTokenService>().Object);
-            _ = services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
+            services.AddScoped(_ => new PairedSessionState(new Mock<IJSRuntime>().Object));
+            services.AddScoped(_ => new SessionNetworkContext());
+            services.AddSingleton(new Mock<ISessionTokenService>().Object);
+            services.AddSingleton(new Mock<ISessionTierHeaderProtector>().Object);
 
             var uris = new Queue<string>(new[] { "https://lan.example.com/", "https://tunnel.example.com/" });
-            _ = services.AddScoped<NavigationManager>(_ => new TestNavigationManager(uris.Dequeue()));
+            services.AddScoped<NavigationManager>(_ => new TestNavigationManager(uris.Dequeue()));
 
             var capturedBaseAddresses = new List<Uri?>();
-            _ = services.AddSelfHttpService<string>(http =>
+            services.AddSelfHttpService<string>(http =>
             {
                 capturedBaseAddresses.Add(http.BaseAddress);
                 return "fake-service";
@@ -98,10 +98,10 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void AddSelfHttpService_WithinOneScope_ResolvesSameInstance()
         {
-            ServiceCollection services = MakeServices();
+            var services = MakeServices();
 
             int factoryCallCount = 0;
-            _ = services.AddSelfHttpService<object>(_ =>
+            services.AddSelfHttpService<object>(_ =>
             {
                 factoryCallCount++;
                 return new object();

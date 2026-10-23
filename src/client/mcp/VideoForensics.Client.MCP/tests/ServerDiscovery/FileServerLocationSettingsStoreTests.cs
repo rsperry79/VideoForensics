@@ -1,3 +1,4 @@
+using VideoForensics.Client.MCP.ServerDiscovery;
 using Xunit;
 
 namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
@@ -37,7 +38,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetCachedInternetServerUrl_WhenFileEmpty_ReturnsNull()
         {
-            _ = Directory.CreateDirectory(_root);
+            Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, CachedUrlFileName), string.Empty);
             var store = new FileServerLocationSettingsStore(_root);
 
@@ -47,7 +48,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetCachedInternetServerUrl_WhenFileWhitespaceOnly_ReturnsNull()
         {
-            _ = Directory.CreateDirectory(_root);
+            Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, CachedUrlFileName), "   \r\n\t ");
             var store = new FileServerLocationSettingsStore(_root);
 
@@ -57,7 +58,7 @@ namespace VideoForensics.Client.MCP.Tests.ServerDiscovery
         [Fact]
         public void GetCachedInternetServerUrl_WhenFileHasSurroundingWhitespace_ReturnsTrimmedUrl()
         {
-            _ = Directory.CreateDirectory(_root);
+            Directory.CreateDirectory(_root);
             File.WriteAllText(Path.Combine(_root, CachedUrlFileName), "  https://example.test \r\n");
             var store = new FileServerLocationSettingsStore(_root);
 

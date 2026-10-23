@@ -1,14 +1,12 @@
-using Moq;
+using Xunit;
+namespace VideoForensics.WebApp.Tests.Services;
 
+using Moq;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Services;
 using VideoForensics.WebApp.Services;
-
-using Xunit;
-
-namespace VideoForensics.WebApp.Tests.Services;
 
 public class InitialSyncCoordinatorTests
 {
@@ -29,18 +27,18 @@ public class InitialSyncCoordinatorTests
             IsActive = true,
             InitialSyncCompleted = false
         };
-        _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(() => _account);
-        _ = _accountDevices.Setup(d => d.ListByProviderAccountAsync(_accountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([CreateDevice("100")]);
+        _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(() => _account);
+        _accountDevices.Setup(d => d.ListByProviderAccountAsync(_accountId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Device> { CreateDevice("100") });
     }
 
     [Fact]
     public async Task RunAsync_AllStagesSucceed_SetsInitialSyncCompleted()
     {
-        _ = _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-            .ReturnsAsync([]);
-        _ = _validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+        _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            .ReturnsAsync(new List<MediaVerificationResult>());
+        _validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ReconciliationDiscrepancy>());
 
         await CreateSut().RunAsync(_accountId, CancellationToken.None);
 
@@ -51,10 +49,10 @@ public class InitialSyncCoordinatorTests
     [Fact]
     public async Task RunInitialSyncAsync_DispatchedFromScheduler_RunsTheSameFirstSync()
     {
-        _ = _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
-            .ReturnsAsync([]);
-        _ = _validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+        _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+            .ReturnsAsync(new List<MediaVerificationResult>());
+        _validation.Setup(v => v.ReconcileWithProviderAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ReconciliationDiscrepancy>());
 
         await CreateSut().RunInitialSyncAsync(_accountId, CancellationToken.None);
 
@@ -77,7 +75,7 @@ public class InitialSyncCoordinatorTests
     [Fact]
     public async Task RunAsync_ValidationReportsFailedDevice_LeavesFlagFalse()
     {
-        _ = _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
+        _validation.Setup(v => v.VerifyLocalIntegrityAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<string>?>()))
             .ThrowsAsync(new InvalidOperationException("disk offline"));
 
         await CreateSut().RunAsync(_accountId, CancellationToken.None);
@@ -89,7 +87,7 @@ public class InitialSyncCoordinatorTests
     [Fact]
     public async Task RunAsync_AccountRemovedDuringSync_DoesNotSetFlag()
     {
-        _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
+        _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
 
         await CreateSut().RunAsync(_accountId, CancellationToken.None);
 
@@ -112,15 +110,12 @@ public class InitialSyncCoordinatorTests
             new SyncActivityLog());
     }
 
-    private static Device CreateDevice(string providerDeviceId)
+    private static Device CreateDevice(string providerDeviceId) => new()
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            LocationId = Guid.NewGuid(),
-            ProviderDeviceId = providerDeviceId,
-            Name = "Front Door",
-            Type = "doorbell"
-        };
-    }
+        Id = Guid.NewGuid(),
+        LocationId = Guid.NewGuid(),
+        ProviderDeviceId = providerDeviceId,
+        Name = "Front Door",
+        Type = "doorbell"
+    };
 }

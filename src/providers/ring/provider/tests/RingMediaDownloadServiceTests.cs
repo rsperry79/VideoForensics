@@ -1,11 +1,11 @@
+using System.Net;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using System.Net;
-
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -326,11 +326,19 @@ namespace VideoForensics.Providers.Ring.Tests
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string url = request.RequestUri?.ToString() ?? string.Empty;
-                HttpContent content = url.Contains("snapshots/image", StringComparison.Ordinal)
-                    ? new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 })
-                    : (HttpContent)(url.Contains("oauth", StringComparison.OrdinalIgnoreCase)
-                        ? new StringContent("{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", System.Text.Encoding.UTF8, "application/json")
-                        : new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+                HttpContent content;
+                if (url.Contains("snapshots/image", StringComparison.Ordinal))
+                {
+                    content = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46 });
+                }
+                else if (url.Contains("oauth", StringComparison.OrdinalIgnoreCase))
+                {
+                    content = new StringContent("{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", System.Text.Encoding.UTF8, "application/json");
+                }
+                else
+                {
+                    content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+                }
 
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
             }
@@ -368,9 +376,7 @@ namespace VideoForensics.Providers.Ring.Tests
             {
                 if (Directory.Exists(folder))
                 {
-                    try
-                    { Directory.Delete(folder, recursive: true); }
-                    catch (IOException) { }
+                    try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
                 }
             }
         }
@@ -412,10 +418,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private sealed class StubVideoDownloader : IVideoDownloader
         {
-            public Task<Stream> OpenStreamAsync(string url)
-            {
-                return Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3, 4 }));
-            }
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3, 4 }));
 
             public async Task DownloadToFileAsync(string url, string saveAsPath)
             {
@@ -447,9 +450,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             if (Directory.Exists(folder))
             {
-                try
-                { Directory.Delete(folder, recursive: true); }
-                catch (IOException) { }
+                try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
             }
         }
 
@@ -643,12 +644,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Act
             service.SetActiveProviderAccountId(accountId1);
-            Task<int> task1 = service.GetMatchedEventCountAsync("device123", DateTime.Now.AddDays(-7), DateTime.Now);
+            var task1 = service.GetMatchedEventCountAsync("device123", DateTime.Now.AddDays(-7), DateTime.Now);
 
             service.SetActiveProviderAccountId(accountId2);
-            Task<int> task2 = service.GetMatchedEventCountAsync("device456", DateTime.Now.AddDays(-7), DateTime.Now);
+            var task2 = service.GetMatchedEventCountAsync("device456", DateTime.Now.AddDays(-7), DateTime.Now);
 
-            _ = await Task.WhenAll(task1, task2);
+            await Task.WhenAll(task1, task2);
 
             // Assert - verify each account's session was called
             sessionProvider.Verify(sp => sp.GetSession(accountId1), Times.Once);
@@ -674,7 +675,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             var devices = new Entities.Devices
             {
-                StickupCams = [new Entities.StickupCam { Id = 456, Kind = string.Empty, Subscribed = true }]
+                StickupCams = [new Entities.StickupCam { Id = 456, Kind = "", Subscribed = true }]
             };
 
             (string? kind, bool? isOnline) = RingMediaDownloadService.ResolveDeviceState(devices, "456");
@@ -790,7 +791,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", null, CancellationToken.None);
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
-                It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", (bool?)null,
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -821,7 +822,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = await service.EnsureDeviceIdentityAsync("123", "Front Door", "loc-1", "doorbell_v4", null, CancellationToken.None, deviceFields: fields);
 
             dataClient.Verify(d => d.EnsureDeviceAsync(
-                It.IsAny<Guid>(), "123", "Front Door", "doorbell", null,
+                It.IsAny<Guid>(), "123", "Front Door", "doorbell", (bool?)null,
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>(), It.IsAny<string?>(),
                 It.Is<VideoForensics.Core.Providers.Common.Contracts.DeviceDetailFields?>(f => f != null && f.RingDeviceId == "aabbcc")), Times.Once);
         }
@@ -915,7 +916,7 @@ namespace VideoForensics.Providers.Ring.Tests
                     }
                 }]
             });
-            var deviceGuid = Guid.NewGuid();
+            Guid deviceGuid = Guid.NewGuid();
 
             await service.CaptureDeviceHealthSnapshotAsync(session.Object, "123", "Test Camera", deviceGuid, CancellationToken.None);
 
@@ -1024,15 +1025,9 @@ namespace VideoForensics.Providers.Ring.Tests
         // Fixed for the run so both passes of a test name the file identically (the name embeds the second).
         private static readonly DateTime EventCreatedAtUtc = DateTime.UtcNow.AddHours(-1);
 
-        private static DateTime DownloadStart()
-        {
-            return DateTime.UtcNow.AddDays(-7);
-        }
+        private static DateTime DownloadStart() => DateTime.UtcNow.AddDays(-7);
 
-        private static DateTime DownloadEnd()
-        {
-            return DateTime.UtcNow.AddDays(1);
-        }
+        private static DateTime DownloadEnd() => DateTime.UtcNow.AddDays(1);
 
         private static string CreateTempOutputDirectory()
         {
@@ -1072,7 +1067,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static async Task<RingMediaDownloadService> CreateAuthenticatedDownloadServiceAsync(ILogger logger, DateTime eventCreatedAtUtc)
         {
             var session = new Session("user@example.com", "password", new DownloadStubHandler(HistoryJson(eventCreatedAtUtc)), new WritingVideoDownloader());
-            _ = await session.Authenticate();
+            await session.Authenticate();
 
             var sessionProvider = new Mock<ISessionProvider>();
             _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(session);
@@ -1101,29 +1096,21 @@ namespace VideoForensics.Providers.Ring.Tests
             return service;
         }
 
-        private static string HistoryJson(DateTime createdAtUtc)
-        {
-            return $$$"""
+        private static string HistoryJson(DateTime createdAtUtc) => $$$"""
             [{"id":123,"created_at":"{{{createdAtUtc:O}}}","answered":false,"events":[],"kind":"motion",
             "favorite":false,"snapshot_url":"","recording":{"status":"ready"},"duration":41,
             "doorbot":{"id":86401464,"description":"Front Door","type":"doorbell_graham_cracker"}}]
             """;
-        }
 
-        private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body, HttpRequestMessage request)
-        {
-            return new(status) { Content = new StringContent(body), RequestMessage = request };
-        }
+        private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body, HttpRequestMessage request) =>
+            new(status) { Content = new StringContent(body), RequestMessage = request };
 
         /// <summary>Answers OAuth, one history event, and a recording URL; everything else is a 404.</summary>
         private sealed class DownloadStubHandler : HttpMessageHandler
         {
             private readonly string _historyJson;
 
-            public DownloadStubHandler(string historyJson)
-            {
-                _historyJson = historyJson;
-            }
+            public DownloadStubHandler(string historyJson) => _historyJson = historyJson;
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -1161,15 +1148,10 @@ namespace VideoForensics.Providers.Ring.Tests
         /// <summary>Writes a small fake recording so the download produces a non-empty file.</summary>
         private sealed class WritingVideoDownloader : IVideoDownloader
         {
-            public Task<Stream> OpenStreamAsync(string url)
-            {
-                return Task.FromResult<Stream>(new MemoryStream());
-            }
+            public Task<Stream> OpenStreamAsync(string url) => Task.FromResult<Stream>(new MemoryStream());
 
-            public Task DownloadToFileAsync(string url, string saveAsPath)
-            {
-                return File.WriteAllBytesAsync(saveAsPath, new byte[] { 1, 2, 3, 4 });
-            }
+            public Task DownloadToFileAsync(string url, string saveAsPath) =>
+                File.WriteAllBytesAsync(saveAsPath, new byte[] { 1, 2, 3, 4 });
         }
 
         /// <summary>Keeps each log entry's level and formatted text so a test can assert on it.</summary>
@@ -1189,15 +1171,9 @@ namespace VideoForensics.Providers.Ring.Tests
                 }
             }
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                return null;
-            }
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                return true;
-            }
+            public bool IsEnabled(LogLevel logLevel) => true;
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {

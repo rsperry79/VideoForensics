@@ -1,19 +1,15 @@
+namespace VideoForensics.WebApp.Tests;
 
 using Microsoft.AspNetCore.Http;
-
 using Moq;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.WebApp.Services;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.WebApp.Contracts;
-using VideoForensics.WebApp.Services;
 using VideoForensics.WebApp.Services.CircuitGuards;
-
 using Xunit;
-
-namespace VideoForensics.WebApp.Tests;
 
 public class GuardedReleaseChannelServiceTests
 {
@@ -31,7 +27,7 @@ public class GuardedReleaseChannelServiceTests
         {
             var httpContext = new DefaultHttpContext();
             var resolver = new Mock<INetworkTierResolver>();
-            _ = resolver.Setup(r => r.ResolveClientIp(httpContext)).Returns(ip);
+            resolver.Setup(r => r.ResolveClientIp(httpContext)).Returns(ip);
             network.CaptureFromInitialConnection(httpContext, resolver.Object);
         }
 
@@ -41,9 +37,9 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Allowed_AuditsCapturedClientIp()
     {
-        Fixture f = Create(allowed: true, NetworkWithIp("203.0.113.7"));
+        var f = Create(allowed: true, NetworkWithIp("203.0.113.7"));
 
-        _ = await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
+        await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
 
         f.Audit.Verify(a => a.LogAsync(
             SecurityAuditEventTypes.ReleaseChannelChanged, ActingOperatorId, null, "203.0.113.7",
@@ -53,9 +49,9 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Allowed_NoCapturedIp_AuditsNullIp()
     {
-        Fixture f = Create(allowed: true, NetworkWithIp(null));
+        var f = Create(allowed: true, NetworkWithIp(null));
 
-        _ = await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
+        await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
 
         f.Audit.Verify(a => a.LogAsync(
             SecurityAuditEventTypes.ReleaseChannelChanged, ActingOperatorId, null, null,
@@ -65,13 +61,13 @@ public class GuardedReleaseChannelServiceTests
     private static Fixture Create(bool allowed, SessionNetworkContext? network = null)
     {
         var inner = new Mock<IReleaseChannelService>();
-        _ = inner.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UpdateReleaseChannel.Stable);
-        _ = inner.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
+        inner.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UpdateReleaseChannel.Stable);
+        inner.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(UpdateReleaseChannel.Testing);
         var gate = new Mock<ICircuitOperatorGate>();
-        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(allowed);
-        _ = gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("denied");
-        _ = gate.SetupGet(g => g.OperatorId).Returns(ActingOperatorId);
+        gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(allowed);
+        gate.Setup(g => g.Denial(AccessPolicy.SuperAdminLocal)).Returns("denied");
+        gate.SetupGet(g => g.OperatorId).Returns(ActingOperatorId);
         var audit = new Mock<ISecurityAuditLogger>();
         return new Fixture(new GuardedReleaseChannelService(inner.Object, gate.Object, audit.Object, network ?? new SessionNetworkContext()), inner, audit);
     }
@@ -79,9 +75,9 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Denied_ThrowsAndDoesNotDelegate()
     {
-        Fixture f = Create(allowed: false);
+        var f = Create(allowed: false);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
 
         f.Inner.Verify(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -89,9 +85,9 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Denied_WritesNoAuditEntry()
     {
-        Fixture f = Create(allowed: false);
+        var f = Create(allowed: false);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
 
         VerifyNoAudit(f.Audit);
     }
@@ -99,7 +95,7 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Allowed_Delegates()
     {
-        Fixture f = Create(allowed: true);
+        var f = Create(allowed: true);
 
         UpdateReleaseChannel result = await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None);
 
@@ -110,10 +106,10 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_Allowed_WritesOneUrgentAuditEntryWithOperatorAndChange()
     {
-        Fixture f = Create(allowed: true);
+        var f = Create(allowed: true);
         using var cts = new CancellationTokenSource();
 
-        _ = await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, cts.Token);
+        await f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, cts.Token);
 
         f.Audit.Verify(a => a.LogAsync(
             SecurityAuditEventTypes.ReleaseChannelChanged,
@@ -129,11 +125,11 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Set_InnerThrows_WritesNoAuditEntry()
     {
-        Fixture f = Create(allowed: true);
-        _ = f.Inner.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
+        var f = Create(allowed: true);
+        f.Inner.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("save failed"));
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => f.Guarded.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, CancellationToken.None));
 
         VerifyNoAudit(f.Audit);
     }
@@ -141,7 +137,7 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Get_Denied_StillDelegates()
     {
-        Fixture f = Create(allowed: false);
+        var f = Create(allowed: false);
 
         UpdateReleaseChannel result = await f.Guarded.GetReleaseChannelAsync(CancellationToken.None);
 
@@ -152,17 +148,15 @@ public class GuardedReleaseChannelServiceTests
     [Fact]
     public async Task GuardedReleaseChannelService_Get_WritesNoAuditEntry()
     {
-        Fixture f = Create(allowed: true);
+        var f = Create(allowed: true);
 
-        _ = await f.Guarded.GetReleaseChannelAsync(CancellationToken.None);
+        await f.Guarded.GetReleaseChannelAsync(CancellationToken.None);
 
         VerifyNoAudit(f.Audit);
     }
 
-    private static void VerifyNoAudit(Mock<ISecurityAuditLogger> audit)
-    {
+    private static void VerifyNoAudit(Mock<ISecurityAuditLogger> audit) =>
         audit.Verify(a => a.LogAsync(
             It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string?>(),
             It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
 }

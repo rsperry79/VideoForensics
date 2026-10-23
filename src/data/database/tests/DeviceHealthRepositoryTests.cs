@@ -274,8 +274,8 @@ namespace VideoForensics.Data.Database.Tests
         public async Task DeviceHealthRepository_GetHistoryAsync_WithDateRange_IsInclusiveOfBothEnds()
         {
             var deviceId = Guid.NewGuid();
-            var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var to = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
+            DateTime from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime to = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
 
             DeviceHealth atFrom = TestDataBuilder.BuildDeviceHealth(deviceId);
             atFrom.CapturedAtUtc = from;
@@ -310,7 +310,7 @@ namespace VideoForensics.Data.Database.Tests
             IReadOnlyList<DeviceHealth> history = await _repository.GetHistoryAsync(
                 deviceId1, now.AddHours(-2), now, CancellationToken.None);
 
-            _ = Assert.Single(history);
+            Assert.Single(history);
             Assert.Equal(deviceId1, history[0].DeviceId);
         }
 

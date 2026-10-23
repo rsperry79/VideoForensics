@@ -5,6 +5,8 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteCaseRepositoryTests
@@ -27,7 +29,7 @@ namespace VideoForensics.Hosting.Tests
                 ClosedAtUtc: null,
                 ScopeFromUtc: DateTime.UtcNow.AddDays(-7),
                 ScopeToUtc: DateTime.UtcNow,
-                DeviceIds: [Guid.NewGuid()]
+                DeviceIds: new List<Guid> { Guid.NewGuid() }
             );
         }
 
@@ -75,7 +77,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task CreateAsync_ReturnsCreatedCase()
         {
-            ForensicCaseDto caseDto = CreateForensicCaseDto();
+            var caseDto = CreateForensicCaseDto();
             string json = JsonSerializer.Serialize(caseDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -106,7 +108,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task CreateAsync_WithCancellationToken_PassesToHttpClient()
         {
             var cts = new CancellationTokenSource();
-            ForensicCaseDto caseDto = CreateForensicCaseDto();
+            var caseDto = CreateForensicCaseDto();
             string json = JsonSerializer.Serialize(caseDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -121,7 +123,7 @@ namespace VideoForensics.Hosting.Tests
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            _ = await repo.CreateAsync(
+            await repo.CreateAsync(
                 caseDto.CaseNumber, caseDto.Title, caseDto.Description,
                 caseDto.LeadOperatorId, caseDto.ScopeFromUtc, caseDto.ScopeToUtc,
                 caseDto.DeviceIds, "admin", cts.Token);
@@ -136,9 +138,9 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetAsync_Found_ReturnsCase()
         {
-            ForensicCaseDto caseDto = CreateForensicCaseDto();
+            var caseDto = CreateForensicCaseDto();
             string json = JsonSerializer.Serialize(caseDto, JsonOptions);
-            Guid id = caseDto.Id;
+            var id = caseDto.Id;
 
             FakeHttpMessageHandler handler = new(async req =>
             {
@@ -187,7 +189,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetByNumberAsync_Found_ReturnsCase()
         {
-            ForensicCaseDto caseDto = CreateForensicCaseDto();
+            var caseDto = CreateForensicCaseDto();
             string json = JsonSerializer.Serialize(caseDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -235,8 +237,8 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListAsync_WithoutStatus_ReturnsAllCases()
         {
-            ForensicCaseDto case1 = CreateForensicCaseDto();
-            ForensicCaseDto case2 = CreateForensicCaseDto();
+            var case1 = CreateForensicCaseDto();
+            var case2 = CreateForensicCaseDto();
             var dtoList = new List<ForensicCaseDto> { case1, case2 };
             string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
@@ -263,7 +265,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListAsync_WithStatus_FiltersByStatus()
         {
-            ForensicCaseDto case1 = CreateForensicCaseDto();
+            var case1 = CreateForensicCaseDto();
             var dtoList = new List<ForensicCaseDto> { case1 };
             string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
@@ -283,7 +285,7 @@ namespace VideoForensics.Hosting.Tests
 
             Assert.NotNull(handler.CapturedRequest);
             Assert.Contains("status=Open", handler.CapturedRequest.RequestUri?.PathAndQuery);
-            _ = Assert.Single(result);
+            Assert.Single(result);
         }
 
         #endregion
@@ -328,7 +330,7 @@ namespace VideoForensics.Hosting.Tests
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => repo.UpdateDetailsAsync(id, "New Title", null, null, "admin", CancellationToken.None));
         }
 
@@ -447,7 +449,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AddItemAsync_Success_ReturnsCreatedItem()
         {
             var caseId = Guid.NewGuid();
-            CaseItemDto itemDto = CreateCaseItemDto(caseId: caseId);
+            var itemDto = CreateCaseItemDto(caseId: caseId);
             string json = JsonSerializer.Serialize(itemDto, JsonOptions);
 
             FakeHttpMessageHandler handler = new(async req =>
@@ -487,7 +489,7 @@ namespace VideoForensics.Hosting.Tests
             HttpClient httpClient = CreateHttpClientWithHandler(handler);
             var repo = new RemoteCaseRepository(httpClient);
 
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => repo.AddItemAsync(caseId, CaseItemKind.Media, Guid.NewGuid(), "Relevant", "admin", CancellationToken.None));
         }
 
@@ -524,8 +526,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task ListItemsAsync_WithIncludeRemoved_ReturnsAllItems()
         {
             var caseId = Guid.NewGuid();
-            CaseItemDto item1 = CreateCaseItemDto(caseId: caseId);
-            CaseItemDto item2 = CreateCaseItemDto(caseId: caseId);
+            var item1 = CreateCaseItemDto(caseId: caseId);
+            var item2 = CreateCaseItemDto(caseId: caseId);
             var dtoList = new List<CaseItemDto> { item1, item2 };
             string json = JsonSerializer.Serialize(dtoList, JsonOptions);
 
@@ -556,7 +558,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ListCasesContainingAsync_ReturnsCases()
         {
-            ForensicCaseDto case1 = CreateForensicCaseDto();
+            var case1 = CreateForensicCaseDto();
             var dtoList = new List<ForensicCaseDto> { case1 };
             string json = JsonSerializer.Serialize(dtoList, JsonOptions);
             var targetId = Guid.NewGuid();
@@ -578,7 +580,7 @@ namespace VideoForensics.Hosting.Tests
             Assert.NotNull(handler.CapturedRequest);
             Assert.Equal(HttpMethod.Get, handler.CapturedRequest.Method);
             Assert.Contains("kind=Media", handler.CapturedRequest.RequestUri?.PathAndQuery);
-            _ = Assert.Single(result);
+            Assert.Single(result);
         }
 
         #endregion

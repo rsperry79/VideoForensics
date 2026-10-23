@@ -1,4 +1,5 @@
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.WebApp.Api;
 
 using Xunit;
 

@@ -31,9 +31,12 @@ namespace VideoForensics.Data.Database.Repositories
                 .Select(a => new { a.ConfigSyncIntervalHours, a.LastConfigSyncUtc })
                 .FirstOrDefaultAsync(ct);
 
-            return row is null
-                ? new RingConfigSyncState(DefaultIntervalHours, null)
-                : new RingConfigSyncState(Math.Max(1, row.ConfigSyncIntervalHours), row.LastConfigSyncUtc);
+            if (row is null)
+            {
+                return new RingConfigSyncState(DefaultIntervalHours, null);
+            }
+
+            return new RingConfigSyncState(Math.Max(1, row.ConfigSyncIntervalHours), row.LastConfigSyncUtc);
         }
 
         public async Task MarkConfigSyncCompletedAsync(Guid providerAccountId, DateTime utcNow, CancellationToken ct)

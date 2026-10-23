@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
@@ -31,7 +32,7 @@ namespace VideoForensics.WebApp.Tests
 
         private string CreateBinDirectory()
         {
-            string dir = Path.Combine(_root, "bin-" + Guid.NewGuid().ToString("N"));
+            var dir = Path.Combine(_root, "bin-" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "ffmpeg" + Ext), "dummy");
             File.WriteAllText(Path.Combine(dir, "ffprobe" + Ext), "dummy");
@@ -73,12 +74,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetSoftwarePathsAsync_NonexistentFfmpegDirectory_ReturnsBadRequestAndChangesNothing()
         {
-            (ForensicsConfiguration? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
-            string missing = Path.Combine(_root, "does-not-exist");
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
+            var missing = Path.Combine(_root, "does-not-exist");
 
             IResult result = await InvokeAsync(new SetSoftwarePathsRequest(missing), config, configService, auditLog);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
             Assert.Equal("C:\\old\\bin", config.FfmpegBinDirectory);
             configService.Verify(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -88,12 +89,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetSoftwarePathsAsync_ValidPath_SavesAndAudits()
         {
-            (ForensicsConfiguration? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
-            string binDir = CreateBinDirectory();
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
+            var binDir = CreateBinDirectory();
 
             IResult result = await InvokeAsync(new SetSoftwarePathsRequest(binDir), config, configService, auditLog);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.Equal(binDir, config.FfmpegBinDirectory);
             configService.Verify(cs => cs.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
@@ -110,11 +111,11 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetSoftwarePathsAsync_EmptyValue_ClearsSetting()
         {
-            (ForensicsConfiguration? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: "C:\\old\\bin");
 
-            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(string.Empty), config, configService, auditLog);
+            IResult result = await InvokeAsync(new SetSoftwarePathsRequest(""), config, configService, auditLog);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
             Assert.True(string.IsNullOrEmpty(config.FfmpegBinDirectory));
             configService.Verify(cs => cs.SaveConfigurationAsync(config, It.IsAny<CancellationToken>()), Times.Once);
@@ -123,8 +124,8 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetSoftwarePathsAsync_SaveFails_RestoresPreviousValuesAndRethrows()
         {
-            (ForensicsConfiguration? config, Mock<IForensicsConfigurationService>? configService, Mock<ISecurityAuditLogger>? auditLog) = CreateMocks(ffmpegDir: @"C:\old\bin");
-            string binDir = CreateBinDirectory();
+            var (config, configService, auditLog) = CreateMocks(ffmpegDir: @"C:\old\bin");
+            var binDir = CreateBinDirectory();
             _ = configService.Setup(cs => cs.SaveConfigurationAsync(It.IsAny<IForensicsConfiguration>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new IOException("disk full"));
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 
@@ -7,6 +8,7 @@ using Moq;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
@@ -49,7 +51,7 @@ namespace VideoForensics.WebApp.Tests
         private static DefaultHttpContext CreateHttpContextWithStepUpToken(Guid pairedDeviceId, string stepUpToken = "valid-step-up-token")
         {
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.PairedDeviceId, pairedDeviceId.ToString()),
                 new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
@@ -63,15 +65,15 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetNetworkTierAsync_WidenToNetwork_CallsEnsureRuleExists()
         {
-            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<IStepUpAuthService>? stepUpAuth, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<IFirewallRuleManager>? firewallRuleManager, Mock<IConfiguration>? configuration) = CreateMocks(currentTier: NetworkTier.Local);
+            (var config, var configService, var stepUpAuth, var auditLog, var tierResolver, var firewallRuleManager, var configuration) = CreateMocks(currentTier: NetworkTier.Local);
             var request = new SetNetworkTierRequest(NetworkTier.Network);
-            var pairedDeviceId = Guid.NewGuid();
-            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            Guid pairedDeviceId = Guid.NewGuid();
+            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             IResult result = await NetworkSettingsEndpoints.SetNetworkTierAsync(
                 request, config.Object, configService.Object, stepUpAuth.Object, auditLog.Object, tierResolver.Object, firewallRuleManager.Object, configuration.Object, context, CancellationToken.None);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
 
             // Verify firewall rule was added when widening
@@ -82,15 +84,15 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetNetworkTierAsync_NarrowToLocal_CallsRemoveRule()
         {
-            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<IStepUpAuthService>? stepUpAuth, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<IFirewallRuleManager>? firewallRuleManager, Mock<IConfiguration>? configuration) = CreateMocks(currentTier: NetworkTier.Network);
+            (var config, var configService, var stepUpAuth, var auditLog, var tierResolver, var firewallRuleManager, var configuration) = CreateMocks(currentTier: NetworkTier.Network);
             var request = new SetNetworkTierRequest(NetworkTier.Local);
-            var pairedDeviceId = Guid.NewGuid();
-            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            Guid pairedDeviceId = Guid.NewGuid();
+            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             IResult result = await NetworkSettingsEndpoints.SetNetworkTierAsync(
                 request, config.Object, configService.Object, stepUpAuth.Object, auditLog.Object, tierResolver.Object, firewallRuleManager.Object, configuration.Object, context, CancellationToken.None);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
 
             // Verify firewall rule was removed when narrowing
@@ -101,15 +103,15 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetNetworkTierAsync_WidenToInternet_CallsEnsureRuleExists()
         {
-            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<IStepUpAuthService>? stepUpAuth, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<IFirewallRuleManager>? firewallRuleManager, Mock<IConfiguration>? configuration) = CreateMocks(currentTier: NetworkTier.Network);
+            (var config, var configService, var stepUpAuth, var auditLog, var tierResolver, var firewallRuleManager, var configuration) = CreateMocks(currentTier: NetworkTier.Network);
             var request = new SetNetworkTierRequest(NetworkTier.Internet);
-            var pairedDeviceId = Guid.NewGuid();
-            DefaultHttpContext context = CreateHttpContextWithStepUpToken(pairedDeviceId);
+            Guid pairedDeviceId = Guid.NewGuid();
+            var context = CreateHttpContextWithStepUpToken(pairedDeviceId);
 
             IResult result = await NetworkSettingsEndpoints.SetNetworkTierAsync(
                 request, config.Object, configService.Object, stepUpAuth.Object, auditLog.Object, tierResolver.Object, firewallRuleManager.Object, configuration.Object, context, CancellationToken.None);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, statusResult.StatusCode);
 
             // Internet is still listening on all interfaces like Network, so rule should be ensured
@@ -120,12 +122,12 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task SetNetworkTierAsync_WidenWithoutStepUpToken_ReturnsForbidden()
         {
-            (Mock<IForensicsConfiguration>? config, Mock<IForensicsConfigurationService>? configService, Mock<IStepUpAuthService>? stepUpAuth, Mock<ISecurityAuditLogger>? auditLog, Mock<INetworkTierResolver>? tierResolver, Mock<IFirewallRuleManager>? firewallRuleManager, Mock<IConfiguration>? configuration) = CreateMocks(currentTier: NetworkTier.Local);
+            (var config, var configService, var stepUpAuth, var auditLog, var tierResolver, var firewallRuleManager, var configuration) = CreateMocks(currentTier: NetworkTier.Local);
             var request = new SetNetworkTierRequest(NetworkTier.Network);
-            var pairedDeviceId = Guid.NewGuid();
+            Guid pairedDeviceId = Guid.NewGuid();
 
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.PairedDeviceId, pairedDeviceId.ToString()),
                 new Claim(VideoForensicsClaimTypes.OperatorId, Guid.NewGuid().ToString())
@@ -137,7 +139,7 @@ namespace VideoForensics.WebApp.Tests
             IResult result = await NetworkSettingsEndpoints.SetNetworkTierAsync(
                 request, config.Object, configService.Object, stepUpAuth.Object, auditLog.Object, tierResolver.Object, firewallRuleManager.Object, configuration.Object, context, CancellationToken.None);
 
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
 
             // Firewall rule should not be touched if step-up auth fails

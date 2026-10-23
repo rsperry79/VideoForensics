@@ -6,9 +6,10 @@ using System.Security.Cryptography;
 using System.Text;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Core;
+using VideoForensics.Client.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Providers.Core;
 
 using Xunit;
 
@@ -110,7 +111,7 @@ namespace VideoForensics.Client.Core.Tests
         [Fact]
         public async Task CaptureStillAsync_ServerExtractionSucceeds_PersistsStillViaServerMethod()
         {
-            byte[] pngBytes = new byte[] { 1, 2, 3, 4 };
+            var pngBytes = new byte[] { 1, 2, 3, 4 };
             _ = _frameExtractorMock
                 .Setup(e => e.ExtractFrameAsync("/media/video.mp4", 2500, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new FrameExtractionResult { Success = true, PngBytes = pngBytes });
@@ -146,7 +147,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(e => e.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "ffmpeg not found" });
 
-            byte[] clientBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9 };
+            var clientBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9 };
             string base64 = Convert.ToBase64String(clientBytes);
 
             MediaStillCaptureResult result = await _orchestrator.CaptureStillAsync(
@@ -252,7 +253,7 @@ namespace VideoForensics.Client.Core.Tests
 
             // Deliberately larger than the ~20 MB decoded cap's base64 threshold - must be
             // rejected by length before any Convert.FromBase64String allocation is attempted.
-            string oversizedBase64 = new('A', 30_000_000);
+            string oversizedBase64 = new string('A', 30_000_000);
 
             MediaStillCaptureResult result = await _orchestrator.CaptureStillAsync(
                 SourceId, 100, oversizedBase64, null, null, "operator-1", CancellationToken.None);
@@ -267,7 +268,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             SetupServerExtractionFailure();
 
-            byte[] oversized = new byte[(20 * 1024 * 1024) + 1];
+            byte[] oversized = new byte[20 * 1024 * 1024 + 1];
             string base64 = Convert.ToBase64String(oversized);
 
             MediaStillCaptureResult result = await _orchestrator.CaptureStillAsync(

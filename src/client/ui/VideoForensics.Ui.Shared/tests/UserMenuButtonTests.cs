@@ -1,21 +1,15 @@
-
-using AngleSharp.Dom;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
-using Moq;
-
+using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Components;
 using VideoForensics.Ui.Shared.Services;
+using Moq;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for UserMenuButton bUnit tests. Registers the minimal Syncfusion services the
 /// component's SfButton needs to render for real (the same three services EvidencePageTests
@@ -28,39 +22,39 @@ public abstract class UserMenuButtonTestBase : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
         // Register default IUiModeService (will be overridden if needed)
         var defaultUiModeMock = new Mock<IUiModeService>();
-        _ = defaultUiModeMock.SetupGet(s => s.Mode).Returns("Standard");
-        _ = defaultUiModeMock.SetupGet(s => s.IsLocked).Returns(false);
-        _ = defaultUiModeMock.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = defaultUiModeMock.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-        _ = defaultUiModeMock.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => defaultUiModeMock.Object);
+        defaultUiModeMock.SetupGet(s => s.Mode).Returns("Standard");
+        defaultUiModeMock.SetupGet(s => s.IsLocked).Returns(false);
+        defaultUiModeMock.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        defaultUiModeMock.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        defaultUiModeMock.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => defaultUiModeMock.Object);
     }
 
     protected async Task<PairedSessionState> SignInAsync(OperatorRole role)
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
-        _ = Services.AddScoped(_ => session);
+        Services.AddScoped(_ => session);
         return session;
     }
 
     protected PairedSessionState RegisterSignedOut()
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
-        _ = Services.AddScoped(_ => session);
+        Services.AddScoped(_ => session);
         return session;
     }
 
     protected IRenderedComponent<UserMenuButton> RenderAndOpen()
     {
-        IRenderedComponent<UserMenuButton> component = Render<UserMenuButton>();
+        var component = Render<UserMenuButton>();
         component.Find("[data-testid='user-menu-toggle']").Click();
         return component;
     }
@@ -71,9 +65,9 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     [Fact]
     public async Task Renders_SignedInRole()
     {
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UserMenuButton> component = Render<UserMenuButton>();
+        var component = Render<UserMenuButton>();
 
         Assert.Equal("Admin", component.Find("[data-testid='user-menu']").GetAttribute("data-role-label"));
     }
@@ -81,11 +75,11 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     [Fact]
     public async Task OpeningMenu_ShowsChangePasswordPasskeysAndSignOut_NotDeviceSignIn()
     {
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
 
-        IReadOnlyList<IElement> items = component.FindAll("[data-testid='user-menu-item']");
+        var items = component.FindAll("[data-testid='user-menu-item']");
         Assert.Contains(items, i => i.GetAttribute("data-path") == "/change-password");
         Assert.Contains(items, i => i.GetAttribute("data-path") == "/settings/passkeys");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/signin");
@@ -96,27 +90,27 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     [Fact]
     public async Task ClickingPathItem_Navigates()
     {
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
         component.Find("[data-path='/settings/passkeys']").Click();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.EndsWith("/settings/passkeys", nav.Uri);
     }
 
     [Fact]
     public async Task ClickingSignOut_ClearsSession_CallsJsClear_AndNavigatesToSignIn()
     {
-        PairedSessionState session = await SignInAsync(OperatorRole.Admin);
+        var session = await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
         component.Find("[data-testid='user-menu-signout']").Click();
 
         Assert.False(session.IsSignedIn);
         Assert.Contains(JSInterop.Invocations, i => i.Identifier == "vfWebAuthn.clearSession");
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Equal("/signin", new Uri(nav.Uri).AbsolutePath);
         Assert.Equal(string.Empty, new Uri(nav.Uri).Query);
     }
@@ -125,21 +119,21 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     public async Task OpeningMenu_WhenStandardModeUnlocked_ShowsSimpleViewAction()
     {
         // Arrange
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
         var mockUiMode = new Mock<IUiModeService>();
-        _ = mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
-        _ = mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
-        _ = mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-        _ = mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => mockUiMode.Object);
+        mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
 
         // Act
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
 
         // Assert
-        IReadOnlyList<IElement> items = component.FindAll("[data-testid='user-menu-item']");
-        IElement? modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action") == "set-ui-mode:Simple");
+        var items = component.FindAll("[data-testid='user-menu-item']");
+        var modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action") == "set-ui-mode:Simple");
         Assert.NotNull(modeItem);
         Assert.Equal("Switch to Simple view", modeItem.TextContent.Trim());
     }
@@ -148,17 +142,17 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     public async Task ClickingSimpleModeAction_CallsSetModeAsync()
     {
         // Arrange
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
         var mockUiMode = new Mock<IUiModeService>();
-        _ = mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
-        _ = mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
-        _ = mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-        _ = mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => mockUiMode.Object);
+        mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
-        IElement modeItem = component.Find("[data-action='set-ui-mode:Simple']");
+        var component = RenderAndOpen();
+        var modeItem = component.Find("[data-action='set-ui-mode:Simple']");
 
         // Act
         await component.InvokeAsync(() => modeItem.Click());
@@ -171,21 +165,21 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     public async Task OpeningMenu_WhenSimpleModeUnlocked_ShowsStandardViewAction()
     {
         // Arrange
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
         var mockUiMode = new Mock<IUiModeService>();
-        _ = mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
-        _ = mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
-        _ = mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
-        _ = mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => mockUiMode.Object);
+        mockUiMode.SetupGet(s => s.Mode).Returns("Simple");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
 
         // Act
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
 
         // Assert
-        IReadOnlyList<IElement> items = component.FindAll("[data-testid='user-menu-item']");
-        IElement? modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action") == "set-ui-mode:Standard");
+        var items = component.FindAll("[data-testid='user-menu-item']");
+        var modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action") == "set-ui-mode:Standard");
         Assert.NotNull(modeItem);
         Assert.Equal("Switch to Standard view", modeItem.TextContent.Trim());
     }
@@ -194,20 +188,20 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     public async Task OpeningMenu_WhenUiModeLocked_HidesToggleAction()
     {
         // Arrange
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
         var mockUiMode = new Mock<IUiModeService>();
-        _ = mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
-        _ = mockUiMode.SetupGet(s => s.IsLocked).Returns(true);
-        _ = mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => mockUiMode.Object);
+        mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(true);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
 
         // Act
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
 
         // Assert
-        IReadOnlyList<IElement> items = component.FindAll("[data-testid='user-menu-item']");
-        IElement? modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action")?.StartsWith("set-ui-mode:") ?? false);
+        var items = component.FindAll("[data-testid='user-menu-item']");
+        var modeItem = items.FirstOrDefault(i => i.GetAttribute("data-action")?.StartsWith("set-ui-mode:") ?? false);
         Assert.Null(modeItem);
     }
 
@@ -215,18 +209,18 @@ public class UserMenuButton_SignedIn_Tests : UserMenuButtonTestBase
     public async Task ClickingModeAction_WhenSetModeThrows_DoesNotCrash()
     {
         // Arrange
-        _ = await SignInAsync(OperatorRole.Admin);
+        await SignInAsync(OperatorRole.Admin);
         var mockUiMode = new Mock<IUiModeService>();
-        _ = mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
-        _ = mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
-        _ = mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
-        _ = mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>()))
+        mockUiMode.SetupGet(s => s.Mode).Returns("Standard");
+        mockUiMode.SetupGet(s => s.IsLocked).Returns(false);
+        mockUiMode.Setup(s => s.InitializeAsync()).Returns(Task.CompletedTask);
+        mockUiMode.Setup(s => s.SetModeAsync(It.IsAny<string>()))
             .ThrowsAsync(new InvalidOperationException("Mode is locked"));
-        _ = mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
-        _ = Services.AddScoped(_ => mockUiMode.Object);
+        mockUiMode.SetupAdd(s => s.OnChange += It.IsAny<Action>());
+        Services.AddScoped(_ => mockUiMode.Object);
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
-        IElement modeItem = component.Find("[data-action='set-ui-mode:Simple']");
+        var component = RenderAndOpen();
+        var modeItem = component.Find("[data-action='set-ui-mode:Simple']");
 
         // Act - should not throw
         await component.InvokeAsync(() => modeItem.Click());
@@ -241,11 +235,11 @@ public class UserMenuButton_SignedOut_Tests : UserMenuButtonTestBase
     [Fact]
     public void OpeningMenu_ShowsSignIn_NotChangePasswordOrPasskeys()
     {
-        _ = RegisterSignedOut();
+        RegisterSignedOut();
 
-        IRenderedComponent<UserMenuButton> component = RenderAndOpen();
+        var component = RenderAndOpen();
 
-        IReadOnlyList<IElement> items = component.FindAll("[data-testid='user-menu-item']");
+        var items = component.FindAll("[data-testid='user-menu-item']");
         Assert.Contains(items, i => i.GetAttribute("data-path") == "/signin");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/change-password");
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/settings/passkeys");

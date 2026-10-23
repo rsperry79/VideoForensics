@@ -1,6 +1,5 @@
-using Microsoft.Extensions.Localization;
-
 using VideoForensics.Core.Api.Contracts;
+using Microsoft.Extensions.Localization;
 
 namespace VideoForensics.Ui.Shared.Formatting;
 
@@ -20,11 +19,9 @@ public static class EventPlainLanguageFormatter
     public static string Describe(IStringLocalizer localizer, EventDto eventDto, string? deviceName = null)
     {
         if (eventDto == null)
-        {
             return localizer["PlainEventDetected"].Value;
-        }
 
-        string devicePart = !string.IsNullOrWhiteSpace(deviceName)
+        var devicePart = !string.IsNullOrWhiteSpace(deviceName)
             ? localizer["PlainDeviceNamed", deviceName].Value
             : localizer["PlainDeviceFallback"].Value;
 
@@ -61,16 +58,12 @@ public static class EventPlainLanguageFormatter
     {
         // The "Your " guard is a defensive English-only heuristic for callers that already prefixed the name.
         if (string.IsNullOrWhiteSpace(deviceName))
-        {
             deviceName = localizer["PlainDeviceFallback"].Value;
-        }
         else if (!deviceName.StartsWith("Your ", StringComparison.OrdinalIgnoreCase))
-        {
             deviceName = localizer["PlainDeviceNamed", deviceName].Value;
-        }
 
-        TimeSpan duration = endUtc - startUtc;
-        string durationText = FormatDuration(localizer, duration);
+        var duration = endUtc - startUtc;
+        var durationText = FormatDuration(localizer, duration);
 
         return localizer["PlainJammingBlocked", deviceName, durationText].Value;
     }
@@ -82,29 +75,30 @@ public static class EventPlainLanguageFormatter
     {
         if (duration.TotalSeconds < 60)
         {
-            int seconds = (int)Math.Round(duration.TotalSeconds);
+            var seconds = (int)Math.Round(duration.TotalSeconds);
             return seconds == 1 ? localizer["PlainDurationSecond"].Value : localizer["PlainDurationSeconds", seconds].Value;
         }
 
         if (duration.TotalMinutes < 60)
         {
-            int minutes = (int)Math.Round(duration.TotalMinutes);
+            var minutes = (int)Math.Round(duration.TotalMinutes);
             return minutes == 1 ? localizer["PlainDurationMinute"].Value : localizer["PlainDurationMinutes", minutes].Value;
         }
 
         if (duration.TotalHours < 24)
         {
-            int hours = duration.Hours;
-            int remainingMinutes = duration.Minutes;
+            var hours = duration.Hours;
+            var remainingMinutes = duration.Minutes;
 
-            return remainingMinutes == 0
-                ? hours == 1 ? localizer["PlainDurationHour"].Value : localizer["PlainDurationHours", hours].Value
-                : remainingMinutes == 1
+            if (remainingMinutes == 0)
+                return hours == 1 ? localizer["PlainDurationHour"].Value : localizer["PlainDurationHours", hours].Value;
+
+            return remainingMinutes == 1
                 ? localizer["PlainDurationHoursAndMinute", hours].Value
                 : localizer["PlainDurationHoursAndMinutes", hours, remainingMinutes].Value;
         }
 
-        int days = (int)Math.Round(duration.TotalDays);
+        var days = (int)Math.Round(duration.TotalDays);
         return days == 1 ? localizer["PlainDurationDay"].Value : localizer["PlainDurationDays", days].Value;
     }
 }

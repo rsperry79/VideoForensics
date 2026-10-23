@@ -22,8 +22,18 @@ namespace VideoForensics.WebApp.Api
         /// </summary>
         public static bool ShouldAutoApprove(Operator op, bool hasApprovedCredential)
         {
-            return !hasApprovedCredential && (op.IsPrimarySuperAdmin || (op.PasswordUpdatedAtUtc is DateTime updated
-                && updated - op.CreatedAtUtc > ResetGracePeriod));
+            if (hasApprovedCredential)
+            {
+                return false;
+            }
+
+            if (op.IsPrimarySuperAdmin)
+            {
+                return true;
+            }
+
+            return op.PasswordUpdatedAtUtc is DateTime updated
+                && updated - op.CreatedAtUtc > ResetGracePeriod;
         }
     }
 }

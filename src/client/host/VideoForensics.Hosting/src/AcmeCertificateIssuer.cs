@@ -66,7 +66,7 @@ namespace VideoForensics.Hosting
             var acme = new AcmeContext(server, accountKey);
             _ = await acme.NewAccount(contactEmail, true);
 
-            IOrderContext order = await acme.NewOrder([domain]);
+            IOrderContext order = await acme.NewOrder(new List<string> { domain });
             foreach (IAuthorizationContext authorization in await order.Authorizations())
             {
                 await CompleteDnsChallengeAsync(acme, order, authorization, domain, dns, ct);
@@ -101,7 +101,7 @@ namespace VideoForensics.Hosting
                 for (int poll = 0; poll < MaxPolls; poll++)
                 {
                     Order current = await order.Resource();
-                    if (current.Status is OrderStatus.Ready or OrderStatus.Valid)
+                    if (current.Status == OrderStatus.Ready || current.Status == OrderStatus.Valid)
                     {
                         return;
                     }

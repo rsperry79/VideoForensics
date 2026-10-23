@@ -1,14 +1,12 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
 
 using Microsoft.Extensions.DependencyInjection;
-
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Covers the desktop layout during a limited passkey-setup session: no navigation groups, no
 /// sidebar links, no settings panel - only the sign-out control in the top bar.
@@ -19,11 +17,11 @@ public class MainLayoutPasskeySetupTests : SimpleModeLayoutTestBase
     public async Task MainLayout_PasskeySetupOnly_HidesNavigation()
     {
         // Arrange
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
 
         // Act
-        IRenderedComponent<MainLayout> component = Render<MainLayout>();
+        var component = Render<MainLayout>();
 
         // Assert
         Assert.Empty(component.FindAll(".top-tab-button"));

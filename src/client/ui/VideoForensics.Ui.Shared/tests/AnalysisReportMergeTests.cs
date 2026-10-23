@@ -1,10 +1,9 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
+using Xunit;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Ui.Shared.Services.Analysis;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>Per-device reports combine into one report: lists concatenate and the window is kept.</summary>
 public class AnalysisReportMergeTests
 {
@@ -18,22 +17,22 @@ public class AnalysisReportMergeTests
         {
             ReportFromUtc = From,
             ReportToUtc = To,
-            AccessEvents =
-            [
+            AccessEvents = new List<AccessControlReport.AccessEvent>
+            {
                 new() { AccessedAtUtc = new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc), Actor = "a", Action = "View", EntityType = "Media" },
-            ],
+            },
         };
         var newer = new AccessControlReport
         {
             ReportFromUtc = From,
             ReportToUtc = To,
-            AccessEvents =
-            [
+            AccessEvents = new List<AccessControlReport.AccessEvent>
+            {
                 new() { AccessedAtUtc = new DateTime(2026, 9, 5, 0, 0, 0, DateTimeKind.Utc), Actor = "b", Action = "View", EntityType = "Media" },
-            ],
+            },
         };
 
-        AccessControlReport merged = AnalysisReportMerge.Merge(new[] { older, newer });
+        var merged = AnalysisReportMerge.Merge(new[] { older, newer });
 
         Assert.Equal(2, merged.AccessEvents.Count);
         Assert.Equal("b", merged.AccessEvents[0].Actor);
@@ -48,30 +47,30 @@ public class AnalysisReportMergeTests
         {
             ReportFromUtc = From,
             ReportToUtc = To,
-            AnomaliesByDevice =
-            [
+            AnomaliesByDevice = new List<SignalAnomalyReport.AnomalyFindings>
+            {
                 new() { DeviceName = "Front" },
-            ],
-            JammingByDevice =
-            [
+            },
+            JammingByDevice = new List<SignalAnomalyReport.JammingSummaryEntry>
+            {
                 new() { DeviceName = "Front", IncidentCount = 2 },
-            ],
+            },
         };
         var second = new SignalAnomalyReport
         {
             ReportFromUtc = From,
             ReportToUtc = To,
-            AnomaliesByDevice =
-            [
+            AnomaliesByDevice = new List<SignalAnomalyReport.AnomalyFindings>
+            {
                 new() { DeviceName = "Back" },
-            ],
-            JammingByDevice =
-            [
+            },
+            JammingByDevice = new List<SignalAnomalyReport.JammingSummaryEntry>
+            {
                 new() { DeviceName = "Back", IncidentCount = 0 },
-            ],
+            },
         };
 
-        SignalAnomalyReport merged = AnalysisReportMerge.Merge(new[] { first, second });
+        var merged = AnalysisReportMerge.Merge(new[] { first, second });
 
         Assert.Equal(new[] { "Front", "Back" }, merged.AnomaliesByDevice.Select(a => a.DeviceName));
         Assert.Equal(new[] { "Front", "Back" }, merged.JammingByDevice.Select(j => j.DeviceName));
@@ -83,7 +82,7 @@ public class AnalysisReportMergeTests
         var first = new ForensicAnalysisReport { ReportFromUtc = From, ReportToUtc = To, Summary = "first" };
         var second = new ForensicAnalysisReport { ReportFromUtc = From, ReportToUtc = To, Summary = "second" };
 
-        ForensicAnalysisReport merged = AnalysisReportMerge.Merge(new[] { first, second });
+        var merged = AnalysisReportMerge.Merge(new[] { first, second });
 
         Assert.Empty(merged.EvidenceItems);
         Assert.Null(merged.Summary);

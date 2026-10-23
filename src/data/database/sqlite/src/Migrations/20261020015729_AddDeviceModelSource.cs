@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.AddColumn<string>(
+            migrationBuilder.AddColumn<string>(
                 name: "Source",
                 table: "DeviceModels",
                 type: "TEXT",
@@ -22,7 +22,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "Source",
                 table: "DeviceModels");
         }

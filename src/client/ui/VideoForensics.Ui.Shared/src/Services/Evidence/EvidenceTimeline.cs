@@ -19,25 +19,25 @@ public static class EvidenceTimeline
         var itemsList = items.ToList();
         var dayGroups = new Dictionary<DateOnly, Dictionary<Guid, List<EvidenceItem>>>();
 
-        foreach (EvidenceItem? item in itemsList)
+        foreach (var item in itemsList)
         {
             // Convert UTC to local time in displayZone
-            DateTime localTime = TimeZoneInfo.ConvertTime(
+            var localTime = TimeZoneInfo.ConvertTime(
                 new DateTime(item.OccurredAtUtc.Ticks, DateTimeKind.Utc),
                 TimeZoneInfo.Utc,
                 displayZone);
 
             var localDay = DateOnly.FromDateTime(localTime);
 
-            if (!dayGroups.TryGetValue(localDay, out Dictionary<Guid, List<EvidenceItem>>? deviceGroups))
+            if (!dayGroups.TryGetValue(localDay, out var deviceGroups))
             {
-                deviceGroups = [];
+                deviceGroups = new Dictionary<Guid, List<EvidenceItem>>();
                 dayGroups[localDay] = deviceGroups;
             }
 
-            if (!deviceGroups.TryGetValue(item.DeviceId, out List<EvidenceItem>? deviceItems))
+            if (!deviceGroups.TryGetValue(item.DeviceId, out var deviceItems))
             {
-                deviceItems = [];
+                deviceItems = new List<EvidenceItem>();
                 deviceGroups[item.DeviceId] = deviceItems;
             }
 
@@ -46,13 +46,13 @@ public static class EvidenceTimeline
 
         // Build the result, sorted by day descending
         var result = new List<EvidenceDayGroup>();
-        foreach (KeyValuePair<DateOnly, Dictionary<Guid, List<EvidenceItem>>> dayKvp in dayGroups.OrderByDescending(x => x.Key))
+        foreach (var dayKvp in dayGroups.OrderByDescending(x => x.Key))
         {
             var deviceGroupList = new List<EvidenceDeviceGroup>();
-            foreach (KeyValuePair<Guid, List<EvidenceItem>> deviceKvp in dayKvp.Value.OrderBy(x =>
+            foreach (var deviceKvp in dayKvp.Value.OrderBy(x =>
             {
                 // Find device name from first item in this device group
-                EvidenceItem firstItem = x.Value.First();
+                var firstItem = x.Value.First();
                 return firstItem.DeviceName;
             }))
             {
@@ -67,7 +67,7 @@ public static class EvidenceTimeline
                 deviceGroupList.Add(deviceGroup);
             }
 
-            int totalCount = dayKvp.Value.Values.Sum(items => items.Count);
+            var totalCount = dayKvp.Value.Values.Sum(items => items.Count);
             var dayGroup = new EvidenceDayGroup(
                 Day: dayKvp.Key,
                 Devices: deviceGroupList.AsReadOnly(),
@@ -93,7 +93,7 @@ public static class EvidenceTimeline
         string key,
         bool viewableOnly)
     {
-        int currentIndex = -1;
+        var currentIndex = -1;
         for (int i = 0; i < ordered.Count; i++)
         {
             if (ordered[i].Key == key)

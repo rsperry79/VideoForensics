@@ -23,9 +23,12 @@ namespace VideoForensics.WebApp.Services.CircuitGuards
             }
 
             // Matches the HTTP export, which requires step-up through the endpoint filter.
-            return !gate.IsStepUpValid(stepUpToken)
-                ? throw new UnauthorizedAccessException(gate.StepUpDenial())
-                : inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
+            if (!gate.IsStepUpValid(stepUpToken))
+            {
+                throw new UnauthorizedAccessException(gate.StepUpDenial());
+            }
+
+            return inner.ExportEvidenceAsync(caseId, recipientDescription, passphrase, ct, stepUpToken);
         }
     }
 }

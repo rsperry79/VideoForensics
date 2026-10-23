@@ -1,10 +1,11 @@
+using System.Collections.Concurrent;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using SIPSorcery.Net;
 
 using SIPSorceryMedia.Abstractions;
-
-using System.Collections.Concurrent;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -56,14 +57,12 @@ namespace VideoForensics.WebApp.Services
             ILiveViewConnection ringConnection)
         {
             if (ringConnection == null)
-            {
                 throw new ArgumentNullException(nameof(ringConnection));
-            }
 
             // Reuse the existing leg for this key. A second peer plus a second RTP subscription
             // would leak: only one entry is stored, so the extra peer and handler can never be disposed.
-            (string connectionId, Guid sessionId) key = (connectionId, sessionId);
-            if (_activePeers.TryGetValue(key, out BrowserLiveViewPeerConnection? existing))
+            var key = (connectionId, sessionId);
+            if (_activePeers.TryGetValue(key, out var existing))
             {
                 return existing.PeerConnection;
             }
@@ -96,7 +95,7 @@ namespace VideoForensics.WebApp.Services
             pc.addTrack(new MediaStreamTrack(audioFormats, MediaStreamStatusEnum.SendRecv));
 
             // Subscribe to video RTP packets from the provider and forward to browser peer
-            void rtpBridgeHandler(byte[] payload, uint timestamp, int markerBit)
+            Action<byte[], uint, int> rtpBridgeHandler = (payload, timestamp, markerBit) =>
             {
                 try
                 {
@@ -107,11 +106,11 @@ namespace VideoForensics.WebApp.Services
                 {
                     _logger.LogError(ex, "Error forwarding RTP packet to browser peer for session {SessionId}", sessionId);
                 }
-            }
+            };
 
             // Subscribe to audio RTP packets and forward only the negotiated OPUS payload type (111).
             // Packets with any other payload type are dropped rather than sent under the wrong codec.
-            void audioRtpBridgeHandler(byte[] payload, uint timestamp, int markerBit, int payloadType)
+            Action<byte[], uint, int, int> audioRtpBridgeHandler = (payload, timestamp, markerBit, payloadType) =>
             {
                 if (payloadType != OpusPayloadType)
                 {
@@ -129,7 +128,7 @@ namespace VideoForensics.WebApp.Services
                 {
                     _logger.LogError(ex, "Error forwarding audio RTP packet to browser peer for session {SessionId}", sessionId);
                 }
-            }
+            };
 
             ringConnection.OnVideoRtpPayload += rtpBridgeHandler;
             ringConnection.OnAudioRtpPayload += audioRtpBridgeHandler;
@@ -146,7 +145,7 @@ namespace VideoForensics.WebApp.Services
                 pc.close();
                 pc.Dispose();
 
-                if (_activePeers.TryGetValue(key, out BrowserLiveViewPeerConnection? winner))
+                if (_activePeers.TryGetValue(key, out var winner))
                 {
                     return winner.PeerConnection;
                 }
@@ -164,10 +163,13 @@ namespace VideoForensics.WebApp.Services
         /// </summary>
         public async Task<RTCPeerConnection?> GetBrowserLegAsync(string connectionId, Guid sessionId)
         {
-            (string connectionId, Guid sessionId) key = (connectionId, sessionId);
-            return _activePeers.TryGetValue(key, out BrowserLiveViewPeerConnection? entry)
-                ? await Task.FromResult(entry.PeerConnection)
-                : await Task.FromResult<RTCPeerConnection?>(null);
+            var key = (connectionId, sessionId);
+            if (_activePeers.TryGetValue(key, out var entry))
+            {
+                return await Task.FromResult(entry.PeerConnection);
+            }
+
+            return await Task.FromResult<RTCPeerConnection?>(null);
         }
 
         /// <summary>
@@ -176,8 +178,8 @@ namespace VideoForensics.WebApp.Services
         /// </summary>
         public async Task DisposeBrowserLegAsync(string connectionId, Guid sessionId)
         {
-            (string connectionId, Guid sessionId) key = (connectionId, sessionId);
-            if (_activePeers.TryRemove(key, out BrowserLiveViewPeerConnection? entry))
+            var key = (connectionId, sessionId);
+            if (_activePeers.TryRemove(key, out var entry))
             {
                 _logger.LogDebug(
                     "Disposing browser peer connection for session {SessionId}, connection {ConnectionId}",
@@ -207,7 +209,7 @@ namespace VideoForensics.WebApp.Services
                 .Where(k => k.connectionId == connectionId)
                 .ToList();
 
-            foreach ((string connectionId, Guid sessionId) key in keysToRemove)
+            foreach (var key in keysToRemove)
             {
                 await DisposeBrowserLegAsync(key.connectionId, key.sessionId);
             }

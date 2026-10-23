@@ -171,9 +171,9 @@ namespace VideoForensics.Core.Helpers.Forensics.Implementations
         /// </summary>
         public async Task<EvidenceValidationReport> GetValidationReportAsync(EvidenceMetadata evidence)
         {
-            ValidationResult completenessResult = await ValidateCompletenessAsync(evidence).ConfigureAwait(true);
-            ValidationResult integrityResult = await ValidateIntegrityAsync(evidence).ConfigureAwait(true);
-            ValidationResult complianceResult = await ValidateComplianceAsync(evidence).ConfigureAwait(true);
+            ValidationResult completenessResult = await ValidateCompletenessAsync(evidence);
+            ValidationResult integrityResult = await ValidateIntegrityAsync(evidence);
+            ValidationResult complianceResult = await ValidateComplianceAsync(evidence);
 
             var allErrors = new List<string>();
             allErrors.AddRange(completenessResult.Errors);

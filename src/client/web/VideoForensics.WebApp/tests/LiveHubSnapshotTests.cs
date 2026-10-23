@@ -1,13 +1,13 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Hubs;
 
@@ -22,9 +22,9 @@ namespace VideoForensics.WebApp.Tests
         private static (LiveHub Hub, Mock<ISingleClientProxy> Caller, Mock<IVideoDownloadService> Download) BuildHub()
         {
             var download = new Mock<IVideoDownloadService>();
-            _ = download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(true, 2, 5, 300L, "b.mp4", 4, 9, 900L, 1, 2.0));
-            _ = download.Setup(s => s.GetCurrentDevice()).Returns((2, 5, "Front door"));
-            _ = download.Setup(s => s.DrainActivityLog()).Returns(["pending line"]);
+            download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(true, 2, 5, 300L, "b.mp4", 4, 9, 900L, 1, 2.0));
+            download.Setup(s => s.GetCurrentDevice()).Returns((2, 5, "Front door"));
+            download.Setup(s => s.DrainActivityLog()).Returns(new List<string> { "pending line" });
 
             IServiceProvider services = new ServiceCollection()
                 .AddSingleton(download.Object)
@@ -33,11 +33,11 @@ namespace VideoForensics.WebApp.Tests
 
             var caller = new Mock<ISingleClientProxy>();
             var clients = new Mock<IHubCallerClients>();
-            _ = clients.Setup(c => c.Caller).Returns(caller.Object);
+            clients.Setup(c => c.Caller).Returns(caller.Object);
 
             var context = new Mock<HubCallerContext>();
-            _ = context.Setup(c => c.ConnectionId).Returns("conn-1");
-            _ = context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
+            context.Setup(c => c.ConnectionId).Returns("conn-1");
+            context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
 
             var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
             {
@@ -68,7 +68,7 @@ namespace VideoForensics.WebApp.Tests
         public async Task LiveHub_DownloadSnapshotThrows_StillCompletesConnect()
         {
             (LiveHub hub, Mock<ISingleClientProxy> caller, Mock<IVideoDownloadService> download) = BuildHub();
-            _ = download.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("download state unavailable"));
+            download.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("download state unavailable"));
 
             await hub.OnConnectedAsync();
 
@@ -82,7 +82,7 @@ namespace VideoForensics.WebApp.Tests
         {
             (LiveHub hub, Mock<ISingleClientProxy> caller, Mock<IVideoDownloadService> download) = BuildHub();
             DownloadProgressDto? sent = null;
-            _ = caller.Setup(p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            caller.Setup(p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .Callback<string, object?[], CancellationToken>((_, args, _) => sent = args[0] as DownloadProgressDto)
                 .Returns(Task.CompletedTask);
 

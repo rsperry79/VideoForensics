@@ -6,29 +6,26 @@ namespace VideoForensics.Core.Api.Contracts.Tests
 {
     public class DeviceDtosTests
     {
-        private static Device CreateDeviceWithRingFields()
+        private static Device CreateDeviceWithRingFields() => new()
         {
-            return new()
-            {
-                Id = Guid.Parse("11111111-2222-3333-4444-555555555555"),
-                LocationId = Guid.Parse("66666666-7777-8888-9999-000000000000"),
-                ProviderDeviceId = "123",
-                Name = "Front Door",
-                Type = "doorbell",
-                RingDeviceId = "aabbcc",
-                RingKind = "doorbell_v4",
-                FirmwareVersion = "2.0.1",
-                Latitude = 41.5,
-                Longitude = -87.6,
-                Address = "1 Main St",
-                Subscribed = true,
-                SubscribedMotions = false,
-                BatteryLife = "87",
-                ExternalConnection = true,
-                Owned = true,
-                Stolen = false
-            };
-        }
+            Id = Guid.Parse("11111111-2222-3333-4444-555555555555"),
+            LocationId = Guid.Parse("66666666-7777-8888-9999-000000000000"),
+            ProviderDeviceId = "123",
+            Name = "Front Door",
+            Type = "doorbell",
+            RingDeviceId = "aabbcc",
+            RingKind = "doorbell_v4",
+            FirmwareVersion = "2.0.1",
+            Latitude = 41.5,
+            Longitude = -87.6,
+            Address = "1 Main St",
+            Subscribed = true,
+            SubscribedMotions = false,
+            BatteryLife = "87",
+            ExternalConnection = true,
+            Owned = true,
+            Stolen = false
+        };
 
         [Fact]
         public void DeviceDtoMapping_ToDto_WithRingFields_CopiesThemToDto()
@@ -86,7 +83,7 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         public void DeviceHealthDtoMapping_ToDto_WithExtendedFields_CopiesThemToDto()
         {
             var captured = new DateTime(2026, 10, 16, 12, 0, 0, DateTimeKind.Utc);
-            DeviceHealth entity = CreateHealthWithExtendedFields(captured);
+            var entity = CreateHealthWithExtendedFields(captured);
 
             VideoForensics.Core.Api.Contracts.DeviceHealthDto dto = entity.ToDto();
 
@@ -130,32 +127,29 @@ namespace VideoForensics.Core.Api.Contracts.Tests
             Assert.False(restored.PtzConnected);
         }
 
-        private static DeviceHealth CreateHealthWithExtendedFields(DateTime captured)
+        private static DeviceHealth CreateHealthWithExtendedFields(DateTime captured) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = Guid.NewGuid(),
-                CapturedAtUtc = captured,
-                DeviceType = "doorbell",
-                FirmwareVersionStatus = "current",
-                BatteryPresent = true,
-                BatteryPercentageCategory = "good",
-                BatteryVoltageCategory = "ok",
-                RssiCategory = "strong",
-                NetworkConnectionValue = "wifi",
-                PacketLoss = 0.5,
-                PacketLossCategory = "low",
-                LatestSignalStrength = -60.5,
-                LatestSignalCategory = "strong",
-                AverageSignalStrength = -61.0,
-                AverageSignalCategory = "strong",
-                Firmware = "2.0.1",
-                UpdatedAtUtc = captured,
-                PacketLossStrength = 1.25,
-                WifiIsRingNetwork = true,
-                PtzConnected = false
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            CapturedAtUtc = captured,
+            DeviceType = "doorbell",
+            FirmwareVersionStatus = "current",
+            BatteryPresent = true,
+            BatteryPercentageCategory = "good",
+            BatteryVoltageCategory = "ok",
+            RssiCategory = "strong",
+            NetworkConnectionValue = "wifi",
+            PacketLoss = 0.5,
+            PacketLossCategory = "low",
+            LatestSignalStrength = -60.5,
+            LatestSignalCategory = "strong",
+            AverageSignalStrength = -61.0,
+            AverageSignalCategory = "strong",
+            Firmware = "2.0.1",
+            UpdatedAtUtc = captured,
+            PacketLossStrength = 1.25,
+            WifiIsRingNetwork = true,
+            PtzConnected = false
+        };
     }
 }

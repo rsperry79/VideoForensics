@@ -1,16 +1,13 @@
-
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Localization;
+namespace VideoForensics.Ui.Shared.Pages;
 
 using System.Net.Http.Json;
-
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Services;
-
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Pages;
 /// <summary>
 /// Shared state for the account pages (Details, Sync, Cases): loads the account and its user, and makes the
 /// paired-device authenticated GET calls. Each tab is its own routed page, so each loads the account itself.
@@ -63,7 +60,7 @@ public abstract class AccountTabPageBase : ComponentBase
                 try
                 {
                     // The provider login (email for Ring) is the account's name.
-                    User? user = await UserRepository.GetAsync(Account.UserId, CancellationToken.None);
+                    var user = await UserRepository.GetAsync(Account.UserId, CancellationToken.None);
                     AccountEmail = user?.ProviderUserKey;
                 }
                 catch
@@ -92,7 +89,7 @@ public abstract class AccountTabPageBase : ComponentBase
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(new Uri(NavigationManager.BaseUri), relativePath));
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", SessionState.SessionToken);
         using HttpResponseMessage response = await HttpClient.SendAsync(request, CancellationToken.None);
-        _ = response.EnsureSuccessStatusCode();
+        response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<T>(CancellationToken.None);
     }
 }

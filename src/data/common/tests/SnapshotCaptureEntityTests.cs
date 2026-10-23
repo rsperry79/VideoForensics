@@ -12,10 +12,10 @@ public class SnapshotCaptureEntityTests
     [Fact]
     public void SnapshotCapture_Create_Status200_IsCurrentWithMediaPath()
     {
-        var deviceId = Guid.NewGuid();
-        var healthId = Guid.NewGuid();
+        Guid deviceId = Guid.NewGuid();
+        Guid healthId = Guid.NewGuid();
 
-        var capture = SnapshotCapture.Create(deviceId, CapturedAt, "fresh", 200, MediaPath, healthId);
+        SnapshotCapture capture = SnapshotCapture.Create(deviceId, CapturedAt, "fresh", 200, MediaPath, healthId);
 
         Assert.NotEqual(Guid.Empty, capture.Id);
         Assert.Equal(deviceId, capture.DeviceId);
@@ -30,7 +30,7 @@ public class SnapshotCaptureEntityTests
     [Fact]
     public void SnapshotCapture_Create_Status404_NotCurrentWithoutMediaPath()
     {
-        var capture = SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, "latest", 404, null, null);
+        SnapshotCapture capture = SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, "latest", 404, null, null);
 
         Assert.Equal(404, capture.HttpStatus);
         Assert.False(capture.IsCurrent);
@@ -41,14 +41,14 @@ public class SnapshotCaptureEntityTests
     [Fact]
     public void SnapshotCapture_Create_Status404WithMediaPath_Throws()
     {
-        _ = Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, "fresh", 404, MediaPath, null));
     }
 
     [Fact]
     public void SnapshotCapture_Create_Status200WithoutMediaPath_Throws()
     {
-        _ = Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, "fresh", 200, null, null));
     }
 
@@ -58,7 +58,7 @@ public class SnapshotCaptureEntityTests
     [InlineData("")]
     public void SnapshotCapture_Create_UnknownTrigger_Throws(string trigger)
     {
-        _ = Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, trigger, 200, MediaPath, null));
     }
 
@@ -67,7 +67,7 @@ public class SnapshotCaptureEntityTests
     [InlineData(600)]
     public void SnapshotCapture_Create_StatusOutOfRange_Throws(int httpStatus)
     {
-        _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
             SnapshotCapture.Create(Guid.NewGuid(), CapturedAt, "fresh", httpStatus, null, null));
     }
 
@@ -76,7 +76,7 @@ public class SnapshotCaptureEntityTests
     {
         var localTime = new DateTimeOffset(2026, 10, 18, 8, 0, 0, TimeSpan.FromHours(-4));
 
-        var capture = SnapshotCapture.Create(Guid.NewGuid(), localTime, "fresh", 200, MediaPath, null);
+        SnapshotCapture capture = SnapshotCapture.Create(Guid.NewGuid(), localTime, "fresh", 200, MediaPath, null);
 
         Assert.Equal(TimeSpan.Zero, capture.CapturedAtUtc.Offset);
         Assert.Equal(localTime.UtcDateTime, capture.CapturedAtUtc.UtcDateTime);

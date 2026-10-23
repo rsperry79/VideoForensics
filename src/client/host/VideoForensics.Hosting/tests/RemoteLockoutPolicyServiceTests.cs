@@ -1,5 +1,4 @@
-using System.Reflection;
-
+using Xunit;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 
@@ -12,10 +11,10 @@ namespace VideoForensics.Hosting.Tests
         {
             // This test verifies that RemoteLockoutPolicyService implements ILockoutPolicyService
             // and has the GetAsync method with correct signature
-            _ = new RemoteLockoutPolicyService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
+            var service = new RemoteLockoutPolicyService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
 
             // Verify the method exists and is accessible
-            MethodInfo? method = typeof(RemoteLockoutPolicyService).GetMethod("GetAsync");
+            var method = typeof(RemoteLockoutPolicyService).GetMethod("GetAsync");
             Assert.NotNull(method);
             Assert.True(method?.IsPublic);
             Assert.Equal(typeof(Task<LockoutPolicySettings>), method?.ReturnType);
@@ -25,10 +24,10 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateAsync_MethodExists()
         {
             // This test verifies that RemoteLockoutPolicyService has the UpdateAsync method
-            _ = new RemoteLockoutPolicyService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
+            var service = new RemoteLockoutPolicyService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
 
             // Verify the method exists and is accessible
-            MethodInfo? method = typeof(RemoteLockoutPolicyService).GetMethod("UpdateAsync");
+            var method = typeof(RemoteLockoutPolicyService).GetMethod("UpdateAsync");
             Assert.NotNull(method);
             Assert.True(method?.IsPublic);
         }
@@ -38,7 +37,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Verify that RemoteLockoutPolicyService implements ILockoutPolicyService
             var service = new RemoteLockoutPolicyService(new HttpClient() { BaseAddress = new Uri("http://localhost") });
-            _ = Assert.IsAssignableFrom<Contracts.ILockoutPolicyService>(service);
+            Assert.IsAssignableFrom<Contracts.ILockoutPolicyService>(service);
         }
 
         [Fact]

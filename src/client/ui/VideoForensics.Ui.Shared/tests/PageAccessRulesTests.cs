@@ -1,17 +1,13 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Layout;
-
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class PageAccessRules_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false, bool signedIn = true)
-    {
-        return new(signedIn, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
-    }
+    private static NavContext Ctx(OperatorRole? role, bool local = false, bool passkey = false, bool signedIn = true) =>
+        new(signedIn, role, AppLockSupported: false, IsLocalTier: local, IsPasskeySession: passkey);
 
     [Fact]
     public void IsAllowed_LocalOnlyPage_RemoteSuperAdmin_Denied()
@@ -98,17 +94,13 @@ public class PageAccessRules_Tests
 
 public class NavGroupsSections_Tests
 {
-    private static NavContext Ctx(OperatorRole? role, bool local = false)
-    {
-        return new(IsSignedIn: role is not null, Role: role, AppLockSupported: false, IsLocalTier: local);
-    }
+    private static NavContext Ctx(OperatorRole? role, bool local = false) =>
+        new(IsSignedIn: role is not null, Role: role, AppLockSupported: false, IsLocalTier: local);
 
     private static NavGroup Admin => NavGroups.All.First(g => g.Key == "admin");
 
-    private static IReadOnlyList<string> VisibleAdminPaths(NavContext ctx)
-    {
-        return Admin.Items.Where(i => i.IsVisible(ctx)).Select(i => i.Path).ToList();
-    }
+    private static IReadOnlyList<string> VisibleAdminPaths(NavContext ctx) =>
+        Admin.Items.Where(i => i.IsVisible(ctx)).Select(i => i.Path).ToList();
 
     [Fact]
     public void AdminTab_ReadOnlyOperator_IsVisible()
@@ -153,7 +145,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void AdminItems_ReadOnlyOperator_ShowsSecurityEventsAndGeneral()
     {
-        IReadOnlyList<string> paths = VisibleAdminPaths(Ctx(OperatorRole.ReadOnly));
+        var paths = VisibleAdminPaths(Ctx(OperatorRole.ReadOnly));
         Assert.Contains("/settings", paths);
         Assert.Contains("/settings/security-events", paths);
     }
@@ -161,7 +153,7 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_AdminGroup_LocalSuperAdmin_ReturnsTitledSectionsInOrder()
     {
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
+        var sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
 
         Assert.Equal(
             new[] { "General", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
@@ -182,8 +174,8 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_AdminGroup_RemoteSuperAdmin_DropsLocalOnlyItemsFromSections()
     {
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin));
-        NavSection? diagnostics = sections.FirstOrDefault(s => s.Title == "Diagnostics & Updates");
+        var sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin));
+        var diagnostics = sections.FirstOrDefault(s => s.Title == "Diagnostics & Updates");
 
         // Server Logs and App Update are Local-only, so the section has nothing to show off-Local.
         Assert.Null(diagnostics);
@@ -192,18 +184,18 @@ public class NavGroupsSections_Tests
     [Fact]
     public void SectionsFor_GroupWithoutSections_ReturnsSingleUntitledSection()
     {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        var media = NavGroups.All.First(g => g.Key == "media");
 
-        IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(media, Ctx(OperatorRole.ReadOnly));
+        var sections = NavGroups.SectionsFor(media, Ctx(OperatorRole.ReadOnly));
 
-        _ = Assert.Single(sections);
+        Assert.Single(sections);
         Assert.Null(sections[0].Title);
     }
 
     [Fact]
     public void Media_GroupHasNoHiddenDatesFilterPlaceholder()
     {
-        NavGroup media = NavGroups.All.First(g => g.Key == "media");
+        var media = NavGroups.All.First(g => g.Key == "media");
 
         Assert.DoesNotContain(media.Items, i => i.Path == "/media/dates-filter");
     }

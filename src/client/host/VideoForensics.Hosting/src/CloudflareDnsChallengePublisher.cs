@@ -42,9 +42,7 @@ namespace VideoForensics.Hosting
         public static readonly TimeSpan RenewBefore = TimeSpan.FromDays(30);
 
         public static bool IsRenewalDue(DateTimeOffset? notAfter, DateTimeOffset now)
-        {
-            return notAfter is null || notAfter.Value - now <= RenewBefore;
-        }
+            => notAfter is null || notAfter.Value - now <= RenewBefore;
 
         /// <summary>
         /// Returns the zone that contains <paramref name="hostname"/>, choosing the longest matching name so that

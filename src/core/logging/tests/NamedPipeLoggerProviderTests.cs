@@ -2,7 +2,11 @@ using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
+using System.IO.Pipes;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using VideoForensics.Core.Logging.Providers;
@@ -33,17 +37,15 @@ namespace VideoForensics.Core.Logging.Tests
         public async Task WriteLog_CreatesNamedPipeOnFirstWrite()
         {
             if (!OperatingSystem.IsWindows())
-            {
                 return;
-            }
 
             // Act
             _logger.LogInformation("Test message");
             await Task.Delay(200); // Wait for async write
 
             // Assert - verify circular buffer has the entry
-            string[] buffered = _provider.GetBufferedEntries();
-            _ = Assert.Single(buffered);
+            var buffered = _provider.GetBufferedEntries();
+            Assert.Single(buffered);
             Assert.Contains("Test message", buffered[0]);
         }
 
@@ -54,10 +56,10 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogError("Error test");
 
             // Assert - retrieve from buffer and verify JSON structure
-            string[] buffered = _provider.GetBufferedEntries();
-            _ = Assert.Single(buffered);
+            var buffered = _provider.GetBufferedEntries();
+            Assert.Single(buffered);
 
-            Dictionary<string, object>? parsed = JsonSerializer.Deserialize<Dictionary<string, object>>(buffered[0]);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, object>>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.True(parsed.ContainsKey("timestamp"));
             Assert.True(parsed.ContainsKey("level"));
@@ -73,8 +75,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Test");
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.NotNull(parsed.Timestamp);
 
@@ -95,7 +97,7 @@ namespace VideoForensics.Core.Logging.Tests
             }
 
             // Assert - verify buffer contains only last 500
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.Equal(500, buffered.Length);
 
             // Verify the first buffered entry is from ~entry 150 (650 - 500)
@@ -112,8 +114,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogWarning("Warning test");
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.Equal("Warning", parsed.Level);
         }
@@ -122,14 +124,14 @@ namespace VideoForensics.Core.Logging.Tests
         public void WriteLog_IncludesCategory()
         {
             // Arrange
-            ILogger logger = _provider.CreateLogger("MyCustomCategory");
+            var logger = _provider.CreateLogger("MyCustomCategory");
 
             // Act
             logger.LogInformation("Test");
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.Equal("MyCustomCategory", parsed.Category);
         }
@@ -142,8 +144,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogError(ex, "Error with exception");
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.Contains("Error with exception", parsed.Message);
             Assert.Contains("InvalidOperationException", parsed.Message);
@@ -158,8 +160,8 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.Log(LogLevel.Information, eventId, "Test", null, (state, ex) => state.ToString());
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.NotNull(parsed);
             Assert.Equal(42, parsed.EventId);
             Assert.Equal("TestEvent", parsed.EventName);
@@ -172,7 +174,7 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.Log(LogLevel.None, new EventId(0, null), "Test", null, (state, ex) => state.ToString());
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.Empty(buffered);
         }
 
@@ -199,14 +201,14 @@ namespace VideoForensics.Core.Logging.Tests
             await Task.WhenAll(tasks);
 
             // Assert - verify all messages were logged (buffer will have last 500 if total > 500)
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.NotEmpty(buffered);
             Assert.True(buffered.Length <= 500);
 
             // Verify format is still valid
-            foreach (string entry in buffered)
+            foreach (var entry in buffered)
             {
-                LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(entry);
+                var parsed = JsonSerializer.Deserialize<LogEntry>(entry);
                 Assert.NotNull(parsed);
                 Assert.NotNull(parsed.Timestamp);
                 Assert.NotNull(parsed.Level);
@@ -219,14 +221,14 @@ namespace VideoForensics.Core.Logging.Tests
         {
             // Arrange
             _logger.LogInformation("Message 1");
-            string[] firstSnapshot = _provider.GetBufferedEntries();
+            var firstSnapshot = _provider.GetBufferedEntries();
 
             // Act
             _logger.LogInformation("Message 2");
-            string[] secondSnapshot = _provider.GetBufferedEntries();
+            var secondSnapshot = _provider.GetBufferedEntries();
 
             // Assert - snapshots should be different
-            _ = Assert.Single(firstSnapshot);
+            Assert.Single(firstSnapshot);
             Assert.Equal(2, secondSnapshot.Length);
         }
 
@@ -238,7 +240,7 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Should be ignored");
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.Empty(buffered);
         }
 
@@ -246,15 +248,15 @@ namespace VideoForensics.Core.Logging.Tests
         public void CreateLogger_MultipleLoggers_ShareBuffer()
         {
             // Arrange
-            ILogger logger1 = _provider.CreateLogger("Category1");
-            ILogger logger2 = _provider.CreateLogger("Category2");
+            var logger1 = _provider.CreateLogger("Category1");
+            var logger2 = _provider.CreateLogger("Category2");
 
             // Act
             logger1.LogInformation("From logger1");
             logger2.LogWarning("From logger2");
 
             // Assert - both logs should be in the shared buffer
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.Equal(2, buffered.Length);
             Assert.Contains("From logger1", buffered[0]);
             Assert.Contains("From logger2", buffered[1]);
@@ -273,7 +275,7 @@ namespace VideoForensics.Core.Logging.Tests
             _logger.LogInformation("Test on non-Windows");
 
             // Assert - should not crash, buffer should be empty (no-op)
-            string[] buffered = _provider.GetBufferedEntries();
+            var buffered = _provider.GetBufferedEntries();
             Assert.Empty(buffered);
         }
 
@@ -281,7 +283,7 @@ namespace VideoForensics.Core.Logging.Tests
         public void BeginScope_ReturnsNull()
         {
             // Act
-            IDisposable? scope = _logger.BeginScope("test scope");
+            var scope = _logger.BeginScope("test scope");
 
             // Assert
             Assert.Null(scope);
@@ -310,12 +312,12 @@ namespace VideoForensics.Core.Logging.Tests
         public void LogEntry_JsonSerialization_IgnoresDefaultEventId()
         {
             // Arrange - log with default (zero) event ID
-            ILogger logger = _provider.CreateLogger("Test");
-            logger.Log(LogLevel.Information, default, "Test", null, (state, ex) => state.ToString());
+            var logger = _provider.CreateLogger("Test");
+            logger.Log(LogLevel.Information, default(EventId), "Test", null, (state, ex) => state.ToString());
 
             // Act
-            string[] buffered = _provider.GetBufferedEntries();
-            string json = buffered[0];
+            var buffered = _provider.GetBufferedEntries();
+            var json = buffered[0];
 
             // Assert - eventId should not be in JSON when zero
             Assert.DoesNotContain("\"eventId\":0", json);
@@ -325,15 +327,15 @@ namespace VideoForensics.Core.Logging.Tests
         public void LogEntry_JsonSerialization_IgnoresNullEventName()
         {
             // Arrange
-            ILogger logger = _provider.CreateLogger("Test");
+            var logger = _provider.CreateLogger("Test");
             logger.Log(LogLevel.Information, new EventId(0, null), "Test", null, (state, ex) => state.ToString());
 
             // Act
-            string[] buffered = _provider.GetBufferedEntries();
-            string json = buffered[0];
+            var buffered = _provider.GetBufferedEntries();
+            var json = buffered[0];
 
             // Assert
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(json);
+            var parsed = JsonSerializer.Deserialize<LogEntry>(json);
             Assert.Null(parsed?.EventName);
         }
 
@@ -347,13 +349,13 @@ namespace VideoForensics.Core.Logging.Tests
         public void WriteLog_AllLogLevels_Supported(LogLevel level)
         {
             // Act
-            string message = "Message at level " + level.ToString();
+            var message = "Message at level " + level.ToString();
             _logger.Log(level, new EventId(0, null), message, null, (state, ex) => state);
 
             // Assert
-            string[] buffered = _provider.GetBufferedEntries();
-            _ = Assert.Single(buffered);
-            LogEntry? parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
+            var buffered = _provider.GetBufferedEntries();
+            Assert.Single(buffered);
+            var parsed = JsonSerializer.Deserialize<LogEntry>(buffered[0]);
             Assert.Equal(level.ToString(), parsed?.Level);
         }
     }

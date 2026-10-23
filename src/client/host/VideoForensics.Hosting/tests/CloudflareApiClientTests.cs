@@ -1,6 +1,10 @@
 using System.Net;
 using System.Text;
 
+using VideoForensics.Hosting;
+
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class CloudflareApiClientTests
@@ -16,10 +20,10 @@ namespace VideoForensics.Hosting.Tests
                 _respond = respond;
             }
 
-            public List<HttpRequestMessage> Requests { get; } = [];
+            public List<HttpRequestMessage> Requests { get; } = new();
 
             // The client disposes each request after sending it, so bodies are captured here.
-            public List<string?> Bodies { get; } = [];
+            public List<string?> Bodies { get; } = new();
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -30,9 +34,7 @@ namespace VideoForensics.Hosting.Tests
         }
 
         private static HttpResponseMessage Json(HttpStatusCode status, string body)
-        {
-            return new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
-        }
+            => new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
         private static (CloudflareApiClient Client, ScriptedHandler Handler) Create(Func<HttpRequestMessage, HttpResponseMessage> respond)
         {
@@ -44,7 +46,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_SuccessfulResponse_ReturnsZonesWithAccounts()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => Json(HttpStatusCode.OK,
+            var (client, handler) = Create(_ => Json(HttpStatusCode.OK,
                 """{"success":true,"result":[{"id":"z2","name":"b.example.com","account":{"id":"acct"}},{"id":"z1","name":"a.example.com","account":{"id":"acct"}}]}"""));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(Token, CancellationToken.None);
@@ -59,7 +61,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_InvalidToken_ReturnsCloudflareErrorMessage()
         {
-            (CloudflareApiClient? client, ScriptedHandler _) = Create(_ => Json(HttpStatusCode.Forbidden,
+            var (client, _) = Create(_ => Json(HttpStatusCode.Forbidden,
                 """{"success":false,"errors":[{"message":"Invalid API Token"}]}"""));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(Token, CancellationToken.None);
@@ -72,7 +74,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_ApiErrorWithoutMessage_ReturnsStatusCode()
         {
-            (CloudflareApiClient? client, ScriptedHandler _) = Create(_ => Json(HttpStatusCode.InternalServerError, """{"success":false}"""));
+            var (client, _) = Create(_ => Json(HttpStatusCode.InternalServerError, """{"success":false}"""));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(Token, CancellationToken.None);
 
@@ -83,7 +85,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_MalformedZones_DropsEntriesWithoutIdOrName()
         {
-            (CloudflareApiClient? client, ScriptedHandler _) = Create(_ => Json(HttpStatusCode.OK,
+            var (client, _) = Create(_ => Json(HttpStatusCode.OK,
                 """{"success":true,"result":[{"id":"z1"},{"name":"no-id.example.com"},{"id":"z3","name":"ok.example.com"}]}"""));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(Token, CancellationToken.None);
@@ -95,7 +97,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_UnreadableBody_ReturnsErrorInsteadOfThrowing()
         {
-            (CloudflareApiClient? client, ScriptedHandler _) = Create(_ => Json(HttpStatusCode.OK, "<html>maintenance</html>"));
+            var (client, _) = Create(_ => Json(HttpStatusCode.OK, "<html>maintenance</html>"));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(Token, CancellationToken.None);
 
@@ -106,7 +108,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task ValidateTokenAndListZonesAsync_EmptyToken_DoesNotCallApi()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => throw new InvalidOperationException("should not be called"));
+            var (client, handler) = Create(_ => throw new InvalidOperationException("should not be called"));
 
             CloudflareZoneResult result = await client.ValidateTokenAndListZonesAsync(" ", CancellationToken.None);
 
@@ -117,7 +119,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task CreateTunnelAsync_Success_ReturnsIdAndPermanentToken()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(request => request.Method == HttpMethod.Post
+            var (client, handler) = Create(request => request.Method == HttpMethod.Post
                 ? Json(HttpStatusCode.OK, """{"success":true,"result":{"id":"tun-1"}}""")
                 : Json(HttpStatusCode.OK, """{"success":true,"result":"permanent-token"}"""));
 
@@ -133,20 +135,20 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task CreateTunnelAsync_CreateFails_ReturnsErrorAndNoToken()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => Json(HttpStatusCode.BadRequest, """{"success":false,"errors":[{"message":"name taken"}]}"""));
+            var (client, handler) = Create(_ => Json(HttpStatusCode.BadRequest, """{"success":false,"errors":[{"message":"name taken"}]}"""));
 
             CloudflareTunnelResult result = await client.CreateTunnelAsync(Token, "acct", "dup", CancellationToken.None);
 
             Assert.False(result.IsSuccess);
             Assert.Equal("name taken", result.ErrorMessage);
             Assert.Null(result.TunnelToken);
-            _ = Assert.Single(handler.Requests);
+            Assert.Single(handler.Requests);
         }
 
         [Fact]
         public async Task ConfigureIngressAsync_SendsHostnameRuleAndCatchAll()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{}}"""));
+            var (client, handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{}}"""));
 
             CloudflareOperationResult result = await client.ConfigureIngressAsync(Token, "acct", "tun-1", "video.example.com", "http://localhost:5162", CancellationToken.None);
 
@@ -161,7 +163,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UpsertTunnelDnsRecordAsync_NoExistingRecord_CreatesProxiedCname()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(request => request.Method == HttpMethod.Get
+            var (client, handler) = Create(request => request.Method == HttpMethod.Get
                 ? Json(HttpStatusCode.OK, """{"success":true,"result":[]}""")
                 : Json(HttpStatusCode.OK, """{"success":true,"result":{}}"""));
 
@@ -177,7 +179,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task UpsertTunnelDnsRecordAsync_ExistingRecord_UpdatesInPlace()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(request => request.Method == HttpMethod.Get
+            var (client, handler) = Create(request => request.Method == HttpMethod.Get
                 ? Json(HttpStatusCode.OK, """{"success":true,"result":[{"id":"rec-9"}]}""")
                 : Json(HttpStatusCode.OK, """{"success":true,"result":{}}"""));
 
@@ -191,7 +193,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task CreateTxtRecordAsync_Success_ReturnsRecordIdAndSendsTxtType()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{"id":"txt-1"}}"""));
+            var (client, handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{"id":"txt-1"}}"""));
 
             CloudflareRecordResult result = await client.CreateTxtRecordAsync(Token, "zone-1", "_acme-challenge.video.example.com", "challenge-value", CancellationToken.None);
 
@@ -205,7 +207,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task CreateTxtRecordAsync_ApiError_ReturnsErrorWithoutRecordId()
         {
-            (CloudflareApiClient? client, ScriptedHandler _) = Create(_ => Json(HttpStatusCode.BadRequest, """{"success":false,"errors":[{"message":"record exists"}]}"""));
+            var (client, _) = Create(_ => Json(HttpStatusCode.BadRequest, """{"success":false,"errors":[{"message":"record exists"}]}"""));
 
             CloudflareRecordResult result = await client.CreateTxtRecordAsync(Token, "zone-1", "_acme-challenge.x.example.com", "v", CancellationToken.None);
 
@@ -217,7 +219,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task DeleteDnsRecordAsync_Success_SendsDeleteForRecord()
         {
-            (CloudflareApiClient? client, ScriptedHandler? handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{"id":"txt-1"}}"""));
+            var (client, handler) = Create(_ => Json(HttpStatusCode.OK, """{"success":true,"result":{"id":"txt-1"}}"""));
 
             CloudflareOperationResult result = await client.DeleteDnsRecordAsync(Token, "zone-1", "txt-1", CancellationToken.None);
 

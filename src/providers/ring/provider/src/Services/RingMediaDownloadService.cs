@@ -6,11 +6,11 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Services;
 using VideoForensics.Providers.Ring.Exceptions;
 
 [assembly: InternalsVisibleTo("VideoForensics.Providers.Ring.Tests")]
@@ -607,9 +607,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        await using FileStream hashStream = File.OpenRead(fileName);
-                                        byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -754,9 +756,11 @@ namespace VideoForensics.Providers.Ring.Services
                                 {
                                     try
                                     {
-                                        await using FileStream hashStream = File.OpenRead(fileName);
-                                        byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
-                                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
+                                        await using (FileStream hashStream = File.OpenRead(fileName))
+                                        {
+                                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, rateLimitCts.Token);
+                                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -1142,7 +1146,6 @@ namespace VideoForensics.Providers.Ring.Services
                     {
                         _logger.LogDebug("{DeviceName} still returns a non-image snapshot response", deviceNameForSnapshot);
                     }
-
                     File.Delete(fileName);
                     _currentStatus = _currentStatus with { IsDownloading = false };
                     _activityLog.Enqueue($"[red]✗[/] {deviceNameForSnapshot}: offline/no snapshot");
@@ -1173,9 +1176,11 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     try
                     {
-                        await using FileStream hashStream = File.OpenRead(fileName);
-                        byte[] hashBytes = await SHA256.HashDataAsync(hashStream, cancellationToken);
-                        sha256Hash = BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
+                        await using (FileStream hashStream = File.OpenRead(fileName))
+                        {
+                            byte[] hashBytes = await SHA256.HashDataAsync(hashStream, cancellationToken);
+                            sha256Hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1552,10 +1557,8 @@ namespace VideoForensics.Providers.Ring.Services
         private record RingCvZone(string? Id, string? Name, double? Confidence);
 
         /// <inheritdoc />
-        public static bool ShouldWarnNonImage(DateTime? lastWarnedUtc, DateTime nowUtc, TimeSpan window)
-        {
-            return lastWarnedUtc is null || nowUtc - lastWarnedUtc.Value >= window;
-        }
+        public static bool ShouldWarnNonImage(DateTime? lastWarnedUtc, DateTime nowUtc, TimeSpan window) =>
+            lastWarnedUtc is null || nowUtc - lastWarnedUtc.Value >= window;
 
         /// <inheritdoc />
         public void SetSnapshotWarningWindow(TimeSpan window)
@@ -1588,9 +1591,12 @@ namespace VideoForensics.Providers.Ring.Services
 
         private static string? FindDeviceName(Entities.Devices? devices, string providerDeviceId)
         {
-            return devices == null
-                ? null
-                : devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
+            if (devices == null)
+            {
+                return null;
+            }
+
+            return devices.Doorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
                 ?? devices.StickupCams?.FirstOrDefault(d => d.Id.HasValue && d.Id.Value.ToString() == providerDeviceId)?.Description
                 ?? devices.AuthorizedDoorbots?.FirstOrDefault(d => d.Id.ToString() == providerDeviceId)?.Description
                 ?? devices.Chimes?.FirstOrDefault(c => c.Id.ToString() == providerDeviceId)?.Description;
@@ -2049,9 +2055,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value)
-        {
-            return value.Replace('\r', '_').Replace('\n', '_');
-        }
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

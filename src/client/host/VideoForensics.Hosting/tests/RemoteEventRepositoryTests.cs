@@ -5,6 +5,8 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteEventRepositoryTests

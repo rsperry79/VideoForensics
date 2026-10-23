@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -81,8 +82,8 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             string caseNumber = "CASE-2026-002";
-            var scopeFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var scopeTo = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+            DateTime scopeFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime scopeTo = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             // NOTE: Empty device set to avoid FK constraint issues in unit tests
             var deviceIds = new Guid[] { };
 
@@ -102,10 +103,10 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             string caseNumber = "CASE-2026-003";
-            _ = await _repository.CreateAsync(caseNumber, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
+            await _repository.CreateAsync(caseNumber, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.CreateAsync(caseNumber, "Title 2", null, null, null, null, [], "user2@example.com", CancellationToken.None)
             );
         }
@@ -165,8 +166,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             string caseNumber = "CASE-2026-006";
-
-            _ = await _repository.CreateAsync(
+            ForensicCase created = await _repository.CreateAsync(
                 caseNumber, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act
@@ -195,8 +195,8 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ListAsync_ReturnsAllCases()
         {
             // Arrange
-            _ = await _repository.CreateAsync("CASE-2026-007", "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
-            _ = await _repository.CreateAsync("CASE-2026-008", "Title 2", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await _repository.CreateAsync("CASE-2026-007", "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await _repository.CreateAsync("CASE-2026-008", "Title 2", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act
             IReadOnlyList<ForensicCase> cases = await _repository.ListAsync(null, CancellationToken.None);
@@ -242,7 +242,7 @@ namespace VideoForensics.Data.Database.Tests
         public async Task ListAsync_OrdersNewestFirst()
         {
             // Arrange
-            _ = await _repository.CreateAsync("CASE-2026-012", "Older Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await _repository.CreateAsync("CASE-2026-012", "Older Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
             await Task.Delay(10); // Small delay to ensure different timestamps
             ForensicCase newerCase = await _repository.CreateAsync(
                 "CASE-2026-013", "Newer Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -322,7 +322,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.CloseAsync(forensicCase.Id, "user@example.com", CancellationToken.None);
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.UpdateDetailsAsync(forensicCase.Id, "New Title", null, null, "user@example.com", CancellationToken.None)
             );
         }
@@ -341,8 +341,8 @@ namespace VideoForensics.Data.Database.Tests
                 "CASE-2026-018", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act
-            var scopeFrom = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
-            var scopeTo = new DateTime(2026, 2, 28, 23, 59, 59, DateTimeKind.Utc);
+            DateTime scopeFrom = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime scopeTo = new DateTime(2026, 2, 28, 23, 59, 59, DateTimeKind.Utc);
             await _repository.SetScopeAsync(forensicCase.Id, scopeFrom, scopeTo, [], "user@example.com", CancellationToken.None);
 
             // Assert
@@ -358,8 +358,8 @@ namespace VideoForensics.Data.Database.Tests
                 "CASE-2026-019", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act
-            var scopeFrom = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
-            var scopeTo = new DateTime(2026, 3, 31, 23, 59, 59, DateTimeKind.Utc);
+            DateTime scopeFrom = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime scopeTo = new DateTime(2026, 3, 31, 23, 59, 59, DateTimeKind.Utc);
             await _repository.SetScopeAsync(forensicCase.Id, scopeFrom, scopeTo, [], "user@example.com", CancellationToken.None);
 
             // Assert
@@ -400,7 +400,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.CloseAsync(forensicCase.Id, "user@example.com", CancellationToken.None);
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.SetScopeAsync(forensicCase.Id, null, null, [], "user@example.com", CancellationToken.None)
             );
         }
@@ -424,7 +424,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.NotNull(closed);
             Assert.Equal(CaseStatus.Closed, closed.Status);
             Assert.Equal("user2@example.com", closed.ClosedBy);
-            _ = Assert.NotNull(closed.ClosedAtUtc);
+            Assert.NotNull(closed.ClosedAtUtc);
         }
 
         [Fact]
@@ -548,7 +548,7 @@ namespace VideoForensics.Data.Database.Tests
             var eventId = Guid.NewGuid();
             try
             {
-                _ = await _repository.AddItemAsync(forensicCase.Id, CaseItemKind.Event, eventId, "Reason 1", "user@example.com", CancellationToken.None);
+                await _repository.AddItemAsync(forensicCase.Id, CaseItemKind.Event, eventId, "Reason 1", "user@example.com", CancellationToken.None);
             }
             catch (Exception ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || ex.Message.Contains("FOREIGN KEY"))
             {
@@ -557,7 +557,7 @@ namespace VideoForensics.Data.Database.Tests
             }
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.AddItemAsync(forensicCase.Id, CaseItemKind.Event, eventId, "Reason 2", "user@example.com", CancellationToken.None)
             );
         }
@@ -569,7 +569,7 @@ namespace VideoForensics.Data.Database.Tests
             ForensicCase forensicCase = await _repository.CreateAsync(
                 "CASE-2026-029", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
             var eventId = Guid.NewGuid();
-            CaseItem? item1;
+            CaseItem? item1 = null;
             try
             {
                 item1 = await _repository.AddItemAsync(
@@ -601,7 +601,7 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.CloseAsync(forensicCase.Id, "user@example.com", CancellationToken.None);
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.AddItemAsync(forensicCase.Id, CaseItemKind.Event, Guid.NewGuid(), "Reason", "user@example.com", CancellationToken.None)
             );
         }
@@ -661,7 +661,7 @@ namespace VideoForensics.Data.Database.Tests
             IReadOnlyList<CaseItem> allItems = await _repository.ListItemsAsync(forensicCase.Id, true, CancellationToken.None);
             CaseItem? removedItem = allItems.FirstOrDefault(i => i.Id == item.Id);
             Assert.NotNull(removedItem);
-            _ = Assert.NotNull(removedItem.RemovedAtUtc);
+            Assert.NotNull(removedItem.RemovedAtUtc);
             Assert.Equal("user@example.com", removedItem.RemovedBy);
             Assert.Equal("No longer relevant", removedItem.RemovalReason);
         }
@@ -705,8 +705,8 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             ForensicCase forensicCase = await _repository.CreateAsync(
                 "CASE-2026-034", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
-            CaseItem? item1;
-            CaseItem? item2;
+            CaseItem? item1 = null;
+            CaseItem? item2 = null;
             try
             {
                 item1 = await _repository.AddItemAsync(
@@ -725,7 +725,7 @@ namespace VideoForensics.Data.Database.Tests
             IReadOnlyList<CaseItem> items = await _repository.ListItemsAsync(forensicCase.Id, false, CancellationToken.None);
 
             // Assert
-            _ = Assert.Single(items);
+            Assert.Single(items);
             Assert.Equal(item2.Id, items[0].Id);
         }
 
@@ -735,13 +735,14 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             ForensicCase forensicCase = await _repository.CreateAsync(
                 "CASE-2026-035", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
-            CaseItem? item1;
+            CaseItem? item1 = null;
+            CaseItem? item2 = null;
             try
             {
                 item1 = await _repository.AddItemAsync(
                     forensicCase.Id, CaseItemKind.Event, Guid.NewGuid(), "Reason 1", "user@example.com", CancellationToken.None);
-                CaseItem? item2 = await _repository.AddItemAsync(
-        forensicCase.Id, CaseItemKind.Event, Guid.NewGuid(), "Reason 2", "user@example.com", CancellationToken.None);
+                item2 = await _repository.AddItemAsync(
+                    forensicCase.Id, CaseItemKind.Event, Guid.NewGuid(), "Reason 2", "user@example.com", CancellationToken.None);
             }
             catch (Exception ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || ex.Message.Contains("FOREIGN KEY"))
             {
@@ -767,11 +768,12 @@ namespace VideoForensics.Data.Database.Tests
             ForensicCase case2 = await _repository.CreateAsync(
                 "CASE-2026-037", "Case 2", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
-            CaseItem? item1;
+            CaseItem? item1 = null;
+            CaseItem? item2 = null;
             try
             {
                 item1 = await _repository.AddItemAsync(case1.Id, CaseItemKind.Event, eventId, "Reason", "user@example.com", CancellationToken.None);
-                CaseItem? item2 = await _repository.AddItemAsync(case2.Id, CaseItemKind.Event, eventId, "Reason", "user@example.com", CancellationToken.None);
+                item2 = await _repository.AddItemAsync(case2.Id, CaseItemKind.Event, eventId, "Reason", "user@example.com", CancellationToken.None);
             }
             catch (Exception ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || ex.Message.Contains("FOREIGN KEY"))
             {
@@ -786,7 +788,7 @@ namespace VideoForensics.Data.Database.Tests
                 IReadOnlyList<ForensicCase> casesContaining = await _repository.ListCasesContainingAsync(CaseItemKind.Event, eventId, CancellationToken.None);
 
                 // Assert
-                _ = Assert.Single(casesContaining);
+                Assert.Single(casesContaining);
                 Assert.Equal(case2.Id, casesContaining[0].Id);
             }
             catch (Exception ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY") == true || ex.Message.Contains("FOREIGN KEY"))

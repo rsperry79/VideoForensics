@@ -18,10 +18,7 @@ public class MediaThumbnailServiceTests : IDisposable
     private readonly Mock<IMediaItemRepository> _items = new();
     private readonly Mock<IMediaThumbnailNotifier> _notifier = new();
 
-    public MediaThumbnailServiceTests()
-    {
-        _ = Directory.CreateDirectory(_dir);
-    }
+    public MediaThumbnailServiceTests() => Directory.CreateDirectory(_dir);
 
     public void Dispose()
     {
@@ -31,10 +28,8 @@ public class MediaThumbnailServiceTests : IDisposable
         }
     }
 
-    private MediaThumbnailService CreateService()
-    {
-        return new(_frames.Object, _items.Object, _notifier.Object, NullLogger<MediaThumbnailService>.Instance);
-    }
+    private MediaThumbnailService CreateService() =>
+        new(_frames.Object, _items.Object, _notifier.Object, NullLogger<MediaThumbnailService>.Instance);
 
     /// <summary>Clients watching evidence refresh a thumbnail when one is produced, so a new still must be announced.</summary>
     [Fact]
@@ -68,24 +63,19 @@ public class MediaThumbnailServiceTests : IDisposable
         return path;
     }
 
-    private static MediaItem MediaFor(string path, string format = "video/mp4")
+    private static MediaItem MediaFor(string path, string format = "video/mp4") => new()
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            DeviceId = Guid.NewGuid(),
-            FileName = Path.GetFileName(path),
-            FilePath = path,
-            MediaFormat = format,
-            Sha256Hash = "hash",
-        };
-    }
+        Id = Guid.NewGuid(),
+        DeviceId = Guid.NewGuid(),
+        FileName = Path.GetFileName(path),
+        FilePath = path,
+        MediaFormat = format,
+        Sha256Hash = "hash",
+    };
 
-    private void FrameAt(long offsetMs, byte[] png)
-    {
-        _ = _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), offsetMs, It.IsAny<CancellationToken>()))
+    private void FrameAt(long offsetMs, byte[] png) =>
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), offsetMs, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = true, PngBytes = png });
-    }
 
     /// <summary>The row stores only the file name: the folder comes from the clip, so the archive can move without rewriting rows.</summary>
     [Fact]
@@ -118,7 +108,7 @@ public class MediaThumbnailServiceTests : IDisposable
     public async Task EnsureThumbnailAsync_Failure_LeavesRowWithoutPath()
     {
         string media = WriteMedia("clip.mp4");
-        _ = _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "no frame" });
         MediaItem row = MediaFor(media);
 
@@ -215,7 +205,7 @@ public class MediaThumbnailServiceTests : IDisposable
     public async Task EnsureThumbnailAsync_ExtractorFailsAtBothOffsets_ReturnsFalseAndWritesNothing()
     {
         string media = WriteMedia("clip.mp4");
-        _ = _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "no frame" });
 
         bool ok = await CreateService().EnsureThumbnailAsync(MediaFor(media), CancellationToken.None);
@@ -250,7 +240,7 @@ public class MediaThumbnailServiceTests : IDisposable
     public async Task ResolveThumbnailPathAsync_VideoWithNoFrame_ReturnsNull()
     {
         string media = WriteMedia("clip.mp4");
-        _ = _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "no frame" });
 
         string? path = await CreateService().ResolveThumbnailPathAsync(MediaFor(media), CancellationToken.None);
@@ -263,7 +253,7 @@ public class MediaThumbnailServiceTests : IDisposable
     public async Task EnsureThumbnailAsync_NoFrameAtOneSecond_FallsBackToFirstFrame()
     {
         string media = WriteMedia("short.mp4");
-        _ = _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), 1000, It.IsAny<CancellationToken>()))
+        _frames.Setup(f => f.ExtractFrameAsync(It.IsAny<string>(), 1000, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FrameExtractionResult { Success = false, ErrorMessage = "past end" });
         FrameAt(0, new byte[] { 0x42 });
 

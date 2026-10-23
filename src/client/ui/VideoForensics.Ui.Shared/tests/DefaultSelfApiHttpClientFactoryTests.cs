@@ -1,3 +1,4 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -8,7 +9,6 @@ using VideoForensics.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// <see cref="DefaultSelfApiHttpClientFactory"/> must reproduce, byte for byte, the behavior every
 /// <c>Pages/Security*.razor</c> page's own private <c>CreateClient()</c> had before this abstraction
@@ -28,10 +28,7 @@ public class DefaultSelfApiHttpClientFactoryTests
         }
     }
 
-    private static PairedSessionState MakeSessionState()
-    {
-        return new(new Mock<IJSRuntime>().Object);
-    }
+    private static PairedSessionState MakeSessionState() => new(new Mock<IJSRuntime>().Object);
 
     [Fact]
     public void CreateClient_SetsBaseAddressFromNavigationManager()
@@ -48,7 +45,7 @@ public class DefaultSelfApiHttpClientFactoryTests
     public async Task CreateClient_SessionSignedIn_AttachesBearerToken()
     {
         var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");
-        PairedSessionState sessionState = MakeSessionState();
+        var sessionState = MakeSessionState();
         await sessionState.SetAsync("test-session-token", Guid.NewGuid(), "SuperAdmin");
         var factory = new DefaultSelfApiHttpClientFactory(navigationManager, sessionState);
 
@@ -105,7 +102,7 @@ public class DefaultSelfApiHttpClientFactoryTests
         // CreateClient() (no explicit token) must behave exactly as before this overload was added -
         // driven by PairedSessionState, same as CreateClient(sessionState.SessionToken) would be.
         var navigationManager = new TestNavigationManager("https://videoforensics.example.com/");
-        PairedSessionState sessionState = MakeSessionState();
+        var sessionState = MakeSessionState();
         await sessionState.SetAsync("session-state-token", Guid.NewGuid(), "SuperAdmin");
         var factory = new DefaultSelfApiHttpClientFactory(navigationManager, sessionState);
 

@@ -1,3 +1,5 @@
+using System.Linq;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -105,8 +107,8 @@ namespace VideoForensics.WebApp.Tests.Api
 
         private static IEndpointRouteBuilder BuildAndMap()
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Host.UseDefaultServiceProvider(options =>
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
             {
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
@@ -126,19 +128,15 @@ namespace VideoForensics.WebApp.Tests.Api
             return app;
         }
 
-        private static RouteEndpoint[] FindEndpoints(IEndpointRouteBuilder app, string pattern)
-        {
-            return app.DataSources
+        private static RouteEndpoint[] FindEndpoints(IEndpointRouteBuilder app, string pattern) =>
+            app.DataSources
                 .SelectMany(d => d.Endpoints)
                 .OfType<RouteEndpoint>()
                 .Where(e => StripConstraints(e.RoutePattern.RawText) == pattern)
                 .ToArray();
-        }
 
-        private static RouteEndpoint FindSingleEndpoint(IEndpointRouteBuilder app, string pattern)
-        {
-            return FindSingleEndpoint(app, pattern, method: null);
-        }
+        private static RouteEndpoint FindSingleEndpoint(IEndpointRouteBuilder app, string pattern) =>
+            FindSingleEndpoint(app, pattern, method: null);
 
         /// <summary>Finds the one endpoint for a pattern and HTTP method, for patterns shared by GET and PUT (or POST).</summary>
         private static RouteEndpoint FindSingleEndpoint(IEndpointRouteBuilder app, string pattern, string? method)
@@ -146,14 +144,12 @@ namespace VideoForensics.WebApp.Tests.Api
             RouteEndpoint[] matches = FindEndpoints(app, pattern)
                 .Where(e => method is null || e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Contains(method) == true)
                 .ToArray();
-            _ = Assert.Single(matches);
+            Assert.Single(matches);
             return matches[0];
         }
 
         /// <summary>Removes route constraints so "{id:guid}" compares equal to "{id}".</summary>
-        private static string? StripConstraints(string? rawText)
-        {
-            return rawText is null ? null : System.Text.RegularExpressions.Regex.Replace(rawText, @"\{(\w+):[^}]+\}", "{$1}");
-        }
+        private static string? StripConstraints(string? rawText) =>
+            rawText is null ? null : System.Text.RegularExpressions.Regex.Replace(rawText, @"\{(\w+):[^}]+\}", "{$1}");
     }
 }

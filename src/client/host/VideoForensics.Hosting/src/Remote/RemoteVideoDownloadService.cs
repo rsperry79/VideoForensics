@@ -1,9 +1,9 @@
 using System.Net.Http.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -94,10 +94,10 @@ namespace VideoForensics.Hosting.Remote
             DownloadProgressDto? last = _store.LatestDownloadProgress;
             if (last == null)
             {
-                return (0, 0, string.Empty);
+                return (0, 0, "");
             }
 
-            return (last.CurrentDeviceIndex, last.CurrentDeviceTotal, last.CurrentDeviceName ?? string.Empty);
+            return (last.CurrentDeviceIndex, last.CurrentDeviceTotal, last.CurrentDeviceName ?? "");
         }
 
         /// <inheritdoc />

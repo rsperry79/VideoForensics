@@ -72,8 +72,8 @@ namespace VideoForensics.Data.Database.Tests
             await _repository.UpsertAsync(_device.Id, null, null, null, null, CancellationToken.None, Settings());
 
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            _ = Assert.Single(await db.DeviceOfflineMotionSettings.ToListAsync());
-            _ = Assert.Single(await db.DeviceDetectionTypes.ToListAsync());
+            Assert.Single(await db.DeviceOfflineMotionSettings.ToListAsync());
+            Assert.Single(await db.DeviceDetectionTypes.ToListAsync());
         }
 
         [Fact]
@@ -91,24 +91,13 @@ namespace VideoForensics.Data.Database.Tests
         private static DeviceSettingsChildren Settings(
             IReadOnlyList<DeviceOfflineMotionSettings>? offline = null,
             IReadOnlyList<DeviceDetectionType>? types = null,
-            IReadOnlyList<DeviceDetectionThreshold>? thresholds = null)
-        {
-            return new(MotionSnoozePresets: [], LiveViewPresets: [], AdvancedMotionZones: [], OfflineMotion: offline, DetectionTypes: types, DetectionThresholds: thresholds);
-        }
+            IReadOnlyList<DeviceDetectionThreshold>? thresholds = null) =>
+            new(MotionSnoozePresets: [], LiveViewPresets: [], AdvancedMotionZones: [], OfflineMotion: offline, DetectionTypes: types, DetectionThresholds: thresholds);
 
-        private static DeviceOfflineMotionSettings Offline(int maxUploadKb)
-        {
-            return new() { Id = Guid.NewGuid(), MaxUploadKb = maxUploadKb, Enabled = false };
-        }
+        private static DeviceOfflineMotionSettings Offline(int maxUploadKb) => new() { Id = Guid.NewGuid(), MaxUploadKb = maxUploadKb, Enabled = false };
 
-        private static DeviceDetectionType Type(string name)
-        {
-            return new() { Id = Guid.NewGuid(), DetectionType = name, Enabled = true, Mode = "cloud" };
-        }
+        private static DeviceDetectionType Type(string name) => new() { Id = Guid.NewGuid(), DetectionType = name, Enabled = true, Mode = "cloud" };
 
-        private static DeviceDetectionThreshold Threshold(string name, double value)
-        {
-            return new() { Id = Guid.NewGuid(), DetectionType = name, Threshold = value };
-        }
+        private static DeviceDetectionThreshold Threshold(string name, double value) => new() { Id = Guid.NewGuid(), DetectionType = name, Threshold = value };
     }
 }

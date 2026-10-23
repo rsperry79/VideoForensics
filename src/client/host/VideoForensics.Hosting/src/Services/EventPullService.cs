@@ -1,17 +1,14 @@
-using Microsoft.Extensions.Logging;
-
 using System.Globalization;
 using System.Text.Json;
-
-using VideoForensics.Core.Helpers.Platform;
-using VideoForensics.Core.Providers.Common.Contracts;
+using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
-
-using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
-using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
+using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Core.Providers.Common.Contracts;
 using Location = VideoForensics.Core.Providers.Common.Contracts.Location;
+using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using LocationEntity = VideoForensics.Data.Common.Entities.Location;
+using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Hosting.Services
 {
@@ -86,7 +83,7 @@ namespace VideoForensics.Hosting.Services
             int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0;
             try
             {
-                ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
+                var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account == null)
                 {
                     _logger.LogWarning("Provider account not found");
@@ -108,9 +105,9 @@ namespace VideoForensics.Hosting.Services
 
                 _logger.LogInformation("Syncing events for {DeviceCount} device(s)", inventory.Devices.Count);
 
-                DateTime startTime = fromTimestampUtc ?? DateTime.MinValue;
+                var startTime = fromTimestampUtc ?? DateTime.MinValue;
                 // A null end date means "now". Unspecified kinds are treated as UTC, the contract for both bounds.
-                DateTime endTime = toTimestampUtc is { } to
+                var endTime = toTimestampUtc is { } to
                     ? (to.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(to, DateTimeKind.Utc) : to.ToUniversalTime())
                     : DateTime.UtcNow;
                 var deviceErrors = new List<string>();
@@ -123,7 +120,7 @@ namespace VideoForensics.Hosting.Services
                 else
                 {
                     accountFolder = Path.Combine(_mediaRoot, accountId.ToString("N"));
-                    _ = Directory.CreateDirectory(accountFolder);
+                    Directory.CreateDirectory(accountFolder);
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
@@ -131,11 +128,7 @@ namespace VideoForensics.Hosting.Services
                 foreach (InventoryDevice inventoryDevice in inventory.Devices)
                 {
                     DeviceEntity? device = inventoryDevice.Device;
-                    if (device == null)
-                    {
-                        continue;
-                    }
-
+                    if (device == null) continue;
                     string providerLocationId = inventoryDevice.ProviderLocationId;
                     string deviceName = device.Name ?? device.ProviderDeviceId ?? "Unknown Device";
                     deviceIndex++;
@@ -230,7 +223,7 @@ namespace VideoForensics.Hosting.Services
                     _logger.LogError(ex, "Failed to pull events for account");
                 }
 
-                ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
+                var account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
                 if (account != null)
                 {
                     account.LastErrorMessage = TruncateErrorMessage(ex.Message);
@@ -334,8 +327,8 @@ namespace VideoForensics.Hosting.Services
                 return;
             }
 
-            string sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
-            string? customSettingsJson = CanonicalJson(config.CustomSettings);
+            var sensitivity = config.MotionSensitivity.ToString(CultureInfo.InvariantCulture);
+            var customSettingsJson = CanonicalJson(config.CustomSettings);
 
             DeviceConfigSnapshot? latest = await _deviceConfigRepository.GetLatestAsync(deviceId, cancellationToken);
             if (latest is not null &&
@@ -347,7 +340,7 @@ namespace VideoForensics.Hosting.Services
                 return;
             }
 
-            _ = await _deviceConfigRepository.AppendSnapshotAsync(new DeviceConfigSnapshot
+            await _deviceConfigRepository.AppendSnapshotAsync(new DeviceConfigSnapshot
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
@@ -413,7 +406,8 @@ namespace VideoForensics.Hosting.Services
 
         private static string TruncateErrorMessage(string message, int maxLength = 2000)
         {
-            return message == null ? null : message.Length > maxLength ? message[..maxLength] : message;
+            if (message == null) return null;
+            return message.Length > maxLength ? message.Substring(0, maxLength) : message;
         }
     }
 }

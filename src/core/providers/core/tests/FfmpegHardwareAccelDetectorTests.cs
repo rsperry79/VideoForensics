@@ -1,5 +1,4 @@
 using System.Diagnostics;
-
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
@@ -10,10 +9,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public async Task DetectAsync_WithNonexistentFfmpegPath_ReturnsNull()
         {
             // Arrange
-            string nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12345";
+            var nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12345";
 
             // Act
-            string? result = await FfmpegHardwareAccelDetector.DetectAsync(nonexistentPath);
+            var result = await FfmpegHardwareAccelDetector.DetectAsync(nonexistentPath);
 
             // Assert
             Assert.Null(result);
@@ -23,10 +22,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Detect_WithNonexistentFfmpegPath_ReturnsNull()
         {
             // Arrange
-            string nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12346";
+            var nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12346";
 
             // Act
-            string? result = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
+            var result = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
 
             // Assert
             Assert.Null(result);
@@ -36,20 +35,19 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void Detect_CachesResultAcrossCalls()
         {
             // Arrange
-            string nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12347";
+            var nonexistentPath = "nonexistent-ffmpeg-binary-xyz-test-12347";
             var stopwatch = Stopwatch.StartNew();
 
             // Act - First call (expensive, probes all candidates)
-            string? result1 = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
+            var result1 = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
             stopwatch.Stop();
-
-            _ = stopwatch.ElapsedMilliseconds;
+            var firstCallTime = stopwatch.ElapsedMilliseconds;
 
             stopwatch.Restart();
             // Second call (cached, should be instant)
-            string? result2 = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
+            var result2 = FfmpegHardwareAccelDetector.Detect(nonexistentPath);
             stopwatch.Stop();
-            long secondCallTime = stopwatch.ElapsedMilliseconds;
+            var secondCallTime = stopwatch.ElapsedMilliseconds;
 
             // Assert
             Assert.Null(result1);
@@ -62,7 +60,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void BuildDecodeArgs_WithNullMethod_ReturnsEmptyArray()
         {
             // Act
-            string[] result = FfmpegHardwareAccelDetector.BuildDecodeArgs(null);
+            var result = FfmpegHardwareAccelDetector.BuildDecodeArgs(null);
 
             // Assert
             Assert.Empty(result);
@@ -72,7 +70,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void BuildDecodeArgs_WithEmptyMethod_ReturnsEmptyArray()
         {
             // Act
-            string[] result = FfmpegHardwareAccelDetector.BuildDecodeArgs(string.Empty);
+            var result = FfmpegHardwareAccelDetector.BuildDecodeArgs("");
 
             // Assert
             Assert.Empty(result);
@@ -82,7 +80,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void BuildDecodeArgs_WithMethodName_ReturnsHwaccelFlagPair()
         {
             // Act
-            string[] result = FfmpegHardwareAccelDetector.BuildDecodeArgs("cuda");
+            var result = FfmpegHardwareAccelDetector.BuildDecodeArgs("cuda");
 
             // Assert
             Assert.Equal(new[] { "-hwaccel", "cuda" }, result);
@@ -92,7 +90,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void BuildDecodeArgs_WithDifferentMethodName_ReturnsCorrectPair()
         {
             // Act
-            string[] result = FfmpegHardwareAccelDetector.BuildDecodeArgs("d3d11va");
+            var result = FfmpegHardwareAccelDetector.BuildDecodeArgs("d3d11va");
 
             // Assert
             Assert.Equal(new[] { "-hwaccel", "d3d11va" }, result);
@@ -102,7 +100,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void BuildDecodeArgs_WithVaapiMethod_ReturnsCorrectPair()
         {
             // Act
-            string[] result = FfmpegHardwareAccelDetector.BuildDecodeArgs("vaapi");
+            var result = FfmpegHardwareAccelDetector.BuildDecodeArgs("vaapi");
 
             // Assert
             Assert.Equal(new[] { "-hwaccel", "vaapi" }, result);

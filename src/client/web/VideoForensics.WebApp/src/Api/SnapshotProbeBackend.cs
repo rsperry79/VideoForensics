@@ -1,7 +1,8 @@
-using VideoForensics.Providers.Ring.Entities;
-using VideoForensics.Providers.Ring.Services;
+using VideoForensics.Providers.Ring;
 
 using RingSession = VideoForensics.Providers.Ring.Session;
+using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.WebApp.Api
 {
@@ -77,10 +78,10 @@ namespace VideoForensics.WebApp.Api
         /// </summary>
         internal static SnapshotProbeBattery FindBattery(Devices devices, long doorbotId)
         {
-            Doorbot? doorbot = (devices.Doorbots ?? [])
-                .Concat(devices.AuthorizedDoorbots ?? [])
+            Doorbot? doorbot = (devices.Doorbots ?? new List<Doorbot>())
+                .Concat(devices.AuthorizedDoorbots ?? new List<Doorbot>())
                 .FirstOrDefault(d => d.Id == doorbotId);
-            StickupCam? cam = (devices.StickupCams ?? [])
+            StickupCam? cam = (devices.StickupCams ?? new List<StickupCam>())
                 .FirstOrDefault(c => c.Id == doorbotId);
 
             long? life = doorbot?.BatteryLife is int doorbotLife ? doorbotLife : cam?.BatteryLife;

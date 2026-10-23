@@ -1,5 +1,5 @@
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -26,7 +26,7 @@ namespace VideoForensics.WebApp.Api
             ILockoutPolicySettingsRepository repository,
             CancellationToken ct)
         {
-            LockoutPolicySettings settings = await repository.GetAsync(ct);
+            var settings = await repository.GetAsync(ct);
             return Results.Ok(settings.ToDto());
         }
 
@@ -38,13 +38,13 @@ namespace VideoForensics.WebApp.Api
             HttpContext context,
             CancellationToken ct)
         {
-            Dictionary<string, string[]> validationErrors = ValidateAutoBanFields(request);
+            var validationErrors = ValidateAutoBanFields(request);
             if (validationErrors.Count > 0)
             {
                 return Results.ValidationProblem(validationErrors);
             }
 
-            LockoutPolicySettings currentSettings = await repository.GetAsync(ct);
+            var currentSettings = await repository.GetAsync(ct);
 
             var updatedSettings = new VideoForensics.Data.Common.Entities.LockoutPolicySettings
             {
@@ -58,7 +58,7 @@ namespace VideoForensics.WebApp.Api
                 AutoBanWindowMinutes = request.AutoBanWindowMinutes,
                 AutoBanDurationMinutes = request.AutoBanDurationMinutes,
                 UpdatedAtUtc = DateTime.UtcNow,
-                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not string.Empty } claim
+                UpdatedByOperatorId = context.User.FindFirst(VideoForensicsClaimTypes.OperatorId) is { Value: not null and not "" } claim
                     && Guid.TryParse(claim.Value, out Guid operatorId) ? operatorId : null
             };
 
@@ -86,17 +86,14 @@ namespace VideoForensics.WebApp.Api
             {
                 errors[nameof(request.AutoBanDistinctAccountThreshold)] = ["Must be at least 1."];
             }
-
             if (request.AutoBanWindowMinutes < 1)
             {
                 errors[nameof(request.AutoBanWindowMinutes)] = ["Must be at least 1."];
             }
-
             if (request.AutoBanDurationMinutes < 1)
             {
                 errors[nameof(request.AutoBanDurationMinutes)] = ["Must be at least 1."];
             }
-
             return errors;
         }
     }

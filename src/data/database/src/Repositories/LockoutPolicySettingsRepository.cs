@@ -60,7 +60,6 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     settings.Id = Guid.NewGuid();
                 }
-
                 settings.UpdatedAtUtc = DateTime.UtcNow;
 
                 _ = db.LockoutPolicySettings.Add(settings);

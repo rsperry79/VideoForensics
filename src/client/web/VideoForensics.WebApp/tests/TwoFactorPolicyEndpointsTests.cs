@@ -1,23 +1,18 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 using Moq;
-
-using System.Reflection;
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -27,7 +22,7 @@ namespace VideoForensics.WebApp.Tests
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, OperatorRole role = OperatorRole.SuperAdmin)
         {
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(ClaimTypes.Role, role.ToString()),
@@ -53,7 +48,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<INetworkTierResolver> MockNetworkTierResolver()
         {
             var mock = new Mock<INetworkTierResolver>();
-            _ = mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
@@ -70,11 +65,11 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var repository = new Mock<ITwoFactorRoleRequirementRepository>();
-            _ = repository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(requirements);
 
             // Act
-            object result = await TwoFactorPolicyEndpointsInvoker.GetAllRolesAsync(repository.Object, CancellationToken.None);
+            var result = await TwoFactorPolicyEndpointsInvoker.GetAllRolesAsync(repository.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -86,23 +81,23 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            TwoFactorRoleRequirement existingRequirement = CreateRoleRequirement(OperatorRole.ReadOnly, true);
+            var existingRequirement = CreateRoleRequirement(OperatorRole.ReadOnly, true);
             var request = new UpdateTwoFactorRoleRequirementRequest(false);
 
             var repository = new Mock<ITwoFactorRoleRequirementRepository>();
-            _ = repository.Setup(r => r.UpsertAsync(It.IsAny<TwoFactorRoleRequirement>(), It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.UpsertAsync(It.IsAny<TwoFactorRoleRequirement>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(operatorId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(operatorId);
 
             // Act
-            object result = await TwoFactorPolicyEndpointsInvoker.UpdateRoleRequirementAsync(
+            var result = await TwoFactorPolicyEndpointsInvoker.UpdateRoleRequirementAsync(
                 OperatorRole.ReadOnly, request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -136,21 +131,21 @@ namespace VideoForensics.WebApp.Tests
             var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
 
             var operatorRepository = new Mock<IOperatorRepository>();
-            _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(op);
-            _ = operatorRepository.Setup(r => r.SetTwoFactorRequirementOverrideAsync(operatorId, It.IsAny<TwoFactorRequirementOverride>(), It.IsAny<CancellationToken>()))
+            operatorRepository.Setup(r => r.SetTwoFactorRequirementOverrideAsync(operatorId, It.IsAny<TwoFactorRequirementOverride>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(actingOperatorId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(actingOperatorId);
 
             // Act
-            object result = await TwoFactorPolicyEndpointsInvoker.UpdateOperatorOverrideAsync(
+            var result = await TwoFactorPolicyEndpointsInvoker.UpdateOperatorOverrideAsync(
                 operatorId, request, operatorRepository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -170,15 +165,15 @@ namespace VideoForensics.WebApp.Tests
             var request = new UpdateOperatorTwoFactorOverrideRequest(TwoFactorRequirementOverride.Required);
 
             var operatorRepository = new Mock<IOperatorRepository>();
-            _ = operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
+            operatorRepository.Setup(r => r.GetAsync(operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Operator?)null);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(actingOperatorId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(actingOperatorId);
 
             // Act
-            object result = await TwoFactorPolicyEndpointsInvoker.UpdateOperatorOverrideAsync(
+            var result = await TwoFactorPolicyEndpointsInvoker.UpdateOperatorOverrideAsync(
                 operatorId, request, operatorRepository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -209,8 +204,8 @@ namespace VideoForensics.WebApp.Tests
 
         private static IEndpointRouteBuilder BuildAndMap()
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Host.UseDefaultServiceProvider(options =>
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
             {
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
@@ -233,7 +228,7 @@ namespace VideoForensics.WebApp.Tests
     {
         public static async Task<object> GetAllRolesAsync(ITwoFactorRoleRequirementRepository repository, CancellationToken ct)
         {
-            MethodInfo? method = typeof(TwoFactorPolicyEndpoints)
+            var method = typeof(TwoFactorPolicyEndpoints)
                 .GetMethod("GetAllRolesAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -241,12 +236,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find GetAllRolesAsync method");
-            }
 
-            object? result = method.Invoke(null, [repository, ct]);
-            return await result;
+            var result = method.Invoke(null, [repository, ct]);
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateRoleRequirementAsync(
@@ -258,7 +251,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(TwoFactorPolicyEndpoints)
+            var method = typeof(TwoFactorPolicyEndpoints)
                 .GetMethod("UpdateRoleRequirementAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -267,12 +260,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find UpdateRoleRequirementAsync method");
-            }
 
-            object? result = method.Invoke(null, [role, request, repository, auditLog, tierResolver, context, ct]);
-            return await result;
+            var result = method.Invoke(null, [role, request, repository, auditLog, tierResolver, context, ct]);
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateOperatorOverrideAsync(
@@ -284,7 +275,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(TwoFactorPolicyEndpoints)
+            var method = typeof(TwoFactorPolicyEndpoints)
                 .GetMethod("UpdateOperatorOverrideAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -293,12 +284,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find UpdateOperatorOverrideAsync method");
-            }
 
-            object? result = method.Invoke(null, [operatorId, request, operators, auditLog, tierResolver, context, ct]);
-            return await result;
+            var result = method.Invoke(null, [operatorId, request, operators, auditLog, tierResolver, context, ct]);
+            return await (dynamic)result;
         }
     }
 }

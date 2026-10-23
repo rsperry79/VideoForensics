@@ -1,9 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Moq;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Services;
+
+using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -32,10 +38,10 @@ namespace VideoForensics.Hosting.Tests
         {
             List<Event> ordered = [.. all.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id)];
             _ = _events.Setup(r => r.GetEarliestOccurredAtUtcAsync(_deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(ordered.Count == 0 ? null : ordered[0].OccurredAtUtc);
+                .ReturnsAsync(ordered.Count == 0 ? (DateTime?)null : ordered[0].OccurredAtUtc);
             _ = _events.Setup(r => r.ListByDevicePageAsync(_deviceId, It.IsAny<DateTime?>(), It.IsAny<Guid?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid _, DateTime? at, Guid? id, int take, CancellationToken _) =>
-                    [.. ordered
+                    (IReadOnlyList<Event>)[.. ordered
                         .Where(e => at == null || e.OccurredAtUtc > at || (e.OccurredAtUtc == at && id != null && e.Id.CompareTo(id.Value) > 0))
                         .Take(Math.Min(take, pageSize))]);
         }
@@ -308,7 +314,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task AccountExportService_GetLatestStatusForAccount_OtherAccountUnaffected()
         {
             AccountExportService sut = CreateSut();
-            var otherAccount = Guid.NewGuid();
+            Guid otherAccount = Guid.NewGuid();
             Guid mine = await sut.QueueExportAsync(_account.Id, false, CancellationToken.None);
             Guid theirs = await sut.QueueExportAsync(otherAccount, false, CancellationToken.None);
 

@@ -1,23 +1,19 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-
 using Moq;
-
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Components.Inspector;
 using VideoForensics.Ui.Shared.Contracts;
+using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Resources;
-using VideoForensics.Ui.Shared.Services.QueryApi;
 using VideoForensics.Ui.Shared.Services.Scope;
-
+using VideoForensics.Ui.Shared.Services.QueryApi;
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class QueryApiPage_Tests : BunitContext
 {
@@ -27,30 +23,30 @@ public class QueryApiPage_Tests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<IStringLocalizer<SharedResources>>(TestLocalizer.Create());
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddSingleton(new ScopeState());
-        _ = Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
-        _ = Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
-        _ = Services.AddSingleton(new Mock<IProviderAuthService>().Object);
-        _ = Services.AddSingleton(_discovery.Object);
-        _ = Services.AddSingleton(new Mock<IEventAndConfigService>().Object);
-        _ = Services.AddLogging();
+        Services.AddLocalization();
+        Services.AddSingleton<IStringLocalizer<SharedResources>>(TestLocalizer.Create());
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddSingleton(new ScopeState());
+        Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
+        Services.AddScoped<VideoForensics.Ui.Shared.Services.Inspector.InspectorState>();
+        Services.AddScoped<VideoForensics.Ui.Shared.Services.RightPanelContentService>();
+        Services.AddSingleton(new Mock<IProviderAuthService>().Object);
+        Services.AddSingleton(_discovery.Object);
+        Services.AddSingleton(new Mock<IEventAndConfigService>().Object);
+        Services.AddLogging();
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
     [Fact]
     public void QueryApiPage_Breadcrumb_ShowsSourcesThenQueryApiAsCurrentPage()
     {
-        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+        var cut = Render<QueryApi>();
 
-        IReadOnlyList<AngleSharp.Dom.IElement> items = cut.FindAll("nav ol > li");
+        var items = cut.FindAll("nav ol > li");
         Assert.Equal(2, items.Count);
-        AngleSharp.Dom.IElement? sourcesLink = items[0].QuerySelector("a");
+        var sourcesLink = items[0].QuerySelector("a");
         Assert.NotNull(sourcesLink);
         Assert.Equal("/accounts", sourcesLink.GetAttribute("href"));
         Assert.Equal("Sources", sourcesLink.TextContent.Trim());
@@ -61,16 +57,16 @@ public class QueryApiPage_Tests : BunitContext
     [Fact]
     public void QueryApiPage_ApiTesterButton_LinksToApiTester()
     {
-        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+        var cut = Render<QueryApi>();
 
-        AngleSharp.Dom.IElement button = cut.FindAll("a").Single(a => a.TextContent.Trim() == "API Tester");
+        var button = cut.FindAll("a").Single(a => a.TextContent.Trim() == "API Tester");
         Assert.Equal("/query/api-tester", button.GetAttribute("href"));
     }
 
     [Fact]
     public void QueryApiPage_SubpageButtons_LinkToDevicesEventsAndConfig()
     {
-        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+        var cut = Render<QueryApi>();
 
         var hrefs = cut.FindAll("a").Select(a => (a.TextContent.Trim(), a.GetAttribute("href"))).ToList();
         Assert.Contains(("Devices", "/query/devices"), hrefs);
@@ -81,18 +77,18 @@ public class QueryApiPage_Tests : BunitContext
     [Fact]
     public async Task QueryApiPage_LocationRowSelected_SetsSharedLocationId()
     {
-        _ = _discovery.Setup(d => d.GetLocationsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
+        _discovery.Setup(d => d.GetLocationsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Location>
+            {
                 new("loc-1", "Home", "1 Main St"),
                 new("loc-2", "Office", null),
-            ]);
+            });
 
-        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+        var cut = Render<QueryApi>();
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Get Locations").Click();
         cut.WaitForState(() => cut.FindComponents<ForensicGrid<Location>>().Count == 1);
 
-        IRenderedComponent<ForensicGrid<Location>> grid = cut.FindComponent<ForensicGrid<Location>>();
+        var grid = cut.FindComponent<ForensicGrid<Location>>();
         await cut.InvokeAsync(() => grid.Instance.OnRowSelected.InvokeAsync(new Location("loc-2", "Office", null)));
 
         Assert.Equal("loc-2", Services.GetRequiredService<IQueryApiFilterState>().LocationId);

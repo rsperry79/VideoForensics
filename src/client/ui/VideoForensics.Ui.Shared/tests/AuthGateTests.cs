@@ -1,20 +1,16 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
-
 using Moq;
-
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Resources;
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for AuthGate.razor's three-way bootstrap redirect decision logic
 /// (<see cref="AuthGate.ResolveBootstrapRedirectTarget"/>).
@@ -33,9 +29,9 @@ public class AuthGateTests : BunitContext
     public AuthGateTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
-        _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped<IStringLocalizer<SharedResources>>(_ => TestLocalizer.Create());
+        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -43,13 +39,13 @@ public class AuthGateTests : BunitContext
     public async Task AuthGate_PasskeySetupOnly_RedirectsOtherPagesToPasskeySetup()
     {
         // Arrange - a limited create-passkey session on a page other than the passkey page
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/cases");
 
         // Act
-        IRenderedComponent<AuthGate> component = Render<AuthGate>();
+        var component = Render<AuthGate>();
 
         // Assert
         component.WaitForAssertion(() => Assert.Equal("/settings/passkeys?setup=true", new Uri(nav.Uri).PathAndQuery));
@@ -59,13 +55,13 @@ public class AuthGateTests : BunitContext
     public async Task AuthGate_PasskeySetupOnly_LeavesPasskeyPageAlone()
     {
         // Arrange
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
 
         // Act
-        _ = Render<AuthGate>();
+        Render<AuthGate>();
         await Task.Delay(100); // negative assertion: give the first-render redirect a chance to fire
 
         // Assert
@@ -103,7 +99,7 @@ public class AuthGateTests : BunitContext
     [Fact]
     public void AuthGate_ResolveFailureRedirectTarget_ReturnsSignInAndNeverProtectedRoute()
     {
-        string target = AuthGate.ResolveFailureRedirectTarget();
+        var target = AuthGate.ResolveFailureRedirectTarget();
         Assert.Equal("/signin", target);
         Assert.Equal(AuthGate.ResolveBootstrapRedirectTarget(isEmpty: false, isLocal: true), target);
     }

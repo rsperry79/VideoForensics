@@ -1,26 +1,21 @@
-
-using Bunit;
-
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Microsoft.JSInterop;
-
-using Moq;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-
+using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
+using Moq;
+using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for which OperatorDetails.razor sections an Admin (not SuperAdmin) viewer sees. The page's operator
 /// fetch uses a raw HttpClient rooted at NavigationManager.BaseUri, so the NavigationManager here points at a
@@ -37,21 +32,21 @@ public class OperatorDetailsAdminViewTests : BunitContext
     public OperatorDetailsAdminViewTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
 
-        _ = Services.AddScoped(_ => _admin.Object);
-        _ = Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
-        _ = Services.AddScoped<StepUpService>();
+        Services.AddScoped(_ => _admin.Object);
+        Services.AddScoped(_ => new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>()).Object);
+        Services.AddScoped<StepUpService>();
         _session = new PairedSessionState(JSInterop.JSRuntime);
-        _ = Services.AddScoped(_ => _session);
+        Services.AddScoped(_ => _session);
         // Singleton factory (not an instance) so the BunitContext service provider disposes the listener at teardown.
-        _ = Services.AddSingleton(_ => new OperatorEndpointProbe());
-        _ = Services.AddScoped<NavigationManager>(sp => new ProbeNavigationManager(sp.GetRequiredService<OperatorEndpointProbe>()));
+        Services.AddSingleton(_ => new OperatorEndpointProbe());
+        Services.AddScoped<NavigationManager>(sp => new ProbeNavigationManager(sp.GetRequiredService<OperatorEndpointProbe>()));
 
-        _ = _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
+        _admin.Setup(s => s.GetUiModeAsync(TargetId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OperatorUiMode("Standard", false));
 
         SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
@@ -65,17 +60,15 @@ public class OperatorDetailsAdminViewTests : BunitContext
     }
 
     private IRenderedComponent<OperatorDetails> RenderPage()
-    {
-        return Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
-    }
+        => Render<OperatorDetails>(p => p.Add(c => c.Id, TargetId));
 
     [Fact]
     public async Task OperatorDetails_AdminViewer_DoesNotShowAuthErrorAlert()
     {
         await SignInAsync(OperatorRole.Admin);
 
-        OperatorEndpointProbe probe = Services.GetRequiredService<OperatorEndpointProbe>();
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var probe = Services.GetRequiredService<OperatorEndpointProbe>();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("#display-mode-section")));
         // Give any (incorrect) operator fetch time to reach the probe before asserting none did.
@@ -92,7 +85,7 @@ public class OperatorDetailsAdminViewTests : BunitContext
     {
         await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("#display-mode-section")));
         var labels = cut.FindAll("label.form-label").Select(l => l.TextContent.Trim()).ToList();
@@ -106,8 +99,8 @@ public class OperatorDetailsAdminViewTests : BunitContext
     {
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        OperatorEndpointProbe probe = Services.GetRequiredService<OperatorEndpointProbe>();
-        IRenderedComponent<OperatorDetails> cut = RenderPage();
+        var probe = Services.GetRequiredService<OperatorEndpointProbe>();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() =>
         {
@@ -143,7 +136,7 @@ public class OperatorDetailsAdminViewTests : BunitContext
         public OperatorEndpointProbe()
         {
             _listener.Start();
-            int port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+            var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
             BaseUri = $"http://127.0.0.1:{port}/";
             _acceptLoop = Task.Run(() => AcceptLoopAsync(_cts.Token));
         }
@@ -180,9 +173,9 @@ public class OperatorDetailsAdminViewTests : BunitContext
         {
             try
             {
-                NetworkStream stream = client.GetStream();
+                var stream = client.GetStream();
                 using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
-                string? requestLine = await reader.ReadLineAsync(ct);
+                var requestLine = await reader.ReadLineAsync(ct);
                 string? header;
                 do
                 {
@@ -192,7 +185,7 @@ public class OperatorDetailsAdminViewTests : BunitContext
 
                 _requestLines.Enqueue(requestLine ?? string.Empty);
 
-                byte[] response = Encoding.ASCII.GetBytes("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                var response = Encoding.ASCII.GetBytes("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                 await stream.WriteAsync(response, ct);
             }
             catch (Exception)

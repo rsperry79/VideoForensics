@@ -1,8 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Moq;
+
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Hosting.BackgroundServices;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests;
 
@@ -12,7 +16,7 @@ public class MediaThumbnailBackfillServiceTests
     {
         var backfill = new Mock<IMediaThumbnailBackfill>();
         var services = new ServiceCollection();
-        _ = services.AddScoped(_ => backfill.Object);
+        services.AddScoped(_ => backfill.Object);
         IServiceScopeFactory scopes = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         return (new MediaThumbnailBackfillService(scopes, NullLogger<MediaThumbnailBackfillService>.Instance), backfill);
     }
@@ -20,8 +24,8 @@ public class MediaThumbnailBackfillServiceTests
     [Fact]
     public async Task RunPassAsync_RunsBackfillOnce()
     {
-        (MediaThumbnailBackfillService? service, Mock<IMediaThumbnailBackfill>? backfill) = CreateSut();
-        _ = backfill.Setup(b => b.BackfillAsync(It.IsAny<CancellationToken>()))
+        var (service, backfill) = CreateSut();
+        backfill.Setup(b => b.BackfillAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MediaThumbnailBackfillResult(0, 0, 0, 0));
 
         await service.RunPassAsync(CancellationToken.None);
@@ -33,11 +37,11 @@ public class MediaThumbnailBackfillServiceTests
     [Fact]
     public async Task RunPassAsync_BackfillThrows_IsLoggedAndNotRethrown()
     {
-        (MediaThumbnailBackfillService? service, Mock<IMediaThumbnailBackfill>? backfill) = CreateSut();
-        _ = backfill.Setup(b => b.BackfillAsync(It.IsAny<CancellationToken>()))
+        var (service, backfill) = CreateSut();
+        backfill.Setup(b => b.BackfillAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("ffmpeg missing"));
 
-        Exception? exception = await Record.ExceptionAsync(() => service.RunPassAsync(CancellationToken.None));
+        var exception = await Record.ExceptionAsync(() => service.RunPassAsync(CancellationToken.None));
 
         Assert.Null(exception);
     }

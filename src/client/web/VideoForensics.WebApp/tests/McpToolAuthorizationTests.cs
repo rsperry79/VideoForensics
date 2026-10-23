@@ -1,20 +1,17 @@
-
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging.Abstractions;
-
-using Moq;
+namespace VideoForensics.WebApp.Tests;
 
 using System.Security.Claims;
-
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Contracts;
 using VideoForensics.WebApp.Mcp.Tools;
-
 using Xunit;
 
-namespace VideoForensics.WebApp.Tests;
 /// <summary>
 /// The MCP tools run with baseline paired-device auth, so each tool that needs more must stop the call itself. The
 /// repositories and orchestrator are null on purpose: a denied caller has to stop before any of them is used, so a
@@ -25,8 +22,8 @@ public class McpToolAuthorization_Tests
     private static Mock<IMcpCallerAuthorizer> Authorizer(bool allowed, string policy)
     {
         var authorizer = new Mock<IMcpCallerAuthorizer>();
-        _ = authorizer.Setup(a => a.IsAllowedAsync(policy)).ReturnsAsync(allowed);
-        _ = authorizer.Setup(a => a.RequireAsync(policy)).Returns(allowed
+        authorizer.Setup(a => a.IsAllowedAsync(policy)).ReturnsAsync(allowed);
+        authorizer.Setup(a => a.RequireAsync(policy)).Returns(allowed
             ? Task.CompletedTask
             : Task.FromException(new UnauthorizedAccessException($"requires {policy}")));
         return authorizer;
@@ -37,7 +34,7 @@ public class McpToolAuthorization_Tests
     {
         var tools = new JammingTools(null!, Authorizer(false, VideoForensicsPolicies.Admin).Object, NullLogger<JammingTools>.Instance);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.RecordJammingIncident(
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.RecordJammingIncident(
             Guid.NewGuid(), DateTime.UtcNow.AddHours(-1), DateTime.UtcNow, 3, 6.5, JammingConfidenceLevel.High));
     }
 
@@ -46,7 +43,7 @@ public class McpToolAuthorization_Tests
     {
         var tools = new JammingTools(null!, Authorizer(false, VideoForensicsPolicies.Admin).Object, NullLogger<JammingTools>.Instance);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.RunJammingDetection(
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.RunJammingDetection(
             Guid.NewGuid(), DateTime.UtcNow.AddHours(-1), DateTime.UtcNow));
     }
 
@@ -56,7 +53,7 @@ public class McpToolAuthorization_Tests
         var repository = new Mock<IAuditTrailRepository>();
         var tools = new AuditTrailTools(repository.Object, Authorizer(false, VideoForensicsPolicies.Admin).Object, NullLogger<AuditTrailTools>.Instance);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.GetAuditTrailSummary(Guid.NewGuid()));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.GetAuditTrailSummary(Guid.NewGuid()));
 
         repository.Verify(r => r.GetAuditTrailSummaryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -67,7 +64,7 @@ public class McpToolAuthorization_Tests
         var repository = new Mock<IAuditTrailRepository>();
         var tools = new AuditTrailTools(repository.Object, Authorizer(false, VideoForensicsPolicies.Admin).Object, NullLogger<AuditTrailTools>.Instance);
 
-        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.FlagUnauthorizedAccess(Guid.NewGuid()));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tools.FlagUnauthorizedAccess(Guid.NewGuid()));
 
         repository.Verify(r => r.FlagUnauthorizedAccessAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -85,11 +82,11 @@ public class McpToolAuthorization_Tests
             ], "test")),
         };
         var accessor = new Mock<IHttpContextAccessor>();
-        _ = accessor.Setup(a => a.HttpContext).Returns(httpContext);
+        accessor.Setup(a => a.HttpContext).Returns(httpContext);
         var audit = new Mock<ISecurityAuditService>();
         var tools = new SecurityEventTools(audit.Object, accessor.Object, Authorizer(false, VideoForensicsPolicies.SuperAdminLocalOrPasskey).Object, NullLogger<SecurityEventTools>.Instance);
 
-        SecurityEventsResult result = await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
+        var result = await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
 
         Assert.Contains("Unauthorized: SuperAdmin required for cross-account queries", result.Error);
         Assert.Empty(result.Events);
@@ -108,12 +105,12 @@ public class McpToolAuthorization_Tests
             ], "test")),
         };
         var accessor = new Mock<IHttpContextAccessor>();
-        _ = accessor.Setup(a => a.HttpContext).Returns(httpContext);
+        accessor.Setup(a => a.HttpContext).Returns(httpContext);
         var audit = new Mock<ISecurityAuditService>();
-        Mock<IMcpCallerAuthorizer> authorizer = Authorizer(false, VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+        var authorizer = Authorizer(false, VideoForensicsPolicies.SuperAdminLocalOrPasskey);
         var tools = new SecurityEventTools(audit.Object, accessor.Object, authorizer.Object, NullLogger<SecurityEventTools>.Instance);
 
-        _ = await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
+        await tools.GetSecurityEvents(operatorId: Guid.NewGuid().ToString());
 
         authorizer.Verify(a => a.IsAllowedAsync(VideoForensicsPolicies.SuperAdminLocalOrPasskey), Times.Once);
     }

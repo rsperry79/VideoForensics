@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Logging.Abstractions;
-
 using System.ComponentModel;
 using System.Diagnostics;
+
+using Microsoft.Extensions.Logging.Abstractions;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -17,7 +17,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         public FfmpegTimelineVideoBuilderClipTests()
         {
-            _ = Directory.CreateDirectory(_workDir);
+            Directory.CreateDirectory(_workDir);
         }
 
         public void Dispose()
@@ -49,12 +49,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             // Still 1: [T0, T0+3). Still 2: [T0+3, T0+6), with a 2 s clip covering [T0+3, T0+5).
             // Expected: 3 s red + 2 s clip + 1 s blue tail = 6 frames.
-            TimelineStill[] stills = new[]
+            var stills = new[]
             {
                 new TimelineStill(red, T0, TimeSpan.FromSeconds(3)),
                 new TimelineStill(blue, T0.AddSeconds(3), TimeSpan.FromSeconds(3)),
             };
-            TimelineClip[] clips = new[] { new TimelineClip(clip, T0.AddSeconds(3), TimeSpan.FromSeconds(2)) };
+            var clips = new[] { new TimelineClip(clip, T0.AddSeconds(3), TimeSpan.FromSeconds(2)) };
             string output = Path.Combine(_workDir, "timeline.mp4");
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
 
@@ -91,8 +91,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             CreateVideo(clip, 320, 240, seconds: 2);
 
             // One 5 s still [T0, T0+5) with a 2 s clip at [T0+1, T0+3): 1 s still + 2 s clip + 2 s still = 5 frames.
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(5)) };
-            TimelineClip[] clips = new[] { new TimelineClip(clip, T0.AddSeconds(1), TimeSpan.FromSeconds(2)) };
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(5)) };
+            var clips = new[] { new TimelineClip(clip, T0.AddSeconds(1), TimeSpan.FromSeconds(2)) };
             string output = Path.Combine(_workDir, "timeline.mp4");
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
 
@@ -127,8 +127,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             // Still [T0, T0+3) red. A 0.4 s clip window at T0+1 rounds to 0 s, but clip windows use the same
             // rounding as stills (minimum 1 s), so it contributes 1 frame. The cut-off still remainder
             // [T0+1.4, T0+3) is 1.6 s raw and rounds to 2 s. Expected: 1 red + 1 clip + 2 red = 4 frames.
-            TimelineStill[] stills = new[] { new TimelineStill(red, T0, TimeSpan.FromSeconds(3)) };
-            TimelineClip[] clips = new[] { new TimelineClip(clip, T0.AddSeconds(1), TimeSpan.FromSeconds(0.4)) };
+            var stills = new[] { new TimelineStill(red, T0, TimeSpan.FromSeconds(3)) };
+            var clips = new[] { new TimelineClip(clip, T0.AddSeconds(1), TimeSpan.FromSeconds(0.4)) };
             string output = Path.Combine(_workDir, "timeline.mp4");
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
 
@@ -163,8 +163,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             // Usable clip seconds = min(declared 5, real 2) = 2, so the clip contributes 2 frames. The declared
             // window covers the whole still, so the still has no remainder. Real video ends at 2 s and the rest of
             // the declared window is a gap, which stays unfilled. Expected: 2 frames, equal to the frames written.
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(5)) };
-            TimelineClip[] clips = new[] { new TimelineClip(clip, T0, TimeSpan.FromSeconds(5)) };
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(5)) };
+            var clips = new[] { new TimelineClip(clip, T0, TimeSpan.FromSeconds(5)) };
             string output = Path.Combine(_workDir, "timeline.mp4");
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
 
@@ -198,8 +198,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             //   [T0+5, T0+6) remains: 1 s, 1 frame.
             // Clip A is usable for 2 s at its window start; the rest of its declared window has no real video, so it is a gap that is
             // filled with black. Expected: 2 (A) + 6 black gap (T0-1 to T0+5) + 1 (still tail) = 9 frames, in real time.
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
-            TimelineClip[] clips = new[]
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
+            var clips = new[]
             {
                 new TimelineClip(clip, T0.AddSeconds(-3), TimeSpan.FromSeconds(4)),
                 new TimelineClip(clip, T0.AddSeconds(-2), TimeSpan.FromSeconds(7)),
@@ -221,7 +221,6 @@ namespace VideoForensics.Core.Providers.Core.Tests
             {
                 Assert.True(frames[gap].R < 32 && frames[gap].G < 32 && frames[gap].B < 32, $"frame {gap} should be black gap fill, was {frames[gap]}");
             }
-
             Assert.True(IsRed(frames[8]), $"frame 8 should be the still tail, was {frames[8]}");
         }
 
@@ -238,8 +237,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string notVideo = Path.Combine(_workDir, "notes.txt");
             File.WriteAllText(notVideo, "this is not a video file");
 
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(3)) };
-            TimelineClip[] clips = new[] { new TimelineClip(notVideo, T0.AddSeconds(1), TimeSpan.FromSeconds(1)) };
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(3)) };
+            var clips = new[] { new TimelineClip(notVideo, T0.AddSeconds(1), TimeSpan.FromSeconds(1)) };
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
 
             TimelineVideoResult result = await builder.BuildAsync(
@@ -254,11 +253,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
         {
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
             string still = WriteDummyFile("still.png");
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(1)) };
-            TimelineClip[] clips = new[] { new TimelineClip(Path.Combine(_workDir, "missing.mp4"), T0, TimeSpan.FromSeconds(1)) };
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(1)) };
+            var clips = new[] { new TimelineClip(Path.Combine(_workDir, "missing.mp4"), T0, TimeSpan.FromSeconds(1)) };
             var request = new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"), clips);
 
-            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+            await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
         }
 
         [Fact]
@@ -267,11 +266,11 @@ namespace VideoForensics.Core.Providers.Core.Tests
             var builder = new FfmpegTimelineVideoBuilder(NullLogger<FfmpegTimelineVideoBuilder>.Instance);
             string still = WriteDummyFile("still.png");
             string clipFile = WriteDummyFile("clip.mp4");
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(1)) };
-            TimelineClip[] clips = new[] { new TimelineClip(clipFile, T0, TimeSpan.Zero) };
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(1)) };
+            var clips = new[] { new TimelineClip(clipFile, T0, TimeSpan.Zero) };
             var request = new TimelineVideoRequest(stills, Path.Combine(_workDir, "out.mp4"), clips);
 
-            _ = await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
+            await Assert.ThrowsAsync<ArgumentException>(() => builder.BuildAsync(request, CancellationToken.None));
         }
 
         private string WriteDummyFile(string name)
@@ -283,12 +282,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         private void CreatePng(string path, string color, int width, int height)
         {
-            _ = RunTool("ffmpeg", "-f", "lavfi", "-i", $"color=c={color}:s={width}x{height}", "-frames:v", "1", "-y", path);
+            RunTool("ffmpeg", "-f", "lavfi", "-i", $"color=c={color}:s={width}x{height}", "-frames:v", "1", "-y", path);
         }
 
         private void CreateVideo(string path, int width, int height, int seconds)
         {
-            _ = RunTool(
+            RunTool(
                 "ffmpeg",
                 "-f", "lavfi", "-i", $"testsrc=size={width}x{height}:rate=2",
                 "-t", seconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -315,15 +314,9 @@ namespace VideoForensics.Core.Providers.Core.Tests
         }
 
         // Thresholds are loose on purpose: the stills are solid colours that survive H.264 with small drift.
-        private static bool IsRed((byte R, byte G, byte B) c)
-        {
-            return c.R > 200 && c.G < 60 && c.B < 60;
-        }
+        private static bool IsRed((byte R, byte G, byte B) c) => c.R > 200 && c.G < 60 && c.B < 60;
 
-        private static bool IsBlue((byte R, byte G, byte B) c)
-        {
-            return c.B > 200 && c.R < 60 && c.G < 60;
-        }
+        private static bool IsBlue((byte R, byte G, byte B) c) => c.B > 200 && c.R < 60 && c.G < 60;
 
         private static byte[] RunToolBinary(string baseName, params string[] args)
         {
@@ -334,9 +327,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
             process.StandardOutput.BaseStream.CopyTo(buffer);
             string stderr = stderrTask.GetAwaiter().GetResult();
             process.WaitForExit();
-            return process.ExitCode != 0
-                ? throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}")
-                : buffer.ToArray();
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}");
+            }
+
+            return buffer.ToArray();
         }
 
         private static string ProbeStreamField(string path, string entry)
@@ -356,8 +352,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
             try
             {
                 using Process process = StartTool(baseName, "-version");
-                _ = process.StandardOutput.ReadToEnd();
-                _ = process.StandardError.ReadToEnd();
+                process.StandardOutput.ReadToEnd();
+                process.StandardError.ReadToEnd();
                 process.WaitForExit();
                 return process.ExitCode == 0;
             }
@@ -375,7 +371,12 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string stdout = process.StandardOutput.ReadToEnd();
             string stderr = stderrTask.GetAwaiter().GetResult();
             process.WaitForExit();
-            return process.ExitCode != 0 ? throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}") : stdout;
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"{baseName} exited {process.ExitCode}: {stderr}");
+            }
+
+            return stdout;
         }
 
         private static Process StartTool(string baseName, params string[] args)
@@ -411,10 +412,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
             string sound = Path.Combine(_workDir, "sound.m4a");
             CreatePng(still, "red", 320, 240);
             CreateVideo(clip, 320, 240, seconds: 2);
-            _ = RunTool("ffmpeg", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "2", "-c:a", "aac", "-y", sound);
+            RunTool("ffmpeg", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "2", "-c:a", "aac", "-y", sound);
 
-            TimelineStill[] stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
-            TimelineClip[] clips = new[]
+            var stills = new[] { new TimelineStill(still, T0, TimeSpan.FromSeconds(6)) };
+            var clips = new[]
             {
                 new TimelineClip(clip, T0.AddSeconds(-3), TimeSpan.FromSeconds(4)),
                 new TimelineClip(sound, T0.AddSeconds(-2), TimeSpan.FromSeconds(7)),

@@ -17,7 +17,7 @@ public static class ChatToolsFormatter
             return string.Empty;
         }
 
-        string formatted = string.Join(", ", toolsInvoked.Select(FormatToolName));
+        var formatted = string.Join(", ", toolsInvoked.Select(t => FormatToolName(t)));
         return $"Checked: {formatted}";
     }
 
@@ -32,7 +32,7 @@ public static class ChatToolsFormatter
         }
 
         // Convert CamelCase to Title Case with spaces
-        string result = System.Text.RegularExpressions.Regex.Replace(
+        var result = System.Text.RegularExpressions.Regex.Replace(
             toolName,
             "([a-z])([A-Z])",
             "$1 $2");

@@ -37,7 +37,12 @@ namespace VideoForensics.WebApp.Api
         /// </summary>
         public static bool IsSupersededByPasskeyCreation(IReadOnlyList<OperatorCredential> credentials, DateTime issuedAtUtc)
         {
-            return issuedAtUtc != default && credentials.Any(c => c.CreatedAtUtc > issuedAtUtc);
+            if (issuedAtUtc == default)
+            {
+                return false;
+            }
+
+            return credentials.Any(c => c.CreatedAtUtc > issuedAtUtc);
         }
     }
 }

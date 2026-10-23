@@ -1,10 +1,13 @@
+using System.Collections.Concurrent;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
-using System.Collections.Concurrent;
+using Moq;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Hosting.Remote;
 using VideoForensics.Ui.Shared.Services;
 
 namespace VideoForensics.Hosting.Tests
@@ -17,7 +20,7 @@ namespace VideoForensics.Hosting.Tests
         private static IServiceProvider CreateServices()
         {
             var services = new ServiceCollection();
-            _ = services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
+            services.AddSingleton(new PairedSessionState(new Mock<IJSRuntime>().Object));
             return services.BuildServiceProvider();
         }
 
@@ -35,7 +38,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RealtimeLiveViewSessionSource_PushReceived_MapsDtoToEntity()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
             var received = new List<LiveViewSession>();
             using IDisposable subscription = source.SessionChanged.Subscribe(received.Add);
@@ -62,7 +65,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task Telemetry_MapsDtoToEntity()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
             var received = new List<LiveViewTelemetrySample>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
@@ -87,7 +90,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task Telemetry_MapsNullFieldsToNull()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
             var received = new List<LiveViewTelemetrySample>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
@@ -109,7 +112,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task Telemetry_ForwardsRealtimeHubEmissions()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
             var received = new List<LiveViewTelemetrySample>();
             using IDisposable subscription = source.Telemetry.Subscribe(received.Add);
@@ -125,7 +128,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RealtimeLiveViewSessionSource_SubscribeAsync_ForwardsToHub()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             await hub.StartAsync(CancellationToken.None);
             var source = new RealtimeLiveViewSessionSource(hub);
             var sessionId = Guid.NewGuid();
@@ -141,7 +144,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RealtimeLiveViewSessionSource_UnsubscribeAsync_ForwardsToHub()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             await hub.StartAsync(CancellationToken.None);
             var source = new RealtimeLiveViewSessionSource(hub);
             var sessionId = Guid.NewGuid();
@@ -157,7 +160,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RealtimeLiveViewSessionSource_HubNotConnected_IsConnectedFalse()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             var source = new RealtimeLiveViewSessionSource(hub);
 
             Assert.False(source.IsConnected);
@@ -167,7 +170,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RealtimeLiveViewSessionSource_HubConnected_IsConnectedTrue()
         {
             var calls = new ConcurrentQueue<(string Method, Guid SessionId)>();
-            await using RealtimeHub hub = CreateHub(calls);
+            await using var hub = CreateHub(calls);
             await hub.StartAsync(CancellationToken.None);
             var source = new RealtimeLiveViewSessionSource(hub);
 

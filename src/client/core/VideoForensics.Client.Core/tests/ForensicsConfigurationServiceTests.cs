@@ -313,11 +313,11 @@ namespace VideoForensics.Client.Core.Tests
             await _service.SaveConfigurationAsync(config);
 
             _settingRepositoryMock.Verify(
-                r => r.SetAsync("DownloadLocation", string.Empty, It.IsAny<CancellationToken>()),
+                r => r.SetAsync("DownloadLocation", "", It.IsAny<CancellationToken>()),
                 Times.Once);
 
             _settingRepositoryMock.Verify(
-                r => r.SetAsync("InternetServerUrl", string.Empty, It.IsAny<CancellationToken>()),
+                r => r.SetAsync("InternetServerUrl", "", It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -332,7 +332,7 @@ namespace VideoForensics.Client.Core.Tests
             await _service.SaveConfigurationAsync(config);
 
             _settingRepositoryMock.Verify(
-                r => r.SetAsync("ActiveProviderAccountId", string.Empty, It.IsAny<CancellationToken>()),
+                r => r.SetAsync("ActiveProviderAccountId", "", It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -460,7 +460,7 @@ namespace VideoForensics.Client.Core.Tests
         {
             _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync("DownloadStartDate", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(string.Empty);
+                .ReturnsAsync("");
 
             _ = _settingRepositoryMock
                 .Setup(r => r.GetAsync(It.IsNotIn("DownloadStartDate"), It.IsAny<CancellationToken>()))
@@ -469,7 +469,7 @@ namespace VideoForensics.Client.Core.Tests
             IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
 
             Assert.NotNull(config);
-            Assert.Equal(string.Empty, config.DownloadStartDate);
+            Assert.Equal("", config.DownloadStartDate);
         }
 
         [Fact]
@@ -551,7 +551,7 @@ namespace VideoForensics.Client.Core.Tests
                 .Setup(r => r.GetAsync("FfmpegBinDirectory", It.IsAny<CancellationToken>()))
                 .ReturnsAsync("D:\\custom\\ffmpeg");
 
-            int discoveryCalls = 0;
+            var discoveryCalls = 0;
             var service = new ForensicsConfigurationService(_loggerMock.Object, _settingRepositoryMock.Object, null, () =>
             {
                 discoveryCalls++;

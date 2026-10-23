@@ -1,14 +1,11 @@
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
-using System.Security.Cryptography;
-
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Hosting.Contracts;
-
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Hosting.Services
@@ -22,6 +19,7 @@ namespace VideoForensics.Hosting.Services
     {
         /// <summary>Each camera's loop is 360 px high. Display is built later; the gap-fill builds elsewhere stay at full resolution.</summary>
         internal const int CameraLoopHeight = 360;
+
 
         /// <summary>Metadata written on each roll-up loop row. The Devices tab reads it to pick the latest loop.</summary>
         public const string SnapshotRollupMarker = "{\"type\":\"snapshot-rollup\"}";
@@ -126,7 +124,7 @@ namespace VideoForensics.Hosting.Services
         {
             // Format, marker and time window are filtered in SQL. Only the file-on-disk check stays here: the file system is not queryable.
             IReadOnlyList<MediaItem> rows = await _mediaItems.GetSnapshotsByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, cancellationToken);
-            var snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
+            List<MediaItem> snapshots = rows.Where(m => File.Exists(m.FilePath)).ToList();
 
             var stills = new List<TimelineStill>(snapshots.Count);
             for (int i = 0; i < snapshots.Count; i++)

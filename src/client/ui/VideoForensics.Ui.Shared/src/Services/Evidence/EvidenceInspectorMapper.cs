@@ -13,7 +13,7 @@ public static class EvidenceInspectorMapper
         IReadOnlyDictionary<Guid, LegalHold> holds,
         IReadOnlyList<IntegrityRecord> integrity)
     {
-        string title = item.Kind switch
+        var title = item.Kind switch
         {
             EvidenceKind.Event => $"{item.Label} · {item.OccurredAtUtc:u}",
             _ => $"{item.Label} · {item.DeviceName} · {item.OccurredAtUtc:u}"
@@ -22,12 +22,12 @@ public static class EvidenceInspectorMapper
         // Fields: include event and media
         var fields = new
         {
-            item.Event,
+            Event = item.Event,
             MediaItem = item.Media
         };
 
         // RawJson: prefer event metadata, fall back to media metadata
-        string? rawJson = item.Event?.MetadataJson ?? item.Media?.MetadataJson;
+        var rawJson = item.Event?.MetadataJson ?? item.Media?.MetadataJson;
 
         // Provenance: build from event and media properties
         var provenance = new List<KeyValuePair<string, string>>();
@@ -96,7 +96,7 @@ public static class EvidenceInspectorMapper
             // Computed status (from the freshest IntegrityRecord for this media item), same as the
             // Events grid's "Integrity" column used to show - distinct from the raw
             // IntegrityVerified/LastVerifiedAtUtc entity fields above.
-            (string? integrityStatusText, string _) = EvidenceActions.DetermineIntegrityStatus(item.Media.Id, integrity);
+            var (integrityStatusText, _) = EvidenceActions.DetermineIntegrityStatus(item.Media.Id, integrity);
             provenance.Add(new KeyValuePair<string, string>("IntegrityStatus", integrityStatusText));
 
             if (item.Media.LastVerifiedAtUtc.HasValue)
@@ -113,7 +113,7 @@ public static class EvidenceInspectorMapper
         }
 
         // Legal hold status
-        string holdStatus = item.Media is not null && holds.TryGetValue(item.Media.Id, out _)
+        var holdStatus = item.Media is not null && holds.TryGetValue(item.Media.Id, out _)
             ? "On Hold"
             : "No Hold";
         provenance.Add(new KeyValuePair<string, string>("LegalHoldStatus", holdStatus));
@@ -131,9 +131,9 @@ public static class EvidenceInspectorMapper
 
         // Evidence actions: legal hold place/release, device integrity verification, export - all
         // gated on this item having a linked, downloaded media item (see EvidenceActions).
-        Guid? activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out LegalHold? activeHold)
+        var activeHoldId = item.Media is not null && holds.TryGetValue(item.Media.Id, out var activeHold)
             ? activeHold.Id
-            : null;
+            : (Guid?)null;
         var actions = new EvidenceActionState(
             MediaItemId: item.Media?.Id,
             DeviceId: item.DeviceId,
@@ -143,7 +143,7 @@ public static class EvidenceInspectorMapper
             Title: title,
             Fields: fields,
             RawJson: rawJson,
-            Related: [],
+            Related: new List<InspectorLink>(),
             Provenance: provenance,
             Pin: pinTarget,
             Actions: actions);

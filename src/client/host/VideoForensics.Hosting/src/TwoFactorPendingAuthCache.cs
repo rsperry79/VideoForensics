@@ -42,7 +42,7 @@ namespace VideoForensics.Hosting
         public string Store(Guid operatorId)
         {
             string correlationToken = Guid.NewGuid().ToString("N");
-            _ = _cache.Set(correlationToken, operatorId, new MemoryCacheEntryOptions
+            _cache.Set(correlationToken, operatorId, new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = PendingAuthLifetime
             });

@@ -14,11 +14,13 @@ using Serilog;
 
 using Syncfusion.Blazor;
 
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
+
+using System.Security.Cryptography.X509Certificates;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
+
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
@@ -121,7 +123,7 @@ builder.WebHost.ConfigureKestrel(options =>
         {
             if (string.Compare(endpoint.Scheme, "https", StringComparison.Ordinal) == 0)
             {
-                _ = listenOptions.UseHttps(https => https.ServerCertificateSelector = (_, _) => certificateHolder.Current);
+                listenOptions.UseHttps(https => https.ServerCertificateSelector = (_, _) => certificateHolder.Current);
             }
         }
 
@@ -182,7 +184,7 @@ builder.Services.AddScoped<IFido2>(sp =>
     var origins = new HashSet<string>(ServerAddressResolver.ResolveAllowedOrigins(builder.Configuration), StringComparer.Ordinal);
     if (Uri.TryCreate(forensics.InternetServerUrl, UriKind.Absolute, out Uri? internetUrl))
     {
-        _ = origins.Add(internetUrl.GetLeftPart(UriPartial.Authority));
+        origins.Add(internetUrl.GetLeftPart(UriPartial.Authority));
     }
 
     return new Fido2(new Fido2Configuration
@@ -237,9 +239,14 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 if (OperatingSystem.IsWindows())
 {
     X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
-    _ = tpmCertificate is not null
-        ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
-        : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    if (tpmCertificate is not null)
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate);
+    }
+    else
+    {
+        _ = dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+    }
 }
 
 // One real-time channel for live download progress + urgent-event push (plan §6), for remote
@@ -343,7 +350,7 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 // registers the Debian default first, so this registration comes after it and wins.
 if (OperatingSystem.IsWindows())
 {
-    _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+    builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
 }
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
@@ -458,8 +465,8 @@ builder.Services.AddHostedService<CloudflareTunnelAutostart>();
 // tier later still leaves the socket listening but firewalled (the exact bug being fixed).
 builder.Services.AddSingleton<IFirewallRuleManager>(sp =>
     OperatingSystem.IsWindows()
-        ? new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>())
-        : new NullFirewallRuleManager());
+        ? (new VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager(sp.GetRequiredService<ILogger<VideoForensics.Client.Platform.Windows.WindowsFirewallRuleManager>>()))
+        : (new NullFirewallRuleManager()));
 
 // Client-side WebAuthn ceremony driver + circuit-scoped paired-device session (plan §5.1/§5.11) -
 // the Blazor pages under Pages/Security*.razor and Pair.razor/DeviceSignIn.razor use these to talk

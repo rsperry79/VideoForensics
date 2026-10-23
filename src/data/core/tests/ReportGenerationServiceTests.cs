@@ -2,18 +2,19 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Models;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Core.Helpers.Platform;
 
-using Xunit;
 // Aliased: importing the whole providers-common namespace makes `Device` ambiguous with Data.Common.Entities.Device.
 using INotificationDispatcher = VideoForensics.Core.Providers.Common.Contracts.INotificationDispatcher;
-using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
 using NotificationAudience = VideoForensics.Core.Providers.Common.Contracts.NotificationAudience;
 using NotificationEvent = VideoForensics.Core.Providers.Common.Contracts.NotificationEvent;
+using NoticeSeverity = VideoForensics.Core.Providers.Common.Contracts.NoticeSeverity;
+
+using Xunit;
 
 namespace VideoForensics.Data.Core.Tests
 {
@@ -396,7 +397,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<ActionLogEntry>());
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
@@ -426,7 +427,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<ActionLogEntry>());
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
@@ -451,7 +452,7 @@ namespace VideoForensics.Data.Core.Tests
             // Arrange
             _ = _mockActionLogRepository
                 .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<ActionLogEntry>());
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
@@ -490,7 +491,7 @@ namespace VideoForensics.Data.Core.Tests
 
             try
             {
-                _ = _mockStorageLocationProvider
+                _mockStorageLocationProvider
                     .Setup(x => x.GetDefaultRoot(StorageCategory.Reports))
                     .Returns(tempDir);
 
@@ -565,8 +566,8 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(
-                [
+                .ReturnsAsync(new List<MediaItem>
+                {
                     new() {
                         Id = mediaId,
                         DeviceId = deviceId,
@@ -578,19 +579,19 @@ namespace VideoForensics.Data.Core.Tests
                         RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
                         DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
                     }
-                ]);
+                });
 
             _ = _mockDownloadEventRepository
                 .Setup(x => x.GetByDeviceIdAsync(deviceId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(
-                [
+                .ReturnsAsync(new List<DownloadEvent>
+                {
                     new() {
                         Id = downloadEventId,
                         DeviceId = deviceId,
                         ProviderEventId = "ring-evt-1",
                         AppVersion = "test"
                     }
-                ]);
+                });
 
             // Act
             EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);
@@ -611,8 +612,8 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockMediaItemRepository
                 .Setup(x => x.GetByDeviceAndDateRangeAsync(deviceId, fromUtc, toUtc, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(
-                [
+                .ReturnsAsync(new List<MediaItem>
+                {
                     new() {
                         Id = Guid.NewGuid(),
                         DeviceId = deviceId,
@@ -624,7 +625,7 @@ namespace VideoForensics.Data.Core.Tests
                         RecordedAtUtc = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
                         DownloadedAtUtc = new DateTime(2024, 1, 15, 13, 0, 0, DateTimeKind.Utc)
                     }
-                ]);
+                });
 
             // Act
             EvidenceReviewReport result = await _service.BuildEvidenceReviewAsync(deviceId, fromUtc, toUtc, CancellationToken.None);

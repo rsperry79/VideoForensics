@@ -27,7 +27,7 @@ namespace VideoForensics.Hosting.BackgroundServices
         /// <returns>True if the device is in an active elevated window; false otherwise.</returns>
         public bool IsElevated(Guid deviceId)
         {
-            return _elevatedUntilUtc.TryGetValue(deviceId, out DateTime until) && until > DateTime.UtcNow;
+            return _elevatedUntilUtc.TryGetValue(deviceId, out var until) && until > DateTime.UtcNow;
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace VideoForensics.Hosting.BackgroundServices
         /// <param name="deviceId">The device to clear.</param>
         public void Clear(Guid deviceId)
         {
-            _ = _elevatedUntilUtc.TryRemove(deviceId, out _);
+            _elevatedUntilUtc.TryRemove(deviceId, out _);
         }
 
         /// <summary>

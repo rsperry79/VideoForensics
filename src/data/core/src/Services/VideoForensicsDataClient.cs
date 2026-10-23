@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Logging;
-
 using System.Globalization;
 
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Logging.Contracts;
+using VideoForensics.Data.Core.Services;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
@@ -156,7 +157,6 @@ namespace VideoForensics.Data.Core.Services
                         // Same unit of work as the Device update: history commits or rolls back with it.
                         await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
                     }
-
                     return null;
                 }, ct);
             }
@@ -814,7 +814,6 @@ namespace VideoForensics.Data.Core.Services
                             // Same unit of work as the Device update: history commits or rolls back with it.
                             await context.DeviceSettingChanges.AddRangeAsync(changes, ct);
                         }
-
                         _logger.LogDebug("Found and updated existing device: {DeviceName}", existingDevice.Name);
                         return existingDevice;
                     }

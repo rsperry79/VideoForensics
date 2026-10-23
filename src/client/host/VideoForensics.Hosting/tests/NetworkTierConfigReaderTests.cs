@@ -1,7 +1,11 @@
 using Microsoft.Data.Sqlite;
 
-using VideoForensics.Core.Helpers.Platform;
+using Moq;
+
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Core.Helpers.Platform;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -13,12 +17,12 @@ namespace VideoForensics.Hosting.Tests
             // Arrange: point the resolver at a temp directory that genuinely has no
             // videoforensics.db in it - simulates first run / fresh install.
             string tempDir = Path.Combine(Path.GetTempPath(), "vf-nettier-tests-" + Guid.NewGuid());
-            _ = Directory.CreateDirectory(tempDir);
+            Directory.CreateDirectory(tempDir);
 
             try
             {
                 var storageProviderMock = new Mock<IStorageLocationProvider>();
-                _ = storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
+                storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
 
                 var reader = new NetworkTierConfigReader(storageProviderMock.Object);
 
@@ -39,7 +43,7 @@ namespace VideoForensics.Hosting.Tests
             // this proves the reader actually consults IStorageLocationProvider's configured path
             // (which reflects a custom install-time override) instead of any hardcoded default.
             string tempDir = Path.Combine(Path.GetTempPath(), "vf-nettier-tests-" + Guid.NewGuid());
-            _ = Directory.CreateDirectory(tempDir);
+            Directory.CreateDirectory(tempDir);
             string dbPath = Path.Combine(tempDir, "videoforensics.db");
 
             try
@@ -47,7 +51,7 @@ namespace VideoForensics.Hosting.Tests
                 CreateDatabaseWithSetting(dbPath, "ConfiguredNetworkTier", "Network");
 
                 var storageProviderMock = new Mock<IStorageLocationProvider>();
-                _ = storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
+                storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
 
                 var reader = new NetworkTierConfigReader(storageProviderMock.Object);
 
@@ -66,7 +70,7 @@ namespace VideoForensics.Hosting.Tests
         public void ReadConfiguredTier_UnparseableValue_ReturnsLocal()
         {
             string tempDir = Path.Combine(Path.GetTempPath(), "vf-nettier-tests-" + Guid.NewGuid());
-            _ = Directory.CreateDirectory(tempDir);
+            Directory.CreateDirectory(tempDir);
             string dbPath = Path.Combine(tempDir, "videoforensics.db");
 
             try
@@ -74,7 +78,7 @@ namespace VideoForensics.Hosting.Tests
                 CreateDatabaseWithSetting(dbPath, "ConfiguredNetworkTier", "NotARealTier");
 
                 var storageProviderMock = new Mock<IStorageLocationProvider>();
-                _ = storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
+                storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
 
                 var reader = new NetworkTierConfigReader(storageProviderMock.Object);
 
@@ -93,7 +97,7 @@ namespace VideoForensics.Hosting.Tests
         public void ReadConfiguredTier_NoMatchingKey_ReturnsLocal()
         {
             string tempDir = Path.Combine(Path.GetTempPath(), "vf-nettier-tests-" + Guid.NewGuid());
-            _ = Directory.CreateDirectory(tempDir);
+            Directory.CreateDirectory(tempDir);
             string dbPath = Path.Combine(tempDir, "videoforensics.db");
 
             try
@@ -101,7 +105,7 @@ namespace VideoForensics.Hosting.Tests
                 CreateDatabaseWithSetting(dbPath, "SomeOtherKey", "Network");
 
                 var storageProviderMock = new Mock<IStorageLocationProvider>();
-                _ = storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
+                storageProviderMock.Setup(p => p.GetDefaultRoot(StorageCategory.Database)).Returns(tempDir);
 
                 var reader = new NetworkTierConfigReader(storageProviderMock.Object);
 
@@ -123,13 +127,13 @@ namespace VideoForensics.Hosting.Tests
 
             using SqliteCommand createTable = connection.CreateCommand();
             createTable.CommandText = "CREATE TABLE AppSettings (Key TEXT PRIMARY KEY, Value TEXT)";
-            _ = createTable.ExecuteNonQuery();
+            createTable.ExecuteNonQuery();
 
             using SqliteCommand insert = connection.CreateCommand();
             insert.CommandText = "INSERT INTO AppSettings (Key, Value) VALUES ($key, $value)";
-            _ = insert.Parameters.AddWithValue("$key", key);
-            _ = insert.Parameters.AddWithValue("$value", value);
-            _ = insert.ExecuteNonQuery();
+            insert.Parameters.AddWithValue("$key", key);
+            insert.Parameters.AddWithValue("$value", value);
+            insert.ExecuteNonQuery();
         }
     }
 }

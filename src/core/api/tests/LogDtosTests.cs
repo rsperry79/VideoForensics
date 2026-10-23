@@ -20,13 +20,13 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         [InlineData("message")]
         public void LogEntryDto_MissingRequiredProperty_ThrowsJsonException(string property)
         {
-            using var doc = JsonDocument.Parse(CompleteJson);
+            using JsonDocument doc = JsonDocument.Parse(CompleteJson);
             var dict = doc.RootElement.EnumerateObject()
                 .Where(p => p.Name != property)
                 .ToDictionary(p => p.Name, p => p.Value.Clone());
             string json = JsonSerializer.Serialize(dict);
 
-            _ = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LogEntryDto>(json, WebJson));
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LogEntryDto>(json, WebJson));
         }
 
         [Fact]
@@ -59,7 +59,7 @@ namespace VideoForensics.Core.Api.Contracts.Tests
         {
             var dto = new LogEntryDto(1, DateTimeOffset.UtcNow, string.Empty, string.Empty, string.Empty, null);
 
-            using var doc = JsonDocument.Parse(JsonSerializer.Serialize(dto, WebJson));
+            using JsonDocument doc = JsonDocument.Parse(JsonSerializer.Serialize(dto, WebJson));
             JsonElement root = doc.RootElement;
 
             Assert.True(root.TryGetProperty("timestampUtc", out _));

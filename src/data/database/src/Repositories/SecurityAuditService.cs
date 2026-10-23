@@ -1,7 +1,7 @@
+using System.Runtime.CompilerServices;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
-using System.Runtime.CompilerServices;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -23,7 +23,7 @@ namespace VideoForensics.Data.Database.Repositories
 
         public async Task RecordLoginAttemptAsync(Guid operatorId, string? ipAddress, bool success, string? reason, CancellationToken ct)
         {
-            SecurityEventType eventType = success ? SecurityEventType.LoginAttemptSuccess : SecurityEventType.LoginAttemptFailure;
+            var eventType = success ? SecurityEventType.LoginAttemptSuccess : SecurityEventType.LoginAttemptFailure;
             await RecordEventAsync(operatorId, eventType, ipAddress, success, reason, ct);
         }
 
@@ -45,13 +45,13 @@ namespace VideoForensics.Data.Database.Repositories
         public async IAsyncEnumerable<SecurityEventDto> GetOperatorEventsAsync(Guid operatorId, int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<SecurityEvent> events = db.SecurityEvents
+            var events = db.SecurityEvents
                 .Where(e => e.OperatorId == operatorId)
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .Skip(skip)
                 .Take(take);
 
-            await foreach (SecurityEvent? @event in events.AsAsyncEnumerable().WithCancellation(ct))
+            await foreach (var @event in events.AsAsyncEnumerable().WithCancellation(ct))
             {
                 yield return MapToDto(@event);
             }
@@ -60,12 +60,12 @@ namespace VideoForensics.Data.Database.Repositories
         public async IAsyncEnumerable<SecurityEventDto> GetAllEventsAsync(int skip, int take, [EnumeratorCancellation] CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            IQueryable<SecurityEvent> events = db.SecurityEvents
+            var events = db.SecurityEvents
                 .OrderByDescending(e => e.OccurredAtUtc)
                 .Skip(skip)
                 .Take(take);
 
-            await foreach (SecurityEvent? @event in events.AsAsyncEnumerable().WithCancellation(ct))
+            await foreach (var @event in events.AsAsyncEnumerable().WithCancellation(ct))
             {
                 yield return MapToDto(@event);
             }
@@ -86,7 +86,7 @@ namespace VideoForensics.Data.Database.Repositories
                 CreatedAtUtc = DateTime.UtcNow
             };
 
-            _ = db.SecurityEvents.Add(securityEvent);
+            db.SecurityEvents.Add(securityEvent);
             _ = await db.SaveChangesAsync(ct);
             _logger.LogDebug("Security event recorded: {EventType} for operator {OperatorId}", eventType, operatorId);
         }

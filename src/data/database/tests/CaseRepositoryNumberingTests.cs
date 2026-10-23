@@ -1,7 +1,8 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
+
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -98,7 +99,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Create a case with the first generated number
             string firstNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
-            _ = await repo.CreateAsync(firstNumber, "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo.CreateAsync(firstNumber, "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act - Generate another number in the same minute
             string secondNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
@@ -117,7 +118,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Create a manual case
             string manualNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
-            _ = await repo.CreateAsync(manualNumber, "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo.CreateAsync(manualNumber, "Title 1", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act - Generate a detected number in the same minute (should NOT count the manual case)
             string detectedNumber = await repo.GenerateCaseNumber("detected", CancellationToken.None);
@@ -135,8 +136,8 @@ namespace VideoForensics.Data.Database.Tests
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Create cases with indices 0 and 2 (skip 1)
-            _ = await repo.CreateAsync("manual-2026-10-07-14-35-0", "Title 0", null, null, null, null, [], "user@example.com", CancellationToken.None);
-            _ = await repo.CreateAsync("manual-2026-10-07-14-35-2", "Title 2", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo.CreateAsync("manual-2026-10-07-14-35-0", "Title 0", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo.CreateAsync("manual-2026-10-07-14-35-2", "Title 2", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act - Generate a new number
             string newNumber = await repo.GenerateCaseNumber("manual", CancellationToken.None);
@@ -154,7 +155,7 @@ namespace VideoForensics.Data.Database.Tests
 
             // Create a case at 14:35
             string num1 = await repo1.GenerateCaseNumber("manual", CancellationToken.None);
-            _ = await repo1.CreateAsync(num1, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo1.CreateAsync(num1, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act - Move to next minute and generate
             var fakeTime2 = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 36, 10, DateTimeKind.Utc));
@@ -211,7 +212,7 @@ namespace VideoForensics.Data.Database.Tests
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act
-            ForensicCase created = await repo.CreateAsync(string.Empty, "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            ForensicCase created = await repo.CreateAsync("", "Title", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Assert
             Assert.NotNull(created.CaseNumber);
@@ -256,10 +257,10 @@ namespace VideoForensics.Data.Database.Tests
         {
             // Arrange
             string caseNumber = "DUP-2026-001";
-            _ = await _repository.CreateAsync(caseNumber, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
+            await _repository.CreateAsync(caseNumber, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
 
             // Act & Assert
-            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _repository.CreateAsync(caseNumber, "Title 2", null, null, null, null, [], "user2@example.com", CancellationToken.None)
             );
             Assert.Equal($"A case with number '{caseNumber}' already exists.", ex.Message);
@@ -277,9 +278,9 @@ namespace VideoForensics.Data.Database.Tests
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
 
             // Act - Two concurrent CreateAsync calls with null case number
-            Task<ForensicCase> task1 = repo.CreateAsync(null, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
-            Task<ForensicCase> task2 = repo.CreateAsync(null, "Title 2", null, null, null, null, [], "user2@example.com", CancellationToken.None);
-            ForensicCase[] results = await Task.WhenAll(task1, task2);
+            var task1 = repo.CreateAsync(null, "Title 1", null, null, null, null, [], "user1@example.com", CancellationToken.None);
+            var task2 = repo.CreateAsync(null, "Title 2", null, null, null, null, [], "user2@example.com", CancellationToken.None);
+            var results = await Task.WhenAll(task1, task2);
 
             // Assert - Both should succeed with different case numbers
             Assert.Equal(2, results.Length);
@@ -296,7 +297,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             Location location = TestDataBuilder.BuildLocation(name: "Test Location");
             await _locationRepository.AddAsync(location, CancellationToken.None);
-
+            
             Device device = TestDataBuilder.BuildDevice(locationId: location.Id, name: "Test Device");
             await _deviceRepository.AddAsync(device, CancellationToken.None);
             return device.Id;
@@ -308,7 +309,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -339,7 +340,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -368,7 +369,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -397,7 +398,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -426,7 +427,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var startTime = new DateTime(2026, 10, 7, 14, 30, 0, DateTimeKind.Utc);
             var endTime = new DateTime(2026, 10, 7, 14, 40, 0, DateTimeKind.Utc);
             var jammingIncident = new JammingIncidentRecord
@@ -450,7 +451,7 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(startTime, created.ScopeFromUtc);
             Assert.Equal(endTime, created.ScopeToUtc);
             IReadOnlyList<Guid> deviceIds = await repo.GetDeviceIdsAsync(created.Id, CancellationToken.None);
-            _ = Assert.Single(deviceIds);
+            Assert.Single(deviceIds);
             Assert.Equal(deviceId, deviceIds[0]);
         }
 
@@ -460,7 +461,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -488,7 +489,7 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -514,11 +515,12 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Contains("Test notes", created.Description);
         }
 
+
         [Fact]
         public async Task CreateFromJammingDetectionAsync_WritesActionLogWithActorTypeSystem()
         {
             // Arrange
-            Guid deviceId = await SeedDevice();
+            var deviceId = await SeedDevice();
             var jammingIncident = new JammingIncidentRecord
             {
                 Id = Guid.NewGuid(),
@@ -564,10 +566,10 @@ namespace VideoForensics.Data.Database.Tests
             // Arrange: Pre-seed a case that will collide with the FIRST generated candidate
             var fakeTime = new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc));
             var repo = new CaseRepository(_fixture.Factory, _actionLogRepository, _loggerFactory.CreateLogger<CaseRepository>(), fakeTime);
-
+            
             // Pre-create the case that will collide with the first generated number
             string collidingNumber = "manual-2026-10-07-14-35-0";
-            _ = await repo.CreateAsync(collidingNumber, "Colliding Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
+            await repo.CreateAsync(collidingNumber, "Colliding Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
 
             // Act - try to create another case that will first generate the same number
             ForensicCase created = await repo.CreateAsync(null, "Retried Case", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -588,7 +590,7 @@ namespace VideoForensics.Data.Database.Tests
             var tasks = Enumerable.Range(0, 10)
                 .Select(i => repo.CreateAsync(null, $"Parallel Case {i}", null, null, null, null, [], "user@example.com", CancellationToken.None))
                 .ToList();
-            ForensicCase[] results = await Task.WhenAll(tasks);
+            var results = await Task.WhenAll(tasks);
 
             // Assert - all 10 succeed with distinct numbers
             Assert.Equal(10, results.Length);
@@ -607,14 +609,14 @@ namespace VideoForensics.Data.Database.Tests
         {
             var conn = new SqliteConnection("DataSource=:memory:");
             await conn.OpenAsync();
-            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
             await using (var setup = new VideoForensicsDbContext(plain))
             {
                 _ = await setup.Database.EnsureCreatedAsync();
             }
 
             var interceptor = new RaceInterceptor(() => new VideoForensicsDbContext(plain), RaceNow) { Armed = armed };
-            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
+            var racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
             var factory = new SimpleFactory(racing);
             var repo = new CaseRepository(factory, new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(), new FakeTimeProvider(RaceNow));
@@ -630,7 +632,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task CreateAsync_InsertTimeUniqueViolation_RetriesWithNextIndex()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync();
+            var (repo, conn, interceptor) = await BuildRacingRepoAsync();
             await using (conn)
             {
                 ForensicCase created = await repo.CreateAsync(null, "Raced", null, null, null, null, [], "user@example.com", CancellationToken.None);
@@ -644,7 +646,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task CreateFromJammingDetectionAsync_InsertTimeUniqueViolation_KeepsDetectedPrefix()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync(armed: false);
+            var (repo, conn, interceptor) = await BuildRacingRepoAsync(armed: false);
             await using (conn)
             {
                 Guid deviceId = await SeedDeviceAsync(conn);
@@ -673,10 +675,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task CreateAsync_ForeignKeyFailure_IsNotRetriedOrSwallowed()
         {
-            (CaseRepository? repo, SqliteConnection? conn, _) = await BuildRacingRepoAsync(armed: false);
+            var (repo, conn, _) = await BuildRacingRepoAsync(armed: false);
             await using (conn)
             {
-                _ = await Assert.ThrowsAsync<DbUpdateException>(
+                await Assert.ThrowsAsync<DbUpdateException>(
                     () => repo.CreateAsync(null, "Bad device", null, null, null, null, [Guid.NewGuid()], "user@example.com", CancellationToken.None));
 
                 Assert.Empty(await CaseNumbersAsync(conn));
@@ -686,10 +688,10 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task CreateAsync_ExplicitDuplicateAtInsertTime_ThrowsDbUpdateWithoutRetry()
         {
-            (CaseRepository? repo, SqliteConnection? conn, RaceInterceptor? interceptor) = await BuildRacingRepoAsync();
+            var (repo, conn, interceptor) = await BuildRacingRepoAsync();
             await using (conn)
             {
-                _ = await Assert.ThrowsAsync<DbUpdateException>(
+                await Assert.ThrowsAsync<DbUpdateException>(
                     () => repo.CreateAsync("EXPLICIT-RACE-1", "Explicit", null, null, null, null, [], "user@example.com", CancellationToken.None));
 
                 Assert.True(interceptor.Fired);
@@ -700,19 +702,16 @@ namespace VideoForensics.Data.Database.Tests
         private async Task<Guid> SeedDeviceAsync(SqliteConnection conn)
         {
             var factory = new SimpleFactory(new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options);
-            Location loc = TestDataBuilder.BuildLocation(name: "Race Location");
+            var loc = TestDataBuilder.BuildLocation(name: "Race Location");
             await new LocationRepository(factory, _loggerFactory.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
-            Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Race Device");
+            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Race Device");
             await new DeviceRepository(factory, _loggerFactory.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
         private sealed class SimpleFactory(DbContextOptions<VideoForensicsDbContext> options) : IDbContextFactory<VideoForensicsDbContext>
         {
-            public VideoForensicsDbContext CreateDbContext()
-            {
-                return new(options);
-            }
+            public VideoForensicsDbContext CreateDbContext() => new(options);
         }
 
         /// <summary>On the first save that adds a case, inserts a competing case with the same number from another context.</summary>
@@ -762,9 +761,6 @@ namespace VideoForensics.Data.Database.Tests
             _fixedTime = fixedTime;
         }
 
-        public override DateTimeOffset GetUtcNow()
-        {
-            return new(_fixedTime, TimeSpan.Zero);
-        }
+        public override DateTimeOffset GetUtcNow() => new(_fixedTime, TimeSpan.Zero);
     }
 }

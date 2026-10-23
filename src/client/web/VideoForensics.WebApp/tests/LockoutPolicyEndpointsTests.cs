@@ -1,23 +1,18 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 using Moq;
-
-using System.Reflection;
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Auth;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -27,7 +22,7 @@ namespace VideoForensics.WebApp.Tests
         private static HttpContext CreateAuthenticatedHttpContext(Guid operatorId, OperatorRole role = OperatorRole.SuperAdmin)
         {
             var context = new DefaultHttpContext();
-            Claim[] claims = new[]
+            var claims = new[]
             {
                 new Claim(VideoForensicsClaimTypes.OperatorId, operatorId.ToString()),
                 new Claim(ClaimTypes.Role, role.ToString()),
@@ -55,7 +50,7 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<INetworkTierResolver> MockNetworkTierResolver()
         {
             var mock = new Mock<INetworkTierResolver>();
-            _ = mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
+            mock.Setup(r => r.ResolveClientIp(It.IsAny<HttpContext>())).Returns("127.0.0.1");
             return mock;
         }
 
@@ -63,15 +58,15 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetLockoutPolicy_ReturnsCurrentSettings()
         {
             // Arrange
-            LockoutPolicySettings settings = CreateDefaultSettings();
+            var settings = CreateDefaultSettings();
             var repository = new Mock<ILockoutPolicySettingsRepository>();
-            _ = repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(settings);
 
-            HttpContext context = CreateAuthenticatedHttpContext(Guid.NewGuid());
+            var context = CreateAuthenticatedHttpContext(Guid.NewGuid());
 
             // Act
-            object result = await LockoutPolicyEndpointsInvoker.GetAsync(repository.Object, CancellationToken.None);
+            var result = await LockoutPolicyEndpointsInvoker.GetAsync(repository.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -83,7 +78,7 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            LockoutPolicySettings settings = CreateDefaultSettings();
+            var settings = CreateDefaultSettings();
             var request = new UpdateLockoutPolicySettingsRequest(
                 MaxFailedAttempts: 10,
                 LockoutDurationMinutes: 30,
@@ -92,21 +87,21 @@ namespace VideoForensics.WebApp.Tests
             );
 
             var repository = new Mock<ILockoutPolicySettingsRepository>();
-            _ = repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(settings);
-            _ = repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(operatorId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(operatorId);
 
             // Act
-            object result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
+            var result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
                 request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -122,27 +117,27 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var operatorId = Guid.NewGuid();
-            LockoutPolicySettings settings = CreateDefaultSettings();
+            var settings = CreateDefaultSettings();
             var request = new UpdateLockoutPolicySettingsRequest(10, 30, null, false);
 
             var repository = new Mock<ILockoutPolicySettingsRepository>();
             LockoutPolicySettings? capturedSettings = null;
-            _ = repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(settings);
-            _ = repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
                 .Callback<LockoutPolicySettings, CancellationToken>((s, ct) => capturedSettings = s)
                 .Returns(Task.CompletedTask);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(operatorId);
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(operatorId);
 
             // Act
-            _ = await LockoutPolicyEndpointsInvoker.UpdateAsync(
+            await LockoutPolicyEndpointsInvoker.UpdateAsync(
                 request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
@@ -173,19 +168,19 @@ namespace VideoForensics.WebApp.Tests
                 AutoBanDurationMinutes: durationMinutes);
 
             var repository = new Mock<ILockoutPolicySettingsRepository>();
-            _ = repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateDefaultSettings());
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(Guid.NewGuid());
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(Guid.NewGuid());
 
             // Act
             object result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
                 request, repository.Object, auditLog.Object, tierResolver.Object, context, CancellationToken.None);
 
             // Assert
-            IStatusCodeHttpResult statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var statusResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status400BadRequest, statusResult.StatusCode);
             repository.Verify(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -206,19 +201,19 @@ namespace VideoForensics.WebApp.Tests
 
             var repository = new Mock<ILockoutPolicySettingsRepository>();
             LockoutPolicySettings? capturedSettings = null;
-            _ = repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateDefaultSettings());
-            _ = repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
+            repository.Setup(r => r.UpsertAsync(It.IsAny<LockoutPolicySettings>(), It.IsAny<CancellationToken>()))
                 .Callback<LockoutPolicySettings, CancellationToken>((s, ct) => capturedSettings = s)
                 .Returns(Task.CompletedTask);
 
             var auditLog = new Mock<ISecurityAuditLogger>();
-            _ = auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+            auditLog.Setup(a => a.LogAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
                 It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            Mock<INetworkTierResolver> tierResolver = MockNetworkTierResolver();
-            HttpContext context = CreateAuthenticatedHttpContext(Guid.NewGuid());
+            var tierResolver = MockNetworkTierResolver();
+            var context = CreateAuthenticatedHttpContext(Guid.NewGuid());
 
             // Act
             object result = await LockoutPolicyEndpointsInvoker.UpdateAsync(
@@ -230,7 +225,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(4, capturedSettings.AutoBanDistinctAccountThreshold);
             Assert.Equal(90, capturedSettings.AutoBanWindowMinutes);
             Assert.Equal(2880, capturedSettings.AutoBanDurationMinutes);
-            IStatusCodeHttpResult okResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
+            var okResult = Assert.IsAssignableFrom<IStatusCodeHttpResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
         }
 
@@ -256,8 +251,8 @@ namespace VideoForensics.WebApp.Tests
 
         private static IEndpointRouteBuilder BuildAndMap()
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            _ = builder.Host.UseDefaultServiceProvider(options =>
+            var builder = WebApplication.CreateBuilder();
+            builder.Host.UseDefaultServiceProvider(options =>
             {
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
@@ -279,7 +274,7 @@ namespace VideoForensics.WebApp.Tests
     {
         public static async Task<object> GetAsync(ILockoutPolicySettingsRepository repository, CancellationToken ct)
         {
-            MethodInfo? method = typeof(LockoutPolicyEndpoints)
+            var method = typeof(LockoutPolicyEndpoints)
                 .GetMethod("GetAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -287,12 +282,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find GetAsync method");
-            }
 
-            object? result = method.Invoke(null, [repository, ct]);
-            return await result;
+            var result = method.Invoke(null, [repository, ct]);
+            return await (dynamic)result;
         }
 
         public static async Task<object> UpdateAsync(
@@ -303,7 +296,7 @@ namespace VideoForensics.WebApp.Tests
             HttpContext context,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(LockoutPolicyEndpoints)
+            var method = typeof(LockoutPolicyEndpoints)
                 .GetMethod("UpdateAsync",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -312,12 +305,10 @@ namespace VideoForensics.WebApp.Tests
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find UpdateAsync method");
-            }
 
-            object? result = method.Invoke(null, [request, repository, auditLog, tierResolver, context, ct]);
-            return await result;
+            var result = method.Invoke(null, [request, repository, auditLog, tierResolver, context, ct]);
+            return await (dynamic)result;
         }
     }
 }

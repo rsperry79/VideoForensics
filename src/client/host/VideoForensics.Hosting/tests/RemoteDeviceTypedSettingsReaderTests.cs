@@ -4,6 +4,8 @@ using System.Text.Json;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests;
 
 public class RemoteDeviceTypedSettingsReaderTests
@@ -13,10 +15,7 @@ public class RemoteDeviceTypedSettingsReaderTests
         private readonly string _body;
         public Uri? RequestedUri { get; private set; }
 
-        public StubHandler(string body)
-        {
-            _body = body;
-        }
+        public StubHandler(string body) => _body = body;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -31,7 +30,7 @@ public class RemoteDeviceTypedSettingsReaderTests
     [Fact]
     public async Task RemoteDeviceTypedSettingsReader_GetAsync_CallsTypedRouteAndMapsRows()
     {
-        var deviceId = Guid.NewGuid();
+        Guid deviceId = Guid.NewGuid();
         var dto = new DeviceTypedSettingsDto(
             deviceId,
             new DeviceOfflineMotionDto(true, false, 5000, 360, 2, 30),
@@ -40,7 +39,7 @@ public class RemoteDeviceTypedSettingsReaderTests
         var handler = new StubHandler(JsonSerializer.Serialize(dto));
         var reader = new RemoteDeviceTypedSettingsReader(new HttpClient(handler) { BaseAddress = new Uri("https://server.test/") });
 
-        DeviceTypedSettings settings = await reader.GetAsync(deviceId, CancellationToken.None);
+        var settings = await reader.GetAsync(deviceId, CancellationToken.None);
 
         Assert.Equal($"https://server.test/api/v1/device-config/typed/{deviceId}", handler.RequestedUri!.ToString());
         Assert.Equal(5000, settings.OfflineMotion!.MaxUploadKb);

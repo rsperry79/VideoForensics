@@ -1,6 +1,8 @@
+using System.Net;
+
 using Microsoft.AspNetCore.SignalR.Client;
 
-using System.Net;
+using VideoForensics.Hosting;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -21,7 +23,7 @@ namespace VideoForensics.Hosting.Tests
 
             TimeSpan? delay = policy.NextRetryDelay(CreateContext(previousRetryCount));
 
-            _ = Assert.NotNull(delay);
+            Assert.NotNull(delay);
             Assert.True(delay <= MaxDelay);
         }
 

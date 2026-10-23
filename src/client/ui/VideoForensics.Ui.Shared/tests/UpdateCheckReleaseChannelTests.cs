@@ -1,21 +1,19 @@
-using Bunit;
+namespace VideoForensics.Ui.Shared.Tests;
 
+using System.Net.Http;
+using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
-
 using Moq;
-
 using Syncfusion.Blazor.DropDowns;
-
+using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for the release channel card on the update page. The card is shown only to Admin and above; only a
 /// SuperAdmin viewer gets the dropdown, and Admin sees the current channel as read-only text.
@@ -31,18 +29,18 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     public UpdateCheckReleaseChannelTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
 
-        _ = _updateCheck.Setup(s => s.GetState())
+        _updateCheck.Setup(s => s.GetState())
             .Returns(new UpdateCheckState(false, null, "1.0.0", null, null, null));
-        _ = Services.AddScoped(_ => _updateCheck.Object);
-        _ = Services.AddScoped(_ => _releaseChannel.Object);
+        Services.AddScoped(_ => _updateCheck.Object);
+        Services.AddScoped(_ => _releaseChannel.Object);
 
         _session = new PairedSessionState(JSInterop.JSRuntime);
-        _ = Services.AddScoped(_ => _session);
+        Services.AddScoped(_ => _session);
 
         SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("Server", true));
     }
@@ -54,20 +52,17 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         await _session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
     }
 
-    private IRenderedComponent<UpdateCheck> RenderPage()
-    {
-        return Render<UpdateCheck>();
-    }
+    private IRenderedComponent<UpdateCheck> RenderPage() => Render<UpdateCheck>();
 
     private IRenderedComponent<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>>? FindDropDown(IRenderedComponent<UpdateCheck> cut)
     {
-        IReadOnlyList<IRenderedComponent<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>>> all = cut.FindComponents<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>>();
+        var all = cut.FindComponents<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>>();
         return all.Count == 0 ? null : all[0];
     }
 
     private void SetupChannel(UpdateReleaseChannel current)
     {
-        _ = _releaseChannel.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
+        _releaseChannel.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(current);
     }
 
@@ -77,7 +72,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
     }
@@ -88,7 +83,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
         Assert.Null(FindDropDown(cut));
@@ -100,7 +95,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Testing);
         await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelTesting"], cut.Markup));
         Assert.Contains(Localizer["ReadOnlyChannelNote"], cut.Markup);
@@ -110,14 +105,14 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     public async Task UpdateCheck_SuperAdminSelectsDifferentChannel_SavesOnceWithoutButtonClick()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
-        _ = _releaseChannel.Setup(s => s.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, It.IsAny<CancellationToken>()))
+        _releaseChannel.Setup(s => s.SetReleaseChannelAsync(UpdateReleaseChannel.Testing, It.IsAny<CancellationToken>()))
             .ReturnsAsync(UpdateReleaseChannel.Testing);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
 
-        IRenderedComponent<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>> dropDown = FindDropDown(cut)!;
+        var dropDown = FindDropDown(cut)!;
         await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Testing));
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelSavedMessage"], cut.Markup));
@@ -132,10 +127,10 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
 
-        IRenderedComponent<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>> dropDown = FindDropDown(cut)!;
+        var dropDown = FindDropDown(cut)!;
         await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Stable));
 
         _releaseChannel.Verify(
@@ -149,11 +144,11 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
-        int cardIndex = cut.Markup.IndexOf(Localizer["ReleaseChannelTitle"].Value, StringComparison.Ordinal);
-        int buttonIndex = cut.Markup.IndexOf(Localizer["CheckNowButton"].Value, StringComparison.Ordinal);
+        var cardIndex = cut.Markup.IndexOf(Localizer["ReleaseChannelTitle"].Value, StringComparison.Ordinal);
+        var buttonIndex = cut.Markup.IndexOf(Localizer["CheckNowButton"].Value, StringComparison.Ordinal);
         Assert.True(buttonIndex >= 0);
         Assert.True(cardIndex < buttonIndex, "Release channel card must render before the check-now button.");
     }
@@ -161,11 +156,11 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     [Fact]
     public async Task UpdateCheck_ChannelLoadFails_ShowsLocalizedLoadFailedMessage()
     {
-        _ = _releaseChannel.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
+        _releaseChannel.Setup(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("boom"));
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelLoadFailed", "boom"], cut.Markup));
     }
@@ -176,7 +171,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.ReadOnly);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["CurrentVersionLabel"], cut.Markup));
         Assert.DoesNotContain(Localizer["ReleaseChannelTitle"], cut.Markup);
@@ -189,7 +184,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.Review);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["CurrentVersionLabel"], cut.Markup));
         Assert.DoesNotContain(Localizer["ReleaseChannelTitle"], cut.Markup);
@@ -202,7 +197,7 @@ public class UpdateCheckReleaseChannelTests : BunitContext
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.Admin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ReleaseChannelTitle"], cut.Markup));
         _releaseChannel.Verify(s => s.GetReleaseChannelAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -211,12 +206,12 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     [Fact]
     public async Task UpdateCheck_JustNowTimestamp_RendersLocalizedJustNow()
     {
-        _ = _updateCheck.Setup(s => s.GetState())
+        _updateCheck.Setup(s => s.GetState())
             .Returns(new UpdateCheckState(false, null, "1.0.0", null, DateTime.UtcNow.AddSeconds(-10), null));
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["JustNow"], cut.Markup));
     }
@@ -224,12 +219,12 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     [Fact]
     public async Task UpdateCheck_MinutesAgoTimestamp_RendersLocalizedPlural()
     {
-        _ = _updateCheck.Setup(s => s.GetState())
+        _updateCheck.Setup(s => s.GetState())
             .Returns(new UpdateCheckState(false, null, "1.0.0", null, DateTime.UtcNow.AddMinutes(-5).AddSeconds(-5), null));
         SetupChannel(UpdateReleaseChannel.Stable);
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["MinutesAgo", 5], cut.Markup));
     }
@@ -238,14 +233,14 @@ public class UpdateCheckReleaseChannelTests : BunitContext
     public async Task UpdateCheck_ChannelSaveFails_ShowsSaveFailedAndRevertsSelection()
     {
         SetupChannel(UpdateReleaseChannel.Stable);
-        _ = _releaseChannel.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
+        _releaseChannel.Setup(s => s.SetReleaseChannelAsync(It.IsAny<UpdateReleaseChannel>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("denied"));
         await SignInAsync(OperatorRole.SuperAdmin);
 
-        IRenderedComponent<UpdateCheck> cut = RenderPage();
+        var cut = RenderPage();
         cut.WaitForAssertion(() => Assert.NotNull(FindDropDown(cut)));
 
-        IRenderedComponent<SfDropDownList<UpdateReleaseChannel, KeyValuePair<UpdateReleaseChannel, string>>> dropDown = FindDropDown(cut)!;
+        var dropDown = FindDropDown(cut)!;
         await cut.InvokeAsync(() => dropDown.Instance.ValueChanged.InvokeAsync(UpdateReleaseChannel.Testing));
 
         cut.WaitForAssertion(() => Assert.Contains(Localizer["ChannelSaveFailed", "denied"], cut.Markup));

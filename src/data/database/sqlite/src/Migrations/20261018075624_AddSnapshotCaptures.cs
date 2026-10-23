@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "SnapshotCaptures",
                 columns: table => new
                 {
@@ -25,14 +26,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_SnapshotCaptures", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_SnapshotCaptures", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_SnapshotCaptures_DeviceHealths_DeviceHealthId",
                         column: x => x.DeviceHealthId,
                         principalTable: "DeviceHealths",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
-                    _ = table.ForeignKey(
+                    table.ForeignKey(
                         name: "FK_SnapshotCaptures_Devices_DeviceId",
                         column: x => x.DeviceId,
                         principalTable: "Devices",
@@ -40,12 +41,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_SnapshotCaptures_DeviceHealthId",
                 table: "SnapshotCaptures",
                 column: "DeviceHealthId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_SnapshotCaptures_DeviceId_CapturedAtUtc",
                 table: "SnapshotCaptures",
                 columns: new[] { "DeviceId", "CapturedAtUtc" });
@@ -54,7 +55,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "SnapshotCaptures");
         }
     }

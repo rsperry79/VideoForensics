@@ -1,13 +1,12 @@
+using VideoForensics.Core.Providers.Core;
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
 {
     public class SeasonalBaselineTests
     {
-        private static BaselineSample Sample(long bitrate, LightingMode mode, Season season, bool flagged = false)
-        {
-            return new(bitrate, mode, season, flagged);
-        }
+        private static BaselineSample Sample(long bitrate, LightingMode mode, Season season, bool flagged = false) =>
+            new(bitrate, mode, season, flagged);
 
         [Fact]
         public void Build_FlaggedClips_AreExcludedFromBaseline()
@@ -71,8 +70,8 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Build_SameSamplesInAnyOrder_GivesSameVersion()
         {
-            BaselineSample[] a = new[] { Sample(1_000_000, LightingMode.Day, Season.Summer), Sample(900_000, LightingMode.Ir, Season.Winter) };
-            BaselineSample[] b = new[] { a[1], a[0] };
+            var a = new[] { Sample(1_000_000, LightingMode.Day, Season.Summer), Sample(900_000, LightingMode.Ir, Season.Winter) };
+            var b = new[] { a[1], a[0] };
 
             Assert.Equal(SeasonalBaselineBuilder.Build(a).Version, SeasonalBaselineBuilder.Build(b).Version);
         }

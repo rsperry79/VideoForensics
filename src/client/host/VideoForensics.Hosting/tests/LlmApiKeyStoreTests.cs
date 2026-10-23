@@ -1,3 +1,7 @@
+using Moq;
+using VideoForensics.Data.Common.Contracts;
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class LlmApiKeyStoreTests
@@ -18,11 +22,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task SetApiKeyAsync_EncryptsBeforeStoring()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string plainApiKey = "sk-test-key-12345";
-            string encryptedKey = "encrypted_sk-test-key-12345";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var plainApiKey = "sk-test-key-12345";
+            var encryptedKey = "encrypted_sk-test-key-12345";
 
-            _ = encryptionMock
+            encryptionMock
                 .Setup(x => x.EncryptAsync(plainApiKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(encryptedKey);
 
@@ -47,22 +51,22 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDecryptedApiKeyAsync_DecryptsOnRead()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string plainApiKey = "sk-test-key-12345";
-            string encryptedKey = "encrypted_sk-test-key-12345";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var plainApiKey = "sk-test-key-12345";
+            var encryptedKey = "encrypted_sk-test-key-12345";
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(EncryptedApiKeySettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(encryptedKey);
 
-            _ = encryptionMock
+            encryptionMock
                 .Setup(x => x.DecryptAsync(encryptedKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(plainApiKey);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
+            var result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(plainApiKey, result);
@@ -76,16 +80,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDecryptedApiKeyAsync_ReturnsNullWhenNotStored()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(EncryptedApiKeySettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
+            var result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -99,16 +103,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDecryptedApiKeyAsync_ReturnsNullWhenEmptyString()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(EncryptedApiKeySettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(string.Empty);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
+            var result = await store.GetDecryptedApiKeyAsync(CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -122,7 +126,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ClearApiKeyAsync_DeletesEncryptedKeySetting()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
@@ -139,8 +143,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task SetProviderAsync_StoresProviderName()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string provider = "Anthropic";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var provider = "Anthropic";
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
@@ -157,17 +161,17 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetProviderAsync_ReturnsStoredProvider()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string provider = "Anthropic";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var provider = "Anthropic";
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(ProviderSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(provider);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetProviderAsync(CancellationToken.None);
+            var result = await store.GetProviderAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(provider, result);
@@ -177,16 +181,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetProviderAsync_ReturnsNullWhenNotSet()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(ProviderSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetProviderAsync(CancellationToken.None);
+            var result = await store.GetProviderAsync(CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -196,8 +200,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task SetModelAsync_StoresModelName()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string model = "claude-3-sonnet-20240229";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var model = "claude-3-sonnet-20240229";
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
@@ -214,17 +218,17 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetModelAsync_ReturnsStoredModel()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string model = "claude-3-sonnet-20240229";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var model = "claude-3-sonnet-20240229";
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(ModelSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(model);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetModelAsync(CancellationToken.None);
+            var result = await store.GetModelAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(model, result);
@@ -234,16 +238,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetModelAsync_ReturnsNullWhenNotSet()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(ModelSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetModelAsync(CancellationToken.None);
+            var result = await store.GetModelAsync(CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -253,8 +257,8 @@ namespace VideoForensics.Hosting.Tests
         public async Task SetBaseUrlAsync_StoresBaseUrl()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string baseUrl = "https://api.openai.com/v1";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var baseUrl = "https://api.openai.com/v1";
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
@@ -271,17 +275,17 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetBaseUrlAsync_ReturnsStoredBaseUrl()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
-            string baseUrl = "https://api.openai.com/v1";
+            var (settingsMock, encryptionMock) = CreateMocks();
+            var baseUrl = "https://api.openai.com/v1";
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(BaseUrlSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(baseUrl);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetBaseUrlAsync(CancellationToken.None);
+            var result = await store.GetBaseUrlAsync(CancellationToken.None);
 
             // Assert
             Assert.Equal(baseUrl, result);
@@ -291,16 +295,16 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetBaseUrlAsync_ReturnsNullWhenNotSet()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(BaseUrlSettingKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            string? result = await store.GetBaseUrlAsync(CancellationToken.None);
+            var result = await store.GetBaseUrlAsync(CancellationToken.None);
 
             // Assert
             Assert.Null(result);
@@ -310,7 +314,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task ClearAllAsync_DeletesAllLlmSettings()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
@@ -335,12 +339,12 @@ namespace VideoForensics.Hosting.Tests
         public async Task SetApiKeyAsync_PassesCancellationToken()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
             var cts = new CancellationTokenSource();
-            string plainApiKey = "test-key";
-            string encryptedKey = "encrypted";
+            var plainApiKey = "test-key";
+            var encryptedKey = "encrypted";
 
-            _ = encryptionMock
+            encryptionMock
                 .Setup(x => x.EncryptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(encryptedKey);
 
@@ -359,21 +363,21 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDecryptedApiKeyAsync_PassesCancellationToken()
         {
             // Arrange
-            (Mock<IAppSettingRepository>? settingsMock, Mock<ICredentialEncryptionProvider>? encryptionMock) = CreateMocks();
+            var (settingsMock, encryptionMock) = CreateMocks();
             var cts = new CancellationTokenSource();
 
-            _ = settingsMock
+            settingsMock
                 .Setup(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("encrypted-value");
 
-            _ = encryptionMock
+            encryptionMock
                 .Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("decrypted-value");
 
             var store = new LlmApiKeyStore(settingsMock.Object, encryptionMock.Object);
 
             // Act
-            _ = await store.GetDecryptedApiKeyAsync(cts.Token);
+            await store.GetDecryptedApiKeyAsync(cts.Token);
 
             // Assert
             settingsMock.Verify(

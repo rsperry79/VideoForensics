@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Repositories;
@@ -40,39 +41,34 @@ namespace VideoForensics.Data.Database.Tests
             _loggerFactory.Dispose();
         }
 
-        private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory)
-        {
-            return new(factory,
+        private CaseRepository BuildRepo(IDbContextFactory<VideoForensicsDbContext> factory) =>
+            new(factory,
                 new ActionLogRepository(factory, _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
                 new FakeTimeProvider(new DateTime(2026, 10, 7, 14, 35, 42, DateTimeKind.Utc)));
-        }
 
         private static async Task<Guid> SeedDeviceAsync(IDbContextFactory<VideoForensicsDbContext> factory, ILoggerFactory lf)
         {
-            Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
+            var loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await new LocationRepository(factory, lf.CreateLogger<LocationRepository>()).AddAsync(loc, CancellationToken.None);
-            Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
+            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
             await new DeviceRepository(factory, lf.CreateLogger<DeviceRepository>()).AddAsync(device, CancellationToken.None);
             return device.Id;
         }
 
-        private static JammingIncidentRecord NewIncident(Guid deviceId, JammingConfidenceLevel level, string? notes = null)
+        private static JammingIncidentRecord NewIncident(Guid deviceId, JammingConfidenceLevel level, string? notes = null) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                StartUtc = Start,
-                EndUtc = End,
-                AffectedEventCount = 7,
-                AverageDegradationDb = 8.5,
-                Confidence = level,
-                DetectedAtUtc = End,
-                Notes = notes,
-                Source = JammingIncidentSource.AutoDetected
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            StartUtc = Start,
+            EndUtc = End,
+            AffectedEventCount = 7,
+            AverageDegradationDb = 8.5,
+            Confidence = level,
+            DetectedAtUtc = End,
+            Notes = notes,
+            Source = JammingIncidentSource.AutoDetected
+        };
 
         private static async Task PersistIncidentAsync(IDbContextFactory<VideoForensicsDbContext> factory, JammingIncidentRecord incident)
         {
@@ -142,8 +138,8 @@ namespace VideoForensics.Data.Database.Tests
             ForensicCase second = await _cases.CreateFromJammingDetectionAsync(stale, CancellationToken.None);
 
             Assert.Equal(first.Id, second.Id);
-            _ = Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
-            _ = Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
         }
 
         [Fact]
@@ -195,7 +191,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             await using var conn = new SqliteConnection("DataSource=:memory:");
             await conn.OpenAsync();
-            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
             var plainFactory = new SimpleFactory(plain);
             await using (VideoForensicsDbContext init = plainFactory.CreateDbContext())
             {
@@ -206,7 +202,7 @@ namespace VideoForensics.Data.Database.Tests
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
             await PersistIncidentAsync(plainFactory, incident);
 
-            DbContextOptions<VideoForensicsDbContext> throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+            var throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
                 .UseSqlite(conn).AddInterceptors(new ThrowOnSaveInterceptor()).Options;
             CaseRepository failing = BuildRepo(new SimpleFactory(throwing));
 
@@ -236,11 +232,11 @@ namespace VideoForensics.Data.Database.Tests
             ForensicCase case2 = await _cases.CreateFromJammingDetectionAsync(staleCopy, CancellationToken.None);
 
             Assert.Equal(case1.Id, case2.Id);
-            _ = Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
-            _ = Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _cases.ListAsync(null, CancellationToken.None));
+            Assert.Single(await _alerts.ListAsync(null, CancellationToken.None));
 
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            _ = Assert.Single(await db.CaseDevices.Where(cd => cd.CaseId == case1.Id).ToListAsync());
+            Assert.Single(await db.CaseDevices.Where(cd => cd.CaseId == case1.Id).ToListAsync());
         }
 
         [Fact]
@@ -248,7 +244,7 @@ namespace VideoForensics.Data.Database.Tests
         {
             await using var conn = new SqliteConnection("DataSource=:memory:");
             await conn.OpenAsync();
-            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
             var plainFactory = new SimpleFactory(plain);
             await using (VideoForensicsDbContext init = plainFactory.CreateDbContext())
             {
@@ -259,7 +255,7 @@ namespace VideoForensics.Data.Database.Tests
             JammingIncidentRecord incident = NewIncident(deviceId, JammingConfidenceLevel.High);
             await PersistIncidentAsync(plainFactory, incident);
 
-            DbContextOptions<VideoForensicsDbContext> throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
+            var throwing = new DbContextOptionsBuilder<VideoForensicsDbContext>()
                 .UseSqlite(conn).AddInterceptors(new ThrowOnAlertInsertInterceptor()).Options;
             CaseRepository failing = BuildRepo(new SimpleFactory(throwing));
 
@@ -284,7 +280,7 @@ namespace VideoForensics.Data.Database.Tests
 
             var conn = new SqliteConnection("DataSource=:memory:");
             await conn.OpenAsync();
-            DbContextOptions<VideoForensicsDbContext> plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
+            var plain = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).Options;
             await using (VideoForensicsDbContext init = new(plain))
             {
                 _ = await init.Database.EnsureCreatedAsync();
@@ -294,9 +290,9 @@ namespace VideoForensics.Data.Database.Tests
             var plainFactory = new SimpleFactory(plain);
             var locRepo = new LocationRepository(plainFactory, _loggerFactory.CreateLogger<LocationRepository>());
             var devRepo = new DeviceRepository(plainFactory, _loggerFactory.CreateLogger<DeviceRepository>());
-            Location loc = TestDataBuilder.BuildLocation(name: "Jam Location");
+            var loc = TestDataBuilder.BuildLocation(name: "Jam Location");
             await locRepo.AddAsync(loc, CancellationToken.None);
-            Device device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
+            var device = TestDataBuilder.BuildDevice(locationId: loc.Id, name: "Jam Device");
             await devRepo.AddAsync(device, CancellationToken.None);
             deviceId = device.Id;
 
@@ -305,7 +301,7 @@ namespace VideoForensics.Data.Database.Tests
             await PersistIncidentAsync(plainFactory, incident);
 
             var interceptor = new CollisionInterceptor(() => new VideoForensicsDbContext(plain), fakeTime.GetUtcNow().UtcDateTime);
-            DbContextOptions<VideoForensicsDbContext> racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
+            var racing = new DbContextOptionsBuilder<VideoForensicsDbContext>().UseSqlite(conn).AddInterceptors(interceptor).Options;
             CaseRepository racingRepo = new(new SimpleFactory(racing),
                 new ActionLogRepository(new SimpleFactory(racing), _loggerFactory.CreateLogger<ActionLogRepository>()),
                 _loggerFactory.CreateLogger<CaseRepository>(),
@@ -333,19 +329,14 @@ namespace VideoForensics.Data.Database.Tests
 
         private sealed class SimpleFactory(DbContextOptions<VideoForensicsDbContext> options) : IDbContextFactory<VideoForensicsDbContext>
         {
-            public VideoForensicsDbContext CreateDbContext()
-            {
-                return new(options);
-            }
+            public VideoForensicsDbContext CreateDbContext() => new(options);
         }
 
         private sealed class ThrowOnSaveInterceptor : SaveChangesInterceptor
         {
             public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
                 DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
-            {
-                throw new InvalidOperationException("simulated save failure");
-            }
+                => throw new InvalidOperationException("simulated save failure");
         }
 
         private sealed class ThrowOnAlertInsertInterceptor : SaveChangesInterceptor
@@ -353,17 +344,21 @@ namespace VideoForensics.Data.Database.Tests
             public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
                 DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
             {
-                return eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added)
-                    ? throw new InvalidOperationException("simulated alert insert failure")
-                    : base.SavingChangesAsync(eventData, result, cancellationToken);
+                if (eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added))
+                {
+                    throw new InvalidOperationException("simulated alert insert failure");
+                }
+                return base.SavingChangesAsync(eventData, result, cancellationToken);
             }
 
             public override InterceptionResult<int> SavingChanges(
                 DbContextEventData eventData, InterceptionResult<int> result)
             {
-                return eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added)
-                    ? throw new InvalidOperationException("simulated alert insert failure")
-                    : base.SavingChanges(eventData, result);
+                if (eventData.Context!.ChangeTracker.Entries<Alert>().Any(e => e.State == EntityState.Added))
+                {
+                    throw new InvalidOperationException("simulated alert insert failure");
+                }
+                return base.SavingChanges(eventData, result);
             }
         }
 

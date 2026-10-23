@@ -1,5 +1,3 @@
-using VideoForensics.Data.Common.Entities;
-
 namespace VideoForensics.Core.Api.Contracts
 {
     /// <summary>
@@ -261,7 +259,7 @@ namespace VideoForensics.Core.Api.Contracts
         /// </summary>
         public static VideoForensics.Data.Common.Entities.CaseItem ToDomain(this CaseItemDto dto)
         {
-            CaseItemKind kind = Enum.Parse<VideoForensics.Data.Common.Entities.CaseItemKind>(dto.Kind);
+            var kind = Enum.Parse<VideoForensics.Data.Common.Entities.CaseItemKind>(dto.Kind);
             return new VideoForensics.Data.Common.Entities.CaseItem
             {
                 Id = dto.Id,

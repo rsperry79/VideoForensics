@@ -1,9 +1,8 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using VideoForensics.Ui.Shared.Layout;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Tests for <see cref="NavPathMatcher"/>, the pure helper extracted from
 /// MainLayout/MobileLayout's PathMatches so nav-highlight logic for query-string nav items
@@ -36,7 +35,7 @@ public class NavPathMatcher_Tests
         // Bug repro: before extraction, PathMatches only ever compared plain paths, so a nav item
         // like "/analyze?analysis=anomalies" could never match anything - not even the base
         // "/analyze" URI with no query at all.
-        Assert.False(NavPathMatcher.Matches("/analyze", string.Empty, "/analyze?analysis=anomalies"));
+        Assert.False(NavPathMatcher.Matches("/analyze", "", "/analyze?analysis=anomalies"));
     }
 
     [Fact]

@@ -36,19 +36,16 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static DeviceCapabilities Caps(Guid deviceId, bool? hasMotion = true, string? firmware = "1.2.3")
+        private static DeviceCapabilities Caps(Guid deviceId, bool? hasMotion = true, string? firmware = "1.2.3") => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                HasAudio = true,
-                HasMotionDetection = hasMotion,
-                HasNightVision = false,
-                FirmwareVersion = firmware,
-                SyncStatus = SyncStatus.Synced
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            HasAudio = true,
+            HasMotionDetection = hasMotion,
+            HasNightVision = false,
+            FirmwareVersion = firmware,
+            SyncStatus = SyncStatus.Synced
+        };
 
         [Fact]
         public async Task UpsertAsync_NewDevice_InsertsCapabilitiesFeaturesAndAlertsAndLinksFeaturesId()
@@ -104,7 +101,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertAsync_HealthId_LinksDeviceHealthId()
         {
-            var healthId = Guid.NewGuid();
+            Guid healthId = Guid.NewGuid();
 
             await _repository.UpsertAsync(_device.Id, healthId, null, null, null, CancellationToken.None);
 
@@ -117,7 +114,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertAsync_UnknownDevice_WritesNothing()
         {
-            var unknown = Guid.NewGuid();
+            Guid unknown = Guid.NewGuid();
 
             await _repository.UpsertAsync(unknown, Guid.NewGuid(), Caps(unknown), null, null, CancellationToken.None);
 

@@ -32,7 +32,7 @@ namespace VideoForensics.Data.Database.Repositories
         public async Task<CameraBitrateBaseline?> GetDeviceGlobalAsync(Guid deviceId, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            List<CameraBitrateBaseline> baselines = await db.CameraBitrateBaselines
+            var baselines = await db.CameraBitrateBaselines
                 .Where(b => b.DeviceId == deviceId)
                 .ToListAsync(ct);
 
@@ -66,12 +66,12 @@ namespace VideoForensics.Data.Database.Repositories
             try
             {
                 // Fetch all sessions for this device, then their samples for this hour/weekend bucket
-                List<Guid> deviceSessions = await db.LiveViewSessions
+                var deviceSessions = await db.LiveViewSessions
                     .Where(s => s.DeviceId == deviceId)
                     .Select(s => s.Id)
                     .ToListAsync(ct);
 
-                List<LiveViewTelemetrySample> samples = await db.LiveViewTelemetrySamples
+                var samples = await db.LiveViewTelemetrySamples
                     .Where(t => deviceSessions.Contains(t.SessionId)
                         && t.CapturedAtUtc.Hour == hourOfDay
                         && ((t.CapturedAtUtc.DayOfWeek == DayOfWeek.Saturday || t.CapturedAtUtc.DayOfWeek == DayOfWeek.Sunday) == isWeekend))
@@ -113,7 +113,14 @@ namespace VideoForensics.Data.Database.Repositories
                 baseline.MedianJitterTicks = medianJitter;
                 baseline.LastRecomputedAtUtc = DateTime.UtcNow;
 
-                _ = existing == null ? db.CameraBitrateBaselines.Add(baseline) : db.CameraBitrateBaselines.Update(baseline);
+                if (existing == null)
+                {
+                    _ = db.CameraBitrateBaselines.Add(baseline);
+                }
+                else
+                {
+                    _ = db.CameraBitrateBaselines.Update(baseline);
+                }
 
                 _ = await db.SaveChangesAsync(ct);
                 _logger.LogDebug("Recomputed bitrate baseline: Device {DeviceId}, Hour {HourOfDay}, IsWeekend {IsWeekend}, SampleCount {SampleCount}",

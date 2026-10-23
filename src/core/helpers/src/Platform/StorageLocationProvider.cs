@@ -44,20 +44,23 @@ public class StorageLocationProvider : IStorageLocationProvider
         }
 
         string? configuredLinux = GetConfiguredLinuxPath(category);
-        return configuredLinux is not null
-            ? configuredLinux
-            : category switch
-            {
-                StorageCategory.Database => "/var/lib/videoforensics/Database",
-                StorageCategory.Media => "/var/lib/videoforensics/media",
-                StorageCategory.TempDownload => "/var/lib/videoforensics/tmp",
-                StorageCategory.Logs => "/var/log/videoforensics",
-                StorageCategory.Reports => "/var/lib/videoforensics/reports",
-                StorageCategory.Backup => "/var/lib/videoforensics/backup",
-                StorageCategory.Keys => "/var/lib/videoforensics/keys",
-                StorageCategory.Exports => "/var/lib/videoforensics/exports",
-                _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
-            };
+        if (configuredLinux is not null)
+        {
+            return configuredLinux;
+        }
+
+        return category switch
+        {
+            StorageCategory.Database => "/var/lib/videoforensics/Database",
+            StorageCategory.Media => "/var/lib/videoforensics/media",
+            StorageCategory.TempDownload => "/var/lib/videoforensics/tmp",
+            StorageCategory.Logs => "/var/log/videoforensics",
+            StorageCategory.Reports => "/var/lib/videoforensics/reports",
+            StorageCategory.Backup => "/var/lib/videoforensics/backup",
+            StorageCategory.Keys => "/var/lib/videoforensics/keys",
+            StorageCategory.Exports => "/var/lib/videoforensics/exports",
+            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
+        };
     }
 
     /// <inheritdoc />
@@ -77,39 +80,33 @@ public class StorageLocationProvider : IStorageLocationProvider
 
     /// <summary>The registry value name for a category's path override, or null for categories that
     /// deliberately have no override (Keys).</summary>
-    public static string? GetRegistryValueName(StorageCategory category)
+    public static string? GetRegistryValueName(StorageCategory category) => category switch
     {
-        return category switch
-        {
-            StorageCategory.Database => "DatabasePath",
-            StorageCategory.Media => "MediaPath",
-            StorageCategory.TempDownload => "TempDownloadPath",
-            StorageCategory.Logs => "LogsPath",
-            StorageCategory.Reports => "ReportsPath",
-            StorageCategory.Backup => "BackupPath",
-            StorageCategory.Exports => "ExportsPath",
-            StorageCategory.Keys => null,
-            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
-        };
-    }
+        StorageCategory.Database => "DatabasePath",
+        StorageCategory.Media => "MediaPath",
+        StorageCategory.TempDownload => "TempDownloadPath",
+        StorageCategory.Logs => "LogsPath",
+        StorageCategory.Reports => "ReportsPath",
+        StorageCategory.Backup => "BackupPath",
+        StorageCategory.Exports => "ExportsPath",
+        StorageCategory.Keys => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
+    };
 
     /// <summary>The environment variable name for a category's path override on Linux, or null for
     /// categories that deliberately have no override (Keys).</summary>
-    public static string? GetEnvironmentVariableName(StorageCategory category)
+    public static string? GetEnvironmentVariableName(StorageCategory category) => category switch
     {
-        return category switch
-        {
-            StorageCategory.Database => "VIDEOFORENSICS_DATABASE_PATH",
-            StorageCategory.Media => "VIDEOFORENSICS_MEDIA_PATH",
-            StorageCategory.TempDownload => "VIDEOFORENSICS_TEMPDOWNLOAD_PATH",
-            StorageCategory.Logs => "VIDEOFORENSICS_LOGS_PATH",
-            StorageCategory.Reports => "VIDEOFORENSICS_REPORTS_PATH",
-            StorageCategory.Backup => "VIDEOFORENSICS_BACKUP_PATH",
-            StorageCategory.Exports => "VIDEOFORENSICS_EXPORTS_PATH",
-            StorageCategory.Keys => null,
-            _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
-        };
-    }
+        StorageCategory.Database => "VIDEOFORENSICS_DATABASE_PATH",
+        StorageCategory.Media => "VIDEOFORENSICS_MEDIA_PATH",
+        StorageCategory.TempDownload => "VIDEOFORENSICS_TEMPDOWNLOAD_PATH",
+        StorageCategory.Logs => "VIDEOFORENSICS_LOGS_PATH",
+        StorageCategory.Reports => "VIDEOFORENSICS_REPORTS_PATH",
+        StorageCategory.Backup => "VIDEOFORENSICS_BACKUP_PATH",
+        StorageCategory.Exports => "VIDEOFORENSICS_EXPORTS_PATH",
+        StorageCategory.Keys => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
+    };
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static string? GetConfiguredWindowsPath(StorageCategory category)

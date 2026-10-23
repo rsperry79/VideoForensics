@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -38,7 +38,7 @@ namespace VideoForensics.Hosting.Remote
             HttpResponseMessage response = await _httpClient.GetAsync("/api/devices-management/operators", ct);
             _ = response.EnsureSuccessStatusCode();
             List<OperatorSummaryDto>? dtos = await response.Content.ReadFromJsonAsync<List<OperatorSummaryDto>>(JsonOptions, ct);
-            return (dtos ?? [])
+            return (dtos ?? new List<OperatorSummaryDto>())
                 .Select(dto => new OperatorSummary(dto.Id, dto.DisplayName, dto.Active))
                 .ToList();
         }

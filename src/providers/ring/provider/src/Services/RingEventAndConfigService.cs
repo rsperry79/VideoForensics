@@ -1,6 +1,5 @@
-using Microsoft.Extensions.Logging;
-
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -34,8 +33,10 @@ namespace VideoForensics.Providers.Ring.Services
                 _logger.LogDebug("Fetching events for device from {StartDate} to {EndDate}",
                     startDate, endDate);
 
+#pragma warning disable CS0618
                 // Single-account UI flow: GetSession() returns the currently authenticated account
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -73,7 +74,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogDebug("Fetching configuration for device {DeviceId}", deviceId);
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -246,9 +249,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value)
-        {
-            return value.Replace('\r', '_').Replace('\n', '_');
-        }
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

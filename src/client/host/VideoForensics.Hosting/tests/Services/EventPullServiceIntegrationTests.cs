@@ -1,11 +1,11 @@
-using System.Collections.Concurrent;
-
-using VideoForensics.Core.Providers.Common.Contracts;
-
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
-
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using VideoForensics.Core.Providers.Common.Contracts;
+    using System.Collections.Concurrent;
+    using LocationEntity = VideoForensics.Data.Common.Entities.Location;
+    using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
+    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
     /// <summary>Integration tests for EventPullService with multi-account scenarios.</summary>
     public class EventPullServiceIntegrationTests
     {
@@ -20,7 +20,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var location2Id = Guid.NewGuid();
             var device1Id = Guid.NewGuid();
             var device2Id = Guid.NewGuid();
-            CancellationToken cancellationToken = CancellationToken.None;
+            var cancellationToken = CancellationToken.None;
 
             var account1 = new ProviderAccountEntity
             {
@@ -74,13 +74,13 @@ namespace VideoForensics.Hosting.Tests.Services
 
             var events1 = new List<DeviceEvent>
             {
-                new(
+                new DeviceEvent(
                     Id: "event-account1-1",
                     DeviceId: "device-account1",
                     EventType: "motion",
                     Timestamp: DateTime.UtcNow.AddMinutes(-10)
                 ),
-                new(
+                new DeviceEvent(
                     Id: "event-account1-2",
                     DeviceId: "device-account1",
                     EventType: "person",
@@ -90,7 +90,7 @@ namespace VideoForensics.Hosting.Tests.Services
 
             var events2 = new List<DeviceEvent>
             {
-                new(
+                new DeviceEvent(
                     Id: "event-account2-1",
                     DeviceId: "device-account2",
                     EventType: "motion",
@@ -100,8 +100,8 @@ namespace VideoForensics.Hosting.Tests.Services
 
             // Track which account was accessed with which accountId
             var accountIdCallTracker = new ConcurrentDictionary<Guid, List<string>>();
-            _ = accountIdCallTracker.TryAdd(account1Id, []);
-            _ = accountIdCallTracker.TryAdd(account2Id, []);
+            accountIdCallTracker.TryAdd(account1Id, new List<string>());
+            accountIdCallTracker.TryAdd(account2Id, new List<string>());
 
             // Setup mocks with different behavior per account
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
@@ -111,13 +111,13 @@ namespace VideoForensics.Hosting.Tests.Services
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Account 1 setup
-            _ = mockProviderAccountRepository
+            mockProviderAccountRepository
                 .Setup(r => r.GetAsync(account1Id, cancellationToken))
                 .ReturnsAsync(account1);
 
             DiscoveryStub.Wire(account1Id, location1, new[] { device1 }, mockDiscovery, mockLocationRepository, mockDeviceRepository);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetEventsAsync(
                     account1Id,
                     "device-account1",
@@ -129,19 +129,19 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Callback(() => accountIdCallTracker[account1Id].Add("GetEventsAsync"))
                 .ReturnsAsync(events1);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetDeviceConfigAsync(account1Id, "device-account1", cancellationToken))
                 .Callback(() => accountIdCallTracker[account1Id].Add("GetDeviceConfigAsync"))
                 .ReturnsAsync(new DeviceConfig("device-account1", true, 80, "always"));
 
             // Account 2 setup
-            _ = mockProviderAccountRepository
+            mockProviderAccountRepository
                 .Setup(r => r.GetAsync(account2Id, cancellationToken))
                 .ReturnsAsync(account2);
 
             DiscoveryStub.Wire(account2Id, location2, new[] { device2 }, mockDiscovery, mockLocationRepository, mockDeviceRepository);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetEventsAsync(
                     account2Id,
                     "device-account2",
@@ -153,7 +153,7 @@ namespace VideoForensics.Hosting.Tests.Services
                 .Callback(() => accountIdCallTracker[account2Id].Add("GetEventsAsync"))
                 .ReturnsAsync(events2);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetDeviceConfigAsync(account2Id, "device-account2", cancellationToken))
                 .Callback(() => accountIdCallTracker[account2Id].Add("GetDeviceConfigAsync"))
                 .ReturnsAsync(new DeviceConfig("device-account2", true, 75, "motion"));
@@ -167,9 +167,9 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull both accounts concurrently
-            Task<EventPullResult> task1 = sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
-            Task<EventPullResult> task2 = sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
-            _ = await Task.WhenAll(task1, task2);
+            var task1 = sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
+            var task2 = sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
+            await Task.WhenAll(task1, task2);
 
             // Assert: Each account's calls were made with correct accountId
             Assert.NotEmpty(accountIdCallTracker[account1Id]);
@@ -220,7 +220,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var device1Id = Guid.NewGuid();
             var device2Id = Guid.NewGuid();
             var device3Id = Guid.NewGuid();
-            CancellationToken cancellationToken = CancellationToken.None;
+            var cancellationToken = CancellationToken.None;
 
             var account1 = new ProviderAccountEntity
             {
@@ -257,22 +257,22 @@ namespace VideoForensics.Hosting.Tests.Services
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Account 1 setup (2 devices)
-            _ = mockProviderAccountRepository
+            mockProviderAccountRepository
                 .Setup(r => r.GetAsync(account1Id, cancellationToken))
                 .ReturnsAsync(account1);
 
             DiscoveryStub.Wire(account1Id, location1, new[] { device1, device2 }, mockDiscovery, mockLocationRepository, mockDeviceRepository);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetEventsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, cancellationToken))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<DeviceEvent>());
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetDeviceConfigAsync(It.IsAny<Guid>(), It.IsAny<string>(), cancellationToken))
                 .ReturnsAsync(new DeviceConfig("dummy", true, 80, "always"));
 
             // Account 2 setup (1 device)
-            _ = mockProviderAccountRepository
+            mockProviderAccountRepository
                 .Setup(r => r.GetAsync(account2Id, cancellationToken))
                 .ReturnsAsync(account2);
 
@@ -287,8 +287,8 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act
-            _ = await sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
-            _ = await sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
+            await sut.PullAccountEventsAsync(account1Id, null, null, cancellationToken);
+            await sut.PullAccountEventsAsync(account2Id, null, null, cancellationToken);
 
             // Assert: Verify Account 1 pulled from 2 devices
             mockEventAndConfigService.Verify(s => s.GetEventsAsync(
@@ -344,13 +344,13 @@ namespace VideoForensics.Hosting.Tests.Services
         public async Task PullAccountEventsAsync_MultipleAccountsConcurrent_AllCallsIsolated()
         {
             // Arrange: Setup 3 accounts to be pulled concurrently
-            Guid[] accountIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
-            CancellationToken cancellationToken = CancellationToken.None;
+            var accountIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+            var cancellationToken = CancellationToken.None;
             var callCounts = new ConcurrentDictionary<Guid, int>();
 
-            foreach (Guid accountId in accountIds)
+            foreach (var accountId in accountIds)
             {
-                _ = callCounts.TryAdd(accountId, 0);
+                callCounts.TryAdd(accountId, 0);
             }
 
             var mockEventAndConfigService = new Mock<IEventAndConfigService>();
@@ -360,7 +360,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
             // Setup all 3 accounts with minimal setup (just verify accountId isolation)
-            foreach (Guid accountId in accountIds)
+            foreach (var accountId in accountIds)
             {
                 var account = new ProviderAccountEntity
                 {
@@ -377,13 +377,13 @@ namespace VideoForensics.Hosting.Tests.Services
                 var location = new LocationEntity { Id = locationId, ProviderLocationId = $"loc-{accountId}", Name = "Location" };
                 var device = new DeviceEntity { Id = deviceId, LocationId = locationId, ProviderDeviceId = $"dev-{accountId}", Name = "Device", Type = "doorbell" };
 
-                _ = mockProviderAccountRepository
+                mockProviderAccountRepository
                     .Setup(r => r.GetAsync(accountId, cancellationToken))
                     .ReturnsAsync(account);
 
                 DiscoveryStub.Wire(accountId, location, new[] { device }, mockDiscovery, mockLocationRepository, mockDeviceRepository);
 
-                _ = mockEventAndConfigService
+                mockEventAndConfigService
                     .Setup(s => s.GetEventsAsync(
                         accountId,
                         $"dev-{accountId}",
@@ -393,9 +393,9 @@ namespace VideoForensics.Hosting.Tests.Services
                         cancellationToken
                     ))
                     .Callback(() => callCounts[accountId]++)
-                    .ReturnsAsync([]);
+                    .ReturnsAsync(new List<DeviceEvent>());
 
-                _ = mockEventAndConfigService
+                mockEventAndConfigService
                     .Setup(s => s.GetDeviceConfigAsync(accountId, $"dev-{accountId}", cancellationToken))
                     .ReturnsAsync(new DeviceConfig($"dev-{accountId}", true, 80, "always"));
             }
@@ -409,11 +409,11 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull all 3 accounts concurrently
-            Task<EventPullResult>[] tasks = accountIds.Select(id => sut.PullAccountEventsAsync(id, null, null, cancellationToken)).ToArray();
-            _ = await Task.WhenAll(tasks);
+            var tasks = accountIds.Select(id => sut.PullAccountEventsAsync(id, null, null, cancellationToken)).ToArray();
+            await Task.WhenAll(tasks);
 
             // Assert: Each account was called exactly once, demonstrating no cross-contamination
-            foreach (Guid accountId in accountIds)
+            foreach (var accountId in accountIds)
             {
                 Assert.Equal(1, callCounts[accountId]);
             }
@@ -427,7 +427,7 @@ namespace VideoForensics.Hosting.Tests.Services
             var accountId = Guid.NewGuid();
             var locationId = Guid.NewGuid();
             var deviceId = Guid.NewGuid();
-            CancellationToken cancellationToken = CancellationToken.None;
+            var cancellationToken = CancellationToken.None;
 
             var account = new ProviderAccountEntity
             {
@@ -447,13 +447,13 @@ namespace VideoForensics.Hosting.Tests.Services
             var mockProviderAccountRepository = new Mock<IProviderAccountRepository>();
             var mockDiscovery = new Mock<IDeviceDiscoveryService>();
 
-            _ = mockProviderAccountRepository
+            mockProviderAccountRepository
                 .Setup(r => r.GetAsync(accountId, cancellationToken))
                 .ReturnsAsync(account);
 
             DiscoveryStub.Wire(accountId, location, new[] { device }, mockDiscovery, mockLocationRepository, mockDeviceRepository);
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetEventsAsync(
                     accountId,
                     "device-123",
@@ -462,9 +462,9 @@ namespace VideoForensics.Hosting.Tests.Services
                     null,
                     cancellationToken
                 ))
-                .ReturnsAsync([]);
+                .ReturnsAsync(new List<DeviceEvent>());
 
-            _ = mockEventAndConfigService
+            mockEventAndConfigService
                 .Setup(s => s.GetDeviceConfigAsync(accountId, "device-123", cancellationToken))
                 .ReturnsAsync(new DeviceConfig("device-123", true, 80, "always"));
 
@@ -477,7 +477,7 @@ namespace VideoForensics.Hosting.Tests.Services
             );
 
             // Act: Pull single account (backward compatibility test)
-            _ = await sut.PullAccountEventsAsync(accountId, null, null, cancellationToken);
+            await sut.PullAccountEventsAsync(accountId, null, null, cancellationToken);
 
             // Assert: All expected methods were called
             mockProviderAccountRepository.Verify(r => r.GetAsync(accountId, cancellationToken), Times.Once);

@@ -81,10 +81,7 @@ namespace VideoForensics.Ui.Shared.Services
         /// </summary>
         /// <param name="widthPx">Viewport width in pixels.</param>
         /// <returns>True if width is less than 600px (mobile), false otherwise.</returns>
-        internal static bool DetermineIsMobile(double widthPx)
-        {
-            return widthPx < 600;
-        }
+        internal static bool DetermineIsMobile(double widthPx) => widthPx < 600;
 
         /// <summary>
         /// Disposes the DotNetObjectReference held for JS callbacks.

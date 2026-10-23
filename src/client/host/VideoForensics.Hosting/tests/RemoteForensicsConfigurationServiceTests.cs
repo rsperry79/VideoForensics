@@ -1,6 +1,8 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class RemoteForensicsConfigurationServiceTests
@@ -40,7 +42,7 @@ namespace VideoForensics.Hosting.Tests
 
             _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>
             {
-                _ = await service.LoadConfigurationAsync(string.Empty, CancellationToken.None);
+                _ = await service.LoadConfigurationAsync("", CancellationToken.None);
             });
 
             _ = await Assert.ThrowsAsync<NotSupportedException>(async () =>

@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceSettingChanges",
                 columns: table => new
                 {
@@ -23,10 +24,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceSettingChanges", x => x.Id);
+                    table.PrimaryKey("PK_DeviceSettingChanges", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceSettingChanges_DeviceId_ChangedAtUtc",
                 table: "DeviceSettingChanges",
                 columns: new[] { "DeviceId", "ChangedAtUtc" });
@@ -35,7 +36,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceSettingChanges");
         }
     }

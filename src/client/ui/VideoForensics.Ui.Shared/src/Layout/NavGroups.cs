@@ -208,7 +208,7 @@ namespace VideoForensics.Ui.Shared.Layout
             {
                 items.Add(new("Change Password", "/change-password"));
                 items.Add(new("My Passkeys", "/settings/passkeys"));
-
+                
                 // Add UI mode toggle if not locked
                 if (!ctx.UiModeLocked)
                 {
@@ -221,7 +221,7 @@ namespace VideoForensics.Ui.Shared.Layout
                         items.Add(new("Switch to Standard view", Action: "set-ui-mode:Standard"));
                     }
                 }
-
+                
                 items.Add(new("Sign Out", null)); // No path - handled by click handler
             }
             else

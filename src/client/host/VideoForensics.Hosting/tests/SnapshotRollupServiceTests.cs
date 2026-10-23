@@ -1,11 +1,17 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using Moq;
+
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
+using VideoForensics.Hosting.Services;
+
+using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
@@ -32,8 +38,8 @@ namespace VideoForensics.Hosting.Tests
         {
             _ = Directory.CreateDirectory(_root);
             _device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
-            _ = _locations.Setup(l => l.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync([_location]);
-            _ = _devices.Setup(d => d.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([_device]);
+            _locations.Setup(l => l.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Location> { _location });
+            _devices.Setup(d => d.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Device> { _device });
         }
 
         public void Dispose()
@@ -44,16 +50,13 @@ namespace VideoForensics.Hosting.Tests
             }
         }
 
-        private SnapshotRollupService Build()
-        {
-            return new(
+        private SnapshotRollupService Build() => new(
             _locations.Object,
             _devices.Object,
             _media.Object,
             _builder.Object,
             Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotRollupService>.Instance);
-        }
 
         private string WriteJpeg(string name)
         {
@@ -62,33 +65,25 @@ namespace VideoForensics.Hosting.Tests
             return path;
         }
 
-        private static MediaItem Snapshot(string path, DateTime recordedAt, string metadata = SnapshotMetadata)
+        private static MediaItem Snapshot(string path, DateTime recordedAt, string metadata = SnapshotMetadata) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = Guid.Empty,
-                FileName = Path.GetFileName(path),
-                FilePath = path,
-                MediaFormat = "jpg",
-                RecordedAtUtc = recordedAt,
-                Sha256Hash = "h",
-                MetadataJson = metadata,
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.Empty,
+            FileName = Path.GetFileName(path),
+            FilePath = path,
+            MediaFormat = "jpg",
+            RecordedAtUtc = recordedAt,
+            Sha256Hash = "h",
+            MetadataJson = metadata,
+        };
 
-        private void SetWindowRows(params MediaItem[] rows)
-        {
-            _ = _media.Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
-        }
+        private void SetWindowRows(params MediaItem[] rows) =>
+            _media.Setup(m => m.GetSnapshotsByDeviceAndDateRangeAsync(_device.Id, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
-        private void BuildSucceeds()
-        {
-            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+        private void BuildSucceeds() =>
+            _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => File.WriteAllBytes(r.OutputPath, [0]))
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
-        }
-
         [Fact]
         public async Task RollUp_SnapshotsInWindow_BuildsLoopHoldingEachFrameUntilTheNext()
         {
@@ -97,7 +92,7 @@ namespace VideoForensics.Hosting.Tests
             // The database returns rows oldest first, so the fake does too.
             SetWindowRows(Snapshot(first, From.AddMinutes(2)), Snapshot(second, From.AddMinutes(10)));
             TimelineVideoRequest? sent = null;
-            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+            _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
 
@@ -135,7 +130,7 @@ namespace VideoForensics.Hosting.Tests
                 Snapshot(real, From.AddMinutes(1)),
                 Snapshot(Path.Combine(_root, "gone.jpg"), From.AddMinutes(3)));
             TimelineVideoRequest? sent = null;
-            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+            _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
 
@@ -161,7 +156,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task RollUp_BuildFails_ReportsFailureWithoutRegisteringLoop()
         {
             SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
-            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+            _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TimelineVideoResult(false, null, "ffmpeg not found", 0));
 
             SnapshotRollupResult result = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
@@ -186,7 +181,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void WithinInterval_IsNotDue()
         {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
+            SyncSchedule schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
             schedule.LastRollupUtc = Now.AddMinutes(-14);
 
             Assert.False(ScheduleCalculator.IsRollupDue(schedule, Now));
@@ -195,7 +190,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public void AtInterval_IsDue()
         {
-            var schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
+            SyncSchedule schedule = SyncSchedule.CreateDefault(Guid.NewGuid());
             schedule.LastRollupUtc = Now.AddMinutes(-15);
 
             Assert.True(ScheduleCalculator.IsRollupDue(schedule, Now));

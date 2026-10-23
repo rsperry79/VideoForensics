@@ -346,8 +346,8 @@ namespace VideoForensics.Data.Database.Repositories
 
         public Task<IReadOnlyList<Device>> ListAsync(CancellationToken ct)
         {
-            var devices = _db.Devices.AsNoTracking().ToList();
-            var links = _db.ProviderAccountLocations
+            List<Device> devices = _db.Devices.AsNoTracking().ToList();
+            List<(Guid LocationId, string ProviderName)> links = _db.ProviderAccountLocations
                 .AsNoTracking()
                 .Select(l => new { l.LocationId, l.ProviderAccount!.ProviderName })
                 .AsEnumerable()
@@ -611,7 +611,7 @@ namespace VideoForensics.Data.Database.Repositories
             string? previousEntryHash = lastEntry?.EntryHash;
             DateTime timestampUtc = DateTime.UtcNow;
 
-            string canonicalString = $"{previousEntryHash ?? string.Empty}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? string.Empty}";
+            string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
             string entryHash = ComputeSha256Hash(canonicalString);
 
             var entry = new ActionLogEntry
@@ -660,7 +660,7 @@ namespace VideoForensics.Data.Database.Repositories
                     return Task.FromResult(false);
                 }
 
-                string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? string.Empty}";
+                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
                 if (entry.EntryHash != ComputeSha256Hash(canonicalString))
                 {
                     return Task.FromResult(false);

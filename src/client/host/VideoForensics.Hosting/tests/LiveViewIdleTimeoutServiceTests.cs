@@ -1,10 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Moq;
+
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
+using VideoForensics.Core.Providers.Common.Contracts;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -68,7 +73,7 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Session last extended 10 minutes ago - past the 5-minute timeout
-            LiveViewSession session = MakeLiveViewSession(
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 deviceId: deviceId,
                 operatorId: operatorId,
@@ -93,7 +98,7 @@ namespace VideoForensics.Hosting.Tests
             var sessionId = Guid.NewGuid();
 
             // Session last extended 2 minutes ago - within the 5-minute timeout
-            LiveViewSession session = MakeLiveViewSession(
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 state: LiveViewSessionState.Active,
                 lastExtendedAtUtc: DateTime.UtcNow.AddMinutes(-2),
@@ -117,7 +122,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Sustained session last extended 10 minutes ago - past the idle timeout
             // but should be ignored because it's sustained (not Active state)
-            LiveViewSession session = MakeLiveViewSession(
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 state: LiveViewSessionState.Sustained,
                 lastExtendedAtUtc: DateTime.UtcNow.AddMinutes(-10),
@@ -144,8 +149,8 @@ namespace VideoForensics.Hosting.Tests
             var operatorId = Guid.NewGuid();
 
             // Sustained session for 90 minutes - past the 60-minute safety valve
-            DateTime sustainedSince = DateTime.UtcNow.AddMinutes(-90);
-            LiveViewSession session = MakeLiveViewSession(
+            var sustainedSince = DateTime.UtcNow.AddMinutes(-90);
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 deviceId: deviceId,
                 operatorId: operatorId,
@@ -172,8 +177,8 @@ namespace VideoForensics.Hosting.Tests
             var deviceId = Guid.NewGuid();
             var operatorId = Guid.NewGuid();
 
-            DateTime sustainedSince = DateTime.UtcNow.AddMinutes(-90);
-            LiveViewSession session = MakeLiveViewSession(
+            var sustainedSince = DateTime.UtcNow.AddMinutes(-90);
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 deviceId: deviceId,
                 operatorId: operatorId,
@@ -211,7 +216,7 @@ namespace VideoForensics.Hosting.Tests
             var sessionId = Guid.NewGuid();
 
             // Sustained session for 1000 minutes (unlimited mode should never stop)
-            LiveViewSession session = MakeLiveViewSession(
+            var session = MakeLiveViewSession(
                 id: sessionId,
                 state: LiveViewSessionState.Sustained,
                 sustainedSinceUtc: DateTime.UtcNow.AddMinutes(-1000),
@@ -249,13 +254,13 @@ namespace VideoForensics.Hosting.Tests
             var session1Id = Guid.NewGuid();
             var session2Id = Guid.NewGuid();
 
-            LiveViewSession session1 = MakeLiveViewSession(
+            var session1 = MakeLiveViewSession(
                 id: session1Id,
                 state: LiveViewSessionState.Active,
                 lastExtendedAtUtc: DateTime.UtcNow.AddMinutes(-10),
                 isSustained: false);
 
-            LiveViewSession session2 = MakeLiveViewSession(
+            var session2 = MakeLiveViewSession(
                 id: session2Id,
                 state: LiveViewSessionState.Active,
                 lastExtendedAtUtc: DateTime.UtcNow.AddMinutes(-10),
@@ -265,7 +270,7 @@ namespace VideoForensics.Hosting.Tests
                 .ReturnsAsync([session1, session2]);
 
             // First stop throws, second should still be attempted
-            int callCount = 0;
+            var callCount = 0;
             _ = sessionService.Setup(s => s.StopAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Callback(() =>
                 {

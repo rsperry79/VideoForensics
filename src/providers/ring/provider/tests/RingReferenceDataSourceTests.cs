@@ -12,10 +12,7 @@ namespace VideoForensics.Providers.Ring.Tests
     {
         private readonly IRingModelCatalog _catalog = new RingModelCatalog();
 
-        private RingReferenceDataSource Source()
-        {
-            return new(_catalog);
-        }
+        private RingReferenceDataSource Source() => new(_catalog);
 
         [Fact]
         public void Name_And_Version_MatchTheCatalog()
@@ -40,7 +37,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             ReferenceDataSet data = Source().GetDataSet();
 
-            var features = data.ModelFeatures
+            List<string> features = data.ModelFeatures
                 .Where(l => l.DeviceModelKind == "chime_pro_v2")
                 .Select(l => l.FeatureCode)
                 .OrderBy(c => c, StringComparer.Ordinal)
@@ -54,7 +51,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             ReferenceDataSet data = Source().GetDataSet();
 
-            var features = data.ModelFeatures
+            List<string> features = data.ModelFeatures
                 .Where(l => l.DeviceModelKind == "doorbell_v4")
                 .Select(l => l.FeatureCode)
                 .ToList();
@@ -66,8 +63,8 @@ namespace VideoForensics.Providers.Ring.Tests
         public void GetDataSet_EveryLinkPointsAtAModelAndAFeature()
         {
             ReferenceDataSet data = Source().GetDataSet();
-            var kinds = data.Models.Select(m => m.Kind).ToHashSet(StringComparer.Ordinal);
-            var codes = data.Features.Select(f => f.Code).ToHashSet(StringComparer.Ordinal);
+            HashSet<string> kinds = data.Models.Select(m => m.Kind).ToHashSet(StringComparer.Ordinal);
+            HashSet<string> codes = data.Features.Select(f => f.Code).ToHashSet(StringComparer.Ordinal);
 
             Assert.All(data.ModelFeatures, l =>
             {

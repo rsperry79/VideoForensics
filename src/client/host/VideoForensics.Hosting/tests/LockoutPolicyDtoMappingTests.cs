@@ -1,5 +1,6 @@
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {

@@ -1,12 +1,10 @@
-using Microsoft.Extensions.DependencyInjection;
-
-using System.Collections.Specialized;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-
-using VideoForensics.Client.Common.Contracts;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 
 namespace VideoForensics.Hosting.Tests
@@ -29,29 +27,24 @@ namespace VideoForensics.Hosting.Tests
             return (new RemoteLogViewerService(http), seen);
         }
 
-        private static HttpResponseMessage Sse(string body)
+        private static HttpResponseMessage Sse(string body) => new(HttpStatusCode.OK)
         {
-            return new(HttpStatusCode.OK)
+            Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(body)))
             {
-                Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(body)))
-                {
-                    Headers = { ContentType = new("text/event-stream") }
-                }
-            };
-        }
+                Headers = { ContentType = new("text/event-stream") }
+            }
+        };
 
         private static string Frame(long seq, string message)
-        {
-            return $"id: {seq}\ndata: {{\"sequence\":{seq},\"timestampUtc\":\"2026-01-01T00:00:00+00:00\",\"level\":\"Information\",\"category\":\"Cat\",\"message\":\"{message}\",\"exception\":null}}\n\n";
-        }
+            => $"id: {seq}\ndata: {{\"sequence\":{seq},\"timestampUtc\":\"2026-01-01T00:00:00+00:00\",\"level\":\"Information\",\"category\":\"Cat\",\"message\":\"{message}\",\"exception\":null}}\n\n";
 
         [Fact]
         public async Task GetPageAsync_MapsJsonToLogPage()
         {
             var dto = new LogPageDto(
-                [new(7, new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero), "Error", "Cat", "boom", "ex")],
+                new List<LogEntryDto> { new(7, new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero), "Error", "Cat", "boom", "ex") },
                 LatestSequence: 9, Truncated: true);
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(dto) });
+            var (service, _) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(dto) });
 
             LogPage page = await service.GetPageAsync(EmptyQuery, CancellationToken.None);
 
@@ -64,7 +57,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetPageAsync_BuildsEscapedQueryString()
         {
-            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
+            var (service, seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
             });
@@ -75,7 +68,7 @@ namespace VideoForensics.Hosting.Tests
             HttpRequestMessage req = Assert.Single(seen);
             Assert.Equal(HttpMethod.Get, req.Method);
             Assert.Equal("/api/v1/logs", req.RequestUri!.AbsolutePath);
-            NameValueCollection parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+            var parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
             Assert.Equal("Warning", parsed["minLevel"]);
             Assert.Equal(search, parsed["search"]);
             Assert.Equal("42", parsed["afterSequence"]);
@@ -87,7 +80,7 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task GetPageAsync_OmitsUnsetQueryValues()
         {
-            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
+            var (service, seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
             });
@@ -101,7 +94,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetPageAsync_SendsNoStepUpHeader()
         {
             // Reads are not step-up gated, so the client never attaches a step-up token.
-            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
+            var (service, seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
             });
@@ -116,7 +109,7 @@ namespace VideoForensics.Hosting.Tests
         {
             using var cts = new CancellationTokenSource();
             bool cancelledAtHandler = false;
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, ct) =>
+            var (service, _) = Create((_, ct) =>
             {
                 cts.Cancel();
                 cancelledAtHandler = ct.IsCancellationRequested;
@@ -126,8 +119,7 @@ namespace VideoForensics.Hosting.Tests
                 };
             });
 
-            try
-            { _ = await service.GetPageAsync(EmptyQuery, cts.Token); }
+            try { _ = await service.GetPageAsync(EmptyQuery, cts.Token); }
             catch (OperationCanceledException) { }
 
             Assert.True(cancelledAtHandler);
@@ -138,7 +130,7 @@ namespace VideoForensics.Hosting.Tests
         {
             using var cts = new CancellationTokenSource();
             cts.Cancel();
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, ct) => { ct.ThrowIfCancellationRequested(); return new HttpResponseMessage(HttpStatusCode.OK); });
+            var (service, _) = Create((_, ct) => { ct.ThrowIfCancellationRequested(); return new HttpResponseMessage(HttpStatusCode.OK); });
 
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.GetPageAsync(EmptyQuery, cts.Token));
         }
@@ -149,9 +141,9 @@ namespace VideoForensics.Hosting.Tests
         [InlineData(HttpStatusCode.InternalServerError)]
         public async Task GetPageAsync_NonSuccess_ThrowsHttpRequestExceptionWithStatus(HttpStatusCode status)
         {
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, _) => new HttpResponseMessage(status));
+            var (service, _) = Create((_, _) => new HttpResponseMessage(status));
 
-            HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetPageAsync(EmptyQuery, CancellationToken.None));
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetPageAsync(EmptyQuery, CancellationToken.None));
             Assert.Equal(status, ex.StatusCode);
         }
 
@@ -161,12 +153,11 @@ namespace VideoForensics.Hosting.Tests
         [InlineData(HttpStatusCode.InternalServerError)]
         public async Task StreamAsync_NonSuccess_ThrowsHttpRequestExceptionWithStatus(HttpStatusCode status)
         {
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, _) => new HttpResponseMessage(status));
+            var (service, _) = Create((_, _) => new HttpResponseMessage(status));
 
-            HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
             {
-                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, CancellationToken.None))
-                { }
+                await foreach (LogEntry _ in service.StreamAsync(EmptyQuery, CancellationToken.None)) { }
             });
             Assert.Equal(status, ex.StatusCode);
         }
@@ -175,7 +166,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task StreamAsync_ParsesFramesInOrderAndSkipsHeartbeats()
         {
             string body = Frame(1, "one") + ": heartbeat\n\n" + Frame(2, "two") + ": heartbeat\n\n" + Frame(3, "three");
-            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => Sse(body));
+            var (service, seen) = Create((_, _) => Sse(body));
 
             var entries = new List<LogEntry>();
             await foreach (LogEntry e in service.StreamAsync(EmptyQuery, CancellationToken.None))
@@ -192,14 +183,13 @@ namespace VideoForensics.Hosting.Tests
         [Fact]
         public async Task StreamAsync_SendsResumeParamWithoutStepUpHeader()
         {
-            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => Sse(string.Empty));
+            var (service, seen) = Create((_, _) => Sse(""));
 
-            await foreach (LogEntry _ in service.StreamAsync(new LogQuery("Error", "x y&z", 55, 0), CancellationToken.None))
-            { }
+            await foreach (LogEntry _ in service.StreamAsync(new LogQuery("Error", "x y&z", 55, 0), CancellationToken.None)) { }
 
             HttpRequestMessage req = Assert.Single(seen);
             Assert.False(req.Headers.Contains("X-StepUp-Token"));
-            NameValueCollection parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri!.Query);
+            var parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri!.Query);
             Assert.Equal("55", parsed["afterSequence"]);
             Assert.Equal("x y&z", parsed["search"]);
             Assert.Equal("Error", parsed["minLevel"]);
@@ -210,7 +200,7 @@ namespace VideoForensics.Hosting.Tests
         public async Task StreamAsync_CancellingToken_StopsEnumeration()
         {
             using var cts = new CancellationTokenSource();
-            (RemoteLogViewerService? service, List<HttpRequestMessage> _) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
+            var (service, _) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StreamContent(new HangingStream(Encoding.UTF8.GetBytes(Frame(1, "one"))))
                 {
@@ -219,7 +209,7 @@ namespace VideoForensics.Hosting.Tests
             });
 
             var received = new List<long>();
-            var consume = Task.Run(async () =>
+            Task consume = Task.Run(async () =>
             {
                 await foreach (LogEntry e in service.StreamAsync(EmptyQuery, cts.Token))
                 {
@@ -236,30 +226,25 @@ namespace VideoForensics.Hosting.Tests
         public void AddVideoForensicsClientApi_ResolvesILogViewerService()
         {
             var services = new ServiceCollection();
-            _ = services.AddLogging();
-            _ = services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
-            _ = services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
-            _ = services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
+            services.AddLogging();
+            services.AddSingleton(new Moq.Mock<Microsoft.JSInterop.IJSRuntime>().Object);
+            services.AddSingleton<VideoForensics.Ui.Shared.Services.PairedSessionState>();
+            services.AddVideoForensicsClientApi(new Uri("http://localhost:5000"));
             using ServiceProvider provider = services.BuildServiceProvider();
 
             ILogViewerService service = provider.GetRequiredService<ILogViewerService>();
 
-            _ = Assert.IsType<RemoteLogViewerService>(service);
+            Assert.IsType<RemoteLogViewerService>(service);
         }
 
         private sealed class FakeHandler : HttpMessageHandler
         {
             private readonly Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> _respond;
 
-            public FakeHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> respond)
-            {
-                _respond = respond;
-            }
+            public FakeHandler(Func<HttpRequestMessage, CancellationToken, HttpResponseMessage> respond) => _respond = respond;
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(_respond(request, cancellationToken));
-            }
+                => Task.FromResult(_respond(request, cancellationToken));
         }
 
         /// <summary>Serves its bytes once, then blocks until the read is cancelled (an open, idle SSE connection).</summary>
@@ -267,53 +252,29 @@ namespace VideoForensics.Hosting.Tests
         {
             private readonly MemoryStream _initial;
 
-            public HangingStream(byte[] initial)
-            {
-                _initial = new MemoryStream(initial);
-            }
+            public HangingStream(byte[] initial) => _initial = new MemoryStream(initial);
 
             public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
                 int n = _initial.Read(buffer.Span);
-                if (n > 0)
-                {
-                    return n;
-                }
-
+                if (n > 0) return n;
                 await Task.Delay(Timeout.Infinite, cancellationToken);
                 return 0;
             }
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-            }
+                => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                throw new NotSupportedException();
-            }
-
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
             public override bool CanRead => true;
             public override bool CanSeek => false;
             public override bool CanWrite => false;
             public override long Length => throw new NotSupportedException();
             public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
             public override void Flush() { }
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotSupportedException();
-            }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }
 }

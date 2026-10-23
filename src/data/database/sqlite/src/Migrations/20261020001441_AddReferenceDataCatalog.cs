@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceFeatureDefinitions",
                 columns: table => new
                 {
@@ -19,10 +20,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceFeatureDefinitions", x => x.Code);
+                    table.PrimaryKey("PK_DeviceFeatureDefinitions", x => x.Code);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceModels",
                 columns: table => new
                 {
@@ -34,10 +35,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceModels", x => x.Kind);
+                    table.PrimaryKey("PK_DeviceModels", x => x.Kind);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "ReferenceDataVersions",
                 columns: table => new
                 {
@@ -47,10 +48,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_ReferenceDataVersions", x => x.SourceName);
+                    table.PrimaryKey("PK_ReferenceDataVersions", x => x.SourceName);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "DeviceModelFeatures",
                 columns: table => new
                 {
@@ -59,14 +60,14 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_DeviceModelFeatures", x => new { x.DeviceModelKind, x.FeatureCode });
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_DeviceModelFeatures", x => new { x.DeviceModelKind, x.FeatureCode });
+                    table.ForeignKey(
                         name: "FK_DeviceModelFeatures_DeviceFeatureDefinitions_FeatureCode",
                         column: x => x.FeatureCode,
                         principalTable: "DeviceFeatureDefinitions",
                         principalColumn: "Code",
                         onDelete: ReferentialAction.Cascade);
-                    _ = table.ForeignKey(
+                    table.ForeignKey(
                         name: "FK_DeviceModelFeatures_DeviceModels_DeviceModelKind",
                         column: x => x.DeviceModelKind,
                         principalTable: "DeviceModels",
@@ -74,12 +75,12 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceModelFeatures_FeatureCode",
                 table: "DeviceModelFeatures",
                 column: "FeatureCode");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_DeviceModels_Provider",
                 table: "DeviceModels",
                 column: "Provider");
@@ -88,16 +89,16 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceModelFeatures");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "ReferenceDataVersions");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceFeatureDefinitions");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "DeviceModels");
         }
     }

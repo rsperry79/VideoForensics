@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,7 +10,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_Events_DeviceId_OccurredAtUtc",
                 table: "Events",
                 columns: new[] { "DeviceId", "OccurredAtUtc" });
@@ -19,7 +19,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropIndex(
+            migrationBuilder.DropIndex(
                 name: "IX_Events_DeviceId_OccurredAtUtc",
                 table: "Events");
         }

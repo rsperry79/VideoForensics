@@ -1,6 +1,5 @@
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Core.Services;
-
 using Xunit;
 
 namespace VideoForensics.Data.Core.Tests

@@ -1,11 +1,10 @@
-using Microsoft.Extensions.Logging;
-
-using Moq;
-
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+
+using Microsoft.Extensions.Logging;
+using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -40,8 +39,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_CapturedDoorbotHistory_WritesEveryEventOnce()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -61,8 +60,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_CapturedVideoSearch_WritesEveryItemForTheAccount()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -84,8 +83,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_CapturedLocationEvents_WritesPageCursorAndEveryEvent()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -107,8 +106,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_CapturedLocationHistory_WritesPageCursorAndEveryItem()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -126,8 +125,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_CapturedAppLocationHistory_WritesEveryMessage()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -145,9 +144,9 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_DoorbotHistoryFails_LogsErrorNamingFeedAndOtherFeedsStillWrite()
         {
-            StubSessionHandler handler = CreateHandler();
+            var handler = CreateHandler();
             handler.Routes[DoorbotHistoryUrl] = (HttpStatusCode.InternalServerError, "{}");
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
 
             await SyncAsync(handler, writer, logger);
@@ -168,9 +167,9 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingEventHistorySync_GetLocationsAsync_LocationHistoryNotFound_LogsInformationAndSkipsWithoutWarning()
         {
-            StubSessionHandler handler = CreateHandler();
-            _ = handler.Routes.Remove(LocationHistoryUrl);
-            Mock<IRingEventHistoryWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            handler.Routes.Remove(LocationHistoryUrl);
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
 
             await SyncAsync(handler, writer, logger);
@@ -186,7 +185,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static async Task SyncAsync(StubSessionHandler handler, Mock<IRingEventHistoryWriter> writer, RecordingLogger logger)
         {
             RingDeviceDiscoveryService service = CreateService(handler, writer, logger, out Session session);
-            _ = await session.Authenticate();
+            await session.Authenticate();
             _ = await service.GetLocationsAsync(AccountId);
         }
 
@@ -230,10 +229,8 @@ namespace VideoForensics.Providers.Ring.Tests
             return writer;
         }
 
-        private static string ReadFixture(string name)
-        {
-            return File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
-        }
+        private static string ReadFixture(string name) =>
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
 
         /// <summary>Answers OAuth and the configured URLs exactly; anything else is a 404. Never reaches the network.</summary>
         private sealed class StubSessionHandler : HttpMessageHandler
@@ -241,17 +238,11 @@ namespace VideoForensics.Providers.Ring.Tests
             private readonly string _accessToken;
             private readonly List<string> _requestedUrls = [];
 
-            public StubSessionHandler(string accessToken)
-            {
-                _accessToken = accessToken;
-            }
+            public StubSessionHandler(string accessToken) => _accessToken = accessToken;
 
             public Dictionary<string, (HttpStatusCode Status, string Body)> Routes { get; } = [];
 
-            public int CountRequests(string url)
-            {
-                return _requestedUrls.Count(u => u == url);
-            }
+            public int CountRequests(string url) => _requestedUrls.Count(u => u == url);
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -279,20 +270,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public IReadOnlyList<(LogLevel Level, string Message)> Entries => _entries.ToArray();
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                return null;
-            }
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                return true;
-            }
+            public bool IsEnabled(LogLevel logLevel) => true;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
                 _entries.Enqueue((logLevel, formatter(state, exception)));
-            }
         }
     }
 }

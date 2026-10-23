@@ -1,12 +1,8 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
-using VideoForensics.Ui.Shared.Layout;
-using VideoForensics.Ui.Shared.Pages;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// The account page is split into tabs: Details (account card and remove), Sync (sync controls, last-sync times,
 /// history) and Cases. Each tab is its own routed page, and the tab bar links between them.
@@ -19,7 +15,7 @@ public class AccountTabsTests : AccountDetailsPageTestBase
         Account.LastSyncCompletedUtc = new DateTime(2026, 10, 19, 8, 30, 0, DateTimeKind.Utc);
         SetEmptyLists();
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LastSyncCompletedLabel"], cut.Markup));
         // Rendered in the machine zone here: no user zone is cascaded in this test.
@@ -32,7 +28,7 @@ public class AccountTabsTests : AccountDetailsPageTestBase
         Account.LastSyncCompletedUtc = null;
         SetEmptyLists();
 
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
+        var cut = RenderSync();
 
         cut.WaitForAssertion(() => Assert.Contains(Strings["LastSyncCompletedLabel"], cut.Markup));
         Assert.Contains(Strings["Never"], cut.Markup);
@@ -43,7 +39,7 @@ public class AccountTabsTests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        IRenderedComponent<AccountDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         Assert.Empty(cut.FindAll("#sync-history"));
         Assert.Empty(cut.FindAll("#attached-cases"));
@@ -54,7 +50,7 @@ public class AccountTabsTests : AccountDetailsPageTestBase
     [InlineData("/accounts/{Id:guid}/cases")]
     public void AccountTabRoutes_AreSuperAdminLocalLikeDetails(string route)
     {
-        Assert.True(VideoForensics.Ui.Shared.Layout.PageAccessRules.TryGetPolicy(route, out AccessPolicy policy));
+        Assert.True(VideoForensics.Ui.Shared.Layout.PageAccessRules.TryGetPolicy(route, out var policy));
         Assert.Equal(VideoForensics.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal, policy);
     }
 
@@ -63,7 +59,7 @@ public class AccountTabsTests : AccountDetailsPageTestBase
     {
         SetEmptyLists();
 
-        IRenderedComponent<AccountDetails> cut = RenderPage();
+        var cut = RenderPage();
 
         var hrefs = cut.FindAll("nav a").Select(a => a.GetAttribute("href")).ToList();
         Assert.Contains($"/accounts/{AccountId}/cases", hrefs);

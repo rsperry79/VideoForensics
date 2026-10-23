@@ -39,9 +39,7 @@ namespace VideoForensics.Core.Logging.Providers
         public void Dispose()
         {
             if (_disposed)
-            {
                 return;
-            }
 
             lock (_syncRoot)
             {
@@ -54,14 +52,10 @@ namespace VideoForensics.Core.Logging.Providers
         internal void WriteLog(LogEntry entry)
         {
             if (_disposed)
-            {
                 return;
-            }
 
             if (!OperatingSystem.IsWindows())
-            {
                 return; // No-op on non-Windows platforms
-            }
 
             lock (_syncRoot)
             {
@@ -71,7 +65,7 @@ namespace VideoForensics.Core.Logging.Providers
                 _circularBuffer.Enqueue(jsonLine);
                 if (_circularBuffer.Count > MaxBufferedEntries)
                 {
-                    _ = _circularBuffer.Dequeue();
+                    _circularBuffer.Dequeue();
                 }
 
                 // Attempt to write to pipe asynchronously
@@ -135,15 +129,17 @@ namespace VideoForensics.Core.Logging.Providers
                 // Attempt to connect with timeout (non-blocking if no client)
                 if (!_pipeServer.IsConnected)
                 {
-                    using var cts = new CancellationTokenSource(PipeConnectTimeoutMs);
-                    try
+                    using (var cts = new CancellationTokenSource(PipeConnectTimeoutMs))
                     {
-                        await _pipeServer.WaitForConnectionAsync(cts.Token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // No client waiting; that's fine, just return
-                        return;
+                        try
+                        {
+                            await _pipeServer.WaitForConnectionAsync(cts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // No client waiting; that's fine, just return
+                            return;
+                        }
                     }
                 }
 

@@ -1,9 +1,8 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using VideoForensics.Ui.Shared.Services.Time;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>Converts stored UTC instants into the signed-in user's zone for display.</summary>
 public class UserTimeZoneTests
 {
@@ -14,7 +13,7 @@ public class UserTimeZoneTests
     {
         var zone = new UserTimeZone(Plus9);
 
-        DateTime local = zone.ToLocal(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc));
+        var local = zone.ToLocal(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc));
 
         Assert.Equal(new DateTime(2026, 10, 20, 21, 0, 0), local);
     }
@@ -24,7 +23,7 @@ public class UserTimeZoneTests
     {
         var zone = new UserTimeZone(Plus9);
 
-        DateTime local = zone.ToLocal(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Unspecified));
+        var local = zone.ToLocal(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Unspecified));
 
         Assert.Equal(new DateTime(2026, 10, 20, 21, 0, 0), local);
     }
@@ -34,7 +33,7 @@ public class UserTimeZoneTests
     {
         var zone = new UserTimeZone(TimeZoneInfo.Utc);
         var utc = new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
-        DateTime local = utc.ToLocalTime();
+        var local = utc.ToLocalTime();
 
         Assert.Equal(utc, zone.ToLocal(local));
     }
@@ -42,7 +41,7 @@ public class UserTimeZoneTests
     [Fact]
     public void Unavailable_FallsBackToUtc()
     {
-        UserTimeZone zone = UserTimeZone.Unavailable;
+        var zone = UserTimeZone.Unavailable;
 
         Assert.Equal(TimeZoneInfo.Utc, zone.Zone);
         Assert.Equal(new DateTime(2026, 10, 20, 12, 0, 0), zone.ToLocal(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc)));
@@ -53,7 +52,7 @@ public class UserTimeZoneTests
     {
         var zone = new UserTimeZone(Plus9);
 
-        string text = zone.Format(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc), "HH:mm");
+        var text = zone.Format(new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc), "HH:mm");
 
         Assert.Equal("21:00", text);
     }

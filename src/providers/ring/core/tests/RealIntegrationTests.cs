@@ -101,7 +101,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            _ = _session.Username;
+            string username = _session.Username;
             Uri oauthUrl = _session.OAuthUrl;
             Uri baseUrl = _session.BaseUrl;
 

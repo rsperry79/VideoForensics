@@ -1,18 +1,13 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
-using Syncfusion.Blazor.Grids;
-
+using Xunit;
+using Syncfusion.Blazor;
 using VideoForensics.Ui.Shared.Components.Inspector;
 using VideoForensics.Ui.Shared.Services.Inspector;
-
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class ForensicGrid_ToolbarItem_Tests
 {
@@ -24,7 +19,7 @@ public class ForensicGrid_ToolbarItem_Tests
     [InlineData(null, false)]
     public void IsCsvExportItem_IdentifiesCsvExportToolbar(string? itemId, bool expected)
     {
-        bool result = ForensicGrid<object>.IsCsvExportItem(itemId);
+        var result = ForensicGrid<object>.IsCsvExportItem(itemId);
         Assert.Equal(expected, result);
     }
 }
@@ -34,7 +29,7 @@ public class ForensicGrid_CsvExportProperties_Tests
     [Fact]
     public void BuildCsvExportProperties_WithNullFileName_DefaultsToExportCsv()
     {
-        ExcelExportProperties properties = ForensicGrid<object>.BuildCsvExportProperties(null);
+        var properties = ForensicGrid<object>.BuildCsvExportProperties(null);
 
         Assert.Equal("export.csv", properties.FileName);
     }
@@ -42,7 +37,7 @@ public class ForensicGrid_CsvExportProperties_Tests
     [Fact]
     public void BuildCsvExportProperties_WithWhitespaceFileName_DefaultsToExportCsv()
     {
-        ExcelExportProperties properties = ForensicGrid<object>.BuildCsvExportProperties("   ");
+        var properties = ForensicGrid<object>.BuildCsvExportProperties("   ");
 
         Assert.Equal("export.csv", properties.FileName);
     }
@@ -50,7 +45,7 @@ public class ForensicGrid_CsvExportProperties_Tests
     [Fact]
     public void BuildCsvExportProperties_WithCustomFileName_UsesProvidedFileName()
     {
-        ExcelExportProperties properties = ForensicGrid<object>.BuildCsvExportProperties("evidence-log.csv");
+        var properties = ForensicGrid<object>.BuildCsvExportProperties("evidence-log.csv");
 
         Assert.Equal("evidence-log.csv", properties.FileName);
     }
@@ -61,7 +56,7 @@ public class ForensicGrid_Tests : BunitContext
     private class TestItem
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = "";
         public DateTime CreatedAt { get; set; }
     }
 
@@ -83,31 +78,22 @@ public class ForensicGrid_Tests : BunitContext
         {
         }
 
-        protected override Task OnInitializedAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnInitializedAsync() => Task.CompletedTask;
 
-        protected override Task OnParametersSetAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnParametersSetAsync() => Task.CompletedTask;
 
-        protected override Task OnAfterRenderAsync(bool firstRender)
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnAfterRenderAsync(bool firstRender) => Task.CompletedTask;
     }
 
     public ForensicGrid_Tests()
     {
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<TestItem>, TestSfGrid>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<TestItem>>();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<TestItem>, TestSfGrid>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<TestItem>>();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
@@ -119,16 +105,14 @@ public class ForensicGrid_Tests : BunitContext
         var item = new TestItem { Id = 1, Name = "Test Item", CreatedAt = DateTime.UtcNow };
         InspectorModel? mappedModel = null;
 
-        static InspectorModel MapToInspector(TestItem row)
-        {
-            return new(
+        InspectorModel MapToInspector(TestItem row) =>
+            new(
                 Title: row.Name,
                 Fields: new { row.Id, row.Name });
-        }
 
-        _ = Services.AddScoped(_ => state);
+        Services.AddScoped(_ => state);
 
-        IRenderedComponent<ForensicGrid<TestItem>> component = Render<ForensicGrid<TestItem>>(
+        var component = Render<ForensicGrid<TestItem>>(
             parameters => parameters
                 .Add(p => p.DataSource, new[] { item })
                 .Add(p => p.ToInspector, MapToInspector));
@@ -153,9 +137,9 @@ public class ForensicGrid_Tests : BunitContext
         var state = new InspectorState();
         var item = new TestItem { Id = 1, Name = "Test Item", CreatedAt = DateTime.UtcNow };
 
-        _ = Services.AddScoped(_ => state);
+        Services.AddScoped(_ => state);
 
-        IRenderedComponent<ForensicGrid<TestItem>> component = Render<ForensicGrid<TestItem>>(
+        var component = Render<ForensicGrid<TestItem>>(
             parameters => parameters
                 .Add(p => p.DataSource, new[] { item })
                 .Add(p => p.ToInspector, null));
@@ -176,12 +160,12 @@ public class ForensicGrid_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         var item = new TestItem { Id = 1, Name = "Test Item", CreatedAt = DateTime.UtcNow };
-        bool callbackInvoked = false;
+        var callbackInvoked = false;
         TestItem? callbackItem = null;
 
-        _ = Services.AddScoped(_ => state);
+        Services.AddScoped(_ => state);
 
-        IRenderedComponent<ForensicGrid<TestItem>> component = Render<ForensicGrid<TestItem>>(
+        var component = Render<ForensicGrid<TestItem>>(
             parameters => parameters
                 .Add(p => p.DataSource, new[] { item })
                 .Add(p => p.OnRowSelected, EventCallback.Factory.Create<TestItem>(
@@ -209,18 +193,16 @@ public class ForensicGrid_Tests : BunitContext
         // Arrange
         var state = new InspectorState();
         var item = new TestItem { Id = 1, Name = "Test Item", CreatedAt = DateTime.UtcNow };
-        bool callbackInvoked = false;
+        var callbackInvoked = false;
 
-        static InspectorModel MapToInspector(TestItem row)
-        {
-            return new(
+        InspectorModel MapToInspector(TestItem row) =>
+            new(
                 Title: row.Name,
                 Fields: new { row.Id, row.Name });
-        }
 
-        _ = Services.AddScoped(_ => state);
+        Services.AddScoped(_ => state);
 
-        IRenderedComponent<ForensicGrid<TestItem>> component = Render<ForensicGrid<TestItem>>(
+        var component = Render<ForensicGrid<TestItem>>(
             parameters => parameters
                 .Add(p => p.DataSource, new[] { item })
                 .Add(p => p.ToInspector, MapToInspector)
@@ -252,9 +234,9 @@ public class ForensicGrid_Tests : BunitContext
             new { Text = "Option 2", Id = "opt2" }
         };
 
-        _ = Services.AddScoped(_ => state);
+        Services.AddScoped(_ => state);
 
-        IRenderedComponent<ForensicGrid<TestItem>> component = Render<ForensicGrid<TestItem>>(
+        var component = Render<ForensicGrid<TestItem>>(
             parameters => parameters
                 .Add(p => p.DataSource, new[] { item })
                 .Add(p => p.ContextMenuItems, contextMenuItems));
@@ -263,4 +245,5 @@ public class ForensicGrid_Tests : BunitContext
         Assert.NotNull(component.Instance.ContextMenuItems);
         Assert.Equal(2, component.Instance.ContextMenuItems.Count);
     }
+
 }

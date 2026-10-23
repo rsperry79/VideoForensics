@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Ui.Shared.Services.Inspector;
 
@@ -16,46 +15,45 @@ public static class SelfTestInspectorMapper
     public static InspectorModel ToInspector(SelfTestCallDto call)
     {
         // Title: endpoint name and pass/fail status
-        string title = $"{call.DisplayName} · {(call.Success ? "OK" : "FAILED")}";
+        var title = $"{call.DisplayName} · {(call.Success ? "OK" : "FAILED")}";
 
         // Fields: call summary with metadata (without bodies)
         var fields = new
         {
             call.Endpoint,
             call.Target,
-            call.DurationMs,
-            call.Success,
-            call.Error,
-            call.SessionMethod,
-            call.Destructive,
-            call.Physical,
+            DurationMs = call.DurationMs,
+            Success = call.Success,
+            Error = call.Error,
+            SessionMethod = call.SessionMethod,
+            Destructive = call.Destructive,
+            Physical = call.Physical,
             RestoreInfo = new
             {
-                call.RestoreAttempted,
-                call.RestoreSuccess,
-                call.RestoreError,
-                call.RestoreSkippedReason
+                RestoreAttempted = call.RestoreAttempted,
+                RestoreSuccess = call.RestoreSuccess,
+                RestoreError = call.RestoreError,
+                RestoreSkippedReason = call.RestoreSkippedReason
             },
             SchemaIssuesCount = call.SchemaIssues.Count,
             HttpCallsCount = call.HttpCalls.Count
         };
 
         // RawJson: body of first test-phase HTTP call
-        string? rawJson = call.HttpCalls
+        var rawJson = call.HttpCalls
             .FirstOrDefault(h => h.Phase == "test")
             ?.Body;
 
         // Provenance: one entry per HTTP call (Phase Method StatusCode + URL + truncation info)
         var provenance = new List<KeyValuePair<string, string>>();
-        foreach (SelfTestHttpCallDto httpCall in call.HttpCalls)
+        foreach (var httpCall in call.HttpCalls)
         {
-            string key = $"{httpCall.Phase} {httpCall.Method} {httpCall.StatusCode}";
-            string value = httpCall.Url;
+            var key = $"{httpCall.Phase} {httpCall.Method} {httpCall.StatusCode}";
+            var value = httpCall.Url;
             if (httpCall.BodyTruncated)
             {
                 value += $" (truncated, {httpCall.ResponseBodyBytes} bytes)";
             }
-
             provenance.Add(new KeyValuePair<string, string>(key, value));
         }
 
@@ -63,7 +61,7 @@ public static class SelfTestInspectorMapper
             Title: title,
             Fields: fields,
             RawJson: rawJson,
-            Related: [],
+            Related: new List<InspectorLink>(),
             Provenance: provenance,
             Pin: null);
     }
@@ -80,7 +78,7 @@ public static class SelfTestInspectorMapper
 
         try
         {
-            _ = JsonDocument.Parse(text);
+            JsonDocument.Parse(text);
             return true;
         }
         catch

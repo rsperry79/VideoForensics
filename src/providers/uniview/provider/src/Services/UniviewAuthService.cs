@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
-using VideoForensics.Data.Common.Contracts;
 
 namespace VideoForensics.Providers.Uniview.Services
 {
@@ -24,10 +24,8 @@ namespace VideoForensics.Providers.Uniview.Services
         /// <summary>
         /// Masks a sensitive string for logging (shows first and last character, hides the rest).
         /// </summary>
-        private static string MaskForLog(string value)
-        {
-            return string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
-        }
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
 
         public UniviewAuthService(
             ILogger<UniviewAuthService> logger,

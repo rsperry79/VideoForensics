@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class TwoFactorPendingAuthCacheTests
@@ -35,7 +37,7 @@ namespace VideoForensics.Hosting.Tests
             Guid? result = cache.TryTake(token);
 
             // Assert
-            _ = Assert.NotNull(result);
+            Assert.NotNull(result);
             Assert.Equal(operatorId, result.Value);
 
             memoryCache.Dispose();
@@ -56,7 +58,7 @@ namespace VideoForensics.Hosting.Tests
             Guid? second = cache.TryTake(token);
 
             // Assert
-            _ = Assert.NotNull(first);
+            Assert.NotNull(first);
             Assert.Equal(operatorId, first.Value);
             Assert.Null(second);
 
@@ -110,12 +112,12 @@ namespace VideoForensics.Hosting.Tests
             var ids = Enumerable.Range(0, 50).Select(_ => Guid.NewGuid()).ToList();
 
             // Act: Concurrent stores
-            Task[] tasks = ids.Select(id => Task.Run(() =>
+            var tasks = ids.Select(id => Task.Run(() =>
             {
                 string token = cache.Store(id);
                 lock (tokens)
                 {
-                    _ = tokens.Add(token);
+                    tokens.Add(token);
                 }
             })).ToArray();
 

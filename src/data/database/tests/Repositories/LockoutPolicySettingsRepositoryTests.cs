@@ -1,4 +1,4 @@
-using VideoForensics.Data.Common.Entities;
+﻿using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -93,7 +93,7 @@ namespace VideoForensics.Data.Database.Tests.Repositories
             Assert.Equal(10, retrieved.LockoutDurationMinutes);
             Assert.Equal("KP,IR,SY", retrieved.BlockedCountryCodes);
             Assert.True(retrieved.FailClosedOnLookupError);
-            _ = Assert.NotNull(retrieved.UpdatedByOperatorId);
+            Assert.NotNull(retrieved.UpdatedByOperatorId);
         }
 
         [Fact]

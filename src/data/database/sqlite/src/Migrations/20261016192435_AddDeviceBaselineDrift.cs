@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,19 +11,19 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.AddColumn<double>(
+            migrationBuilder.AddColumn<double>(
                 name: "BaselineDriftChangeFraction",
                 table: "Devices",
                 type: "REAL",
                 nullable: true);
 
-            _ = migrationBuilder.AddColumn<DateTime>(
+            migrationBuilder.AddColumn<DateTime>(
                 name: "BaselineDriftCheckedAtUtc",
                 table: "Devices",
                 type: "TEXT",
                 nullable: true);
 
-            _ = migrationBuilder.AddColumn<bool>(
+            migrationBuilder.AddColumn<bool>(
                 name: "BaselineDriftDetected",
                 table: "Devices",
                 type: "INTEGER",
@@ -32,15 +33,15 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "BaselineDriftChangeFraction",
                 table: "Devices");
 
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "BaselineDriftCheckedAtUtc",
                 table: "Devices");
 
-            _ = migrationBuilder.DropColumn(
+            migrationBuilder.DropColumn(
                 name: "BaselineDriftDetected",
                 table: "Devices");
         }

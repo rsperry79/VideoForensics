@@ -1,5 +1,4 @@
 using VideoForensics.Core.Providers.Common.Services;
-
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Common.Tests
@@ -43,7 +42,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
         {
             var pacer = new MediaRequestPacer(() => Start, (_, _) => Task.CompletedTask, TimeSpan.FromSeconds(1));
 
-            _ = pacer.RecordRateLimited(null);
+            pacer.RecordRateLimited(null);
 
             Assert.Equal(TimeSpan.FromSeconds(2), pacer.MinInterval);
             Assert.Equal(TimeSpan.FromSeconds(1), pacer.RateLimitPenalty);
@@ -129,7 +128,7 @@ namespace VideoForensics.Core.Providers.Common.Tests
             var pacer = new MediaRequestPacer(() => now, (delay, _) => { delays.Add(delay); now += delay; return Task.CompletedTask; }, TimeSpan.FromSeconds(1));
 
             await pacer.WaitTurnAsync(CancellationToken.None);
-            _ = pacer.RecordRateLimited(TimeSpan.FromSeconds(7));
+            pacer.RecordRateLimited(TimeSpan.FromSeconds(7));
             await pacer.WaitTurnAsync(CancellationToken.None);
 
             Assert.Equal(TimeSpan.FromSeconds(7), Assert.Single(delays));

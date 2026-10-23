@@ -1,3 +1,4 @@
+using VideoForensics.Core.Providers.Core;
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
@@ -30,7 +31,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
             Assert.Equal(40, stats.ClippedPeakCount);        // cumulative: the largest reported count
             Assert.Equal(-70.0, stats.NoiseFloorDb);         // the last reported floor
             Assert.Equal(2, stats.SilentGapCount);           // 0.1 s gap is below the minimum dropout length
-            _ = Assert.NotNull(stats.SilenceFraction);
+            Assert.NotNull(stats.SilenceFraction);
             Assert.Equal(0.16, stats.SilenceFraction.Value, 3); // all silent time counts: (0.5 + 1.0 + 0.1) / 10; only the gap count drops short gaps
         }
 
@@ -46,7 +47,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void Parse_NoAstatsOutput_ReturnsNull()
         {
-            Assert.Null(AudioStatsParser.Parse(string.Empty, Silence, durationSeconds: 10.0));
+            Assert.Null(AudioStatsParser.Parse("", Silence, durationSeconds: 10.0));
         }
 
         [Fact]
@@ -59,7 +60,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 lavfi.astats.Overall.Noise_floor=-inf
                 """;
 
-            AudioClipStats? stats = AudioStatsParser.Parse(silent, string.Empty, durationSeconds: 10.0);
+            AudioClipStats? stats = AudioStatsParser.Parse(silent, "", durationSeconds: 10.0);
 
             Assert.NotNull(stats);
             Assert.Equal(0, stats.ClippedPeakCount);
@@ -73,7 +74,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 lavfi.astats.Overall.Peak_level=-0.02
                 """;
 
-            AudioClipStats? stats = AudioStatsParser.Parse(clipped, string.Empty, durationSeconds: 10.0);
+            AudioClipStats? stats = AudioStatsParser.Parse(clipped, "", durationSeconds: 10.0);
 
             Assert.NotNull(stats);
             Assert.Equal(50, stats.ClippedPeakCount);
@@ -87,7 +88,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
                 lavfi.astats.Overall.Peak_level=-12.0
                 """;
 
-            AudioClipStats? stats = AudioStatsParser.Parse(quiet, string.Empty, durationSeconds: 10.0);
+            AudioClipStats? stats = AudioStatsParser.Parse(quiet, "", durationSeconds: 10.0);
 
             Assert.NotNull(stats);
             Assert.Equal(0, stats.ClippedPeakCount);
@@ -103,7 +104,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
             Assert.NotNull(stats);
             Assert.Equal(1, stats.SilentGapCount);
-            _ = Assert.NotNull(stats.SilenceFraction);
+            Assert.NotNull(stats.SilenceFraction);
             Assert.Equal(0.3, stats.SilenceFraction.Value, 3);
         }
     }

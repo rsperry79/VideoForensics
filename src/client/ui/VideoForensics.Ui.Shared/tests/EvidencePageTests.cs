@@ -1,38 +1,31 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
-
 using Moq;
-
-using Syncfusion.Blazor.Grids;
-using Syncfusion.Blazor.Navigations;
-
 using System.Reactive.Subjects;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Ui.Shared.Contracts;
+using Xunit;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using Device = VideoForensics.Data.Common.Entities.Device;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Models;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Ui.Shared.Components.Evidence;
-using VideoForensics.Ui.Shared.Components.Inspector;
-using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Evidence;
 using VideoForensics.Ui.Shared.Services.Inspector;
 using VideoForensics.Ui.Shared.Services.Scope;
+using VideoForensics.Ui.Shared.Components.Inspector;
+using Syncfusion.Blazor.Grids;
+using Syncfusion.Blazor.Navigations;
 
-using Xunit;
-
-using Device = VideoForensics.Data.Common.Entities.Device;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Shared scenario setup for Evidence page tests: one device, one event with a linked image
 /// media item, and one media-only video item, both occurring on the same UTC day (the event is
@@ -102,52 +95,40 @@ public abstract class EvidencePageTestBase : BunitContext
         {
         }
 
-        protected override Task OnInitializedAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnInitializedAsync() => Task.CompletedTask;
 
-        protected override Task OnParametersSetAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnParametersSetAsync() => Task.CompletedTask;
 
-        protected override Task OnAfterRenderAsync(bool firstRender)
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task OnAfterRenderAsync(bool firstRender) => Task.CompletedTask;
 
         // The real SfGrid<T>.ShouldRender() touches internal Syncfusion state this double never
         // initializes (we skip its real lifecycle above), and throws once a sibling's state change
         // (e.g. the evidence-actions reason textbox) triggers a second SetParametersAsync pass on
         // this component. Only exercised once actions were added to the Grid view.
-        protected override bool ShouldRender()
-        {
-            return true;
-        }
+        protected override bool ShouldRender() => true;
     }
 
     protected EvidencePageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        BunitJSModuleInterop mediaViewerModule = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
-        _ = mediaViewerModule.SetupVoid("focusElement", _ => true);
-        _ = mediaViewerModule.SetupVoid("setPlaybackRate", _ => true);
-        _ = mediaViewerModule.SetupVoid("stepFrame", _ => true);
-        _ = mediaViewerModule.SetupVoid("togglePlay", _ => true);
-        _ = mediaViewerModule.Setup<double>("getCurrentTimeMs", _ => true).SetResult(2500.0);
+        var mediaViewerModule = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        mediaViewerModule.SetupVoid("focusElement", _ => true);
+        mediaViewerModule.SetupVoid("setPlaybackRate", _ => true);
+        mediaViewerModule.SetupVoid("stepFrame", _ => true);
+        mediaViewerModule.SetupVoid("togglePlay", _ => true);
+        mediaViewerModule.Setup<double>("getCurrentTimeMs", _ => true).SetResult(2500.0);
 
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
-        _ = Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
 
         // Only exercised by Grid-view tests, but harmless to register unconditionally.
-        _ = ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<EvidenceItem>, TestSfGrid>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
-        _ = ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<EvidenceItem>>();
+        ComponentFactories.Add<Syncfusion.Blazor.Grids.SfGrid<EvidenceItem>, TestSfGrid>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridColumn>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridPageSettings>();
+        ComponentFactories.AddStub<Syncfusion.Blazor.Grids.GridEvents<EvidenceItem>>();
 
         Device = new Device
         {
@@ -197,65 +178,65 @@ public abstract class EvidencePageTestBase : BunitContext
             Sha256Hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         };
 
-        _ = DeviceRepositoryMock
+        DeviceRepositoryMock
             .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Device]);
+            .ReturnsAsync(new List<Device> { Device });
 
-        _ = EventRepositoryMock
+        EventRepositoryMock
             .Setup(m => m.ListByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([EventEntity]);
+            .ReturnsAsync(new List<Event> { EventEntity });
 
-        _ = ReportGenerationServiceMock
+        ReportGenerationServiceMock
             .Setup(m => m.BuildEvidenceReviewAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new EvidenceReviewReport
             {
                 GeneratedAtUtc = FixedNowUtc,
                 ReportFromUtc = FixedNowUtc.AddDays(-7),
                 ReportToUtc = FixedNowUtc,
-                MediaItems = [ImageMedia],
+                MediaItems = new List<MediaItem> { ImageMedia },
                 // The page joins media to events by ProviderEventId, so the image must be linked to the event's id.
-                MediaProviderEventLinks = [new(ImageMediaId, EventEntity.ProviderEventId)],
-                IntegrityRecords = []
+                MediaProviderEventLinks = new List<MediaProviderEventLink> { new(ImageMediaId, EventEntity.ProviderEventId) },
+                IntegrityRecords = new List<IntegrityRecord>()
             });
 
-        _ = LegalHoldRepositoryMock
+        LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .ReturnsAsync(new List<LegalHold>());
 
-        _ = MediaItemRepositoryMock
+        MediaItemRepositoryMock
             .Setup(m => m.GetByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([ImageMedia, VideoMedia]);
+            .ReturnsAsync(new List<MediaItem> { ImageMedia, VideoMedia });
 
-        _ = MediaUrlProviderMock
+        MediaUrlProviderMock
             .Setup(m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .Returns((IReadOnlyCollection<Guid> ids, CancellationToken _) =>
                 Task.FromResult<IReadOnlyDictionary<Guid, string>>(ids.ToDictionary(id => id, TicketedUrl)));
 
-        _ = DeviceHealthRepositoryMock
+        DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .ReturnsAsync(new List<DeviceHealth>());
 
         var timeProvider = new FakeTimeProvider(FixedNowUtc);
         ScopeState = new ScopeState(timeProvider);
 
-        _ = Services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
-        _ = Services.AddScoped(_ => AuthServiceMock.Object);
-        _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
-        _ = Services.AddScoped(_ => EventRepositoryMock.Object);
-        _ = Services.AddScoped(_ => ReportGenerationServiceMock.Object);
-        _ = Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
-        _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
-        _ = Services.AddScoped(_ => MediaUrlProviderMock.Object);
-        _ = Services.AddSingleton<IEvidenceChangedSource>(new EvidenceChangedSourceDouble(EvidenceChanges));
-        _ = Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
-        _ = Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
-        _ = Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);
-        _ = Services.AddScoped(_ => CaseRepositoryMock.Object);
-        _ = Services.AddScoped(_ => ScopeState);
-        _ = Services.AddScoped(_ => InspectorState);
-        _ = Services.AddScoped<RightPanelContentService>();
+        Services.AddSingleton<VideoForensics.Ui.Shared.Contracts.IThumbnailReadySource>(new FakeThumbnailReadySource(ThumbnailReadySubject));
+        Services.AddScoped(_ => AuthServiceMock.Object);
+        Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        Services.AddScoped(_ => EventRepositoryMock.Object);
+        Services.AddScoped(_ => ReportGenerationServiceMock.Object);
+        Services.AddScoped(_ => LegalHoldRepositoryMock.Object);
+        Services.AddScoped(_ => MediaItemRepositoryMock.Object);
+        Services.AddScoped(_ => MediaUrlProviderMock.Object);
+        Services.AddSingleton<IEvidenceChangedSource>(new EvidenceChangedSourceDouble(EvidenceChanges));
+        Services.AddScoped(_ => DeviceHealthRepositoryMock.Object);
+        Services.AddScoped(_ => EvidenceValidationServiceMock.Object);
+        Services.AddScoped(_ => MediaStillCaptureServiceMock.Object);
+        Services.AddScoped(_ => CaseRepositoryMock.Object);
+        Services.AddScoped(_ => ScopeState);
+        Services.AddScoped(_ => InspectorState);
+        Services.AddScoped<RightPanelContentService>();
 
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         // Default: an operator is signed in (token, OperatorId, Review role) so the page renders its
         // content. Tests exercising the signed-out gate call SignOutOperatorAsync(). SetAsync only
@@ -269,10 +250,8 @@ public abstract class EvidencePageTestBase : BunitContext
     }
 
     /// <summary>Deterministic stand-in for the provider's short-lived, per-media access ticket.</summary>
-    protected static string TicketedUrl(Guid mediaId)
-    {
-        return $"https://cdn.example.test/media/{mediaId:N}?ticket=tkt-{mediaId:N}";
-    }
+    protected static string TicketedUrl(Guid mediaId) =>
+        $"https://cdn.example.test/media/{mediaId:N}?ticket=tkt-{mediaId:N}";
 
     /// <summary>
     /// Signs in an operator for this test. Mutates the PairedSessionState already registered in
@@ -284,21 +263,15 @@ public abstract class EvidencePageTestBase : BunitContext
     protected async Task<Guid> SignInOperatorAsync(string role = "Review")
     {
         var operatorId = Guid.NewGuid();
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("test-token", operatorId, role);
         return operatorId;
     }
 
     /// <summary>Clears the operator session, so the page shows its signed-out sign-in prompt.</summary>
-    protected Task SignOutOperatorAsync()
-    {
-        return Services.GetRequiredService<PairedSessionState>().ClearAsync();
-    }
+    protected Task SignOutOperatorAsync() => Services.GetRequiredService<PairedSessionState>().ClearAsync();
 
-    protected IRenderedComponent<Evidence> RenderEvidencePage()
-    {
-        return Render<Evidence>();
-    }
+    protected IRenderedComponent<Evidence> RenderEvidencePage() => Render<Evidence>();
 }
 
 public class Evidence_Timeline_Tests : EvidencePageTestBase
@@ -306,14 +279,14 @@ public class Evidence_Timeline_Tests : EvidencePageTestBase
     [Fact]
     public void DefaultView_RendersBothItems_UnderCorrectDayHeading_EventFirst()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        AngleSharp.Dom.IElement dayHeading = component.Find(".timeline-day-header");
-        string expectedDay = DateOnly.FromDateTime(EventOccurredAtUtc).ToString("yyyy-MM-dd (ddd)");
+        var dayHeading = component.Find(".timeline-day-header");
+        var expectedDay = DateOnly.FromDateTime(EventOccurredAtUtc).ToString("yyyy-MM-dd (ddd)");
         Assert.Contains(expectedDay, dayHeading.TextContent);
         Assert.Contains("· 2 items", dayHeading.TextContent);
 
-        IReadOnlyList<AngleSharp.Dom.IElement> rows = component.FindAll(".timeline-row");
+        var rows = component.FindAll(".timeline-row");
         Assert.Equal(2, rows.Count);
         Assert.Equal($"event:{EventId}", rows[0].GetAttribute("data-key"));
         Assert.Equal($"media:{VideoMediaId}", rows[1].GetAttribute("data-key"));
@@ -322,11 +295,11 @@ public class Evidence_Timeline_Tests : EvidencePageTestBase
     [Fact]
     public void DefaultView_RowsShowThumbnails_ForImageAndVideoMedia()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        AngleSharp.Dom.IElement imageRowThumb = component.Find($".timeline-row[data-key='event:{EventId}'] img");
+        var imageRowThumb = component.Find($".timeline-row[data-key='event:{EventId}'] img");
         Assert.Equal(TicketedUrl(ImageMediaId), imageRowThumb.GetAttribute("src"));
-        _ = Assert.Single(component.FindAll($".timeline-row[data-key='media:{VideoMediaId}'] img"));
+        Assert.Single(component.FindAll($".timeline-row[data-key='media:{VideoMediaId}'] img"));
     }
 }
 
@@ -335,17 +308,17 @@ public class Evidence_Gallery_Tests : EvidencePageTestBase
     [Fact]
     public void ClickGalleryButton_SwitchesToGalleryView_RendersTwoTiles_WithTicketedImageUrl()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         component.Find("[data-testid='view-gallery']").Click();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains("view=gallery", nav.Uri);
 
-        IReadOnlyList<AngleSharp.Dom.IElement> tiles = component.FindAll(".gallery-tile");
+        var tiles = component.FindAll(".gallery-tile");
         Assert.Equal(2, tiles.Count);
 
-        AngleSharp.Dom.IElement img = component.Find($".gallery-tile[data-key='event:{EventId}'] img");
+        var img = component.Find($".gallery-tile[data-key='event:{EventId}'] img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
     }
 }
@@ -359,7 +332,7 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
     [Fact]
     public void ThumbnailReady_ForItemOnPage_RefetchesThatItemsUrl()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId));
 
@@ -374,7 +347,7 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
     [Fact]
     public async Task ThumbnailReady_ForItemNotOnPage_DoesNotFetch()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         var unknown = Guid.NewGuid();
 
         ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(unknown));
@@ -388,14 +361,14 @@ public class Evidence_ThumbnailReady_Tests : EvidencePageTestBase
     [Fact]
     public async Task ThumbnailReady_AfterDispose_DoesNotFetchOrThrow()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.WaitForAssertion(() => MediaUrlProviderMock.Verify(
             m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce));
         MediaUrlProviderMock.Invocations.Clear();
 
         ((IDisposable)component.Instance).Dispose();
-        Exception? ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId)));
+        var ex = Record.Exception(() => ThumbnailReadySubject.OnNext(new VideoForensics.Core.Api.Contracts.ThumbnailReadyDto(VideoMediaId)));
         await Task.Delay(50);
 
         Assert.Null(ex);
@@ -410,27 +383,27 @@ public class Evidence_Viewer_Tests : EvidencePageTestBase
     [Fact]
     public void ClickImageTile_OpensViewer_WithTicketedUrl_InspectorTitle_AndUrlItemParam()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
 
         component.Find($".gallery-tile[data-key='event:{EventId}']").Click();
 
         Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
 
-        AngleSharp.Dom.IElement img = component.Find(".viewer-media img");
+        var img = component.Find(".viewer-media img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
 
-        string expectedTitle = $"{EventEntity.EventType} · {EventOccurredAtUtc:u}";
+        var expectedTitle = $"{EventEntity.EventType} · {EventOccurredAtUtc:u}";
         Assert.Equal(expectedTitle, InspectorState.Current?.Title);
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"item=event:{EventId}", nav.Uri);
     }
 
     [Fact]
     public void NextButton_MovesToVideoItem_FetchesFreshTicket_UpdatesInspectorAndUrl()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
         component.Find($".gallery-tile[data-key='event:{EventId}']").Click();
 
@@ -444,19 +417,19 @@ public class Evidence_Viewer_Tests : EvidencePageTestBase
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        AngleSharp.Dom.IElement video = component.Find(".viewer-media video");
+        var video = component.Find(".viewer-media video");
         Assert.Equal(TicketedUrl(VideoMediaId), video.GetAttribute("src"));
 
         Assert.Contains("Video", InspectorState.Current?.Title);
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"item=media:{VideoMediaId}", nav.Uri);
     }
 
     [Fact]
     public void CloseButton_ClosesViewer_ReturnsToGallery_RemovesItemParam_KeepsView()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
         component.Find($".gallery-tile[data-key='event:{EventId}']").Click();
 
@@ -466,7 +439,7 @@ public class Evidence_Viewer_Tests : EvidencePageTestBase
         Assert.NotEmpty(component.FindAll(".evidence-gallery"));
         Assert.Null(InspectorState.Current);
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.DoesNotContain("item=", nav.Uri);
         Assert.Contains("view=gallery", nav.Uri);
     }
@@ -477,10 +450,10 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     [Fact]
     public void GridViewQueryParam_RendersGridView_TimelineAbsent()
     {
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/media?view=grid", replace: true);
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         Assert.NotNull(component.FindComponent<VideoForensics.Ui.Shared.Components.Inspector.ForensicGrid<EvidenceItem>>());
         Assert.Empty(component.FindAll(".evidence-timeline"));
@@ -490,13 +463,13 @@ public class Evidence_DeepLink_Tests : EvidencePageTestBase
     [Fact]
     public void ItemQueryParam_OpensViewerDirectly()
     {
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo($"/media?item=event:{EventId}", replace: true);
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        _ = Assert.Single(component.FindAll("[data-testid='media-viewer']"));
-        AngleSharp.Dom.IElement img = component.Find(".viewer-media img");
+        Assert.Single(component.FindAll("[data-testid='media-viewer']"));
+        var img = component.Find(".viewer-media img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
     }
 }
@@ -506,18 +479,18 @@ public class Evidence_ErrorHandling_Tests : EvidencePageTestBase
     [Fact]
     public void MediaRepositoryThrows_ShowsDeviceNamedError_EventStillRendered()
     {
-        _ = MediaItemRepositoryMock
+        MediaItemRepositoryMock
             .Setup(m => m.GetByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("media store unreachable"));
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        string markup = component.Markup;
+        var markup = component.Markup;
         Assert.Contains("Front Door", markup);
         Assert.Contains("media store unreachable", markup);
 
-        IReadOnlyList<AngleSharp.Dom.IElement> rows = component.FindAll(".timeline-row");
-        _ = Assert.Single(rows);
+        var rows = component.FindAll(".timeline-row");
+        Assert.Single(rows);
         Assert.Equal($"event:{EventId}", rows[0].GetAttribute("data-key"));
     }
 }
@@ -527,7 +500,7 @@ public class Evidence_ScopeChange_Tests : EvidencePageTestBase
     [Fact]
     public async Task ScopeChange_ReloadsRepositories_WithNewFromUtc()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         var newFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var newScope = new ForensicScope(Array.Empty<Guid>(), newFrom, FixedNowUtc, null);
@@ -549,13 +522,13 @@ public class Evidence_Thumbnail_Tests : EvidencePageTestBase
     [Fact]
     public void ThumbnailProviderThrows_ItemsStillRender_NoThumbnails_MutedNoteShown()
     {
-        _ = MediaUrlProviderMock
+        MediaUrlProviderMock
             .Setup(m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("thumbnail service down"));
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        IReadOnlyList<AngleSharp.Dom.IElement> rows = component.FindAll(".timeline-row");
+        var rows = component.FindAll(".timeline-row");
         Assert.Equal(2, rows.Count);
         Assert.Empty(component.FindAll(".timeline-row-thumb"));
 
@@ -568,11 +541,11 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
     [Fact]
     public void ProviderThrows_WhenOpeningItem_ViewerShowsUnavailable_PageDoesNotCrash()
     {
-        _ = MediaUrlProviderMock
+        MediaUrlProviderMock
             .Setup(m => m.GetContentUrlsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("ticket service down"));
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
 
         // The click (and the async chain it drives, up through LoadMediaUrlAsync's now-awaited
@@ -581,11 +554,11 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
 
         Assert.NotEmpty(component.FindAll("[data-testid='media-viewer']"));
 
-        AngleSharp.Dom.IElement unavailable = component.Find(".viewer-unavailable");
+        var unavailable = component.Find(".viewer-unavailable");
         Assert.Contains("Media preview unavailable", unavailable.TextContent);
         Assert.Empty(component.FindAll(".viewer-media img"));
 
-        AngleSharp.Dom.IElement errorNote = component.Find("[data-testid='media-load-error']");
+        var errorNote = component.Find("[data-testid='media-load-error']");
         Assert.Contains("ticket service down", errorNote.TextContent);
     }
 
@@ -597,19 +570,19 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
         var tcsImage = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
         var tcsVideo = new TaskCompletionSource<IReadOnlyDictionary<Guid, string>>();
 
-        _ = MediaUrlProviderMock
+        MediaUrlProviderMock
             .Setup(m => m.GetContentUrlsAsync(
                 It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(ImageMediaId)),
                 It.IsAny<CancellationToken>()))
             .Returns(tcsImage.Task);
 
-        _ = MediaUrlProviderMock
+        MediaUrlProviderMock
             .Setup(m => m.GetContentUrlsAsync(
                 It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(VideoMediaId)),
                 It.IsAny<CancellationToken>()))
             .Returns(tcsVideo.Task);
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
 
         // Open the image item - its ticket fetch (tcsImage) is now pending, unresolved.
@@ -632,10 +605,10 @@ public class Evidence_ViewerErrorHandling_Tests : EvidencePageTestBase
 
         component.WaitForAssertion(() => Assert.NotEmpty(component.FindAll(".viewer-media video")));
 
-        AngleSharp.Dom.IElement video = component.Find(".viewer-media video");
+        var video = component.Find(".viewer-media video");
         Assert.Equal(TicketedUrl(VideoMediaId), video.GetAttribute("src"));
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"item=media:{VideoMediaId}", nav.Uri);
     }
 }
@@ -645,11 +618,11 @@ public class Evidence_DeviceTime_Tests : EvidencePageTestBase
     [Fact]
     public void ClickDeviceTimeButton_SwitchesToDeviceTimeView_RendersGrid()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         component.Find("[data-testid='view-devicetime']").Click();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains("view=devicetime", nav.Uri);
         Assert.NotEmpty(component.FindAll("[data-testid='device-time-grid']"));
         Assert.Empty(component.FindAll(".evidence-timeline"));
@@ -658,42 +631,42 @@ public class Evidence_DeviceTime_Tests : EvidencePageTestBase
     [Fact]
     public void ClickCell_NarrowsScopeToDeviceAndBucket_AndSwitchesToTimeline()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-devicetime']").Click();
 
-        AngleSharp.Dom.IElement cell = component.Find($"tr[data-key='{DeviceId}'] td");
+        var cell = component.Find($"tr[data-key='{DeviceId}'] td");
         cell.Click();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains("view=timeline", nav.Uri);
-        _ = Assert.Single(ScopeState.Current.DeviceIds);
+        Assert.Single(ScopeState.Current.DeviceIds);
         Assert.Equal(DeviceId, ScopeState.Current.DeviceIds[0]);
     }
 
     [Fact]
     public void ClickDeviceRowHeader_ShowsSnapshotStrip_ForThatDevicesViewableItems()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-devicetime']").Click();
 
         component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
 
         Assert.NotEmpty(component.FindAll("[data-testid='snapshot-strip']"));
-        IReadOnlyList<AngleSharp.Dom.IElement> thumbs = component.FindAll("[data-testid='snapshot-strip-thumb']");
+        var thumbs = component.FindAll("[data-testid='snapshot-strip-thumb']");
         Assert.Equal(2, thumbs.Count); // ImageMedia (via event) + VideoMedia are both viewable
     }
 
     [Fact]
     public void ClickDeviceRowHeader_FetchesRssiHistory_ForScopeRange()
     {
-        _ = DeviceHealthRepositoryMock
+        DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
+            .ReturnsAsync(new List<DeviceHealth>
+            {
                 new() { Id = Guid.NewGuid(), DeviceId = DeviceId, WifiSignalRssi = -60, CapturedAtUtc = EventOccurredAtUtc }
-            ]);
+            });
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-devicetime']").Click();
         component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
 
@@ -701,14 +674,14 @@ public class Evidence_DeviceTime_Tests : EvidencePageTestBase
             m => m.GetHistoryAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
 
-        AngleSharp.Dom.IElement polyline = component.Find("[data-testid='snapshot-strip-rssi'] polyline");
+        var polyline = component.Find("[data-testid='snapshot-strip-rssi'] polyline");
         Assert.False(string.IsNullOrWhiteSpace(polyline.GetAttribute("points")));
     }
 
     [Fact]
     public void ClickSnapshotStripThumbnail_OpensMediaViewer()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-devicetime']").Click();
         component.Find($"tr[data-key='{DeviceId}'] .device-time-grid-row-header").Click();
 
@@ -736,7 +709,7 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     /// </summary>
     private IRenderedComponent<Evidence> RenderGrid()
     {
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("/media?view=grid", replace: true);
         return RenderEvidencePage();
     }
@@ -748,9 +721,8 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     /// assembly, so this uses reflection purely to construct the args - it does not touch
     /// production code.
     /// </summary>
-    private static Task ClickContextMenuAsync(IRenderedComponent<Evidence> component, string menuId, EvidenceItem? item)
-    {
-        return component.InvokeAsync(() =>
+    private static Task ClickContextMenuAsync(IRenderedComponent<Evidence> component, string menuId, EvidenceItem? item) =>
+        component.InvokeAsync(() =>
         {
             var args = new ContextMenuClickEventArgs<EvidenceItem> { Item = new MenuItemModel { Id = menuId } };
             if (item is not null)
@@ -760,15 +732,12 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
                 typeof(ContextMenuClickEventArgs<EvidenceItem>).GetProperty(nameof(ContextMenuClickEventArgs<EvidenceItem>.RowInfo))!.SetValue(args, rowInfo);
             }
 
-            IRenderedComponent<ForensicGrid<EvidenceItem>> grid = component.FindComponent<ForensicGrid<EvidenceItem>>();
+            var grid = component.FindComponent<ForensicGrid<EvidenceItem>>();
             return grid.Instance.ContextMenuItemClicked.InvokeAsync(args);
         });
-    }
 
-    private static EvidenceItem FindItem(IRenderedComponent<Evidence> component, string key)
-    {
-        return component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.DataSource!.First(i => i.Key == key);
-    }
+    private static EvidenceItem FindItem(IRenderedComponent<Evidence> component, string key) =>
+        component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.DataSource!.First(i => i.Key == key);
 
     /// <summary>
     /// Syncfusion's grid builds its context menu from ContextMenuItems and expects typed
@@ -778,9 +747,9 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public void GridContextMenuItems_AreTypedSyncfusionItemModels_WithStableIds()
     {
-        IRenderedComponent<Evidence> component = RenderGrid();
+        var component = RenderGrid();
 
-        List<object>? items = component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.ContextMenuItems;
+        var items = component.FindComponent<ForensicGrid<EvidenceItem>>().Instance.ContextMenuItems;
 
         Assert.NotNull(items);
         Assert.All(items, i => Assert.IsType<ContextMenuItemModel>(i));
@@ -792,12 +761,12 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task Export_SelectedEventWithMedia_NavigatesToReviewExportWithMediaId()
     {
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
 
         await ClickContextMenuAsync(component, "export", item);
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.Contains($"/review/export?ids={ImageMediaId}", nav.Uri);
     }
 
@@ -806,9 +775,9 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     {
         // Defensive guard: no RowInfo means the click didn't target a row (or the RowInfo shape
         // changed upstream) - nothing should blow up or navigate.
-        IRenderedComponent<Evidence> component = RenderGrid();
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
-        string beforeUri = nav.Uri;
+        var component = RenderGrid();
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var beforeUri = nav.Uri;
 
         await ClickContextMenuAsync(component, "export", item: null);
 
@@ -818,8 +787,8 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task PlaceHold_Click_RevealsReasonPrompt()
     {
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
 
         await ClickContextMenuAsync(component, "hold", item);
 
@@ -829,13 +798,13 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task PlaceHold_ConfirmWithReason_CallsPlaceAsync_WithSignedInOperatorIdentity_ShowsToast()
     {
-        Guid operatorId = await SignInOperatorAsync();
-        _ = LegalHoldRepositoryMock
+        var operatorId = await SignInOperatorAsync();
+        LegalHoldRepositoryMock
             .Setup(r => r.PlaceAsync(ImageMediaId, "Active investigation", operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "Active investigation", CreatedBy = "op" });
 
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "hold", item);
 
         component.Find("[data-testid='grid-action-reason']").Change("Active investigation");
@@ -852,7 +821,7 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     public async Task PlaceHold_OperatorSignedOut_ShowsSignInPrompt_NoGridOrPlaceCall()
     {
         await SignOutOperatorAsync();
-        IRenderedComponent<Evidence> component = RenderGrid();
+        var component = RenderGrid();
 
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Empty(component.FindComponents<ForensicGrid<EvidenceItem>>());
@@ -868,8 +837,8 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
         // session only at load and never re-checks it on change, so clearing the session while the
         // prompt is open leaves Confirm reachable: the click runs ConfirmPendingHoldActionAsync's own
         // guard with no operator identity. The grid staying rendered shows the page's gate did not stop it.
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "hold", item);
 
         await SignOutOperatorAsync();
@@ -887,17 +856,17 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task ReleaseHold_ConfirmWithReason_CallsReleaseAsync_WithSignedInOperatorIdentity_ShowsToast()
     {
-        Guid operatorId = await SignInOperatorAsync();
+        var operatorId = await SignInOperatorAsync();
         var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "r", CreatedBy = "op" };
-        _ = LegalHoldRepositoryMock
+        LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([activeHold]);
-        _ = LegalHoldRepositoryMock
+            .ReturnsAsync(new List<LegalHold> { activeHold });
+        LegalHoldRepositoryMock
             .Setup(r => r.ReleaseAsync(activeHold.Id, operatorId.ToString(), "No longer needed", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "release", item);
 
         component.Find("[data-testid='grid-action-reason']").Change("No longer needed");
@@ -913,7 +882,7 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     public async Task ReleaseHold_OperatorSignedOut_ShowsSignInPrompt_NoGridOrReleaseCall()
     {
         await SignOutOperatorAsync();
-        IRenderedComponent<Evidence> component = RenderGrid();
+        var component = RenderGrid();
 
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Empty(component.FindComponents<ForensicGrid<EvidenceItem>>());
@@ -928,12 +897,12 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
         // Same path as PlaceHold_SignedOutAfterReasonPrompt: an active hold makes "release" available,
         // the reason prompt opens while signed in, then the session is cleared before Confirm.
         var activeHold = new LegalHold { Id = Guid.NewGuid(), MediaItemId = ImageMediaId, Reason = "r", CreatedBy = "op" };
-        _ = LegalHoldRepositoryMock
+        LegalHoldRepositoryMock
             .Setup(m => m.GetActiveByMediaItemIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([activeHold]);
+            .ReturnsAsync(new List<LegalHold> { activeHold });
 
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "release", item);
 
         await SignOutOperatorAsync();
@@ -951,8 +920,8 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task CancelPendingHold_HidesReasonPrompt_DoesNotCallRepository()
     {
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "hold", item);
 
         component.Find("[data-testid='grid-action-reason']").Change("Some reason");
@@ -967,16 +936,16 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task VerifyIntegrity_CallsServiceScopedToDevice_ShowsToastWithCounts()
     {
-        _ = EvidenceValidationServiceMock
+        EvidenceValidationServiceMock
             .Setup(s => s.VerifyLocalIntegrityAsync(DeviceId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
+            .ReturnsAsync(new List<MediaVerificationResult>
+            {
                 new() { MediaItemId = ImageMediaId, FileName = "motion.jpg", Status = "verified" },
                 new() { MediaItemId = VideoMediaId, FileName = "clip.mp4", Status = "failed", FailureReason = "hash mismatch" }
-            ]);
+            });
 
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
         await ClickContextMenuAsync(component, "verify", item);
 
         EvidenceValidationServiceMock.Verify(s => s.VerifyLocalIntegrityAsync(DeviceId, It.IsAny<CancellationToken>()), Times.Once);
@@ -986,8 +955,8 @@ public class Evidence_GridContextMenu_Tests : EvidencePageTestBase
     [Fact]
     public async Task ViewDetails_ViewableItem_OpensMediaViewer()
     {
-        IRenderedComponent<Evidence> component = RenderGrid();
-        EvidenceItem item = FindItem(component, $"event:{EventId}");
+        var component = RenderGrid();
+        var item = FindItem(component, $"event:{EventId}");
 
         await ClickContextMenuAsync(component, "details", item);
 
@@ -1005,7 +974,7 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
 {
     private IRenderedComponent<Evidence> OpenVideoViewer()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
         component.Find("[data-testid='view-gallery']").Click();
         component.Find($".gallery-tile[data-key='event:{EventId}']").Click();
         component.Find("[data-testid='viewer-next']").Click(); // moves to the video item
@@ -1015,49 +984,45 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     [Fact]
     public async Task GrabStillButton_Click_CallsServiceWithSelectedMediaIdAndFrameOffset()
     {
-        Guid operatorId = await SignInOperatorAsync(); // defaults to "Review"
-        _ = MediaStillCaptureServiceMock
+        var operatorId = await SignInOperatorAsync(); // defaults to "Review"
+        MediaStillCaptureServiceMock
             .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new MediaStillCaptureResult
+            .ReturnsAsync(new MediaStillCaptureResult { Error = MediaStillCaptureError.None, Still = new MediaStillInfo
             {
-                Error = MediaStillCaptureError.None,
-                Still = new MediaStillInfo
-                {
-                    Id = Guid.NewGuid(),
-                    SourceMediaItemId = VideoMediaId,
-                    FrameOffsetMs = 2500,
-                    Sha256Hash = "abc123still",
-                    SourceSha256AtCapture = "sourcehash",
-                    CapturedByOperator = "operator-1",
-                    CaptureMethod = "Server",
-                    CreatedAtUtc = DateTime.UtcNow,
-                    PinnedToCase = false
-                }
-            });
+                Id = Guid.NewGuid(),
+                SourceMediaItemId = VideoMediaId,
+                FrameOffsetMs = 2500,
+                Sha256Hash = "abc123still",
+                SourceSha256AtCapture = "sourcehash",
+                CapturedByOperator = "operator-1",
+                CaptureMethod = "Server",
+                CreatedAtUtc = DateTime.UtcNow,
+                PinnedToCase = false
+            } });
 
-        IRenderedComponent<Evidence> component = OpenVideoViewer();
+        var component = OpenVideoViewer();
         component.Find("[data-testid='grab-still']").Click();
 
         MediaStillCaptureServiceMock.Verify(
             s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()),
             Times.Once);
 
-        AngleSharp.Dom.IElement result = component.Find("[data-testid='grab-still-result']");
+        var result = component.Find("[data-testid='grab-still-result']");
         Assert.Contains("abc123still", result.TextContent);
     }
 
     [Fact]
     public async Task GrabStillButton_Click_ServiceFails_ShowsErrorMessage()
     {
-        Guid operatorId = await SignInOperatorAsync();
-        _ = MediaStillCaptureServiceMock
+        var operatorId = await SignInOperatorAsync();
+        MediaStillCaptureServiceMock
             .Setup(s => s.CaptureStillAsync(VideoMediaId, 2500, null, null, null, operatorId.ToString(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(MediaStillCaptureResult.Fail(MediaStillCaptureError.ExtractionFailed, "ffmpeg not available"));
 
-        IRenderedComponent<Evidence> component = OpenVideoViewer();
+        var component = OpenVideoViewer();
         component.Find("[data-testid='grab-still']").Click();
 
-        AngleSharp.Dom.IElement error = component.Find("[data-testid='grab-still-error']");
+        var error = component.Find("[data-testid='grab-still-error']");
         Assert.Contains("ffmpeg not available", error.TextContent);
     }
 
@@ -1065,7 +1030,7 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     public async Task OperatorSignedOut_ViewerNotOpened_ShowsSignInPrompt_NoStillCaptured()
     {
         await SignOutOperatorAsync();
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Empty(component.FindComponents<MediaViewer>());
@@ -1080,10 +1045,10 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
         // The viewer opens while signed in (the page only gates on session at load), then the session
         // is cleared. Invoke the viewer's bound callback directly, as a click would, so OnGrabStillAsync's
         // own guard runs rather than the page-level sign-in gate.
-        IRenderedComponent<Evidence> component = OpenVideoViewer();
+        var component = OpenVideoViewer();
         await SignOutOperatorAsync();
 
-        IRenderedComponent<MediaViewer> mediaViewer = component.FindComponent<MediaViewer>();
+        var mediaViewer = component.FindComponent<MediaViewer>();
         await component.InvokeAsync(() => mediaViewer.Instance.OnGrabStill.InvokeAsync(2500));
 
         MediaStillCaptureServiceMock.Verify(
@@ -1095,12 +1060,12 @@ public class Evidence_GrabStill_Tests : EvidencePageTestBase
     [Fact]
     public async Task BelowReviewRole_GrabStillButtonAbsent_AndHandlerRefuses()
     {
-        _ = await SignInOperatorAsync(role: "ReadOnly");
+        await SignInOperatorAsync(role: "ReadOnly");
 
-        IRenderedComponent<Evidence> component = OpenVideoViewer();
+        var component = OpenVideoViewer();
         Assert.Empty(component.FindAll("[data-testid='grab-still']"));
 
-        IRenderedComponent<MediaViewer> mediaViewer = component.FindComponent<MediaViewer>();
+        var mediaViewer = component.FindComponent<MediaViewer>();
         await component.InvokeAsync(() => mediaViewer.Instance.OnGrabStill.InvokeAsync(2500));
 
         MediaStillCaptureServiceMock.Verify(
@@ -1116,12 +1081,12 @@ public class Evidence_SignIn_Tests : EvidencePageTestBase
     {
         // No provider (Ring) account linked, but an operator is signed in: browsing evidence needs
         // only the operator session, so the sign-in prompt must not render.
-        _ = await SignInOperatorAsync();
-        _ = AuthServiceMock
+        await SignInOperatorAsync();
+        AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         Assert.DoesNotContain("Not signed in.", component.Markup);
         Assert.NotEmpty(component.FindAll(".timeline-row"));
@@ -1132,11 +1097,11 @@ public class Evidence_SignIn_Tests : EvidencePageTestBase
     {
         // Provider account linked, but no operator session: the page must show the sign-in prompt.
         await SignOutOperatorAsync();
-        _ = AuthServiceMock
+        AuthServiceMock
             .Setup(m => m.IsAuthenticatedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
         Assert.Contains("Not signed in.", component.Markup);
         Assert.Contains("to browse evidence.", component.Markup);
@@ -1149,41 +1114,41 @@ public class Evidence_TimelineTone_Tests : EvidencePageTestBase
     [Fact]
     public void PinnedEvent_RowLabelHasInCaseTone()
     {
-        _ = CaseRepositoryMock
+        CaseRepositoryMock
             .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new() { Id = Guid.NewGuid(), CaseNumber = "manual-1", Title = "Case", CreatedBy = "op" }]);
-        _ = CaseRepositoryMock
+            .ReturnsAsync(new List<ForensicCase> { new() { Id = Guid.NewGuid(), CaseNumber = "manual-1", Title = "Case", CreatedBy = "op" } });
+        CaseRepositoryMock
             .Setup(r => r.ListItemsAsync(It.IsAny<Guid>(), false, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new() { Id = Guid.NewGuid(), CaseId = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = EventId, Reason = "r", AddedBy = "op" }]);
+            .ReturnsAsync(new List<CaseItem> { new() { Id = Guid.NewGuid(), CaseId = Guid.NewGuid(), Kind = CaseItemKind.Event, EventId = EventId, Reason = "r", AddedBy = "op" } });
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        AngleSharp.Dom.IElement label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
         Assert.Contains("timeline-tone-in-case", label.ClassName);
     }
 
     [Fact]
     public void UnpinnedMotionEvent_RowLabelHasMotionTone()
     {
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        AngleSharp.Dom.IElement label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
         Assert.Contains("timeline-tone-motion", label.ClassName);
         Assert.Equal(label.TextContent, label.GetAttribute("title"));
         Assert.DoesNotContain("timeline-row-kind", component.Markup);
-        _ = Assert.Single(component.FindAll($".timeline-row[data-key='event:{EventId}'] .timeline-row-thumb"));
+        Assert.Single(component.FindAll($".timeline-row[data-key='event:{EventId}'] .timeline-row-thumb"));
     }
 
     [Fact]
     public void CaseLookupThrows_EvidenceStillRendersWithoutInCaseTone()
     {
-        _ = CaseRepositoryMock
+        CaseRepositoryMock
             .Setup(r => r.ListAsync(null, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("case store unreachable"));
 
-        IRenderedComponent<Evidence> component = RenderEvidencePage();
+        var component = RenderEvidencePage();
 
-        AngleSharp.Dom.IElement label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
+        var label = component.Find($".timeline-row[data-key='event:{EventId}'] .timeline-row-label");
         Assert.DoesNotContain("timeline-tone-in-case", label.ClassName);
     }
 }

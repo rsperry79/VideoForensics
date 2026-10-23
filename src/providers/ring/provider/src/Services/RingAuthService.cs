@@ -16,11 +16,8 @@ namespace VideoForensics.Providers.Ring.Services
 
         private readonly ILogger _logger;
 
-        private static string MaskForLog(string value)
-        {
-            return string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
-        }
-
+        private static string MaskForLog(string value) =>
+            string.IsNullOrEmpty(value) || value.Length <= 2 ? "***" : $"{value[0]}***{value[^1]}";
         private readonly ISessionProvider _sessionProvider;
 
         /// <summary>How long a restored session is reused before the saved credentials are used again.</summary>
@@ -238,7 +235,9 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public async Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             if (session == null)
             {
                 if (!await RestoreFromSavedCredentialsWithAccountAsync(providerAccountId: null, cancellationToken))
@@ -246,7 +245,9 @@ namespace VideoForensics.Providers.Ring.Services
                     return false;
                 }
 
+#pragma warning disable CS0618
                 session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     return false;
@@ -271,7 +272,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _logger.LogDebug("Refreshing Ring API token");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     return false;
@@ -577,7 +580,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         public string GetAuthStatus()
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             return session?.OAuthToken == null ? "Not authenticated" : "Authenticated";
         }
 

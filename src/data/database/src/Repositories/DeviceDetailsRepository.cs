@@ -1,9 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -198,16 +198,12 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <summary>Text compared for an offline motion change; every stored field is included so any field change is recorded.</summary>
-        private static string OfflineMotionText(DeviceOfflineMotionSettings s)
-        {
-            return $"subscribed={Text(s.Subscribed)};enabled={Text(s.Enabled)};maxUploadKb={Text(s.MaxUploadKb)};resolutionP={Text(s.ResolutionP)};frequencyAfterSecs={Text(s.FrequencyAfterSecs)};periodAfterSecs={Text(s.PeriodAfterSecs)}";
-        }
+        private static string OfflineMotionText(DeviceOfflineMotionSettings s) =>
+            $"subscribed={Text(s.Subscribed)};enabled={Text(s.Enabled)};maxUploadKb={Text(s.MaxUploadKb)};resolutionP={Text(s.ResolutionP)};frequencyAfterSecs={Text(s.FrequencyAfterSecs)};periodAfterSecs={Text(s.PeriodAfterSecs)}";
 
         /// <summary>Text compared for a detection-type change: the enabled, mode, record and notification flags.</summary>
-        private static string DetectionTypeText(DeviceDetectionType t)
-        {
-            return $"enabled={Text(t.Enabled)};mode={t.Mode};record={Text(t.Record)};notification={Text(t.Notification)}";
-        }
+        private static string DetectionTypeText(DeviceDetectionType t) =>
+            $"enabled={Text(t.Enabled)};mode={t.Mode};record={Text(t.Record)};notification={Text(t.Notification)}";
 
         private static async Task ReplaceSettingsChildrenAsync(VideoForensicsDbContext db, Guid deviceId, DeviceSettingsChildren settings, DateTime changedAtUtc, CancellationToken ct)
         {
@@ -417,18 +413,15 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
-        private static DeviceSettingChange NewChange(Guid deviceId, DateTime changedAtUtc, string fieldName, string? oldValue, string? newValue)
+        private static DeviceSettingChange NewChange(Guid deviceId, DateTime changedAtUtc, string fieldName, string? oldValue, string? newValue) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                FieldName = fieldName,
-                OldValue = oldValue,
-                NewValue = newValue,
-                ChangedAtUtc = changedAtUtc
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FieldName = fieldName,
+            OldValue = oldValue,
+            NewValue = newValue,
+            ChangedAtUtc = changedAtUtc
+        };
 
         /// <summary>
         /// Builds "Collection[key]" plus an optional property suffix. A key that would overflow the column is cut and
@@ -460,42 +453,25 @@ namespace VideoForensics.Data.Database.Repositories
             return map;
         }
 
-        private static string PositionKey(int position)
-        {
-            return position.ToString(CultureInfo.InvariantCulture);
-        }
+        private static string PositionKey(int position) => position.ToString(CultureInfo.InvariantCulture);
 
         /// <summary>Zone natural key: the Ring zone id, falling back to the name when Ring sends no id.</summary>
-        private static string ZoneKey(DeviceZone zone)
-        {
-            return zone.ZoneId ?? zone.Name ?? string.Empty;
-        }
+        private static string ZoneKey(DeviceZone zone) => zone.ZoneId ?? zone.Name ?? string.Empty;
 
-        private static string ZoneText(DeviceZone zone)
-        {
-            return string.Join("|", ZoneProperties.Select(p => $"{p.Suffix.TrimStart('.')}={p.Text(zone)}"));
-        }
+        private static string ZoneText(DeviceZone zone) =>
+            string.Join("|", ZoneProperties.Select(p => $"{p.Suffix.TrimStart('.')}={p.Text(zone)}"));
 
-        private static string MotionZoneText(DeviceAdvancedMotionZone zone)
-        {
-            return $"name={zone.Name}|state={Text(zone.State)}|vertices={VerticesText(zone.Vertices.Select(v => (v.Position, v.X, v.Y)))}";
-        }
+        private static string MotionZoneText(DeviceAdvancedMotionZone zone) =>
+            $"name={zone.Name}|state={Text(zone.State)}|vertices={VerticesText(zone.Vertices.Select(v => (v.Position, v.X, v.Y)))}";
 
-        private static string ObjectSettingText(DeviceAdvancedObjectSetting setting)
-        {
-            return $"day={Text(setting.Day)}|night={Text(setting.Night)}";
-        }
+        private static string ObjectSettingText(DeviceAdvancedObjectSetting setting) =>
+            $"day={Text(setting.Day)}|night={Text(setting.Night)}";
 
         /// <summary>Vertices as "x,y" pairs in position order. Pairs are joined with ';' because a bare ',' join cannot tell a missing Y from a pair boundary.</summary>
-        private static string VerticesText(IEnumerable<(int Position, double? X, double? Y)> vertices)
-        {
-            return string.Join(";", vertices.OrderBy(v => v.Position).Select(v => $"{Text(v.X)},{Text(v.Y)}"));
-        }
+        private static string VerticesText(IEnumerable<(int Position, double? X, double? Y)> vertices) =>
+            string.Join(";", vertices.OrderBy(v => v.Position).Select(v => $"{Text(v.X)},{Text(v.Y)}"));
 
         /// <summary>Invariant-culture text for a numeric value, or null when the value is null.</summary>
-        private static string? Text(object? value)
-        {
-            return value == null ? null : Convert.ToString(value, CultureInfo.InvariantCulture);
-        }
+        private static string? Text(object? value) => value == null ? null : Convert.ToString(value, CultureInfo.InvariantCulture);
     }
 }

@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-
 using Polly;
-using Polly.Retry;
+using Polly.CircuitBreaker;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -49,15 +48,15 @@ namespace VideoForensics.Providers.Ring.Services
                 return IsRateLimitError(ex) && (ex as Exceptions.ThrottledException)?.IsHardBan != true;
             }
 
-            AsyncRetryPolicy retryPolicy = Policy
-                .Handle<Exceptions.ThrottledException>(ShouldRetry)
-                .Or<HttpRequestException>(ShouldRetry)
+            var retryPolicy = Policy
+                .Handle<Exceptions.ThrottledException>(ex => ShouldRetry(ex))
+                .Or<HttpRequestException>(ex => ShouldRetry(ex))
                 .WaitAndRetryAsync(
                     retryCount: MaxRetries,
                     sleepDurationProvider: attempt =>
                     {
                         // Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 30s
-                        double delaySeconds = Math.Min(Math.Pow(2, attempt - 1), MaxDelayMs / 1000.0);
+                        var delaySeconds = Math.Min(Math.Pow(2, attempt - 1), MaxDelayMs / 1000.0);
                         return TimeSpan.FromSeconds(delaySeconds);
                     },
                     onRetry: (outcome, timespan, retryCount, context) =>
@@ -79,7 +78,6 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     ct.ThrowIfCancellationRequested();
                 }
-
                 await operation();
             }, cancellationToken);
         }

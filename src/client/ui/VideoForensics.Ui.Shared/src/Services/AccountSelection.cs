@@ -11,9 +11,17 @@ namespace VideoForensics.Ui.Shared.Services
         /// </summary>
         public static Guid? Resolve(string? storedId, IReadOnlyList<Guid> accountIds)
         {
-            return accountIds.Count == 0
-                ? null
-                : Guid.TryParse(storedId, out Guid stored) && accountIds.Contains(stored) ? stored : accountIds[0];
+            if (accountIds.Count == 0)
+            {
+                return null;
+            }
+
+            if (Guid.TryParse(storedId, out Guid stored) && accountIds.Contains(stored))
+            {
+                return stored;
+            }
+
+            return accountIds[0];
         }
     }
 

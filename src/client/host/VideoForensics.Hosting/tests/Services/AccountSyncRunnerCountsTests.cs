@@ -1,14 +1,12 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-
-using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Entities;
-using VideoForensics.Hosting.Contracts;
-
-using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
-
 namespace VideoForensics.Hosting.Tests.Services
 {
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
+    using VideoForensics.Hosting.Contracts;
+    using VideoForensics.Core.Providers.Common.Contracts;
+    using VideoForensics.Data.Common.Entities;
+    using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
+
     /// <summary>The sync run row carries the counts the event pull reported.</summary>
     public class AccountSyncRunnerCountsTests
     {
@@ -18,7 +16,7 @@ namespace VideoForensics.Hosting.Tests.Services
         private readonly Mock<IProviderSyncRunRepository> _runs = new();
         private readonly Mock<ISnapshotSyncService> _snapshots = new();
         private readonly Guid _id = Guid.NewGuid();
-        private readonly List<ProviderSyncRun> _recorded = [];
+        private readonly List<ProviderSyncRun> _recorded = new();
         private readonly ProviderAccountEntity _account;
 
         public AccountSyncRunnerCountsTests()
@@ -31,27 +29,22 @@ namespace VideoForensics.Hosting.Tests.Services
                 LinkedUtc = DateTime.UtcNow,
                 IsActive = true
             };
-            _ = _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(_account);
-            _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _runs.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
+            _accounts.Setup(r => r.GetAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(_account);
+            _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _runs.Setup(r => r.AddAsync(It.IsAny<ProviderSyncRun>(), It.IsAny<CancellationToken>()))
                 .Callback<ProviderSyncRun, CancellationToken>((run, _) => _recorded.Add(run))
                 .Returns(Task.CompletedTask);
         }
 
-        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull)
-        {
-            return new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
-        }
+        private static IServiceProvider Unkeyed(IProviderAuthService auth, IEventPullService pull) =>
+            new ServiceCollection().AddScoped(_ => auth).AddScoped(_ => pull).BuildServiceProvider();
 
-        private AccountSyncRunner Sut()
-        {
-            return new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
-        }
+        private AccountSyncRunner Sut() => new(Unkeyed(_auth.Object, _pull.Object), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
         [Fact]
         public async Task RunAsync_PullReportsCounts_RecordsCountsOnRun()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 3, LocationsSynced: 2, EventsSynced: 40, ConfigAreasSynced: 3, FeedsFailed: 0));
 
             await Sut().RunAsync(_id, CancellationToken.None);
@@ -68,7 +61,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_PullFailsPartially_RecordsPartialCountsAndFeedsFailed()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Callback(() => _account.LastErrorMessage = "Device Back Yard: boom")
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, LocationsSynced: 1, EventsSynced: 5, ConfigAreasSynced: 1, FeedsFailed: 1));
 
@@ -83,7 +76,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_RestoreFails_RecordsNoCounts()
         {
-            _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
             await Sut().RunAsync(_id, CancellationToken.None);
 
@@ -95,8 +88,8 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_RequestHasToDate_PassesToDateToPull()
         {
-            DateTime from = DateTime.UtcNow.AddDays(-5);
-            DateTime to = DateTime.UtcNow.AddDays(-1);
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, from, to, false), CancellationToken.None);
 
@@ -116,9 +109,9 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_SnapshotsType_SyncsSnapshotsForWindowAndSkipsEventPull()
         {
-            DateTime from = DateTime.UtcNow.AddDays(-5);
-            DateTime to = DateTime.UtcNow.AddDays(-1);
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 3, DevicesSucceeded: 3, SnapshotsSaved: 3, DevicesFailed: 0, ErrorMessage: null));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Snapshots, from, to, false), CancellationToken.None);
@@ -136,7 +129,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_SnapshotsTypeWithFailedDevice_RecordsFailureAndCounts()
         {
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 1, ErrorMessage: "1 of 2 device(s) failed: no snapshot"));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Snapshots, null, null, false), CancellationToken.None);
@@ -152,13 +145,13 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllType_PullsEventsThenSnapshotsAndRecordsBothCounts()
         {
-            DateTime from = DateTime.UtcNow.AddDays(-5);
-            DateTime to = DateTime.UtcNow.AddDays(-1);
+            var from = DateTime.UtcNow.AddDays(-5);
+            var to = DateTime.UtcNow.AddDays(-1);
             var order = new List<string>();
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, from, to, It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, from, to, It.IsAny<CancellationToken>()))
                 .Callback(() => order.Add("events"))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 3, LocationsSynced: 2, EventsSynced: 40, ConfigAreasSynced: 3, FeedsFailed: 1));
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, from, to, It.IsAny<CancellationToken>()))
                 .Callback(() => order.Add("snapshots"))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 3, DevicesSucceeded: 3, SnapshotsSaved: 3, DevicesFailed: 0, ErrorMessage: null));
 
@@ -177,9 +170,9 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeAllHistory_RecordsFullWithBothCounts()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, true), CancellationToken.None);
@@ -193,9 +186,9 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeSnapshotsFail_RecordsFailureAndKeepsEventCounts()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 1, SnapshotsSaved: 1, DevicesFailed: 1, ErrorMessage: "1 of 2 device(s) failed: no snapshot"));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, false), CancellationToken.None);
@@ -210,10 +203,10 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeEventPullFails_StillSyncsSnapshotsAndKeepsEventError()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .Callback(() => _account.LastErrorMessage = "Device Back Yard: boom")
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 1, EventsSynced: 2, FeedsFailed: 1));
-            _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 1, DevicesSucceeded: 1, SnapshotsSaved: 1));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, false), CancellationToken.None);
@@ -227,7 +220,7 @@ namespace VideoForensics.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_EventsType_RecordsNoSnapshotCount()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 1, EventsSynced: 2));
 
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, false), CancellationToken.None);
@@ -251,16 +244,16 @@ namespace VideoForensics.Hosting.Tests.Services
             var ringPull = new Mock<IEventPullService>();
             var wyzeAuth = new Mock<IProviderAuthService>();
             var wyzePull = new Mock<IEventPullService>();
-            _ = wyzeAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            wyzeAuth.Setup(a => a.RestoreFromSavedCredentialsAsync(_id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             // Mirrors AddVideoForensicsMultiProviderServices: keyed per provider, with the unkeyed default being whichever registered last.
             var services = new ServiceCollection();
-            _ = services.AddKeyedScoped("Wyze", (_, _) => wyzeAuth.Object);
-            _ = services.AddKeyedScoped("Wyze", (_, _) => wyzePull.Object);
-            _ = services.AddKeyedScoped("Ring", (_, _) => ringAuth.Object);
-            _ = services.AddKeyedScoped("Ring", (_, _) => ringPull.Object);
-            _ = services.AddScoped(_ => ringAuth.Object);
-            _ = services.AddScoped(_ => ringPull.Object);
+            services.AddKeyedScoped("Wyze", (_, _) => wyzeAuth.Object);
+            services.AddKeyedScoped("Wyze", (_, _) => wyzePull.Object);
+            services.AddKeyedScoped("Ring", (_, _) => ringAuth.Object);
+            services.AddKeyedScoped("Ring", (_, _) => ringPull.Object);
+            services.AddScoped(_ => ringAuth.Object);
+            services.AddScoped(_ => ringPull.Object);
             var sut = new AccountSyncRunner(services.BuildServiceProvider(), _accounts.Object, _runs.Object, _snapshots.Object, Mock.Of<ILogger<AccountSyncRunner>>(), new SyncActivityLog());
 
             await sut.RunAsync(_id, CancellationToken.None);

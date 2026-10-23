@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
@@ -23,32 +24,27 @@ namespace VideoForensics.WebApp.Tests
         private readonly Guid _mediaId = Guid.NewGuid();
         private readonly Guid _operatorId = Guid.NewGuid();
 
-        private MediaItem Item(string format = "video/mp4")
+        private MediaItem Item(string format = "video/mp4") => new()
         {
-            return new()
-            {
-                Id = _mediaId,
-                DeviceId = Guid.NewGuid(),
-                FileName = "clip.mp4",
-                FilePath = "/media/clip.mp4",
-                MediaFormat = format,
-                Sha256Hash = "h",
-                RecordedAtUtc = DateTime.UtcNow,
-                DownloadedAtUtc = DateTime.UtcNow,
-            };
-        }
+            Id = _mediaId,
+            DeviceId = Guid.NewGuid(),
+            FileName = "clip.mp4",
+            FilePath = "/media/clip.mp4",
+            MediaFormat = format,
+            Sha256Hash = "h",
+            RecordedAtUtc = DateTime.UtcNow,
+            DownloadedAtUtc = DateTime.UtcNow,
+        };
 
-        private Task<IResult> Call(string? ticket = "ticket")
-        {
-            return MediaApiEndpoints.GetThumbnailAsync(
+        private Task<IResult> Call(string? ticket = "ticket") =>
+            MediaApiEndpoints.GetThumbnailAsync(
                 _mediaId, ticket, _tickets.Object, _items.Object, _operators.Object,
                 _storage.Object, _thumbnails.Object, new DefaultHttpContext(), CancellationToken.None);
-        }
 
         private void ValidTicketForApprovedOperator()
         {
-            _ = _tickets.Setup(t => t.Validate("ticket", _mediaId)).Returns(_operatorId);
-            _ = _operators.Setup(o => o.GetAsync(_operatorId, It.IsAny<CancellationToken>()))
+            _tickets.Setup(t => t.Validate("ticket", _mediaId)).Returns(_operatorId);
+            _operators.Setup(o => o.GetAsync(_operatorId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Operator
                 {
                     Id = _operatorId,
@@ -65,22 +61,22 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetThumbnailAsync_NoAuthNoTicket_ReturnsUnauthorized()
         {
-            _ = _tickets.Setup(t => t.Validate(null, _mediaId)).Returns((Guid?)null);
+            _tickets.Setup(t => t.Validate(null, _mediaId)).Returns((Guid?)null);
 
             IResult result = await Call(ticket: null);
 
-            _ = Assert.IsType<UnauthorizedHttpResult>(result);
+            Assert.IsType<UnauthorizedHttpResult>(result);
         }
 
         [Fact]
         public async Task GetThumbnailAsync_UnknownMedia_ReturnsNotFound()
         {
             ValidTicketForApprovedOperator();
-            _ = _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaItem?)null);
+            _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync((MediaItem?)null);
 
             IResult result = await Call();
 
-            _ = Assert.IsType<NotFound>(result);
+            Assert.IsType<NotFound>(result);
         }
 
         /// <summary>A video whose frame cannot be produced has no thumbnail to show, so the endpoint says so rather than serving the clip.</summary>
@@ -88,13 +84,13 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetThumbnailAsync_NoThumbnailCanBeProduced_ReturnsNotFound()
         {
             ValidTicketForApprovedOperator();
-            _ = _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item());
-            _ = _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
+            _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item());
+            _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string?)null);
 
             IResult result = await Call();
 
-            _ = Assert.IsType<NotFound>(result);
+            Assert.IsType<NotFound>(result);
         }
 
         /// <summary>
@@ -104,31 +100,31 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetThumbnailAsync_ValidTicket_ServesStoredFrameWithoutAudit()
         {
             ValidTicketForApprovedOperator();
-            _ = _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item());
-            _ = _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
+            _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item());
+            _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("/media/clip.thumb.png");
-            _ = _storage.Setup(s => s.ExistsAsync("/media/clip.thumb.png", It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _storage.Setup(s => s.OpenReadStreamAsync("/media/clip.thumb.png", It.IsAny<CancellationToken>()))
+            _storage.Setup(s => s.ExistsAsync("/media/clip.thumb.png", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _storage.Setup(s => s.OpenReadStreamAsync("/media/clip.thumb.png", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new MemoryStream(new byte[] { 0x89, 0x50 }));
 
             IResult result = await Call();
 
             // The handler takes no audit dependency, so it cannot write an access entry.
-            _ = Assert.IsType<FileStreamHttpResult>(result);
+            Assert.IsType<FileStreamHttpResult>(result);
         }
 
         [Fact]
         public async Task GetThumbnailAsync_ServedStoredFrameIsPng()
         {
             ValidTicketForApprovedOperator();
-            _ = _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item("video/mp4"));
-            _ = _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
+            _items.Setup(m => m.GetAsync(_mediaId, It.IsAny<CancellationToken>())).ReturnsAsync(Item("video/mp4"));
+            _thumbnails.Setup(t => t.ResolveThumbnailPathAsync(It.IsAny<MediaItem>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync("/media/clip.thumb.png");
-            _ = _storage.Setup(s => s.ExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            _ = _storage.Setup(s => s.OpenReadStreamAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _storage.Setup(s => s.ExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _storage.Setup(s => s.OpenReadStreamAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new MemoryStream(new byte[] { 0x89 }));
 
-            FileStreamHttpResult served = Assert.IsType<FileStreamHttpResult>(await Call());
+            var served = Assert.IsType<FileStreamHttpResult>(await Call());
 
             Assert.Equal("image/png", served.ContentType);
         }

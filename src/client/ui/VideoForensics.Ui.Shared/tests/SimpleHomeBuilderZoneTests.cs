@@ -1,9 +1,8 @@
 using Moq;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Formatting;
-
 using Xunit;
 
 namespace VideoForensics.Ui.Shared.Tests;
@@ -21,28 +20,28 @@ public class SimpleHomeBuilderZoneTests
     public async Task ForZone_TimelineTimeTextUsesThatZone()
     {
         var events = new Mock<IEventRepository>();
-        _ = events.Setup(e => e.ListByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
+        events.Setup(e => e.ListByDeviceAndDateRangeAsync(DeviceId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Event>
+            {
                 new() { Id = Guid.NewGuid(), DeviceId = DeviceId, ProviderEventId = "evt-1", EventType = "motion", OccurredAtUtc = new DateTime(2026, 10, 7, 19, 0, 0, DateTimeKind.Utc) }
-            ]);
+            });
         var devices = new Mock<IDeviceRepository>();
-        _ = devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new() { Id = DeviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "ring-dev-1", Name = "front door", Type = "ring_doorbell" }]);
+        devices.Setup(d => d.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Device> { new() { Id = DeviceId, LocationId = Guid.NewGuid(), ProviderDeviceId = "ring-dev-1", Name = "front door", Type = "ring_doorbell" } });
         var media = new Mock<IMediaItemRepository>();
-        _ = media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+        media.Setup(m => m.GetByDeviceAndDateRangeAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<MediaItem>());
         var jamming = new Mock<IJammingRepository>();
-        _ = jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+        jamming.Setup(j => j.ListIncidentsAsync(It.IsAny<Guid?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<JammingIncidentRecord>());
         var urls = new Mock<IMediaContentUrlProvider>();
 
         // Built for UTC (the server's default in this scenario); the user's zone is applied per call.
         var builder = new SimpleHomeBuilder(new FakeTimeProvider(NowUtc), urls.Object, TestLocalizer.Create(), TimeZoneInfo.Utc);
 
-        SimpleHomeModel model = await builder.ForZone(UserZone).BuildAsync(events.Object, media.Object, devices.Object, jamming.Object, TimeSpan.FromDays(7), CancellationToken.None);
+        var model = await builder.ForZone(UserZone).BuildAsync(events.Object, media.Object, devices.Object, jamming.Object, TimeSpan.FromDays(7), CancellationToken.None);
 
-        SimpleTimelineEntry entry = Assert.Single(model.Days.SelectMany(d => d.Entries));
+        var entry = Assert.Single(model.Days.SelectMany(d => d.Entries));
         Assert.Equal("2:00 PM", entry.TimeText);
     }
 }

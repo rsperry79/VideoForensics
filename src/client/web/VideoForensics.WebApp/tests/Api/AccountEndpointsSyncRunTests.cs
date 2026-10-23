@@ -1,12 +1,13 @@
+using System.Text.Json;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Moq;
-
-using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -81,18 +82,15 @@ namespace VideoForensics.WebApp.Tests.Api
             return context;
         }
 
-        private static ProviderSyncRun CreateRun(Guid accountId, Guid? id = null)
+        private static ProviderSyncRun CreateRun(Guid accountId, Guid? id = null) => new()
         {
-            return new()
-            {
-                Id = id ?? Guid.NewGuid(),
-                ProviderAccountId = accountId,
-                StartedUtc = DateTime.UtcNow.AddHours(-1),
-                CompletedUtc = DateTime.UtcNow.AddHours(-1).AddMinutes(3),
-                Success = false,
-                ErrorMessage = "Credentials expired"
-            };
-        }
+            Id = id ?? Guid.NewGuid(),
+            ProviderAccountId = accountId,
+            StartedUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedUtc = DateTime.UtcNow.AddHours(-1).AddMinutes(3),
+            Success = false,
+            ErrorMessage = "Credentials expired"
+        };
 
         [Fact]
         public void MapAccountEndpoints_SyncRunRoutes_AreRegistered()
@@ -112,8 +110,8 @@ namespace VideoForensics.WebApp.Tests.Api
             WebApplication app = BuildApp();
             var accountId = Guid.NewGuid();
             var runs = new Mock<IProviderSyncRunRepository>();
-            _ = runs.Setup(r => r.ListByProviderAccountIdAsync(accountId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync([CreateRun(accountId)]);
+            runs.Setup(r => r.ListByProviderAccountIdAsync(accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ProviderSyncRun> { CreateRun(accountId) });
 
             DefaultHttpContext context = await InvokeAsync(FindHandler(app, ListRoute), runs.Object, accountId, null);
 
@@ -128,7 +126,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var accountId = Guid.NewGuid();
             ProviderSyncRun run = CreateRun(accountId);
             var runs = new Mock<IProviderSyncRunRepository>();
-            _ = runs.Setup(r => r.GetAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
+            runs.Setup(r => r.GetAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
             DefaultHttpContext context = await InvokeAsync(FindHandler(app, DetailRoute), runs.Object, accountId, run.Id);
 
@@ -150,7 +148,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var requestedAccountId = Guid.NewGuid();
             ProviderSyncRun run = CreateRun(Guid.NewGuid());
             var runs = new Mock<IProviderSyncRunRepository>();
-            _ = runs.Setup(r => r.GetAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
+            runs.Setup(r => r.GetAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
             DefaultHttpContext context = await InvokeAsync(FindHandler(app, DetailRoute), runs.Object, requestedAccountId, run.Id);
 
@@ -164,7 +162,7 @@ namespace VideoForensics.WebApp.Tests.Api
             var accountId = Guid.NewGuid();
             var runId = Guid.NewGuid();
             var runs = new Mock<IProviderSyncRunRepository>();
-            _ = runs.Setup(r => r.GetAsync(runId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderSyncRun?)null);
+            runs.Setup(r => r.GetAsync(runId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderSyncRun?)null);
 
             DefaultHttpContext context = await InvokeAsync(FindHandler(app, DetailRoute), runs.Object, accountId, runId);
 

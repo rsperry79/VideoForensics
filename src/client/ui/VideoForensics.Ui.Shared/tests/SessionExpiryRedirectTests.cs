@@ -1,16 +1,13 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-
+using Xunit;
 using VideoForensics.Ui.Shared.Layout;
 using VideoForensics.Ui.Shared.Layout.Mobile;
 using VideoForensics.Ui.Shared.Services;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Covers the session-expiry redirect in the desktop (MainLayout) and mobile (MobileLayout) layouts:
 /// when PairedSessionState raises AuthenticationExpired, the layout must send the user to
@@ -22,13 +19,13 @@ public class SessionExpiryRedirectTests : SimpleModeLayoutTestBase
     public async Task MobileLayout_SessionExpires_NavigatesToSignInWithReturnUrl()
     {
         // Arrange
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/cases/42?tab=x");
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
-        IRenderedComponent<MobileLayout> component = Render<MobileLayout>();
+        var session = Services.GetRequiredService<PairedSessionState>();
+        var component = Render<MobileLayout>();
 
         // Act
-        await component.InvokeAsync(session.NotifyAuthenticationExpiredAsync);
+        await component.InvokeAsync(() => session.NotifyAuthenticationExpiredAsync());
 
         // Assert
         AssertRedirectedToSignInReturning(nav, "/cases/42?tab=x");
@@ -38,13 +35,13 @@ public class SessionExpiryRedirectTests : SimpleModeLayoutTestBase
     public async Task MainLayout_SessionExpires_NavigatesToSignInWithReturnUrl()
     {
         // Arrange
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/cases/42?tab=x");
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
-        IRenderedComponent<MainLayout> component = Render<MainLayout>();
+        var session = Services.GetRequiredService<PairedSessionState>();
+        var component = Render<MainLayout>();
 
         // Act
-        await component.InvokeAsync(session.NotifyAuthenticationExpiredAsync);
+        await component.InvokeAsync(() => session.NotifyAuthenticationExpiredAsync());
 
         // Assert
         AssertRedirectedToSignInReturning(nav, "/cases/42?tab=x");

@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 
 namespace VideoForensics.Hosting.Remote
 {
@@ -53,11 +53,14 @@ namespace VideoForensics.Hosting.Remote
         private static UpdateReleaseChannel ParseChannel(ReleaseChannelDto? dto)
         {
             string? raw = dto?.Channel;
-            return raw is null
+            if (raw is null
                 || !Enum.TryParse(raw, ignoreCase: true, out UpdateReleaseChannel channel)
-                || !Enum.IsDefined(channel)
-                ? throw new InvalidOperationException("Server returned an unrecognised update release channel.")
-                : channel;
+                || !Enum.IsDefined(channel))
+            {
+                throw new InvalidOperationException("Server returned an unrecognised update release channel.");
+            }
+
+            return channel;
         }
     }
 }

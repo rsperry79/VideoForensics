@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
+using VideoForensics.Data.Database.Repositories;
 
 namespace VideoForensics.Data.Database.Repositories
 {
@@ -60,7 +61,6 @@ namespace VideoForensics.Data.Database.Repositories
                     {
                         existing.CaseId = incident.CaseId;
                     }
-
                     _ = db.JammingIncidentRecords.Update(existing);
                     _logger.LogDebug("Jamming incident upserted (updated): {IncidentId}", incident.Id);
                 }
@@ -85,7 +85,6 @@ namespace VideoForensics.Data.Database.Repositories
                         _logger.LogError(ex, "Failed to create case for jamming incident {IncidentId}; incident saved but case not linked", incident.Id);
                     }
                 }
-
                 return existing ?? incident;
             }
             catch (Exception ex)
@@ -178,4 +177,5 @@ namespace VideoForensics.Data.Database.Repositories
             return await db.JammingIncidentRecords.FirstOrDefaultAsync(j => j.Id == incidentId, ct);
         }
     }
+
 }

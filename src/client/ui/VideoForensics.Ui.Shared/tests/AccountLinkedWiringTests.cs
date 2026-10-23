@@ -1,38 +1,29 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
+using System.Reactive.Subjects;
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
-
 using Moq;
-
-using System.Reactive.Subjects;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
-using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Ui.Shared.Components;
 using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
-
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>Records every account id the add-account wizard publishes.</summary>
 internal sealed class RecordingAccountLinkedNotifier : IAccountLinkedNotifier
 {
-    public List<Guid> Published { get; } = [];
+    public List<Guid> Published { get; } = new();
 
-    public void Publish(Guid providerAccountId)
-    {
-        Published.Add(providerAccountId);
-    }
+    public void Publish(Guid providerAccountId) => Published.Add(providerAccountId);
 }
 
 /// <summary>Exposes a test-controlled stream as the account-linked source the accounts list subscribes to.</summary>
@@ -57,35 +48,35 @@ public class AccountLinkedWiringTests_Wizard : BunitContext
     public AccountLinkedWiringTests_Wizard()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
 
-        _ = _multiProvider
+        _multiProvider
             .Setup(m => m.GetAvailableProvidersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(["Ring"]);
-        _ = _multiProvider
+            .ReturnsAsync(new List<string> { "Ring" });
+        _multiProvider
             .Setup(m => m.GetService("Ring"))
             .Returns(_providerAuth.Object);
 
-        _ = Services.AddScoped(_ => _multiProvider.Object);
-        _ = Services.AddScoped(_ => _providerAuth.Object);
-        _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
-        _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
-        _ = Services.AddScoped<IAccountLinkedNotifier>(_ => _notifier);
+        Services.AddScoped(_ => _multiProvider.Object);
+        Services.AddScoped(_ => _providerAuth.Object);
+        Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
+        Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped<IAccountLinkedNotifier>(_ => _notifier);
     }
 
     private IRenderedComponent<AddAccountWizard> RenderOnAuthStep()
     {
-        IRenderedComponent<AddAccountWizard> cut = Render<AddAccountWizard>();
+        var cut = Render<AddAccountWizard>();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button")));
 
-        IStringLocalizer<AddAccountWizard> strings = Services.GetRequiredService<IStringLocalizer<AddAccountWizard>>();
+        var strings = Services.GetRequiredService<IStringLocalizer<AddAccountWizard>>();
         cut.WaitForAssertion(() =>
         {
-            AngleSharp.Dom.IElement next = cut.FindAll("button").First(b => b.TextContent.Trim() == strings["Next"].Value);
+            var next = cut.FindAll("button").First(b => b.TextContent.Trim() == strings["Next"].Value);
             next.Click();
         });
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<AuthForm>()));
@@ -96,10 +87,10 @@ public class AccountLinkedWiringTests_Wizard : BunitContext
     public void AddAccountWizard_HandleAuthenticationSuccessWithAccountId_PublishesAccountId()
     {
         var accountId = Guid.NewGuid();
-        IRenderedComponent<AddAccountWizard> cut = RenderOnAuthStep();
-        IRenderedComponent<AuthForm> form = cut.FindComponent<AuthForm>();
+        var cut = RenderOnAuthStep();
+        var form = cut.FindComponent<AuthForm>();
 
-        _ = cut.InvokeAsync(() => form.Instance.OnAuthenticated.InvokeAsync(
+        cut.InvokeAsync(() => form.Instance.OnAuthenticated.InvokeAsync(
             new AuthResult(Success: true, ProviderAccountId: accountId)));
 
         Assert.Equal(new[] { accountId }, _notifier.Published);
@@ -108,10 +99,10 @@ public class AccountLinkedWiringTests_Wizard : BunitContext
     [Fact]
     public void AddAccountWizard_HandleAuthenticationFailure_DoesNotPublish()
     {
-        IRenderedComponent<AddAccountWizard> cut = RenderOnAuthStep();
-        IRenderedComponent<AuthForm> form = cut.FindComponent<AuthForm>();
+        var cut = RenderOnAuthStep();
+        var form = cut.FindComponent<AuthForm>();
 
-        _ = cut.InvokeAsync(() => form.Instance.OnAuthenticated.InvokeAsync(
+        cut.InvokeAsync(() => form.Instance.OnAuthenticated.InvokeAsync(
             new AuthResult(Success: false, ErrorMessage: "bad password")));
 
         Assert.Empty(_notifier.Published);
@@ -122,23 +113,23 @@ public class AccountLinkedWiringTests_Wizard : BunitContext
     {
         var accountId = Guid.NewGuid();
         var univiewAuth = new Mock<IProviderAuthService>();
-        _ = univiewAuth
+        univiewAuth
             .Setup(a => a.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AuthResult(Success: true, ProviderAccountId: accountId));
-        _ = _multiProvider
+        _multiProvider
             .Setup(m => m.GetAvailableProvidersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(["Uniview"]);
-        _ = _multiProvider
+            .ReturnsAsync(new List<string> { "Uniview" });
+        _multiProvider
             .Setup(m => m.GetService("Uniview"))
             .Returns(univiewAuth.Object);
 
-        IRenderedComponent<AddAccountWizard> cut = Render<AddAccountWizard>();
+        var cut = Render<AddAccountWizard>();
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("button")));
 
-        IStringLocalizer<AddAccountWizard> strings = Services.GetRequiredService<IStringLocalizer<AddAccountWizard>>();
+        var strings = Services.GetRequiredService<IStringLocalizer<AddAccountWizard>>();
         cut.WaitForAssertion(() =>
         {
-            AngleSharp.Dom.IElement next = cut.FindAll("button").First(b => b.TextContent.Trim() == strings["Next"].Value);
+            var next = cut.FindAll("button").First(b => b.TextContent.Trim() == strings["Next"].Value);
             next.Click();
         });
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("form")));
@@ -155,35 +146,33 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
 
     public AccountLinkedWiringTests_Accounts()
     {
-        _ = Services.AddSingleton<IAccountLinkedSource>(new FakeAccountLinkedSource(_linked));
+        Services.AddSingleton<IAccountLinkedSource>(new FakeAccountLinkedSource(_linked));
     }
 
-    private int ListActiveCalls()
-    {
-        return AccountRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IProviderAccountRepository.ListActiveAsync));
-    }
+    private int ListActiveCalls() =>
+        AccountRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IProviderAccountRepository.ListActiveAsync));
 
     [Fact]
     public void Accounts_AccountLinkedEmitted_ReloadsRowsFromRepository()
     {
-        IRenderedComponent<Accounts> cut = RenderPage();
+        var cut = RenderPage();
         Assert.DoesNotContain("Newly Linked Owner", cut.Markup);
 
         var newId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000003");
         var newUserId = Guid.NewGuid();
-        _ = AccountRepositoryMock
+        AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
+            .ReturnsAsync(new List<ProviderAccountEntity>
+            {
                 new() { Id = RingAccountId, UserId = Guid.NewGuid(), ProviderName = "Ring" },
                 new() { Id = newId, UserId = newUserId, ProviderName = "Ring" },
-            ]);
-        _ = UserRepositoryMock
+            });
+        UserRepositoryMock
             .Setup(r => r.GetAsync(newUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { ProviderUserKey = "new-key", DisplayName = "Newly Linked Owner" });
 
         int before = ListActiveCalls();
-        _ = cut.InvokeAsync(() => _linked.OnNext(newId));
+        cut.InvokeAsync(() => _linked.OnNext(newId));
 
         cut.WaitForAssertion(() => Assert.Contains("Newly Linked Owner", cut.Markup));
         Assert.True(ListActiveCalls() > before);
@@ -192,41 +181,39 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
     [Fact]
     public void Accounts_Disposed_UnsubscribesFromAccountLinked()
     {
-        IRenderedComponent<Accounts> cut = RenderPage();
+        var cut = RenderPage();
 
         // Precondition: while the page is alive, an emitted link triggers a reload.
         int beforeLive = ListActiveCalls();
-        _ = cut.InvokeAsync(() => _linked.OnNext(Guid.NewGuid()));
+        cut.InvokeAsync(() => _linked.OnNext(Guid.NewGuid()));
         cut.WaitForAssertion(() => Assert.True(ListActiveCalls() > beforeLive));
 
-        _ = cut.InvokeAsync(() => ((IDisposable)cut.Instance).Dispose());
+        cut.InvokeAsync(() => ((IDisposable)cut.Instance).Dispose());
 
         int afterDispose = ListActiveCalls();
-        _ = cut.InvokeAsync(() => _linked.OnNext(Guid.NewGuid()));
+        cut.InvokeAsync(() => _linked.OnNext(Guid.NewGuid()));
 
         Assert.Equal(afterDispose, ListActiveCalls());
     }
 
-    private int ListRemovedCalls()
-    {
-        return AccountRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IProviderAccountRepository.ListRemovedAsync));
-    }
+    private int ListRemovedCalls() =>
+        AccountRepositoryMock.Invocations.Count(i => i.Method.Name == nameof(IProviderAccountRepository.ListRemovedAsync));
 
     [Fact]
     public void Accounts_DisposedDuringInitialLoad_DoesNotSubscribe()
     {
         // Hold the initial load open so the component is disposed while OnInitializedAsync is still awaiting it.
         var gate = new TaskCompletionSource<IReadOnlyList<ProviderAccountEntity>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _ = AccountRepositoryMock
+        AccountRepositoryMock
             .Setup(r => r.ListActiveAsync(It.IsAny<CancellationToken>()))
             .Returns(gate.Task);
 
         // The loading state renders a Syncfusion progress bar, which needs a render mode under bUnit.
         SetRendererInfo(new RendererInfo("Server", true));
-        IRenderedComponent<Accounts> cut = RenderPage();
+        var cut = RenderPage();
         ((IDisposable)cut.Instance).Dispose();
 
-        gate.SetResult([]);
+        gate.SetResult(new List<ProviderAccountEntity>());
 
         // The load continues after dispose; ListRemoved is its second repository call. Give the rest of the
         // continuation (where a late subscription would be created) time to finish.
@@ -234,7 +221,6 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
         {
             Thread.Sleep(10);
         }
-
         Thread.Sleep(200);
 
         Assert.Equal(1, ListActiveCalls());
@@ -244,7 +230,7 @@ public class AccountLinkedWiringTests_Accounts : AccountsPageTestBase
     [Fact]
     public void Accounts_LinkedAfterDispose_DoesNotReload()
     {
-        IRenderedComponent<Accounts> cut = RenderPage();
+        var cut = RenderPage();
         ((IDisposable)cut.Instance).Dispose();
 
         int afterDispose = ListActiveCalls();

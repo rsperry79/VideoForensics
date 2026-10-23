@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.Http;
-
-using System.Reflection;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.WebApp.Api;
 
@@ -17,7 +14,7 @@ namespace VideoForensics.WebApp.Tests.Api
             ISystemVersionProvider versionProvider,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(SystemVersionEndpoints)
+            var method = typeof(SystemVersionEndpoints)
                 .GetMethod("GetSystemVersion",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -25,19 +22,17 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find GetSystemVersion method");
-            }
 
-            object? result = method.Invoke(null, [versionProvider, ct]);
-            return await result;
+            var result = method.Invoke(null, [versionProvider, ct]);
+            return await (dynamic)result;
         }
 
         public static async Task<IResult> GetVersionManifest(
             ISystemVersionProvider versionProvider,
             CancellationToken ct)
         {
-            MethodInfo? method = typeof(SystemVersionEndpoints)
+            var method = typeof(SystemVersionEndpoints)
                 .GetMethod("GetVersionManifest",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
                     null,
@@ -45,12 +40,10 @@ namespace VideoForensics.WebApp.Tests.Api
                     null);
 
             if (method == null)
-            {
                 throw new InvalidOperationException("Could not find GetVersionManifest method");
-            }
 
-            object? result = method.Invoke(null, [versionProvider, ct]);
-            return await result;
+            var result = method.Invoke(null, [versionProvider, ct]);
+            return await (dynamic)result;
         }
     }
 }

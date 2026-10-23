@@ -29,12 +29,12 @@ namespace VideoForensics.WebApp.Tests
         private static Mock<IVideoDownloadService> BuildService(SampleState state)
         {
             var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Returns(() => state.Status);
-            _ = service.Setup(s => s.GetCurrentDevice()).Returns(() => state.Device);
-            _ = service.Setup(s => s.GetPreScanCounts()).Returns(() => new Dictionary<string, int>(state.PreScanCounts));
-            _ = service.Setup(s => s.GetLastError()).Returns(() => state.LastError);
-            _ = service.Setup(s => s.GetRemainingReason()).Returns(() => state.RemainingReason);
-            _ = service.Setup(s => s.DrainActivityLog()).Returns(() =>
+            service.Setup(s => s.GetProgress()).Returns(() => state.Status);
+            service.Setup(s => s.GetCurrentDevice()).Returns(() => state.Device);
+            service.Setup(s => s.GetPreScanCounts()).Returns(() => new Dictionary<string, int>(state.PreScanCounts));
+            service.Setup(s => s.GetLastError()).Returns(() => state.LastError);
+            service.Setup(s => s.GetRemainingReason()).Returns(() => state.RemainingReason);
+            service.Setup(s => s.DrainActivityLog()).Returns(() =>
             {
                 List<string> lines = [.. state.PendingActivity];
                 state.PendingActivity.Clear();
@@ -54,11 +54,11 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
 
             source.SampleOnce();
 
-            _ = Assert.Single(received);
+            Assert.Single(received);
             Assert.Equal(1, received[0].FilesCompleted);
             Assert.Equal(3, received[0].CurrentDeviceTotal);
             Assert.Equal("Garage", received[0].CurrentDeviceName);
@@ -70,13 +70,13 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
 
             source.SampleOnce();
             source.SampleOnce();
 
-            _ = Assert.Single(received);
+            Assert.Single(received);
         }
 
         [Fact]
@@ -85,7 +85,7 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
 
             state.Status = new DownloadStatus(true, 2, 4, 150L, "b.mp4", 3, 8, 250L, 1, 0.5);
@@ -104,22 +104,15 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
 
             switch (field)
             {
-                case "LastError":
-                    state.LastError = "boom";
-                    break;
-                case "RemainingReason":
-                    state.RemainingReason = "rate limited";
-                    break;
-                case "Device":
-                    state.Device = (2, 3, "Porch");
-                    break;
+                case "LastError": state.LastError = "boom"; break;
+                case "RemainingReason": state.RemainingReason = "rate limited"; break;
+                case "Device": state.Device = (2, 3, "Porch"); break;
             }
-
             source.SampleOnce();
 
             Assert.Equal(2, received.Count);
@@ -133,12 +126,12 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
 
             source.SampleOnce();
 
-            _ = Assert.Single(received);
+            Assert.Single(received);
         }
 
         [Fact]
@@ -147,7 +140,7 @@ namespace VideoForensics.WebApp.Tests
             var state = new SampleState();
             using LocalDownloadProgressSource source = BuildSource(BuildService(state).Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
 
             state.PendingActivity.Add("file.mp4 done");
@@ -164,7 +157,7 @@ namespace VideoForensics.WebApp.Tests
             Mock<IVideoDownloadService> service = BuildService(state);
             using LocalDownloadProgressSource source = BuildSource(service.Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
             source.SampleOnce();
             state.PendingActivity.Add("line");
 
@@ -184,9 +177,9 @@ namespace VideoForensics.WebApp.Tests
             source.SampleOnce();
 
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
 
-            _ = Assert.Single(received);
+            Assert.Single(received);
             Assert.Equal(1, received[0].FilesCompleted);
         }
 
@@ -194,10 +187,10 @@ namespace VideoForensics.WebApp.Tests
         public void LocalDownloadProgressSource_SampleOnce_ServiceThrows_EmitsNothingAndDoesNotThrow()
         {
             var service = new Mock<IVideoDownloadService>();
-            _ = service.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("provider down"));
+            service.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("provider down"));
             using LocalDownloadProgressSource source = BuildSource(service.Object);
             var received = new List<DownloadProgressSnapshot>();
-            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            using IDisposable subscription = source.Progress.Subscribe(s => received.Add(s));
 
             source.SampleOnce();
 
@@ -207,7 +200,7 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public void LocalDownloadProgressSource_Dispose_CompletesSubscribers()
         {
-            LocalDownloadProgressSource source = BuildSource(BuildService(new SampleState()).Object);
+            var source = BuildSource(BuildService(new SampleState()).Object);
             bool completed = false;
             using IDisposable subscription = source.Progress.Subscribe(_ => { }, () => completed = true);
 

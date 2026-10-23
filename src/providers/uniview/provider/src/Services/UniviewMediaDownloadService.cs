@@ -768,10 +768,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
     }
 
     /// <summary>A usable window is one where both bounds are set and start precedes end.</summary>
-    public static bool HasRequestedWindow(DateTime startDate, DateTime endDate)
-    {
-        return startDate != default && endDate != default && startDate < endDate;
-    }
+    public static bool HasRequestedWindow(DateTime startDate, DateTime endDate) =>
+        startDate != default && endDate != default && startDate < endDate;
 
     /// <summary>One snapshot to extract: the segment to download and the offset into it.</summary>
     public sealed record SnapshotTarget(RecordSegment Segment, TimeSpan Offset);
@@ -798,8 +796,8 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         UniviewClient client, int channel, string deviceId, string outputPath,
         DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
     {
-        var windowStart = new DateTimeOffset(startDate.ToUniversalTime(), TimeSpan.Zero);
-        var windowEnd = new DateTimeOffset(endDate.ToUniversalTime(), TimeSpan.Zero);
+        DateTimeOffset windowStart = new DateTimeOffset(startDate.ToUniversalTime(), TimeSpan.Zero);
+        DateTimeOffset windowEnd = new DateTimeOffset(endDate.ToUniversalTime(), TimeSpan.Zero);
 
         var segments = new List<RecordSegment>();
         foreach ((DateTimeOffset monthStart, DateTimeOffset monthEnd) in GetMonthChunks(startDate, endDate))
@@ -841,7 +839,7 @@ public class UniviewMediaDownloadService : IMediaDownloadService
                 cancellationToken.ThrowIfCancellationRequested();
 
                 string jpg = EnsureWithinRoot(outputPath, Path.Combine(outputPath,
-                    $"snapshot_{deviceId}_{target.Segment.Begin + target.Offset:yyyyMMddHHmmss}.jpg"));
+                    $"snapshot_{deviceId}_{(target.Segment.Begin + target.Offset):yyyyMMddHHmmss}.jpg"));
                 string tempVideo = EnsureWithinRoot(outputPath, Path.Combine(outputPath, $".snapshot_tmp_{Guid.NewGuid():N}.mp4"));
 
                 try
@@ -1028,9 +1026,12 @@ public class UniviewMediaDownloadService : IMediaDownloadService
         // below and cause a legitimately-nested path to fail the StartsWith check.
         string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         string fullCandidate = Path.GetFullPath(candidatePath);
-        return !fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase)
-            ? throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.")
-            : fullCandidate;
+        if (!fullCandidate.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(fullCandidate, fullRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Resolved path '{fullCandidate}' escapes the intended output directory '{fullRoot}'.");
+        }
+
+        return fullCandidate;
     }
 }

@@ -14,7 +14,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
 
         public SnapshotStillMapperTests()
         {
-            _ = Directory.CreateDirectory(_root);
+            Directory.CreateDirectory(_root);
         }
 
         public void Dispose()
@@ -209,7 +209,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         {
             SnapshotStillMapRequest request = Request(Array.Empty<SnapshotStillRecord>(), TimeSpan.Zero);
 
-            _ = Assert.Throws<ArgumentException>(() => _mapper.MapCurrentStills(request));
+            Assert.Throws<ArgumentException>(() => _mapper.MapCurrentStills(request));
         }
 
         private void WriteMedia(string relative)
@@ -217,14 +217,10 @@ namespace VideoForensics.Core.Providers.Core.Tests
             File.WriteAllBytes(Path.Combine(_root, relative), new byte[] { 0xFF, 0xD8, 0xFF });
         }
 
-        private SnapshotStillMapRequest Request(IReadOnlyList<SnapshotStillRecord> records, TimeSpan lastHold)
-        {
-            return new(records, _device, _root, lastHold);
-        }
+        private SnapshotStillMapRequest Request(IReadOnlyList<SnapshotStillRecord> records, TimeSpan lastHold) =>
+            new(records, _device, _root, lastHold);
 
-        private static SnapshotStillRecord Record(Guid device, DateTimeOffset capturedAt, int status, string? media)
-        {
-            return new(device, capturedAt, status, media);
-        }
+        private static SnapshotStillRecord Record(Guid device, DateTimeOffset capturedAt, int status, string? media) =>
+            new(device, capturedAt, status, media);
     }
 }

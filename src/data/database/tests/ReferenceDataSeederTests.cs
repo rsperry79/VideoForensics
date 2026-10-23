@@ -48,12 +48,12 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task Seed_NewSource_InsertsModelsFeaturesLinksAndVersion()
         {
-            FakeSource source = Source(1, Set("Chime Pro (2nd Gen)", "chime", "wifi_bridge"));
+            var source = Source(1, Set("Chime Pro (2nd Gen)", "chime", "wifi_bridge"));
 
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [source], CancellationToken.None);
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
-            _ = Assert.Single(db.DeviceModels);
+            Assert.Single(db.DeviceModels);
             Assert.Equal(2, db.Set<DeviceModelFeature>().Count());
             ReferenceDataVersion version = await db.ReferenceDataVersions.SingleAsync();
             Assert.Equal("Ring", version.SourceName);
@@ -63,7 +63,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task Seed_ManyToMany_ModelHasEveryLinkedFeature()
         {
-            FakeSource source = Source(1, Set("Chime Pro (2nd Gen)", "chime", "wifi_bridge"));
+            var source = Source(1, Set("Chime Pro (2nd Gen)", "chime", "wifi_bridge"));
 
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [source], CancellationToken.None);
 
@@ -101,14 +101,14 @@ namespace VideoForensics.Data.Database.Tests
 
             await using VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync();
             Assert.Equal("New name", (await db.DeviceModels.SingleAsync()).ModelName);
-            _ = Assert.Single(db.Set<DeviceModelFeature>());
+            Assert.Single(db.Set<DeviceModelFeature>());
             Assert.Equal(2, (await db.ReferenceDataVersions.SingleAsync()).Version);
         }
 
         [Fact]
         public async Task Seed_TwoSources_EachKeepsItsOwnVersion()
         {
-            FakeSource ring = Source(1, Set("Chime Pro (2nd Gen)", "chime"));
+            var ring = Source(1, Set("Chime Pro (2nd Gen)", "chime"));
             var other = new FakeSource("Other", 5, new ReferenceDataSet([], [], []));
 
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [ring, other], CancellationToken.None);
@@ -126,8 +126,8 @@ namespace VideoForensics.Data.Database.Tests
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], camera, []))], CancellationToken.None);
             await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
             {
-                _ = db.DeviceModels.Add(new DeviceModel { Kind = "doorbell_brand_new", Provider = "Ring", Family = "Doorbell", Source = "Discovered" });
-                _ = db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "doorbell_brand_new", FeatureCode = "camera" });
+                db.DeviceModels.Add(new DeviceModel { Kind = "doorbell_brand_new", Provider = "Ring", Family = "Doorbell", Source = "Discovered" });
+                db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "doorbell_brand_new", FeatureCode = "camera" });
                 _ = await db.SaveChangesAsync();
             }
 
@@ -144,7 +144,7 @@ namespace VideoForensics.Data.Database.Tests
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], [], []))], CancellationToken.None);
             await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
             {
-                _ = db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Chime", Source = "Discovered" });
+                db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Chime", Source = "Discovered" });
                 _ = await db.SaveChangesAsync();
             }
 
@@ -164,8 +164,8 @@ namespace VideoForensics.Data.Database.Tests
             await ReferenceDataSeeder.SeedAsync(_fixture.Factory, [Source(1, new ReferenceDataSet([], camera, []))], CancellationToken.None);
             await using (VideoForensicsDbContext db = await _fixture.Factory.CreateDbContextAsync())
             {
-                _ = db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Unknown", Source = "Discovered" });
-                _ = db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "chime_pro_v2", FeatureCode = "camera" });
+                db.DeviceModels.Add(new DeviceModel { Kind = "chime_pro_v2", Provider = "Ring", Family = "Unknown", Source = "Discovered" });
+                db.DeviceModelFeatures.Add(new DeviceModelFeature { DeviceModelKind = "chime_pro_v2", FeatureCode = "camera" });
                 _ = await db.SaveChangesAsync();
             }
 
@@ -217,10 +217,7 @@ namespace VideoForensics.Data.Database.Tests
 
             public int Version { get; } = version;
 
-            public ReferenceDataSet GetDataSet()
-            {
-                return data;
-            }
+            public ReferenceDataSet GetDataSet() => data;
         }
     }
 }

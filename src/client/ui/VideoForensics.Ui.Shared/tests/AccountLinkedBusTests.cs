@@ -1,3 +1,4 @@
+using VideoForensics.Ui.Shared.Contracts;
 using VideoForensics.Ui.Shared.Services;
 
 using Xunit;
@@ -13,7 +14,7 @@ namespace VideoForensics.Ui.Shared.Tests
             var id = Guid.NewGuid();
             var received = new List<Guid>();
 
-            using IDisposable subscription = bus.AccountLinked.Subscribe(received.Add);
+            using var subscription = bus.AccountLinked.Subscribe(received.Add);
             bus.Publish(id);
 
             Assert.Equal(new[] { id }, received);
@@ -25,7 +26,7 @@ namespace VideoForensics.Ui.Shared.Tests
             var bus = new AccountLinkedBus();
             var received = new List<Guid>();
 
-            IDisposable subscription = bus.AccountLinked.Subscribe(received.Add);
+            var subscription = bus.AccountLinked.Subscribe(received.Add);
             subscription.Dispose();
             bus.Publish(Guid.NewGuid());
 
@@ -39,7 +40,7 @@ namespace VideoForensics.Ui.Shared.Tests
             var received = new List<Guid>();
 
             bus.Publish(Guid.NewGuid());
-            using IDisposable subscription = bus.AccountLinked.Subscribe(received.Add);
+            using var subscription = bus.AccountLinked.Subscribe(received.Add);
 
             Assert.Empty(received);
         }
@@ -52,8 +53,8 @@ namespace VideoForensics.Ui.Shared.Tests
             var first = new List<Guid>();
             var second = new List<Guid>();
 
-            using IDisposable s1 = bus.AccountLinked.Subscribe(first.Add);
-            using IDisposable s2 = bus.AccountLinked.Subscribe(second.Add);
+            using var s1 = bus.AccountLinked.Subscribe(first.Add);
+            using var s2 = bus.AccountLinked.Subscribe(second.Add);
             bus.Publish(id);
 
             Assert.Equal(new[] { id }, first);

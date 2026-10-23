@@ -1,10 +1,10 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
-
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Providers.Ring.Entities;
+using VideoForensics.Providers.Ring;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -55,10 +55,10 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                IReadOnlyList<Data.Common.Entities.ProviderAccount> accounts = await _providerAccountRepository.ListActiveAsync(ct);
+                var accounts = await _providerAccountRepository.ListActiveAsync(ct);
                 var ringAccounts = accounts.Where(pa => pa.ProviderName == "Ring").ToList();
 
-                foreach (Data.Common.Entities.ProviderAccount? account in ringAccounts)
+                foreach (var account in ringAccounts)
                 {
                     try
                     {
@@ -133,7 +133,9 @@ namespace VideoForensics.Providers.Ring.Services
 
         private async Task<IReadOnlyList<DeviceHealthReading>> FetchHealthForSingleSessionAsync(CancellationToken ct)
         {
+#pragma warning disable CS0618
             Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
             if (session == null)
             {
                 _logger.LogDebug("No active Ring session; skipping health fetch for this account");

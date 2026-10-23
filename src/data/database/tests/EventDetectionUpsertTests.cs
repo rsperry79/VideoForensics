@@ -87,8 +87,8 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task UpsertEventDetectionAsync_DifferentEvents_KeepsSeparateRows()
         {
-            var eventA = Guid.NewGuid();
-            var eventB = Guid.NewGuid();
+            Guid eventA = Guid.NewGuid();
+            Guid eventB = Guid.NewGuid();
 
             await UpsertAsync(eventA, "a", "zone-a");
             await UpsertAsync(eventB, "b", "zone-a");

@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Client.Core.Services
 {
@@ -358,20 +358,16 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Progress line for a finished file check, e.g. "clip.mp4: failed - SHA-256 mismatch against stored hash".</summary>
-        private static string FormatResultLine(MediaVerificationResult result)
-        {
-            return string.IsNullOrWhiteSpace(result.FailureReason)
+        private static string FormatResultLine(MediaVerificationResult result) =>
+            string.IsNullOrWhiteSpace(result.FailureReason)
                 ? $"{result.FileName}: {result.Status}"
                 : $"{result.FileName}: {result.Status} - {result.FailureReason}";
-        }
 
         /// <summary>Progress line for one reconciliation discrepancy, e.g. "MissingFromProvider evt-1".</summary>
-        private static string FormatDiscrepancyLine(ReconciliationDiscrepancy discrepancy)
-        {
-            return string.IsNullOrWhiteSpace(discrepancy.FieldName)
+        private static string FormatDiscrepancyLine(ReconciliationDiscrepancy discrepancy) =>
+            string.IsNullOrWhiteSpace(discrepancy.FieldName)
                 ? $"{discrepancy.Type} {discrepancy.ProviderEventId}"
                 : $"{discrepancy.Type} {discrepancy.ProviderEventId} {discrepancy.FieldName}";
-        }
 
         /// <summary>Case-insensitive string equality check, treating null and empty as different.</summary>
         private static bool StringEquals(string? a, string? b)
@@ -380,9 +376,7 @@ namespace VideoForensics.Client.Core.Services
         }
 
         /// <summary>Sanitizes a string for logging by replacing newline characters to prevent log forging.</summary>
-        private static string SanitizeForLog(string value)
-        {
-            return value.Replace('\r', '_').Replace('\n', '_');
-        }
+        private static string SanitizeForLog(string value) =>
+            value.Replace('\r', '_').Replace('\n', '_');
     }
 }

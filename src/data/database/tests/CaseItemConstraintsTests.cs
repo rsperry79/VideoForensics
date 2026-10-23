@@ -41,8 +41,8 @@ namespace VideoForensics.Data.Database.Tests
                 CreatedAtUtc = DateTime.UtcNow,
                 UpdatedAtUtc = DateTime.UtcNow,
             };
-            _ = db.Cases.Add(forensicCase);
-            _ = await db.SaveChangesAsync();
+            db.Cases.Add(forensicCase);
+            await db.SaveChangesAsync();
             return forensicCase;
         }
 
@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Tests
                 ProviderLocationId = $"loc-{suffix}",
                 Name = "Test Location",
             };
-            _ = db.Locations.Add(location);
+            db.Locations.Add(location);
 
             var device = new Device
             {
@@ -65,7 +65,7 @@ namespace VideoForensics.Data.Database.Tests
                 Name = "Test Device",
                 Type = "Camera",
             };
-            _ = db.Devices.Add(device);
+            db.Devices.Add(device);
 
             var evt = new Event
             {
@@ -76,8 +76,8 @@ namespace VideoForensics.Data.Database.Tests
                 OccurredAtUtc = DateTime.UtcNow,
                 DiscoveredAtUtc = DateTime.UtcNow,
             };
-            _ = db.Events.Add(evt);
-            _ = await db.SaveChangesAsync();
+            db.Events.Add(evt);
+            await db.SaveChangesAsync();
             return evt;
         }
 
@@ -90,7 +90,7 @@ namespace VideoForensics.Data.Database.Tests
                 ProviderLocationId = $"loc-{suffix}",
                 Name = "Test Location",
             };
-            _ = db.Locations.Add(location);
+            db.Locations.Add(location);
 
             var device = new Device
             {
@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Database.Tests
                 Name = "Test Device",
                 Type = "Camera",
             };
-            _ = db.Devices.Add(device);
+            db.Devices.Add(device);
 
             var mediaItem = new MediaItem
             {
@@ -114,8 +114,8 @@ namespace VideoForensics.Data.Database.Tests
                 DownloadedAtUtc = DateTime.UtcNow,
                 Sha256Hash = new string('a', 64),
             };
-            _ = db.MediaItems.Add(mediaItem);
-            _ = await db.SaveChangesAsync();
+            db.MediaItems.Add(mediaItem);
+            await db.SaveChangesAsync();
             return mediaItem;
         }
 
@@ -128,7 +128,7 @@ namespace VideoForensics.Data.Database.Tests
             Guid eventId = evt.Id;
 
             await using VideoForensicsDbContext db1 = _fixture.Factory.CreateDbContext();
-            _ = db1.CaseItems.Add(new CaseItem
+            db1.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -138,10 +138,10 @@ namespace VideoForensics.Data.Database.Tests
                 AddedBy = "tester@example.com",
                 AddedAtUtc = DateTime.UtcNow,
             });
-            _ = await db1.SaveChangesAsync();
+            await db1.SaveChangesAsync();
 
             await using VideoForensicsDbContext db2 = _fixture.Factory.CreateDbContext();
-            _ = db2.CaseItems.Add(new CaseItem
+            db2.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -153,7 +153,7 @@ namespace VideoForensics.Data.Database.Tests
             });
 
             // Act & Assert - the unique filtered index IX_CaseItems_CaseId_EventId_Active rejects this
-            _ = await Assert.ThrowsAsync<DbUpdateException>(() => db2.SaveChangesAsync());
+            await Assert.ThrowsAsync<DbUpdateException>(() => db2.SaveChangesAsync());
         }
 
         [Fact]
@@ -165,7 +165,7 @@ namespace VideoForensics.Data.Database.Tests
             Guid eventId = evt.Id;
 
             await using VideoForensicsDbContext db1 = _fixture.Factory.CreateDbContext();
-            _ = db1.CaseItems.Add(new CaseItem
+            db1.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -178,12 +178,12 @@ namespace VideoForensics.Data.Database.Tests
                 RemovedBy = "tester@example.com",
                 RemovalReason = "No longer needed",
             });
-            _ = await db1.SaveChangesAsync();
+            await db1.SaveChangesAsync();
 
             // Act - a second, active pin for the same (CaseId, EventId) is allowed because the
             // filtered unique index only covers rows where RemovedAtUtc IS NULL.
             await using VideoForensicsDbContext db2 = _fixture.Factory.CreateDbContext();
-            _ = db2.CaseItems.Add(new CaseItem
+            db2.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -193,7 +193,7 @@ namespace VideoForensics.Data.Database.Tests
                 AddedBy = "tester@example.com",
                 AddedAtUtc = DateTime.UtcNow,
             });
-            _ = await db2.SaveChangesAsync();
+            await db2.SaveChangesAsync();
 
             // Assert
             await using VideoForensicsDbContext verifyDb = _fixture.Factory.CreateDbContext();
@@ -209,7 +209,7 @@ namespace VideoForensics.Data.Database.Tests
             ForensicCase forensicCase = await CreateCaseAsync("CONSTRAINT-003");
 
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            _ = db.CaseItems.Add(new CaseItem
+            db.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -222,7 +222,7 @@ namespace VideoForensics.Data.Database.Tests
             });
 
             // Act & Assert - CK_CaseItems_ExactlyOneTarget requires EventId set when Kind is Event
-            _ = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+            await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         }
 
         [Fact]
@@ -234,7 +234,7 @@ namespace VideoForensics.Data.Database.Tests
             MediaItem mediaItem = await CreateMediaItemAsync("constraint-004");
 
             await using VideoForensicsDbContext db = _fixture.Factory.CreateDbContext();
-            _ = db.CaseItems.Add(new CaseItem
+            db.CaseItems.Add(new CaseItem
             {
                 Id = Guid.NewGuid(),
                 CaseId = forensicCase.Id,
@@ -247,7 +247,7 @@ namespace VideoForensics.Data.Database.Tests
             });
 
             // Act & Assert - CK_CaseItems_ExactlyOneTarget rejects Kind=Event with MediaItemId set
-            _ = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+            await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         }
     }
 }

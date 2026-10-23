@@ -39,10 +39,8 @@ namespace VideoForensics.Data.Core.Tests
             }
         }
 
-        private SnapshotTimelineService CreateService()
-        {
-            return new(_captures.Object, new SnapshotStillMapper(), _builder.Object, Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }), NullLogger<SnapshotTimelineService>.Instance);
-        }
+        private SnapshotTimelineService CreateService() =>
+            new(_captures.Object, new SnapshotStillMapper(), _builder.Object, Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }), NullLogger<SnapshotTimelineService>.Instance);
 
         private string WriteMedia(string relativePath)
         {
@@ -52,21 +50,15 @@ namespace VideoForensics.Data.Core.Tests
             return full;
         }
 
-        private SnapshotCapture Attempt(DateTimeOffset at, int status, string? media)
-        {
-            return SnapshotCapture.Create(_deviceId, at, "fresh", status, media, null);
-        }
+        private SnapshotCapture Attempt(DateTimeOffset at, int status, string? media) =>
+            SnapshotCapture.Create(_deviceId, at, "fresh", status, media, null);
 
-        private void SetupAttempts(params SnapshotCapture[] rows)
-        {
-            _ = _captures.Setup(x => x.GetAttemptsForDeviceAsync(_deviceId, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
-        }
+        private void SetupAttempts(params SnapshotCapture[] rows) =>
+            _captures.Setup(x => x.GetAttemptsForDeviceAsync(_deviceId, From, To, It.IsAny<CancellationToken>())).ReturnsAsync(rows);
 
-        private void SetupBuilderSuccess()
-        {
+        private void SetupBuilderSuccess() =>
             _ = _builder.Setup(x => x.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((TimelineVideoRequest r, CancellationToken _) => new TimelineVideoResult(true, r.OutputPath, null, 0));
-        }
 
         [Fact]
         public async Task SnapshotTimelineService_StoredRows_BecomeStillsHeldUntilNextCapture()
@@ -111,7 +103,7 @@ namespace VideoForensics.Data.Core.Tests
         [Fact]
         public async Task SnapshotTimelineService_Status200WithMissingFile_ProducesNoStill()
         {
-            _ = WriteMedia("dev/present.jpg");
+            WriteMedia("dev/present.jpg");
             SetupAttempts(
                 Attempt(T0, 200, "dev/present.jpg"),
                 Attempt(T0.AddSeconds(5), 200, "dev/deleted.jpg"));
@@ -120,7 +112,7 @@ namespace VideoForensics.Data.Core.Tests
             string? result = await CreateService().BuildDeviceTimelineAsync(_deviceId, From, To, _output, CancellationToken.None);
 
             Assert.Equal(_output, result);
-            var request = (TimelineVideoRequest)Assert.Single(_builder.Invocations).Arguments[0];
+            TimelineVideoRequest request = (TimelineVideoRequest)Assert.Single(_builder.Invocations).Arguments[0];
             TimelineStill only = Assert.Single(request.Stills);
             Assert.Equal(Path.GetFullPath(Path.Combine(_root, "dev/present.jpg")), only.ImagePath);
             Assert.Equal(TimeSpan.FromSeconds(1), only.Hold);
@@ -140,7 +132,7 @@ namespace VideoForensics.Data.Core.Tests
         [Fact]
         public async Task SnapshotTimelineService_BuilderFails_ReturnsNullInsteadOfOutputPath()
         {
-            _ = WriteMedia("dev/a.jpg");
+            WriteMedia("dev/a.jpg");
             SetupAttempts(Attempt(T0, 200, "dev/a.jpg"));
             _ = _builder.Setup(x => x.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TimelineVideoResult(false, null, "ffmpeg failed", 0));

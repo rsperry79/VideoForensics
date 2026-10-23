@@ -29,7 +29,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_AddAndGet_RoundTrips()
         {
-            Operator @operator = TestDataBuilder.BuildOperator(displayName: "John Forensics");
+            var @operator = TestDataBuilder.BuildOperator(displayName: "John Forensics");
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
             Operator? retrieved = await _repository.GetAsync(@operator.Id, CancellationToken.None);
@@ -52,9 +52,9 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_ListAsync_ReturnsAllOperators()
         {
-            Operator op1 = TestDataBuilder.BuildOperator(displayName: "Alice");
-            Operator op2 = TestDataBuilder.BuildOperator(displayName: "Bob");
-            Operator op3 = TestDataBuilder.BuildOperator(displayName: "Charlie", active: false);
+            var op1 = TestDataBuilder.BuildOperator(displayName: "Alice");
+            var op2 = TestDataBuilder.BuildOperator(displayName: "Bob");
+            var op3 = TestDataBuilder.BuildOperator(displayName: "Charlie", active: false);
 
             _ = await _repository.AddAsync(op1, CancellationToken.None);
             _ = await _repository.AddAsync(op2, CancellationToken.None);
@@ -88,7 +88,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_IsEmptyAsync_WithOperators_ReturnsFalse()
         {
-            Operator @operator = TestDataBuilder.BuildOperator();
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -100,7 +100,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_DeactivateAsync_SetsFalse()
         {
-            Operator @operator = TestDataBuilder.BuildOperator();
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -126,7 +126,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_Add_AlreadyActive_Persists()
         {
-            Operator @operator = TestDataBuilder.BuildOperator(displayName: "Active Operator");
+            var @operator = TestDataBuilder.BuildOperator(displayName: "Active Operator");
 
             Operator result = await _repository.AddAsync(@operator, CancellationToken.None);
 
@@ -138,7 +138,7 @@ namespace VideoForensics.Data.Database.Tests
         [Fact]
         public async Task OperatorRepository_MultipleDeactivations_Idempotent()
         {
-            Operator @operator = TestDataBuilder.BuildOperator();
+            var @operator = TestDataBuilder.BuildOperator();
 
             _ = await _repository.AddAsync(@operator, CancellationToken.None);
 

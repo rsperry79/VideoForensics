@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "LightGroupSets",
                 columns: table => new
                 {
@@ -20,10 +21,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_LightGroupSets", x => x.Id);
+                    table.PrimaryKey("PK_LightGroupSets", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountProfiles",
                 columns: table => new
                 {
@@ -51,10 +52,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountProfiles", x => x.Id);
+                    table.PrimaryKey("PK_RingAccountProfiles", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountRingtoneDefaults",
                 columns: table => new
                 {
@@ -70,10 +71,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountRingtoneDefaults", x => x.Id);
+                    table.PrimaryKey("PK_RingAccountRingtoneDefaults", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountRingtones",
                 columns: table => new
                 {
@@ -92,10 +93,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountRingtones", x => x.Id);
+                    table.PrimaryKey("PK_RingAccountRingtones", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModes",
                 columns: table => new
                 {
@@ -110,10 +111,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModes", x => x.Id);
+                    table.PrimaryKey("PK_RingLocationModes", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeSettings",
                 columns: table => new
                 {
@@ -124,10 +125,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeSettings", x => x.Id);
+                    table.PrimaryKey("PK_RingLocationModeSettings", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeSharings",
                 columns: table => new
                 {
@@ -138,10 +139,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeSharings", x => x.Id);
+                    table.PrimaryKey("PK_RingLocationModeSharings", x => x.Id);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "LightGroups",
                 columns: table => new
                 {
@@ -152,8 +153,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_LightGroups", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_LightGroups", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_LightGroups_LightGroupSets_LightGroupSetId",
                         column: x => x.LightGroupSetId,
                         principalTable: "LightGroupSets",
@@ -161,7 +162,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountProfileFlags",
                 columns: table => new
                 {
@@ -176,8 +177,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountProfileFlags", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingAccountProfileFlags", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingAccountProfileFlags_RingAccountProfiles_RingAccountProfileId",
                         column: x => x.RingAccountProfileId,
                         principalTable: "RingAccountProfiles",
@@ -185,7 +186,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountSessionFeatures",
                 columns: table => new
                 {
@@ -229,8 +230,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountSessionFeatures", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingAccountSessionFeatures", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingAccountSessionFeatures_RingAccountProfiles_RingAccountProfileId",
                         column: x => x.RingAccountProfileId,
                         principalTable: "RingAccountProfiles",
@@ -238,7 +239,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountRingtoneDeviceKinds",
                 columns: table => new
                 {
@@ -249,8 +250,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountRingtoneDeviceKinds", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingAccountRingtoneDeviceKinds", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingAccountRingtoneDeviceKinds_RingAccountRingtones_RingAccountRingtoneId",
                         column: x => x.RingAccountRingtoneId,
                         principalTable: "RingAccountRingtones",
@@ -258,7 +259,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeNotYetParticipating",
                 columns: table => new
                 {
@@ -269,8 +270,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeNotYetParticipating", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingLocationModeNotYetParticipating", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingLocationModeNotYetParticipating_RingLocationModes_RingLocationModeId",
                         column: x => x.RingLocationModeId,
                         principalTable: "RingLocationModes",
@@ -278,7 +279,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeSettingsEntries",
                 columns: table => new
                 {
@@ -291,8 +292,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeSettingsEntries", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingLocationModeSettingsEntries", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingLocationModeSettingsEntries_RingLocationModeSettings_RingLocationModeSettingsId",
                         column: x => x.RingLocationModeSettingsId,
                         principalTable: "RingLocationModeSettings",
@@ -300,7 +301,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeSupportedActionGroups",
                 columns: table => new
                 {
@@ -311,8 +312,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeSupportedActionGroups", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingLocationModeSupportedActionGroups", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingLocationModeSupportedActionGroups_RingLocationModeSettings_RingLocationModeSettingsId",
                         column: x => x.RingLocationModeSettingsId,
                         principalTable: "RingLocationModeSettings",
@@ -320,7 +321,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "LightGroupDevices",
                 columns: table => new
                 {
@@ -330,8 +331,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_LightGroupDevices", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_LightGroupDevices", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_LightGroupDevices_LightGroups_LightGroupId",
                         column: x => x.LightGroupId,
                         principalTable: "LightGroups",
@@ -339,7 +340,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingAccountProfileFlagItems",
                 columns: table => new
                 {
@@ -350,8 +351,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingAccountProfileFlagItems", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingAccountProfileFlagItems", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingAccountProfileFlagItems_RingAccountProfileFlags_RingAccountProfileFlagId",
                         column: x => x.RingAccountProfileFlagId,
                         principalTable: "RingAccountProfileFlags",
@@ -359,7 +360,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateTable(
+            migrationBuilder.CreateTable(
                 name: "RingLocationModeSettingsEntryActions",
                 columns: table => new
                 {
@@ -372,8 +373,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 },
                 constraints: table =>
                 {
-                    _ = table.PrimaryKey("PK_RingLocationModeSettingsEntryActions", x => x.Id);
-                    _ = table.ForeignKey(
+                    table.PrimaryKey("PK_RingLocationModeSettingsEntryActions", x => x.Id);
+                    table.ForeignKey(
                         name: "FK_RingLocationModeSettingsEntryActions_RingLocationModeSettingsEntries_RingLocationModeSettingsEntryId",
                         column: x => x.RingLocationModeSettingsEntryId,
                         principalTable: "RingLocationModeSettingsEntries",
@@ -381,95 +382,95 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_LightGroupDevices_LightGroupId",
                 table: "LightGroupDevices",
                 column: "LightGroupId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_LightGroups_LightGroupSetId",
                 table: "LightGroups",
                 column: "LightGroupSetId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_LightGroupSets_ProviderLocationId",
                 table: "LightGroupSets",
                 column: "ProviderLocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountProfileFlagItems_RingAccountProfileFlagId",
                 table: "RingAccountProfileFlagItems",
                 column: "RingAccountProfileFlagId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountProfileFlags_RingAccountProfileId",
                 table: "RingAccountProfileFlags",
                 column: "RingAccountProfileId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountProfiles_RingAccountId",
                 table: "RingAccountProfiles",
                 column: "RingAccountId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountRingtoneDefaults_RingAccountId",
                 table: "RingAccountRingtoneDefaults",
                 column: "RingAccountId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountRingtoneDeviceKinds_RingAccountRingtoneId",
                 table: "RingAccountRingtoneDeviceKinds",
                 column: "RingAccountRingtoneId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountRingtones_RingAccountId_RingtoneId",
                 table: "RingAccountRingtones",
                 columns: new[] { "RingAccountId", "RingtoneId" },
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingAccountSessionFeatures_RingAccountProfileId",
                 table: "RingAccountSessionFeatures",
                 column: "RingAccountProfileId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeNotYetParticipating_RingLocationModeId",
                 table: "RingLocationModeNotYetParticipating",
                 column: "RingLocationModeId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModes_ProviderLocationId",
                 table: "RingLocationModes",
                 column: "ProviderLocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeSettings_ProviderLocationId",
                 table: "RingLocationModeSettings",
                 column: "ProviderLocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeSettingsEntries_RingLocationModeSettingsId",
                 table: "RingLocationModeSettingsEntries",
                 column: "RingLocationModeSettingsId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeSettingsEntryActions_RingLocationModeSettingsEntryId",
                 table: "RingLocationModeSettingsEntryActions",
                 column: "RingLocationModeSettingsEntryId");
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeSharings_ProviderLocationId",
                 table: "RingLocationModeSharings",
                 column: "ProviderLocationId",
                 unique: true);
 
-            _ = migrationBuilder.CreateIndex(
+            migrationBuilder.CreateIndex(
                 name: "IX_RingLocationModeSupportedActionGroups_RingLocationModeSettingsId",
                 table: "RingLocationModeSupportedActionGroups",
                 column: "RingLocationModeSettingsId");
@@ -478,55 +479,55 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "LightGroupDevices");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountProfileFlagItems");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountRingtoneDefaults");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountRingtoneDeviceKinds");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountSessionFeatures");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeNotYetParticipating");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeSettingsEntryActions");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeSharings");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeSupportedActionGroups");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "LightGroups");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountProfileFlags");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountRingtones");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModes");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeSettingsEntries");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "LightGroupSets");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingAccountProfiles");
 
-            _ = migrationBuilder.DropTable(
+            migrationBuilder.DropTable(
                 name: "RingLocationModeSettings");
         }
     }

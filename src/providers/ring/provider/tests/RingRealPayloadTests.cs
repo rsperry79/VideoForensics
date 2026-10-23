@@ -20,7 +20,7 @@ namespace VideoForensics.Providers.Ring.Tests
         private static JsonElement LoadFixture()
         {
             string path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "doorbot-settings-sanitized.json");
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
             return doc.RootElement.Clone();
         }
 
@@ -69,7 +69,7 @@ namespace VideoForensics.Providers.Ring.Tests
             IReadOnlyList<DeviceZoneDetail>? zones = DoorbotFields(root).Zones;
 
             Assert.NotNull(zones);
-            var motion = zones!.Where(z => z.Source == "motion").ToList();
+            List<DeviceZoneDetail> motion = zones!.Where(z => z.Source == "motion").ToList();
             Assert.Equal(capturedZones.Count(), motion.Count);
             for (int i = 0; i < motion.Count; i++)
             {

@@ -21,9 +21,9 @@ public sealed record ForensicScope(
     /// </summary>
     public static ForensicScope Default(DateTime utcNow)
     {
-        DateTime from = utcNow.Date.AddDays(-7);
-        DateTime to = utcNow.Date.AddDays(1);
-        return new ForensicScope([], from, to, null);
+        var from = utcNow.Date.AddDays(-7);
+        var to = utcNow.Date.AddDays(1);
+        return new ForensicScope(new List<Guid>(), from, to, null);
     }
 
     /// <summary>
@@ -36,7 +36,12 @@ public sealed record ForensicScope(
     /// </summary>
     public bool Equals(ForensicScope? other)
     {
-        return other is not null && DeviceIds.SequenceEqual(other.DeviceIds)
+        if (other is null)
+        {
+            return false;
+        }
+
+        return DeviceIds.SequenceEqual(other.DeviceIds)
             && FromUtc == other.FromUtc
             && ToUtc == other.ToUtc
             && Search == other.Search
@@ -49,11 +54,10 @@ public sealed record ForensicScope(
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        foreach (Guid deviceId in DeviceIds)
+        foreach (var deviceId in DeviceIds)
         {
             hash.Add(deviceId);
         }
-
         hash.Add(FromUtc);
         hash.Add(ToUtc);
         hash.Add(Search);
@@ -92,7 +96,7 @@ public class ScopeState
     /// </summary>
     public void Set(ForensicScope scope)
     {
-        ForensicScope normalized = Normalize(scope);
+        var normalized = Normalize(scope);
 
         if (normalized == Current)
         {
@@ -114,7 +118,7 @@ public class ScopeState
         // Devices
         if (Current.DeviceIds.Count > 0)
         {
-            string deviceStr = string.Join(",", Current.DeviceIds.Select(g => g.ToString("D")));
+            var deviceStr = string.Join(",", Current.DeviceIds.Select(g => g.ToString("D")));
             parts.Add($"devices={deviceStr}");
         }
         else if (Current.MatchesNoDevices)
@@ -139,7 +143,7 @@ public class ScopeState
         // Search
         if (!string.IsNullOrWhiteSpace(Current.Search))
         {
-            string encoded = HttpUtility.UrlEncode(Current.Search);
+            var encoded = HttpUtility.UrlEncode(Current.Search);
             parts.Add($"q={encoded}");
         }
 
@@ -161,26 +165,26 @@ public class ScopeState
         // Remove leading '?' if present
         if (query.StartsWith("?"))
         {
-            query = query[1..];
+            query = query.Substring(1);
         }
 
         var deviceIds = new List<Guid>();
-        bool matchesNoDevices = false;
+        var matchesNoDevices = false;
         DateTime? fromUtc = null;
         DateTime? toUtc = null;
         string? search = null;
 
-        string[] pairs = query.Split('&');
-        foreach (string pair in pairs)
+        var pairs = query.Split('&');
+        foreach (var pair in pairs)
         {
-            int eqIndex = pair.IndexOf('=');
+            var eqIndex = pair.IndexOf('=');
             if (eqIndex <= 0)
             {
                 continue;
             }
 
-            string key = pair[..eqIndex];
-            string value = HttpUtility.UrlDecode(pair[(eqIndex + 1)..]);
+            var key = pair.Substring(0, eqIndex);
+            var value = HttpUtility.UrlDecode(pair.Substring(eqIndex + 1));
 
             if (key == "devices" && value == "none")
             {
@@ -188,10 +192,10 @@ public class ScopeState
             }
             else if (key == "devices" && !string.IsNullOrWhiteSpace(value))
             {
-                string[] parts = value.Split(',');
-                foreach (string part in parts)
+                var parts = value.Split(',');
+                foreach (var part in parts)
                 {
-                    if (Guid.TryParse(part.Trim(), out Guid guid))
+                    if (Guid.TryParse(part.Trim(), out var guid))
                     {
                         deviceIds.Add(guid);
                     }
@@ -199,14 +203,14 @@ public class ScopeState
             }
             else if (key == "from" && !string.IsNullOrWhiteSpace(value))
             {
-                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime from))
+                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var from))
                 {
                     fromUtc = from;
                 }
             }
             else if (key == "to" && !string.IsNullOrWhiteSpace(value))
             {
-                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime to))
+                if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var to))
                 {
                     toUtc = to;
                 }
@@ -225,7 +229,7 @@ public class ScopeState
             Search: search ?? Current.Search,
             MatchesNoDevices: matchesNoDevices);
 
-        ForensicScope oldCurrent = Current;
+        var oldCurrent = Current;
         Set(newScope);
 
         // Use custom Equals to check if the scope actually changed
@@ -238,15 +242,15 @@ public class ScopeState
         var distinctDevices = scope.DeviceIds.Distinct().ToList();
 
         // Swap if reversed
-        (DateTime from, DateTime to) = scope.FromUtc <= scope.ToUtc
+        var (from, to) = scope.FromUtc <= scope.ToUtc
             ? (scope.FromUtc, scope.ToUtc)
             : (scope.ToUtc, scope.FromUtc);
 
         // Trim search to null if blank
-        string? search = string.IsNullOrWhiteSpace(scope.Search) ? null : scope.Search;
+        var search = string.IsNullOrWhiteSpace(scope.Search) ? null : scope.Search;
 
         // The no-match flag only means something while no device is listed; a listed device wins.
-        bool matchesNoDevices = scope.MatchesNoDevices && distinctDevices.Count == 0;
+        var matchesNoDevices = scope.MatchesNoDevices && distinctDevices.Count == 0;
 
         return new ForensicScope(distinctDevices, from, to, search, matchesNoDevices);
     }

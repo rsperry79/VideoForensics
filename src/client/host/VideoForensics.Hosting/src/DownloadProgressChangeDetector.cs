@@ -21,7 +21,12 @@ namespace VideoForensics.Hosting
         /// <inheritdoc />
         public bool HasChanged(DownloadProgressDto? previous, DownloadProgressDto current)
         {
-            return previous is null || !previous.Progress.Equals(current.Progress)
+            if (previous is null)
+            {
+                return true;
+            }
+
+            return !previous.Progress.Equals(current.Progress)
                 || previous.CurrentDeviceIndex != current.CurrentDeviceIndex
                 || previous.CurrentDeviceTotal != current.CurrentDeviceTotal
                 || previous.CurrentDeviceName != current.CurrentDeviceName

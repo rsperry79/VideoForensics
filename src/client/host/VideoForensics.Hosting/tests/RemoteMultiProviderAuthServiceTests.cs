@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+using VideoForensics.Core.Providers.Common.Contracts;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -182,7 +184,7 @@ namespace VideoForensics.Hosting.Tests
 
             // Act
             IProviderAuthService nullService = service.GetService(null!);
-            IProviderAuthService emptyService = service.GetService(string.Empty);
+            IProviderAuthService emptyService = service.GetService("");
 
             // Assert
             Assert.NotNull(nullService);

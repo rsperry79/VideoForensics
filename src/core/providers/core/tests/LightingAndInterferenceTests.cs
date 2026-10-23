@@ -1,3 +1,4 @@
+using VideoForensics.Core.Providers.Core;
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
@@ -80,7 +81,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void BitrateBaseline_From_ComputesMedianAndCount()
         {
-            var baseline = BitrateBaseline.From(new long[] { 900_000, 1_000_000, 1_200_000, 5_000_000 });
+            BitrateBaseline? baseline = BitrateBaseline.From(new long[] { 900_000, 1_000_000, 1_200_000, 5_000_000 });
 
             Assert.NotNull(baseline);
             Assert.Equal(1_100_000, baseline.MedianBps); // median of the four: (1.0M + 1.2M) / 2

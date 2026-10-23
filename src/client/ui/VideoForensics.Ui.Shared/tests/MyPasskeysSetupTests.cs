@@ -1,21 +1,15 @@
-
-using AngleSharp.Dom;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
-
 using Moq;
-
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
-
 using Xunit;
 
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// Covers the setup prompt on MyPasskeys: SignIn sends a user with no passkey to /settings/passkeys?setup=true,
 /// and the page shows the prompt only when that query flag is present.
@@ -27,14 +21,14 @@ public class MyPasskeysSetupTests : BunitContext
     public MyPasskeysSetupTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
-        _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
-        _ = Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
+        Services.AddLocalization();
+        Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
+        Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
+        Services.AddScoped<Syncfusion.Blazor.SyncfusionBlazorService>();
         WebAuthn = new Mock<WebAuthnClient>(Mock.Of<IJSRuntime>(), Mock.Of<ISelfApiHttpClientFactory>());
-        _ = Services.AddScoped(_ => WebAuthn.Object);
-        _ = Services.AddScoped<StepUpService>();
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(_ => WebAuthn.Object);
+        Services.AddScoped<StepUpService>();
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -44,13 +38,13 @@ public class MyPasskeysSetupTests : BunitContext
     public async Task MyPasskeys_SetupApproved_StillClearsAndSignsIn()
     {
         // Arrange - a limited create-passkey session adds its passkey
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("setup-token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
-        _ = WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
+        WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
             .ReturnsAsync((true, null, true));
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
         component.Find("input[type='text']").Change("Phone");
 
         // Act
@@ -66,20 +60,20 @@ public class MyPasskeysSetupTests : BunitContext
     public async Task MyPasskeys_SetupPendingApproval_ShowsMessageAndKeepsSession()
     {
         // Arrange - the setup passkey was added but an admin still has to approve it
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("setup-token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
-        _ = WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
+        WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
             .ReturnsAsync((true, null, false));
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
         component.Find("input[type='text']").Change("Phone");
 
         // Act
         await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         // Assert - the page explains the wait and keeps the session; it does not navigate away
-        IElement pending = component.Find("[data-testid='passkey-setup-pending']");
+        var pending = component.Find("[data-testid='passkey-setup-pending']");
         Assert.Equal(Services.GetRequiredService<IStringLocalizer<MyPasskeys>>()["PasskeySetupPendingApproval"].Value, pending.TextContent.Trim());
         Assert.True(session.IsSignedIn);
         Assert.True(session.PasskeySetupOnly);
@@ -90,13 +84,13 @@ public class MyPasskeysSetupTests : BunitContext
     public async Task MyPasskeys_SetupPendingApproval_SignOutClearsSessionAndNavigatesToSignIn()
     {
         // Arrange - a pending setup passkey leaves the operator on the message with a sign-out button
-        PairedSessionState session = Services.GetRequiredService<PairedSessionState>();
+        var session = Services.GetRequiredService<PairedSessionState>();
         await session.SetAsync("setup-token", Guid.NewGuid(), "ReadOnly", passkeySetupOnly: true);
-        _ = WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
+        WebAuthn.Setup(w => w.RegisterOperatorCredentialAsync("setup-token", "Phone"))
             .ReturnsAsync((true, null, false));
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         nav.NavigateTo("http://localhost/settings/passkeys?setup=true");
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
         component.Find("input[type='text']").Change("Phone");
         await component.Find("button.e-primary:not(:disabled)").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
@@ -116,7 +110,7 @@ public class MyPasskeysSetupTests : BunitContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/settings/passkeys?setup=true");
 
         // Act
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
 
         // Assert
         Assert.NotEmpty(component.FindAll(SetupPromptTestId));
@@ -129,7 +123,7 @@ public class MyPasskeysSetupTests : BunitContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/settings/passkeys");
 
         // Act
-        IRenderedComponent<MyPasskeys> component = Render<MyPasskeys>();
+        var component = Render<MyPasskeys>();
 
         // Assert
         Assert.Empty(component.FindAll(SetupPromptTestId));

@@ -24,9 +24,9 @@ namespace VideoForensics.Ui.Shared.Layout
         /// <param name="itemPath">The nav item's <c>Path</c>, e.g. <c>/cases</c> or <c>/analyze?analysis=jamming</c>.</param>
         public static bool Matches(string currentPath, string? currentQuery, string itemPath)
         {
-            int queryIndex = itemPath.IndexOf('?');
-            string itemPathPart = queryIndex >= 0 ? itemPath[..queryIndex] : itemPath;
-            string? itemQueryPart = queryIndex >= 0 ? itemPath[(queryIndex + 1)..] : null;
+            var queryIndex = itemPath.IndexOf('?');
+            var itemPathPart = queryIndex >= 0 ? itemPath[..queryIndex] : itemPath;
+            var itemQueryPart = queryIndex >= 0 ? itemPath[(queryIndex + 1)..] : null;
 
             bool pathMatches = itemPathPart == "/"
                 ? currentPath == "/"
@@ -38,14 +38,14 @@ namespace VideoForensics.Ui.Shared.Layout
                 return pathMatches;
             }
 
-            Dictionary<string, string> currentParams = ParseQuery(currentQuery);
-            foreach (string pair in itemQueryPart.Split('&', StringSplitOptions.RemoveEmptyEntries))
+            var currentParams = ParseQuery(currentQuery);
+            foreach (var pair in itemQueryPart.Split('&', StringSplitOptions.RemoveEmptyEntries))
             {
-                int eqIndex = pair.IndexOf('=');
-                string key = eqIndex >= 0 ? pair[..eqIndex] : pair;
-                string value = eqIndex >= 0 ? pair[(eqIndex + 1)..] : string.Empty;
+                var eqIndex = pair.IndexOf('=');
+                var key = eqIndex >= 0 ? pair[..eqIndex] : pair;
+                var value = eqIndex >= 0 ? pair[(eqIndex + 1)..] : string.Empty;
 
-                if (!currentParams.TryGetValue(key, out string? currentValue) || currentValue != value)
+                if (!currentParams.TryGetValue(key, out var currentValue) || currentValue != value)
                 {
                     return false;
                 }
@@ -67,11 +67,11 @@ namespace VideoForensics.Ui.Shared.Layout
                 query = query[1..];
             }
 
-            foreach (string pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
             {
-                int eqIndex = pair.IndexOf('=');
-                string key = eqIndex >= 0 ? pair[..eqIndex] : pair;
-                string value = eqIndex >= 0 ? pair[(eqIndex + 1)..] : string.Empty;
+                var eqIndex = pair.IndexOf('=');
+                var key = eqIndex >= 0 ? pair[..eqIndex] : pair;
+                var value = eqIndex >= 0 ? pair[(eqIndex + 1)..] : string.Empty;
                 result[key] = value;
             }
 

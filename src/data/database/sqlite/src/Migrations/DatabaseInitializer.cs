@@ -44,8 +44,8 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                 // database created by an older alpha build carries migration ids this build no longer contains.
                 // EF cannot upgrade such a file in place; fail loudly instead of crashing later on a schema mismatch.
                 // GetAppliedMigrationsAsync tolerates a missing __EFMigrationsHistory table (fresh/empty file).
-                var knownMigrations = db.Database.GetMigrations().ToHashSet(StringComparer.Ordinal);
-                var unknownApplied = (await db.Database.GetAppliedMigrationsAsync(cancellationToken))
+                HashSet<string> knownMigrations = db.Database.GetMigrations().ToHashSet(StringComparer.Ordinal);
+                List<string> unknownApplied = (await db.Database.GetAppliedMigrationsAsync(cancellationToken))
                     .Where(id => !knownMigrations.Contains(id))
                     .ToList();
                 if (unknownApplied.Count > 0)
@@ -136,7 +136,7 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
             string? directory = Path.GetDirectoryName(originalPath);
             string filename = Path.GetFileName(originalPath);
             string backupFilename = $"{filename}.bak-{timestamp}";
-            return Path.Combine(directory ?? string.Empty, backupFilename);
+            return Path.Combine(directory ?? "", backupFilename);
         }
 
         /// <summary>

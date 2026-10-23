@@ -1,9 +1,11 @@
+using System.Text.Json;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Moq;
 
-using System.Text.Json;
-
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
 using VideoForensics.Ui.Shared.Services;
@@ -36,13 +38,13 @@ namespace VideoForensics.WebApp.Tests
                 };
 
                 string json = JsonSerializer.Serialize(storedSession);
-                _ = jsRuntime
+                jsRuntime
                     .Setup(j => j.InvokeAsync<string?>("vfWebAuthn.loadSession", It.IsAny<object?[]?>()))
                     .ReturnsAsync(json);
             }
             else
             {
-                _ = jsRuntime
+                jsRuntime
                     .Setup(j => j.InvokeAsync<string?>("vfWebAuthn.loadSession", It.IsAny<object?[]?>()))
                     .ReturnsAsync((string?)null);
             }
@@ -53,8 +55,8 @@ namespace VideoForensics.WebApp.Tests
         [Fact]
         public async Task GetContentUrlsAsync_NoSession_ReturnsEmpty()
         {
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(null, null);
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var jsRuntime = SetupJSRuntimeWithSession(null, null);
+            var sessionState = CreateSessionState(jsRuntime);
 
             var sessionTokenService = new Mock<ISessionTokenService>();
             var ticketService = new Mock<IMediaAccessTicketService>();
@@ -62,8 +64,8 @@ namespace VideoForensics.WebApp.Tests
 
             var provider = new LocalMediaContentUrlProvider(sessionState, sessionTokenService.Object, ticketService.Object, logger.Object);
 
-            Guid[] mediaItemIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
-            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
+            var mediaItemIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+            var result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -72,19 +74,19 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetContentUrlsAsync_InvalidToken_ReturnsEmpty()
         {
             var operatorId = Guid.NewGuid();
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(operatorId, "invalid_token");
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var jsRuntime = SetupJSRuntimeWithSession(operatorId, "invalid_token");
+            var sessionState = CreateSessionState(jsRuntime);
 
             var sessionTokenService = new Mock<ISessionTokenService>();
-            _ = sessionTokenService.Setup(s => s.Validate("invalid_token")).Returns((SessionPrincipal?)null);
+            sessionTokenService.Setup(s => s.Validate("invalid_token")).Returns((SessionPrincipal?)null);
 
             var ticketService = new Mock<IMediaAccessTicketService>();
             var logger = new Mock<Microsoft.Extensions.Logging.ILogger<LocalMediaContentUrlProvider>>();
 
             var provider = new LocalMediaContentUrlProvider(sessionState, sessionTokenService.Object, ticketService.Object, logger.Object);
 
-            Guid[] mediaItemIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
-            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
+            var mediaItemIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+            var result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
 
             Assert.Empty(result);
         }
@@ -93,9 +95,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetContentUrlsAsync_ValidToken_IssuesTicketsUsingTokenOperatorId()
         {
             var operatorId = Guid.NewGuid();
-            string sessionToken = "valid_session_token";
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var sessionToken = "valid_session_token";
+            var jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
+            var sessionState = CreateSessionState(jsRuntime);
 
             var principal = new SessionPrincipal(
                 operatorId,
@@ -107,7 +109,7 @@ namespace VideoForensics.WebApp.Tests
                 DateTime.UtcNow.AddHours(1));
 
             var sessionTokenService = new Mock<ISessionTokenService>();
-            _ = sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
+            sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
 
             var mediaId1 = Guid.NewGuid();
             var mediaId2 = Guid.NewGuid();
@@ -116,15 +118,15 @@ namespace VideoForensics.WebApp.Tests
             var ticket2 = new MediaAccessTicket("token2", DateTime.UtcNow.AddMinutes(10));
 
             var ticketService = new Mock<IMediaAccessTicketService>();
-            _ = ticketService.Setup(t => t.Issue(mediaId1, operatorId)).Returns(ticket1);
-            _ = ticketService.Setup(t => t.Issue(mediaId2, operatorId)).Returns(ticket2);
+            ticketService.Setup(t => t.Issue(mediaId1, operatorId)).Returns(ticket1);
+            ticketService.Setup(t => t.Issue(mediaId2, operatorId)).Returns(ticket2);
 
             var logger = new Mock<Microsoft.Extensions.Logging.ILogger<LocalMediaContentUrlProvider>>();
 
             var provider = new LocalMediaContentUrlProvider(sessionState, sessionTokenService.Object, ticketService.Object, logger.Object);
 
-            Guid[] mediaItemIds = new[] { mediaId1, mediaId2 };
-            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
+            var mediaItemIds = new[] { mediaId1, mediaId2 };
+            var result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
 
             Assert.NotEmpty(result);
             Assert.Equal(2, result.Count);
@@ -142,9 +144,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetContentUrlsAsync_ValidToken_DedupplicatesIds()
         {
             var operatorId = Guid.NewGuid();
-            string sessionToken = "valid_session_token";
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var sessionToken = "valid_session_token";
+            var jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
+            var sessionState = CreateSessionState(jsRuntime);
 
             var principal = new SessionPrincipal(
                 operatorId,
@@ -156,24 +158,24 @@ namespace VideoForensics.WebApp.Tests
                 DateTime.UtcNow.AddHours(1));
 
             var sessionTokenService = new Mock<ISessionTokenService>();
-            _ = sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
+            sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
 
             var mediaId = Guid.NewGuid();
             var ticket = new MediaAccessTicket("token1", DateTime.UtcNow.AddMinutes(10));
 
             var ticketService = new Mock<IMediaAccessTicketService>();
-            _ = ticketService.Setup(t => t.Issue(mediaId, operatorId)).Returns(ticket);
+            ticketService.Setup(t => t.Issue(mediaId, operatorId)).Returns(ticket);
 
             var logger = new Mock<Microsoft.Extensions.Logging.ILogger<LocalMediaContentUrlProvider>>();
 
             var provider = new LocalMediaContentUrlProvider(sessionState, sessionTokenService.Object, ticketService.Object, logger.Object);
 
             // Pass same ID multiple times
-            Guid[] mediaItemIds = new[] { mediaId, mediaId, mediaId };
-            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
+            var mediaItemIds = new[] { mediaId, mediaId, mediaId };
+            var result = await provider.GetContentUrlsAsync(mediaItemIds, CancellationToken.None);
 
             Assert.NotEmpty(result);
-            _ = Assert.Single(result);
+            Assert.Single(result);
             ticketService.Verify(t => t.Issue(mediaId, operatorId), Times.Once);
         }
 
@@ -181,9 +183,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetContentUrlsAsync_HonorsCancellationToken()
         {
             var operatorId = Guid.NewGuid();
-            string sessionToken = "valid_session_token";
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var sessionToken = "valid_session_token";
+            var jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
+            var sessionState = CreateSessionState(jsRuntime);
 
             var principal = new SessionPrincipal(
                 operatorId,
@@ -195,7 +197,7 @@ namespace VideoForensics.WebApp.Tests
                 DateTime.UtcNow.AddHours(1));
 
             var sessionTokenService = new Mock<ISessionTokenService>();
-            _ = sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
+            sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
 
             var ticketService = new Mock<IMediaAccessTicketService>();
             var logger = new Mock<Microsoft.Extensions.Logging.ILogger<LocalMediaContentUrlProvider>>();
@@ -205,10 +207,10 @@ namespace VideoForensics.WebApp.Tests
             var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            Guid[] mediaItemIds = new[] { Guid.NewGuid() };
+            var mediaItemIds = new[] { Guid.NewGuid() };
 
             // Should throw OperationCanceledException
-            _ = await Assert.ThrowsAsync<OperationCanceledException>(
+            await Assert.ThrowsAsync<OperationCanceledException>(
                 async () => await provider.GetContentUrlsAsync(mediaItemIds, cts.Token));
         }
 
@@ -216,9 +218,9 @@ namespace VideoForensics.WebApp.Tests
         public async Task GetContentUrlsAsync_EmptyList_ReturnsEmpty()
         {
             var operatorId = Guid.NewGuid();
-            string sessionToken = "valid_session_token";
-            Mock<IJSRuntime> jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
-            PairedSessionState sessionState = CreateSessionState(jsRuntime);
+            var sessionToken = "valid_session_token";
+            var jsRuntime = SetupJSRuntimeWithSession(operatorId, sessionToken);
+            var sessionState = CreateSessionState(jsRuntime);
 
             var principal = new SessionPrincipal(
                 operatorId,
@@ -230,14 +232,14 @@ namespace VideoForensics.WebApp.Tests
                 DateTime.UtcNow.AddHours(1));
 
             var sessionTokenService = new Mock<ISessionTokenService>();
-            _ = sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
+            sessionTokenService.Setup(s => s.Validate(sessionToken)).Returns(principal);
 
             var ticketService = new Mock<IMediaAccessTicketService>();
             var logger = new Mock<Microsoft.Extensions.Logging.ILogger<LocalMediaContentUrlProvider>>();
 
             var provider = new LocalMediaContentUrlProvider(sessionState, sessionTokenService.Object, ticketService.Object, logger.Object);
 
-            IReadOnlyDictionary<Guid, string> result = await provider.GetContentUrlsAsync(Array.Empty<Guid>(), CancellationToken.None);
+            var result = await provider.GetContentUrlsAsync(Array.Empty<Guid>(), CancellationToken.None);
 
             Assert.Empty(result);
         }

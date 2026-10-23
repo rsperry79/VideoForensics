@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 
@@ -215,13 +216,13 @@ namespace VideoForensics.Providers.Ring.Services
                 return null;
             }
 
-            var snooze = (fields.MotionSnoozePresets ?? [])
+            List<DeviceMotionSnoozePreset> snooze = (fields.MotionSnoozePresets ?? [])
                 .Select((p, i) => new DeviceMotionSnoozePreset { Id = Guid.NewGuid(), DeviceId = deviceId, Position = i, Preset = p })
                 .ToList();
-            var live = (fields.LiveViewPresets ?? [])
+            List<DeviceLiveViewPreset> live = (fields.LiveViewPresets ?? [])
                 .Select((p, i) => new DeviceLiveViewPreset { Id = Guid.NewGuid(), DeviceId = deviceId, Position = i, Preset = p })
                 .ToList();
-            var zones = (fields.AdvancedMotionZones ?? [])
+            List<DeviceAdvancedMotionZone> zones = (fields.AdvancedMotionZones ?? [])
                 .Select(z => new DeviceAdvancedMotionZone
                 {
                     Id = Guid.NewGuid(),
@@ -236,7 +237,7 @@ namespace VideoForensics.Providers.Ring.Services
                 .ToList();
 
             // Zones and object settings stay null (untouched) when Ring did not send that object at all.
-            var zoneRows = fields.Zones?
+            List<DeviceZone>? zoneRows = fields.Zones?
                 .Select(z => new DeviceZone
                 {
                     Id = Guid.NewGuid(),
@@ -254,7 +255,7 @@ namespace VideoForensics.Providers.Ring.Services
                         .ToList()
                 })
                 .ToList();
-            var objectRows = fields.AdvancedObjectSettings?
+            List<DeviceAdvancedObjectSetting>? objectRows = fields.AdvancedObjectSettings?
                 .Select(s => new DeviceAdvancedObjectSetting { Id = Guid.NewGuid(), DeviceId = deviceId, SettingKey = s.SettingKey, Day = s.Day, Night = s.Night })
                 .ToList();
 
@@ -300,22 +301,25 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>Builds the feature row, or null when the device has no features object.</summary>
         public static DeviceFeatures? ToFeatures(RingDeviceDetails details, Guid deviceId)
         {
-            return !details.HasFeatures
-                ? null
-                : new DeviceFeatures
-                {
-                    Id = Guid.NewGuid(),
-                    DeviceId = deviceId,
-                    MotionsEnabled = details.MotionsEnabled,
-                    ShowRecordings = details.ShowRecordings,
-                    AdvancedMotionEnabled = details.AdvancedMotionEnabled,
-                    PeopleOnlyEnabled = details.PeopleOnlyEnabled,
-                    ShadowCorrectionEnabled = details.ShadowCorrectionEnabled,
-                    MotionMessageEnabled = details.MotionMessageEnabled,
-                    NightVisionEnabled = details.NightVisionEnabled,
-                    ShowVodSettings = details.ShowVodSettings,
-                    RingtonesEnabled = details.RingtonesEnabled
-                };
+            if (!details.HasFeatures)
+            {
+                return null;
+            }
+
+            return new DeviceFeatures
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                MotionsEnabled = details.MotionsEnabled,
+                ShowRecordings = details.ShowRecordings,
+                AdvancedMotionEnabled = details.AdvancedMotionEnabled,
+                PeopleOnlyEnabled = details.PeopleOnlyEnabled,
+                ShadowCorrectionEnabled = details.ShadowCorrectionEnabled,
+                MotionMessageEnabled = details.MotionMessageEnabled,
+                NightVisionEnabled = details.NightVisionEnabled,
+                ShowVodSettings = details.ShowVodSettings,
+                RingtonesEnabled = details.RingtonesEnabled
+            };
         }
 
         /// <summary>
@@ -325,9 +329,12 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         public static IReadOnlyList<DeviceAlerts> ToAlerts(RingDeviceDetails details, Guid deviceId)
         {
-            return string.IsNullOrWhiteSpace(details.AlertConnection)
-                ? []
-                : [new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "connection", IsEnabled = null, AlertValue = details.AlertConnection }];
+            if (string.IsNullOrWhiteSpace(details.AlertConnection))
+            {
+                return [];
+            }
+
+            return [new DeviceAlerts { Id = Guid.NewGuid(), DeviceId = deviceId, AlertType = "connection", IsEnabled = null, AlertValue = details.AlertConnection }];
         }
 
         private static RingDeviceDetails FromDoorbot(Doorbot d)
@@ -508,9 +515,12 @@ namespace VideoForensics.Providers.Ring.Services
         /// <summary>A string value as its text, or the raw JSON of a non-string value, or null when Ring omitted it.</summary>
         private static string? JsonText(JsonElement? value)
         {
-            return value is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-                ? null
-                : element.ValueKind == JsonValueKind.String ? element.GetString() : element.GetRawText();
+            if (value is not { } element || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            {
+                return null;
+            }
+
+            return element.ValueKind == JsonValueKind.String ? element.GetString() : element.GetRawText();
         }
 
         /// <summary>Serializes the settings keys not modelled by a named column. Null when there are none.</summary>
@@ -525,24 +535,33 @@ namespace VideoForensics.Providers.Ring.Services
         /// </summary>
         private static long? NestedLong(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
         {
-            return fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object
-                ? null
-                : obj.TryGetProperty(valueKey, out JsonElement value) && value.TryGetInt64(out long number) ? number : null;
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            return obj.TryGetProperty(valueKey, out JsonElement value) && value.TryGetInt64(out long number) ? number : null;
         }
 
         /// <summary>Reads a boolean from a nested settings object kept in AdditionalFields. Null when absent or not a boolean.</summary>
         private static bool? NestedBool(Dictionary<string, JsonElement>? fields, string objectKey, string valueKey)
         {
-            return fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object
-                ? null
-                : !obj.TryGetProperty(valueKey, out JsonElement value)
-                ? null
-                : value.ValueKind switch
-                {
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    _ => null
-                };
+            if (fields == null || !fields.TryGetValue(objectKey, out JsonElement obj) || obj.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (!obj.TryGetProperty(valueKey, out JsonElement value))
+            {
+                return null;
+            }
+
+            return value.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => null
+            };
         }
 
         /// <summary>Narrows a Ring number to int, or null when it does not fit (never truncates silently).</summary>

@@ -133,12 +133,12 @@ namespace VideoForensics.Data.Database.Repositories
                 }
 
                 _ = await db.SaveChangesAsync(ct);
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
                 _logger.LogDebug("Sync schedule upserted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
             }
             catch (Exception ex)
             {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == schedule.ProviderAccountId, ct);
                 _logger.LogError(ex, "Error upserting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
@@ -155,13 +155,13 @@ namespace VideoForensics.Data.Database.Repositories
                 {
                     _ = db.SyncSchedules.Remove(schedule);
                     _ = await db.SaveChangesAsync(ct);
-                    ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                    var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
                     _logger.LogDebug("Sync schedule deleted for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 }
             }
             catch (Exception ex)
             {
-                ProviderAccount? account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
+                var account = await db.ProviderAccounts.FirstOrDefaultAsync(pa => pa.Id == providerAccountId, ct);
                 _logger.LogError(ex, "Error deleting sync schedule for provider account: {ProviderName}", account?.ProviderName ?? "unknown");
                 throw;
             }
@@ -232,7 +232,7 @@ namespace VideoForensics.Data.Database.Repositories
             _ = await db.SyncSchedules
                 .Where(ss => ss.ProviderAccountId == providerAccountId)
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(ss => ss.SnapshotIntervalSeconds, seconds), ct);
+                    .SetProperty(ss => ss.SnapshotIntervalSeconds, (int?)seconds), ct);
         }
     }
 }

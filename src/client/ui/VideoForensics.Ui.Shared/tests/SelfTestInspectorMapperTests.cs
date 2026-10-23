@@ -1,11 +1,8 @@
-
-using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Ui.Shared.Services.Inspector;
-using VideoForensics.Ui.Shared.Services.SelfTest;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
+using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Ui.Shared.Services.SelfTest;
 
 public class SelfTestInspectorMapper_ToInspector_Tests
 {
@@ -28,12 +25,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
-            HttpCalls: []
+            SchemaIssues: new List<string>(),
+            HttpCalls: new List<SelfTestHttpCallDto>()
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.Equal("List Devices · OK", model.Title);
@@ -58,12 +55,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
-            HttpCalls: []
+            SchemaIssues: new List<string>(),
+            HttpCalls: new List<SelfTestHttpCallDto>()
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.Equal("List Devices · FAILED", model.Title);
@@ -88,16 +85,16 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: true,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: ["Missing field: device_state"],
-            HttpCalls: []
+            SchemaIssues: new List<string> { "Missing field: device_state" },
+            HttpCalls: new List<SelfTestHttpCallDto>()
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.Fields);
-        object fieldsObj = model.Fields;
+        var fieldsObj = (dynamic)model.Fields;
         Assert.Equal("get_devices", fieldsObj.Endpoint);
         Assert.Equal("device-456", fieldsObj.Target);
         Assert.Equal(250, fieldsObj.DurationMs);
@@ -128,17 +125,17 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: false,
             RestoreError: "Failed to restore",
             RestoreSkippedReason: null,
-            SchemaIssues: [],
-            HttpCalls: []
+            SchemaIssues: new List<string>(),
+            HttpCalls: new List<SelfTestHttpCallDto>()
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.Fields);
-        object fieldsObj = model.Fields;
-        dynamic restoreInfo = fieldsObj.RestoreInfo;
+        var fieldsObj = (dynamic)model.Fields;
+        var restoreInfo = fieldsObj.RestoreInfo;
         Assert.True(restoreInfo.RestoreAttempted);
         Assert.False(restoreInfo.RestoreSuccess);
         Assert.Equal("Failed to restore", restoreInfo.RestoreError);
@@ -170,12 +167,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
+            SchemaIssues: new List<string>(),
             HttpCalls: httpCalls
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.RawJson);
@@ -206,12 +203,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
+            SchemaIssues: new List<string>(),
             HttpCalls: httpCalls
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.Null(model.RawJson);
@@ -242,12 +239,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
+            SchemaIssues: new List<string>(),
             HttpCalls: httpCalls
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.Provenance);
@@ -283,17 +280,17 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
+            SchemaIssues: new List<string>(),
             HttpCalls: httpCalls
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.Provenance);
-        _ = Assert.Single(model.Provenance);
-        string provValue = model.Provenance[0].Value;
+        Assert.Single(model.Provenance);
+        var provValue = model.Provenance[0].Value;
         Assert.Contains("truncated", provValue);
         Assert.Contains("262000 bytes", provValue);
     }
@@ -317,12 +314,12 @@ public class SelfTestInspectorMapper_ToInspector_Tests
             RestoreSuccess: null,
             RestoreError: null,
             RestoreSkippedReason: null,
-            SchemaIssues: [],
-            HttpCalls: []
+            SchemaIssues: new List<string>(),
+            HttpCalls: new List<SelfTestHttpCallDto>()
         );
 
         // Act
-        InspectorModel model = SelfTestInspectorMapper.ToInspector(call);
+        var model = SelfTestInspectorMapper.ToInspector(call);
 
         // Assert
         Assert.NotNull(model.Provenance);
@@ -335,56 +332,56 @@ public class SelfTestInspectorMapper_IsValidJson_Tests
     [Fact]
     public void IsValidJson_WithValidJsonObject_ReturnsTrue()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("{\"key\": \"value\"}");
+        var result = SelfTestInspectorMapper.IsValidJson("{\"key\": \"value\"}");
         Assert.True(result);
     }
 
     [Fact]
     public void IsValidJson_WithValidJsonArray_ReturnsTrue()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("[1, 2, 3]");
+        var result = SelfTestInspectorMapper.IsValidJson("[1, 2, 3]");
         Assert.True(result);
     }
 
     [Fact]
     public void IsValidJson_WithValidJsonNumber_ReturnsTrue()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("42");
+        var result = SelfTestInspectorMapper.IsValidJson("42");
         Assert.True(result);
     }
 
     [Fact]
     public void IsValidJson_WithInvalidJson_ReturnsFalse()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("{invalid}");
+        var result = SelfTestInspectorMapper.IsValidJson("{invalid}");
         Assert.False(result);
     }
 
     [Fact]
     public void IsValidJson_WithPlainText_ReturnsFalse()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("This is plain text");
+        var result = SelfTestInspectorMapper.IsValidJson("This is plain text");
         Assert.False(result);
     }
 
     [Fact]
     public void IsValidJson_WithNull_ReturnsFalse()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson(null);
+        var result = SelfTestInspectorMapper.IsValidJson(null);
         Assert.False(result);
     }
 
     [Fact]
     public void IsValidJson_WithEmptyString_ReturnsFalse()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson(string.Empty);
+        var result = SelfTestInspectorMapper.IsValidJson("");
         Assert.False(result);
     }
 
     [Fact]
     public void IsValidJson_WithWhitespaceOnly_ReturnsFalse()
     {
-        bool result = SelfTestInspectorMapper.IsValidJson("   ");
+        var result = SelfTestInspectorMapper.IsValidJson("   ");
         Assert.False(result);
     }
 }

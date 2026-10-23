@@ -1,3 +1,4 @@
+using VideoForensics.Core.Providers.Core;
 using Xunit;
 
 namespace VideoForensics.Core.Providers.Core.Tests
@@ -24,7 +25,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         [Fact]
         public void FromFfprobeJson_VideoStreamReportsBitrate_UsesStreamBitrate()
         {
-            var result = MediaBitrateAnalysis.FromFfprobeJson(StreamBitrateJson, fileSizeBytes: 9_000_000);
+            MediaBitrateAnalysis? result = MediaBitrateAnalysis.FromFfprobeJson(StreamBitrateJson, fileSizeBytes: 9_000_000);
 
             Assert.NotNull(result);
             Assert.Equal(1_200_000, result.VideoBitrateBps);
@@ -36,7 +37,7 @@ namespace VideoForensics.Core.Providers.Core.Tests
         public void FromFfprobeJson_NoStreamBitrate_EstimatesFromFileSizeAndDuration()
         {
             // 10 MB over 10 s = 8,000,000 bits/s.
-            var result = MediaBitrateAnalysis.FromFfprobeJson(NoStreamBitrateJson, fileSizeBytes: 10_000_000);
+            MediaBitrateAnalysis? result = MediaBitrateAnalysis.FromFfprobeJson(NoStreamBitrateJson, fileSizeBytes: 10_000_000);
 
             Assert.NotNull(result);
             Assert.Equal(8_000_000, result.VideoBitrateBps);

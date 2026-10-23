@@ -16,10 +16,7 @@ public class MediaThumbnailBackfillTests : IDisposable
     private readonly Mock<IMediaItemRepository> _items = new();
     private readonly Mock<IMediaThumbnailService> _thumbnails = new();
 
-    public MediaThumbnailBackfillTests()
-    {
-        _ = Directory.CreateDirectory(_dir);
-    }
+    public MediaThumbnailBackfillTests() => Directory.CreateDirectory(_dir);
 
     public void Dispose()
     {
@@ -29,10 +26,8 @@ public class MediaThumbnailBackfillTests : IDisposable
         }
     }
 
-    private MediaThumbnailBackfill CreateSut()
-    {
-        return new(_items.Object, _thumbnails.Object, NullLogger<MediaThumbnailBackfill>.Instance);
-    }
+    private MediaThumbnailBackfill CreateSut() =>
+        new(_items.Object, _thumbnails.Object, NullLogger<MediaThumbnailBackfill>.Instance);
 
     private string OnDisk(string name)
     {
@@ -41,28 +36,25 @@ public class MediaThumbnailBackfillTests : IDisposable
         return path;
     }
 
-    private static MediaItem Item(string path, string format, bool purged = false)
+    private static MediaItem Item(string path, string format, bool purged = false) => new()
     {
-        return new()
-        {
-            Id = Guid.NewGuid(),
-            DeviceId = Guid.NewGuid(),
-            FileName = Path.GetFileName(path),
-            FilePath = path,
-            MediaFormat = format,
-            Sha256Hash = "h",
-            IsPurged = purged,
-        };
-    }
+        Id = Guid.NewGuid(),
+        DeviceId = Guid.NewGuid(),
+        FileName = Path.GetFileName(path),
+        FilePath = path,
+        MediaFormat = format,
+        Sha256Hash = "h",
+        IsPurged = purged,
+    };
 
     [Fact]
     public async Task BackfillAsync_VideosWithFiles_EnsuresEachAndCountsResults()
     {
         MediaItem ok = Item(OnDisk("a.mp4"), "video/mp4");
         MediaItem failing = Item(OnDisk("b.mp4"), "video/mp4");
-        _ = _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync([ok, failing]);
-        _ = _thumbnails.Setup(t => t.EnsureThumbnailAsync(ok, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _ = _thumbnails.Setup(t => t.EnsureThumbnailAsync(failing, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { ok, failing });
+        _thumbnails.Setup(t => t.EnsureThumbnailAsync(ok, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _thumbnails.Setup(t => t.EnsureThumbnailAsync(failing, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         MediaThumbnailBackfillResult result = await CreateSut().BackfillAsync(CancellationToken.None);
 
@@ -76,7 +68,7 @@ public class MediaThumbnailBackfillTests : IDisposable
     public async Task BackfillAsync_RowWhoseFileIsGone_CountedAsMissingAndNotAttempted()
     {
         MediaItem missingFile = Item(Path.Combine(_dir, "never-written.mp4"), "video/mp4");
-        _ = _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync([missingFile]);
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem> { missingFile });
 
         MediaThumbnailBackfillResult result = await CreateSut().BackfillAsync(CancellationToken.None);
 
@@ -88,7 +80,7 @@ public class MediaThumbnailBackfillTests : IDisposable
     [Fact]
     public async Task BackfillAsync_NoMediaItems_ReturnsEmptyResult()
     {
-        _ = _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _items.Setup(r => r.ListVideosWithoutThumbnailAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<MediaItem>());
 
         MediaThumbnailBackfillResult result = await CreateSut().BackfillAsync(CancellationToken.None);
 

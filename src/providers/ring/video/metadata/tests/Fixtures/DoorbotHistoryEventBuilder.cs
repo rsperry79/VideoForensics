@@ -1,7 +1,7 @@
-using Bogus;
-
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
 {
+    using Bogus;
+
     /// <summary>
     /// Builder for creating test DoorbotHistoryEvent instances using Bogus Faker.
     /// Default values match Ring API patterns (e.g., CreatedAt as ISO-8601 string).
@@ -31,31 +31,31 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
 
         public DoorbotHistoryEventBuilder WithId(long id)
         {
-            _ = _faker.RuleFor(e => e.Id, _ => id);
+            _faker.RuleFor(e => e.Id, _ => id);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithCreatedAt(DateTime dateTime)
         {
-            _ = _faker.RuleFor(e => e.CreatedAt, _ => dateTime.ToString("o"));
+            _faker.RuleFor(e => e.CreatedAt, _ => dateTime.ToString("o"));
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithKind(string kind)
         {
-            _ = _faker.RuleFor(e => e.Kind, _ => kind);
+            _faker.RuleFor(e => e.Kind, _ => kind);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithAnswered(bool answered)
         {
-            _ = _faker.RuleFor(e => e.Answered, _ => answered);
+            _faker.RuleFor(e => e.Answered, _ => answered);
             return this;
         }
 
         public DoorbotHistoryEventBuilder WithFavorite(bool favorite)
         {
-            _ = _faker.RuleFor(e => e.Favorite, _ => favorite);
+            _faker.RuleFor(e => e.Favorite, _ => favorite);
             return this;
         }
 
@@ -64,7 +64,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             var builder = new DoorbotBuilder(_doorbot);
             action(builder);
             _doorbot = builder.Build();
-            _ = _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
+            _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
             return this;
         }
 
@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             var builder = new CvPropertiesBuilder(_cvProperties);
             action(builder);
             _cvProperties = builder.Build();
-            _ = _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
+            _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
             return this;
         }
 
@@ -99,8 +99,8 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
             };
 
             _cvProperties = null!;
-            _ = _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
-            _ = _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
+            _faker.RuleFor(e => e.Doorbot, _ => _doorbot);
+            _faker.RuleFor(e => e.CvProperties, _ => _cvProperties);
         }
     }
 

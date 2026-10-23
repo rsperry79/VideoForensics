@@ -1,6 +1,8 @@
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Hosting.Contracts;
 using VideoForensics.Ui.Shared.Contracts;
@@ -57,11 +59,17 @@ namespace VideoForensics.WebApp.Services
         }
 
         /// <inheritdoc />
-        public IObservable<SelfTestStatusDto> Status => Observable.Defer(() =>
-                                                                     {
-                                                                         EnsureSampling();
-                                                                         return _statuses.AsObservable();
-                                                                     });
+        public IObservable<SelfTestStatusDto> Status
+        {
+            get
+            {
+                return Observable.Defer(() =>
+                {
+                    EnsureSampling();
+                    return _statuses.AsObservable();
+                });
+            }
+        }
 
         /// <summary>
         /// Takes one sample and emits it if it differs from the last emitted status. The sampling loop calls this on

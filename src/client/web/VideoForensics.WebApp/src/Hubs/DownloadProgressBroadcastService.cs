@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting;
 using VideoForensics.Hosting.Contracts;
 
@@ -52,7 +52,7 @@ namespace VideoForensics.WebApp.Hubs
                     using IServiceScope scope = _scopeFactory.CreateScope();
                     IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
 
-                    var payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
+                    DownloadProgressDto payload = downloadService.ToDownloadProgressDto(scope.ServiceProvider.GetService<ISyncActivityLog>());
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

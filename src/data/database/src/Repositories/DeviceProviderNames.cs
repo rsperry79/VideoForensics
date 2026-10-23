@@ -11,7 +11,7 @@ namespace VideoForensics.Data.Database.Repositories
         /// </summary>
         public static void Assign(IEnumerable<Device> devices, IEnumerable<(Guid LocationId, string ProviderName)> links)
         {
-            var names = links
+            Dictionary<Guid, string> names = links
                 .GroupBy(x => x.LocationId)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.ProviderName).OrderBy(n => n, StringComparer.Ordinal).First());
 

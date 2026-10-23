@@ -4,6 +4,7 @@ using Moq;
 
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.WebApp.Hubs;
+using VideoForensics.WebApp.Services;
 
 using Xunit;
 

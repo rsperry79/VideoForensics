@@ -1,10 +1,9 @@
-using Microsoft.Extensions.Logging;
-
-using Moq;
-
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
+
+using Microsoft.Extensions.Logging;
+using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -37,8 +36,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingAccountSettingsSync_GetLocationsAsync_CapturedProfile_WritesProfileOnceWithoutToken()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
 
             _ = await SyncAsync(handler, writer, logger);
@@ -52,8 +51,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingAccountSettingsSync_GetLocationsAsync_CapturedRingtones_WritesRingtonesAndDefaultsOnce()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             _ = await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -69,8 +68,8 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingAccountSettingsSync_GetLocationsAsync_CapturedLocationData_WritesGroupsModeSettingsAndSharingForLocation()
         {
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
 
             _ = await SyncAsync(handler, writer, new RecordingLogger());
 
@@ -98,8 +97,8 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             // The location cache only skips the location/device list fetch; config sync runs on every call.
             // Throttling of account settings is the job of the config sync gate (IRingAccountSyncState), absent here.
-            StubSessionHandler handler = CreateHandler();
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
             RingDeviceDiscoveryService service = CreateService(handler, writer, logger, out Session session);
             _ = await session.Authenticate();
@@ -117,9 +116,9 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingAccountSettingsSync_GetLocationsAsync_GroupsFetchFails_LogsErrorAndStillWritesOtherFetches()
         {
-            StubSessionHandler handler = CreateHandler();
+            var handler = CreateHandler();
             handler.Routes[GroupsUrl] = (HttpStatusCode.InternalServerError, "{}");
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
 
             _ = await SyncAsync(handler, writer, logger);
@@ -136,9 +135,9 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingAccountSettingsSync_GetLocationsAsync_LocationModeNotFound_LogsInformationAndSkipsModeData()
         {
-            StubSessionHandler handler = CreateHandler();
-            _ = handler.Routes.Remove(ModeUrl);
-            Mock<IRingAccountSettingsWriter> writer = CreateWriter();
+            var handler = CreateHandler();
+            handler.Routes.Remove(ModeUrl);
+            var writer = CreateWriter();
             var logger = new RecordingLogger();
 
             _ = await SyncAsync(handler, writer, logger);
@@ -197,10 +196,8 @@ namespace VideoForensics.Providers.Ring.Tests
             return writer;
         }
 
-        private static string ReadFixture(string name)
-        {
-            return File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
-        }
+        private static string ReadFixture(string name) =>
+            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
 
         /// <summary>Answers OAuth and the configured URLs exactly; anything else is a 404. Never reaches the network.</summary>
         private sealed class StubSessionHandler : HttpMessageHandler
@@ -208,17 +205,11 @@ namespace VideoForensics.Providers.Ring.Tests
             private readonly string _accessToken;
             private readonly List<string> _requestedUrls = [];
 
-            public StubSessionHandler(string accessToken)
-            {
-                _accessToken = accessToken;
-            }
+            public StubSessionHandler(string accessToken) => _accessToken = accessToken;
 
             public Dictionary<string, (HttpStatusCode Status, string Body)> Routes { get; } = [];
 
-            public int CountRequests(string url)
-            {
-                return _requestedUrls.Count(u => u == url);
-            }
+            public int CountRequests(string url) => _requestedUrls.Count(u => u == url);
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
@@ -249,20 +240,12 @@ namespace VideoForensics.Providers.Ring.Tests
 
             public IReadOnlyList<(LogLevel Level, string Message)> Entries => _entries.ToArray();
 
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                return null;
-            }
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                return true;
-            }
+            public bool IsEnabled(LogLevel logLevel) => true;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
                 _entries.Enqueue((logLevel, formatter(state, exception)));
-            }
         }
     }
 }

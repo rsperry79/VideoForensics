@@ -99,13 +99,15 @@ namespace VideoForensics.Core.Telemetry.Tests
             var provider = new OpenTelemetryProvider();
 
             // Act
-            using IDisposable? scope = provider.StartSpan("event-span");
-            provider.RecordEvent("something-happened", new Dictionary<string, object?> { ["reason"] = "test" });
+            using (IDisposable? scope = provider.StartSpan("event-span"))
+            {
+                provider.RecordEvent("something-happened", new Dictionary<string, object?> { ["reason"] = "test" });
 
-            // Assert
-            Activity? current = Activity.Current;
-            Assert.NotNull(current);
-            Assert.Contains(current!.Events, e => e.Name == "something-happened");
+                // Assert
+                Activity? current = Activity.Current;
+                Assert.NotNull(current);
+                Assert.Contains(current!.Events, e => e.Name == "something-happened");
+            }
         }
 
         [Fact]

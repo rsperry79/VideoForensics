@@ -28,16 +28,19 @@ public class EvidenceViewModel
     /// </summary>
     public static EvidenceView ParseView(string? value)
     {
-        return string.IsNullOrWhiteSpace(value)
-            ? EvidenceView.Timeline
-            : value.ToLowerInvariant() switch
-            {
-                "timeline" => EvidenceView.Timeline,
-                "grid" => EvidenceView.Grid,
-                "gallery" => EvidenceView.Gallery,
-                "devicetime" => EvidenceView.DeviceTime,
-                _ => EvidenceView.Timeline
-            };
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return EvidenceView.Timeline;
+        }
+
+        return value.ToLowerInvariant() switch
+        {
+            "timeline" => EvidenceView.Timeline,
+            "grid" => EvidenceView.Grid,
+            "gallery" => EvidenceView.Gallery,
+            "devicetime" => EvidenceView.DeviceTime,
+            _ => EvidenceView.Timeline
+        };
     }
 
     /// <summary>
@@ -86,7 +89,7 @@ public class EvidenceViewModel
     public IReadOnlyList<Guid> ThumbnailMediaIds(int max = 500)
     {
         var ids = new List<Guid>();
-        foreach (EvidenceItem item in Items)
+        foreach (var item in Items)
         {
             if (ids.Count >= max)
             {
@@ -107,7 +110,7 @@ public class EvidenceViewModel
     /// </summary>
     public void Open(string key)
     {
-        EvidenceItem? item = Items.FirstOrDefault(i => i.Key == key);
+        var item = Items.FirstOrDefault(i => i.Key == key);
         if (item is not null)
         {
             Selected = item;
@@ -134,7 +137,7 @@ public class EvidenceViewModel
             return;
         }
 
-        (EvidenceItem _, EvidenceItem? next) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
+        var (_, next) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
         if (next is not null)
         {
             Selected = next;
@@ -151,7 +154,7 @@ public class EvidenceViewModel
             return;
         }
 
-        (EvidenceItem? previous, EvidenceItem _) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
+        var (previous, _) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
         if (previous is not null)
         {
             Selected = previous;
@@ -170,7 +173,7 @@ public class EvidenceViewModel
                 return false;
             }
 
-            (EvidenceItem _, EvidenceItem? next) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
+            var (_, next) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
             return next is not null;
         }
     }
@@ -187,7 +190,7 @@ public class EvidenceViewModel
                 return false;
             }
 
-            (EvidenceItem? previous, EvidenceItem _) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
+            var (previous, _) = EvidenceTimeline.Neighbours(Items, Selected.Key, viewableOnly: true);
             return previous is not null;
         }
     }

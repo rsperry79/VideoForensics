@@ -12,8 +12,5 @@ internal sealed class FakeTimeProvider : TimeProvider
         _fixedTime = fixedTime;
     }
 
-    public override DateTimeOffset GetUtcNow()
-    {
-        return new(_fixedTime, TimeSpan.Zero);
-    }
+    public override DateTimeOffset GetUtcNow() => new(_fixedTime, TimeSpan.Zero);
 }

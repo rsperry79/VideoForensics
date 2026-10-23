@@ -1,12 +1,9 @@
-using Moq;
-
 using System.Net;
-
+using Moq;
+using Xunit;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.WebApp.Services;
-
-using Xunit;
 
 namespace VideoForensics.WebApp.Tests
 {
@@ -23,7 +20,8 @@ namespace VideoForensics.WebApp.Tests
 
             var ranges = new List<BannedIpRange>
             {
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "203.0.113.0/24",
                     Reason = "Test ban",
@@ -34,13 +32,13 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ranges);
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert
             Assert.True(result);
@@ -57,7 +55,8 @@ namespace VideoForensics.WebApp.Tests
 
             var ranges = new List<BannedIpRange>
             {
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "203.0.113.0/24",
                     Reason = "Test ban",
@@ -68,13 +67,13 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ranges);
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -91,13 +90,13 @@ namespace VideoForensics.WebApp.Tests
             var ranges = new List<BannedIpRange>();
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ranges);
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert
             Assert.False(result);
@@ -115,7 +114,8 @@ namespace VideoForensics.WebApp.Tests
 
             var ranges = new List<BannedIpRange>
             {
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "not-a-valid-cidr", // Malformed
                     Reason = "Bad range",
@@ -123,7 +123,8 @@ namespace VideoForensics.WebApp.Tests
                     CreatedByOperatorId = Guid.NewGuid(),
                     ExpiresAtUtc = null
                 },
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "203.0.113.0/24", // Valid range
                     Reason = "Good range",
@@ -134,13 +135,13 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ranges);
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert - should return true because the IP matches the valid range, despite the malformed one
             Assert.True(result);
@@ -155,11 +156,12 @@ namespace VideoForensics.WebApp.Tests
         {
             // Arrange
             var testIp = IPAddress.Parse("203.0.113.50");
-            DateTime expiredTime = DateTime.UtcNow.AddMinutes(-10); // Expired 10 minutes ago
+            var expiredTime = DateTime.UtcNow.AddMinutes(-10); // Expired 10 minutes ago
 
             var ranges = new List<BannedIpRange>
             {
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "203.0.113.0/24",
                     Reason = "Expired ban",
@@ -171,13 +173,13 @@ namespace VideoForensics.WebApp.Tests
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
             // GetActiveAsync should only return non-expired ranges
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]); // Empty because the range is expired
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<BannedIpRange>()); // Empty because the range is expired
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert - should return false because no active ranges exist
             Assert.False(result);
@@ -194,7 +196,8 @@ namespace VideoForensics.WebApp.Tests
 
             var ranges = new List<BannedIpRange>
             {
-                new() {
+                new BannedIpRange
+                {
                     Id = Guid.NewGuid(),
                     CidrRange = "2001:db8::/32",
                     Reason = "IPv6 ban",
@@ -205,13 +208,13 @@ namespace VideoForensics.WebApp.Tests
             };
 
             var mockRepository = new Mock<IBannedIpRangeRepository>();
-            _ = mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
+            mockRepository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ranges);
 
             var service = new BannedIpMatchService(mockRepository.Object);
 
             // Act
-            bool result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
+            var result = await service.IsIpBannedAsync(testIp, CancellationToken.None);
 
             // Assert
             Assert.True(result);

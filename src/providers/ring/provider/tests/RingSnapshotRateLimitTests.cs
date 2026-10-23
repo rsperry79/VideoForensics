@@ -16,7 +16,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public void AsRateLimit_UpdateReturns429_ReturnsThrottleWith429()
         {
-            ThrottledException? throttle = RingMediaDownloadService.AsRateLimit(new UnexpectedOutcomeException(HttpStatusCode.TooManyRequests));
+            var throttle = RingMediaDownloadService.AsRateLimit(new UnexpectedOutcomeException(HttpStatusCode.TooManyRequests));
 
             Assert.NotNull(throttle);
             Assert.Equal(HttpStatusCode.TooManyRequests, throttle!.StatusCode);

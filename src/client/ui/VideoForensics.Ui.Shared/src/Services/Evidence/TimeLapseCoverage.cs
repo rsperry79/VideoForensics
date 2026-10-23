@@ -20,16 +20,13 @@ public static class TimeLapseCoverage
             return list.AsReadOnly();
         }
 
-        bool Covered(EvidenceItem item)
-        {
-            return item.Kind == EvidenceKind.Snapshot && lapses.Any(lapse =>
+        bool Covered(EvidenceItem item) => item.Kind == EvidenceKind.Snapshot && lapses.Any(lapse =>
         {
             TimeSpan window = windowFor(lapse.DeviceId);
             DateTime end = lapse.Media!.RecordedAtUtc;
             DateTime start = end - window;
             return lapse.DeviceId == item.DeviceId && item.OccurredAtUtc >= start && item.OccurredAtUtc < end;
         });
-        }
 
         return list.Where(item => !Covered(item)).ToList().AsReadOnly();
     }

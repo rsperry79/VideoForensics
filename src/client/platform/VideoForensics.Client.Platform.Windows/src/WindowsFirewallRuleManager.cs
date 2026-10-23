@@ -1,11 +1,9 @@
+using System.Runtime.Versioning;
 
 using CliWrap;
-
 using CliWrap.Buffered;
 
 using Microsoft.Extensions.Logging;
-
-using System.Runtime.Versioning;
 
 using VideoForensics.Client.Common.Contracts;
 
@@ -33,25 +31,19 @@ namespace VideoForensics.Client.Platform.Windows
         }
 
         /// <summary>Builds the <c>netsh</c> arguments that check whether a rule exists.</summary>
-        public static string BuildShowRuleArguments(string ruleName)
-        {
-            return $"advfirewall firewall show rule name=\"{ruleName}\"";
-        }
+        public static string BuildShowRuleArguments(string ruleName) =>
+            $"advfirewall firewall show rule name=\"{ruleName}\"";
 
         /// <summary>
         /// Builds the <c>netsh</c> arguments that add an inbound TCP allow rule. The shape matches what the installer
         /// creates, so runtime-added and install-time-added rules are indistinguishable.
         /// </summary>
-        public static string BuildAddRuleArguments(string ruleName, int port)
-        {
-            return $"advfirewall firewall add rule name=\"{ruleName}\" dir=in action=allow protocol=TCP localport={port} profile=private,domain";
-        }
+        public static string BuildAddRuleArguments(string ruleName, int port) =>
+            $"advfirewall firewall add rule name=\"{ruleName}\" dir=in action=allow protocol=TCP localport={port} profile=private,domain";
 
         /// <summary>Builds the <c>netsh</c> arguments that delete a rule. Safe to run when the rule is absent.</summary>
-        public static string BuildDeleteRuleArguments(string ruleName)
-        {
-            return $"advfirewall firewall delete rule name=\"{ruleName}\"";
-        }
+        public static string BuildDeleteRuleArguments(string ruleName) =>
+            $"advfirewall firewall delete rule name=\"{ruleName}\"";
 
         /// <inheritdoc />
         public async Task EnsureRuleExistsAsync(string ruleName, int port, CancellationToken ct)
@@ -62,8 +54,7 @@ namespace VideoForensics.Client.Platform.Windows
                 BufferedCommandResult checkResult = await Cli.Wrap("netsh.exe")
                     .WithArguments(BuildShowRuleArguments(ruleName))
                     .WithValidation(CommandResultValidation.None)
-                    .ExecuteBufferedAsync(ct)
-                    .ConfigureAwait(true);
+                    .ExecuteBufferedAsync(ct);
 
                 if (checkResult.ExitCode == 0)
                 {
@@ -74,8 +65,7 @@ namespace VideoForensics.Client.Platform.Windows
                 BufferedCommandResult addResult = await Cli.Wrap("netsh.exe")
                     .WithArguments(BuildAddRuleArguments(ruleName, port))
                     .WithValidation(CommandResultValidation.None)
-                    .ExecuteBufferedAsync(ct)
-                    .ConfigureAwait(true);
+                    .ExecuteBufferedAsync(ct);
 
                 if (addResult.ExitCode == 0)
                 {

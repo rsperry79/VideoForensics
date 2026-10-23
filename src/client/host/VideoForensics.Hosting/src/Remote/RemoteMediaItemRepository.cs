@@ -39,10 +39,8 @@ namespace VideoForensics.Hosting.Remote
         /// <summary>
         /// Thumbnail backfill runs only on the server, next to the files, so no client endpoint exists for this query.
         /// </summary>
-        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct)
-        {
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct) =>
             throw new NotSupportedException("Videos without a thumbnail are listed by the server's own repository, not over HTTP.");
-        }
 
         public async Task<IReadOnlyList<MediaItem>> ListAsync(CancellationToken ct)
         {
@@ -54,10 +52,8 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         /// <summary>Analysis runs server-side only; a client host has no recent-clip query.</summary>
-        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
-        {
+        public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct) =>
             throw new NotSupportedException("Media analysis runs on the server, not on a client host.");
-        }
 
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceIdAsync(Guid deviceId, CancellationToken ct)
         {
@@ -75,7 +71,6 @@ namespace VideoForensics.Hosting.Remote
             {
                 return null;
             }
-
             _ = response.EnsureSuccessStatusCode();
             MediaItemDto? dto = await response.Content.ReadFromJsonAsync<MediaItemDto>(JsonOptions, ct);
             return dto?.ToDomain();
@@ -83,10 +78,8 @@ namespace VideoForensics.Hosting.Remote
 
         /// <inheritdoc />
         /// <remarks>Analysis runs on the server only, so a client never lists unanalysed media.</remarks>
-        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct)
-        {
+        public Task<IReadOnlyList<MediaItem>> ListUnanalyzedAsync(int limit, CancellationToken ct) =>
             throw new NotSupportedException("Analysis backfill runs on the server only.");
-        }
 
         /// <remarks>
         /// No server endpoint returns only snapshots yet, so this filters the device's range on the client. The roll-up runs

@@ -1,8 +1,6 @@
 using System.Net;
-
-using VideoForensics.WebApp.Services;
-
 using Xunit;
+using VideoForensics.WebApp.Services;
 
 namespace VideoForensics.WebApp.Tests
 {
@@ -20,7 +18,7 @@ namespace VideoForensics.WebApp.Tests
             var testIp = IPAddress.Parse("1.1.1.1");
 
             // Act
-            string? result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
+            var result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
 
             // Assert - should return null, not throw
             Assert.Null(result);
@@ -38,7 +36,7 @@ namespace VideoForensics.WebApp.Tests
             var testIp = IPAddress.Parse("2001:4860:4860::8888");
 
             // Act
-            string? result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
+            var result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
 
             // Assert - should return null, not throw
             Assert.Null(result);
@@ -54,7 +52,7 @@ namespace VideoForensics.WebApp.Tests
             var service = new MaxMindGeoIpLookupService("/nonexistent/path/to/GeoLite2-Country.mmdb");
 
             // Act
-            string? result = await service.LookupCountryCodeAsync(null, CancellationToken.None);
+            var result = await service.LookupCountryCodeAsync(null, CancellationToken.None);
 
             // Assert - should return null, not throw
             Assert.Null(result);
@@ -72,7 +70,7 @@ namespace VideoForensics.WebApp.Tests
             var testIp = IPAddress.Parse("8.8.8.8");
 
             // Act
-            string? result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
+            var result = await service.LookupCountryCodeAsync(testIp, CancellationToken.None);
 
             // Assert - without a real database, this should return null. With a real database, it would return a country code.
             Assert.Null(result);

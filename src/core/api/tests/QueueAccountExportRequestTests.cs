@@ -1,3 +1,5 @@
+using VideoForensics.Core.Api.Contracts;
+
 using Xunit;
 
 namespace VideoForensics.Core.Api.Contracts.Tests

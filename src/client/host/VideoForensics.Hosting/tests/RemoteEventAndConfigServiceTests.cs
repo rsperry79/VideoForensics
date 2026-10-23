@@ -2,8 +2,10 @@ using System.Net;
 using System.Text.Json;
 
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Hosting.Remote;
+using VideoForensics.Core.Providers.Common.Contracts;
+
+using Xunit;
 
 namespace VideoForensics.Hosting.Tests
 {
@@ -44,11 +46,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetEventsAsync_WithValidDeviceId_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 var dto = new List<DeviceEventDto>
                 {
@@ -78,10 +80,10 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetEventsAsync_WithEventType_IncludesEventTypeInQuery()
         {
             // Arrange
-            string capturedRoute = string.Empty;
+            string capturedRoute = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(new List<DeviceEventDto>()))
@@ -181,11 +183,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task GetDeviceConfigAsync_WithValidDeviceId_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 var dto = new DeviceConfigDto("device123", true, 50, "motion", null);
                 var response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -276,11 +278,11 @@ namespace VideoForensics.Hosting.Tests
         public async Task UpdateDeviceConfigAsync_WithValidConfig_CallsCorrectRoute()
         {
             // Arrange
-            string capturedRoute = string.Empty;
-            string capturedMethod = string.Empty;
+            string capturedRoute = "";
+            string capturedMethod = "";
             HttpClient httpClient = CreateHttpClient(request =>
             {
-                capturedRoute = request.RequestUri?.PathAndQuery ?? string.Empty;
+                capturedRoute = request.RequestUri?.PathAndQuery ?? "";
                 capturedMethod = request.Method.Method;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
             });

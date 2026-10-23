@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -104,7 +103,7 @@ namespace VideoForensics.Hosting
                 }
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseListEndpoint);
-                if (etag != null && System.Net.Http.Headers.EntityTagHeaderValue.TryParse(etag, out EntityTagHeaderValue? parsedEtag))
+                if (etag != null && System.Net.Http.Headers.EntityTagHeaderValue.TryParse(etag, out var parsedEtag))
                 {
                     request.Headers.IfNoneMatch.Add(parsedEtag);
                 }
@@ -136,7 +135,7 @@ namespace VideoForensics.Hosting
                 }
 
                 string content = await response.Content.ReadAsStringAsync(ct);
-                List<GitHubReleaseDto>? releases = JsonSerializer.Deserialize<List<GitHubReleaseDto>>(content, SerializerOptions);
+                var releases = JsonSerializer.Deserialize<List<GitHubReleaseDto>>(content, SerializerOptions);
 
                 GitHubReleaseDto? match = releases?.FirstOrDefault(r =>
                     r != null
@@ -181,23 +180,31 @@ namespace VideoForensics.Hosting
 
         private static bool IsRateLimited(HttpResponseMessage response)
         {
-            return (int)response.StatusCode == 429 || (response.StatusCode == HttpStatusCode.Forbidden
+            if ((int)response.StatusCode == 429)
+            {
+                return true;
+            }
+
+            return response.StatusCode == HttpStatusCode.Forbidden
                 && response.Headers.TryGetValues("X-RateLimit-Remaining", out IEnumerable<string>? values)
-                && values.FirstOrDefault()?.Trim() == "0");
+                && values.FirstOrDefault()?.Trim() == "0";
         }
 
         private static DateTimeOffset GetResetAtUtc(HttpResponseMessage response)
         {
-            return response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? values)
-                && long.TryParse(values.FirstOrDefault(), out long unixSeconds)
-                ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
-                : DateTimeOffset.UtcNow.AddMinutes(60);
+            if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? values)
+                && long.TryParse(values.FirstOrDefault(), out long unixSeconds))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
+            }
+
+            return DateTimeOffset.UtcNow.AddMinutes(60);
         }
 
         private async Task<GitHubReleaseInfo> MapReleaseAsync(GitHubReleaseDto releaseDto, CancellationToken ct)
         {
-            List<GitHubReleaseAsset> assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
-                ?? [];
+            var assets = releaseDto.Assets?.Select(a => new GitHubReleaseAsset(a.Name, a.BrowserDownloadUrl, a.Size)).ToList()
+                ?? new List<GitHubReleaseAsset>();
 
             // Version metadata is best-effort: a missing or broken version.json must not hide the release itself.
             string? version = await TryFetchVersionAsync(assets, ct) ?? TryParseVersionFromAssetNames(assets);
@@ -255,7 +262,7 @@ namespace VideoForensics.Hosting
                 }
 
                 string json = await response.Content.ReadAsStringAsync(ct);
-                using var document = JsonDocument.Parse(json);
+                using JsonDocument document = JsonDocument.Parse(json);
 
                 if (document.RootElement.ValueKind == JsonValueKind.Object
                     && document.RootElement.TryGetProperty("version", out JsonElement versionElement)

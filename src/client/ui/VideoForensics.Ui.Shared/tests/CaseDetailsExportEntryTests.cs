@@ -1,16 +1,13 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-
 using Moq;
-
+using Xunit;
+using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Pages;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>The case page links to the case-scoped export page.</summary>
 public class CaseDetailsExportEntryTests : CasesPagesTestBase
 {
@@ -22,15 +19,15 @@ public class CaseDetailsExportEntryTests : CasesPagesTestBase
     [Fact]
     public void CaseDetails_ExportCaseButton_NavigatesToExportPageWithCaseId()
     {
-        var caseId = Guid.NewGuid();
+        Guid caseId = Guid.NewGuid();
         _ = CaseRepositoryMock
             .Setup(r => r.GetAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateTestCase(id: caseId));
-        IRenderedComponent<CaseDetails> cut = Render<CaseDetails>(p => p.Add(c => c.CaseId, caseId));
+        var cut = Render<CaseDetails>(p => p.Add(c => c.CaseId, caseId));
 
         cut.Find("[data-testid='export-case']").Click();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.EndsWith($"/review/export?caseId={caseId}", nav.Uri);
     }
 }

@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
-using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.Migrations;
+using VideoForensics.Core.Helpers.Platform;
 
 namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 {
@@ -73,10 +73,18 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             // produces cartesian-product result sets and EF's MultipleCollectionIncludeWarning. Split queries avoid both.
             // SQL command messages are logged at Debug, not Information, so they stay out of every build's normal output.
             _ = services.AddDbContextFactory<VideoForensicsDbContext>((sp, options) =>
+            {
                 options.UseSqlite(connectionString, b => b
                     .MigrationsAssembly("VideoForensics.Data.Database.Sqlite")
-                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
-                    .UseLoggerFactory(new EfCommandLogLevelLoggerFactory(sp.GetRequiredService<ILoggerFactory>())));
+                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+
+                // Hosts that register no logging (such as the test containers) keep EF's default logging.
+                ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
+                if (loggerFactory is not null)
+                {
+                    options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
+                }
+            });
 
             _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class WebAuthnCeremonyCacheTests
@@ -10,7 +12,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var cache = new WebAuthnCeremonyCache(memoryCache);
-            string optionsJson = """{"credentialCreateOptions":"test"}""";
+            var optionsJson = """{"credentialCreateOptions":"test"}""";
 
             // Act
             string nonce = cache.Store(optionsJson);
@@ -28,7 +30,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var cache = new WebAuthnCeremonyCache(memoryCache);
-            string optionsJson = """{"credentialCreateOptions":"test"}""";
+            var optionsJson = """{"credentialCreateOptions":"test"}""";
             string nonce = cache.Store(optionsJson);
 
             // Act
@@ -47,7 +49,7 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var cache = new WebAuthnCeremonyCache(memoryCache);
-            string optionsJson = """{"credentialCreateOptions":"test"}""";
+            var optionsJson = """{"credentialCreateOptions":"test"}""";
             string nonce = cache.Store(optionsJson);
 
             // Act - first take succeeds
@@ -85,8 +87,8 @@ namespace VideoForensics.Hosting.Tests
             // Arrange
             var memoryCache = new MemoryCache(new MemoryCacheOptions());
             var cache = new WebAuthnCeremonyCache(memoryCache);
-            string json1 = """{"credentialCreateOptions":"test1"}""";
-            string json2 = """{"credentialCreateOptions":"test2"}""";
+            var json1 = """{"credentialCreateOptions":"test1"}""";
+            var json2 = """{"credentialCreateOptions":"test2"}""";
 
             // Act
             string nonce1 = cache.Store(json1);
@@ -112,12 +114,12 @@ namespace VideoForensics.Hosting.Tests
                 .ToList();
 
             // Act: Concurrent stores
-            Task[] tasks = jsonOptions.Select(json => Task.Run(() =>
+            var tasks = jsonOptions.Select(json => Task.Run(() =>
             {
                 string nonce = cache.Store(json);
                 lock (nonces)
                 {
-                    _ = nonces.Add(nonce);
+                    nonces.Add(nonce);
                 }
             })).ToArray();
 

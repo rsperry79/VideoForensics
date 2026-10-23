@@ -1,11 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
-
 using SIPSorcery.Net;
-
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Services;
 
 namespace VideoForensics.WebApp.Hubs
@@ -34,7 +31,7 @@ namespace VideoForensics.WebApp.Hubs
         /// hub invocation runs on a new hub instance. An entry exists only while a call holds or awaits
         /// its gate, so the table does not grow with every connection.
         /// </summary>
-        private static readonly Dictionary<(string ConnectionId, Guid SessionId), OfferGate> OfferGates = [];
+        private static readonly Dictionary<(string ConnectionId, Guid SessionId), OfferGate> OfferGates = new();
 
         public LiveViewSignalingHub(
             ILiveViewSessionService liveViewSessionService,
@@ -64,7 +61,7 @@ namespace VideoForensics.WebApp.Hubs
                 CancellationToken ct = Context.ConnectionAborted;
 
                 // Get the underlying Ring connection from the orchestrator
-                ILiveViewConnection? ringConnection = await _liveViewSessionService.GetConnectionForSessionAsync(liveViewSessionId, ct);
+                var ringConnection = await _liveViewSessionService.GetConnectionForSessionAsync(liveViewSessionId, ct);
                 if (ringConnection == null)
                 {
                     throw new InvalidOperationException(
@@ -76,9 +73,12 @@ namespace VideoForensics.WebApp.Hubs
                 using IDisposable gate = await AcquireOfferGateAsync((Context.ConnectionId, liveViewSessionId), ct);
 
                 // Create the browser-leg peer connection if it doesn't exist
-                RTCPeerConnection? browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
-                browserPc ??= await _browserBridge.CreateBrowserLegAsync(
+                var browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
+                if (browserPc == null)
+                {
+                    browserPc = await _browserBridge.CreateBrowserLegAsync(
                         Context.ConnectionId, liveViewSessionId, ringConnection);
+                }
 
                 // Reuse the offer already set on this leg. A second createOffer on the same peer would
                 // replace the local description the browser is negotiating against.
@@ -94,7 +94,7 @@ namespace VideoForensics.WebApp.Hubs
                 {
                     X_WaitForIceGatheringToComplete = true
                 }));
-                var timeoutTask = Task.Delay(_options.OfferGatheringTimeout, ct);
+                Task timeoutTask = Task.Delay(_options.OfferGatheringTimeout, ct);
                 Task winner = await Task.WhenAny(offerTask, timeoutTask);
 
                 if (winner != offerTask)
@@ -146,7 +146,7 @@ namespace VideoForensics.WebApp.Hubs
                     "SubmitAnswer from SignalR {ConnectionId} for session {SessionId}",
                     Context.ConnectionId, liveViewSessionId);
 
-                RTCPeerConnection? browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
+                var browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
                 if (browserPc == null)
                 {
                     throw new InvalidOperationException(
@@ -194,14 +194,14 @@ namespace VideoForensics.WebApp.Hubs
                     Context.ConnectionId, liveViewSessionId);
 
                 // Validate before narrowing. An unchecked (ushort) cast turns -1 into 65535 without error.
-                if (sdpMLineIndex is < 0 or > ushort.MaxValue)
+                if (sdpMLineIndex < 0 || sdpMLineIndex > ushort.MaxValue)
                 {
                     throw new ArgumentOutOfRangeException(
                         nameof(sdpMLineIndex), sdpMLineIndex,
                         $"sdpMLineIndex must be between 0 and {ushort.MaxValue}.");
                 }
 
-                RTCPeerConnection? browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
+                var browserPc = await _browserBridge.GetBrowserLegAsync(Context.ConnectionId, liveViewSessionId);
                 if (browserPc == null)
                 {
                     throw new InvalidOperationException(
@@ -261,7 +261,6 @@ namespace VideoForensics.WebApp.Hubs
                     gate = new OfferGate();
                     OfferGates[key] = gate;
                 }
-
                 gate.Holders++;
             }
 
@@ -287,7 +286,7 @@ namespace VideoForensics.WebApp.Hubs
             {
                 if (--gate.Holders == 0)
                 {
-                    _ = OfferGates.Remove(key);
+                    OfferGates.Remove(key);
                 }
             }
         }
@@ -326,7 +325,7 @@ namespace VideoForensics.WebApp.Hubs
                 }
 
                 _disposed = true;
-                _ = _gate.Semaphore.Release();
+                _gate.Semaphore.Release();
                 ReleaseHold(_key, _gate);
             }
         }

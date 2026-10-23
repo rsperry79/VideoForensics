@@ -1,16 +1,15 @@
+using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Text.Json;
 
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
-using VideoForensics.Data.Core.Services;
 using VideoForensics.Providers.Ring.Exceptions;
-
 using LocationMetadata = VideoForensics.Data.Common.Entities.LocationMetadata;
 using SyncStatus = VideoForensics.Data.Common.Entities.SyncStatus;
+using VideoForensics.Data.Core.Services;
+using VideoForensics.Core.Providers.Common.Contracts;
 
 namespace VideoForensics.Providers.Ring.Services
 {
@@ -85,7 +84,7 @@ namespace VideoForensics.Providers.Ring.Services
             await _locationsCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedLocations.TryGetValue(LegacyAccountCacheKey, out (IReadOnlyList<Location> Locations, DateTime FetchedAt) cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
+                if (_cachedLocations.TryGetValue(LegacyAccountCacheKey, out var cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached locations ({Count}), fetched {Age:F0}s ago",
                         cachedLocations.Locations.Count, (DateTime.UtcNow - cachedLocations.FetchedAt).TotalSeconds);
@@ -94,7 +93,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogDebug("Fetching Ring locations");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -187,7 +188,6 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     _logger.LogError(ex, "Error fetching locations from Ring API");
                 }
-
                 throw;
             }
             finally
@@ -292,7 +292,7 @@ namespace VideoForensics.Providers.Ring.Services
             await _allDevicesCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedAllDevices.TryGetValue(LegacyAccountCacheKey, out (IReadOnlyList<Device> Devices, DateTime FetchedAt) cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
+                if (_cachedAllDevices.TryGetValue(LegacyAccountCacheKey, out var cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached device list ({Count}), fetched {Age:F0}s ago",
                         cachedDevices.Devices.Count, (DateTime.UtcNow - cachedDevices.FetchedAt).TotalSeconds);
@@ -301,7 +301,9 @@ namespace VideoForensics.Providers.Ring.Services
 
                 _logger.LogDebug("Fetching the account's full device list");
 
+#pragma warning disable CS0618
                 Session? session = _sessionProvider.GetSession();
+#pragma warning restore CS0618
                 if (session == null)
                 {
                     _logger.LogError("Not authenticated: Session is null");
@@ -472,7 +474,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 IReadOnlyList<Location> result;
-                if (_cachedLocations.TryGetValue(providerAccountId, out (IReadOnlyList<Location> Locations, DateTime FetchedAt) cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
+                if (_cachedLocations.TryGetValue(providerAccountId, out var cachedLocations) && DateTime.UtcNow - cachedLocations.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached Ring locations ({Count}), fetched {Age:F0}s ago",
                         cachedLocations.Locations.Count, (DateTime.UtcNow - cachedLocations.FetchedAt).TotalSeconds);
@@ -507,6 +509,7 @@ namespace VideoForensics.Providers.Ring.Services
                     await PersistEventHistoryAsync(session, providerAccountId, result, runOptions.StartUtc, runOptions.EndUtc, cancellationToken);
                 }
 
+
                 return result;
             }
             catch (Exception ex)
@@ -519,7 +522,6 @@ namespace VideoForensics.Providers.Ring.Services
                 {
                     _logger.LogError(ex, "Error fetching locations for {ProviderName} account", ProviderName);
                 }
-
                 throw;
             }
             finally
@@ -611,7 +613,7 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 _syncRunTally?.MarkConfigRan();
                 _ = await PersistAccountSettingsAsync(session, providerAccountId, locations, ct);
-                _ = await PersistDeviceSettingsAsync(session, ct);
+                await PersistDeviceSettingsAsync(session, ct);
                 return;
             }
 
@@ -762,7 +764,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             bool accountLevelSucceeded = false;
 
-            Entities.Profile? profile = await FetchForSyncAsync("profile", session.GetProfile, ct);
+            Entities.Profile? profile = await FetchForSyncAsync("profile", () => session.GetProfile(), ct);
             if (profile != null)
             {
                 accountLevelSucceeded = true;
@@ -770,7 +772,7 @@ namespace VideoForensics.Providers.Ring.Services
                 _syncRunTally?.AddConfigArea();
             }
 
-            Entities.RingtonesResponse? ringtones = await FetchForSyncAsync("ringtone", session.GetRingtones, ct);
+            Entities.RingtonesResponse? ringtones = await FetchForSyncAsync("ringtone", () => session.GetRingtones(), ct);
             if (ringtones != null)
             {
                 accountLevelSucceeded = true;
@@ -881,7 +883,7 @@ namespace VideoForensics.Providers.Ring.Services
                     List<Entities.VideoSearchItem> items = await session.VideoSearch(doorbotId, dateFrom: startUtc, dateTo: endUtc, cancellationToken: ct);
                     foreach (Entities.VideoSearchItem item in items)
                     {
-                        MappedRingEvent<Data.Common.Entities.RingVideoSearchEvent> mapped = RingEventHistoryMapper.MapVideoSearch(item, providerAccountId);
+                        var mapped = RingEventHistoryMapper.MapVideoSearch(item, providerAccountId);
                         await eventWriter.ReplaceVideoSearchEventAsync(providerAccountId, mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -906,7 +908,7 @@ namespace VideoForensics.Providers.Ring.Services
                     await eventWriter.ReplaceLocationEventPageAsync(RingEventHistoryMapper.MapLocationEventsPage(location.Id, page.Meta), ct);
                     foreach (Entities.LocationEvent evt in page.Events ?? [])
                     {
-                        MappedRingEvent<Data.Common.Entities.RingLocationEvent> mapped = RingEventHistoryMapper.MapLocationEvent(evt, location.Id);
+                        var mapped = RingEventHistoryMapper.MapLocationEvent(evt, location.Id);
                         await eventWriter.ReplaceLocationEventAsync(mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -923,7 +925,7 @@ namespace VideoForensics.Providers.Ring.Services
                     await eventWriter.ReplaceLocationHistoryPageAsync(RingEventHistoryMapper.MapLocationHistoryPage(location.Id, response.PaginationKey), ct);
                     foreach (Entities.LocationHistoryItem item in response.Items ?? [])
                     {
-                        MappedRingEvent<Data.Common.Entities.RingLocationHistoryEvent> mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
+                        var mapped = RingEventHistoryMapper.MapLocationHistoryItem(item, location.Id);
                         await eventWriter.ReplaceLocationHistoryEventAsync(mapped.Event, mapped.Details, ct);
                     }
                 }, ct);
@@ -944,10 +946,7 @@ namespace VideoForensics.Providers.Ring.Services
         /// Puts a parsed history timestamp on UTC. DoorbotHistoryEvent parses "Z" timestamps to local time, so comparing them
         /// with a UTC range start without converting would shift the cut-off by the machine's offset.
         /// </summary>
-        private static DateTime ToUtc(DateTime value)
-        {
-            return value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : DateTime.SpecifyKind(value, DateTimeKind.Utc);
-        }
+        private static DateTime ToUtc(DateTime value) => value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
         /// <summary>Items requested per doorbot history page; a page shorter than this is the last one.</summary>
         private const int DoorbotHistoryPageSize = 100;
@@ -989,7 +988,7 @@ namespace VideoForensics.Providers.Ring.Services
                         continue;
                     }
 
-                    MappedRingEvent<Data.Common.Entities.RingDoorbotHistoryEvent> mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
+                    var mapped = RingEventHistoryMapper.MapDoorbotHistoryEvent(evt);
                     await eventWriter.ReplaceDoorbotHistoryEventAsync(mapped.Event, mapped.Details, ct);
                 }
 
@@ -1085,7 +1084,7 @@ namespace VideoForensics.Providers.Ring.Services
             await _allDevicesCacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (_cachedAllDevices.TryGetValue(providerAccountId, out (IReadOnlyList<Device> Devices, DateTime FetchedAt) cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
+                if (_cachedAllDevices.TryGetValue(providerAccountId, out var cachedDevices) && DateTime.UtcNow - cachedDevices.FetchedAt < CacheTtl)
                 {
                     _logger.LogDebug("Reusing cached device list ({Count}) for {ProviderName} account, fetched {Age:F0}s ago",
                         cachedDevices.Devices.Count, ProviderName, (DateTime.UtcNow - cachedDevices.FetchedAt).TotalSeconds);

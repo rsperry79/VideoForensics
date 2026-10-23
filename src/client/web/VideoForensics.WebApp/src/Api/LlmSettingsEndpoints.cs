@@ -38,9 +38,9 @@ namespace VideoForensics.WebApp.Api
         {
             try
             {
-                string? provider = await keyStore.GetProviderAsync(ct);
-                string? model = await keyStore.GetModelAsync(ct);
-                string? baseUrl = await keyStore.GetBaseUrlAsync(ct);
+                var provider = await keyStore.GetProviderAsync(ct);
+                var model = await keyStore.GetModelAsync(ct);
+                var baseUrl = await keyStore.GetBaseUrlAsync(ct);
 
                 // Return empty strings for unset values
                 var response = new LlmSettingsResponseDto(
@@ -76,7 +76,7 @@ namespace VideoForensics.WebApp.Api
                 return Results.BadRequest(new { error = "Provider cannot be empty." });
             }
 
-            if (request.Provider is not "Anthropic" and not "OpenAiCompatible")
+            if (request.Provider != "Anthropic" && request.Provider != "OpenAiCompatible")
             {
                 return Results.BadRequest(new { error = "Provider must be 'Anthropic' or 'OpenAiCompatible'." });
             }
@@ -104,9 +104,9 @@ namespace VideoForensics.WebApp.Api
                 await keyStore.SetBaseUrlAsync(request.BaseUrl, ct);
 
                 // Retrieve updated settings to return (excluding API key)
-                string? provider = await keyStore.GetProviderAsync(ct);
-                string? model = await keyStore.GetModelAsync(ct);
-                string? baseUrl = await keyStore.GetBaseUrlAsync(ct);
+                var provider = await keyStore.GetProviderAsync(ct);
+                var model = await keyStore.GetModelAsync(ct);
+                var baseUrl = await keyStore.GetBaseUrlAsync(ct);
 
                 var response = new LlmSettingsResponseDto(
                     Provider: provider ?? string.Empty,

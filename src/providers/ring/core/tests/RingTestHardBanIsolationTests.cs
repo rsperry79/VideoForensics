@@ -1,4 +1,8 @@
+using System;
+using System.IO;
+
 using VideoForensics.Core.Helpers.Platform;
+using Xunit;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
 {

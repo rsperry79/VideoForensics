@@ -47,7 +47,7 @@ namespace VideoForensics.Hosting
 
         public MediaAccessTicket Issue(Guid mediaItemId, Guid operatorId)
         {
-            DateTime expiresAt = _timeProvider.GetUtcNow().UtcDateTime.Add(Lifetime);
+            var expiresAt = _timeProvider.GetUtcNow().UtcDateTime.Add(Lifetime);
             var payload = new MediaAccessPayload(mediaItemId, operatorId, expiresAt);
             string token = _protector.Protect(JsonSerializer.Serialize(payload));
             return new MediaAccessTicket(token, expiresAt);
@@ -63,11 +63,22 @@ namespace VideoForensics.Hosting
             try
             {
                 MediaAccessPayload? payload = JsonSerializer.Deserialize<MediaAccessPayload>(_protector.Unprotect(ticket));
-                return payload == null
-                    ? null
-                    : payload.MediaItemId != mediaItemId
-                    ? null
-                    : payload.ExpiresAtUtc <= _timeProvider.GetUtcNow().UtcDateTime ? null : payload.OperatorId;
+                if (payload == null)
+                {
+                    return null;
+                }
+
+                if (payload.MediaItemId != mediaItemId)
+                {
+                    return null;
+                }
+
+                if (payload.ExpiresAtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
+                {
+                    return null;
+                }
+
+                return payload.OperatorId;
             }
             catch
             {

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 
 namespace VideoForensics.Hosting.BackgroundServices
 {
@@ -115,7 +116,7 @@ namespace VideoForensics.Hosting.BackgroundServices
             }
 
             // Process each bucket independently (per-device isolation)
-            foreach ((Guid deviceId, int _, bool _) in currentHourBuckets)
+            foreach (var (deviceId, _, _) in currentHourBuckets)
             {
                 if (!devicesById.TryGetValue(deviceId, out Device? device))
                 {

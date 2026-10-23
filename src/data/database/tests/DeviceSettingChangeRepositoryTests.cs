@@ -26,18 +26,15 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private static DeviceSettingChange BuildChange(Guid deviceId, string field, DateTime changedAtUtc)
+        private static DeviceSettingChange BuildChange(Guid deviceId, string field, DateTime changedAtUtc) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = deviceId,
-                FieldName = field,
-                OldValue = "1",
-                NewValue = "2",
-                ChangedAtUtc = changedAtUtc
-            };
-        }
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            FieldName = field,
+            OldValue = "1",
+            NewValue = "2",
+            ChangedAtUtc = changedAtUtc
+        };
 
         [Fact]
         public async Task DeviceSettingChangeRepository_ListByDeviceAsync_ReturnsOnlyThatDeviceNewestFirst()

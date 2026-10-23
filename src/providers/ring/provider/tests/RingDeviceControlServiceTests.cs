@@ -1,9 +1,13 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 
 using Moq;
 
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Services;
 
 using Xunit;
@@ -38,11 +42,11 @@ namespace VideoForensics.Providers.Ring.Tests
 
         private static List<DeviceEntity> BuildDeviceRows()
         {
-            return
-            [
+            return new List<DeviceEntity>
+            {
                 new DeviceEntity { Id = Guid.NewGuid(), LocationId = LocationId, ProviderDeviceId = DoorbotProviderId, Name = DoorbotName, Type = "doorbell" },
                 new DeviceEntity { Id = Guid.NewGuid(), LocationId = LocationId, ProviderDeviceId = ChimeProviderId, Name = "Hall Chime", Type = "chime" },
-            ];
+            };
         }
 
         private static ProviderAccount BuildAccount(Guid id, string providerName)
@@ -62,7 +66,7 @@ namespace VideoForensics.Providers.Ring.Tests
 
             var locationRepository = new Mock<ILocationRepository>();
             _ = locationRepository.Setup(r => r.ListProviderAccountsForLocationAsync(LocationId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(linkedAccounts ?? [BuildAccount(RingAccountId, "Ring")]);
+                .ReturnsAsync(linkedAccounts ?? new List<ProviderAccount> { BuildAccount(RingAccountId, "Ring") });
 
             ILogger logger = new Mock<ILogger>().Object;
             var service = new RingDeviceControlService(logger, sessionProvider.Object, deviceRepository.Object, locationRepository.Object);
@@ -180,7 +184,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task SetLightAsync_UnknownDevice_ThrowsKeyNotFoundAndDoesNotControl()
         {
-            Harness h = Build(deviceRows: []);
+            Harness h = Build(deviceRows: new List<DeviceEntity>());
 
             _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
 
@@ -198,7 +202,7 @@ namespace VideoForensics.Providers.Ring.Tests
             _ = deviceRepository.Setup(r => r.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(BuildDeviceRows());
             var locationRepository = new Mock<ILocationRepository>();
             _ = locationRepository.Setup(r => r.ListProviderAccountsForLocationAsync(LocationId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync([BuildAccount(RingAccountId, "Ring")]);
+                .ReturnsAsync(new List<ProviderAccount> { BuildAccount(RingAccountId, "Ring") });
             var service = new RingDeviceControlService(new Mock<ILogger>().Object, sessionProvider.Object, deviceRepository.Object, locationRepository.Object);
 
             _ = await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
@@ -209,11 +213,11 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingDeviceControlService_SingleRingAccount_UsesThatAccountSession()
         {
-            Harness h = Build(
-            [
+            Harness h = Build(new List<ProviderAccount>
+            {
                 BuildAccount(RingAccountId, "Ring"),
                 BuildAccount(WyzeAccountId, "Wyze"),
-            ]);
+            });
 
             await h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None);
 
@@ -227,11 +231,11 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingDeviceControlService_TwoRingAccounts_ThrowsAndMakesNoProviderCall()
         {
-            Harness h = Build(
-            [
+            Harness h = Build(new List<ProviderAccount>
+            {
                 BuildAccount(RingAccountId, "Ring"),
                 BuildAccount(OtherRingAccountId, "Ring"),
-            ]);
+            });
 
             InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
@@ -245,7 +249,7 @@ namespace VideoForensics.Providers.Ring.Tests
         [Fact]
         public async Task RingDeviceControlService_NoLinkedAccount_ThrowsKeyNotFound()
         {
-            Harness h = Build(linkedAccounts: []);
+            Harness h = Build(linkedAccounts: new List<ProviderAccount>());
 
             _ = await Assert.ThrowsAsync<KeyNotFoundException>(() => h.Service.SetLightAsync(DoorbotProviderId, true, CancellationToken.None));
 

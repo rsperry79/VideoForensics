@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Providers.Ring.Catalog;

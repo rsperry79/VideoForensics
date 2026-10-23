@@ -1,19 +1,15 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-
 using Moq;
-
 using VideoForensics.Data.Common.Entities;
-using VideoForensics.Ui.Shared.Pages;
+using Xunit;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Ui.Shared.Services;
 using VideoForensics.Ui.Shared.Services.Scope;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>Jamming is per device: several scoped devices are each analyzed and their incidents combined.</summary>
 public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
 {
@@ -26,21 +22,21 @@ public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
     [Fact]
     public async Task SupersededLoad_DoesNotOverwriteTheNewerResult()
     {
-        Device first = CreateTestDevice("First");
-        Device second = CreateTestDevice("Second");
+        var first = CreateTestDevice("First");
+        var second = CreateTestDevice("Second");
         var gate = new TaskCompletionSource<IReadOnlyList<DeviceHealth>>();
-        _ = DeviceHealthRepositoryMock
+        DeviceHealthRepositoryMock
             .Setup(m => m.GetHistoryAsync(first.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .Returns(gate.Task);
-        ScopeState.Set(ScopeState.Current with { DeviceIds = [first.Id] });
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first.Id } });
         NavigateToAnalysis("jamming");
         SetRendererInfo(new RendererInfo("Server", true));
-        IRenderedComponent<Analyze> component = RenderPage();
+        var component = RenderPage();
 
         // Switch to the second device while the first is still in flight, then let the first finish.
-        await component.InvokeAsync(() => ScopeState.Set(ScopeState.Current with { DeviceIds = [second.Id] }));
+        await component.InvokeAsync(() => ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { second.Id } }));
         component.WaitForAssertion(() => Assert.Contains("across 1 device(s)", component.Markup));
-        await component.InvokeAsync(() => gate.SetResult([]));
+        await component.InvokeAsync(() => gate.SetResult(new List<DeviceHealth>()));
 
         // Without the guard the superseded run would bump the shared count to 2.
         component.WaitForAssertion(() => Assert.Contains("across 1 device(s)", component.Markup));
@@ -50,12 +46,12 @@ public class Analyze_JammingMultiDevice_Tests : AnalyzePageTestBase
     [Fact]
     public void TwoDevices_Jamming_AnalyzesEachDevice_NoErrors()
     {
-        Device first = CreateTestDevice("Front");
-        Device second = CreateTestDevice("Back");
-        ScopeState.Set(ScopeState.Current with { DeviceIds = [first.Id, second.Id] });
+        var first = CreateTestDevice("Front");
+        var second = CreateTestDevice("Back");
+        ScopeState.Set(ScopeState.Current with { DeviceIds = new List<Guid> { first.Id, second.Id } });
         NavigateToAnalysis("jamming");
 
-        IRenderedComponent<Analyze> component = RenderPage();
+        var component = RenderPage();
 
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(first.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         DeviceHealthRepositoryMock.Verify(m => m.GetHistoryAsync(second.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);

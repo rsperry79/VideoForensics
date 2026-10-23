@@ -1,11 +1,8 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Microsoft.Extensions.Localization;
-
 using VideoForensics.Ui.Shared.Layout;
-
 using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class NavGroupsLocalizationTests
 {

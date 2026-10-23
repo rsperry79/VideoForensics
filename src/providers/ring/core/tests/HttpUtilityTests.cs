@@ -1,3 +1,9 @@
+using System;
+using System.IO;
+using System.Threading.Tasks;
+
+using Xunit;
+
 namespace VideoForensics.Providers.Ring.Core.Tests
 {
     /// <summary>
@@ -14,7 +20,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Isolated per-test directory so tests never touch the machine-wide ProgramData state.
             _testDirectory = Path.Combine(Path.GetTempPath(), "vf-httputility-tests-" + Guid.NewGuid().ToString("N"));
-            _ = Directory.CreateDirectory(_testDirectory);
+            Directory.CreateDirectory(_testDirectory);
             var store = new FileHardBanStateStore(_testDirectory);
             _hardBanStateFilePath = store.FilePath;
             HttpUtility.UseHardBanStateStoreForTesting(store);
@@ -34,7 +40,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         {
             // Arrange - no hard ban state file exists
             // Act
-            DateTime? result = HttpUtility.GetHardBanUntilUtc();
+            var result = HttpUtility.GetHardBanUntilUtc();
             // Assert
             Assert.Null(result);
         }
@@ -43,11 +49,11 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void GetHardBanUntilUtc_WithExpiredPersistedState_ReturnsNull()
         {
             // Arrange - persist an expired hard ban state (1 hour ago)
-            DateTime expiredTime = DateTime.UtcNow.AddHours(-1);
+            var expiredTime = DateTime.UtcNow.AddHours(-1);
             File.WriteAllText(_hardBanStateFilePath, expiredTime.Ticks.ToString());
 
             // Act
-            DateTime? result = HttpUtility.GetHardBanUntilUtc();
+            var result = HttpUtility.GetHardBanUntilUtc();
 
             // Assert - expired ban should be cleared
             Assert.Null(result);
@@ -57,14 +63,14 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void GetHardBanUntilUtc_WithValidPersistedState_ReturnsExpiry()
         {
             // Arrange - persist a hard ban state (30 minutes in future)
-            DateTime futureTime = DateTime.UtcNow.AddMinutes(30);
+            var futureTime = DateTime.UtcNow.AddMinutes(30);
             File.WriteAllText(_hardBanStateFilePath, futureTime.Ticks.ToString());
 
             // Act
-            DateTime? result = HttpUtility.GetHardBanUntilUtc();
+            var result = HttpUtility.GetHardBanUntilUtc();
 
             // Assert - active ban should be returned
-            _ = Assert.NotNull(result);
+            Assert.NotNull(result);
             Assert.True(result.Value > DateTime.UtcNow);
             Assert.True(Math.Abs((result.Value - futureTime).TotalSeconds) < 2); // Allow 2s tolerance
         }
@@ -73,15 +79,15 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void GetHardBanUntilUtc_PersistsAcrossInstances()
         {
             // Arrange - simulate first instance setting hard ban
-            DateTime banExpiry = DateTime.UtcNow.AddHours(1);
+            var banExpiry = DateTime.UtcNow.AddHours(1);
             File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
 
             // Act - simulating first process instance
-            DateTime? firstResult = HttpUtility.GetHardBanUntilUtc();
+            var firstResult = HttpUtility.GetHardBanUntilUtc();
 
             // Simulate process restart by "reloading" from disk (in real scenario, new process loads it)
             // Assert - both instances should see the same ban
-            _ = Assert.NotNull(firstResult);
+            Assert.NotNull(firstResult);
             Assert.True(Math.Abs((firstResult.Value - banExpiry).TotalSeconds) < 2);
         }
 
@@ -89,9 +95,9 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public void OverrideHardBan_ClearsPersistentState()
         {
             // Arrange - set up an active hard ban
-            DateTime banExpiry = DateTime.UtcNow.AddHours(1);
+            var banExpiry = DateTime.UtcNow.AddHours(1);
             File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
-            _ = Assert.NotNull(HttpUtility.GetHardBanUntilUtc());
+            Assert.NotNull(HttpUtility.GetHardBanUntilUtc());
 
             // Act - override the ban
             HttpUtility.OverrideHardBan();
@@ -118,7 +124,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             File.WriteAllText(_hardBanStateFilePath, "not_a_valid_number");
 
             // Act
-            DateTime? result = HttpUtility.GetHardBanUntilUtc();
+            var result = HttpUtility.GetHardBanUntilUtc();
 
             // Assert - should gracefully handle and return null
             Assert.Null(result);
@@ -134,7 +140,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
 
             // Act
-            DateTime? result = HttpUtility.GetHardBanUntilUtc();
+            var result = HttpUtility.GetHardBanUntilUtc();
 
             // Assert
             Assert.Null(result);
@@ -144,7 +150,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
         public async Task HardBanState_IsThreadSafe()
         {
             // Arrange
-            DateTime banExpiry = DateTime.UtcNow.AddHours(1);
+            var banExpiry = DateTime.UtcNow.AddHours(1);
             var tasks = new Task[10];
             File.WriteAllText(_hardBanStateFilePath, banExpiry.Ticks.ToString());
 
@@ -153,8 +159,8 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             {
                 tasks[i] = Task.Run(() =>
                 {
-                    DateTime? result = HttpUtility.GetHardBanUntilUtc();
-                    _ = Assert.NotNull(result);
+                    var result = HttpUtility.GetHardBanUntilUtc();
+                    Assert.NotNull(result);
                 });
             }
 

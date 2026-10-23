@@ -1,7 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
+using VideoForensics.Core.Helpers.Forensics.Exceptions;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
 namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
@@ -15,7 +21,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
         {
             // Use a temporary directory for test key storage
             _testKeyStorageDir = Path.Combine(Path.GetTempPath(), $"dpapi-test-{Guid.NewGuid():N}");
-            _ = Directory.CreateDirectory(_testKeyStorageDir);
+            Directory.CreateDirectory(_testKeyStorageDir);
             _provider = new DpapiKeyStorageProvider(_testKeyStorageDir);
         }
 
@@ -102,7 +108,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Verify it's a valid X509 cert
 #if NET10_0_OR_GREATER
-            X509Certificate2 cert = X509CertificateLoader.LoadCertificate(publicKeyBytes);
+            var cert = X509CertificateLoader.LoadCertificate(publicKeyBytes);
 #else
             var cert = new X509Certificate2(publicKeyBytes);
 #endif
@@ -121,7 +127,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Arrange
             string keyId = "test-key-sign-1";
-            _ = await _provider.GenerateKeyPairAsync(keyId);
+            await _provider.GenerateKeyPairAsync(keyId);
             byte[] data = Encoding.UTF8.GetBytes("Test data for signing");
 
             // Act
@@ -147,7 +153,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Arrange
             string keyId = "test-key-sign-diff-1";
-            _ = await _provider.GenerateKeyPairAsync(keyId);
+            await _provider.GenerateKeyPairAsync(keyId);
             byte[] data1 = Encoding.UTF8.GetBytes("Data 1");
             byte[] data2 = Encoding.UTF8.GetBytes("Data 2");
 
@@ -170,7 +176,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Arrange
             string keyId = "test-key-verify-correct-1";
-            _ = await _provider.GenerateKeyPairAsync(keyId);
+            await _provider.GenerateKeyPairAsync(keyId);
             byte[] data = Encoding.UTF8.GetBytes("Test data for verification");
             string signature = await _provider.SignDataAsync(keyId, data);
 
@@ -192,7 +198,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Arrange
             string keyId = "test-key-verify-incorrect-1";
-            _ = await _provider.GenerateKeyPairAsync(keyId);
+            await _provider.GenerateKeyPairAsync(keyId);
             byte[] data = Encoding.UTF8.GetBytes("Test data");
             byte[] wrongData = Encoding.UTF8.GetBytes("Wrong data");
 
@@ -217,7 +223,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
 
             // Arrange
             string keyId = "test-key-delete-1";
-            _ = await _provider.GenerateKeyPairAsync(keyId);
+            await _provider.GenerateKeyPairAsync(keyId);
 
             string certPath = Path.Combine(_testKeyStorageDir, $"{keyId}.cer");
             string privateKeyPath = Path.Combine(_testKeyStorageDir, $"{keyId}.private.key");
@@ -248,9 +254,9 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             string keyId2 = "list-test-key-2";
             string keyId3 = "list-test-key-3";
 
-            _ = await _provider.GenerateKeyPairAsync(keyId1);
-            _ = await _provider.GenerateKeyPairAsync(keyId2);
-            _ = await _provider.GenerateKeyPairAsync(keyId3);
+            await _provider.GenerateKeyPairAsync(keyId1);
+            await _provider.GenerateKeyPairAsync(keyId2);
+            await _provider.GenerateKeyPairAsync(keyId3);
 
             // Act
             IEnumerable<string> keys = await _provider.ListKeysAsync();

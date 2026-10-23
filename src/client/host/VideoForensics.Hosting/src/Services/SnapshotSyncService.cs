@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Core.Helpers.Platform;
@@ -9,7 +8,6 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
 using VideoForensics.Hosting.Contracts;
-
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
 
 namespace VideoForensics.Hosting.Services
@@ -44,7 +42,7 @@ namespace VideoForensics.Hosting.Services
         /// <inheritdoc />
         public async Task<SnapshotSyncResult> SyncAccountSnapshotsAsync(Guid accountId, DateTime? fromUtc, DateTime? toUtc, CancellationToken cancellationToken)
         {
-            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            var account = await _accounts.GetAsync(accountId, cancellationToken);
             if (account is null)
             {
                 return new SnapshotSyncResult(ErrorMessage: "Account not found");
@@ -72,8 +70,8 @@ namespace VideoForensics.Hosting.Services
 
             var targets = new List<(DeviceEntity Device, string ProviderLocationId, string LocationName)>();
             var seen = new HashSet<string>();
-            int offline = 0;
-            foreach (Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
+            var offline = 0;
+            foreach (var location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
             {
                 foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
                 {
@@ -124,7 +122,7 @@ namespace VideoForensics.Hosting.Services
             int succeeded = 0, saved = 0, failed = 0;
             string? firstError = null;
 
-            foreach ((DeviceEntity? device, string? providerLocationId, string? locationName) in targets)
+            foreach (var (device, providerLocationId, locationName) in targets)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string outputPath = PathUtilities.BuildSavePath(mediaRoot, locationName, device.Name);

@@ -1,24 +1,20 @@
+namespace VideoForensics.Ui.Shared.Tests;
 
 using Bunit;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-
+using Xunit;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Pages.Redirects;
-
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 
 public class WorkflowRedirect_Tests : BunitContext
 {
     [Fact]
     public void Render_NavigatesToEvidence()
     {
-        _ = Render<WorkflowRedirect>();
+        Render<WorkflowRedirect>();
 
-        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        var nav = Services.GetRequiredService<NavigationManager>();
         Assert.EndsWith("/media", nav.Uri);
     }
 }

@@ -1,7 +1,12 @@
-using VideoForensics.Providers.Ring.Exceptions;
-using VideoForensics.Providers.Ring.Services;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Xunit;
+
+using VideoForensics.Providers.Ring.Exceptions;
+using VideoForensics.Providers.Ring.Services;
 
 namespace VideoForensics.Providers.Ring.Tests
 {
@@ -18,7 +23,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 () =>
                 {
                     calls++;
-                    return calls == 1 ? throw new ThrottledException("HTTP 429") { RetryAfter = TimeSpan.FromSeconds(7) } : Task.CompletedTask;
+                    if (calls == 1)
+                    {
+                        throw new ThrottledException("HTTP 429") { RetryAfter = TimeSpan.FromSeconds(7) };
+                    }
+
+                    return Task.CompletedTask;
                 },
                 (wait, _) => { waits.Add(wait); return Task.CompletedTask; },
                 CancellationToken.None);
@@ -38,7 +48,12 @@ namespace VideoForensics.Providers.Ring.Tests
                 () =>
                 {
                     calls++;
-                    return calls == 1 ? throw new ThrottledException("HTTP 429") : Task.CompletedTask;
+                    if (calls == 1)
+                    {
+                        throw new ThrottledException("HTTP 429");
+                    }
+
+                    return Task.CompletedTask;
                 },
                 (wait, _) => { waits.Add(wait); return Task.CompletedTask; },
                 CancellationToken.None);
@@ -67,7 +82,7 @@ namespace VideoForensics.Providers.Ring.Tests
         {
             int waits = 0;
 
-            _ = await Assert.ThrowsAsync<ThrottledException>(() => ThrottleRetry.RunAsync(
+            await Assert.ThrowsAsync<ThrottledException>(() => ThrottleRetry.RunAsync(
                 () => throw new ThrottledException("hard ban", isHardBan: true),
                 (_, _) => { waits++; return Task.CompletedTask; },
                 CancellationToken.None));

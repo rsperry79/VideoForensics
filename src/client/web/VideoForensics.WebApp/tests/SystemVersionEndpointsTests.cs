@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-
 using Moq;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.WebApp.Api;
 using VideoForensics.WebApp.Tests.Api;
-
 using Xunit;
 
 namespace VideoForensics.WebApp.Tests
@@ -26,11 +23,11 @@ namespace VideoForensics.WebApp.Tests
         public static Mock<ISystemVersionProvider> CreateMockVersionProviderWithDefaults()
         {
             var mock = new Mock<ISystemVersionProvider>();
-            _ = mock.Setup(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()))
+            mock.Setup(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("1.0.0-dev.1");
-            _ = mock.Setup(v => v.GetBuildTimestampAsync(It.IsAny<CancellationToken>()))
+            mock.Setup(v => v.GetBuildTimestampAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DateTime(2024, 10, 5, 12, 0, 0, DateTimeKind.Utc));
-            _ = mock.Setup(v => v.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
+            mock.Setup(v => v.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("dev");
             return mock;
         }
@@ -39,19 +36,19 @@ namespace VideoForensics.WebApp.Tests
         public async Task SystemVersionEndpoints_GetVersion_ReturnsOkWithSystemVersionDto()
         {
             // Arrange
-            Mock<ISystemVersionProvider> versionProvider = CreateMockVersionProviderWithDefaults();
+            var versionProvider = CreateMockVersionProviderWithDefaults();
 
             // Act
-            IResult result = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
+            var result = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             var okResult = result as Ok<SystemVersionDto>;
             Assert.NotNull(okResult);
-            SystemVersionDto? dto = okResult.Value;
+            var dto = okResult.Value;
             Assert.NotNull(dto);
             Assert.NotEmpty(dto.Version);
-            _ = Assert.NotNull(dto.BuildDate);
+            Assert.NotNull(dto.BuildDate);
             Assert.NotEmpty(dto.Channel);
 
             versionProvider.Verify(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -65,10 +62,10 @@ namespace VideoForensics.WebApp.Tests
             // Arrange
             // This test documents that GetSystemVersion endpoint does not require authentication.
             // Auth is handled at the routing level by absence of RequireAuthorization in MapSystemVersionEndpoints.
-            Mock<ISystemVersionProvider> versionProvider = CreateMockVersionProviderWithDefaults();
+            var versionProvider = CreateMockVersionProviderWithDefaults();
 
             // Act
-            IResult result = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
+            var result = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
 
             // Assert
             // If auth were required, an exception would be thrown. No exception = no auth required.
@@ -81,16 +78,16 @@ namespace VideoForensics.WebApp.Tests
         public async Task SystemVersionEndpoints_GetVersionManifest_ReturnsOkWithVersionManifestDto()
         {
             // Arrange
-            Mock<ISystemVersionProvider> versionProvider = CreateMockVersionProviderWithDefaults();
+            var versionProvider = CreateMockVersionProviderWithDefaults();
 
             // Act
-            IResult result = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
+            var result = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             var okResult = result as Ok<VersionManifestDto>;
             Assert.NotNull(okResult);
-            VersionManifestDto? manifest = okResult.Value;
+            var manifest = okResult.Value;
             Assert.NotNull(manifest);
             Assert.NotNull(manifest.CurrentVersion);
             Assert.NotEmpty(manifest.CurrentVersion.Version);
@@ -109,22 +106,22 @@ namespace VideoForensics.WebApp.Tests
             const string knownChannel = "testing";
 
             var versionProvider = new Mock<ISystemVersionProvider>();
-            _ = versionProvider.Setup(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()))
+            versionProvider.Setup(v => v.GetCurrentVersionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(knownVersion);
-            _ = versionProvider.Setup(v => v.GetBuildTimestampAsync(It.IsAny<CancellationToken>()))
+            versionProvider.Setup(v => v.GetBuildTimestampAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(knownTimestamp);
-            _ = versionProvider.Setup(v => v.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
+            versionProvider.Setup(v => v.GetReleaseChannelAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(knownChannel);
 
             // Act - Get the version first
-            IResult versionResult = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
+            var versionResult = await SystemVersionEndpointsInvoker.GetSystemVersion(versionProvider.Object, CancellationToken.None);
             var versionOkResult = versionResult as Ok<SystemVersionDto>;
-            SystemVersionDto? systemVersion = versionOkResult?.Value;
+            var systemVersion = versionOkResult?.Value;
 
             // Act - Get the manifest
-            IResult manifestResult = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
+            var manifestResult = await SystemVersionEndpointsInvoker.GetVersionManifest(versionProvider.Object, CancellationToken.None);
             var manifestOkResult = manifestResult as Ok<VersionManifestDto>;
-            VersionManifestDto? manifest = manifestOkResult?.Value;
+            var manifest = manifestOkResult?.Value;
 
             // Assert - Verify consistency
             Assert.NotNull(systemVersion);

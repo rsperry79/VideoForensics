@@ -47,7 +47,7 @@ namespace VideoForensics.Client.Core.Utilities
                     $"Output path '{candidate}' must be within '{safeRoot}'.");
             }
 
-            _ = Directory.CreateDirectory(candidate);
+            Directory.CreateDirectory(candidate);
             return candidate;
         }
 

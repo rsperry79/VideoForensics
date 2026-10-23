@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-
+using Xunit;
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Hosting.Remote;
 
@@ -30,10 +31,8 @@ namespace VideoForensics.Hosting.Tests
                 {
                     Assert.Equal(HttpMethod.Post, request.Method);
                     Assert.Equal("/api/v1/security-events", request.RequestUri?.AbsolutePath);
-                    var response = new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = JsonContent.Create(events)
-                    };
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = JsonContent.Create(events);
                     return response;
                 }
             );
@@ -42,11 +41,11 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
+            var result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            _ = Assert.Single(result);
+            Assert.Single(result);
             Assert.Equal(events[0].EventType, result[0].EventType);
         }
 
@@ -71,10 +70,8 @@ namespace VideoForensics.Hosting.Tests
             var handler = new FakeHttpMessageHandler(
                 request =>
                 {
-                    var response = new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = JsonContent.Create(events)
-                    };
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = JsonContent.Create(events);
                     return response;
                 }
             );
@@ -83,11 +80,11 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: operatorId, offset: 0, limit: 20, ct: CancellationToken.None);
+            var result = await service.GetEventsAsync(operatorId: operatorId, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
-            _ = Assert.Single(result);
+            Assert.Single(result);
             Assert.Equal(operatorId, result[0].OperatorId);
         }
 
@@ -98,10 +95,8 @@ namespace VideoForensics.Hosting.Tests
             var handler = new FakeHttpMessageHandler(
                 request =>
                 {
-                    var response = new HttpResponseMessage(HttpStatusCode.OK)
-                    {
-                        Content = JsonContent.Create(new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>())
-                    };
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = JsonContent.Create(new List<VideoForensics.Core.Api.Contracts.SecurityEventDto>());
                     return response;
                 }
             );
@@ -110,7 +105,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act
-            IReadOnlyList<SecurityEventSummary> result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
+            var result = await service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
@@ -132,7 +127,7 @@ namespace VideoForensics.Hosting.Tests
             var service = new RemoteSecurityEventsService(httpClient);
 
             // Act & Assert
-            _ = await Assert.ThrowsAsync<HttpRequestException>(
+            await Assert.ThrowsAsync<HttpRequestException>(
                 () => service.GetEventsAsync(operatorId: null, offset: 0, limit: 20, ct: CancellationToken.None)
             );
         }
@@ -142,7 +137,7 @@ namespace VideoForensics.Hosting.Tests
         {
             // Verify that RemoteSecurityEventsService implements ISecurityEventsService
             var service = new RemoteSecurityEventsService(new HttpClient { BaseAddress = new Uri("http://localhost") });
-            _ = Assert.IsAssignableFrom<ISecurityEventsService>(service);
+            Assert.IsAssignableFrom<ISecurityEventsService>(service);
         }
 
         private class FakeHttpMessageHandler : HttpMessageHandler

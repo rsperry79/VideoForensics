@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -25,9 +28,7 @@ namespace VideoForensics.WebApp.Services
 
         /// <summary>The tunnel starts only when it is configured and the server is reachable beyond this machine.</summary>
         public static bool ShouldAutostart(NetworkTier tier, bool hasTunnelToken)
-        {
-            return hasTunnelToken && tier != NetworkTier.Local;
-        }
+            => hasTunnelToken && tier != NetworkTier.Local;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

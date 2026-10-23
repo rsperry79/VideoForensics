@@ -236,7 +236,7 @@ namespace VideoForensics.Data.Database.Tests
                 created.Add(await _repository.CreateAsync(e, CancellationToken.None));
             }
 
-            var expected = created.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Select(e => e.Id).ToList();
+            List<Guid> expected = created.OrderBy(e => e.OccurredAtUtc).ThenBy(e => e.Id).Select(e => e.Id).ToList();
             var actual = new List<Guid>();
             DateTime? afterTime = null;
             Guid? afterId = null;

@@ -82,9 +82,7 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/incidents/{incidentId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
                 return null;
-            }
 
             _ = response.EnsureSuccessStatusCode();
             JammingIncidentDto? dto = await response.Content.ReadFromJsonAsync<JammingIncidentDto>(JsonOptions, ct);
@@ -96,9 +94,7 @@ namespace VideoForensics.Hosting.Remote
         {
             HttpResponseMessage response = await _httpClient.GetAsync($"/api/v1/jamming/stats/{deviceId}", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
                 return null;
-            }
 
             _ = response.EnsureSuccessStatusCode();
             JammingStatsSummaryDto? dto = await response.Content.ReadFromJsonAsync<JammingStatsSummaryDto>(JsonOptions, ct);

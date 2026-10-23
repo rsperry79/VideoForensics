@@ -6,20 +6,17 @@ namespace VideoForensics.Core.Api.Contracts.Tests
 {
     public class AccountCaseDtosTests
     {
-        private static ForensicCase CreateCase(string caseNumber, CaseStatus status = CaseStatus.Open)
+        private static ForensicCase CreateCase(string caseNumber, CaseStatus status = CaseStatus.Open) => new()
         {
-            return new()
-            {
-                Id = Guid.NewGuid(),
-                CaseNumber = caseNumber,
-                Title = "Driveway motion",
-                Status = status,
-                CreatedBy = "admin",
-                CreatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
-                UpdatedAtUtc = new DateTime(2026, 10, 2, 9, 0, 0, DateTimeKind.Utc),
-                ScopeFromUtc = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
-            };
-        }
+            Id = Guid.NewGuid(),
+            CaseNumber = caseNumber,
+            Title = "Driveway motion",
+            Status = status,
+            CreatedBy = "admin",
+            CreatedAtUtc = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            UpdatedAtUtc = new DateTime(2026, 10, 2, 9, 0, 0, DateTimeKind.Utc),
+            ScopeFromUtc = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+        };
 
         [Fact]
         public void ForensicCaseDtoMapping_AccountCaseRoundTrip_KeepsListFields()
@@ -60,7 +57,7 @@ namespace VideoForensics.Core.Api.Contracts.Tests
                 ScopeFromUtc: null,
                 CreatedAtUtc: DateTime.UtcNow);
 
-            _ = Assert.Throws<ArgumentException>(dto.ToDomain);
+            _ = Assert.Throws<ArgumentException>(() => dto.ToDomain());
         }
 
         [Theory]

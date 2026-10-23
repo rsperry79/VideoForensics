@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 

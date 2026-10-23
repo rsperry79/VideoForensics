@@ -1,4 +1,4 @@
-using Fido2NetLib;
+﻿using Fido2NetLib;
 using Fido2NetLib.Objects;
 
 using Microsoft.AspNetCore.Identity;
@@ -8,10 +8,10 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
+using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.WebApp.Auth;
 using VideoForensics.WebApp.Services;
 
@@ -32,7 +32,7 @@ namespace VideoForensics.WebApp.Api
         /// Dummy operator used for consistent password verification timing (timing-attack mitigation).
         /// Fields are minimal since we only use this for password hash verification, never for real operations.
         /// </summary>
-        private static readonly Operator DummyOperator = new()
+        private static readonly Operator DummyOperator = new Operator
         {
             Id = Guid.Empty,
             DisplayName = "Dummy",
@@ -158,9 +158,8 @@ namespace VideoForensics.WebApp.Api
         /// The passkeys offered at username sign-in: approved and active only, most recently used first. Every such passkey is
         /// kept, so an operator with several is never locked out; the order only puts the last one used first.
         /// </summary>
-        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials, bool allCredentials = false)
-        {
-            return credentials
+        internal static List<PublicKeyCredentialDescriptor> UsernameAllowList(IEnumerable<OperatorCredential> credentials, bool allCredentials = false) =>
+            credentials
                 .Where(c => c.IsApproved && c.IsActive)
                 .OrderByDescending(c => c.LastUsedAtUtc ?? DateTime.MinValue)
                 // Single-passkey mode offers only the most recent one; the fallback offers all of them.
@@ -170,7 +169,7 @@ namespace VideoForensics.WebApp.Api
                     Convert.FromBase64String(c.WebAuthnCredentialId),
                     new[] { AuthenticatorTransport.Internal }))
                 .ToList();
-        }
+
 
         private static async Task<IResult> UsernameAssertionOptionsAsync(
             UsernameAssertionOptionsRequest request,
@@ -648,7 +647,7 @@ namespace VideoForensics.WebApp.Api
             // Resolve the caller's source IP address early for all subsequent checks
             string sourceIpString = tierResolver.ResolveClientIp(context);
             IPAddress? sourceIp = null;
-            if (IPAddress.TryParse(sourceIpString, out IPAddress? parsedIp))
+            if (IPAddress.TryParse(sourceIpString, out var parsedIp))
             {
                 sourceIp = parsedIp;
             }
@@ -916,7 +915,7 @@ namespace VideoForensics.WebApp.Api
 
             return Results.Ok(new
             {
-                sessionToken,
+                sessionToken = sessionToken,
                 operatorId = op.Id,
                 role = op.Role.ToString(),
                 mustChangePassword = op.MustChangePassword,
@@ -1160,8 +1159,11 @@ namespace VideoForensics.WebApp.Api
 
             // Get the primary SuperAdmin operator
             Operator? primaryAdmin = allOps.FirstOrDefault(o => o.IsPrimarySuperAdmin);
-            // Fallback to any SuperAdmin if primary doesn't exist
-            primaryAdmin ??= allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
+            if (primaryAdmin == null)
+            {
+                // Fallback to any SuperAdmin if primary doesn't exist
+                primaryAdmin = allOps.FirstOrDefault(o => o.Role == OperatorRole.SuperAdmin);
+            }
 
             if (primaryAdmin == null)
             {
@@ -1195,6 +1197,7 @@ namespace VideoForensics.WebApp.Api
             // Return temporary password (only time it's shown in plaintext)
             return Results.Ok(new { temporaryPassword });
         }
+
     }
 
     // Request/response DTOs
@@ -1212,4 +1215,6 @@ namespace VideoForensics.WebApp.Api
 
     internal record PendingCredentialRegistration(Guid OperatorId, string Label, string OptionsJson);
 }
+
+
 

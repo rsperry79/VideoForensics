@@ -19,7 +19,7 @@ public static class CaseUrl
         }
 
         var uri = new Uri(currentUri, UriKind.Absolute);
-        string query = uri.Query;
+        var query = uri.Query;
 
         // Parse existing query string
         var pairs = new Dictionary<string, string>();
@@ -28,17 +28,17 @@ public static class CaseUrl
             // Remove leading '?'
             if (query.StartsWith("?"))
             {
-                query = query[1..];
+                query = query.Substring(1);
             }
 
-            string[] parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
-            foreach (string part in parts)
+            var parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
             {
-                int eqIndex = part.IndexOf('=');
+                var eqIndex = part.IndexOf('=');
                 if (eqIndex > 0)
                 {
-                    string key = part[..eqIndex];
-                    string value = HttpUtility.UrlDecode(part[(eqIndex + 1)..]);
+                    var key = part.Substring(0, eqIndex);
+                    var value = HttpUtility.UrlDecode(part.Substring(eqIndex + 1));
                     pairs[key] = value;
                 }
                 else if (eqIndex < 0)
@@ -56,18 +56,18 @@ public static class CaseUrl
         }
         else
         {
-            _ = pairs.Remove("case");
+            pairs.Remove("case");
         }
 
         // Rebuild query string
-        IEnumerable<string> newParts = pairs.Select(kvp =>
+        var newParts = pairs.Select(kvp =>
             string.IsNullOrEmpty(kvp.Value)
                 ? HttpUtility.UrlEncode(kvp.Key)
                 : $"{HttpUtility.UrlEncode(kvp.Key)}={HttpUtility.UrlEncode(kvp.Value)}");
-        string newQuery = string.Join("&", newParts);
+        var newQuery = string.Join("&", newParts);
 
         // Reconstruct URI
-        string baseUri = uri.GetLeftPart(UriPartial.Path);
+        var baseUri = uri.GetLeftPart(UriPartial.Path);
         return string.IsNullOrEmpty(newQuery) ? baseUri : $"{baseUri}?{newQuery}";
     }
 
@@ -84,7 +84,7 @@ public static class CaseUrl
         try
         {
             var parsedUri = new Uri(uri, UriKind.RelativeOrAbsolute);
-            string query = parsedUri.Query;
+            var query = parsedUri.Query;
 
             if (string.IsNullOrEmpty(query))
             {
@@ -94,20 +94,20 @@ public static class CaseUrl
             // Remove leading '?'
             if (query.StartsWith("?"))
             {
-                query = query[1..];
+                query = query.Substring(1);
             }
 
-            string[] parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
-            foreach (string part in parts)
+            var parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
             {
-                int eqIndex = part.IndexOf('=');
+                var eqIndex = part.IndexOf('=');
                 if (eqIndex > 0)
                 {
-                    string key = part[..eqIndex];
+                    var key = part.Substring(0, eqIndex);
                     if (key == "case")
                     {
-                        string value = HttpUtility.UrlDecode(part[(eqIndex + 1)..]);
-                        if (!string.IsNullOrEmpty(value) && Guid.TryParse(value, out Guid caseId))
+                        var value = HttpUtility.UrlDecode(part.Substring(eqIndex + 1));
+                        if (!string.IsNullOrEmpty(value) && Guid.TryParse(value, out var caseId))
                         {
                             return caseId;
                         }

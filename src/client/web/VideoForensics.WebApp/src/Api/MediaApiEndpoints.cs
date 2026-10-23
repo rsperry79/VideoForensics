@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Primitives;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
@@ -117,7 +115,7 @@ namespace VideoForensics.WebApp.Api
 
             foreach (Guid mediaItemId in distinctIds)
             {
-                MediaAccessTicket ticket = ticketService.Issue(mediaItemId, operatorId);
+                var ticket = ticketService.Issue(mediaItemId, operatorId);
                 tickets.Add(new MediaTicketDto(
                     mediaItemId,
                     MediaContentRoutes.ContentUrl(mediaItemId, ticket.Token),
@@ -173,7 +171,7 @@ namespace VideoForensics.WebApp.Api
             // Determine if we should audit this request
             // Skip auditing range requests unless they start at byte 0
             bool shouldAudit = true;
-            if (context.Request.Headers.TryGetValue("Range", out StringValues rangeValue))
+            if (context.Request.Headers.TryGetValue("Range", out var rangeValue))
             {
                 string? rangeHeader = rangeValue.FirstOrDefault();
                 if (!string.IsNullOrEmpty(rangeHeader) && !rangeHeader.StartsWith("bytes=0-", StringComparison.OrdinalIgnoreCase))
@@ -187,7 +185,7 @@ namespace VideoForensics.WebApp.Api
             {
                 try
                 {
-                    _ = await auditLog.RecordAccessAsync(
+                    await auditLog.RecordAccessAsync(
                         id,
                         operatorId.Value.ToString(),
                         "View",
@@ -254,16 +252,14 @@ namespace VideoForensics.WebApp.Api
             return Results.Stream(stream, contentType);
         }
 
-        private static string MediaThumbnailContentType(MediaItem item)
-        {
-            return item.MediaFormat switch
+        private static string MediaThumbnailContentType(MediaItem item) =>
+            item.MediaFormat switch
             {
                 "image/jpeg" or "jpg" or "jpeg" => "image/jpeg",
                 "image/png" or "png" => "image/png",
                 "video/mp4" or "mp4" => "image/png",
                 _ => "application/octet-stream"
             };
-        }
 
         /// <summary>
         /// Resolves the operator behind a media request: the signed-in claim first, else the per-item ticket.
@@ -305,7 +301,7 @@ namespace VideoForensics.WebApp.Api
             // For ticket auth, validate operator status
             if (viaTicket)
             {
-                Operator? @operator = await operators.GetAsync(operatorId.Value, ct);
+                var @operator = await operators.GetAsync(operatorId.Value, ct);
                 if (@operator == null || !@operator.Active || !@operator.IsApproved)
                 {
                     return null;
@@ -368,7 +364,12 @@ namespace VideoForensics.WebApp.Api
             CancellationToken ct)
         {
             MediaItem? item = await mediaItems.GetAsync(id, ct);
-            return item == null ? Results.NotFound() : Results.Ok(item.ToDto());
+            if (item == null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(item.ToDto());
         }
 
         /// <summary>

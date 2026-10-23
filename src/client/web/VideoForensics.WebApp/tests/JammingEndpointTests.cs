@@ -1,12 +1,12 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 using Moq;
 
-using System.Security.Claims;
-
-using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting;
@@ -22,28 +22,20 @@ namespace VideoForensics.WebApp.Tests
         private static readonly Guid DeviceId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         private static readonly Guid OperatorId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
-        private static Device SampleDevice()
-        {
-            return new() { Id = DeviceId, ProviderDeviceId = "p", Name = "Front Door", Type = "doorbell" };
-        }
+        private static Device SampleDevice() => new() { Id = DeviceId, ProviderDeviceId = "p", Name = "Front Door", Type = "doorbell" };
 
-        private static UpsertJammingIncidentRequest ValidRequest(Guid? id = null)
-        {
-            return new(
+        private static UpsertJammingIncidentRequest ValidRequest(Guid? id = null) => new(
             id ?? Guid.Empty, DeviceId,
             new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 3, 1, 10, 30, 0, DateTimeKind.Utc),
             3, 14.5, "High", "note");
-        }
 
         private static HttpContext AdminContext()
         {
-            var context = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                [
-                    new Claim(VideoForensicsClaimTypes.OperatorId, OperatorId.ToString())
-                ], "test"))
-            };
+            var context = new DefaultHttpContext();
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(VideoForensicsClaimTypes.OperatorId, OperatorId.ToString())
+            ], "test"));
             return context;
         }
 
@@ -73,15 +65,10 @@ namespace VideoForensics.WebApp.Tests
             }
 
             public Task<IResult> Upsert(UpsertJammingIncidentRequest request)
-            {
-                return JammingEndpoints.UpsertIncidentAsync(request, Jamming.Object, Devices.Object, Audit.Object, Tier.Object, AdminContext(), CancellationToken.None);
-            }
+                => JammingEndpoints.UpsertIncidentAsync(request, Jamming.Object, Devices.Object, Audit.Object, Tier.Object, AdminContext(), CancellationToken.None);
         }
 
-        private static int Status(IResult result)
-        {
-            return Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 0;
-        }
+        private static int Status(IResult result) => Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode ?? 0;
 
         // ---- reads ---------------------------------------------------------------------------------
 
@@ -96,10 +83,10 @@ namespace VideoForensics.WebApp.Tests
 
             IResult result = await JammingEndpoints.ListIncidentsAsync(DeviceId, from, to, jamming.Object, CancellationToken.None);
 
-            Ok<List<JammingIncidentDto>> ok = Assert.IsType<Ok<List<JammingIncidentDto>>>(result);
+            var ok = Assert.IsType<Ok<List<JammingIncidentDto>>>(result);
             JammingIncidentDto dto = Assert.Single(ok.Value!);
             Assert.Equal("Low", dto.Confidence);
-            _ = Assert.NotNull(dto.CaseId);
+            Assert.NotNull(dto.CaseId);
             jamming.Verify(j => j.ListIncidentsAsync(DeviceId, from, to, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -286,7 +273,7 @@ namespace VideoForensics.WebApp.Tests
 
             IResult result = await f.Upsert(ValidRequest());
 
-            Ok<JammingIncidentDto> ok = Assert.IsType<Ok<JammingIncidentDto>>(result);
+            var ok = Assert.IsType<Ok<JammingIncidentDto>>(result);
             JammingIncidentRecord sent = Assert.Single(f.Upserted);
             Assert.Equal(JammingIncidentSource.ManuallyRecorded, sent.Source);
             Assert.Null(sent.CaseId);
@@ -352,10 +339,7 @@ namespace VideoForensics.WebApp.Tests
             var id = Guid.NewGuid();
             _ = f.Jamming.Setup(j => j.GetIncidentAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(new JammingIncidentRecord
             {
-                Id = id,
-                DeviceId = DeviceId,
-                Source = JammingIncidentSource.ManuallyRecorded,
-                Confidence = JammingConfidenceLevel.Low
+                Id = id, DeviceId = DeviceId, Source = JammingIncidentSource.ManuallyRecorded, Confidence = JammingConfidenceLevel.Low
             });
 
             _ = await f.Upsert(ValidRequest(id) with { Source = "AutoDetected" });
@@ -372,13 +356,8 @@ namespace VideoForensics.WebApp.Tests
             _ = f.Jamming.Setup(j => j.GetIncidentAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Guid id, CancellationToken _) => f.Upserted.Count == 0 ? null : new JammingIncidentRecord
                 {
-                    Id = id,
-                    DeviceId = DeviceId,
-                    StartUtc = f.Upserted[0].StartUtc,
-                    EndUtc = f.Upserted[0].EndUtc,
-                    Confidence = JammingConfidenceLevel.High,
-                    Source = JammingIncidentSource.ManuallyRecorded,
-                    CaseId = caseId
+                    Id = id, DeviceId = DeviceId, StartUtc = f.Upserted[0].StartUtc, EndUtc = f.Upserted[0].EndUtc,
+                    Confidence = JammingConfidenceLevel.High, Source = JammingIncidentSource.ManuallyRecorded, CaseId = caseId
                 });
 
             IResult result = await f.Upsert(ValidRequest());
@@ -407,11 +386,7 @@ namespace VideoForensics.WebApp.Tests
             DateTime storedDetected = new(2026, 2, 1, 8, 0, 0, DateTimeKind.Utc);
             _ = f.Jamming.Setup(j => j.GetIncidentAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(new JammingIncidentRecord
             {
-                Id = id,
-                DeviceId = DeviceId,
-                Source = JammingIncidentSource.AutoDetected,
-                DetectedAtUtc = storedDetected,
-                CaseId = storedCase,
+                Id = id, DeviceId = DeviceId, Source = JammingIncidentSource.AutoDetected, DetectedAtUtc = storedDetected, CaseId = storedCase,
                 Confidence = JammingConfidenceLevel.Low
             });
 
@@ -423,7 +398,7 @@ namespace VideoForensics.WebApp.Tests
             Assert.Equal(storedCase, sent.CaseId);
             Assert.Equal(JammingConfidenceLevel.Definite, sent.Confidence);
             Assert.Equal("edited", sent.Notes);
-            JammingIncidentDto dto = Assert.IsType<Ok<JammingIncidentDto>>(result).Value!;
+            var dto = Assert.IsType<Ok<JammingIncidentDto>>(result).Value!;
             Assert.Equal("AutoDetected", dto.Source);
             Assert.Equal(storedCase, dto.CaseId);
         }

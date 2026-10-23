@@ -45,7 +45,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 var operatorId = Guid.NewGuid();
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    _ = context.Operators.Add(new Operator
+                    context.Operators.Add(new Operator
                     {
                         Id = operatorId,
                         DisplayName = "Test Operator",
@@ -59,7 +59,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         Active = true,
                         IsApproved = true
                     });
-                    _ = await context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
 
                 // Assert - Retrieve and verify defaults
@@ -121,7 +121,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 var settingsId = Guid.NewGuid();
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    _ = context.LockoutPolicySettings.Add(new LockoutPolicySettings
+                    context.LockoutPolicySettings.Add(new LockoutPolicySettings
                     {
                         Id = settingsId,
                         MaxFailedAttempts = 5,
@@ -131,7 +131,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         UpdatedAtUtc = DateTime.UtcNow,
                         UpdatedByOperatorId = null
                     });
-                    _ = await context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
 
                 // Assert - Retrieve and verify
@@ -192,7 +192,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 // Act & Assert - Insert one TwoFactorRoleRequirement for Admin role
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    _ = context.TwoFactorRoleRequirements.Add(new TwoFactorRoleRequirement
+                    context.TwoFactorRoleRequirements.Add(new TwoFactorRoleRequirement
                     {
                         Id = Guid.NewGuid(),
                         Role = OperatorRole.Admin,
@@ -200,13 +200,13 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         UpdatedAtUtc = DateTime.UtcNow,
                         UpdatedByOperatorId = null
                     });
-                    _ = await context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
 
                 // Act & Assert - Try to insert duplicate Admin role, should throw
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    _ = context.TwoFactorRoleRequirements.Add(new TwoFactorRoleRequirement
+                    context.TwoFactorRoleRequirements.Add(new TwoFactorRoleRequirement
                     {
                         Id = Guid.NewGuid(),
                         Role = OperatorRole.Admin,
@@ -215,7 +215,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         UpdatedByOperatorId = null
                     });
 
-                    DbUpdateException exception = await Assert.ThrowsAnyAsync<DbUpdateException>(
+                    var exception = await Assert.ThrowsAnyAsync<DbUpdateException>(
                         async () => await context.SaveChangesAsync()
                     );
                     Assert.NotNull(exception);
@@ -264,7 +264,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
                     await context.Database.MigrateAsync();
-                    _ = context.Operators.Add(new Operator
+                    context.Operators.Add(new Operator
                     {
                         Id = operatorId,
                         DisplayName = "Test Admin",
@@ -278,14 +278,14 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         Active = true,
                         IsApproved = true
                     });
-                    _ = await context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
 
                 // Act - Create a BannedIpRange
                 var banId = Guid.NewGuid();
                 await using (VideoForensicsDbContext context = await factory.CreateDbContextAsync())
                 {
-                    _ = context.BannedIpRanges.Add(new BannedIpRange
+                    context.BannedIpRanges.Add(new BannedIpRange
                     {
                         Id = banId,
                         CidrRange = "203.0.113.0/24",
@@ -294,7 +294,7 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                         CreatedByOperatorId = operatorId,
                         ExpiresAtUtc = null
                     });
-                    _ = await context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
 
                 // Assert - Retrieve and verify

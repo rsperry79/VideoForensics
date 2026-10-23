@@ -1,8 +1,8 @@
-using Microsoft.Extensions.Logging;
-
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Core.Providers.Common.Contracts;
 
@@ -109,12 +109,12 @@ namespace VideoForensics.Core.Providers.Core
             string workDir = Path.Combine(Path.GetTempPath(), "timeline-" + Guid.NewGuid().ToString("N"));
             try
             {
-                _ = Directory.CreateDirectory(workDir);
+                Directory.CreateDirectory(workDir);
 
                 string? outputDir = Path.GetDirectoryName(outputPath);
                 if (!string.IsNullOrEmpty(outputDir))
                 {
-                    _ = Directory.CreateDirectory(outputDir);
+                    Directory.CreateDirectory(outputDir);
                 }
 
                 string filter =
@@ -240,7 +240,7 @@ namespace VideoForensics.Core.Providers.Core
                     stillEnd = stills[index + 1].CapturedAt;
                 }
 
-                var overlapping = windows
+                List<ClipWindow> overlapping = windows
                     .Where(w => w.End > still.CapturedAt && w.Start < stillEnd)
                     .ToList();
 
@@ -402,7 +402,6 @@ namespace VideoForensics.Core.Providers.Core
                 {
                     startInfo.ArgumentList.Add(arg);
                 }
-
                 startInfo.ArgumentList.Add(Path.GetFullPath(clip.VideoPath));
 
                 ProcessResult run;
@@ -462,7 +461,6 @@ namespace VideoForensics.Core.Providers.Core
                 {
                     startInfo.ArgumentList.Add(arg);
                 }
-
                 startInfo.ArgumentList.Add(Path.GetFullPath(mediaPath));
 
                 ProcessResult run;
@@ -501,10 +499,8 @@ namespace VideoForensics.Core.Providers.Core
             return (true, RoundUpToEven(maxWidth), RoundUpToEven(maxHeight), null);
         }
 
-        private static int RoundUpToEven(int value)
-        {
-            return value % 2 == 0 ? value : value + 1;
-        }
+        private static int RoundUpToEven(int value) => value % 2 == 0 ? value : value + 1;
+
 
         /// <summary>
         /// Builds the ffmpeg arguments that encode one segment to a 1 fps MP4 of exactly its whole-second frame count.
@@ -577,10 +573,8 @@ namespace VideoForensics.Core.Providers.Core
         /// The budget for one ffmpeg process: the base timeout plus room for encoding its output. A fixed budget would fail
         /// a build on length alone, since a long clip segment legitimately takes longer than the base timeout.
         /// </summary>
-        internal static TimeSpan ProcessTimeout(TimeSpan baseTimeout, int outputSeconds)
-        {
-            return baseTimeout + TimeSpan.FromSeconds(outputSeconds * BudgetSecondsPerOutputSecond);
-        }
+        internal static TimeSpan ProcessTimeout(TimeSpan baseTimeout, int outputSeconds) =>
+            baseTimeout + TimeSpan.FromSeconds(outputSeconds * BudgetSecondsPerOutputSecond);
 
         // Generous: a 4K source can encode at a fraction of real time.
         private const int BudgetSecondsPerOutputSecond = 4;
@@ -634,17 +628,14 @@ namespace VideoForensics.Core.Providers.Core
             var sb = new StringBuilder();
             foreach (string path in segmentPaths)
             {
-                _ = sb.Append("file '").Append(EscapeConcatPath(Path.GetFullPath(path))).Append("'\n");
+                sb.Append("file '").Append(EscapeConcatPath(Path.GetFullPath(path))).Append("'\n");
             }
 
             return sb.ToString();
         }
 
         /// <summary>Escapes a single quote for the concat demuxer's single-quoted path syntax.</summary>
-        private static string EscapeConcatPath(string path)
-        {
-            return path.Replace("'", "'\\''", StringComparison.Ordinal);
-        }
+        private static string EscapeConcatPath(string path) => path.Replace("'", "'\\''", StringComparison.Ordinal);
 
         /// <summary>Derives the ffprobe path that sits beside an explicit ffmpeg path.</summary>
         private static string DeriveFfprobePath(string ffmpegPath)
@@ -673,7 +664,6 @@ namespace VideoForensics.Core.Providers.Core
             {
                 startInfo.ArgumentList.Add(arg);
             }
-
             startInfo.ArgumentList.Add(path);
 
             ProcessResult run;

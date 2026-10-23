@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.IO.Abstractions;
 
 using VideoForensics.Core.Helpers.Contracts;

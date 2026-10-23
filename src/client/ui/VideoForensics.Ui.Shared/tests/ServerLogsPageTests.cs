@@ -1,24 +1,20 @@
-
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
-
-using Bunit;
-
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
+namespace VideoForensics.Ui.Shared.Tests;
 
 using System.Net;
 using System.Threading.Channels;
-
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
+using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+using Moq;
+using Xunit;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Ui.Shared.Pages;
 using VideoForensics.Ui.Shared.Services;
 
-using Xunit;
-
-namespace VideoForensics.Ui.Shared.Tests;
 /// <summary>
 /// TimeProvider whose timers only fire when a test says so, keyed by the exact delay the page asked for
 /// (render throttle 100 ms, search debounce 300 ms, backoff 1 s/2 s/...), so a test fires one kind of timer
@@ -27,7 +23,7 @@ namespace VideoForensics.Ui.Shared.Tests;
 public sealed class ManualTimeProvider : TimeProvider
 {
     private readonly object _gate = new();
-    private readonly List<ManualTimer> _timers = [];
+    private readonly List<ManualTimer> _timers = new();
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
@@ -137,8 +133,8 @@ public sealed class ManualTimeProvider : TimeProvider
 public sealed class FakeLogViewerService : ILogViewerService
 {
     private readonly object _gate = new();
-    private readonly List<PageCall> _pageCalls = [];
-    private readonly List<StreamCall> _streamCalls = [];
+    private readonly List<PageCall> _pageCalls = new();
+    private readonly List<StreamCall> _streamCalls = new();
 
     public sealed record PageCall(LogQuery Query);
 
@@ -176,7 +172,7 @@ public sealed class FakeLogViewerService : ILogViewerService
     public IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, CancellationToken ct)
     {
         var call = new StreamCall(query);
-        _ = ct.Register(() => call.Cancelled = true);
+        ct.Register(() => call.Cancelled = true);
         lock (_gate)
         {
             _streamCalls.Add(call);
@@ -200,14 +196,11 @@ public sealed class FakeLogViewerService : ILogViewerService
         {
             foreach (LogEntry e in entries)
             {
-                _ = Channel.Writer.TryWrite(e);
+                Channel.Writer.TryWrite(e);
             }
         }
 
-        public void Fail(Exception ex)
-        {
-            _ = Channel.Writer.TryComplete(ex);
-        }
+        public void Fail(Exception ex) => Channel.Writer.TryComplete(ex);
     }
 }
 
@@ -222,11 +215,11 @@ public abstract class ServerLogsPageTestBase : BunitContext
         Module = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/server-logs.js");
         Module.Mode = JSRuntimeMode.Loose;
 
-        _ = Services.AddLocalization();
-        _ = Services.AddSingleton<ILogViewerService>(Logs);
-        _ = Services.AddSingleton<TimeProvider>(Time);
+        Services.AddLocalization();
+        Services.AddSingleton<ILogViewerService>(Logs);
+        Services.AddSingleton<TimeProvider>(Time);
 
-        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+        Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
     }
 
     protected FakeLogViewerService Logs { get; } = new();
@@ -237,18 +230,13 @@ public abstract class ServerLogsPageTestBase : BunitContext
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("session-token", Guid.NewGuid(), OperatorRole.SuperAdmin.ToString());
-        _ = Services.AddScoped(_ => session);
+        Services.AddScoped(_ => session);
     }
 
     protected static LogEntry Entry(long seq, string level = "Information", string? message = null, string? exception = null, string category = "VideoForensics.Hosting.Remote.Thing")
-    {
-        return new(seq, new DateTimeOffset(2026, 9, 25, 10, 0, 0, TimeSpan.Zero).AddMilliseconds(seq), level, category, message ?? $"message {seq}", exception);
-    }
+        => new(seq, new DateTimeOffset(2026, 9, 25, 10, 0, 0, TimeSpan.Zero).AddMilliseconds(seq), level, category, message ?? $"message {seq}", exception);
 
-    protected static LogPage PageOf(long latest, params LogEntry[] entries)
-    {
-        return new(entries, latest, false);
-    }
+    protected static LogPage PageOf(long latest, params LogEntry[] entries) => new(entries, latest, false);
 
     protected async Task<IRenderedComponent<ServerLogs>> RenderSignedInAsync()
     {
@@ -262,11 +250,11 @@ public abstract class ServerLogsPageTestBase : BunitContext
         // Entries reach the page from background work, so the throttle timer is fired from a pump while the wait is
         // driven by renders. Polling the DOM instead would starve the renderer when thousands of rows are parsed.
         using var stop = new CancellationTokenSource();
-        var pump = Task.Run(async () =>
+        Task pump = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
-                _ = Time.TryFire(RenderDelay);
+                Time.TryFire(RenderDelay);
                 await Task.Delay(10);
             }
         });
@@ -296,23 +284,15 @@ public abstract class ServerLogsPageTestBase : BunitContext
     }
 
     protected static IReadOnlyList<long> RowSequences(IRenderedComponent<ServerLogs> c)
-    {
-        return c.FindAll("[data-testid='log-row']").Select(r => long.Parse(r.GetAttribute("data-seq")!)).ToList();
-    }
+        => c.FindAll("[data-testid='log-row']").Select(r => long.Parse(r.GetAttribute("data-seq")!)).ToList();
 
     /// <summary>
     /// Waits for the page to go quiet after its first load (initial fill plus the JS module import and scroll). Clicking
     /// before that races the page's own re-renders, which replace event handler ids under the test's feet.
     /// </summary>
-    protected Task SettledAsync()
-    {
-        return UntilAsync(() => Module.Invocations["scrollToBottom"].Any(), "page to settle");
-    }
-
+    protected Task SettledAsync() => UntilAsync(() => Module.Invocations["scrollToBottom"].Any(), "page to settle");
     protected static string Status(IRenderedComponent<ServerLogs> c)
-    {
-        return c.Find("[data-testid='logs-status']").GetAttribute("data-status")!;
-    }
+        => c.Find("[data-testid='logs-status']").GetAttribute("data-status")!;
 }
 
 public class ServerLogsPageLoadTests : ServerLogsPageTestBase
@@ -322,7 +302,7 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
     {
         Logs.OnGetPage = (_, _, _) => PageOf(2, Entry(1, message: "first line"), Entry(2, message: "second line"));
 
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
 
         page.WaitForAssertion(() => Assert.Equal(new long[] { 1, 2 }, RowSequences(page)));
         Assert.Contains("first line", page.Markup);
@@ -337,7 +317,7 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(9), Entry(10));
 
-        _ = await RenderSignedInAsync();
+        await RenderSignedInAsync();
 
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Assert.Equal(10, Logs.StreamCalls[0].Query.AfterSequence);
@@ -350,18 +330,18 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
         // Logs are read-only: the page loads straight away, with no step-up prompt and no verifying state.
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: "visible entry"));
 
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
 
         page.WaitForAssertion(() => Assert.Contains("visible entry", page.Markup));
         Assert.NotEmpty(page.FindAll("[data-testid='logs-viewport']"));
         Assert.Empty(page.FindAll("[data-testid='logs-verifying']"));
-        _ = Assert.Single(Logs.PageCalls);
+        Assert.Single(Logs.PageCalls);
     }
 
     [Fact]
     public async Task ServerLogsPage_SignedOut_DoesNotCallService()
     {
-        IRenderedComponent<ServerLogs> page = Render<ServerLogs>();
+        var page = Render<ServerLogs>();
 
         await Task.Delay(100);
         Assert.Empty(Logs.PageCalls);
@@ -372,9 +352,9 @@ public class ServerLogsPageLoadTests : ServerLogsPageTestBase
     public void ServerLogsPage_SignedOut_SignInLinkReturnsToThisPage()
     {
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/settings/logs");
-        IRenderedComponent<ServerLogs> page = Render<ServerLogs>();
+        var page = Render<ServerLogs>();
 
-        string href = page.Find("a[href^='/signin?returnUrl=']").GetAttribute("href")!;
+        var href = page.Find("a[href^='/signin?returnUrl=']").GetAttribute("href")!;
         Assert.Equal("/settings/logs", Uri.UnescapeDataString(href["/signin?returnUrl=".Length..]));
     }
 }
@@ -385,7 +365,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_LiveEntries_AppearInOrderAfterThrottleTick()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(10));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
         Logs.StreamCalls[0].Emit(Entry(11, message: "live one"), Entry(12, message: "live two"));
@@ -398,7 +378,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_LiveEntries_AreBatchedUntilThrottleFires()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(10));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
         Logs.StreamCalls[0].Emit(Entry(11));
@@ -412,7 +392,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_StreamedEntryAtOrBelowLastSequence_IsIgnored()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(10));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
         Logs.StreamCalls[0].Emit(Entry(10, message: "duplicate"), Entry(11));
@@ -424,7 +404,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_ManyEntries_ListIsBoundedAt2000DroppingOldest()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1500, Enumerable.Range(1, 1500).Select(i => Entry(i)).ToArray());
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
         Logs.StreamCalls[0].Emit(Enumerable.Range(1501, 700).Select(i => Entry(i)).ToArray());
@@ -442,7 +422,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Clear_EmptiesRowsWithoutCallingService()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(2, Entry(1), Entry(2));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Equal(2, RowSequences(page).Count));
 
         await SettledAsync();
@@ -450,7 +430,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
         page.Find("[data-testid='logs-clear']").Click();
 
         Assert.Empty(page.FindAll("[data-testid='log-row']"));
-        _ = Assert.Single(Logs.PageCalls);
+        Assert.Single(Logs.PageCalls);
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Logs.StreamCalls[0].Emit(Entry(3));
         await WaitUntilRendered(page, () => Assert.Equal(new long[] { 3 }, RowSequences(page)));
@@ -460,7 +440,7 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Dispose_CancelsTheStream()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Assert.False(Logs.StreamCalls[0].Cancelled);
 
@@ -473,16 +453,16 @@ public class ServerLogsPageStreamTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Dispose_StopsPendingBackoffReconnect()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Logs.StreamCalls[0].Fail(new HttpRequestException("boom", null, HttpStatusCode.BadGateway));
         await UntilAsync(() => Time.Pending().Contains(TimeSpan.FromSeconds(1)), "backoff timer");
 
         await DisposeComponentsAsync();
-        _ = Time.TryFire(TimeSpan.FromSeconds(1));
+        Time.TryFire(TimeSpan.FromSeconds(1));
         await Task.Delay(100);
 
-        _ = Assert.Single(Logs.StreamCalls);
+        Assert.Single(Logs.StreamCalls);
     }
 }
 
@@ -492,7 +472,7 @@ public class ServerLogsPageFilterTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_LevelFilterChanged_RestartsFetchAndStreamWithNewQuery()
     {
         Logs.OnGetPage = (i, q, _) => i == 0 ? PageOf(5, Entry(5, message: "old info")) : PageOf(9, Entry(9, "Error", "an error"));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "first stream");
         await SettledAsync();
 
@@ -511,7 +491,7 @@ public class ServerLogsPageFilterTests : ServerLogsPageTestBase
     [Fact]
     public async Task ServerLogsPage_SearchTyped_IsDebouncedAndRestartsOnceWithFinalText()
     {
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "first stream");
         await SettledAsync();
         IElement search = page.Find("[data-testid='logs-search']");
@@ -521,7 +501,7 @@ public class ServerLogsPageFilterTests : ServerLogsPageTestBase
         search.Input("abc");
         await Task.Delay(50);
 
-        _ = Assert.Single(Logs.PageCalls);
+        Assert.Single(Logs.PageCalls);
         await Time.FireAsync(DebounceDelay);
         await UntilAsync(() => Logs.PageCalls.Count == 2, "restart after debounce");
         await UntilAsync(() => Logs.StreamCalls.Count == 2, "restart stream");
@@ -535,7 +515,7 @@ public class ServerLogsPageFilterTests : ServerLogsPageTestBase
     [Fact]
     public async Task ServerLogsPage_SearchClearedToBlank_QueriesWithNullSearch()
     {
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "first stream");
         await SettledAsync();
         page.Find("[data-testid='logs-search']").Input("abc");
@@ -556,7 +536,7 @@ public class ServerLogsPagePauseTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Paused_HoldsNewRowsShowsBadgeAndResumeAppends()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(10));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
 
@@ -568,7 +548,7 @@ public class ServerLogsPagePauseTests : ServerLogsPageTestBase
         await WaitUntilRendered(page, () => Assert.Contains("2", page.Find("[data-testid='logs-new-badge']").TextContent));
         Assert.Equal(new long[] { 10 }, RowSequences(page));
         Assert.Equal("paused", Status(page));
-        _ = Assert.Single(Logs.StreamCalls);
+        Assert.Single(Logs.StreamCalls);
 
         await SettledAsync();
 
@@ -585,7 +565,7 @@ public class ServerLogsPagePauseTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_PausedBuffer_IsBoundedAt2000()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
         await SettledAsync();
@@ -609,10 +589,10 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
     {
         Logs.OnGetPage = (_, _, _) => throw new HttpRequestException("denied", null, HttpStatusCode.Forbidden);
 
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
 
         page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-denied']")));
-        _ = Assert.Single(Logs.PageCalls);
+        Assert.Single(Logs.PageCalls);
         Assert.Empty(Logs.StreamCalls);
         Assert.Equal("disconnected", Status(page));
     }
@@ -621,13 +601,13 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_StreamForbidden_ShowsAccessDeniedWithoutReconnect()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(5, Entry(5));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
 
         Logs.StreamCalls[0].Fail(new HttpRequestException("denied", null, HttpStatusCode.Forbidden));
 
         page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-testid='logs-denied']")));
-        _ = Assert.Single(Logs.StreamCalls);
+        Assert.Single(Logs.StreamCalls);
         Assert.Equal("disconnected", Status(page));
     }
 
@@ -635,7 +615,7 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_TransientStreamError_ReconnectsFromLastReceivedSequenceWithBackoff()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(10, Entry(10));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         Logs.StreamCalls[0].Emit(Entry(11), Entry(12));
         await WaitUntilRendered(page, () => Assert.Equal(3, RowSequences(page).Count));
@@ -643,11 +623,11 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
         Logs.StreamCalls[0].Fail(new HttpRequestException("boom", null, HttpStatusCode.InternalServerError));
 
         page.WaitForAssertion(() => Assert.Equal("reconnecting", Status(page)));
-        _ = Assert.Single(Logs.StreamCalls);
+        Assert.Single(Logs.StreamCalls);
         await Time.FireAsync(TimeSpan.FromSeconds(1));
         await UntilAsync(() => Logs.StreamCalls.Count == 2, "reconnect");
         Assert.Equal(12, Logs.StreamCalls[1].Query.AfterSequence);
-        _ = Assert.Single(Logs.PageCalls);
+        Assert.Single(Logs.PageCalls);
 
         // A reconnect that fails immediately doubles the wait: 1s, 2s, ...
         Logs.StreamCalls[1].Fail(new HttpRequestException("still down", null, HttpStatusCode.BadGateway));
@@ -663,7 +643,7 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_BackoffIsCappedAt30Seconds()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1));
-        _ = await RenderSignedInAsync();
+        await RenderSignedInAsync();
         int expectedCalls = 1;
         foreach (int seconds in new[] { 1, 2, 4, 8, 16, 30, 30 })
         {
@@ -682,7 +662,7 @@ public class ServerLogsPageErrorTests : ServerLogsPageTestBase
             ? throw new HttpRequestException("down", null, HttpStatusCode.ServiceUnavailable)
             : PageOf(1, Entry(1, message: "finally"));
 
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Time.Pending().Contains(TimeSpan.FromSeconds(1)), "backoff");
         page.WaitForAssertion(() => Assert.Equal("reconnecting", Status(page)));
         await Time.FireAsync(TimeSpan.FromSeconds(1));
@@ -699,7 +679,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     {
         const string payload = "<script>window.pwned=1</script><b id=\"evil\">bold</b>";
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, message: payload, exception: "<img src=x onerror=alert(1)>", category: "<i>cat</i>"));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
         await SettledAsync();
         page.Find("[data-testid='log-row-toggle']").Click();
@@ -716,10 +696,10 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_RowWithException_ExpandsAndCollapsesOnToggle()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(2, Entry(1, exception: "System.Boom: stack trace"), Entry(2));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Equal(2, RowSequences(page).Count));
 
-        _ = Assert.Single(page.FindAll("[data-testid='log-row-toggle']"));
+        Assert.Single(page.FindAll("[data-testid='log-row-toggle']"));
         Assert.Empty(page.FindAll("[data-testid='log-exception']"));
 
         await SettledAsync();
@@ -737,7 +717,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndUtcTooltip()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Error", "boom", category: "VideoForensics.Hosting.Remote.Thing"));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Single(RowSequences(page)));
 
         IElement row = page.Find("[data-testid='log-row']");
@@ -752,7 +732,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     [Fact]
     public async Task ServerLogsPage_Defaults_MinLevelInformationAutoScrollOn()
     {
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
 
         Assert.Equal("Information", ((IHtmlSelectElement)page.Find("[data-testid='logs-level']")).Value);
         Assert.Equal(6, page.FindAll("[data-testid='logs-level'] option").Count);
@@ -766,7 +746,7 @@ public class ServerLogsPageClientActionTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_AutoScrollOn_ScrollsAfterNewRowsAndStopsWhenOff()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         await UntilAsync(() => Logs.StreamCalls.Count == 1, "stream to open");
         await UntilAsync(() => Module.Invocations["scrollToBottom"].Any(), "initial scroll");
 
@@ -787,7 +767,7 @@ public class ServerLogsPageClientActionTests : ServerLogsPageTestBase
     public async Task ServerLogsPage_Download_SendsVisibleRowsAsTextFile()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(2, Entry(1, message: "alpha"), Entry(2, "Error", "beta", exception: "System.Boom"));
-        IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
+        var page = await RenderSignedInAsync();
         page.WaitForAssertion(() => Assert.Equal(2, RowSequences(page).Count));
 
         await SettledAsync();
@@ -795,7 +775,7 @@ public class ServerLogsPageClientActionTests : ServerLogsPageTestBase
         page.Find("[data-testid='logs-download']").Click();
 
         await UntilAsync(() => Module.Invocations["downloadText"].Any(), "download call");
-        IReadOnlyList<object?> args = Module.Invocations["downloadText"].Single().Arguments;
+        var args = Module.Invocations["downloadText"].Single().Arguments;
         Assert.EndsWith(".txt", (string)args[0]!);
         string text = (string)args[1]!;
         Assert.Contains("alpha", text);

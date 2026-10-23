@@ -1,6 +1,8 @@
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Hosting.BackgroundServices;
 
+using Xunit;
+
 namespace VideoForensics.Hosting.Tests
 {
     public class ScheduleCalculatorTests
@@ -177,7 +179,7 @@ namespace VideoForensics.Hosting.Tests
         public void EffectiveSnapshotIntervalSeconds_NonUtcZone_EvaluatesWindowInThatZone()
         {
             // 12:00 UTC is 05:00 in a UTC-7 zone; a Monday 04:00-06:00 window matches only in that zone.
-            var minus7 = TimeZoneInfo.CreateCustomTimeZone("test-7", TimeSpan.FromHours(-7), "test-7", "test-7");
+            TimeZoneInfo minus7 = TimeZoneInfo.CreateCustomTimeZone("test-7", TimeSpan.FromHours(-7), "test-7", "test-7");
             SyncSchedule s = Build(snapshotSeconds: 60, advanced: true);
             s.JammingWindows.Add(Window(1, 4 * 60, 6 * 60, 2));
             Assert.Equal(2, ScheduleCalculator.EffectiveSnapshotIntervalSeconds(s, Now, minus7));

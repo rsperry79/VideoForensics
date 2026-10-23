@@ -1,8 +1,7 @@
 using Moq;
-
 using System;
 using System.IO.Abstractions;
-
+using VideoForensics.Core.Helpers.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 
 using Xunit;
@@ -17,13 +16,13 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
             var mock = new Mock<IFileSystem>();
 
             // Mock all Path.Combine overloads
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string[]>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string[]>()))
                 .Returns((string[] args) => string.Join("\\", args));
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2) => $"{path1}\\{path2}");
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2, string path3) => $"{path1}\\{path2}\\{path3}");
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2, string path3, string path4) => $"{path1}\\{path2}\\{path3}\\{path4}");
 
             return mock;
@@ -35,13 +34,13 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
             var mock = new Mock<IFileSystem>();
 
             // Mock all Path.Combine overloads
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string[]>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string[]>()))
                 .Returns((string[] args) => string.Join("/", args));
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2) => $"{path1}/{path2}");
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2, string path3) => $"{path1}/{path2}/{path3}");
-            _ = mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            mock.Setup(fs => fs.Path.Combine(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns((string path1, string path2, string path3, string path4) => $"{path1}/{path2}/{path3}/{path4}");
 
             return mock;
@@ -51,7 +50,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetApplicationDataDirectory_Windows_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetApplicationDataDirectory();
@@ -63,7 +62,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetApplicationDataDirectory_Windows_ReturnsAbsolutePath()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetApplicationDataDirectory();
@@ -75,7 +74,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetLogsDirectory_Windows_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetLogsDirectory();
@@ -88,7 +87,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetLogsDirectory_Windows_ReturnsAbsolutePath()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetLogsDirectory();
@@ -100,7 +99,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetConfigDirectory_Windows_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetConfigDirectory();
@@ -112,7 +111,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetConfigDirectory_Windows_ReturnsAbsolutePath()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetConfigDirectory();
@@ -125,7 +124,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetApplicationDataDirectory_Unix_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateUnixMockFileSystem();
+            var mockFileSystem = CreateUnixMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             // This test will still execute Windows code path on Windows
@@ -138,7 +137,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetLogsDirectory_Unix_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateUnixMockFileSystem();
+            var mockFileSystem = CreateUnixMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetLogsDirectory();
@@ -149,7 +148,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void GetConfigDirectory_Unix_UsesFileSystemAbstraction()
         {
-            Mock<IFileSystem> mockFileSystem = CreateUnixMockFileSystem();
+            var mockFileSystem = CreateUnixMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string result = service.GetConfigDirectory();
@@ -161,7 +160,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void DirectoriesAreConsistent_Windows()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string appData = service.GetApplicationDataDirectory();
@@ -181,7 +180,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void DirectoriesAreConsistent_Unix()
         {
-            Mock<IFileSystem> mockFileSystem = CreateUnixMockFileSystem();
+            var mockFileSystem = CreateUnixMockFileSystem();
             var service = new PlatformDirectoryService(mockFileSystem.Object);
 
             string appData = service.GetApplicationDataDirectory();
@@ -202,7 +201,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         [Fact]
         public void Constructor_AcceptsIFileSystem()
         {
-            Mock<IFileSystem> mockFileSystem = CreateWindowsMockFileSystem();
+            var mockFileSystem = CreateWindowsMockFileSystem();
 
             // Should not throw
             var service = new PlatformDirectoryService(mockFileSystem.Object);
@@ -224,7 +223,7 @@ namespace VideoForensics.Core.Helpers.Tests.Platform
         public void Constructor_RejectsNullFileSystem()
         {
             // Should throw ArgumentNullException when passed null
-            _ = Assert.Throws<ArgumentNullException>(() => new PlatformDirectoryService(null!));
+            Assert.Throws<ArgumentNullException>(() => new PlatformDirectoryService(null!));
         }
     }
 }
