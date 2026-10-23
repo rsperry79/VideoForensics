@@ -27,6 +27,7 @@ namespace VideoForensics.MauiApp
     {
         public static Microsoft.Maui.Hosting.MauiApp CreateMauiApp()
         {
+            StartupTrace.Mark("CreateMauiApp: start");
 #if DEBUG
             // During local development, ensure VideoForensics.WebApp is running before continuing.
             // This is a DEBUG-only convenience: a developer can simply run the MAUI app in the debugger
@@ -35,12 +36,17 @@ namespace VideoForensics.MauiApp
             // If the server is unreachable or fails to start, the app still proceeds with normal
             // server-resolution logic, allowing graceful degradation for non-admin or resource-constrained
             // development scenarios.
-            EnsureWebAppRunningForDebugAsync()
+            StartupTrace.Mark("debug web app check: start");
+            // Task.Run keeps the awaited work off the UI thread. Blocking the UI thread on a task that resumes
+            // on the UI thread deadlocks, which left the app with no window.
+            Task.Run(EnsureWebAppRunningForDebugAsync)
                 .GetAwaiter()
                 .GetResult();
+            StartupTrace.Mark("debug web app check: done");
 #endif
 
             VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
+            StartupTrace.Mark("syncfusion license registered");
 
             MauiAppBuilder builder = Microsoft.Maui.Hosting.MauiApp.CreateBuilder();
             builder
@@ -121,12 +127,13 @@ namespace VideoForensics.MauiApp
             // to connect.
             Uri serverUri;
             bool serverResolutionFailed = false;
+            StartupTrace.Mark("server resolution: start");
             try
             {
                 var resolver = new ServerLocationResolver(
                     new MauiServerLocationSettingsStore(),
                     new Microsoft.Extensions.Logging.Abstractions.NullLogger<ServerLocationResolver>());
-                serverUri = resolver.ResolveServerAddressAsync(CancellationToken.None)
+                serverUri = Task.Run(() => resolver.ResolveServerAddressAsync(CancellationToken.None))
                     .GetAwaiter()
                     .GetResult();
             }
@@ -137,6 +144,7 @@ namespace VideoForensics.MauiApp
                 serverResolutionFailed = true;
             }
 
+            StartupTrace.Mark($"server resolution: done ({serverUri}, failed={serverResolutionFailed})");
             builder.Services.AddVideoForensicsClientApi(serverUri);
 
             // In-process log viewer: MAUI reads its own InMemoryLogBuffer instead of calling /api/v1/logs.
