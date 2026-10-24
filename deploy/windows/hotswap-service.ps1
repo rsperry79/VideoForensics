@@ -83,7 +83,7 @@ $AllowedRoots = @(
 try {
     if ($Build) {
         Write-Step "Publishing VideoForensics.WebApp (win-x64, self-contained)..."
-        dotnet publish (Join-Path $RepoRoot "src\client\web\VideoForensics.WebApp") `
+        dotnet publish (Join-Path $RepoRoot "src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj") `
             -c Release -r win-x64 --self-contained true -o $PublishDir
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet publish failed with exit code $LASTEXITCODE"
