@@ -16,7 +16,7 @@ namespace VideoForensics.Client.Platform.Windows
         {
             var startInfo = new ProcessStartInfo("powershell.exe")
             {
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                Arguments = BuildArguments(scriptPath),
                 UseShellExecute = true,
                 Verb = "runas",
                 WindowStyle = ProcessWindowStyle.Normal,
@@ -38,6 +38,15 @@ namespace VideoForensics.Client.Platform.Windows
                 // ERROR_CANCELLED (1223) when the UAC prompt is declined; other codes mean the process could not start.
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Builds the powershell.exe arguments. -Build is always passed: the script otherwise looks for an existing
+        /// publish folder and fails when none exists, and a hot-swap is meant to deploy the current source.
+        /// </summary>
+        internal static string BuildArguments(string scriptPath)
+        {
+            return $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Build";
         }
     }
 }

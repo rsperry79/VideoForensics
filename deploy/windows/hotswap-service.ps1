@@ -163,6 +163,9 @@ try {
             Write-Step "Hot-swap complete - service is running and responding."
         } else {
             Write-Failure "Service is running but didn't respond on http://localhost:5162 within 20s - check Event Viewer (Application log, Source: VideoForensics)."
+            if ($Host.Name -eq "ConsoleHost" -and [Environment]::UserInteractive) {
+                Read-Host "Press Enter to close" | Out-Null
+            }
             exit 1
         }
     } else {
@@ -171,5 +174,10 @@ try {
 }
 catch {
     Write-Failure $_.Exception.Message
+    # Launched from the app through UAC, so the console closes as soon as the script exits.
+    # Hold it open on failure so the error can be read.
+    if ($Host.Name -eq "ConsoleHost" -and [Environment]::UserInteractive) {
+        Read-Host "Press Enter to close" | Out-Null
+    }
     exit 1
 }

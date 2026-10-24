@@ -7,6 +7,16 @@ namespace VideoForensics.Client.Platform.Windows.Tests
         private const string ScriptPath = @"C:\repo\deploy\windows\hotswap-service.ps1";
 
         [Fact]
+        public void BuildArguments_PublishesBeforeSwap_AndQuotesPath()
+        {
+            // Without -Build the script looks for an existing publish folder and fails when none exists.
+            string arguments = HotswapScriptRunner.BuildArguments(@"C:\My Repo\deploy\windows\hotswap-service.ps1");
+
+            Assert.Contains("-Build", arguments);
+            Assert.Contains("-File \"C:\\My Repo\\deploy\\windows\\hotswap-service.ps1\"", arguments);
+        }
+
+        [Fact]
         public async Task EnsureReady_RunsScriptEvenWhenServerAlreadyHealthy()
         {
             // The swap must run on every launch so new binaries reach the service; a healthy probe must not skip it.
