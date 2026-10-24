@@ -27,7 +27,7 @@ namespace VideoForensics.Client.WebApp.Services
                 {
                     using IServiceScope scope = _scopes.CreateScope();
                     LetsEncryptCertificateManager manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
-                    CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken);
+                    CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken)    ;
                     if (!result.Success)
                     {
                         _logger.LogWarning("Certificate check skipped: {Message}", result.Message);
