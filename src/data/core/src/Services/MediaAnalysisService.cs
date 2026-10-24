@@ -1,19 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Data.Core.Services
 {
-    /// <summary>Measures a downloaded clip, judges it against its device's own history, and stores the red flags.</summary>
-    public interface IMediaAnalysisService
-    {
-        /// <summary>Analyses one media item and saves the result. A missing item is ignored.</summary>
-        Task AnalyzeAsync(Guid mediaItemId, CancellationToken ct);
-    }
-
     /// <inheritdoc />
     public sealed class MediaAnalysisService : IMediaAnalysisService
     {

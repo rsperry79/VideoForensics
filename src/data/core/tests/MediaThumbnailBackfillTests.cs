@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;

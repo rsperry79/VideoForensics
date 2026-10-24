@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Primitives;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Api;
 using VideoForensics.Client.WebApp.Auth;

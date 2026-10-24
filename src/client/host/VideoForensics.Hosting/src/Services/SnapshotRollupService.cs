@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;

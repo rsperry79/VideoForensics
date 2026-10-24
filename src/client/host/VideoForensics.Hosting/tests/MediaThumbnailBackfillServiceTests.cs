@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 

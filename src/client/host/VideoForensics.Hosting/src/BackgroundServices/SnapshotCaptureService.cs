@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;

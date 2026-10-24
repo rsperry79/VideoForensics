@@ -21,7 +21,7 @@ namespace VideoForensics.Client.Core.Tests
         private readonly Mock<IIntegrityVerificationService> _integrityServiceMock;
         private readonly Mock<IMediaItemRepository> _mediaItemRepositoryMock;
         private readonly Mock<IProviderReconciliationService> _reconciliationServiceMock;
-        private readonly Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService> _thumbnailsMock;
+        private readonly Mock<VideoForensics.Data.Core.Contracts.IMediaThumbnailService> _thumbnailsMock;
         private readonly EvidenceValidationOrchestrator _orchestrator;
 
         public EvidenceValidationOrchestratorTests()
@@ -33,7 +33,7 @@ namespace VideoForensics.Client.Core.Tests
             _integrityServiceMock = new Mock<IIntegrityVerificationService>();
             _mediaItemRepositoryMock = new Mock<IMediaItemRepository>();
             _reconciliationServiceMock = new Mock<IProviderReconciliationService>();
-            _thumbnailsMock = new Mock<VideoForensics.Data.Core.Services.IMediaThumbnailService>();
+            _thumbnailsMock = new Mock<VideoForensics.Data.Core.Contracts.IMediaThumbnailService>();
 
             _orchestrator = new EvidenceValidationOrchestrator(
                 _loggerMock.Object,
