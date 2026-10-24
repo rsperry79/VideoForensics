@@ -54,7 +54,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ServiceName = "VideoForensics"
+$HealthPort = 5162
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+. (Join-Path $PSScriptRoot "hotswap-helpers.ps1")
 
 function Write-Step {
     param([string]$Message)
@@ -69,6 +71,14 @@ function Write-Failure {
 if (-not $PublishDir) {
     $PublishDir = Join-Path $RepoRoot "src\client\web\VideoForensics.WebApp\bin\Release\net10.0\win-x64\publish"
 }
+
+# Locations whose running listeners the swap may stop: the installed binaries, the publish output,
+# and any WebApp build in this repo (dotnet run / Visual Studio debug output).
+$AllowedRoots = @(
+    $InstallPath,
+    $PublishDir,
+    (Join-Path $RepoRoot "src\client\web\VideoForensics.WebApp")
+)
 
 try {
     if ($Build) {
@@ -98,6 +108,19 @@ try {
         Write-Step "Stopping $ServiceName service..."
         Stop-Service -Name $ServiceName -Force
         $service.WaitForStatus("Stopped", (New-TimeSpan -Seconds 30))
+    }
+
+    # A dev instance (dotnet run or a direct launch) can still hold the port after the service stops.
+    # Stop only listeners running from this install, the publish output, or this repo's WebApp build.
+    # Anything else on the port is a different program, so fail with its PID instead of killing it.
+    $portPlan = Get-HotswapPortOwners -Port $HealthPort -AllowedRoots $AllowedRoots
+    if ($portPlan.Foreign.Count -gt 0) {
+        $list = ($portPlan.Foreign | ForEach-Object { "PID $($_.Id) ($($_.Path))" }) -join ", "
+        throw "Port $HealthPort is held by a process outside the allowed locations: $list. Stop it yourself, then rerun."
+    }
+    foreach ($ownerId in $portPlan.ToStop) {
+        Write-Step "Stopping running server PID $ownerId on port $HealthPort..."
+        Stop-Process -Id $ownerId -Force
     }
 
     # Wait for the process to actually exit (not just the SCM's view of it) so the exe file isn't
