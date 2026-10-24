@@ -44,8 +44,8 @@ Also done, outside this plan: snapshot interval in seconds with a seconds/minute
 
 ## Next
 
-Follow-ups (not part of this plan's scope):
-1. `RemoteProviderAuthService.GetAuthStatus()` and `GetAuthStatusDetails()` throw on the MAUI client, so "Check Status" fails there.
-2. Wyze and Uniview report no status details. Only Ring implements `GetAuthStatusDetails()`.
+Follow-ups (done after archiving):
+1. Done: the MAUI client gets status from `GET /api/v1/auth/status` (Admin), cached in `RemoteProviderAuthService`. Nothing throws now.
+2. Done: Wyze and Uniview implement `GetAuthStatusDetails()` with the authenticated flag only.
 
 Each step ships with tests (TDD). Breaking changes update `CLAUDE.md` and the commit message.
