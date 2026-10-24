@@ -33,6 +33,17 @@
     @if (_accountStatus is not null)
     {
         <p class="mt-2">@_accountStatus</p>
+        @if (_accountStatusDetails is not null)
+        {
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_accountStatusDetails" InitialExpandDepth="1" />
+            </details>
+        }
+        else
+        {
+            <p class="mt-2">@L["NoStatusDetail"]</p>
+        }
     }
 </div>
 
@@ -82,10 +93,12 @@
 
     // Account Status
     private string? _accountStatus;
+    private ProviderAuthStatus? _accountStatusDetails;
 
     private void RunAccountStatus()
     {
         _accountStatus = AuthService.GetAuthStatus();
+        _accountStatusDetails = AuthService.GetAuthStatusDetails();
     }
 
     // Locations

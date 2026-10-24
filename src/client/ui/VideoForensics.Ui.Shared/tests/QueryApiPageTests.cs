@@ -26,6 +26,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 public class QueryApiPage_Tests : BunitContext
 {
     private readonly Mock<IDeviceDiscoveryService> _discovery = new();
+    private readonly Mock<IProviderAuthService> _auth = new();
 
     public QueryApiPage_Tests()
     {
@@ -40,7 +41,7 @@ public class QueryApiPage_Tests : BunitContext
         _ = Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Inspector.InspectorState>();
         _ = Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.RightPanelContentService>();
-        _ = Services.AddSingleton(new Mock<IProviderAuthService>().Object);
+        _ = Services.AddSingleton(_auth.Object);
         _ = Services.AddSingleton(_discovery.Object);
         _ = Services.AddSingleton(new Mock<IEventAndConfigService>().Object);
         _ = Services.AddLogging();
@@ -71,6 +72,36 @@ public class QueryApiPage_Tests : BunitContext
         Assert.Equal("Sources", sourcesLink.TextContent.Trim());
         Assert.Equal("page", items[1].GetAttribute("aria-current"));
         Assert.Equal("Query API", items[1].TextContent.Trim());
+    }
+
+    [Fact]
+    public void QueryApiPage_CheckStatus_ShowsFormattedStatusAndRawPayloadWithoutSecrets()
+    {
+        _ = _auth.Setup(a => a.GetAuthStatus()).Returns("Authenticated");
+        _ = _auth.Setup(a => a.GetAuthStatusDetails()).Returns(
+            new ProviderAuthStatus(true, "Bearer", new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc), "client"));
+        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Check Status").Click();
+
+        Assert.Contains("Authenticated", cut.Markup);
+        Assert.Contains("Raw response", cut.Markup);
+        Assert.Contains("Bearer", cut.Markup);
+        Assert.Contains("2026-10-24", cut.Markup);
+        Assert.DoesNotContain("accessToken", cut.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void QueryApiPage_CheckStatus_ProviderWithoutDetails_SaysSoInsteadOfShowingPayload()
+    {
+        _ = _auth.Setup(a => a.GetAuthStatus()).Returns("Authenticated");
+        _ = _auth.Setup(a => a.GetAuthStatusDetails()).Returns((ProviderAuthStatus?)null);
+        IRenderedComponent<QueryApi> cut = Render<QueryApi>();
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Check Status").Click();
+
+        Assert.Contains("does not report token details", cut.Markup);
+        Assert.DoesNotContain("Raw response", cut.Markup);
     }
 
     [Fact]

@@ -23,3 +23,4 @@ paths:
 ## Theme colors
 
 - Text color in Ui.Shared CSS uses only Bootstrap 5.3 text variables (e.g. `--bs-secondary-color`). Never use a background variable (e.g. `--bs-secondary`) as text, and never use an undefined variable such as `--bs-muted-color`.
+- A `SfDropDownList` clears its value when its list does not contain it, and two-way binding writes that empty value back. A shared selection bound to such a dropdown must ignore empty writes while its option list is empty (see `QueryApiFilterBar`).
