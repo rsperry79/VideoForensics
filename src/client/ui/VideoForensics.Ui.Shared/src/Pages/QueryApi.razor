@@ -19,7 +19,6 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">@L["Title"]</h4>
-    <NavLink class="btn btn-outline-secondary" href="/query/api-tester">@SharedL["API Tester"]</NavLink>
 </div>
 
 <ul class="nav nav-tabs mb-4" data-testid="query-api-tabs">
@@ -34,6 +33,17 @@
     @if (_accountStatus is not null)
     {
         <p class="mt-2">@_accountStatus</p>
+        @if (_accountStatusDetails is not null)
+        {
+            <details class="mt-2">
+                <summary>@L["RawResponse"]</summary>
+                <DumpView Value="@_accountStatusDetails" InitialExpandDepth="1" />
+            </details>
+        }
+        else
+        {
+            <p class="mt-2">@L["NoStatusDetail"]</p>
+        }
     }
 </div>
 
@@ -69,6 +79,11 @@
     }
 </div>
 
+<div data-testid="api-tester" class="card border rounded p-4 mb-4">
+    <h5 class="mb-2">@SharedL["API Tester"]</h5>
+    <RingSelfTest />
+</div>
+
 @code {
     private List<(string Label, string? Url)> BreadcrumbItems =>
     [
@@ -78,10 +93,12 @@
 
     // Account Status
     private string? _accountStatus;
+    private ProviderAuthStatus? _accountStatusDetails;
 
     private void RunAccountStatus()
     {
         _accountStatus = AuthService.GetAuthStatus();
+        _accountStatusDetails = AuthService.GetAuthStatusDetails();
     }
 
     // Locations

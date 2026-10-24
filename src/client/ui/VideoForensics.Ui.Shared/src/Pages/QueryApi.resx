@@ -68,6 +68,9 @@
   <data name="RawResponse" xml:space="preserve">
     <value>Raw response</value>
   </data>
+  <data name="NoStatusDetail" xml:space="preserve">
+    <value>This provider does not report token details.</value>
+  </data>
   <data name="Config" xml:space="preserve">
     <value>Config</value>
   </data>

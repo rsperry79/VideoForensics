@@ -1,0 +1,91 @@
+@using Microsoft.Extensions.Localization
+@using Syncfusion.Blazor.DropDowns
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Services.QueryApi
+@implements IDisposable
+@inject IQueryApiFilterState FilterState
+@inject IStringLocalizer<QueryApiFilterBar> L
+
+<div class="d-flex flex-column gap-2 mb-2">
+    <div>
+        <label>@L["LabelLocationId"]</label>
+        <SfDropDownList ID="@LocationElementId" TValue="string" TItem="QueryApiSelectOption" @bind-Value="LocationIdValue" DataSource="@LocationOptions" Placeholder="@L["SelectLocation"]" CssClass="w-100">
+            <DropDownListFieldSettings Text="Label" Value="Value" />
+        </SfDropDownList>
+    </div>
+    @if (DeviceElementId is not null)
+    {
+        <div>
+            <label>@L["LabelDeviceId"]</label>
+            <SfDropDownList ID="@DeviceElementId" TValue="string" TItem="QueryApiSelectOption" @bind-Value="DeviceIdValue" DataSource="@DeviceOptions" Placeholder="@L["SelectDevice"]" CssClass="w-100">
+                <DropDownListFieldSettings Text="Label" Value="Value" />
+            </SfDropDownList>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Location choices for the location dropdown. The page loads them; the bar only displays them.</summary>
+    [Parameter]
+    public IEnumerable<QueryApiSelectOption>? LocationOptions { get; set; }
+
+    /// <summary>Device choices for the device dropdown. Used only when <see cref="DeviceElementId"/> is set.</summary>
+    [Parameter]
+    public IEnumerable<QueryApiSelectOption>? DeviceOptions { get; set; }
+
+    /// <summary>DOM id of the location dropdown. Each page keeps its own id, so existing selectors still match.</summary>
+    [Parameter, EditorRequired]
+    public string LocationElementId { get; set; } = string.Empty;
+
+    /// <summary>DOM id of the device dropdown. Null hides the device dropdown (the Devices page filters by location only).</summary>
+    [Parameter]
+    public string? DeviceElementId { get; set; }
+
+    // Both selections are read and written through the filter state, so they survive navigation between subpages.
+    // A dropdown clears its value when its list does not contain it (for example, before the locations load). That
+    // reset arrives as an empty write while the list is empty; the operator cannot clear an empty list, so ignore it
+    // rather than wipe a selection made elsewhere.
+    private string LocationIdValue
+    {
+        get => FilterState.LocationId ?? string.Empty;
+        set
+        {
+            if (string.IsNullOrEmpty(value) && LocationOptions?.Any() != true)
+            {
+                return;
+            }
+
+            FilterState.SetLocationId(string.IsNullOrEmpty(value) ? null : value);
+        }
+    }
+
+    private string DeviceIdValue
+    {
+        get => FilterState.DeviceId ?? string.Empty;
+        set
+        {
+            if (string.IsNullOrEmpty(value) && DeviceOptions?.Any() != true)
+            {
+                return;
+            }
+
+            FilterState.SetDeviceId(string.IsNullOrEmpty(value) ? null : value);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // A drill-down on another subpage changes the shared selection; redraw so the dropdowns show it.
+        FilterState.OnChange += OnFilterChanged;
+    }
+
+    private void OnFilterChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        FilterState.OnChange -= OnFilterChanged;
+    }
+}

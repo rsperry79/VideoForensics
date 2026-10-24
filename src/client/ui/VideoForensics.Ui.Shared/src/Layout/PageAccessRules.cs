@@ -40,9 +40,10 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/analyze?analysis=anomalies"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=access"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=jamming"] = AccessPolicy.Admin,
-                // Query API calls provider services directly with the linked account, with no server policy, so it is
-                // treated like the other provider-credential pages.
-                ["/query"] = AccessPolicy.SuperAdminLocal,
+                // Query API calls provider services directly with the linked account, with no server policy. Admin
+                // is the operator level for this page; the API Tester embedded here keeps its own SuperAdminLocal
+                // check for destructive and physical endpoints (RingSelfTest).
+                ["/query"] = AccessPolicy.Admin,
                 // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
                 ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
                 // Account detail and schedule pages call /api/v1/accounts (SuperAdminLocal) and sync endpoints.

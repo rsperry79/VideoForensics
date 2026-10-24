@@ -131,6 +131,50 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public void GetAuthStatusDetails_WhenNotAuthenticated_ReportsNoTokenDetail()
+        {
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns((Session?)null);
+            var service = new RingAuthService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<ICredentialStore>().Object, new Mock<ICredentialRepository>().Object);
+
+            ProviderAuthStatus? details = service.GetAuthStatusDetails();
+
+            Assert.NotNull(details);
+            Assert.False(details!.IsAuthenticated);
+            Assert.Null(details.TokenType);
+            Assert.Null(details.ExpiresAtUtc);
+            Assert.Null(details.Scope);
+        }
+
+        [Fact]
+        public void GetAuthStatusDetails_WhenAuthenticated_ReportsTypeExpiryAndScopeWithoutSecrets()
+        {
+            var session = new Session("user@example.com", "password");
+            var token = new VideoForensics.Providers.Ring.Entities.OAutToken
+            {
+                AccessToken = "SECRET-ACCESS-VALUE",
+                RefreshToken = "SECRET-REFRESH-VALUE",
+                TokenType = "Bearer",
+                Scope = "client",
+                ExpiresInSeconds = 3600,
+            };
+            // OAuthToken has a private setter; the test sets it the way a completed sign-in would.
+            typeof(Session).GetProperty(nameof(Session.OAuthToken))!.SetValue(session, token);
+            var sessionProvider = new Mock<ISessionProvider>();
+            _ = sessionProvider.Setup(sp => sp.GetSession()).Returns(session);
+            var service = new RingAuthService(new Mock<ILogger>().Object, sessionProvider.Object, new Mock<ICredentialStore>().Object, new Mock<ICredentialRepository>().Object);
+
+            ProviderAuthStatus? details = service.GetAuthStatusDetails();
+
+            Assert.NotNull(details);
+            Assert.True(details!.IsAuthenticated);
+            Assert.Equal("Bearer", details.TokenType);
+            Assert.Equal("client", details.Scope);
+            Assert.Equal(token.ExpiresAt.ToUniversalTime(), details.ExpiresAtUtc);
+            Assert.DoesNotContain("SECRET", details.ToString());
+        }
+
+        [Fact]
         public void GetAuthStatus_WhenNotAuthenticated_ReturnsNotAuthenticatedMessage()
         {
             // Arrange

@@ -176,6 +176,9 @@
   <data name="Issues" xml:space="preserve">
     <value>issues</value>
   </data>
+  <data name="SchemaIssuesHeading" xml:space="preserve">
+    <value>Schema issues for this call</value>
+  </data>
   <data name="Success" xml:space="preserve">
     <value>Success</value>
   </data>

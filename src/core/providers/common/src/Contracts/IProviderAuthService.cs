@@ -23,6 +23,12 @@ namespace VideoForensics.Core.Providers.Common.Contracts
 
         /// <summary>Gets current authentication status</summary>
         string GetAuthStatus();
+
+        /// <summary>
+        /// Gets the non-secret session details shown as a raw payload. Null when the provider does not report them,
+        /// so callers can say so instead of showing an empty payload.
+        /// </summary>
+        ProviderAuthStatus? GetAuthStatusDetails() => null;
     }
 
     /// <summary>Result of authentication attempt</summary>

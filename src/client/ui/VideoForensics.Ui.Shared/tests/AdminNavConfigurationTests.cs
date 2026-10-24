@@ -38,7 +38,7 @@ public class AdminNavConfiguration_Tests
     [InlineData("/settings/auth-methods", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts", AccessPolicy.SuperAdminLocal)]
     [InlineData("/review/export", AccessPolicy.SuperAdminLocal)]
-    [InlineData("/query", AccessPolicy.SuperAdminLocal)]
+    [InlineData("/query", AccessPolicy.Admin)]
     [InlineData("/accounts/add", AccessPolicy.SuperAdminLocal)]
     [InlineData("/accounts/{Id:guid}", AccessPolicy.SuperAdminLocal)]
     [InlineData("/analyze?analysis=reports", AccessPolicy.ReadOnly)]
