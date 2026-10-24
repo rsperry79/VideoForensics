@@ -86,6 +86,22 @@ namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
                     $"Credentials restored but no session was established.\n{SetupPointer}");
         }
 
+        /// <summary>
+        /// Restores the saved credentials through the same auth service the Query page uses, then returns the
+        /// non-secret status payload that page shows. Throws, with setup instructions, if nothing restores.
+        /// </summary>
+        public static async Task<ProviderAuthStatus?> RestoreAndGetAuthStatusAsync()
+        {
+            IServiceProvider sp = ServiceProviderLazy.Value;
+            using IServiceScope scope = sp.CreateScope();
+            IProviderAuthService authService = scope.ServiceProvider.GetRequiredService<IProviderAuthService>();
+
+            bool restored = await authService.RestoreFromSavedCredentialsAsync();
+            return !restored
+                ? throw new InvalidOperationException($"Ring API credentials not found in database.\n{SetupPointer}")
+                : authService.GetAuthStatusDetails();
+        }
+
         // Probed once per test process: restoring a session calls the Ring API, so every live test must not repeat it.
         private static readonly Lazy<bool> CredentialsPresent = new(ProbeSavedCredentials);
 
