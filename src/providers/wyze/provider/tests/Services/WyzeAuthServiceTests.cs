@@ -75,6 +75,19 @@ namespace VideoForensics.Providers.Wyze.Tests
         }
 
         [Fact]
+        public void GetAuthStatusDetails_Stub_ReportsNotAuthenticatedWithoutTokenDetail()
+        {
+            var service = new WyzeAuthService(new Mock<ILogger>().Object);
+
+            var details = service.GetAuthStatusDetails();
+
+            Assert.NotNull(details);
+            Assert.False(details!.IsAuthenticated);
+            Assert.Null(details.TokenType);
+            Assert.Null(details.ExpiresAtUtc);
+        }
+
+        [Fact]
         public void Constructor_WithLogger_CreatesService()
         {
             // Arrange

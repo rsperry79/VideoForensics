@@ -121,5 +121,13 @@ namespace VideoForensics.Providers.Wyze.Services
         {
             return _isAuthenticated ? "Authenticated with Wyze" : "Not authenticated";
         }
+
+        /// <summary>
+        /// Gets the non-secret status payload. Wyze keeps only the authenticated flag, so the token fields stay null.
+        /// </summary>
+        public ProviderAuthStatus? GetAuthStatusDetails()
+        {
+            return new ProviderAuthStatus(IsAuthenticated: _isAuthenticated, TokenType: null, ExpiresAtUtc: null, Scope: null);
+        }
     }
 }
