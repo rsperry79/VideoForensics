@@ -331,6 +331,11 @@ beyond the script's own elevation. It stops the service, copies over only newer 
 deletes anything, so it can't accidentally remove unrelated installed content), and restarts it,
 then checks `http://localhost:5162` to confirm the new build actually came up.
 
+**Running servers:** after the service stops, the script also stops any process still listening on
+port 5162 that runs from the installed binaries, the publish output, or this repo's WebApp build
+(`dotnet run`, debug runs). A listener from anywhere else, or one whose executable path it cannot read,
+is not stopped: the script fails and names the PID so you can stop it yourself.
+
 ```powershell
 # Publish current source and swap it in, in one step
 .\deploy\windows\hotswap-service.ps1 -Build
