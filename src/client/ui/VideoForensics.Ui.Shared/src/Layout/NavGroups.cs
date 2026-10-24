@@ -203,7 +203,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         public static IReadOnlyList<UserMenuItem> Items(NavContext ctx)
         {
-            var items = new List<UserMenuItem>();
+            var items = new List<UserMenuItem>
+            {
+                new("Light theme", Action: "set-theme:Light"),
+                new("Dark theme", Action: "set-theme:Dark"),
+                new("System theme", Action: "set-theme:System"),
+            };
 
             if (ctx.IsSignedIn)
             {

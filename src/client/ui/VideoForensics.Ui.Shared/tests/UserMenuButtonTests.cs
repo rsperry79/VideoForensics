@@ -1,3 +1,5 @@
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using AngleSharp.Dom;
 
@@ -48,6 +50,7 @@ public abstract class UserMenuButtonTestBase : BunitContext
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
         _ = Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => new ThemePreferenceService(JSInterop.JSRuntime, Mock.Of<IOperatorPreferencesRepository>(), session, Mock.Of<ICultureSwitcher>()));
         return session;
     }
 
@@ -55,6 +58,7 @@ public abstract class UserMenuButtonTestBase : BunitContext
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         _ = Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => new ThemePreferenceService(JSInterop.JSRuntime, Mock.Of<IOperatorPreferencesRepository>(), session, Mock.Of<ICultureSwitcher>()));
         return session;
     }
 
@@ -251,4 +255,4 @@ public class UserMenuButton_SignedOut_Tests : UserMenuButtonTestBase
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/settings/passkeys");
         Assert.Empty(component.FindAll("[data-testid='user-menu-signout']"));
     }
-}
+}
