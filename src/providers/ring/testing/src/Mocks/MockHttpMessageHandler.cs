@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 
-namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Testing.Mocks
 {
     /// <summary>
     /// Mock HTTP message handler that returns predefined responses instead of making real HTTP calls

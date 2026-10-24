@@ -2,7 +2,7 @@ using Bogus;
 
 using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures
+namespace VideoForensics.Providers.Ring.Testing.Fixtures
 {
     /// <summary>
     /// Fluent builder for creating test snapshot events using Bogus Faker.

@@ -1,6 +1,8 @@
 using System.Text;
+using VideoForensics.Core.Helpers.Forensics.Models;
+using VideoForensics.Providers.Ring.Entities;
 
-namespace VideoForensics.Providers.Ring.Forensics.Tests.Fixtures
+namespace VideoForensics.Providers.Ring.Testing.Fixtures
 {
     /// <summary>
     /// Generates realistic sample evidence and events for testing.

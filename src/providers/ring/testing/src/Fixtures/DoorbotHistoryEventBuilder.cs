@@ -1,6 +1,9 @@
 using Bogus;
 
-namespace VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures
+using VideoForensics.Core.Helpers.Forensics.Models;
+using VideoForensics.Providers.Ring.Entities;
+
+namespace VideoForensics.Providers.Ring.Testing.Fixtures
 {
     /// <summary>
     /// Builder for creating test DoorbotHistoryEvent instances using Bogus Faker.

@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Testing.Mocks
 {
     /// <summary>
     /// Helper class for creating mock Ring API sessions for testing

@@ -4,6 +4,8 @@ using Moq;
 using System.Net;
 using System.Text;
 
+using VideoForensics.Providers.Ring.Testing.Mocks;
+
 namespace VideoForensics.Providers.Ring.Video.Tests
 {
     public class VideoDownloaderTests

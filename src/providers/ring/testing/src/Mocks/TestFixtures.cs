@@ -1,4 +1,4 @@
-namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Testing.Mocks
 {
     /// <summary>
     /// Test fixtures containing sample API responses for mocking

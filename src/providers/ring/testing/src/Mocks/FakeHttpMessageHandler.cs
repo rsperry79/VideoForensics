@@ -1,9 +1,9 @@
-namespace VideoForensics.Providers.Ring.Video.Tests
+namespace VideoForensics.Providers.Ring.Testing.Mocks
 {
     /// <summary>
     /// Minimal HttpMessageHandler stand-in so VideoDownloader tests never hit the network.
     /// </summary>
-    internal class FakeHttpMessageHandler : HttpMessageHandler
+    public class FakeHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
         public HttpRequestMessage? LastRequest { get; private set; }

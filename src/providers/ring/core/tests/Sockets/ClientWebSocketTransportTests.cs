@@ -1,6 +1,6 @@
 using System.Threading;
 
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Providers.Ring.Sockets;
 
 namespace VideoForensics.Providers.Ring.Core.Tests

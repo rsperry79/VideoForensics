@@ -3,7 +3,7 @@ using System.Threading;
 
 using VideoForensics.Providers.Ring.Sockets;
 
-namespace VideoForensics.Providers.Ring.Core.Tests.Mocks
+namespace VideoForensics.Providers.Ring.Testing.Mocks
 {
     /// <summary>
     /// Fake IWebSocketTransport for unit testing RingAssetSocket and RingSignalingClient without a
