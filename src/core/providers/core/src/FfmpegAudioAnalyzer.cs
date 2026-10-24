@@ -1,3 +1,4 @@
+using FFMpegCore;
 using System.Diagnostics;
 
 namespace VideoForensics.Core.Providers.Core
@@ -26,27 +27,12 @@ namespace VideoForensics.Core.Providers.Core
         /// <inheritdoc />
         public async Task<AudioClipStats?> AnalyzeAsync(string mediaFilePath, double? durationSeconds, CancellationToken ct)
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = _ffmpegPath,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            };
-            psi.ArgumentList.Add("-hide_banner");
-            psi.ArgumentList.Add("-nostdin");
-            psi.ArgumentList.Add("-vn");
-            psi.ArgumentList.Add("-i");
-            psi.ArgumentList.Add(mediaFilePath);
-            psi.ArgumentList.Add("-af");
-            // astats metadata goes to stdout; silencedetect logs its gaps to stderr.
-            psi.ArgumentList.Add($"astats=metadata=1:reset=0,ametadata=mode=print:file=-,silencedetect=noise={SilenceThreshold}:d={AudioStatsParser.MinimumGapSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
-            psi.ArgumentList.Add("-f");
-            psi.ArgumentList.Add("null");
-            psi.ArgumentList.Add("-");
-
-            ProcessResult result = await ProcessRunner.RunAsync(psi, ProcessRunner.DefaultAnalysisTimeout, ct);
-            return result.ExitCode == 0 ? AudioStatsParser.Parse(result.StandardOutput, result.StandardError, durationSeconds) : null;
+            string filter = $"astats=metadata=1:reset=0,ametadata=mode=print:file=-,silencedetect=noise={SilenceThreshold}:d={AudioStatsParser.MinimumGapSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+            FFMpegArgumentProcessor processor = FFMpegArguments
+                .FromFileInput(mediaFilePath, true, o => o.WithCustomArgument("-vn"))
+                .OutputToFile("-", true, o => o.WithCustomArgument($"-af {filter} -f null"));
+            FfmpegCapture.CaptureResult result = await FfmpegCapture.RunAsync(processor, ProcessRunner.DefaultAnalysisTimeout, ct);
+            return result.Success ? AudioStatsParser.Parse(result.Stdout, result.Stderr, durationSeconds) : null;
         }
     }
 }
