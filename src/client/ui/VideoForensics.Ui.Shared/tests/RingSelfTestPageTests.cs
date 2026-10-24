@@ -258,11 +258,8 @@ public class RingSelfTestPage_RowSelection_Tests : RingSelfTestPageTestBase
         Assert.Contains("500000", sectionMarkup);
         Assert.Contains("Truncated", sectionMarkup);
 
-        // Inspector state reflects the selected call.
-        Assert.NotNull(InspectorState.Current);
-        Assert.Equal(TestPhaseCall.Body, InspectorState.Current!.RawJson);
-        Assert.NotNull(InspectorState.Current.Provenance);
-        Assert.Equal(2, InspectorState.Current.Provenance!.Count);
+        // The right sidebar stays out of the API tester: the selected call is shown in the sub-report, not the sidebar.
+        Assert.Null(InspectorState.Current);
     }
 
     [Fact]

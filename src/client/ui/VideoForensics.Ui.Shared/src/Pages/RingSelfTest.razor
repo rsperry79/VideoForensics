@@ -258,7 +258,6 @@
         {
             <ForensicGrid TItem="SelfTestCallDto"
                 DataSource="@_result.Calls"
-                ToInspector="@(call => SelfTestInspectorMapper.ToInspector(call))"
                 ExportFileName="selftest-calls.csv"
                 OnRowSelected="@OnResultRowSelected">
                 <Columns>
