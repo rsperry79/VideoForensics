@@ -15,7 +15,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
         private static int CountLogs(Mock<ILogger<CloudflaredTunnelService>> logger, LogLevel level)
         {
-            return logger.Invocations.Count(i => i.Method.Name == nameof(ILogger.Log) && (LogLevel)i.Arguments[0] == level);
+            return logger.Invocations.Count(i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], level));
         }
 
         [Fact]

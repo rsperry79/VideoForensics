@@ -105,7 +105,7 @@ public class LocalTransportMiddlewareTests
     }
 
     [Fact]
-    public void LanHttp_ApiPost_IsNotRedirected()
+    public async Task LanHttp_ApiPost_IsNotRedirected()
     {
         // The tunnel is started by a POST to /api. A redirect would drop the body, so API calls always pass through.
         var context = new DefaultHttpContext();
@@ -117,7 +117,7 @@ public class LocalTransportMiddlewareTests
 
         bool nextCalled = false;
         var middleware = new LocalTransportMiddleware(_ => { nextCalled = true; return Task.CompletedTask; }, NullLogger<LocalTransportMiddleware>.Instance);
-        middleware.InvokeAsync(context, TunnelStopped(), HttpsReady()).GetAwaiter().GetResult();
+        await middleware.InvokeAsync(context, TunnelStopped(), HttpsReady());
 
         Assert.True(nextCalled);
         Assert.False(context.Response.Headers.ContainsKey("Location"));

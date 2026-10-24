@@ -182,7 +182,7 @@ namespace VideoForensics.Client.Hosting.Tests
             }
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
-            Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && (LogLevel)i.Arguments[0] == LogLevel.Error);
+            Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
         }
 
 

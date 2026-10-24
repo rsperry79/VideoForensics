@@ -573,9 +573,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<decimal?>("BatteryVoltage2")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("CaptureMode")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("ChimeVolume")
                         .HasColumnType("INTEGER");
 

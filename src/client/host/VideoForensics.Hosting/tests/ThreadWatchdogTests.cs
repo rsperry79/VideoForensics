@@ -83,7 +83,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
         private static int CountErrors(Mock<ILogger<ThreadWatchdogService>> logger)
         {
-            return logger.Invocations.Count(i => i.Method.Name == nameof(ILogger.Log) && (LogLevel)i.Arguments[0] == LogLevel.Error);
+            return logger.Invocations.Count(i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
         }
 
         private sealed class FakeTime : TimeProvider

@@ -13,7 +13,6 @@ using Moq;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
@@ -255,4 +254,4 @@ public class UserMenuButton_SignedOut_Tests : UserMenuButtonTestBase
         Assert.DoesNotContain(items, i => i.GetAttribute("data-path") == "/settings/passkeys");
         Assert.Empty(component.FindAll("[data-testid='user-menu-signout']"));
     }
-}
+}
