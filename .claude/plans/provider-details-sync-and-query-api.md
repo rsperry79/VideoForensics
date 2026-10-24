@@ -17,22 +17,20 @@ Also done, outside this plan: snapshot interval in seconds with a seconds/minute
 
 ## Open
 
-### 1 (rest). Account details fields
-- Street address and other stored account fields: confirm whether `AccountDtos.cs` carries them. If not, adding them is a contract change to `src/core/api`.
+### 7. Query page (`/query`): partly done
+- Done: common filters are one `QueryApiFilterBar` component, used by `QueryApiDevices` (location) and `QueryApiEvents` (location and device). Commit `5f6c6abb` on `feat/query-page-merge` (worktree `F:\VideoForensics-query-merge`).
+- Done (`eed2e32a` on `feat/query-page-merge`): raw account status payload. `IProviderAuthService.GetAuthStatusDetails()` returns `ProviderAuthStatus` (authenticated, token type, expiry, scope). No tokens. Ring implements it; other providers return null and the page says so.
+- Found while checking: `RemoteProviderAuthService.GetAuthStatus()` throws `NotSupportedException`, so "Check status" fails on the MAUI client. Pre-existing; not fixed here.
 
-### 7. Query page (`/query`)
-- Raw account status output alongside the formatted status (collapsible raw JSON).
-- Common filters through `QueryApiFilterState` (currently LocationId and DeviceId only), as one filter bar shared with `QueryApiDevices` and `QueryApiEvents`.
+### 8. API tester output: done
+- Result grid is still a table. Selecting a row shows that call's schema issues in a bottom pane (`call-issues`) and its HTTP calls below it.
+- Inspector no longer fed by this grid (`ForensicGrid` without `ToInspector`).
 
-### 8. API tester output
-- `RingSelfTest.razor` (the tester) becomes a table. Clicking a row shows its issues in a bottom detail pane.
-- Remove the issue detail from the right-hand inspector on this page.
-
-### 9. Merge Query and tester into one page, admin+
-- Merge `/query` with `RingSelfTest.razor`. Retire the tester route (redirect to `/query`).
-- Access: the merged page is `Admin`. The tester route currently has **no** access rule, so any signed-in operator can open it. Close that gap as part of this item.
-- Server-side: the earlier plan said to verify whether `/api/v1/query` endpoints exist before deciding on the 403 conflict. **Not yet verified.** A repo search found no such endpoints in WebApp, and the access comment says Query API calls go to provider services directly. If confirmed, the conflict with "server stays SuperAdmin" does not arise.
-- Update references: `Layout/NavGroups.cs` (tester entry), and tests `NavGroupsTests.cs`, `QueryApiPageTests.cs`, `RingSelfTestPageTests.cs`.
+### 9. Merge Query and tester into one page: done, access stricter than planned
+- The tester is embedded in `/query`. `/query/api-tester` and `/tools/ring-selftest` redirect there (`Pages/Redirects/ApiTesterRedirect.razor`). Nav entry removed.
+- `/query/api-tester` and `/tools/ring-selftest` had no access rule before; the tester now sits behind the `/query` row.
+- Access: `/query` is `Admin`, as planned. The tester's destructive and physical endpoints keep their own `SuperAdminLocal` check.
+- Server-side check: no `/api/v1/query` endpoints exist in WebApp (`grep` over `src/client/web`). The Query pages call provider services directly, so the 403 conflict does not arise.
 
 ## Decisions (resolved)
 
@@ -42,13 +40,12 @@ Also done, outside this plan: snapshot interval in seconds with a seconds/minute
 4. Query endpoints stay SuperAdmin on the server. Do not change server policy.
 5. Item 5 Last Download: separate `LastSyncCompletedUtc` field. The legacy watermark is untouched.
 6. Validate routes removed (not redirected).
+7. Item 1 rest resolved: `ProviderAccountDto` carries no address or name fields, and none are needed. The account's name is the provider login, read from `User.ProviderUserKey` through `UserRepository` (`AccountTabPageBase.cs:66`). Street address is per location, in `LocationMetadata.StreetAddress`, and the Details tab does not show it. No contract change to `src/core/api`.
 
 ## Next
 
-1. Verify `/api/v1/query` endpoints (decides item 9's conflict).
-2. Item 7 (Query page raw status and filters).
-3. Item 8 (tester table and detail pane).
-4. Item 9 (merge, admin access, tester access rule).
-5. Confirm account address/name fields (item 1 rest).
+1. Decide what "raw account status" exposes (item 7). Then add it.
+2. Decide Admin vs SuperAdminLocal for `/query` (item 9).
+3. Merge `feat/query-page-merge` into `wip` once the main checkout's `.claude/task_failure_log.md` change is committed or stashed.
 
 Each step ships with tests (TDD). Breaking changes update `CLAUDE.md` and the commit message.
