@@ -361,7 +361,7 @@ namespace VideoForensics.Client.MauiApp
 
                 string webAppProjectPath = Path.Combine(
                     solutionRoot,
-                    "src", "client", "web", "VideoForensics.Client.WebApp", "VideoForensics.WebApp.csproj");
+                    "src", "client", "web", "VideoForensics.WebApp", "src", "VideoForensics.Client.WebApp.csproj");
 
                 if (!File.Exists(webAppProjectPath))
                 {

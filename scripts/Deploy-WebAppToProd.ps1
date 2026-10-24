@@ -85,10 +85,10 @@ function Sync-SyncfusionLicenseKey {
     Write-Host "Wrote the Syncfusion license key to $targetFile"
 }
 
-$project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.WebApp.csproj'
+$project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
 $stage = Join-Path $env:TEMP ('vf-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-$exeName = 'VideoForensics.WebApp.exe'
+$exeName = 'VideoForensics.Client.WebApp.exe'
 
 Write-Host "Publishing $project ($Configuration) to $stage"
 # Self-contained: the build carries its own .NET runtime, so the production machine needs no .NET install.
@@ -120,12 +120,22 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 $service = Get-Service -Name $ServiceName -ErrorAction Stop
+$serviceInfo = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'"
 if ($PSCmdlet.ShouldProcess("service $ServiceName", 'Stop')) {
     if ($service.Status -eq 'Running') {
         Write-Host "Stopping service $ServiceName"
         Stop-Service -Name $ServiceName -Force
         $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
     }
+}
+
+# An installed service may still point at the pre-rename executable; repoint it so the new build starts.
+$currentExe = ($serviceInfo.PathName -replace '^\s*"?([^"]+?\.exe)"?.*$', '$1')
+if ((Split-Path -Leaf $currentExe) -ne $exeName -and $PSCmdlet.ShouldProcess("service $ServiceName", "Point to $exeName")) {
+    $newPath = Join-Path $Destination $exeName
+    Write-Host "Pointing service $ServiceName at $newPath"
+    $result = Invoke-CimMethod -InputObject $serviceInfo -MethodName Change -Arguments @{ PathName = "`"$newPath`"" }
+    if ($result.ReturnValue -ne 0) { throw "Changing the service path failed with code $($result.ReturnValue). The service is still stopped." }
 }
 
 if ($PSCmdlet.ShouldProcess($Destination, 'Copy build')) {

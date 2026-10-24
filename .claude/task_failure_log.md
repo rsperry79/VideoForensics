@@ -53,3 +53,6 @@
 2026-10-24 | test | QueryApiEventsPage LocationSelectedOnDevicesPage: location value "" | Syncfusion clears a value missing from an empty list; the new filter bar re-renders on OnChange and wrote null back to shared state (old panel did not re-render) | QueryApiFilterBar ignores empty writes while its option list is empty; regression tests added | fixed
 2026-10-24 | git | `git commit` warned LF will be replaced by CRLF for new .razor/.cs files | repo files are CRLF; new files written as LF | none; normalise on next touch | (open)
 2026-10-24 | tool | bash command with a python3 heredoc hung and hit the 120s timeout | stray heredoc sent to python3 with no script, so it waited on stdin | stopped the task with TaskStop; no python in this workflow | fixed
+2026-10-24 | debug-launch-script | Resolve-Path on WebApp csproj | wrong csproj name (VideoForensics.WebApp.csproj; real is VideoForensics.Client.WebApp.csproj) | use the Glob result; prod deploy script has the same bad name
+2026-10-24 | debug-launch-script | exe name hardcoded | AssemblyName is VideoForensics.Client.WebApp, service runs VideoForensics.WebApp.exe | read AssemblyName from csproj; service/exe name mismatch needs user decision
+2026-10-24 | debug-launch-script | service path regex | unquoted paths with spaces not matched | match up to .exe lazily
