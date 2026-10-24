@@ -618,14 +618,70 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
-        public void GetAuthStatus_Always_ThrowsNotSupportedException()
+        public async Task GetAuthStatusDetailsAsync_FetchesServerStatusForProvider_MapsIt()
         {
             // Arrange
-            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
-            var service = new RemoteProviderAuthService(httpClient);
+            var dto = new ProviderAuthStatusDto(true, "Bearer", new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc), "client");
+            HttpClient httpClient = CreateHttpClient(async request =>
+            {
+                Assert.Equal(HttpMethod.Get, request.Method);
+                Assert.Equal("/api/v1/auth/status?provider=Ring", request.RequestUri?.PathAndQuery);
+                string json = await JsonContent.Create(dto).ReadAsStringAsync();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+            var service = new RemoteProviderAuthService(httpClient, "Ring");
 
-            // Act & Assert
-            _ = Assert.Throws<NotSupportedException>(service.GetAuthStatus);
+            // Act
+            VideoForensics.Core.Providers.Common.Contracts.ProviderAuthStatus? details = await service.GetAuthStatusDetailsAsync();
+
+            // Assert
+            Assert.NotNull(details);
+            Assert.True(details!.IsAuthenticated);
+            Assert.Equal("Bearer", details.TokenType);
+            Assert.Equal("client", details.Scope);
+        }
+
+        [Fact]
+        public void GetAuthStatus_BeforeAnyFetch_ReportsNotCheckedYetWithoutThrowing()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage()));
+            var service = new RemoteProviderAuthService(httpClient, "Ring");
+
+            string status = service.GetAuthStatus();
+
+            Assert.Equal("Not checked yet", status);
+            Assert.Null(service.GetAuthStatusDetails());
+        }
+
+        [Fact]
+        public async Task GetAuthStatus_AfterFetch_ReflectsTheServerStatus()
+        {
+            var dto = new ProviderAuthStatusDto(true, "Bearer", null, null);
+            HttpClient httpClient = CreateHttpClient(async request =>
+            {
+                string json = await JsonContent.Create(dto).ReadAsStringAsync();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+                };
+            });
+            var service = new RemoteProviderAuthService(httpClient, "Ring");
+
+            _ = await service.GetAuthStatusDetailsAsync();
+
+            Assert.Equal("Authenticated", service.GetAuthStatus());
+        }
+
+        [Fact]
+        public async Task GetAuthStatusDetailsAsync_ServerError_Throws()
+        {
+            HttpClient httpClient = CreateHttpClient(request => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+            var service = new RemoteProviderAuthService(httpClient, "Ring");
+
+            _ = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetAuthStatusDetailsAsync());
         }
 
         [Fact]

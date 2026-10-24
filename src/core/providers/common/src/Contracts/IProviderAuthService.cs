@@ -29,6 +29,12 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// so callers can say so instead of showing an empty payload.
         /// </summary>
         ProviderAuthStatus? GetAuthStatusDetails() => null;
+
+        /// <summary>
+        /// Gets the status details, fetching them from the server when this is a remote client. The default reads
+        /// them locally, so server-side providers need no change.
+        /// </summary>
+        Task<ProviderAuthStatus?> GetAuthStatusDetailsAsync(CancellationToken cancellationToken = default) => Task.FromResult(GetAuthStatusDetails());
     }
 
     /// <summary>Result of authentication attempt</summary>

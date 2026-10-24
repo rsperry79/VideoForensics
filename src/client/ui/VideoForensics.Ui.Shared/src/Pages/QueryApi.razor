@@ -29,7 +29,7 @@
 
 <div class="card border rounded p-4 mb-4">
     <h5 class="mt-4 mb-2">@L["AccountStatus"]</h5>
-    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatus" CssClass="e-primary" />
+    <SfButton Content="@L["CheckStatus"]" OnClick="RunAccountStatusAsync" CssClass="e-primary" />
     @if (_accountStatus is not null)
     {
         <p class="mt-2">@_accountStatus</p>
@@ -95,10 +95,11 @@
     private string? _accountStatus;
     private ProviderAuthStatus? _accountStatusDetails;
 
-    private void RunAccountStatus()
+    // Fetches first: on the remote client the synchronous status reads the value this call just refreshed.
+    private async Task RunAccountStatusAsync()
     {
+        _accountStatusDetails = await AuthService.GetAuthStatusDetailsAsync();
         _accountStatus = AuthService.GetAuthStatus();
-        _accountStatusDetails = AuthService.GetAuthStatusDetails();
     }
 
     // Locations

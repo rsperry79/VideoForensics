@@ -78,30 +78,36 @@ public class QueryApiPage_Tests : BunitContext
     public void QueryApiPage_CheckStatus_ShowsFormattedStatusAndRawPayloadWithoutSecrets()
     {
         _ = _auth.Setup(a => a.GetAuthStatus()).Returns("Authenticated");
-        _ = _auth.Setup(a => a.GetAuthStatusDetails()).Returns(
+        _ = _auth.Setup(a => a.GetAuthStatusDetailsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
             new ProviderAuthStatus(true, "Bearer", new DateTime(2026, 10, 24, 12, 0, 0, DateTimeKind.Utc), "client"));
         IRenderedComponent<QueryApi> cut = Render<QueryApi>();
 
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Check Status").Click();
 
-        Assert.Contains("Authenticated", cut.Markup);
-        Assert.Contains("Raw response", cut.Markup);
-        Assert.Contains("Bearer", cut.Markup);
-        Assert.Contains("2026-10-24", cut.Markup);
-        Assert.DoesNotContain("accessToken", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Authenticated", cut.Markup);
+            Assert.Contains("Raw response", cut.Markup);
+            Assert.Contains("Bearer", cut.Markup);
+            Assert.Contains("2026-10-24", cut.Markup);
+            Assert.DoesNotContain("accessToken", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]
     public void QueryApiPage_CheckStatus_ProviderWithoutDetails_SaysSoInsteadOfShowingPayload()
     {
         _ = _auth.Setup(a => a.GetAuthStatus()).Returns("Authenticated");
-        _ = _auth.Setup(a => a.GetAuthStatusDetails()).Returns((ProviderAuthStatus?)null);
+        _ = _auth.Setup(a => a.GetAuthStatusDetailsAsync(It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAuthStatus?)null);
         IRenderedComponent<QueryApi> cut = Render<QueryApi>();
 
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Check Status").Click();
 
-        Assert.Contains("does not report token details", cut.Markup);
-        Assert.DoesNotContain("Raw response", cut.Markup);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("does not report token details", cut.Markup);
+            Assert.DoesNotContain("Raw response", cut.Markup);
+        });
     }
 
     [Fact]
