@@ -46,7 +46,7 @@ jobs:
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: >
-          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.Client.WebApp.csproj
           -c Release -r win-x64 --self-contained true -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY" -o publish-win
 
       - name: Publish MauiApp (win-x64, self-contained)
@@ -71,7 +71,7 @@ jobs:
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
         run: >
-          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.WebApp.csproj
+          dotnet publish src/client/web/VideoForensics.WebApp/src/VideoForensics.Client.WebApp.csproj
           -c Release -r linux-x64 --self-contained true -p:SyncfusionLicenseKey="$SYNCFUSION_LICENSE_KEY" -o publish-linux
 
       - name: Archive publish outputs
