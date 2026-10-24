@@ -35,22 +35,39 @@ namespace VideoForensics.Providers.Ring.Core.Tests
 
             Session session = await RealSessionHelper.CreateAuthenticatedSessionAsync();
             Entities.Devices devices = await session.GetRingDevices();
-            Entities.Doorbot? doorbot = devices.Doorbots.FirstOrDefault();
+            // Pick the doorbot by name. The first one on the list can be inactive (no snapshot, HTTP 404).
+            string wantedName = Environment.GetEnvironmentVariable("RING_TEST_DOORBOT") ?? "Front Door";
+            Entities.Doorbot? doorbot = devices.Doorbots.FirstOrDefault(d => string.Equals(d.Description, wantedName, StringComparison.OrdinalIgnoreCase));
             if (doorbot is null)
             {
-                Assert.Skip("This Ring account has no doorbot to capture a snapshot from.");
+                string available = string.Join(", ", devices.Doorbots.Select(d => d.Description));
+                Assert.Skip($"No doorbot named '{wantedName}' on this account (set RING_TEST_DOORBOT). Available: {available}");
                 return;
             }
 
-            using Stream snapshot = await session.GetLatestSnapshot(doorbot);
-            using var buffer = new MemoryStream();
-            await snapshot.CopyToAsync(buffer);
-            byte[] bytes = buffer.ToArray();
+            // Ring only serves a snapshot after a fresh one is requested, as the production path does
+            // (RingVideoService.GetSnapshot). Without this the latest image can be missing and Ring answers 404.
+            await session.UpdateSnapshot(doorbot.Id);
 
-            Assert.True(bytes.Length > 0, "Ring returned no snapshot bytes.");
+            // The status-aware call: GetLatestSnapshot(doorbot) returns the body even on a 404, which would
+            // read "Not Found" as image bytes.
+            // Ring builds the snapshot after the request, so the first read can still be 404. Retry only that status,
+            // with growing waits, and report the last status if it never appears.
+            const int MaxAttempts = 4;
+            HttpUtility.DownloadResult result = await session.GetLatestSnapshotWithStatus(doorbot.Id);
+            for (int attempt = 2; attempt <= MaxAttempts && result.Status == System.Net.HttpStatusCode.NotFound; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt - 1)));
+                result = await session.GetLatestSnapshotWithStatus(doorbot.Id);
+            }
+            string preview = System.Text.Encoding.UTF8.GetString(result.Bytes, 0, Math.Min(result.Bytes.Length, 200));
+
+            Assert.True(result.Status == System.Net.HttpStatusCode.OK,
+                $"Ring returned HTTP {(int)result.Status} for doorbot {doorbot.Id}. Body: {preview}");
+            Assert.True(result.Bytes.Length > 0, "Ring returned no snapshot bytes.");
             // JPEG start-of-image marker, the same check the scheduler's stored file relies on.
-            Assert.Equal(0xFF, bytes[0]);
-            Assert.Equal(0xD8, bytes[1]);
+            Assert.True(result.Bytes[0] == 0xFF && result.Bytes[1] == 0xD8,
+                $"Ring returned {result.Bytes.Length} bytes that do not start with a JPEG marker. First bytes as text: {preview}");
         }
     }
 }

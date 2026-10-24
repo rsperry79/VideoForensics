@@ -966,6 +966,27 @@ namespace VideoForensics.Providers.Ring
         public async Task<Stream> GetLatestSnapshot(int doorbotId)
         {
             HttpUtility.DownloadResult result = await GetLatestSnapshotWithStatus(doorbotId);
+
+            // A non-200 body is an error page (for example "Not Found"), not an image. Throw so no caller
+            // stores it as a snapshot file.
+            if (result.Status == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                throw new Exceptions.ThrottledException($"Ring throttled the latest snapshot request for doorbot {doorbotId}.")
+                {
+                    StatusCode = result.Status,
+                    RetryAfter = result.RetryAfter,
+                };
+            }
+
+            if (result.Status != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exceptions.DownloadFailedException($"snapshots/image/{doorbotId}")
+                {
+                    StatusCode = result.Status,
+                    ResponseBody = System.Text.Encoding.UTF8.GetString(result.Bytes, 0, Math.Min(result.Bytes.Length, 200)),
+                };
+            }
+
             return new MemoryStream(result.Bytes);
         }
 
