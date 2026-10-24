@@ -8,6 +8,30 @@ BeforeAll {
     $script:Roots = @($script:Installed, $script:Publish)
 }
 
+Describe 'Get-ServiceBinPathRepoint' {
+    BeforeAll {
+        $script:NewExe = 'C:\Program Files\VideoForensics\VideoForensics.Client.WebApp.exe'
+    }
+
+    It 'returns the new binPath when the service still runs the old executable name' {
+        $result = Get-ServiceBinPathRepoint -CurrentPathName 'C:\Program Files\VideoForensics\VideoForensics.WebApp.exe' -ExpectedExePath $script:NewExe
+
+        $result | Should -Be $script:NewExe
+    }
+
+    It 'returns nothing when the service already runs the expected executable' {
+        $result = Get-ServiceBinPathRepoint -CurrentPathName '"C:\Program Files\VideoForensics\VideoForensics.Client.WebApp.exe"' -ExpectedExePath $script:NewExe
+
+        $result | Should -BeNullOrEmpty
+    }
+
+    It 'ignores case and surrounding quotes when comparing paths' {
+        $result = Get-ServiceBinPathRepoint -CurrentPathName '"c:\program files\videoforensics\videoforensics.client.webapp.exe"' -ExpectedExePath $script:NewExe
+
+        $result | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Get-HotswapPortOwners' {
     It 'returns nothing when no process listens on the port' {
         Mock Get-NetTCPConnection { @() }
