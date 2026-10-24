@@ -47,15 +47,19 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <param name="updateInstaller">Platform-specific installer (Windows: launch MSI/EXE; Debian: download to pending location).</param>
         /// <param name="currentVersionProvider">Delegate to provide the current version; defaults to reading FileVersionInfo if null.</param>
         /// <param name="logger">Logger for diagnostic output.</param>
+        private readonly ThreadHeartbeats? _heartbeats;
+
         public UpdateCheckService(
             IServiceScopeFactory scopeFactory,
             IForensicsConfiguration config,
             IGitHubReleaseClient gitHubClient,
             IUpdateInstaller updateInstaller,
             ILogger<UpdateCheckService> logger,
-            Func<string>? currentVersionProvider = null)
+            Func<string>? currentVersionProvider = null,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+            _heartbeats = heartbeats;
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _gitHubClient = gitHubClient ?? throw new ArgumentNullException(nameof(gitHubClient));
             _updateInstaller = updateInstaller ?? throw new ArgumentNullException(nameof(updateInstaller));
@@ -76,6 +80,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             do
             {
+                _heartbeats?.Beat(nameof(UpdateCheckService), DateTimeOffset.UtcNow, interval);
+
                 if (!_config.EnableUpdateCheck)
                 {
                     _logger.LogDebug("Update check is disabled via configuration; skipping this tick");
