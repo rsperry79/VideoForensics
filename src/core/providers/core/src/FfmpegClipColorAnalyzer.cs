@@ -33,6 +33,7 @@ namespace VideoForensics.Core.Providers.Core
         public FfmpegClipColorAnalyzer(string? ffmpegPath = null)
         {
             _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
+            FfmpegCapture.UseBinaryFolderOf(_ffmpegPath);
         }
 
         /// <inheritdoc />

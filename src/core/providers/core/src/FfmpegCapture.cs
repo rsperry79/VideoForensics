@@ -14,6 +14,19 @@ namespace VideoForensics.Core.Providers.Core
         /// <summary>The captured run: whether ffmpeg exited cleanly, and every stdout and stderr line it printed.</summary>
         public sealed record CaptureResult(bool Success, string Stdout, string Stderr);
 
+        /// <summary>
+        /// Points FFMpegCore at the folder of a resolved ffmpeg binary. FFMpegCore reads one binary folder for the whole process,
+        /// so this is process-wide; every ffmpeg tool in the app resolves to the same folder.
+        /// </summary>
+        public static void UseBinaryFolderOf(string ffmpegPath)
+        {
+            string? folder = Path.GetDirectoryName(ffmpegPath);
+            if (!string.IsNullOrEmpty(folder))
+            {
+                GlobalFFOptions.Configure(options => options.BinaryFolder = folder);
+            }
+        }
+
         public static async Task<CaptureResult> RunAsync(FFMpegArgumentProcessor processor, TimeSpan timeout, CancellationToken ct)
         {
             var stdout = new StringBuilder();

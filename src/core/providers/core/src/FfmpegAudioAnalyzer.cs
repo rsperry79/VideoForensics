@@ -22,6 +22,7 @@ namespace VideoForensics.Core.Providers.Core
         public FfmpegAudioAnalyzer(string? ffmpegPath = null)
         {
             _ffmpegPath = FfmpegPathResolver.Resolve(ffmpegPath, "ffmpeg");
+            FfmpegCapture.UseBinaryFolderOf(_ffmpegPath);
         }
 
         /// <inheritdoc />
