@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Hubs
 {
     public class LiveViewTelemetryBroadcastServiceTests
     {

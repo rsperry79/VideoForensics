@@ -7,7 +7,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     public class LocalSelfTestStatusSourceTests
     {

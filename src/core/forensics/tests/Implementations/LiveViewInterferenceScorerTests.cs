@@ -2,7 +2,7 @@ using VideoForensics.Core.Forensics.Implementations;
 using VideoForensics.Core.Forensics.Interfaces;
 using VideoForensics.Data.Common.Entities;
 
-namespace VideoForensics.Core.Forensics.Tests
+namespace VideoForensics.Core.Forensics.Tests.Implementations
 {
     public class LiveViewInterferenceScorerTests
     {

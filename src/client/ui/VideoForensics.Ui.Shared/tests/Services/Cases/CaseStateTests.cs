@@ -10,7 +10,7 @@ using VideoForensics.Client.Ui.Shared.Tests;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Cases;
 
 public class CaseState_Tests
 {

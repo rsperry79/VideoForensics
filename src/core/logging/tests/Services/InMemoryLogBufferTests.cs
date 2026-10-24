@@ -8,7 +8,7 @@ using VideoForensics.Core.Logging.Services;
 
 using Xunit;
 
-namespace VideoForensics.Core.Logging.Tests
+namespace VideoForensics.Core.Logging.Tests.Services
 {
     public class InMemoryLogBufferTests : IAsyncLifetime
     {

@@ -4,7 +4,7 @@ using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Logging.Services;
 using VideoForensics.Client.Hosting.Local;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Local
 {
     public class LocalLogViewerServiceTests
     {

@@ -8,7 +8,7 @@ using VideoForensics.Client.WebApp.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// SessionNetworkContext is the circuit-scoped record of a Blazor Server session's REAL network

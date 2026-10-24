@@ -9,7 +9,7 @@ using VideoForensics.Data.Core.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Services
 {
     public class VideoDownloadServiceAdapterTests
     {

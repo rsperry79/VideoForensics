@@ -18,7 +18,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Hubs
 {
     /// <summary>
     /// Exercises <see cref="LiveViewSignalingHub"/> signaling methods against a real

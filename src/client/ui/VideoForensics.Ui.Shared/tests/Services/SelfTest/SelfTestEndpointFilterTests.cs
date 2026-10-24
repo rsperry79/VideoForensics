@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.SelfTest;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.SelfTest;
 
 public class SelfTestEndpointFilterTests
 {

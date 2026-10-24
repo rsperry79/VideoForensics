@@ -9,7 +9,7 @@ using VideoForensics.Core.Api.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// xUnit tests for SystemVersionEndpoints covering GET /api/v1/system/version and /api/v1/system/version-manifest.

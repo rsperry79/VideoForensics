@@ -10,7 +10,7 @@ using VideoForensics.Client.Hosting.Contracts;
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>The roll-up: stills from the window's snapshot Media rows, one MP4 per device, a Media row for each loop, and failures reported.</summary>
     public class SnapshotRollupServiceTests : IDisposable

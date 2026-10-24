@@ -11,7 +11,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// <see cref="WebAppSelfApiHttpClientFactory"/> is the WebApp's <see cref="ISelfApiHttpClientFactory"/>

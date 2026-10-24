@@ -13,7 +13,7 @@ using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests.Services.CircuitGuards;
 
 public class GuardedReleaseChannelServiceTests
 {

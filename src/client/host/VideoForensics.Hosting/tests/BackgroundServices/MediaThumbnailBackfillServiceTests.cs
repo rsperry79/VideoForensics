@@ -5,7 +5,7 @@ using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Client.Hosting.Tests;
+namespace VideoForensics.Client.Hosting.Tests.BackgroundServices;
 
 public class MediaThumbnailBackfillServiceTests
 {

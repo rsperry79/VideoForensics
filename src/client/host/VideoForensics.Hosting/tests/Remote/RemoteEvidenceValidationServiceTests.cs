@@ -6,7 +6,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Remote
 {
     public class RemoteEvidenceValidationServiceTests
     {

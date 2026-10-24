@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Remote
 {
     public class RemoteSecurityEventsServiceTests
     {

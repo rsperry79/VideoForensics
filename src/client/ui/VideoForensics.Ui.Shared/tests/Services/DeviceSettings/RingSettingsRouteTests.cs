@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.DeviceSettings;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.DeviceSettings;
 
 public class RingSettingsRoute_Tests
 {

@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.Analysis;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Analysis;
 /// <summary>Per-device reports combine into one report: lists concatenate and the window is kept.</summary>
 public class AnalysisReportMergeTests
 {

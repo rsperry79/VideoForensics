@@ -5,7 +5,7 @@ using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Client.Ui.Shared.Contracts;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Remote
 {
     public class RemoteDownloadProgressSourceTests
     {

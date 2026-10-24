@@ -31,7 +31,7 @@ using VideoForensics.Client.Hosting.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class OperatorAuthEndpointsTests
     {

@@ -10,7 +10,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     public class SelfHttpServiceExtensionsTests
     {

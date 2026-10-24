@@ -1,4 +1,4 @@
-namespace VideoForensics.Core.Helpers.Forensics.Tests
+namespace VideoForensics.Core.Helpers.Forensics.Tests.Implementations
 {
     public class EvidencePiiRedactorTests
     {

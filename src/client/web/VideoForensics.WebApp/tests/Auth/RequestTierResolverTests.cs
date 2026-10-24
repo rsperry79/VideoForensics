@@ -9,7 +9,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Auth
 {
     /// <summary>
     /// <see cref="RequestTierResolver"/> is the single place both an ALREADY-authenticated request's

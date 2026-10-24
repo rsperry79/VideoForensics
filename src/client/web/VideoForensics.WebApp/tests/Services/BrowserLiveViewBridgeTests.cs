@@ -5,7 +5,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// Exercises <see cref="BrowserLiveViewBridge"/> with a real <see cref="RTCPeerConnection"/> (SIPSorcery's

@@ -4,7 +4,7 @@ using VideoForensics.Client.Core.Tools;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Tools
 {
     public class RawApiRedactorTests
     {

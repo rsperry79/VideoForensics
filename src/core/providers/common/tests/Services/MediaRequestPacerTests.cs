@@ -2,7 +2,7 @@ using VideoForensics.Core.Providers.Common.Services;
 
 using Xunit;
 
-namespace VideoForensics.Core.Providers.Common.Tests
+namespace VideoForensics.Core.Providers.Common.Tests.Services
 {
     /// <summary>Pacing turns on an injected clock, so no test sleeps.</summary>
     public class MediaRequestPacerTests

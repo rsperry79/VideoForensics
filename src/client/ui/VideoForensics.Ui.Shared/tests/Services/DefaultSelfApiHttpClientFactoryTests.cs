@@ -8,7 +8,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services;
 /// <summary>
 /// <see cref="DefaultSelfApiHttpClientFactory"/> must reproduce, byte for byte, the behavior every
 /// <c>Pages/Security*.razor</c> page's own private <c>CreateClient()</c> had before this abstraction

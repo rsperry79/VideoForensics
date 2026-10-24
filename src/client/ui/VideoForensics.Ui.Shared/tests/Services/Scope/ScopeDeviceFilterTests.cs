@@ -5,7 +5,7 @@ using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
 public class ScopeDeviceFilterTests
 {

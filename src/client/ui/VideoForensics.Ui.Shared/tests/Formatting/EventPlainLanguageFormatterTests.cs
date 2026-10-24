@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Formatting;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Formatting;
 
 public class EventPlainLanguageFormatterTests
 {

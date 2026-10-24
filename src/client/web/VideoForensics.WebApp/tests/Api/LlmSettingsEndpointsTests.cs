@@ -12,7 +12,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// xUnit tests for LlmSettingsEndpoints covering GET/POST for LLM provider configuration.

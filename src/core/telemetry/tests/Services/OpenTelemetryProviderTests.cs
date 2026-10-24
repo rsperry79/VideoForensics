@@ -7,7 +7,7 @@ using VideoForensics.Core.Telemetry.Services;
 
 using Xunit;
 
-namespace VideoForensics.Core.Telemetry.Tests
+namespace VideoForensics.Core.Telemetry.Tests.Services
 {
     public class OpenTelemetryProviderTests
     {

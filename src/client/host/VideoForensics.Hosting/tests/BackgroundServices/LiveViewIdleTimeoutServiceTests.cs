@@ -6,7 +6,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting.BackgroundServices;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {
     public class LiveViewIdleTimeoutServiceTests
     {

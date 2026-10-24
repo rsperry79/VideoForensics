@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Cases;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Cases;
 
 public class CaseUrl_Tests
 {

@@ -14,7 +14,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Cross-account security-event queries require SuperAdmin + Local tier (plan §5.10). This must

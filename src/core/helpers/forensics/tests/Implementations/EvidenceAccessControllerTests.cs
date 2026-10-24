@@ -1,6 +1,6 @@
 using Moq;
 
-namespace VideoForensics.Core.Helpers.Forensics.Tests
+namespace VideoForensics.Core.Helpers.Forensics.Tests.Implementations
 {
     /// <summary>
     /// Tests for IEvidenceAccessController access control and anomaly detection contract.

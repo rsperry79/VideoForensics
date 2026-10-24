@@ -1,4 +1,4 @@
-namespace VideoForensics.Core.Helpers.Forensics.Tests
+namespace VideoForensics.Core.Helpers.Forensics.Tests.Implementations
 {
     public class MultiDeviceForensicsTests
     {
@@ -6,7 +6,7 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests
 
         public MultiDeviceForensicsTests()
         {
-            _forensics = new Implementations.MultiDeviceForensics();
+            _forensics = new VideoForensics.Core.Helpers.Forensics.Implementations.MultiDeviceForensics();
         }
 
         [Fact]

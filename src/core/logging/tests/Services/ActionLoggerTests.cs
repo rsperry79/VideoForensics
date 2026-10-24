@@ -12,7 +12,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Core.Logging.Tests
+namespace VideoForensics.Core.Logging.Tests.Services
 {
     public class ActionLoggerTests
     {

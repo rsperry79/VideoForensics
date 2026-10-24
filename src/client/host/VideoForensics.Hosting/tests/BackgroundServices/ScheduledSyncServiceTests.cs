@@ -14,7 +14,7 @@ using VideoForensics.Client.Hosting.Tests.Services;
 using Device = VideoForensics.Data.Common.Entities.Device;
 using Location = VideoForensics.Data.Common.Entities.Location;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {
     public class ScheduledSyncServiceTests
     {

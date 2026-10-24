@@ -6,7 +6,7 @@ using VideoForensics.Client.Ui.Shared.Layout;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 
 public class NavGroups_Tests
 {

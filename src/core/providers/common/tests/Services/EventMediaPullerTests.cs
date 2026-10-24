@@ -3,7 +3,7 @@ using VideoForensics.Core.Providers.Common.Services;
 
 using Xunit;
 
-namespace VideoForensics.Core.Providers.Common.Tests
+namespace VideoForensics.Core.Providers.Common.Tests.Services
 {
     /// <summary>Shared pull logic: 30-day batching, the watermark advance rule, resume, pacing and 429 wait-and-retry.</summary>
     public class EventMediaPullerTests

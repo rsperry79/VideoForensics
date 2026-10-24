@@ -8,7 +8,7 @@ using VideoForensics.Client.Ui.Shared.Extensions;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Extensions;
 
 public class NavigationManagerExtensionsTests : BunitContext
 {

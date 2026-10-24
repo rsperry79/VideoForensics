@@ -3,7 +3,7 @@ using VideoForensics.Client.Ui.Shared.Services.Evidence;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Evidence;
 
 /// <summary>A Time Lapse hides the snapshots of its device inside its window, and only in the view.</summary>
 public class TimeLapseCoverageTests

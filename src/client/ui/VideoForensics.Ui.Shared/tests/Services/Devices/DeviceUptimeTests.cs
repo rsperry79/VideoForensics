@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Devices;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Devices;
 
 public class DeviceUptimeTests
 {

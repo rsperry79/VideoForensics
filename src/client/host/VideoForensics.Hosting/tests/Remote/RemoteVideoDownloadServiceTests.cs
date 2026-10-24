@@ -8,7 +8,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Remote;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.Remote
 {
     public class RemoteVideoDownloadServiceTests
     {

@@ -16,7 +16,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     public class MediaApiEndpointsTests
     {

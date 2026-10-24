@@ -13,7 +13,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests;
+namespace VideoForensics.Client.WebApp.Tests.Chat;
 
 /// <summary>Tests for ChatOrchestrator - the server-side MCP chat loop orchestrator.</summary>
 public class ChatOrchestrator_Tests

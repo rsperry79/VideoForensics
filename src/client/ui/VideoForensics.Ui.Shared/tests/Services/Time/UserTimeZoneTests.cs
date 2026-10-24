@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Time;
 /// <summary>Converts stored UTC instants into the signed-in user's zone for display.</summary>
 public class UserTimeZoneTests
 {

@@ -2,7 +2,7 @@ using VideoForensics.Client.Core.Utilities;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Utilities
 {
     public class DateTimeUtilitiesTests
     {

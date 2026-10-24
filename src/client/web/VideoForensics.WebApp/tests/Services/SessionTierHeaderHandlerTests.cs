@@ -6,7 +6,7 @@ using VideoForensics.Client.Hosting;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Services
 {
     /// <summary>
     /// SessionTierHeaderHandler is the outgoing half of the session-tier-header fix: it attaches

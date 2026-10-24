@@ -14,7 +14,7 @@ using Xunit;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Tools
 {
     public class LiveViewSessionOrchestratorTests
     {

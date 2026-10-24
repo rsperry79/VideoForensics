@@ -9,7 +9,7 @@ using VideoForensics.Core.Logging.Providers;
 
 using Xunit;
 
-namespace VideoForensics.Core.Logging.Tests
+namespace VideoForensics.Core.Logging.Tests.Providers
 {
     public class NamedPipeLoggerProviderTests : IAsyncLifetime
     {

@@ -12,7 +12,7 @@ using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services;
 /// <summary>
 /// Covers the passkey-setup-only flag on PairedSessionState: set by a create-passkey sign-in, persisted
 /// alongside the other session fields, and cleared with the session.

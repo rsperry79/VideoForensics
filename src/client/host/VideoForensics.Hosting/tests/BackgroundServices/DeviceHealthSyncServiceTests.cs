@@ -10,7 +10,7 @@ using VideoForensics.Client.Hosting.BackgroundServices;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
 
-namespace VideoForensics.Client.Hosting.Tests
+namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 {
     public class DeviceHealthSyncServiceTests
     {

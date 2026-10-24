@@ -24,7 +24,7 @@ using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
-namespace VideoForensics.Client.WebApp.Tests
+namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
     /// Exercises the live-view REST routes through an in-memory TestServer so routing, the Admin/ReadOnly

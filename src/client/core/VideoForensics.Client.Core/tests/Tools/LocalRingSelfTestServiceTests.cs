@@ -8,7 +8,7 @@ using VideoForensics.Providers.Ring;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Tools
 {
     public class LocalRingSelfTestServiceTests
     {

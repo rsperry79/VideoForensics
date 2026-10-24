@@ -8,7 +8,7 @@ using VideoForensics.Data.Common.Contracts;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Tools
 {
     public class ConfigToolsOrchestratorTests
     {

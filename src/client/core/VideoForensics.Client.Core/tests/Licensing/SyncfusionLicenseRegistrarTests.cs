@@ -6,7 +6,7 @@ using VideoForensics.Client.Core.Licensing;
 
 using Xunit;
 
-namespace VideoForensics.Client.Core.Tests
+namespace VideoForensics.Client.Core.Tests.Licensing
 {
     /// <summary>
     /// Tests for Syncfusion license key resolution in SyncfusionLicenseRegistrar.

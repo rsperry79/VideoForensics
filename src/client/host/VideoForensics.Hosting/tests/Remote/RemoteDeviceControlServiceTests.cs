@@ -5,7 +5,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Hosting.Remote;
 using VideoForensics.Client.Ui.Shared.Services;
 
-namespace VideoForensics.Client.Hosting.Tests;
+namespace VideoForensics.Client.Hosting.Tests.Remote;
 
 public class RemoteDeviceControlServiceTests
 {

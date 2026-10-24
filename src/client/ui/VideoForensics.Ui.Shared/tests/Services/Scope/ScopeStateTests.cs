@@ -2,7 +2,7 @@ using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;
 
-namespace VideoForensics.Client.Ui.Shared.Tests;
+namespace VideoForensics.Client.Ui.Shared.Tests.Services.Scope;
 
 public class ForensicScope_Default_Tests
 {
