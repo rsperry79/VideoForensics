@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
     public class ImageMetadataWriterTests : IDisposable
     {
-        private readonly IMetadataWriter _writer = null!;
+        private readonly ISnapshotMetadataWriter _writer = null!;
         private readonly IMetadataValidator _validator = null!;
         private readonly string _testFilePath = null!;
         private readonly IFileSystem _fileSystem = null!;

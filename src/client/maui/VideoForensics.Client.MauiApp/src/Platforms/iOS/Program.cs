@@ -1,7 +1,7 @@
 using ObjCRuntime;
 using UIKit;
 
-namespace VideoForensics.Client.MauiApp;
+namespace VideoForensics.Client.MauiApp.Platforms.iOS;
 
 public class Program
 {

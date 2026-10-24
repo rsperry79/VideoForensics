@@ -1,10 +1,10 @@
-using VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures;
+using VideoForensics.Providers.Ring.Testing.Fixtures;
 
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {
     public class MetadataExtractorTests
     {
-        private readonly IMetadataExtractor _extractor = null!;
+        private readonly IVideoMetadataExtractor _extractor = null!;
 
         public MetadataExtractorTests()
         {

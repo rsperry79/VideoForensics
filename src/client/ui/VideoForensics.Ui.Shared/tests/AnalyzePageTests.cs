@@ -8,6 +8,7 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Core.Tools;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;

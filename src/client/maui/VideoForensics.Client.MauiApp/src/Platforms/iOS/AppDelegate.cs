@@ -1,6 +1,6 @@
 using Foundation;
 
-namespace VideoForensics.Client.MauiApp;
+namespace VideoForensics.Client.MauiApp.Platforms.iOS;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate

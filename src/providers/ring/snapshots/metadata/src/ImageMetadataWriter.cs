@@ -14,7 +14,7 @@ namespace VideoForensics.Providers.Ring
     /// Writes EXIF metadata to snapshot image files.
     /// Supports JPEG, WebP, and PNG formats with graceful fallback for unsupported formats.
     /// </summary>
-    public class ImageMetadataWriter : IMetadataWriter
+    public class ImageMetadataWriter : ISnapshotMetadataWriter
     {
         private readonly IFileSystem _fileSystem;
         private readonly IMetadataValidator _validator;

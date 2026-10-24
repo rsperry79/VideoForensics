@@ -17,6 +17,7 @@ using Syncfusion.Blazor;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
+using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.WebApp.Api;

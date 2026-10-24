@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Utils.Diagnostics.csproj" />
     <ProjectReference Include="../../../data/database/src/VideoForensics.Data.Database.csproj" />
   </ItemGroup>

@@ -2,7 +2,7 @@ using System.Net.Http;
 using System.Text.Json;
 
 using VideoForensics.Providers.Ring.Alarm;
-using VideoForensics.Providers.Ring.Core.Tests.Mocks;
+using VideoForensics.Providers.Ring.Testing.Mocks;
 using VideoForensics.Providers.Ring.Streaming;
 
 namespace VideoForensics.Providers.Ring.Core.Tests
