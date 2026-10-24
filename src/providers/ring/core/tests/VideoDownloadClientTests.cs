@@ -73,7 +73,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
         }
 
-        private class MockDeviceDiscoveryService : IDeviceDiscoveryService
+        private class MockDeviceDiscoveryService : IRingDeviceDiscoveryService
         {
             public List<Doorbot> DevicesToReturn { get; set; } = [];
             public CancellationToken LastCancellationToken { get; set; }

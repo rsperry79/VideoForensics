@@ -9,7 +9,7 @@ namespace VideoForensics.Providers.Ring
     /// Supports MP4, MOV, and other container formats via FFmpeg.
     /// Platform-agnostic and testable through IFileSystem abstraction.
     /// </summary>
-    public interface IMetadataWriter
+    public interface IVideoMetadataWriter
     {
         /// <summary>
         /// Writes metadata to a video file.

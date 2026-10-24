@@ -9,7 +9,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
     public class DeviceManagementClientTests
     {
         #region Mock Implementations
-        private class MockDeviceDiscoveryService : IDeviceDiscoveryService
+        private class MockDeviceDiscoveryService : IRingDeviceDiscoveryService
         {
             public List<Doorbot> DevicesToReturn { get; set; } = [];
             public List<Location> LocationsToReturn { get; set; } = [];
@@ -45,7 +45,7 @@ namespace VideoForensics.Providers.Ring.Core.Tests
             }
         }
 
-        private class MockDeviceControlService : IDeviceControlService
+        private class MockDeviceControlService : IRingDeviceControlService
         {
             public bool SetLightCalled { get; set; }
             public bool SetSirenCalled { get; set; }

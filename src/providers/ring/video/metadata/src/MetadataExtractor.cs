@@ -8,8 +8,8 @@ using VideoForensics.Providers.Ring.Models;
 
 namespace VideoForensics.Providers.Ring
 {
-    /// <inheritdoc cref="IMetadataExtractor"/>
-    public class MetadataExtractor : IMetadataExtractor
+    /// <inheritdoc cref="IVideoMetadataExtractor"/>
+    public class MetadataExtractor : IVideoMetadataExtractor
     {
         private const string EventTypeMotion = "motion";
         private const string EventTypePerson = "person";

@@ -11,7 +11,7 @@ namespace VideoForensics.Providers.Ring.Interfaces;
 /// <summary>
 /// Service for discovering and querying Ring devices and locations.
 /// </summary>
-public interface IDeviceDiscoveryService
+public interface IRingDeviceDiscoveryService
 {
     /// <summary>
     /// Gets all Ring devices for the authenticated user, optionally filtered by location.

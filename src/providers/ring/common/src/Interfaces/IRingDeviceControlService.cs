@@ -6,7 +6,7 @@ namespace VideoForensics.Providers.Ring.Interfaces;
 /// <summary>
 /// Service for controlling Ring devices.
 /// </summary>
-public interface IDeviceControlService
+public interface IRingDeviceControlService
 {
     /// <summary>
     /// Turns the floodlight on or off for a doorbot.

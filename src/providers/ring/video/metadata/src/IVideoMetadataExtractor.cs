@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring
     /// <summary>
     /// Extracts standardized metadata from Ring event DTOs for writing to video files.
     /// </summary>
-    public interface IMetadataExtractor
+    public interface IVideoMetadataExtractor
     {
         /// <summary>
         /// Extracts metadata from a Ring event and device information.

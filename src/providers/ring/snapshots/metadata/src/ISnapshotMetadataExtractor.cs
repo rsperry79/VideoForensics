@@ -9,7 +9,7 @@ namespace VideoForensics.Providers.Ring
     /// Interface for extracting metadata from snapshot events.
     /// Implements both sync and async methods for flexible usage patterns.
     /// </summary>
-    public interface IMetadataExtractor
+    public interface ISnapshotMetadataExtractor
     {
         /// <summary>
         /// Extracts metadata from a snapshot event asynchronously.

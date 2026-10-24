@@ -4,7 +4,7 @@ namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {
     public class NoOpMetadataWriterTests : IDisposable
     {
-        private readonly IMetadataWriter _writer = null!;
+        private readonly IVideoMetadataWriter _writer = null!;
         private readonly string _testFilePath = null!;
         private readonly IFileSystem _fileSystem = null!;
 

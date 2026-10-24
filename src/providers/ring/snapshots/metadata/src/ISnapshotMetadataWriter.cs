@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring
     /// Interface for writing EXIF metadata to snapshot files.
     /// Implements both sync and async methods for flexible usage patterns.
     /// </summary>
-    public interface IMetadataWriter
+    public interface ISnapshotMetadataWriter
     {
         /// <summary>
         /// Writes metadata to a snapshot file asynchronously.

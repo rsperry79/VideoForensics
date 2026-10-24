@@ -8,7 +8,7 @@ namespace VideoForensics.Providers.Ring.Snapshots.Metadata.Tests
 {
     public class SnapshotMetadataExtractorTests
     {
-        private readonly IMetadataExtractor _extractor = null!;
+        private readonly ISnapshotMetadataExtractor _extractor = null!;
         private readonly SnapshotProcessingOptions _defaultOptions = null!;
 
         public SnapshotMetadataExtractorTests()
