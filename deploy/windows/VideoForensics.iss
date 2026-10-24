@@ -217,7 +217,7 @@ Name: "{group}\Optional Tools\Tools Readme"; Filename: "{app}\Tools\README.txt";
 [Run]
 ; Service registration only runs on a genuinely fresh install - on an upgrade the service is
 ; already registered (stopped, not deleted, in InitializeSetup) and "sc create" would just fail.
-Filename: "sc.exe"; Parameters: "create VideoForensics binPath= ""{app}\VideoForensics.WebApp.exe"" start= auto DisplayName= ""VideoForensics"""; Components: server; Check: IsFreshInstall; Flags: runhidden; StatusMsg: "Registering VideoForensics service..."
+Filename: "sc.exe"; Parameters: "create VideoForensics binPath= ""{app}\VideoForensics.Client.WebApp.exe"" start= auto DisplayName= ""VideoForensics"""; Components: server; Check: IsFreshInstall; Flags: runhidden; StatusMsg: "Registering VideoForensics service..."
 Filename: "sc.exe"; Parameters: "description VideoForensics ""VideoForensics web application and API server"""; Components: server; Check: IsFreshInstall; Flags: runhidden
 Filename: "sc.exe"; Parameters: "failure VideoForensics reset= 86400 actions= restart/5000/restart/5000/restart/5000"; Components: server; Check: IsFreshInstall; Flags: runhidden
 
@@ -235,6 +235,10 @@ Filename: "sc.exe"; Parameters: "failure VideoForensics reset= 86400 actions= re
 ; not auto-open the port on untrusted/public networks (e.g. coffee-shop wifi) even when local
 ; network access was chosen.
 Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""VideoForensics"" dir=in action=allow protocol=TCP localport=5162 profile=private,domain"; Components: server; Check: ShouldAddFirewallRule; Flags: runhidden; StatusMsg: "Adding firewall rule..."
+
+; Upgrades: an install from before the assembly rename still has the service pointing at
+; VideoForensics.WebApp.exe. Repoint it before the start below, or the new build never runs.
+Filename: "sc.exe"; Parameters: "config VideoForensics binPath= ""{app}\VideoForensics.Client.WebApp.exe"""; Components: server; Check: not IsFreshInstall; Flags: runhidden; StatusMsg: "Updating VideoForensics service path..."
 
 Filename: "sc.exe"; Parameters: "start VideoForensics"; Components: server; Flags: runhidden; StatusMsg: "Starting VideoForensics service..."
 
@@ -626,7 +630,7 @@ begin
   WasAlreadyInstalled := IsServiceInstalled(ServiceName);
 
   { Stop the service (if this is an upgrade over an existing install) before any files copy, so
-    the running VideoForensics.WebApp.exe isn't locked during replace. Inno installs "on top of"
+    the running VideoForensics.Client.WebApp.exe isn't locked during replace. Inno installs "on top of"
     the same AppId's directory automatically - no separate uninstall-then-reinstall dance needed. }
   StopServiceIfRunning;
   Result := True;
@@ -812,7 +816,7 @@ begin
     { Event Log source registration - equivalent of WiX's never-finished util:EventSource TODO. }
     if WizardIsComponentSelected('server') then
     begin
-      RegWriteStringValue(HKLM, EventLogKey, 'EventMessageFile', ExpandConstant('{app}\VideoForensics.WebApp.exe'));
+      RegWriteStringValue(HKLM, EventLogKey, 'EventMessageFile', ExpandConstant('{app}\VideoForensics.Client.WebApp.exe'));
       RegWriteDWordValue(HKLM, EventLogKey, 'TypesSupported', 7);
     end;
 
