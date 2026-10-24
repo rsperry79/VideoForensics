@@ -16,6 +16,7 @@ using VideoForensics.Client.Hosting;
 using VideoForensics.Client.Hosting.Contracts;
 using VideoForensics.Client.Hosting.Local;
 using VideoForensics.Client.Hosting.ServerDiscovery;
+using VideoForensics.Client.Platform.Windows;
 using VideoForensics.Client.MauiApp.AppLock;
 using VideoForensics.Client.MauiApp.ServerDiscovery;
 using VideoForensics.Client.Ui.Shared.Services;
@@ -315,106 +316,39 @@ namespace VideoForensics.Client.MauiApp
 
 #if DEBUG
         /// <summary>
-        /// Ensures VideoForensics.Client.WebApp is running on localhost:5162 for DEBUG builds.
-        /// This is a local-development convenience only: the method probes the health endpoint,
-        /// launches the server via dotnet run if unreachable, and waits for it to be ready.
-        /// Failures are logged as warnings but never block app startup.
+        /// Hot-swaps the installed VideoForensics service through deploy\windows\hotswap-service.ps1 and waits
+        /// until the WebApp answers on localhost:5162, so the UI starts against a live server. DEBUG builds only.
+        /// Each launch raises a UAC prompt, because the script needs administrator rights to restart the service.
+        /// Failures are logged and never block app startup; the app then falls back to normal server resolution.
         /// </summary>
         private static async Task EnsureWebAppRunningForDebugAsync()
         {
-            const string webAppHealthUrl = "http://localhost:5162/healthz";
-            const int probeTimeoutMs = 1500;
-            const int pollIntervalMs = 500;
-            const int maxPollDurationMs = 15000;
-
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.Timeout = TimeSpan.FromMilliseconds(probeTimeoutMs);
-
-                // Probe health endpoint to see if server is already running
-                try
-                {
-                    HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        // Server is already running
-                        return;
-                    }
-                }
-                catch (HttpRequestException)
-                {
-                    // Server is not running, proceed to launch it
-                }
-                catch (OperationCanceledException)
-                {
-                    // Probe timed out, server may not be running
-                }
-
-                // Server is not responding; launch VideoForensics.Client.WebApp
                 string solutionRoot = FindSolutionRoot();
                 if (string.IsNullOrEmpty(solutionRoot))
                 {
-                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to launch WebApp");
+                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to run hot-swap");
                     return;
                 }
 
-                string webAppProjectPath = Path.Combine(
-                    solutionRoot,
-                    "src", "client", "web", "VideoForensics.WebApp", "src", "VideoForensics.Client.WebApp.csproj");
-
-                if (!File.Exists(webAppProjectPath))
+                string scriptPath = Path.Combine(solutionRoot, "deploy", "windows", "hotswap-service.ps1");
+                if (!File.Exists(scriptPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"DEBUG: WebApp project not found at {webAppProjectPath}");
+                    System.Diagnostics.Debug.WriteLine($"DEBUG: hot-swap script not found at {scriptPath}");
                     return;
                 }
 
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"run --project \"{webAppProjectPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false
-                };
+                // Thirty seconds covers the script's own 30 s start wait plus the health poll; the script's
+                // health check (up to 20 s) already ran before this point, so this is a second, app-side confirmation.
+                var launcher = new DevWebAppLauncher(
+                    new WebAppHealthProbe(),
+                    new HotswapScriptRunner(),
+                    readyTimeout: TimeSpan.FromSeconds(30),
+                    pollInterval: TimeSpan.FromMilliseconds(500));
 
-                try
-                {
-                    _ = System.Diagnostics.Process.Start(psi);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"DEBUG: Failed to start WebApp process: {ex.Message}");
-                    return;
-                }
-
-                // Poll health endpoint until server is ready or timeout expires
-                DateTime pollStart = DateTime.UtcNow;
-                while ((DateTime.UtcNow - pollStart).TotalMilliseconds < maxPollDurationMs)
-                {
-                    await Task.Delay(pollIntervalMs);
-
-                    try
-                    {
-                        HttpResponseMessage response = await client.GetAsync(webAppHealthUrl, HttpCompletionOption.ResponseHeadersRead);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            // Server is ready
-                            return;
-                        }
-                    }
-                    catch (HttpRequestException)
-                    {
-                        // Still not ready, continue polling
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Poll timed out, continue trying
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine("DEBUG: WebApp did not become ready within timeout");
+                DevWebAppLaunchResult result = await launcher.EnsureReadyAsync(scriptPath, CancellationToken.None);
+                System.Diagnostics.Debug.WriteLine($"DEBUG: {result.Status}: {result.Message}");
             }
             catch (Exception ex)
             {
