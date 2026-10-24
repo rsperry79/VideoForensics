@@ -139,6 +139,19 @@ try {
         throw "robocopy failed with exit code $LASTEXITCODE"
     }
 
+    # The copy does not change which executable the service runs. Installs from before the rename still point at
+    # VideoForensics.WebApp.exe, so repoint the service to the executable this build publishes.
+    $expectedExe = Join-Path $InstallPath "VideoForensics.Client.WebApp.exe"
+    $serviceCim = Get-CimInstance -ClassName Win32_Service -Filter "Name='$ServiceName'"
+    $newBinPath = Get-ServiceBinPathRepoint -CurrentPathName $serviceCim.PathName -ExpectedExePath $expectedExe
+    if ($newBinPath) {
+        Write-Step "Repointing $ServiceName service from $($serviceCim.PathName) to $newBinPath..."
+        & sc.exe config $ServiceName binPath= "`"$newBinPath`"" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "sc.exe config failed with exit code $LASTEXITCODE"
+        }
+    }
+
     Write-Step "Starting $ServiceName service..."
     Start-Service -Name $ServiceName
     $service.WaitForStatus("Running", (New-TimeSpan -Seconds 30))

@@ -2,6 +2,30 @@
 
 <#
 .SYNOPSIS
+    Returns the binPath the service needs when it still runs a different executable, or $null when it is already right.
+
+.DESCRIPTION
+    The installed service may still point at an older executable name (VideoForensics.WebApp.exe) after the
+    rename to VideoForensics.Client.WebApp.exe. Copying the new files does not change what the service runs, so the
+    hot-swap repoints it. Paths compare case-insensitively and ignore surrounding quotes.
+#>
+function Get-ServiceBinPathRepoint {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentPathName,
+        [Parameter(Mandatory)][string]$ExpectedExePath
+    )
+
+    $current = $CurrentPathName.Trim().Trim('"')
+    if ($current -ieq $ExpectedExePath) {
+        return $null
+    }
+
+    return $ExpectedExePath
+}
+
+<#
+.SYNOPSIS
     Works out which process listening on a port is safe to stop during a hot-swap.
 
 .DESCRIPTION
