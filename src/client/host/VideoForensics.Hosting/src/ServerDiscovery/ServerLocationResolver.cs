@@ -9,6 +9,7 @@ namespace VideoForensics.Client.Hosting.ServerDiscovery
     /// The discovery process looks for the _videoforensics._tcp service advertised by the server.
     ///
     /// Discovery flow:
+    /// 0. Probes http://localhost:5162/healthz; a server on this device is used directly (same-device sign-in needs loopback).
     /// 1. Browses for _videoforensics._tcp service with a short timeout (default 3 seconds).
     /// 2. If found, builds a Uri using the discovered service's IP and port with http:// scheme.
     /// 3. If not found within timeout, falls back to cached Internet URL from IServerLocationSettingsStore.
@@ -25,21 +26,42 @@ namespace VideoForensics.Client.Hosting.ServerDiscovery
         private const string ServiceType = "_videoforensics._tcp.local";
         private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(3);
 
+        /// <summary>
+        /// Where a server running on this same device is reached. Loopback matters: the server only applies its local
+        /// password exemption to direct loopback requests, so a same-device client must not use the LAN address.
+        /// Port matches the WebApp's default endpoint and the hot-swap health check.
+        /// </summary>
+        public static readonly Uri LoopbackServerUri = new("http://localhost:5162/");
+
         private readonly IServerLocationSettingsStore _settingsStore;
         private readonly ILogger<ServerLocationResolver> _logger;
+        private readonly ILoopbackServerProbe _loopbackProbe;
+        private readonly Func<CancellationToken, Task<Uri?>> _mdnsDiscovery;
 
         public ServerLocationResolver(
             IServerLocationSettingsStore settingsStore,
-            ILogger<ServerLocationResolver> logger)
+            ILogger<ServerLocationResolver> logger,
+            ILoopbackServerProbe? loopbackProbe = null,
+            Func<CancellationToken, Task<Uri?>>? mdnsDiscovery = null)
         {
             _settingsStore = settingsStore;
             _logger = logger;
+            _loopbackProbe = loopbackProbe ?? new HttpLoopbackServerProbe();
+            // Injectable so tests do not depend on what the LAN happens to advertise.
+            _mdnsDiscovery = mdnsDiscovery ?? DiscoverLocalServerAsync;
         }
 
         public async Task<Uri> ResolveServerAddressAsync(CancellationToken cancellationToken)
         {
+            // A server on this device wins over mDNS: the LAN address would make same-device sign-in look remote.
+            if (await IsLoopbackServerRunningAsync(cancellationToken))
+            {
+                _logger.LogDebug("Server found on loopback");
+                return LoopbackServerUri;
+            }
+
             // Attempt local discovery
-            Uri? discoveredUri = await DiscoverLocalServerAsync(cancellationToken);
+            Uri? discoveredUri = await _mdnsDiscovery(cancellationToken);
             if (discoveredUri != null)
             {
                 _logger.LogDebug("Server discovered via mDNS");
@@ -57,6 +79,19 @@ namespace VideoForensics.Client.Hosting.ServerDiscovery
             // No server found anywhere
             _logger.LogError("Server not reachable: local mDNS discovery failed and no cached Internet URL available");
             throw new ServerNotReachableException();
+        }
+
+        private async Task<bool> IsLoopbackServerRunningAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _loopbackProbe.IsServerRunningAsync(LoopbackServerUri, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Loopback probe failed; continuing with discovery");
+                return false;
+            }
         }
 
         private async Task<Uri?> DiscoverLocalServerAsync(CancellationToken cancellationToken)
