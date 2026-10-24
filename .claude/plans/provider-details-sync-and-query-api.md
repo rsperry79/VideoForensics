@@ -1,6 +1,6 @@
 # Provider details, sync, and Query API rework
 
-Status: items 1-6 and 9's account-scope work done; items 7, 8 and the Query/tester merge still open. Work branch: `wip` (merged from worktree `last-download-sync-fix`).
+Status: complete. Items 1-9 are done and merged to `wip` (`5f6c6abb`, `eed2e32a`). Only the follow-ups below remain.
 
 ## Done
 
@@ -44,8 +44,8 @@ Also done, outside this plan: snapshot interval in seconds with a seconds/minute
 
 ## Next
 
-1. Decide what "raw account status" exposes (item 7). Then add it.
-2. Decide Admin vs SuperAdminLocal for `/query` (item 9).
-3. Merge `feat/query-page-merge` into `wip` once the main checkout's `.claude/task_failure_log.md` change is committed or stashed.
+Follow-ups (not part of this plan's scope):
+1. `RemoteProviderAuthService.GetAuthStatus()` and `GetAuthStatusDetails()` throw on the MAUI client, so "Check Status" fails there.
+2. Wyze and Uniview report no status details. Only Ring implements `GetAuthStatusDetails()`.
 
 Each step ships with tests (TDD). Breaking changes update `CLAUDE.md` and the commit message.
