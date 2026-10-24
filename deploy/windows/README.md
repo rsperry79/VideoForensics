@@ -327,9 +327,10 @@ the Inno Setup installer for end-user distribution, but keep the PowerShell scri
 
 `deploy/windows/hotswap-service.ps1` updates an **already-installed** service's binaries without a
 full installer round-trip — no Inno Setup compile, no re-registering the service, no UAC prompt
-beyond the script's own elevation. It stops the service, copies over only newer files (never
-deletes anything, so it can't accidentally remove unrelated installed content), and restarts it,
-then checks `http://localhost:5162` to confirm the new build actually came up.
+beyond the script's own elevation. It stops the service, replaces the installed server files with the
+publish output (a mirror: files the new build no longer ships are removed), points the service at
+`VideoForensics.Client.WebApp.exe`, restarts it, then checks `http://localhost:5162` to confirm the new build
+actually came up. The `Desktop` folder and the installer extras (cloudflared, ffmpeg, ffprobe, unins000) are kept.
 
 **Running servers:** after the service stops, the script also stops any process still listening on
 port 5162 that runs from the installed binaries, the publish output, or this repo's WebApp build

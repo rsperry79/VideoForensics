@@ -8,6 +8,32 @@ BeforeAll {
     $script:Roots = @($script:Installed, $script:Publish)
 }
 
+Describe 'Get-ReplaceRobocopyArgs' {
+    It 'mirrors the publish output into the install folder' {
+        $args = Get-ReplaceRobocopyArgs -PublishDir 'C:\Pub' -InstallPath 'C:\Program Files\VideoForensics'
+
+        $args | Should -Contain '/MIR'
+        $args[0] | Should -Be 'C:\Pub'
+        $args[1] | Should -Be 'C:\Program Files\VideoForensics'
+    }
+
+    It 'never uses the newer-only flag, so replaced files are always overwritten' {
+        $args = Get-ReplaceRobocopyArgs -PublishDir 'C:\Pub' -InstallPath 'C:\Program Files\VideoForensics'
+
+        $args | Should -Not -Contain '/XO'
+    }
+
+    It 'excludes the Desktop folder and the installer extras from the mirror' {
+        $args = Get-ReplaceRobocopyArgs -PublishDir 'C:\Pub' -InstallPath 'C:\Program Files\VideoForensics'
+
+        $xd = $args[($args.IndexOf('/XD') + 1)..($args.Count - 1)]
+        $xd | Should -Contain 'Desktop'
+        foreach ($name in 'cloudflared.exe', 'ffmpeg.exe', 'ffprobe.exe', 'ffmpeg-LICENSE.txt', 'unins000.exe', 'unins000.dat') {
+            $args | Should -Contain $name
+        }
+    }
+}
+
 Describe 'Get-ServiceBinPathRepoint' {
     BeforeAll {
         $script:NewExe = 'C:\Program Files\VideoForensics\VideoForensics.Client.WebApp.exe'

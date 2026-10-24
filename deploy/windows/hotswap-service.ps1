@@ -15,9 +15,9 @@
     media, logs, and encryption keys) - do not add such a reference here. See
     deploy/windows/VideoForensics.iss's own top-of-file comment for why that boundary matters.
 
-    Uses a plain newer-file copy (robocopy /E /XO), not /MIR - it will never delete a file already
-    present at the destination that isn't in the fresh publish output, so it's safe to run
-    repeatedly without accidentally wiping out unrelated installed content.
+    Replaces the installed server files with the publish output (robocopy /MIR, see Get-ReplaceRobocopyArgs
+    in hotswap-helpers.ps1). Files the new build no longer ships are removed; the Desktop folder and the
+    installer extras (cloudflared, ffmpeg, ffprobe, unins000) are kept.
 
 .PARAMETER PublishDir
     Path to an already-published VideoForensics.WebApp output. Defaults to the standard local
@@ -131,8 +131,8 @@ try {
         Start-Sleep -Milliseconds 500
     }
 
-    Write-Step "Copying $PublishDir -> $InstallPath (newer files only, nothing else touched or deleted)..."
-    $robocopyArgs = @($PublishDir, $InstallPath, "/E", "/XO", "/R:3", "/W:2", "/NFL", "/NDL", "/NP")
+    Write-Step "Replacing server files in $InstallPath with $PublishDir (mirror; Desktop and installer extras kept)..."
+    $robocopyArgs = Get-ReplaceRobocopyArgs -PublishDir $PublishDir -InstallPath $InstallPath
     & robocopy @robocopyArgs | Out-Null
     # Robocopy exit codes 0-7 are success/informational; 8+ is a real failure.
     if ($LASTEXITCODE -ge 8) {
