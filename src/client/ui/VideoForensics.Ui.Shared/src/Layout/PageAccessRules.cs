@@ -41,7 +41,9 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/analyze?analysis=access"] = AccessPolicy.ReadOnly,
                 ["/analyze?analysis=jamming"] = AccessPolicy.Admin,
                 // Query API calls provider services directly with the linked account, with no server policy, so it is
-                // treated like the other provider-credential pages.
+                // treated like the other provider-credential pages. The API Tester is embedded here, so this row also
+                // gates the tester (it previously had no rule at all). Stricter than the plan's Admin: the tester is
+                // embedded in this page, which stays SuperAdminLocal.
                 ["/query"] = AccessPolicy.SuperAdminLocal,
                 // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
                 ["/accounts/add"] = AccessPolicy.SuperAdminLocal,

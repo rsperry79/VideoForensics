@@ -1,0 +1,11 @@
+@page "/query/api-tester"
+@page "/tools/ring-selftest"
+@inject NavigationManager Nav
+
+@code {
+    /// <summary>The API Tester is a section of the Query API page now, so both retired routes land there.</summary>
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/query", replace: true);
+    }
+}

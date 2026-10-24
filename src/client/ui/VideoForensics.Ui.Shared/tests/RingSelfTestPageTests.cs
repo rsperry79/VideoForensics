@@ -258,11 +258,35 @@ public class RingSelfTestPage_RowSelection_Tests : RingSelfTestPageTestBase
         Assert.Contains("500000", sectionMarkup);
         Assert.Contains("Truncated", sectionMarkup);
 
-        // Inspector state reflects the selected call.
-        Assert.NotNull(InspectorState.Current);
-        Assert.Equal(TestPhaseCall.Body, InspectorState.Current!.RawJson);
-        Assert.NotNull(InspectorState.Current.Provenance);
-        Assert.Equal(2, InspectorState.Current.Provenance!.Count);
+        // Detail stays on the page: the right-hand inspector is not used by this tester.
+        Assert.Null(InspectorState.Current);
+    }
+
+    [Fact]
+    public async Task SelectCallWithSchemaIssues_ShowsIssuesInBottomPaneNotInspector()
+    {
+        SelfTestCallDto withIssues = CallA with { SchemaIssues = ["payload.id: missing"] };
+        SetupCompletedOnLoad(MakeResult(withIssues, CallB));
+        IRenderedComponent<RingSelfTest> component = RenderPage();
+        IRenderedComponent<ForensicGrid<SelfTestCallDto>> grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
+
+        await component.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(withIssues));
+
+        AngleSharp.Dom.IElement pane = component.Find("[data-testid='call-issues']");
+        Assert.Contains("payload.id: missing", pane.TextContent);
+        Assert.Null(InspectorState.Current);
+    }
+
+    [Fact]
+    public async Task SelectCallWithoutSchemaIssues_ShowsNoIssuesPane()
+    {
+        SetupCompletedOnLoad(MakeResult(CallA, CallB));
+        IRenderedComponent<RingSelfTest> component = RenderPage();
+        IRenderedComponent<ForensicGrid<SelfTestCallDto>> grid = component.FindComponent<ForensicGrid<SelfTestCallDto>>();
+
+        await component.InvokeAsync(() => grid.Instance.HandleRowSelectedAsync(CallA));
+
+        Assert.Empty(component.FindAll("[data-testid='call-issues']"));
     }
 
     [Fact]
@@ -427,29 +451,16 @@ public class RingSelfTestPage_StatusStream_Tests : RingSelfTestPageTestBase
 public class RingSelfTestPage_Routing_Tests : RingSelfTestPageTestBase
 {
     [Fact]
-    public void RingSelfTest_Routes_IncludesLegacyAndQueryApiSubpage()
+    public void RingSelfTest_HasNoRoute_BecauseItIsEmbeddedInQueryApiPage()
     {
+        // The tester is a section of /query now; its old routes redirect there (ApiTesterRedirect).
         var templates = typeof(RingSelfTest)
             .GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), inherit: false)
             .Cast<Microsoft.AspNetCore.Components.RouteAttribute>()
             .Select(r => r.Template)
             .ToList();
 
-        Assert.Contains("/tools/ring-selftest", templates);
-        Assert.Contains("/query/api-tester", templates);
-    }
-
-    [Fact]
-    public void RingSelfTestPage_Breadcrumb_LinksBackToQueryApi()
-    {
-        _ = SelfTestServiceMock
-            .Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
-
-        IRenderedComponent<RingSelfTest> component = RenderPage();
-
-        AngleSharp.Dom.IElement queryLink = component.FindAll("nav a").Single(a => a.GetAttribute("href") == "/query");
-        Assert.Equal("Query API", queryLink.TextContent.Trim());
+        Assert.Empty(templates);
     }
 }
 

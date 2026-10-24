@@ -7,7 +7,11 @@ using Microsoft.Extensions.Localization;
 
 using Moq;
 
+using System.Reactive.Subjects;
+
+using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.SelfTest;
 using VideoForensics.Client.Ui.Shared.Components.Inspector;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
@@ -40,6 +44,17 @@ public class QueryApiPage_Tests : BunitContext
         _ = Services.AddSingleton(_discovery.Object);
         _ = Services.AddSingleton(new Mock<IEventAndConfigService>().Object);
         _ = Services.AddLogging();
+
+        // The API Tester is embedded in this page, so its services must resolve too. No runs are started here.
+        Mock<IRingSelfTestService> selfTest = new();
+        _ = selfTest.Setup(m => m.ListEndpointsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<SelfTestEndpointDto>());
+        _ = selfTest.Setup(m => m.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new SelfTestStatusDto(SelfTestRunStatus.Idle));
+        _ = Services.AddScoped(_ => selfTest.Object);
+        Mock<ISelfTestStatusSource> statusSource = new();
+        _ = statusSource.SetupGet(m => m.Status).Returns(new Subject<SelfTestStatusDto>());
+        _ = Services.AddScoped(_ => statusSource.Object);
+        _ = Services.AddScoped(sp => new VideoForensics.Client.Ui.Shared.Services.PairedSessionState(sp.GetRequiredService<Microsoft.JSInterop.IJSRuntime>()));
+        _ = Services.AddScoped(_ => new VideoForensics.Client.Ui.Shared.Services.Inspector.InspectorState());
         SetRendererInfo(new RendererInfo("Server", true));
     }
 
@@ -59,12 +74,13 @@ public class QueryApiPage_Tests : BunitContext
     }
 
     [Fact]
-    public void QueryApiPage_ApiTesterButton_LinksToApiTester()
+    public void QueryApiPage_EmbedsApiTesterSection()
     {
         IRenderedComponent<QueryApi> cut = Render<QueryApi>();
 
-        AngleSharp.Dom.IElement button = cut.FindAll("a").Single(a => a.TextContent.Trim() == "API Tester");
-        Assert.Equal("/query/api-tester", button.GetAttribute("href"));
+        AngleSharp.Dom.IElement section = cut.Find("[data-testid='api-tester']");
+        Assert.NotNull(section);
+        Assert.Empty(cut.FindAll("a").Where(a => a.GetAttribute("href") == "/query/api-tester"));
     }
 
     [Fact]
