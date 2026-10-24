@@ -1,3 +1,4 @@
+using VideoForensics.Utils.Testing;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 
 using Xunit;

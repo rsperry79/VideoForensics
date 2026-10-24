@@ -1,25 +1,12 @@
 using Microsoft.AspNetCore.DataProtection;
 
+using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Hosting.Tests
 {
     public class SessionTierHeaderProtectorTests
     {
-        private sealed class FakeTimeProvider : TimeProvider
-        {
-            private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
-
-            public void SetUtcNow(DateTime utcNow)
-            {
-                _utcNow = new DateTimeOffset(utcNow, TimeSpan.Zero);
-            }
-
-            public override DateTimeOffset GetUtcNow()
-            {
-                return _utcNow;
-            }
-        }
 
         [Fact]
         public void Protect_ThenTryUnprotect_RoundTripsTierAndOperatorId()

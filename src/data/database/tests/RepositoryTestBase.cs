@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 
 using Xunit;
 
+using VideoForensics.Utils.Testing;
+
 namespace VideoForensics.Data.Database.Tests
 {
     /// <summary>Abstract base class for repository tests. Provides shared database fixture and logger setup.</summary>

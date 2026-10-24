@@ -1,23 +1,30 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-using System;
-using System.Threading.Tasks;
-
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Database.Configurations;
 using VideoForensics.Data.Database.DbContext;
 
 using Xunit;
 
-namespace VideoForensics.Utils.Diagnostics.Tests
+namespace VideoForensics.Utils.Testing
 {
     /// <summary>Test fixture that maintains a single in-memory SQLite connection for the lifetime of a test.</summary>
     public class SqliteInMemoryFixture : IAsyncLifetime, IDisposable
     {
         private SqliteConnection? _connection;
         private IDbContextFactory<VideoForensicsDbContext>? _factory;
+        private IDataProtectionProvider? _dataProtectionProvider;
 
         /// <summary>Gets the DbContext factory for this fixture.</summary>
         public IDbContextFactory<VideoForensicsDbContext> Factory => _factory ?? throw new InvalidOperationException("Fixture not initialized");
+
+        /// <summary>Gets the credential encryption provider for this fixture.</summary>
+        public ICredentialEncryptionProvider EncryptionProvider { get => field ?? throw new InvalidOperationException("Fixture not initialized"); private set; }
+
+        /// <summary>Gets the data protection provider for this fixture.</summary>
+        public IDataProtectionProvider DataProtectionProvider => _dataProtectionProvider ?? throw new InvalidOperationException("Fixture not initialized");
 
         /// <summary>Initializes the fixture by opening an in-memory SQLite connection and creating the schema.</summary>
         public async ValueTask InitializeAsync()
@@ -33,6 +40,10 @@ namespace VideoForensics.Utils.Diagnostics.Tests
 
             // Create a simple factory that reuses the shared connection
             _factory = new TestDbContextFactory(options);
+
+            // Set up data protection using an ephemeral provider (no filesystem needed)
+            _dataProtectionProvider = new EphemeralDataProtectionProvider();
+            EncryptionProvider = new CredentialEncryptionProvider(_dataProtectionProvider);
 
             // Create the schema using EnsureCreated
             await using VideoForensicsDbContext db = _factory.CreateDbContext();
