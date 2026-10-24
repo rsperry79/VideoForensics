@@ -2,6 +2,33 @@
 
 <#
 .SYNOPSIS
+    Builds the robocopy arguments that replace the installed server files with the publish output.
+
+.DESCRIPTION
+    /MIR makes the install folder match the publish output: files the new build no longer ships (the old
+    VideoForensics.WebApp.* assemblies, stale runtimes and wwwroot files) are removed. Three things are kept:
+    the Desktop folder (the client, not the server), and the installer extras that the publish never contains
+    (cloudflared, ffmpeg, ffprobe, unins000). The install folder is the only target, so ProgramData is never touched.
+#>
+function Get-ReplaceRobocopyArgs {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$PublishDir,
+        [Parameter(Mandatory)][string]$InstallPath
+    )
+
+    return @(
+        $PublishDir,
+        $InstallPath,
+        '/MIR',
+        '/XD', 'Desktop',
+        '/XF', 'cloudflared.exe', 'ffmpeg.exe', 'ffprobe.exe', 'ffmpeg-LICENSE.txt', 'unins000.exe', 'unins000.dat',
+        '/R:3', '/W:2', '/NFL', '/NDL', '/NP'
+    )
+}
+
+<#
+.SYNOPSIS
     Returns the binPath the service needs when it still runs a different executable, or $null when it is already right.
 
 .DESCRIPTION
