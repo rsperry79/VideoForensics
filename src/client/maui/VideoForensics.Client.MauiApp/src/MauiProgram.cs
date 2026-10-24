@@ -348,10 +348,13 @@ namespace VideoForensics.Client.MauiApp
                     pollInterval: TimeSpan.FromMilliseconds(500));
 
                 DevWebAppLaunchResult result = await launcher.EnsureReadyAsync(scriptPath, CancellationToken.None);
+                // Debug.WriteLine is only visible under a debugger, so the outcome also goes to the startup trace file.
+                StartupTrace.Mark($"debug web app check: {result.Status} - {result.Message}");
                 System.Diagnostics.Debug.WriteLine($"DEBUG: {result.Status}: {result.Message}");
             }
             catch (Exception ex)
             {
+                StartupTrace.Mark($"debug web app check: failed - {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"DEBUG: EnsureWebAppRunningForDebugAsync failed: {ex.Message}");
             }
         }
