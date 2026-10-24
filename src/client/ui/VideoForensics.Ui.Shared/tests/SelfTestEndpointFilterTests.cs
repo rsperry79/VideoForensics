@@ -132,4 +132,26 @@ public class SelfTestEndpointFilterTests
 
         Assert.Equal(["ring_destr"], result);
     }
+
+    [Fact]
+    public void CategoryOf_SignallingTicket_IsAlarm()
+    {
+        Assert.Equal(SelfTestCategory.Alarm, SelfTestEndpointFilter.CategoryOf(Ep("signalling-ticket", "Ring")));
+    }
+
+    [Fact]
+    public void CategoryOf_OtherReadOnlyEndpoint_StaysReadOnly()
+    {
+        Assert.Equal(SelfTestCategory.ReadOnly, SelfTestEndpointFilter.CategoryOf(Ep("ring_ro", "Ring")));
+    }
+
+    [Fact]
+    public void Filter_AlarmCategory_ReturnsOnlyTheSignallingTicket()
+    {
+        var endpoints = new[] { Ep("signalling-ticket", "Ring"), Ep("ring_ro", "Ring") };
+
+        var result = SelfTestEndpointFilter.Filter(endpoints, null, SelfTestCategory.Alarm).Select(e => e.Key).ToArray();
+
+        Assert.Equal(["signalling-ticket"], result);
+    }
 }
