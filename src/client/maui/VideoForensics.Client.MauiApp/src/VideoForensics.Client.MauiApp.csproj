@@ -101,6 +101,7 @@
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
     <ProjectReference Include="..\..\..\host\VideoForensics.Hosting\src\VideoForensics.Client.Hosting.csproj" />
     <ProjectReference Include="../../../../core/logging/src/VideoForensics.Core.Logging.csproj" />
+    <ProjectReference Include="../../../platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
   </ItemGroup>
 
   <!-- Keep only the Syncfusion theme CSS the app references (bootstrap5.css via index.html,
