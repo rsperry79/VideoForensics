@@ -1,28 +1,11 @@
 using Microsoft.AspNetCore.DataProtection;
 
+using VideoForensics.Utils.Testing;
+
 namespace VideoForensics.Client.Hosting.Tests
 {
     public class MediaAccessTicketServiceTests
     {
-        private sealed class FakeTimeProvider : TimeProvider
-        {
-            private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
-
-            public void SetUtcNow(DateTime utcNow)
-            {
-                _utcNow = new DateTimeOffset(utcNow, TimeSpan.Zero);
-            }
-
-            public override DateTimeOffset GetUtcNow()
-            {
-                return _utcNow;
-            }
-
-            public override long GetTimestamp()
-            {
-                return _utcNow.UtcTicks;
-            }
-        }
 
         [Fact]
         public void IssueAndValidate_RoundTrip_ReturnsOperatorId()

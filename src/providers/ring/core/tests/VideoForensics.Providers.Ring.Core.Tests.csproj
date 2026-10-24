@@ -28,6 +28,7 @@
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../testing/src/VideoForensics.Providers.Ring.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../../auth/src/VideoForensics.Providers.Ring.Auth.csproj" />
     <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />

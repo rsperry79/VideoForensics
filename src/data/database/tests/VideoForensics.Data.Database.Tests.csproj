@@ -29,6 +29,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../utils/testing/src/VideoForensics.Utils.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Data.Database.csproj" />
     <ProjectReference Include="../../common/src/VideoForensics.Data.Common.csproj" />
   </ItemGroup>

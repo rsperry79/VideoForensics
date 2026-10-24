@@ -32,6 +32,7 @@
     <PackageReference Include="Moq" Version="4.21.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../testing/src/VideoForensics.Providers.Ring.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Video.Metadata.csproj" />
   </ItemGroup>
   <ItemGroup>

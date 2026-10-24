@@ -1,4 +1,4 @@
-using VideoForensics.Providers.Ring.Video.Metadata.Tests.Fixtures;
+using VideoForensics.Providers.Ring.Testing.Fixtures;
 
 namespace VideoForensics.Providers.Ring.Video.Metadata.Tests
 {

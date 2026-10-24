@@ -28,6 +28,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../testing/src/VideoForensics.Providers.Ring.Testing.csproj" />
     <ProjectReference Include="../src/VideoForensics.Providers.Ring.Forensics.csproj" />
     <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
   </ItemGroup>

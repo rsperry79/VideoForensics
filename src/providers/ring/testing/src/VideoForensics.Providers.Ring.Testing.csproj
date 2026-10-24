@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VideoForensics.Providers.Ring.Testing</RootNamespace>
+    <AssemblyName>VideoForensics.Providers.Ring.Testing</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.5" />
+    <PackageReference Include="xunit.v3.extensibility.core" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../core/src/VideoForensics.Providers.Ring.Core.csproj" />
+    <ProjectReference Include="../../video/src/VideoForensics.Providers.Ring.Video.csproj" />
+    <ProjectReference Include="../../forensics/src/VideoForensics.Providers.Ring.Forensics.csproj" />
+    <ProjectReference Include="../../../../data/common/src/VideoForensics.Data.Common.csproj" />
+  </ItemGroup>
+
+</Project>

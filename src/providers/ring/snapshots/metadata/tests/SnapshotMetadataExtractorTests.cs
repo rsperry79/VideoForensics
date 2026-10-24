@@ -1,6 +1,6 @@
 using VideoForensics.Providers.Ring.Entities;
 using VideoForensics.Providers.Ring.Models;
-using VideoForensics.Providers.Ring.Snapshots.Metadata.Tests.Fixtures;
+using VideoForensics.Providers.Ring.Testing.Fixtures;
 
 using Xunit;
 
