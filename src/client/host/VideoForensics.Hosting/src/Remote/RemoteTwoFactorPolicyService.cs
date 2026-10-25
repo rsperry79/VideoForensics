@@ -56,5 +56,13 @@ namespace VideoForensics.Client.Hosting.Remote
             HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{operatorId}/override", request, cancellationToken: ct);
             _ = response.EnsureSuccessStatusCode();
         }
+
+        /// <inheritdoc />
+        public async Task UpdatePasskeyRequiredAsync(Guid operatorId, bool passkeyRequired, CancellationToken ct)
+        {
+            var request = new { PasskeyRequired = passkeyRequired };
+            HttpResponseMessage response = await _httpClient.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{operatorId}/passkey-required", request, cancellationToken: ct);
+            _ = response.EnsureSuccessStatusCode();
+        }
     }
 }

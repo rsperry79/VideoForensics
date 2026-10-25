@@ -170,4 +170,16 @@
   <data name="SignIn" xml:space="preserve">
     <value>Sign in</value>
   </data>
+  <data name="LocalNetworkSignIn" xml:space="preserve">
+    <value>Local network sign-in</value>
+  </data>
+  <data name="AllowPasswordOnLocalNetwork" xml:space="preserve">
+    <value>Allow password sign-in on the local network (no passkey)</value>
+  </data>
+  <data name="AllowPasswordOnLocalNetworkHelp" xml:space="preserve">
+    <value>When off, a password sign-in on the local network is taken to add a passkey. Tunnel sign-ins always need a passkey.</value>
+  </data>
+  <data name="PasskeyRequiredSaveFailed" xml:space="preserve">
+    <value>Could not save the local network sign-in setting ({0}).</value>
+  </data>
 </root>

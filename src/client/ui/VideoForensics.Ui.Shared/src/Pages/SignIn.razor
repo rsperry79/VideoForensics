@@ -269,6 +269,40 @@
     // sending the same passkey, which can belong to another relying party, so the browser never found a match.
     private async Task SignInWithPasskeyAsync(bool allCredentials = true)
     {
+        if (await RedirectPasskeyToTunnelAsync())
+        {
+            return;
+        }
+
+        await SignInWithPasskeyCoreAsync(allCredentials);
+    }
+
+    /// <summary>
+    /// A passkey cannot work from localhost: its RP ID is the tunnel host, so the browser refuses the request. On localhost the
+    /// sign-in moves to the tunnel instead. Returns true when the browser is being sent there.
+    /// </summary>
+    private async Task<bool> RedirectPasskeyToTunnelAsync()
+    {
+        string? tunnelUrl = await WebAuthn.GetTunnelUrlAsync();
+        if (tunnelUrl is null)
+        {
+            return false;
+        }
+
+        var here = new Uri(NavigationManager.Uri);
+        if (!IsLoopbackHost(here.Host) || string.Equals(here.Host, new Uri(tunnelUrl).Host, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        NavigationManager.NavigateTo(tunnelUrl + "/signin");
+        return true;
+    }
+
+    private static bool IsLoopbackHost(string host) => host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
+
+    private async Task SignInWithPasskeyCoreAsync(bool allCredentials)
+    {
         _isSigningInWithPasskey = true;
         _passkeyFailed = false;
         _error = null;

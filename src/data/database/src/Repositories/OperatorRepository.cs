@@ -201,6 +201,20 @@ namespace VideoForensics.Data.Database.Repositories
             _logger.LogDebug("Operator account manually unlocked: {DisplayName}", SanitizeForLog(op.DisplayName));
         }
 
+        public async Task SetPasskeyRequiredAsync(Guid operatorId, bool passkeyRequired, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            Operator? op = await db.Operators.FirstOrDefaultAsync(o => o.Id == operatorId, ct);
+            if (op == null)
+            {
+                return;
+            }
+
+            op.PasskeyRequired = passkeyRequired;
+            _ = await db.SaveChangesAsync(ct);
+            _logger.LogDebug("Operator passkey requirement updated: {DisplayName} - passkey required {PasskeyRequired}", SanitizeForLog(op.DisplayName), passkeyRequired);
+        }
+
         public async Task SetTwoFactorRequirementOverrideAsync(Guid operatorId, TwoFactorRequirementOverride value, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);

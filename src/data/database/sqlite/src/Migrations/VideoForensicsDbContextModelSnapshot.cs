@@ -2773,6 +2773,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("PasskeyRequired")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(512)
                         .HasColumnType("TEXT");

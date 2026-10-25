@@ -61,7 +61,7 @@ public sealed class LocalTransportMiddleware
 
         LocalTransportAction action = LocalTransportPolicy.Decide(
             isSecureOrigin: context.Request.IsHttps,
-            isLoopback: IsServedAsLoopback(context, tunnel, tunnelRunning),
+            isLoopback: IsLoopbackRequest(context),
             tunnelRunning,
             httpsAvailable);
 
@@ -91,25 +91,12 @@ public sealed class LocalTransportMiddleware
     }
 
     /// <summary>
-    /// A loopback request is served as-is, except when a tunnel is running and the request is not from the tunnel connector.
-    /// A browser on this machine is loopback too, so the connector is told apart by the tunnel's public host in the Host header.
-    /// Serving the browser's localhost origin would make the passkey RP ID (the tunnel host) fail.
+    /// A loopback request is served here, so a browser on this machine can sign in with its password. Passkeys cannot work
+    /// on localhost (the RP ID is the tunnel host), so a passkey attempt that fails sends the browser to the tunnel instead.
     /// </summary>
-    private static bool IsServedAsLoopback(HttpContext context, TunnelState tunnel, bool tunnelRunning)
+    private static bool IsLoopbackRequest(HttpContext context)
     {
-        bool fromLoopback = context.Connection.RemoteIpAddress is { } remote && IPAddress.IsLoopback(remote);
-        if (!fromLoopback)
-        {
-            return false;
-        }
-
-        if (!tunnelRunning)
-        {
-            return true;
-        }
-
-        string tunnelHost = new Uri(tunnel.PublicUrl!).Host;
-        return string.Equals(context.Request.Host.Host, tunnelHost, StringComparison.OrdinalIgnoreCase);
+        return context.Connection.RemoteIpAddress is { } remote && IPAddress.IsLoopback(remote);
     }
 
     /// <summary>HttpContext.Items key the sign-in page reads to show the "passkeys unavailable here" message.</summary>

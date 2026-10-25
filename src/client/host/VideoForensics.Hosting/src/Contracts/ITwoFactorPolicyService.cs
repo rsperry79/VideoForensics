@@ -22,5 +22,10 @@ namespace VideoForensics.Client.Hosting.Contracts
         /// Updates a specific operator's two-factor requirement override on the server.
         /// </summary>
         Task UpdateOperatorOverrideAsync(Guid operatorId, TwoFactorRequirementOverride @override, CancellationToken ct);
+
+        /// <summary>
+        /// Sets whether the operator must use a passkey on the local network. When false, a password sign-in there completes without one.
+        /// </summary>
+        Task UpdatePasskeyRequiredAsync(Guid operatorId, bool passkeyRequired, CancellationToken ct);
     }
 }

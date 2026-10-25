@@ -111,6 +111,14 @@ else
         </div>
     </div>
 
+    <div class="mb-3">
+        <label class="form-label">@L["LocalNetworkSignIn"]</label>
+        <div class="d-flex gap-2 align-items-center">
+            <SfCheckBox TChecked="bool" Checked="@(!(_operator?.PasskeyRequired ?? true))" Enabled="@(!_isSavingPasskeyRequired && _operator is not null)" CheckedChanged="@(v => SavePasskeyRequiredAsync(!v))" Label="@L["AllowPasswordOnLocalNetwork"]" />
+        </div>
+        <div class="form-text">@L["AllowPasswordOnLocalNetworkHelp"]</div>
+    </div>
+
     <div class="d-flex flex-row gap-2 mb-4">
         @if (!_operator.IsApproved && _operator.Active)
         {
@@ -219,6 +227,7 @@ else
     // Two-factor override state
     private TwoFactorRequirementOverride _twoFactorOverrideInput;
     private bool _isSavingTwoFactorOverride;
+    private bool _isSavingPasskeyRequired;
 
     // Display mode (Simple Mode) state - shown to Admin and SuperAdmin viewers only. Independent of the
     // operator fetch above so a failure there doesn't hide it.
@@ -497,6 +506,45 @@ else
         catch (Exception ex)
         {
             _actionError = L["ResetPasswordFailed", ex.Message];
+        }
+    }
+
+    /// <summary>
+    /// Allows a password sign-in on the local network without a passkey (passkey not required), or requires one. Changing it is
+    /// protected by the step-up check, like the two-factor override.
+    /// </summary>
+    private async Task SavePasskeyRequiredAsync(bool passkeyRequired)
+    {
+        if (_operator is null)
+        {
+            return;
+        }
+
+        _isSavingPasskeyRequired = true;
+        _actionError = null;
+
+        try
+        {
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PutAsJsonAsync($"/api/v1/two-factor-policy/operators/{_operator.Id}/passkey-required", new { PasskeyRequired = passkeyRequired });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _actionError = await SafeReadErrorAsync(response) ?? L["PasskeyRequiredSaveFailed", response.StatusCode.ToString()];
+                return;
+            }
+
+            _operator.PasskeyRequired = passkeyRequired;
+        }
+        catch (HttpRequestException ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _isSavingPasskeyRequired = false;
         }
     }
 

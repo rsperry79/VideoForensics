@@ -9,11 +9,11 @@
       "launchBrowser": false
     },
     "http": {
+      "applicationUrl": "http://localhost:5162",
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:5162",
-      "environmentVariables": {
+            "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },

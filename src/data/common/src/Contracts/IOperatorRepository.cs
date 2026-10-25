@@ -61,5 +61,11 @@ namespace VideoForensics.Data.Common.Contracts
         /// This allows a SuperAdmin to force two-factor on/off for one person regardless of their role's default policy.
         /// </summary>
         Task SetTwoFactorRequirementOverrideAsync(Guid operatorId, TwoFactorRequirementOverride value, CancellationToken ct);
+
+        /// <summary>
+        /// Sets whether the operator must use a passkey as the second factor. When false, a password sign-in on the local network
+        /// completes without one.
+        /// </summary>
+        Task SetPasskeyRequiredAsync(Guid operatorId, bool passkeyRequired, CancellationToken ct);
     }
 }
