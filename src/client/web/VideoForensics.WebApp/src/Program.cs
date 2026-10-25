@@ -151,7 +151,7 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // The endpoints above are the only addresses this server binds. Clearing the urls setting stops Kestrel from logging that it
 // is overriding a launch-profile or ASPNETCORE_URLS address.
-builder.WebHost.UseUrls(Array.Empty<string>());
+builder.WebHost.UseUrls([]);
 
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
