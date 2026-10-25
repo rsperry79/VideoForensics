@@ -364,10 +364,13 @@ else
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
 builder.Services.AddSingleton<ThumbnailReadyBus>();
 builder.Services.AddSingleton<EvidenceChangedBus>();
+builder.Services.AddSingleton<DeviceHealthChangedBus>();
 builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, LiveThumbnailNotifier>());
 builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
+builder.Services.Replace(ServiceDescriptor.Singleton<IDeviceHealthChangeNotifier, LiveDeviceHealthNotifier>());
 builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
 builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
+builder.Services.AddScoped<IDeviceHealthChangedSource, LocalDeviceHealthChangedSource>();
 // The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
 builder.Services.AddSingleton<LocalNoticeFeed>();
 builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());

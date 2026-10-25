@@ -1,7 +1,11 @@
 @page "/accounts/{Id:guid}/devices"
 @inherits AccountTabPageBase
+@implements IDisposable
+@using Microsoft.Extensions.DependencyInjection
+@using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Services.Devices
 @using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
+@inject IServiceProvider ServiceProvider
 @inject ILocationRepository LocationRepository
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceHealthRepository DeviceHealthRepository
@@ -143,15 +147,37 @@ else
     private List<DeviceRow> _devices = new();
     private bool _devicesError;
     private bool _thresholdSaveFailed;
+    private IDisposable? _deviceHealthSubscription;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAccountAsync();
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["TabDevices"], null) };
+
+        // Subscribe before the first load so a reading recorded during it is not missed. Optional, like the Evidence page's
+        // source: a host with no realtime feed keeps the status from its last load.
+        IDeviceHealthChangedSource? source = ServiceProvider.GetService<IDeviceHealthChangedSource>();
+        _deviceHealthSubscription = source?.DeviceHealthChanged.Subscribe(change => _ = InvokeAsync(() => OnDeviceHealthChangedAsync(change.DeviceId)));
+
         if (Account is not null)
         {
             await LoadDevicesAsync();
         }
+    }
+
+    private async Task OnDeviceHealthChangedAsync(Guid deviceId)
+    {
+        // Readings for devices this tab does not show are ignored, so other accounts' syncs do not reload it.
+        if (_devices.Any(row => row.Device.Id == deviceId))
+        {
+            await LoadDevicesAsync();
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        _deviceHealthSubscription?.Dispose();
     }
 
     private async Task LoadDevicesAsync()

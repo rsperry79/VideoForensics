@@ -29,6 +29,7 @@ namespace VideoForensics.Data.Core.Services
         private readonly ILogger<VideoForensicsDataClient> _logger;
         private readonly IMediaAnalysisService _mediaAnalysis;
         private readonly IEvidenceChangeNotifier _evidenceChangeNotifier;
+        private readonly IDeviceHealthChangeNotifier _deviceHealthChangeNotifier;
 
         public ICredentialRepository Credentials { get; }
         public IIntegrityVerificationService IntegrityVerification { get; }
@@ -54,7 +55,8 @@ namespace VideoForensics.Data.Core.Services
             IActionLogRepository actionLogRepository,
             ILogger<VideoForensicsDataClient> logger,
             IMediaAnalysisService mediaAnalysis,
-            IEvidenceChangeNotifier? evidenceChangeNotifier = null)
+            IEvidenceChangeNotifier? evidenceChangeNotifier = null,
+            IDeviceHealthChangeNotifier? deviceHealthChangeNotifier = null)
         {
             _userRepository = userRepository;
             _providerAccountRepository = providerAccountRepository;
@@ -76,6 +78,7 @@ namespace VideoForensics.Data.Core.Services
             _logger = logger;
             _mediaAnalysis = mediaAnalysis;
             _evidenceChangeNotifier = evidenceChangeNotifier ?? new NullEvidenceChangeNotifier();
+            _deviceHealthChangeNotifier = deviceHealthChangeNotifier ?? new NullDeviceHealthChangeNotifier();
         }
 
         public async Task<Device> RegisterDeviceAsync(Device device, CancellationToken ct)
@@ -98,7 +101,9 @@ namespace VideoForensics.Data.Core.Services
         {
             try
             {
-                return await _deviceHealthRepository.AddAsync(health, ct);
+                DeviceHealth recorded = await _deviceHealthRepository.AddAsync(health, ct);
+                await _deviceHealthChangeNotifier.DeviceHealthRecordedAsync(recorded.DeviceId, ct);
+                return recorded;
             }
             catch (Exception ex)
             {
