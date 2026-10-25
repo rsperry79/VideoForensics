@@ -54,6 +54,11 @@ using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.WebApp.Components;
 
+// Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
+VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
+
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
 // pipeline (which needs the host built first) the way every other setting in this app does. This
@@ -151,7 +156,8 @@ builder.Logging.SetMinimumLevel(LogLevel.Information);
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true);
+builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true,
+    eventLogProvider: VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog);
 
 // Add services to the container.
 // Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
@@ -237,7 +243,7 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // decrypt it. Otherwise DPAPI (machine scope) protects it.
 if (OperatingSystem.IsWindows())
 {
-    X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
+    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
@@ -531,6 +537,7 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // both hosts (both run on the same local machine as the user in this app's deployment model).
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
+builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope

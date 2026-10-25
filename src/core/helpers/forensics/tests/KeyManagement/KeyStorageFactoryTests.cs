@@ -1,4 +1,4 @@
-using System.Runtime.Versioning;
+using Moq;
 
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
@@ -12,10 +12,13 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
         {
             _tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             _ = Directory.CreateDirectory(_tempDirectory);
+            // Core has no platform providers of its own; start each test with none registered.
+            KeyStorageProviders.PlatformProviders = null;
         }
 
         public void Dispose()
         {
+            KeyStorageProviders.PlatformProviders = null;
             if (Directory.Exists(_tempDirectory))
             {
                 Directory.Delete(_tempDirectory, recursive: true);
@@ -33,81 +36,52 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             Assert.True(provider.IsAvailable);
         }
 
+        /// <summary>Verifies that with no platform providers registered, Core falls back to file-based storage on every OS.</summary>
         [Fact]
-        public async Task GetDefaultProviderAsync_ReturnsAvailableDefaultProvider()
+        public async Task GetDefaultProviderAsync_NoPlatformProviders_ReturnsFileBased()
         {
-            // Act - The default provider depends on platform availability:
-            // Windows: DPAPI if available, else File-Based
-            // Linux/macOS: File-Based (no DPAPI)
             IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
-            // Assert
-            Assert.NotNull(provider);
-            Assert.True(provider.IsAvailable);
-            if (OperatingSystem.IsWindows())
-            {
-                Assert.Equal("Windows DPAPI", provider.ProviderName);
-                _ = Assert.IsType<DpapiKeyStorageProvider>(provider);
-            }
-            else
-            {
-                Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
-                _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
-            }
+            Assert.Equal("File-Based Encrypted Storage", provider.ProviderName);
+            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
         }
 
+        /// <summary>Verifies that a registered platform provider that is available is chosen over the file-based fallback.</summary>
         [Fact]
-        [SupportedOSPlatform("windows")]
-        public void CreateTpmProvider_Always_ReturnsTpmProvider()
+        public async Task GetDefaultProviderAsync_AvailablePlatformProvider_IsChosenFirst()
         {
-            // Act
-            IKeyStorageProvider provider = KeyStorageFactory.CreateTpmProvider();
+            var platform = new Mock<IKeyStorageProvider>();
+            _ = platform.Setup(p => p.IsAvailable).Returns(true);
+            _ = platform.Setup(p => p.ProviderName).Returns("Platform Test");
+            KeyStorageProviders.PlatformProviders = () => new[] { platform.Object };
 
-            // Assert
-            Assert.NotNull(provider);
-            Assert.Equal("TPM 2.0", provider.ProviderName);
-            _ = Assert.IsType<TpmKeyStorageProvider>(provider);
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
+
+            Assert.Same(platform.Object, provider);
         }
 
+        /// <summary>Verifies that an unavailable platform provider is skipped, so the file-based fallback is used.</summary>
         [Fact]
-        public void CreateDpapiProvider_Always_ReturnsDpapiProvider()
+        public async Task GetDefaultProviderAsync_UnavailablePlatformProvider_IsSkipped()
         {
-            // Act
-            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider();
+            var platform = new Mock<IKeyStorageProvider>();
+            _ = platform.Setup(p => p.IsAvailable).Returns(false);
+            KeyStorageProviders.PlatformProviders = () => new[] { platform.Object };
 
-            // Assert
-            Assert.NotNull(provider);
-            Assert.Equal("Windows DPAPI", provider.ProviderName);
-            _ = Assert.IsType<DpapiKeyStorageProvider>(provider);
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
+
+            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
         }
 
+        /// <summary>Verifies that a platform source that throws leaves the file-based fallback in place rather than failing the factory.</summary>
         [Fact]
-        public void CreateDpapiProvider_WithStoragePath_IgnoresPath()
+        public async Task GetDefaultProviderAsync_PlatformSourceThrows_FallsBackToFileBased()
         {
-            // Act - DPAPI provider doesn't use storage path but should accept it
-            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider(_tempDirectory);
+            KeyStorageProviders.PlatformProviders = () => throw new InvalidOperationException("no TPM");
 
-            // Assert
-            Assert.NotNull(provider);
-            Assert.Equal("Windows DPAPI", provider.ProviderName);
-        }
+            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
 
-        [Fact]
-        public void CreateDpapiProvider_IsAvailableDependsOnPlatform()
-        {
-            // Act
-            IKeyStorageProvider provider = KeyStorageFactory.CreateDpapiProvider();
-
-            // Assert
-            Assert.NotNull(provider);
-            if (OperatingSystem.IsWindows())
-            {
-                Assert.True(provider.IsAvailable);
-            }
-            else
-            {
-                Assert.False(provider.IsAvailable);
-            }
+            _ = Assert.IsType<FileBasedKeyStorageProvider>(provider);
         }
 
         [Fact]
@@ -166,28 +140,6 @@ namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
             // Assert
             Assert.NotEmpty(thumbprint);
             Assert.Contains(keyId, keys);
-        }
-
-        [Fact]
-        public async Task ProviderPriority_PrefersTpmIfAvailable()
-        {
-            // This test documents the expected behavior:
-            // The factory tries TPM first and takes it when it is usable (an elevated process on a machine with
-            // a TPM), otherwise it falls back to the next available provider.
-
-            // Act
-            IKeyStorageProvider provider = await KeyStorageFactory.GetDefaultProviderAsync();
-
-            // Assert
-            Assert.True(provider.IsAvailable);
-            if (OperatingSystem.IsWindows() && new TpmKeyStorageProvider().IsAvailable)
-            {
-                Assert.Equal("TPM 2.0", provider.ProviderName);
-            }
-            else
-            {
-                Assert.NotEqual("TPM 2.0", provider.ProviderName);
-            }
         }
     }
 }

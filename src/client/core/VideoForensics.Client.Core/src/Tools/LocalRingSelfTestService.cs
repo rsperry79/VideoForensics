@@ -100,7 +100,7 @@ namespace VideoForensics.Client.Core.Tools
                 ChimeIdFilter: request.ChimeId
             );
 
-            // Pick output directory under ProgramData, matching other persistent state in this app
+            // Pick output directory under the temp download root, matching other persistent state in this app
             string baseTempDir = _storageLocationProvider.GetDefaultRoot(StorageCategory.TempDownload);
             string outputDir = Path.Combine(
                 baseTempDir,

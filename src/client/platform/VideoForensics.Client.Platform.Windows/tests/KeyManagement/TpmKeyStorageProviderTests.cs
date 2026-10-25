@@ -1,10 +1,13 @@
+using Xunit;
+using VideoForensics.Client.Platform.Windows.KeyManagement;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
+
 using System.Runtime.Versioning;
 using System.Text;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
-namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
+namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 {
     [SupportedOSPlatform("windows")]
     public class TpmKeyStorageProviderTests : IDisposable

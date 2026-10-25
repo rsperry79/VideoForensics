@@ -28,6 +28,11 @@ namespace VideoForensics.Client.MauiApp
         public static Microsoft.Maui.Hosting.MauiApp CreateMauiApp()
         {
             StartupTrace.Mark("CreateMauiApp: start");
+
+            // Read install-time storage overrides from the registry before any StorageLocationProvider is created.
+            VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+            VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+            VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 #if DEBUG
             // During local development, ensure VideoForensics.Client.WebApp is running before continuing.
             // This is a DEBUG-only convenience: a developer can simply run the MAUI app in the debugger
@@ -221,6 +226,9 @@ namespace VideoForensics.Client.MauiApp
             // real OS file-save dialog via CommunityToolkit.Maui's IFileSaver, unlike the Web host which
             // has to trigger a browser download instead. See WebFileDialogService for that side.
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IFileDialogService, VideoForensics.Client.MauiApp.Services.MauiFileDialogService>();
+
+            // Where the backup export is staged before the save dialog: the current user's documents folder.
+            builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
 
             // Local filesystem folder browser for picking the import "media root" folder (Import/Export
             // page) - shared implementation, works identically on MAUI and Web since both processes run

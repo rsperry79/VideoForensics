@@ -18,11 +18,13 @@
 
     <ItemGroup>
         <PackageReference Include="CliWrap" Version="3.10.5" />
+        <PackageReference Include="Microsoft.Extensions.Logging.EventLog" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="../../../common/VideoForensics.Client.Common/src/VideoForensics.Client.Common.csproj" />
+        <ProjectReference Include="../../../../core/helpers/forensics/src/VideoForensics.Core.Helpers.Forensics.csproj" />
     </ItemGroup>
 
     <ItemGroup>

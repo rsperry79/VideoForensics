@@ -7,7 +7,7 @@ namespace VideoForensics.Client.Core.Contracts
     public interface ISyncfusionLicenseRegistrar
     {
         /// <summary>
-        /// Registers the license from the first source that has a key: the %ProgramData% key file, then Client.Core
+        /// Registers the license from the first source that has a key: the key file in the data root, then Client.Core
         /// user secrets, then the key baked into the Client.Core assembly at CI build time. Registers nothing when no
         /// source has a key (unlicensed dev mode).
         /// </summary>

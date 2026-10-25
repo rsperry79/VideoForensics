@@ -5,6 +5,17 @@ namespace VideoForensics.Core.Helpers.Platform;
 
 public class StorageLocationProvider : IStorageLocationProvider
 {
+    private readonly IStorageOverrideSource _overrides;
+
+    /// <param name="overrides">
+    /// Source for install-time overrides. Defaults to <see cref="StorageOverrides.Current"/>, so existing call sites
+    /// pick up the host's registry source without changes.
+    /// </param>
+    public StorageLocationProvider(IStorageOverrideSource? overrides = null)
+    {
+        _overrides = overrides ?? StorageOverrides.Current;
+    }
+
     /// <summary>Windows registry location for install-time per-category path overrides, written by
     /// the installer's optional "Data Directory" page (deploy/windows/VideoForensics.iss) and read
     /// here so the server, the console host, and the Windows Service all resolve the same effective
@@ -22,8 +33,9 @@ public class StorageLocationProvider : IStorageLocationProvider
     {
         if (OperatingSystem.IsWindows())
         {
-            string? configured = GetConfiguredWindowsPath(category);
-            if (configured is not null)
+            // Keys has no registry value by design, so it is never relocated, whatever the source says.
+            string? configured = GetRegistryValueName(category) is null ? null : _overrides.GetOverride(category);
+            if (!string.IsNullOrWhiteSpace(configured))
             {
                 return configured;
             }
@@ -109,31 +121,6 @@ public class StorageLocationProvider : IStorageLocationProvider
             StorageCategory.Keys => null,
             _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
         };
-    }
-
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static string? GetConfiguredWindowsPath(StorageCategory category)
-    {
-        string? valueName = GetRegistryValueName(category);
-        if (valueName is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            using Microsoft.Win32.RegistryKey? key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(RegistryKey);
-            if (key?.GetValue(valueName) is string value && !string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-        catch
-        {
-            // Registry read failed (permissions, key missing, etc.) - fall back to the default path.
-        }
-
-        return null;
     }
 
     private static string? GetConfiguredLinuxPath(StorageCategory category)

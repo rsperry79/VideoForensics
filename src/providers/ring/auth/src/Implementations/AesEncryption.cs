@@ -1,5 +1,3 @@
-using Microsoft.Win32;
-
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -24,6 +22,17 @@ namespace VideoForensics.Providers.Ring.Implementations
     /// </summary>
     public class AesEncryption : ICredentialEncryption
     {
+        private readonly IMachineGuidSource _machineGuidSource;
+
+        /// <param name="machineGuidSource">
+        /// Supplies the machine identifier used in key derivation. Defaults to the registry MachineGuid on Windows,
+        /// so callers that pass nothing get the same key as before this parameter existed.
+        /// </param>
+        public AesEncryption(IMachineGuidSource? machineGuidSource = null)
+        {
+            _machineGuidSource = machineGuidSource ?? new RegistryMachineGuidSource();
+        }
+
         private const int KeySize = 32; // AES-256
         private const int IvSize = 16;  // AES block size
         private const int SaltSize = 16;
@@ -167,9 +176,17 @@ namespace VideoForensics.Providers.Ring.Implementations
         {
             try
             {
+                // The source is consulted on every OS. Its null result (the default on Linux and macOS, or a missing
+                // Windows value) falls through to the hostname below, matching the original fallbacks.
+                string? guid = _machineGuidSource.ReadMachineGuid();
+                if (guid is not null)
+                {
+                    return guid;
+                }
+
                 if (OperatingSystem.IsWindows())
                 {
-                    return GetWindowsMachineGuid();
+                    return Environment.MachineName ?? "unknown";
                 }
 
                 if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
@@ -186,21 +203,5 @@ namespace VideoForensics.Providers.Ring.Implementations
             }
         }
 
-        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-        private string GetWindowsMachineGuid()
-        {
-            try
-            {
-                // On Windows, try to get the unique machine GUID
-                using RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
-                    @"SOFTWARE\Microsoft\Cryptography");
-                object value = key?.GetValue("MachineGuid");
-                return value?.ToString() ?? Environment.MachineName;
-            }
-            catch
-            {
-                return Environment.MachineName ?? "unknown";
-            }
-        }
     }
 }

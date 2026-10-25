@@ -1,9 +1,12 @@
+using VideoForensics.Core.Helpers.Forensics.Exceptions;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
+
 using System;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
-namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
+namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {
     /// <summary>
     /// A certificate whose private key lives in the TPM, used to protect ASP.NET Data Protection keys. The key ring
