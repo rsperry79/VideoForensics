@@ -47,6 +47,12 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Lists non-purged video items whose <see cref="MediaItem.ThumbnailPath"/> is not yet set.</summary>
         Task<IReadOnlyList<MediaItem>> ListVideosWithoutThumbnailAsync(CancellationToken ct);
 
+        /// <summary>
+        /// Non-purged video items whose <see cref="MediaItem.PreviewPath"/> is null, oldest first by recording time, up to
+        /// <paramref name="limit"/>. Filtering, sorting and paging run in SQL.
+        /// </summary>
+        Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct);
+
         /// <summary>Adds a new media item.</summary>
         Task AddAsync(MediaItem mediaItem, CancellationToken ct);
 

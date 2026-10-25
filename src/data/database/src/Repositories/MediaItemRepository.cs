@@ -145,6 +145,24 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        /// <remarks>
+        /// Same video test as <see cref="ListVideosWithoutThumbnailAsync"/>. Oldest first, so a failing clip that stays
+        /// without a preview is retried in the same order on every pass.
+        /// </remarks>
+        public async Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
+        {
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            return await db.MediaItems
+                .AsNoTracking()
+                .Where(m => !m.IsPurged
+                    && m.PreviewPath == null
+                    && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
         /// <summary>Adds a new media item.</summary>
         public async Task AddAsync(MediaItem mediaItem, CancellationToken ct)
         {
