@@ -9,6 +9,9 @@ using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Signal;
+using VideoForensics.Client.Ui.Shared.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.Signal;
 
 namespace VideoForensics.Client.WebApp.Api
 {
@@ -49,6 +52,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireRateLimiting("media");
 
             _ = group.MapGet("/media-items/{id:guid}", GetMediaItemAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
+            _ = group.MapGet("/signal-analysis", GetSignalAnalysisAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
@@ -492,6 +499,42 @@ namespace VideoForensics.Client.WebApp.Api
 
             IReadOnlyList<DeviceHealth> history = await deviceHealth.GetHistoryAsync(id, from.Value, to.Value, ct);
             return Results.Ok(history.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Gets the signal figures for cameras over a window: stats, the week grid, deviation hours, overlay periods and
+        /// buckets. Computed here so every client shows the same numbers. <paramref name="devices"/> is a comma-separated
+        /// list of device IDs; both <paramref name="from"/> and <paramref name="to"/> are required, and <paramref name="from"/>
+        /// must not be after <paramref name="to"/>.
+        /// </summary>
+        public static async Task<IResult> GetSignalAnalysisAsync(
+            string? devices,
+            DateTime? from,
+            DateTime? to,
+            ISignalAnalysisService analysis,
+            CancellationToken ct)
+        {
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            var ids = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(devices))
+            {
+                foreach (string part in devices.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!Guid.TryParse(part, out Guid id))
+                    {
+                        return Results.BadRequest();
+                    }
+
+                    ids.Add(id);
+                }
+            }
+
+            SignalAnalysis result = await analysis.AnalyzeAsync(ids, from.Value, to.Value, ct);
+            return Results.Ok(result.ToDto());
         }
 
         /// <summary>

@@ -526,6 +526,7 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ScopeState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
 builder.Services.AddScoped<ThemePreferenceService>();

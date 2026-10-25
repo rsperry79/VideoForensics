@@ -14,13 +14,11 @@
 @using VideoForensics.Client.Ui.Shared.Services.Signal
 @using VideoForensics.Data.Common.Contracts
 @using Device = VideoForensics.Data.Common.Entities.Device
-@using DeviceHealth = VideoForensics.Data.Common.Entities.DeviceHealth
 @inject IDeviceRepository DeviceRepository
-@inject IDeviceHealthRepository DeviceHealthRepository
+@using VideoForensics.Client.Ui.Shared.Contracts
+@inject ISignalAnalysisService SignalAnalysisService
 @inject ScopeState ScopeState
 @inject SignalDrillTrail Trail
-@inject DeviceOwnershipService OwnershipService
-@inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 @inject IStringLocalizer<SignalHistory> L
@@ -70,7 +68,7 @@
         <ul class="mb-0">
             @foreach ((DeviceSignal section, SignalDeviationWindow window) in alerts)
             {
-                <li>@L["AlertLine", DeviceName(section.Device), window.WorstRssiDbm, window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture)]</li>
+                <li>@L["AlertLine", section.Name, window.WorstRssiDbm, window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture)]</li>
             }
         </ul>
     </div>
@@ -80,10 +78,10 @@
 {
     <div class="card mb-3" data-testid="signal-device">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <strong>@DeviceName(section.Device)</strong>
-            @if (RingSettingsRoute.IsRingDevice(section.Device))
+            <strong>@section.Name</strong>
+            @if (IsRing(section))
             {
-                <a href="@RingSettingsRoute.Href(section.Device.Id)">@L["DeviceSettings"]</a>
+                <a href="@RingSettingsRoute.Href(section.DeviceId)">@L["DeviceSettings"]</a>
             }
         </div>
         <div class="card-body">
@@ -115,7 +113,7 @@
                             <p class="small text-muted mb-1" data-testid="signal-no-range">@L["NoReadingsInRange"]</p>
                         }
                         <div class="position-relative">
-                            <svg id="@PlotId(section.Device.Id)"
+                            <svg id="@PlotId(section.DeviceId)"
                                  viewBox="0 0 @SignalChartModel.ViewWidth @SignalChartModel.ViewHeight"
                                  width="100%"
                                  role="img"
@@ -282,7 +280,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (SignalBucketStats bucket in SignalBuckets.Compute(section.Readings, _from, _to, _bucket))
+                                @foreach (SignalBucketStats bucket in BucketsFor(section))
                                 {
                                     <tr>
                                         <td>@FormatBucketStart(bucket.StartUtc)</td>
@@ -325,7 +323,12 @@
 @code {
     private sealed class DeviceSignal
     {
-        public required Device Device { get; init; }
+        public required Guid DeviceId { get; init; }
+        public required string Name { get; init; }
+        public required string? ProviderName { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Hourly { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Daily { get; init; }
+        public required IReadOnlyList<SignalBucketStats> Weekly { get; init; }
         public required SignalStats AllTime { get; init; }
         public required SignalStats PeriodStats { get; init; }
         public required SignalCalendar Calendar { get; init; }
@@ -383,8 +386,9 @@
     }
 
     /// <summary>
-    /// Loads one section per device in the investigation scope. The right-hand scope panel chooses the devices
-    /// and the time window; all-time figures come from the full history, the plotted line from the window.
+    /// Loads one section per device in the investigation scope. The right-hand scope panel chooses the devices and the
+    /// time window. The figures (stats, grid, deviations, periods, buckets) come from the server's signal analysis, so
+    /// every client shows the same numbers; only the drawing (axis fit and the polyline) is worked out here.
     /// </summary>
     private async Task LoadAsync()
     {
@@ -393,75 +397,52 @@
         _to = scope.ToUtc;
 
         _allDevices = (await DeviceRepository.ListAsync(CancellationToken.None)).OrderBy(d => d.Name).ToList();
-        IEnumerable<Device> inScope = scope.MatchesNoDevices
+        List<Guid> inScopeIds = (scope.MatchesNoDevices
             ? []
-            : scope.IncludesAllDevices ? _allDevices : _allDevices.Where(d => scope.DeviceIds.Contains(d.Id));
+            : scope.IncludesAllDevices ? _allDevices : _allDevices.Where(d => scope.DeviceIds.Contains(d.Id)))
+            .Select(d => d.Id)
+            .ToList();
 
-        List<Device> inScopeList = inScope.ToList();
-        DeviceOwnershipSnapshot ownership = await OwnershipService.LoadAsync(inScopeList, CancellationToken.None);
-        var schedulesByAccount = new Dictionary<Guid, VideoForensics.Data.Common.Entities.SyncSchedule?>();
+        SignalAnalysis analysis = await SignalAnalysisService.AnalyzeAsync(inScopeIds, _from, _to, CancellationToken.None);
 
-        var sections = new List<DeviceSignal>();
-        foreach (Device device in inScopeList)
+        _sections = analysis.Devices.Select(device =>
         {
-            Func<DateTime, TimeSpan> expected = await ExpectedIntervalAsync(device.Id, ownership.Ownership, schedulesByAccount);
-            IReadOnlyList<DeviceHealth> rows = await DeviceHealthRepository.GetHistoryAsync(device.Id, CancellationToken.None);
-            List<SignalSample> samples = rows.Select(r => new SignalSample(r.CapturedAtUtc, r.WifiSignalRssi)).ToList();
-            SignalStats allTime = SignalStats.Compute(samples);
-
             // The axis fits the all-time min and max, the figures the bars show, so the readings are legible.
-            SignalScale scale = allTime.Min is int min && allTime.Max is int max
+            SignalScale scale = device.AllTime.Min is int min && device.AllTime.Max is int max
                 ? SignalScale.Fit(min, max)
                 : SignalScale.Default;
 
-            sections.Add(new DeviceSignal
+            return new DeviceSignal
             {
-                Device = device,
-                AllTime = allTime,
-                PeriodStats = SignalStats.Compute(samples.Where(s => s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to)),
-                Calendar = SignalCalendar.Compute(samples, _from, _to),
-                Deviations = SignalDeviation.Windows(samples, _from, _to, allTime),
+                DeviceId = device.DeviceId,
+                Name = device.Name,
+                ProviderName = device.ProviderName,
+                AllTime = device.AllTime,
+                PeriodStats = device.PeriodStats,
+                Calendar = device.Calendar,
+                Deviations = device.Deviations,
+                Hourly = device.Hourly,
+                Daily = device.Daily,
+                Weekly = device.Weekly,
                 Scale = scale,
-                Points = SignalChartModel.Polyline(samples, _from, _to, scale),
-                InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
-                Readings = samples.Where(s => s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to).OrderBy(s => s.CapturedAtUtc).ToList(),
-                Periods = SignalChartModel.Periods(samples, _from, _to, expected),
-            });
-        }
-
-        _sections = sections;
+                Points = SignalChartModel.Polyline(device.Readings, _from, _to, scale),
+                InRangeCount = device.Readings.Count(s => s.RssiDbm is not null),
+                Readings = device.Readings,
+                Periods = device.Periods,
+            };
+        }).ToList();
     }
 
-    /// <summary>
-    /// The camera's expected reading spacing at a point in time: the spacing its account actually captures at, which
-    /// narrows inside jamming windows. Accounts are looked up once per load. A camera with no account or schedule
-    /// uses the default interval at every time.
-    /// </summary>
-    private async Task<Func<DateTime, TimeSpan>> ExpectedIntervalAsync(
-        Guid deviceId,
-        IReadOnlyList<DeviceOwnership> ownership,
-        Dictionary<Guid, VideoForensics.Data.Common.Entities.SyncSchedule?> schedulesByAccount)
+    /// <summary>The camera's buckets for the size the user picked.</summary>
+    private IReadOnlyList<SignalBucketStats> BucketsFor(DeviceSignal section) => _bucket switch
     {
-        DeviceOwnership? owner = ownership.FirstOrDefault(o => o.DeviceId == deviceId);
-        if (owner is null)
-        {
-            return _ => SignalChartModel.ExpectedIntervalFor(null);
-        }
+        SignalBucket.Hour => section.Hourly,
+        SignalBucket.Week => section.Weekly,
+        _ => section.Daily,
+    };
 
-        if (!schedulesByAccount.TryGetValue(owner.ProviderAccountId, out VideoForensics.Data.Common.Entities.SyncSchedule? schedule))
-        {
-            schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(owner.ProviderAccountId, CancellationToken.None);
-            schedulesByAccount[owner.ProviderAccountId] = schedule;
-        }
-
-        if (schedule is null)
-        {
-            return _ => SignalChartModel.ExpectedIntervalFor(null);
-        }
-
-        // Same rule the capture service runs at, so the chart and the captures agree.
-        return utc => TimeSpan.FromSeconds(VideoForensics.Data.Common.Entities.SnapshotIntervals.CaptureSpacing(schedule, utc));
-    }
+    /// <summary>Whether the camera is a Ring device, which has a strongly typed settings page.</summary>
+    private static bool IsRing(DeviceSignal section) => string.Equals(section.ProviderName, "Ring", StringComparison.Ordinal);
 
     private void SetBucket(SignalBucket size)
     {
@@ -593,7 +574,7 @@
 
     private async Task<double> FractionAsync(DeviceSignal section, double clientX)
     {
-        PlotPointer pointer = await MeasureAsync(section.Device.Id, clientX);
+        PlotPointer pointer = await MeasureAsync(section.DeviceId, clientX);
         return SignalChartModel.FractionFromCanvasOffset(pointer.Offset, pointer.Width);
     }
 
@@ -639,7 +620,7 @@
 
     private void OpenMenu(DeviceSignal section, MouseEventArgs e)
     {
-        _menuDeviceId = section.Device.Id;
+        _menuDeviceId = section.DeviceId;
         _menuX = e.ClientX;
         _menuY = e.ClientY;
         _menuRange = SelectionRangeFor(section);
