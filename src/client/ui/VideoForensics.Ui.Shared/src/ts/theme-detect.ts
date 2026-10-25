@@ -1,17 +1,17 @@
 // OS/browser dark-mode detection + live change notification for ThemePreferenceService's
 // "System" theme mode.
 window.vfTheme = {
-    getPrefersDark: function () {
+    getPrefersDark: function (): boolean {
         try {
             return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         } catch (e) {
             return false;
         }
     },
-    watchPrefersDark: function (dotNetRef) {
+    watchPrefersDark: function (dotNetRef: DotNetObjectReference): void {
         try {
-            var mql = window.matchMedia('(prefers-color-scheme: dark)');
-            var listener = function (e) {
+            const mql = window.matchMedia('(prefers-color-scheme: dark)');
+            const listener = function (e: MediaQueryListEvent): void {
                 // The circuit can be gone when the media query fires; nothing is left to notify.
                 dotNetRef.invokeMethodAsync('OnSystemThemeChanged', e.matches).catch(function () { });
             };
@@ -26,10 +26,10 @@ window.vfTheme = {
             // available; the initial getPrefersDark() snapshot still applies.
         }
     },
-    setStylesheet: function (isDark) {
+    setStylesheet: function (isDark: boolean): void {
         try {
-            var href = isDark ? '_content/Syncfusion.Blazor.Themes/bootstrap5-dark.css' : '_content/Syncfusion.Blazor.Themes/bootstrap5.css';
-            var link = document.getElementById('vf-syncfusion-theme-link');
+            const href = isDark ? '_content/Syncfusion.Blazor.Themes/bootstrap5-dark.css' : '_content/Syncfusion.Blazor.Themes/bootstrap5.css';
+            let link = document.getElementById('vf-syncfusion-theme-link') as HTMLLinkElement | null;
             if (!link) {
                 link = document.createElement('link');
                 link.id = 'vf-syncfusion-theme-link';

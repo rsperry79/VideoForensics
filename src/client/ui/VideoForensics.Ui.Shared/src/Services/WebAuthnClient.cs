@@ -9,7 +9,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// Drives the three WebAuthn ceremonies against the server's pairing/auth API (plan §5.1/§5.7):
     /// passkey registration (pairing), passkey authentication (session sign-in), and step-up
     /// re-authentication. Each ceremony is the same three-step shape - fetch options from the
-    /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/js/webauthn.js</c>,
+    /// server, hand them to the browser's native WebAuthn API via <c>wwwroot/scripts/webauthn.js</c>,
     /// post the result back - factored once here rather than duplicated across Pair.razor,
     /// DeviceSignIn.razor, and every step-up-gated action.
     ///

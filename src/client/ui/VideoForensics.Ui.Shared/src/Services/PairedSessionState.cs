@@ -11,7 +11,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// Circuit-scoped holder for the current paired-device session (plan §5.1/§5.11) - the WebAuthn
     /// bearer token, distinct from and unrelated to the existing Ring-account sign-in
     /// (<c>IProviderAuthService</c>). Persisted via a session cookie (see
-    /// <c>wwwroot/js/webauthn.js</c>) so navigation and new tabs within the same browser session stay
+    /// <c>wwwroot/scripts/webauthn.js</c>) so navigation and new tabs within the same browser session stay
     /// signed in without a fresh pairing ceremony; closing the browser itself clears the cookie and
     /// requires signing in again.
     /// </summary>
@@ -287,7 +287,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
             }
             catch (JSException)
             {
-                // wwwroot/js/webauthn.js isn't loaded on every host (MAUI's BlazorWebView doesn't reference it -
+                // wwwroot/scripts/webauthn.js isn't loaded on every host (MAUI's BlazorWebView doesn't reference it -
                 // device pairing is server/WebApp-only for now). The in-memory session still works for this
                 // circuit; it just won't survive a refresh without vfWebAuthn's localStorage persistence.
             }

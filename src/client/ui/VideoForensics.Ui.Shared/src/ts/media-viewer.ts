@@ -5,10 +5,10 @@
 
 /**
  * Set the playback rate of a video element.
- * @param {HTMLVideoElement} element - The video element
- * @param {number} rate - The playback rate (0.25, 0.5, 1, 1.5, 2, etc.)
+ * @param element - The video element
+ * @param rate - The playback rate (0.25, 0.5, 1, 1.5, 2, etc.)
  */
-export function setPlaybackRate(element, rate) {
+export function setPlaybackRate(element: HTMLVideoElement | null, rate: number): void {
     if (element && element.tagName === 'VIDEO') {
         element.playbackRate = rate;
     }
@@ -17,10 +17,10 @@ export function setPlaybackRate(element, rate) {
 /**
  * Step a video forward or backward by a specific number of seconds.
  * Pauses the video before seeking.
- * @param {HTMLVideoElement} element - The video element
- * @param {number} seconds - The number of seconds to step (positive forward, negative backward)
+ * @param element - The video element
+ * @param seconds - The number of seconds to step (positive forward, negative backward)
  */
-export function stepFrame(element, seconds) {
+export function stepFrame(element: HTMLVideoElement | null, seconds: number): void {
     if (element && element.tagName === 'VIDEO') {
         element.pause();
         const newTime = Math.max(0, Math.min(element.currentTime + seconds, element.duration || Infinity));
@@ -30,9 +30,9 @@ export function stepFrame(element, seconds) {
 
 /**
  * Toggle play/pause on a video element.
- * @param {HTMLVideoElement} element - The video element
+ * @param element - The video element
  */
-export function togglePlay(element) {
+export function togglePlay(element: HTMLVideoElement | null): void {
     if (element && element.tagName === 'VIDEO') {
         if (element.paused) {
             element.play().catch(() => {
@@ -46,9 +46,9 @@ export function togglePlay(element) {
 
 /**
  * Focus an element to ensure keyboard events are captured.
- * @param {HTMLElement} element - The element to focus
+ * @param element - The element to focus
  */
-export function focusElement(element) {
+export function focusElement(element: HTMLElement | null): void {
     if (element) {
         element.focus();
     }
@@ -57,10 +57,10 @@ export function focusElement(element) {
 /**
  * Get a video element's current playback position, in milliseconds. Used by "grab still with
  * hash" to know which frame offset into the source video the operator is looking at.
- * @param {HTMLVideoElement} element - The video element
- * @returns {number} Current time in milliseconds (0 if the element is missing or not a video).
+ * @param element - The video element
+ * @returns Current time in milliseconds (0 if the element is missing or not a video).
  */
-export function getCurrentTimeMs(element) {
+export function getCurrentTimeMs(element: HTMLVideoElement | null): number {
     if (element && element.tagName === 'VIDEO') {
         return Math.round(element.currentTime * 1000);
     }

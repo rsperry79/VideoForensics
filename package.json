@@ -1,0 +1,11 @@
+{
+  "name": "videoforensics-scripts",
+  "private": true,
+  "description": "Compiles the TypeScript interop scripts under src/**/src/ts into the wwwroot folders that Blazor serves.",
+  "scripts": {
+    "build:ts": "node scripts/build-ts.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

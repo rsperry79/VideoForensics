@@ -153,7 +153,7 @@ else
 
             // Load JavaScript module
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/VideoForensics.Client.Ui.Shared/js/liveview.js");
+                "import", "./_content/VideoForensics.Client.Ui.Shared/scripts/liveview.js");
 
             // Initialize SignalR connection via JS
             _hubConnection = await _jsModule.InvokeAsync<dynamic>("initializeHubConnection", NavigationManager.ToAbsoluteUri("/hubs/liveview-signaling").ToString());

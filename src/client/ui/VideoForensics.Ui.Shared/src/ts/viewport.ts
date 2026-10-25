@@ -1,17 +1,17 @@
 // Viewport width detection and live change notification for DefaultViewportService's
 // mobile/desktop form-factor detection.
 window.vfViewport = {
-    getIsMobile: function () {
+    getIsMobile: function (): boolean {
         try {
             return window.matchMedia && window.matchMedia('(max-width: 599px)').matches;
         } catch (e) {
             return false;
         }
     },
-    watchViewport: function (dotNetRef) {
+    watchViewport: function (dotNetRef: DotNetObjectReference): void {
         try {
-            var mql = window.matchMedia('(max-width: 599px)');
-            var listener = function (e) {
+            const mql = window.matchMedia('(max-width: 599px)');
+            const listener = function (e: MediaQueryListEvent): void {
                 // The circuit can be gone when the media query fires; nothing is left to notify.
                 dotNetRef.invokeMethodAsync('OnViewportChanged', e.matches).catch(function () { });
             };

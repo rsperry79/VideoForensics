@@ -219,7 +219,7 @@ public abstract class ServerLogsPageTestBase : BunitContext
     protected ServerLogsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/js/server-logs.js");
+        Module = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/scripts/server-logs.js");
         Module.Mode = JSRuntimeMode.Loose;
 
         _ = Services.AddLocalization();

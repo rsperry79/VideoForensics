@@ -1,3 +1,4 @@
+"use strict";
 // Browser-side WebAuthn ceremony glue (plan §5.1/§5.10). Converts between the base64url-encoded
 // JSON shapes Fido2NetLib (server) expects/produces and the ArrayBuffer-based shapes the browser's
 // native navigator.credentials API requires. Property names on both sides (challenge, rp, user,
@@ -16,7 +17,6 @@
         }
         return buffer.buffer;
     }
-
     function bufferToBase64Url(buffer) {
         const bytes = new Uint8Array(buffer);
         let str = "";
@@ -25,21 +25,19 @@
         }
         return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     }
-
     function mapCredentialDescriptors(list) {
-        if (!list) return [];
+        if (!list)
+            return [];
         return list.map(c => ({
             id: base64UrlToBuffer(c.id),
-            type: c.type || "public-key",
+            type: (c.type || "public-key"),
             transports: c.transports
         }));
     }
-
     window.vfWebAuthn = {
         isAvailable: function () {
             return !!(window.PublicKeyCredential && navigator.credentials);
         },
-
         register: async function (optionsJson) {
             const options = JSON.parse(optionsJson);
             const publicKey = {
@@ -56,23 +54,20 @@
                 authenticatorSelection: options.authenticatorSelection,
                 attestation: options.attestation || "none"
             };
-
             const credential = await navigator.credentials.create({ publicKey });
-
+            const response = credential.response;
             const result = {
                 id: credential.id,
                 rawId: bufferToBase64Url(credential.rawId),
                 type: credential.type,
                 response: {
-                    attestationObject: bufferToBase64Url(credential.response.attestationObject),
-                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON)
+                    attestationObject: bufferToBase64Url(response.attestationObject),
+                    clientDataJSON: bufferToBase64Url(response.clientDataJSON)
                 },
                 extensions: {}
             };
-
             return JSON.stringify(result);
         },
-
         authenticate: async function (optionsJson) {
             const options = JSON.parse(optionsJson);
             const publicKey = {
@@ -82,25 +77,22 @@
                 allowCredentials: mapCredentialDescriptors(options.allowCredentials),
                 userVerification: options.userVerification
             };
-
             const credential = await navigator.credentials.get({ publicKey });
-
+            const response = credential.response;
             const result = {
                 id: credential.id,
                 rawId: bufferToBase64Url(credential.rawId),
                 type: credential.type,
                 response: {
-                    authenticatorData: bufferToBase64Url(credential.response.authenticatorData),
-                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
-                    signature: bufferToBase64Url(credential.response.signature),
-                    userHandle: credential.response.userHandle ? bufferToBase64Url(credential.response.userHandle) : null
+                    authenticatorData: bufferToBase64Url(response.authenticatorData),
+                    clientDataJSON: bufferToBase64Url(response.clientDataJSON),
+                    signature: bufferToBase64Url(response.signature),
+                    userHandle: response.userHandle ? bufferToBase64Url(response.userHandle) : null
                 },
                 extensions: {}
             };
-
             return JSON.stringify(result);
         },
-
         // Session-token persistence (session cookie - no Expires/Max-Age means the browser discards it
         // when the browser itself closes, while cookies are automatically shared across every tab/window
         // of the same browser so navigation and new tabs stay signed in. The token itself is a short-lived

@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class LiveViewPageTests : BunitContext
 {
-    private const string ExpectedModulePath = "./_content/VideoForensics.Client.Ui.Shared/js/liveview.js";
+    private const string ExpectedModulePath = "./_content/VideoForensics.Client.Ui.Shared/scripts/liveview.js";
 
     public LiveViewPageTests()
     {
@@ -52,7 +52,7 @@ public class LiveViewPageTests : BunitContext
         IRenderedComponent<LiveView> cut = Render<VideoForensics.Client.Ui.Shared.Pages.LiveView>();
 
         // Assert: the module must be requested from the Razor class library static asset path,
-        // not "./js/liveview.js" (which resolves to /js/liveview.js and returns 404).
+        // not "./scripts/liveview.js" (which resolves to /scripts/liveview.js and returns 404).
         cut.WaitForAssertion(() =>
         {
             var importCalls = JSInterop.Invocations

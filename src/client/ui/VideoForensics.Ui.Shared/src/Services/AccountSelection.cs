@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
     /// <summary>
     /// Browser-local (per-viewer) memory of the currently selected provider account, kept in localStorage via
-    /// <c>wwwroot/js/layout-prefs.js</c>. Deliberately not server state: each browser remembers its own choice.
+    /// <c>wwwroot/scripts/layout-prefs.js</c>. Deliberately not server state: each browser remembers its own choice.
     /// Best-effort - if storage is unavailable the first linked account is used.
     /// </summary>
     public class AccountSelectionState
