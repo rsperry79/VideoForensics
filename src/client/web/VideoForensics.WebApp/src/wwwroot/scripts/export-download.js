@@ -1,3 +1,4 @@
+"use strict";
 window.vfExportDownload = {
     trigger: function (url) {
         const a = document.createElement('a');

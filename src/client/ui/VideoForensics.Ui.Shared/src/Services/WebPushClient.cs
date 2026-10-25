@@ -5,7 +5,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
 {
     /// <summary>
     /// Drives the web push subscription lifecycle against the browser's Service Worker API via
-    /// <c>wwwroot/js/webpush.js</c>, mirroring the WebAuthnClient pattern. Handles subscription,
+    /// <c>wwwroot/scripts/webpush.js</c>, mirroring the WebAuthnClient pattern. Handles subscription,
     /// unsubscription, and permission checking for push notifications.
     /// </summary>
     public class WebPushClient

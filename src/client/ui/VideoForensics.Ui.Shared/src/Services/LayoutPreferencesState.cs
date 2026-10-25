@@ -5,7 +5,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// <summary>
     /// Circuit-scoped, device-local (NOT per-operator) collapse state for the docked layout's left
     /// nav rail and right settings panel - persisted to localStorage via
-    /// <c>wwwroot/js/layout-prefs.js</c>. Both default to expanded. Mirrors PairedSessionState's
+    /// <c>wwwroot/scripts/layout-prefs.js</c>. Both default to expanded. Mirrors PairedSessionState's
     /// "best-effort JS interop, tolerate JSException" pattern for hosts where the script isn't
     /// loaded yet.
     /// </summary>

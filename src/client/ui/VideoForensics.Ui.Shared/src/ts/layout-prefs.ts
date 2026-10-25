@@ -1,14 +1,14 @@
 // Device-local (not per-operator) persistence for the docked layout's left-nav/right-panel
 // collapse state - see MainLayout's Services/LayoutPreferencesState.cs.
 window.vfLayoutPrefs = {
-    get: function (key) {
+    get: function (key: string): string | null {
         try {
             return window.localStorage.getItem(key);
         } catch (e) {
             return null;
         }
     },
-    set: function (key, value) {
+    set: function (key: string, value: string): void {
         try {
             window.localStorage.setItem(key, value);
         } catch (e) {

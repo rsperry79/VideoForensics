@@ -9,7 +9,7 @@ namespace VideoForensics.Client.WebApp.Services
     /// a native OS save dialog (browsers can't be forced to show one) - see MauiFileDialogService for the
     /// native-dialog equivalent used by the MAUI host.
     ///
-    /// Uses a JS-created &lt;a&gt; click (see wwwroot/js/export-download.js) rather than
+    /// Uses a JS-created &lt;a&gt; click (see wwwroot/scripts/export-download.js) rather than
     /// NavigationManager.NavigateTo(..., forceLoad: true) - forceLoad does a hard window.location
     /// navigation that tears down the Blazor Server SignalR circuit (and all in-memory component state)
     /// before the browser detects the response is a download and aborts the navigation, which made the

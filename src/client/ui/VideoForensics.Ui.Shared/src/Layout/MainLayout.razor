@@ -121,7 +121,7 @@
            resizable pane cannot sit to the right of the flexible content pane in one flat Splitter;
            nesting a second SfSplitter to work around that was also tried and found (by hand) to
            corrupt the outer layout whenever the outer pane collapses/expands. The right panel is
-           therefore a plain, hand-rolled resizable div (see wwwroot/js/panel-resize.js) rather than
+           therefore a plain, hand-rolled resizable div (see wwwroot/scripts/panel-resize.js) rather than
            a Syncfusion component - do not "simplify" this back to a 3-pane or nested Splitter
            without re-testing left-nav collapse AND right-panel drag-resize by hand. *@
         <SfSplitter @ref="_outerSplitter" Height="100%" Width="100%" CssClass="e-splitter-layout" Orientation="Syncfusion.Blazor.Layouts.Orientation.Horizontal">
