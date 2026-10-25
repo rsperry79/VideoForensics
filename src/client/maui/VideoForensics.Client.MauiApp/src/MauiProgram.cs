@@ -195,6 +195,7 @@ namespace VideoForensics.Client.MauiApp
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Inspector.InspectorState>();
             builder.Services.TryAddSingleton(TimeProvider.System);
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.ScopeState>();
+            builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Scope.DeviceOwnershipService>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.IQueryApiFilterState, VideoForensics.Client.Ui.Shared.Services.QueryApi.QueryApiFilterState>();
             builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Cases.CaseState>();

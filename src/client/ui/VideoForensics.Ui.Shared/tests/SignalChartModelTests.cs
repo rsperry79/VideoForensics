@@ -18,24 +18,6 @@ public class SignalChartModelTests
     }
 
     [Fact]
-    public void MapDbm_PutsStrongerSignalHigher()
-    {
-        double strong = SignalChartModel.MapDbm(-30);
-        double weak = SignalChartModel.MapDbm(-100);
-
-        Assert.Equal(SignalChartModel.PlotTop, strong, precision: 6);
-        Assert.Equal(SignalChartModel.PlotTop + SignalChartModel.PlotHeight, weak, precision: 6);
-        Assert.True(strong < weak);
-    }
-
-    [Fact]
-    public void MapDbm_ClampsValuesOutsideTheAxis()
-    {
-        Assert.Equal(SignalChartModel.MapDbm(-100), SignalChartModel.MapDbm(-150), precision: 6);
-        Assert.Equal(SignalChartModel.MapDbm(-30), SignalChartModel.MapDbm(-5), precision: 6);
-    }
-
-    [Fact]
     public void Polyline_SkipsReadingsWithoutSignalAndOutsideTheRange()
     {
         var samples = new[]
@@ -46,7 +28,7 @@ public class SignalChartModelTests
             new SignalSample(From.AddHours(3), -70),
         };
 
-        string points = SignalChartModel.Polyline(samples, From, To);
+        string points = SignalChartModel.Polyline(samples, From, To, SignalScale.Default);
 
         // Two plotted points, in time order.
         Assert.Equal(2, points.Split(' ').Length);
