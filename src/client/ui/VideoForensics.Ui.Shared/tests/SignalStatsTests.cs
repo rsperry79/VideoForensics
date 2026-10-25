@@ -45,6 +45,27 @@ public class SignalStatsTests
     }
 
     [Fact]
+    public void StdDev_IsTheSampleStandardDeviationOfTheReadings()
+    {
+        // Mean -60; squared deviations 100 + 100 + 0 = 200; sample variance 200 / (3 - 1) = 100; deviation 10.
+        var samples = new[]
+        {
+            new SignalSample(T0, -50),
+            new SignalSample(T0.AddMinutes(15), -70),
+            new SignalSample(T0.AddMinutes(30), -60),
+        };
+
+        Assert.Equal(10.0, SignalStats.Compute(samples).StdDev!.Value, precision: 6);
+    }
+
+    [Fact]
+    public void StdDev_IsNullWithFewerThanTwoReadings()
+    {
+        Assert.Null(SignalStats.Compute([new SignalSample(T0, -55)]).StdDev);
+        Assert.Null(SignalStats.Compute([]).StdDev);
+    }
+
+    [Fact]
     public void Delta_IsNullWithoutReadings()
     {
         Assert.Null(SignalStats.Compute([]).Delta);

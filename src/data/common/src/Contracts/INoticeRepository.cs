@@ -8,6 +8,9 @@ namespace VideoForensics.Data.Common.Contracts
         /// <summary>Persists a new notice event to the database.</summary>
         Task AddAsync(Notice notice, CancellationToken ct);
 
+        /// <summary>True when any notice's details contain <paramref name="marker"/>. Used to raise an alert once: the marker is written into the details when it is raised.</summary>
+        Task<bool> ExistsWithDetailsAsync(string marker, CancellationToken ct);
+
         /// <summary>Lists notices for an operator, excluding those dismissed by that operator (unless includeDismissed is true). Includes notices with Audience=All, plus Audience=AdminsOnly when isAdmin is true.</summary>
         Task<IReadOnlyList<Notice>> ListForOperatorAsync(Guid operatorId, bool isAdmin, bool includeDismissed = false, CancellationToken ct = default);
 
