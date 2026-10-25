@@ -21,6 +21,8 @@ namespace VideoForensics.Data.Database.Configurations
             _ = builder.Property(o => o.IsPrimarySuperAdmin).IsRequired();
             _ = builder.Property(o => o.FailedLoginAttemptCount).IsRequired();
             _ = builder.Property(o => o.TwoFactorRequirementOverride).IsRequired();
+            // Existing operators keep passkey-required; the default matches the entity's initial value.
+            _ = builder.Property(o => o.PasskeyRequired).IsRequired().HasDefaultValue(true);
 
             _ = builder.HasIndex(o => o.Username).IsUnique();
             _ = builder.HasIndex(o => o.Email).IsUnique();

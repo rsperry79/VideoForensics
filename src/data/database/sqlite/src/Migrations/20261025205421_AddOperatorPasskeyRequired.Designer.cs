@@ -11,7 +11,7 @@ using VideoForensics.Data.Database.DbContext;
 namespace VideoForensics.Data.Database.Sqlite.Migrations
 {
     [DbContext(typeof(VideoForensicsDbContext))]
-    [Migration("20261025203342_AddOperatorPasskeyRequired")]
+    [Migration("20261025205421_AddOperatorPasskeyRequired")]
     partial class AddOperatorPasskeyRequired
     {
         /// <inheritdoc />
@@ -2777,7 +2777,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("PasskeyRequired")
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(512)
