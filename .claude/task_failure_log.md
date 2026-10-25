@@ -31,3 +31,5 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-24 19:51 | full suite on feat/finish-parts-1-2 | AesEncryption_SameSource_DecryptsEncryptedValue failed in the full run only (passed alone 3 of 3) | AesEncryptionTests deletes the shared salt file while the new tests run; salt creation also raced on first run | exclusive salt create (FileMode.CreateNew) and one xUnit collection for both AES classes; full suite 7054 passed | fixed
 2026-10-24 21:25 | full suite on feat/preview-strips | Ring UnitTest.GetSnapshotTimestampTest failed once; passed alone and on a full rerun (7,083 total, 0 failed) | timing-dependent test, branch does not touch Ring | none; known flaky
 2026-10-25T13:40 | build | npm run build:ts with && chain | npm script ran under PowerShell 5 parser, && rejected | replaced with scripts/build-ts.mjs (Node spawnSync)
+2026-10-25T13:47 | test | npm run test:js chained build && vitest | && rejected under PowerShell npm shell | split into pretest:js npm hook
+2026-10-25T13:47 | test | load-script new URL(import.meta.url) threw "URL must be of scheme file" | jsdom replaces global URL | use fileURLToPath + dirname
