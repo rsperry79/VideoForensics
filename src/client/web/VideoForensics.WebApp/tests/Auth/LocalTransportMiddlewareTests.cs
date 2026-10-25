@@ -105,6 +105,18 @@ public class LocalTransportMiddlewareTests
     }
 
     [Fact]
+    public void Loopback_BrowserOnLocalhost_TunnelRunning_RedirectsToTunnel()
+    {
+        // A browser on this machine is loopback too, but it is not the tunnel connector. It must go to the tunnel,
+        // or the page's passkey RP ID (the tunnel host) does not match the localhost origin.
+        (DefaultHttpContext context, bool nextCalled) = Run(TunnelRunning(), HttpsReady(), https: false, remote: IPAddress.Loopback, host: "localhost:5162");
+
+        Assert.False(nextCalled);
+        Assert.Equal(StatusCodes.Status302Found, context.Response.StatusCode);
+        Assert.Equal("https://forensics.example.com/account/sign-in", context.Response.Headers.Location.ToString());
+    }
+
+    [Fact]
     public async Task LanHttp_ApiPost_IsNotRedirected()
     {
         // The tunnel is started by a POST to /api. A redirect would drop the body, so API calls always pass through.
