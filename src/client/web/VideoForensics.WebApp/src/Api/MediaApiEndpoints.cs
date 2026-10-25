@@ -44,6 +44,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/media-items/page", ListMediaItemPageAsync)
+                .RequireAuthorization()
+                .RequireRateLimiting("media");
+
             _ = group.MapGet("/media-items/{id:guid}", GetMediaItemAsync)
                 .RequireAuthorization()
                 .RequireRateLimiting("media");
@@ -358,6 +362,50 @@ namespace VideoForensics.Client.WebApp.Api
             };
 
             return Results.Ok(items.Select(x => x.ToDto()));
+        }
+
+        /// <summary>
+        /// Pages media items from one or more devices within a UTC range, oldest first, for the media viewer.
+        /// The total count comes from the database, so the client can page without fetching every clip.
+        /// Semantics:
+        /// - deviceIds (1..64) and from/to (from must be &lt;= to) are required
+        /// - skip defaults to 0, must be &gt;= 0
+        /// - take defaults to 100, must be 1..500
+        /// </summary>
+        public static async Task<IResult> ListMediaItemPageAsync(
+            Guid[]? deviceIds,
+            DateTime? from,
+            DateTime? to,
+            int? skip,
+            int? take,
+            IMediaItemRepository mediaItems,
+            CancellationToken ct)
+        {
+            const int MaxDevices = 64;
+            const int DefaultTake = 100;
+            const int MaxTake = 500;
+
+            if (deviceIds is null || deviceIds.Length == 0 || deviceIds.Length > MaxDevices)
+            {
+                return Results.BadRequest();
+            }
+
+            if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            {
+                return Results.BadRequest();
+            }
+
+            int effectiveSkip = skip ?? 0;
+            int effectiveTake = take ?? DefaultTake;
+            if (effectiveSkip < 0 || effectiveTake < 1 || effectiveTake > MaxTake)
+            {
+                return Results.BadRequest();
+            }
+
+            MediaItemPage page = await mediaItems.GetPageByDevicesAndDateRangeAsync(
+                deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct);
+
+            return Results.Ok(new MediaItemPageDto(page.Items.Select(x => x.ToDto()).ToList(), page.TotalCount));
         }
 
         /// <summary>
