@@ -29,6 +29,9 @@ namespace VideoForensics.Data.Common.Entities
         /// Null when no thumbnail exists yet, so the backfill can select exactly the rows that need one.
         /// </summary>
         public string? ThumbnailPath { get; set; }
+
+        /// <summary>Path to the short 1 fps preview MP4 for the strip, or null until generated.</summary>
+        public string? PreviewPath { get; set; }
         public string? MetadataJson { get; set; }
         public string? ApiSourceHash { get; set; }
 
