@@ -28,7 +28,7 @@ namespace VideoForensics.Providers.Ring.Implementations
         /// Supplies the machine identifier used in key derivation. Defaults to the registry MachineGuid on Windows,
         /// so callers that pass nothing get the same key as before this parameter existed.
         /// </param>
-        public AesEncryption(IMachineGuidSource? machineGuidSource = null)
+        public AesEncryption(IMachineGuidSource machineGuidSource = null)
         {
             _machineGuidSource = machineGuidSource ?? new RegistryMachineGuidSource();
         }
@@ -178,7 +178,7 @@ namespace VideoForensics.Providers.Ring.Implementations
             {
                 // The source is consulted on every OS. Its null result (the default on Linux and macOS, or a missing
                 // Windows value) falls through to the hostname below, matching the original fallbacks.
-                string? guid = _machineGuidSource.ReadMachineGuid();
+                string guid = _machineGuidSource.ReadMachineGuid();
                 if (guid is not null)
                 {
                     return guid;
