@@ -167,5 +167,75 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             Assert.Empty(cut.FindAll("[data-testid='camera-tile']"));
             Assert.NotEmpty(cut.FindAll("[data-testid='camera-grid-limit']"));
         }
+
+        /// <summary>
+        /// Queues playback reads for <c>vfGetVideoTime</c> in call order. Each setup matches one call and returns its value,
+        /// so the master (tile 0) is read first and then each following tile.
+        /// </summary>
+        private void SetupPlaybackReads(params double[] seconds)
+        {
+            int reads = 0;
+            foreach (double value in seconds)
+            {
+                double captured = value;
+                int ordinal = reads++;
+                _ = JSInterop.Setup<double>("vfGetVideoTime", _ => JSInterop.Invocations.Count(i => i.Identifier == "vfGetVideoTime") == ordinal + 1).SetResult(captured);
+            }
+        }
+
+        private static List<CameraTile> TwoTiles() =>
+            new()
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content"),
+                new("Back", TwoClips(), id => $"/media/{id}/content"),
+            };
+
+        /// <summary>Verifies that a tile drifting past the tolerance is seeked to the master clock's absolute time.</summary>
+        [Fact]
+        public async Task CameraGrid_TileDrifted_ResyncsToMaster()
+        {
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, TwoTiles())
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            SetupPlaybackReads(10.0, 12.0);
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(1, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+        }
+
+        /// <summary>Verifies that a tile within the tolerance is left alone.</summary>
+        [Fact]
+        public async Task CameraGrid_TilesWithinTolerance_DoNotResync()
+        {
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, TwoTiles())
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            SetupPlaybackReads(10.0, 10.2);
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+        }
+
+        /// <summary>Verifies that a single-tile grid has nothing to sync and completes without seeking.</summary>
+        [Fact]
+        public async Task CameraGrid_SingleTile_SyncDoesNothing()
+        {
+            var tiles = new List<CameraTile> { new("Front", TwoClips(), id => $"/media/{id}/content") };
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, tiles)
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+        }
     }
 }

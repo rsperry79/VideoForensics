@@ -1,3 +1,4 @@
+@implements IAsyncDisposable
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<SharedResources> L
 @using VideoForensics.Client.Common.Viewer
@@ -10,11 +11,13 @@
 else
 {
     <div class="camera-grid" data-testid="camera-grid" style="grid-template-columns:repeat(@_columns, 1fr)">
-        @foreach (CameraTile tile in Tiles)
+        @for (int i = 0; i < Tiles.Count; i++)
         {
+            CameraTile tile = Tiles[i];
+            int index = i;
             <figure class="camera-tile" data-testid="camera-tile">
                 <figcaption>@tile.Label</figcaption>
-                <ReviewPlayer Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
+                <ReviewPlayer @ref="_players[index]" Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
             </figure>
         }
     </div>
@@ -28,4 +31,105 @@ else
     [Parameter] public DateTime? Cursor { get; set; }
 
     private int _columns => Math.Max(1, (int)Math.Ceiling(Math.Sqrt(Tiles.Count)));
+
+    // One slot per tile, filled by @ref. Tile 0 is the master clock. Slots are resized, not cleared, so existing refs survive re-renders.
+    private readonly List<ReviewPlayer?> _players = [];
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        while (_players.Count < Tiles.Count)
+        {
+            _players.Add(null);
+        }
+
+        if (_players.Count > Tiles.Count)
+        {
+            _players.RemoveRange(Tiles.Count, _players.Count - Tiles.Count);
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Sync runs only for multi-tile grids. The loop starts once and lives until the component is disposed.
+        if (firstRender && Tiles.Count >= 2 && _timer is null)
+        {
+            _cts = new CancellationTokenSource();
+            _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            _ = RunSyncLoopAsync(_timer, _cts.Token);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Compares every tile to tile 0 and seeks any tile that has drifted past the tolerance. Does nothing when the
+    /// master tile is not playing a clip, since there is then no shared time to follow.
+    /// </summary>
+    public async Task SyncTilesAsync()
+    {
+        if (_players.Count == 0 || _players[0] is not { } master)
+        {
+            return;
+        }
+
+        double? masterSeconds = await master.ReadPlaybackUtcSecondsAsync();
+        if (masterSeconds is not double masterValue)
+        {
+            return;
+        }
+
+        DateTime masterUtc = DateTimeOffset.FromUnixTimeMilliseconds((long)Math.Round(masterValue * 1000.0)).UtcDateTime;
+
+        for (int i = 1; i < _players.Count; i++)
+        {
+            if (_players[i] is not { } player)
+            {
+                continue;
+            }
+
+            double? tileSeconds = await player.ReadPlaybackUtcSecondsAsync();
+            if (tileSeconds is double tileValue && CameraSync.NeedsResync(tileValue, masterValue, CameraSync.DefaultToleranceSeconds))
+            {
+                await player.SeekToUtcAsync(masterUtc);
+            }
+        }
+    }
+
+    private async Task RunSyncLoopAsync(PeriodicTimer timer, CancellationToken token)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                try
+                {
+                    // Run on the renderer context, as Blazor requires for component work started from a timer.
+                    await InvokeAsync(SyncTilesAsync);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Shutdown in progress; the next WaitForNextTickAsync call ends the loop.
+                }
+                catch (Exception)
+                {
+                    // A failing JS call usually means the circuit has gone. Stop syncing rather than retry every second.
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Dispose cancelled the loop while it was waiting for the next tick.
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+        return ValueTask.CompletedTask;
+    }
 }
