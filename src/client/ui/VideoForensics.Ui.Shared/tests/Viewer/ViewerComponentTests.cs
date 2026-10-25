@@ -300,6 +300,44 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             Assert.NotEmpty(tile.QuerySelectorAll("[data-testid='single-camera-placeholder']"));
         }
 
+        /// <summary>Verifies that a preview tile seeks its copy to the offset of the cursor, not the start of its clip.</summary>
+        [Fact]
+        public void SingleCameraView_PreviewTile_SeeksToCursorOffset()
+        {
+            var cameras = new List<CameraTile>
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Back", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+            };
+
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, cameras)
+                .Add(x => x.SelectedIndex, 0)
+                .Add(x => x.Cursor, Start.AddSeconds(30)));
+
+            // The main player also seeks once, so two calls means the preview tile seeked too.
+            _ = JSInterop.VerifyInvoke("vfSetVideoTime", 2);
+        }
+
+        /// <summary>Verifies that an out-of-range selection hides the main player and renders no preview tiles.</summary>
+        [Fact]
+        public void SingleCameraView_OutOfRangeSelection_RendersNoPreviewTiles()
+        {
+            var cameras = new List<CameraTile>
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Back", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+            };
+
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, cameras)
+                .Add(x => x.SelectedIndex, 5)
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            Assert.Empty(cut.FindAll("[data-testid='review-player']"));
+            Assert.Empty(cut.FindAll("[data-testid='single-camera-preview']"));
+        }
+
         /// <summary>Verifies that an empty camera list renders no main player.</summary>
         [Fact]
         public void SingleCameraView_EmptyCameras_RendersNoMainPlayer()

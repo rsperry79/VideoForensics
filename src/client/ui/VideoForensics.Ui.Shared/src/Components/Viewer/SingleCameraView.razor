@@ -1,5 +1,7 @@
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<SharedResources> L
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JS
 @using VideoForensics.Client.Common.Viewer
 @using VideoForensics.Client.Ui.Shared.Resources
 
@@ -23,7 +25,7 @@
                 }
                 else
                 {
-                    <video src="@previewUrl" muted loop autoplay playsinline preload="metadata" style="width:100%;aspect-ratio:16/9;background:#000;"></video>
+                    <video src="@previewUrl" muted loop autoplay playsinline preload="metadata" style="width:100%;aspect-ratio:16/9;background:#000;" @ref="_previewVideos[index]"></video>
                 }
                 <span class="single-camera-caption">@camera.Label</span>
             </button>
@@ -46,8 +48,17 @@
 
     private bool _hasMain => SelectedIndex >= 0 && SelectedIndex < Cameras.Count;
 
-    // Every camera except the one shown large, in list order.
-    private List<int> _previewIndexes => Enumerable.Range(0, Cameras.Count).Where(i => i != SelectedIndex).ToList();
+    // Video element of each preview tile, keyed by camera index, so the cursor offset can be applied to it.
+    private readonly Dictionary<int, ElementReference> _previewVideos = new();
+
+    // The cursor and selection at the last seek. Previews seek only when one of them changes, not on every render.
+    private DateTime? _seekedCursor;
+    private int? _seekedSelectedIndex;
+
+    // Every camera except the one shown large, in list order. An out-of-range selection means no selection, so no tiles.
+    private List<int> _previewIndexes => _hasMain
+        ? Enumerable.Range(0, Cameras.Count).Where(i => i != SelectedIndex).ToList()
+        : new List<int>();
 
     /// <summary>
     /// Returns the preview URL for the clip that covers the cursor. Null when there is no cursor, no clip covers it, or the
@@ -62,5 +73,39 @@
 
         ClipSelection? selection = ReviewTimeline.ClipAt(camera.Clips, time);
         return selection is null ? null : camera.PreviewUrlFor?.Invoke(selection.ClipId);
+    }
+
+    /// <summary>
+    /// Seeks each rendered preview to the offset of the clip covering the cursor. Previews are 1 fps copies of their clips,
+    /// so the same offset gives the same moment as the main camera. Skips the work when neither cursor nor selection moved.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Cursor == _seekedCursor && SelectedIndex == _seekedSelectedIndex)
+        {
+            return;
+        }
+
+        _seekedCursor = Cursor;
+        _seekedSelectedIndex = SelectedIndex;
+
+        if (Cursor is not DateTime time)
+        {
+            return;
+        }
+
+        foreach (int index in _previewIndexes)
+        {
+            CameraTile camera = Cameras[index];
+            ClipSelection? selection = ReviewTimeline.ClipAt(camera.Clips, time);
+
+            // A tile with no clip or no preview URL renders a placeholder, so there is no video element to seek.
+            if (selection is null || PreviewUrlOf(camera) is null || !_previewVideos.TryGetValue(index, out ElementReference video))
+            {
+                continue;
+            }
+
+            await JS.InvokeVoidAsync("vfSetVideoTime", video, selection.OffsetSeconds);
+        }
     }
 }
