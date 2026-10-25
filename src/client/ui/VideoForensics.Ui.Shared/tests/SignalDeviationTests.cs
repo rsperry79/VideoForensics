@@ -68,9 +68,9 @@ public class SignalDeviationTests
     [Fact]
     public void DedupeKey_IsStablePerCameraAndHour()
     {
-        var device = Guid.Parse("11111111-2222-3333-4444-555555555555");
         var hour = new DateTime(2026, 10, 24, 9, 0, 0, DateTimeKind.Utc);
 
-        Assert.Equal("sig-dev:11111111222233334444555555555555:2026102409", SignalDeviation.DedupeKey(device, hour));
+        Assert.Equal("sig-dev:Ring:123456789:2026102409", SignalDeviation.DedupeKey("Ring", "123456789", hour));
+        Assert.NotEqual(SignalDeviation.DedupeKey("Ring", "123456789", hour), SignalDeviation.DedupeKey("Ring", "1234567", hour));
     }
 }

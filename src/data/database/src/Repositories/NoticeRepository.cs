@@ -70,6 +70,15 @@ namespace VideoForensics.Data.Database.Repositories
             }
         }
 
+        /// <inheritdoc />
+        public async Task<bool> ExistsWithDetailsAsync(string marker, CancellationToken ct)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(marker);
+
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            return await db.Notices.AnyAsync(n => n.Details != null && n.Details.Contains(marker), ct);
+        }
+
         /// <summary>Counts undismissed notices for an operator, for UI badge/indicator purposes. Includes Audience=AdminsOnly notices only when isAdmin is true.</summary>
         public async Task<int> CountUndismissedForOperatorAsync(Guid operatorId, bool isAdmin, CancellationToken ct)
         {
