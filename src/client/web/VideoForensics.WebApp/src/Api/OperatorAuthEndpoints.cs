@@ -215,9 +215,10 @@ namespace VideoForensics.Client.WebApp.Api
                 return false;
             }
 
-            string host = context.Request.Host.Host;
-            bool localHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.Equals("127.0.0.1", StringComparison.Ordinal);
-            return localHost && context.Connection.RemoteIpAddress is { } remote && System.Net.IPAddress.IsLoopback(remote);
+            // Local means this machine or the private network, reached by a local name or address. A tunnel request arrives from
+            // loopback too, but with the public host name, so it is not local.
+            return LocalNetwork.IsLocalHostName(context.Request.Host.Host)
+                && context.Connection.RemoteIpAddress is { } remote && LocalNetwork.IsLocalAddress(remote);
         }
 
         private static async Task<IResult> UsernameAssertionCompleteAsync(

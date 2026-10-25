@@ -96,7 +96,7 @@ public sealed class LocalTransportMiddleware
     /// </summary>
     private static bool IsLoopbackRequest(HttpContext context)
     {
-        return context.Connection.RemoteIpAddress is { } remote && IPAddress.IsLoopback(remote);
+        return context.Connection.RemoteIpAddress is { } remote && LocalNetwork.IsLocalAddress(remote);
     }
 
     /// <summary>HttpContext.Items key the sign-in page reads to show the "passkeys unavailable here" message.</summary>

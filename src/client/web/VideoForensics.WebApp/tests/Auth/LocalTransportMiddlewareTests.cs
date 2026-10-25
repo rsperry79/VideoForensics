@@ -59,31 +59,31 @@ public class LocalTransportMiddlewareTests
     private static LocalTransportOptions NoHttps() => new(HttpsPort: null, HttpsCertificateReady: () => false);
 
     [Fact]
-    public void LanHttp_TunnelRunning_RedirectsToTunnelKeepingPathAndQuery()
+    public void LanHttp_TunnelRunning_IsServedLocallyWithoutRedirect()
     {
+        // The local network can sign in with a password; a passkey attempt from here is sent to the tunnel by the sign-in page.
         (DefaultHttpContext context, bool nextCalled) = Run(TunnelRunning(), HttpsReady(), https: false, remote: Lan, query: "?returnUrl=%2Fcases");
 
-        Assert.Equal(StatusCodes.Status302Found, context.Response.StatusCode);
-        Assert.Equal(PublicUrl + "/account/sign-in?returnUrl=%2Fcases", context.Response.Headers.Location.ToString());
-        Assert.False(nextCalled);
+        Assert.True(nextCalled);
+        Assert.False(context.Response.Headers.ContainsKey("Location"));
     }
 
     [Fact]
-    public void LanHttp_NoTunnel_HttpsAvailable_RedirectsToHttpsOnTheSamePath()
+    public void LanHttp_NoTunnel_HttpsAvailable_IsServedLocallyWithoutRedirect()
     {
         (DefaultHttpContext context, bool nextCalled) = Run(TunnelStopped(), HttpsReady(), https: false, remote: Lan);
 
-        Assert.Equal("https://192.168.1.5:5443/account/sign-in", context.Response.Headers.Location.ToString());
-        Assert.False(nextCalled);
+        Assert.True(nextCalled);
+        Assert.False(context.Response.Headers.ContainsKey("Location"));
     }
 
     [Fact]
-    public void LanHttp_NoTunnelNoHttps_ServesAndFlagsPasskeyUnavailable()
+    public void LanHttp_NoTunnelNoHttps_IsServedLocallyAndNotFlagged()
     {
         (DefaultHttpContext context, bool nextCalled) = Run(TunnelStopped(), NoHttps(), https: false, remote: Lan);
 
         Assert.True(nextCalled);
-        Assert.Equal(true, context.Items[LocalTransportMiddleware.PasskeyUnavailableItemKey]);
+        Assert.Null(context.Items[LocalTransportMiddleware.PasskeyUnavailableItemKey]);
     }
 
     [Fact]

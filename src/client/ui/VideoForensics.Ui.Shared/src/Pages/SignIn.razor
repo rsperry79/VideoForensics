@@ -290,7 +290,7 @@
         }
 
         var here = new Uri(NavigationManager.Uri);
-        if (!IsLoopbackHost(here.Host) || string.Equals(here.Host, new Uri(tunnelUrl).Host, StringComparison.OrdinalIgnoreCase))
+        if (!LocalNetworkAddress.IsLocalHost(here.Host) || string.Equals(here.Host, new Uri(tunnelUrl).Host, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -299,7 +299,6 @@
         return true;
     }
 
-    private static bool IsLoopbackHost(string host) => host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
 
     private async Task SignInWithPasskeyCoreAsync(bool allCredentials)
     {
