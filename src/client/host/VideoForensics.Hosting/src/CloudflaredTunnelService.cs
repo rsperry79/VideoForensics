@@ -29,7 +29,8 @@ namespace VideoForensics.Client.Hosting
 
     public interface ICloudflaredTunnelService
     {
-        Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct);
+        /// <summary>Starts the named tunnel. <paramref name="publicUrl"/> is the saved Internet address that routes to it, reported in the state.</summary>
+        Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct, string? publicUrl = null);
         Task StopAsync(CancellationToken ct);
         TunnelState GetState();
     }
@@ -57,7 +58,7 @@ namespace VideoForensics.Client.Hosting
             _logger = logger ?? NullLogger<CloudflaredTunnelService>.Instance;
         }
 
-        public async Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct)
+        public async Task StartPermanentTunnelAsync(string tunnelToken, CancellationToken ct, string? publicUrl = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(tunnelToken);
 
@@ -88,7 +89,7 @@ namespace VideoForensics.Client.Hosting
                 _logger.LogInformation("Cloudflare tunnel started");
                 lock (_gate)
                 {
-                    _state = _state with { Status = TunnelStatus.Running };
+                    _state = _state with { Status = TunnelStatus.Running, PublicUrl = publicUrl };
                 }
             }
             catch (OperationCanceledException)

@@ -198,7 +198,7 @@ namespace VideoForensics.Client.WebApp.Api
                     return Results.BadRequest(new { error = "Configure the Cloudflare tunnel token first." });
                 }
 
-                await tunnels.StartPermanentTunnelAsync(token, ct);
+                await tunnels.StartPermanentTunnelAsync(token, ct, config.InternetServerUrl);
                 await AuditAsync(auditLog, tierResolver, context, SecurityAuditEventTypes.TunnelStarted, "Permanent Cloudflare tunnel started", ct);
                 return Results.Ok();
             }).AddEndpointFilter<StepUpEndpointFilter>();

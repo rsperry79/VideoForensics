@@ -47,7 +47,7 @@ namespace VideoForensics.Client.WebApp.Services
             {
                 try
                 {
-                    await tunnels.StartPermanentTunnelAsync(token!, stoppingToken);
+                    await tunnels.StartPermanentTunnelAsync(token!, stoppingToken, config.InternetServerUrl);
                     _logger.LogInformation("Cloudflare tunnel started at startup (attempt {Attempt})", attempt);
                     return;
                 }

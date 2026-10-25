@@ -27,6 +27,19 @@ namespace VideoForensics.Client.Hosting.Tests
         }
 
         [Fact]
+        public async Task StartPermanentTunnelAsync_WithPublicUrl_ReportsThatAddressInState()
+        {
+            // A named tunnel has no address of its own in cloudflared's output. The saved Internet address is the one that routes to it.
+            var cloudflared = new Mock<ICloudflaredService>();
+            _ = cloudflared.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<TunnelInfo>(null!));
+            var service = new CloudflaredTunnelService(cloudflared.Object, new Mock<IOptionsMonitorCache<CloudflaredOptions>>().Object);
+
+            await service.StartPermanentTunnelAsync(ValidToken, CancellationToken.None, "https://video.example.com");
+
+            Assert.Equal("https://video.example.com", service.GetState().PublicUrl);
+        }
+
+        [Fact]
         public async Task StartPermanentTunnelAsync_CalledWhileRunning_DoesNotStartAgain()
         {
             var cloudflared = new Mock<ICloudflaredService>();
