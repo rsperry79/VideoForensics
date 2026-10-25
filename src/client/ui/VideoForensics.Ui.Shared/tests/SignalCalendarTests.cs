@@ -70,6 +70,26 @@ public class SignalCalendarTests
     }
 
     [Fact]
+    public void Constructor_RebuildsTheGridFromItsTransportedStats()
+    {
+        SignalCalendar original = SignalCalendar.Compute(
+            [new SignalSample(new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc), -60)],
+            From,
+            To);
+
+        var rebuilt = new SignalCalendar(original.CellList, original.HourOfDayList, original.DayOfWeekList);
+
+        Assert.Equal(-60.0, rebuilt.Cell(1, 9).Average, precision: 6);
+        Assert.Equal(original.HourOfDay(9), rebuilt.HourOfDay(9));
+    }
+
+    [Fact]
+    public void Constructor_RejectsAGridOfTheWrongSize()
+    {
+        Assert.Throws<ArgumentException>(() => new SignalCalendar([], [], []));
+    }
+
+    [Fact]
     public void Compute_IgnoresReadingsOutsideTheWindowAndWithoutASignal()
     {
         SignalCalendar calendar = SignalCalendar.Compute(
