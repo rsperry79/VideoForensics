@@ -150,14 +150,14 @@ public class UserMenu_Tests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Items_AnyUser_OffersLightDarkAndSystemThemes(bool signedIn)
+    public void Items_AnyUser_OffersOneThemeLinkToTheThemePage(bool signedIn)
     {
+        // The theme choices live on their own page, so the menu holds a single link rather than three theme actions.
         var ctx = new NavContext(IsSignedIn: signedIn, Role: signedIn ? OperatorRole.Admin : null, AppLockSupported: false);
 
         IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
 
-        Assert.Contains(items, i => i.Action == "set-theme:Light");
-        Assert.Contains(items, i => i.Action == "set-theme:Dark");
-        Assert.Contains(items, i => i.Action == "set-theme:System");
+        Assert.Contains(items, i => i.Text == "Theme" && i.Path == "/settings/theme");
+        Assert.DoesNotContain(items, i => i.Action is not null && i.Action.StartsWith("set-theme:", StringComparison.Ordinal));
     }
 }

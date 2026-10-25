@@ -204,9 +204,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             var items = new List<UserMenuItem>
             {
-                new("Light theme", Action: "set-theme:Light"),
-                new("Dark theme", Action: "set-theme:Dark"),
-                new("System theme", Action: "set-theme:System"),
+                new("Theme", "/settings/theme"),
             };
 
             if (ctx.IsSignedIn)
