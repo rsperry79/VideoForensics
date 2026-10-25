@@ -1,4 +1,5 @@
 using System.Globalization;
+using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Signal;
 
@@ -122,10 +123,13 @@ public static class SignalChartModel
     public const int MissedChecksToFlag = 2;
 
     /// <summary>
-    /// How often Ring health is checked. Matches the base poll in DeviceHealthSyncService; cameras on battery
-    /// are polled less often, so their gaps can be flagged even though they are expected.
+    /// The expected spacing of readings for a camera: its account's SnapshotIntervalSeconds. Health is recorded with
+    /// each snapshot capture, so the snapshot interval is the check interval. Null (no schedule stored) uses the default.
     /// </summary>
-    public static readonly TimeSpan ExpectedCheckInterval = TimeSpan.FromMinutes(15);
+    public static TimeSpan ExpectedIntervalFor(int? snapshotIntervalSeconds)
+    {
+        return TimeSpan.FromSeconds(snapshotIntervalSeconds ?? SyncSchedule.DefaultSnapshotIntervalSeconds);
+    }
 
     private static IEnumerable<SignalPeriod> MergeAdjacent(IEnumerable<SignalPeriod> ordered)
     {

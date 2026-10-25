@@ -16,6 +16,8 @@
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceHealthRepository DeviceHealthRepository
 @inject ScopeState ScopeState
+@inject DeviceOwnershipService OwnershipService
+@inject ISyncScheduleRepository SyncScheduleRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 @inject IStringLocalizer<SignalHistory> L
@@ -164,6 +166,7 @@
         public required SignalStats AllTime { get; init; }
         public required string Points { get; init; }
         public required int InRangeCount { get; init; }
+        public required TimeSpan Interval { get; init; }
         public required IReadOnlyList<SignalPeriod> Periods { get; init; }
         public double? SelectionStart { get; set; }
         public double? SelectionEnd { get; set; }
@@ -221,9 +224,14 @@
             ? []
             : scope.IncludesAllDevices ? devices : devices.Where(d => scope.DeviceIds.Contains(d.Id));
 
+        List<Device> inScopeList = inScope.ToList();
+        DeviceOwnershipSnapshot ownership = await OwnershipService.LoadAsync(inScopeList, CancellationToken.None);
+        var intervalByAccount = new Dictionary<Guid, TimeSpan>();
+
         var sections = new List<DeviceSignal>();
-        foreach (Device device in inScope)
+        foreach (Device device in inScopeList)
         {
+            TimeSpan interval = await ExpectedIntervalAsync(device.Id, ownership.Ownership, intervalByAccount);
             IReadOnlyList<DeviceHealth> rows = await DeviceHealthRepository.GetHistoryAsync(device.Id, CancellationToken.None);
             List<SignalSample> samples = rows.Select(r => new SignalSample(r.CapturedAtUtc, r.WifiSignalRssi)).ToList();
             sections.Add(new DeviceSignal
@@ -232,11 +240,34 @@
                 AllTime = SignalStats.Compute(samples),
                 Points = SignalChartModel.Polyline(samples, _from, _to),
                 InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
-                Periods = SignalChartModel.Periods(samples, _from, _to, SignalChartModel.ExpectedCheckInterval),
+                Interval = interval,
+                Periods = SignalChartModel.Periods(samples, _from, _to, interval),
             });
         }
 
         _sections = sections;
+    }
+
+    /// <summary>
+    /// The camera's expected reading spacing, from its account's snapshot interval. Accounts are looked up once per load.
+    /// A camera with no owning account falls back to the default interval.
+    /// </summary>
+    private async Task<TimeSpan> ExpectedIntervalAsync(Guid deviceId, IReadOnlyList<DeviceOwnership> ownership, Dictionary<Guid, TimeSpan> intervalByAccount)
+    {
+        DeviceOwnership? owner = ownership.FirstOrDefault(o => o.DeviceId == deviceId);
+        if (owner is null)
+        {
+            return SignalChartModel.ExpectedIntervalFor(null);
+        }
+
+        if (!intervalByAccount.TryGetValue(owner.ProviderAccountId, out TimeSpan interval))
+        {
+            var schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(owner.ProviderAccountId, CancellationToken.None);
+            interval = SignalChartModel.ExpectedIntervalFor(schedule?.SnapshotIntervalSeconds);
+            intervalByAccount[owner.ProviderAccountId] = interval;
+        }
+
+        return interval;
     }
 
     private static string DeviceName(Device device)
