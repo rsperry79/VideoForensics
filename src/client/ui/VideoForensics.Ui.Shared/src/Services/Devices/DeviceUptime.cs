@@ -53,13 +53,15 @@ public static class DeviceUptime
             : DeviceUptimeStatus.Online;
     }
 
-    /// <summary>The most recent of the heartbeat and the capture time; whichever exists when only one does.</summary>
+    /// <summary>
+    /// The provider's heartbeat when it sent one, otherwise the capture time. The capture time is not used when a heartbeat
+    /// exists: providers such as Ring re-send their last known state on every sync, so a fresh capture can carry a stale heartbeat.
+    /// </summary>
     public static DateTime LastSeenUtc(DateTime? lastHeartbeatUtc, DateTime? capturedAtUtc)
     {
         return (lastHeartbeatUtc, capturedAtUtc) switch
         {
-            (DateTime heartbeat, DateTime captured) => heartbeat > captured ? heartbeat : captured,
-            (DateTime heartbeat, null) => heartbeat,
+            (DateTime heartbeat, _) => heartbeat,
             (null, DateTime captured) => captured,
             _ => DateTime.MinValue,
         };
