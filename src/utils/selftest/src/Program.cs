@@ -15,6 +15,9 @@ using VideoForensics.Providers.Ring.Services;
 
 using Session = VideoForensics.Providers.Ring.Session;
 
+// Windows host: read install-time storage overrides from the registry, as the server does.
+VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+
 namespace VideoForensics.Utils.SelfTest
 {
     internal static class Program

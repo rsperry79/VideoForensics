@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../client/platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../providers/ring/utils/src/VideoForensics.Providers.Ring.Utils.csproj" />
     <ProjectReference Include="../../../providers/ring/core/src/VideoForensics.Providers.Ring.Core.csproj" />
     <ProjectReference Include="../../../providers/ring/auth/src/VideoForensics.Providers.Ring.Auth.csproj" />

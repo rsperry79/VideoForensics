@@ -54,6 +54,9 @@ using VideoForensics.Client.Ui.Shared.Services.QueryApi;
 using VideoForensics.Client.Ui.Shared.Services.Scope;
 using VideoForensics.Client.WebApp.Components;
 
+// Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
+VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
 // pipeline (which needs the host built first) the way every other setting in this app does. This

@@ -28,6 +28,9 @@ namespace VideoForensics.Client.MauiApp
         public static Microsoft.Maui.Hosting.MauiApp CreateMauiApp()
         {
             StartupTrace.Mark("CreateMauiApp: start");
+
+            // Read install-time storage overrides from the registry before any StorageLocationProvider is created.
+            VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
 #if DEBUG
             // During local development, ensure VideoForensics.Client.WebApp is running before continuing.
             // This is a DEBUG-only convenience: a developer can simply run the MAUI app in the debugger

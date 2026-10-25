@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../client/platform/VideoForensics.Client.Platform.Windows/src/VideoForensics.Client.Platform.Windows.csproj" />
     <ProjectReference Include="../../../data/common/src/VideoForensics.Data.Common.csproj" />
     <ProjectReference Include="../../../data/database/src/VideoForensics.Data.Database.csproj" />
     <ProjectReference Include="../../../data/database/sqlite/src/VideoForensics.Data.Database.Sqlite.csproj" />
