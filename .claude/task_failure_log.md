@@ -29,3 +29,4 @@ Resolved entries were removed. Rules they produced are listed below.
 - Build with `-m:1` after a merge or a clean; parallel builds race on stale ref output and locked DLLs.
 - Stale generated files with NUL bytes (obj folders) are deleted by explicit path; the next build regenerates them.
 2026-10-24 19:51 | full suite on feat/finish-parts-1-2 | AesEncryption_SameSource_DecryptsEncryptedValue failed in the full run only (passed alone 3 of 3) | AesEncryptionTests deletes the shared salt file while the new tests run; salt creation also raced on first run | exclusive salt create (FileMode.CreateNew) and one xUnit collection for both AES classes; full suite 7054 passed | fixed
+2026-10-24 21:25 | full suite on feat/preview-strips | Ring UnitTest.GetSnapshotTimestampTest failed once; passed alone and on a full rerun (7,083 total, 0 failed) | timing-dependent test, branch does not touch Ring | none; known flaky
