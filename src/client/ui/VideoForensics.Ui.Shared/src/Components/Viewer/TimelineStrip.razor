@@ -1,0 +1,41 @@
+@using VideoForensics.Client.Common.Viewer
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="review-timeline" data-testid="timeline-strip" style="width:@(WidthPx)px" @onclick="HandleClick">
+    @foreach (ClipWindow clip in Clips)
+    {
+        double left = ReviewTimeline.ToPixel(clip.StartUtc, WindowStartUtc, WindowEndUtc, WidthPx);
+        double right = ReviewTimeline.ToPixel(clip.StartUtc.AddSeconds(clip.DurationSeconds), WindowStartUtc, WindowEndUtc, WidthPx);
+        <div class="review-timeline-segment" data-testid="timeline-segment" style="left:@(left)px;width:@(Math.Max(1, right - left))px"></div>
+    }
+    @if (Cursor is DateTime cursor)
+    {
+        <div class="review-timeline-cursor" data-testid="timeline-cursor" style="left:@(ReviewTimeline.ToPixel(cursor, WindowStartUtc, WindowEndUtc, WidthPx))px"></div>
+    }
+</div>
+
+@code {
+    /// <summary>Clips to draw as segments, in any order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
+
+    /// <summary>Start of the visible window (UTC).</summary>
+    [Parameter, EditorRequired] public DateTime WindowStartUtc { get; set; }
+
+    /// <summary>End of the visible window (UTC). Must be after <see cref="WindowStartUtc"/>.</summary>
+    [Parameter, EditorRequired] public DateTime WindowEndUtc { get; set; }
+
+    /// <summary>Strip width in pixels. Clicks are mapped with this same width.</summary>
+    [Parameter] public double WidthPx { get; set; } = 800;
+
+    /// <summary>Current playback time (UTC), drawn as a cursor when set.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    /// <summary>Raised with the UTC time under the click.</summary>
+    [Parameter] public EventCallback<DateTime> OnSeek { get; set; }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        DateTime time = ReviewTimeline.FromPixel(e.OffsetX, WindowStartUtc, WindowEndUtc, WidthPx);
+        await OnSeek.InvokeAsync(time);
+    }
+}

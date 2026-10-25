@@ -1,0 +1,47 @@
+@using Microsoft.Extensions.Localization
+@inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
+@using Microsoft.AspNetCore.Components.Web
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+
+@if (_url is null)
+{
+    <div class="review-player-gap" data-testid="review-player-gap">@L["ReviewPlayerGap"]</div>
+}
+else
+{
+    <video class="review-player" data-testid="review-player" data-clip-id="@_selection!.ClipId" src="@_url" controls preload="metadata" @ref="_video"></video>
+}
+
+@code {
+    /// <summary>Clips for this camera. The player picks the one covering <see cref="Cursor"/>.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ClipWindow> Clips { get; set; } = [];
+
+    /// <summary>Maps a clip id to its playable URL (for example a media content URL with a ticket).</summary>
+    [Parameter, EditorRequired] public Func<string, string?> ContentUrlFor { get; set; } = _ => null;
+
+    /// <summary>The shared playback time (UTC). A change re-selects the clip and seeks to the offset.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    private ClipSelection? _selection;
+    private string? _url;
+    private ElementReference _video;
+    private bool _seekPending;
+
+    protected override void OnParametersSet()
+    {
+        _selection = Cursor is DateTime time ? ReviewTimeline.ClipAt(Clips, time) : null;
+        _url = _selection is null ? null : ContentUrlFor(_selection.ClipId);
+        _seekPending = _url is not null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_seekPending && _selection is not null && _url is not null)
+        {
+            _seekPending = false;
+            await JS.InvokeVoidAsync("vfSetVideoTime", _video, _selection.OffsetSeconds);
+        }
+    }
+}

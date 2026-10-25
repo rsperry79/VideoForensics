@@ -1,0 +1,31 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<SharedResources> L
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Resources
+
+@if (!CameraSync.IsTileCountAllowed(Tiles.Count))
+{
+    <div class="camera-grid-limit" data-testid="camera-grid-limit">@string.Format(L["CameraGridLimit"], CameraSync.MaxTiles)</div>
+}
+else
+{
+    <div class="camera-grid" data-testid="camera-grid" style="grid-template-columns:repeat(@_columns, 1fr)">
+        @foreach (CameraTile tile in Tiles)
+        {
+            <figure class="camera-tile" data-testid="camera-tile">
+                <figcaption>@tile.Label</figcaption>
+                <ReviewPlayer Clips="tile.Clips" ContentUrlFor="tile.ContentUrlFor" Cursor="Cursor" />
+            </figure>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>One entry per camera. The grid refuses more than <see cref="CameraSync.MaxTiles"/>.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<CameraTile> Tiles { get; set; } = [];
+
+    /// <summary>Shared playback time (UTC) that every tile follows.</summary>
+    [Parameter] public DateTime? Cursor { get; set; }
+
+    private int _columns => Math.Max(1, (int)Math.Ceiling(Math.Sqrt(Tiles.Count)));
+}

@@ -764,4 +764,10 @@
   <data name="ScopeAllAccounts" xml:space="preserve">
     <value>All accounts</value>
   </data>
+  <data name="ReviewPlayerGap" xml:space="preserve">
+    <value>No recording covers this time.</value>
+  </data>
+  <data name="CameraGridLimit" xml:space="preserve">
+    <value>Too many cameras to show at once (maximum {0}).</value>
+  </data>
 </root>
