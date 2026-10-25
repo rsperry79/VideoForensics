@@ -204,7 +204,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             var items = new List<UserMenuItem>
             {
-                new("Theme", "/settings/theme"),
+                new("Theme", "/settings"),
             };
 
             if (ctx.IsSignedIn)
