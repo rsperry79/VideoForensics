@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using System.Security.AccessControl;
-using System.Security.Principal;
 
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Common.Contracts;
@@ -41,21 +39,11 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 // On Windows, %ProgramData% is machine-wide and not writable by normal users by default for newly-created
                 // subdirectories. Grant the built-in "Users" group Modify rights so the app can function whether run as a
                 // normal user, elevated process, or (eventually) Windows Service.
-                if (!directoryExistedBefore && OperatingSystem.IsWindows())
+                if (!directoryExistedBefore)
                 {
                     try
                     {
-                        var dirInfo = new DirectoryInfo(dbDirectory);
-                        DirectorySecurity acl = dirInfo.GetAccessControl();
-                        var usersIdentity = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
-                        acl.AddAccessRule(
-                            new FileSystemAccessRule(
-                                usersIdentity,
-                                FileSystemRights.Modify,
-                                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                                PropagationFlags.None,
-                                AccessControlType.Allow));
-                        dirInfo.SetAccessControl(acl);
+                        DataDirectoryAccess.Current.GrantUsersModify(dbDirectory);
                     }
                     catch
                     {

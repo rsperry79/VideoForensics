@@ -14,6 +14,7 @@ using VideoForensics.Utils.Diagnostics.Contracts;
 
 // Windows host: read install-time storage overrides from the registry, as the server does.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
 
 // VideoForensics.Utils.DbRepair: repairs a VideoForensics SQLite database by removing duplicate records
 // and orphaned records that have dangling foreign keys. Also provides a recovery switch for lost

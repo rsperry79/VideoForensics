@@ -56,6 +56,7 @@ using VideoForensics.Client.WebApp.Components;
 
 // Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
 VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
@@ -155,7 +156,8 @@ builder.Logging.SetMinimumLevel(LogLevel.Information);
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true);
+builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true,
+    eventLogProvider: VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog);
 
 // Add services to the container.
 // Browser time zone for displaying stored UTC times in the user's zone (see UserTimeZoneHost).
