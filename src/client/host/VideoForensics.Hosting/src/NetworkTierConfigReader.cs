@@ -39,7 +39,7 @@ namespace VideoForensics.Client.Hosting
                 // Resolve via IStorageLocationProvider - the ONE place in the codebase that already
                 // knows how to honor a custom Database location (Windows registry override or the
                 // Linux VIDEOFORENSICS_DATABASE_PATH env var), instead of hardcoding the default
-                // %ProgramData%/VideoForensics path and silently ignoring any configured override.
+                // root and silently ignoring any configured override.
                 string dbPath = Path.Combine(_storageLocationProvider.GetDefaultRoot(StorageCategory.Database), "videoforensics.db");
                 if (!File.Exists(dbPath))
                 {

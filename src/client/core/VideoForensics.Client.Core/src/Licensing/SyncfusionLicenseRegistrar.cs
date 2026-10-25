@@ -28,7 +28,7 @@ namespace VideoForensics.Client.Core.Licensing
 
         /// <summary>
         /// Registers the Syncfusion Blazor license key if present. Priority order:
-        /// 1. External license key file at %ProgramData%\VideoForensics\syncfusion-license.key (if present, overrides all)
+        /// 1. External license key file in the data root, syncfusion-license.key (if present, overrides all)
         /// 2. SYNCFUSION_LICENSE_KEY from Client.Core user secrets (developer machines: dotnet user-secrets set)
         /// 3. Baked-in license key from assembly metadata (set at CI build time via -p:SyncfusionLicenseKey, present in every officially distributed build)
         /// Falls back to unlicensed/dev-mode behavior if no source provides a key.

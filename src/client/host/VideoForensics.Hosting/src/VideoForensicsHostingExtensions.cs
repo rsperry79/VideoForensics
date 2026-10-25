@@ -284,7 +284,7 @@ namespace VideoForensics.Client.Hosting
         /// offline-review cache.
         /// </summary>
         /// <param name="services">The service collection to register into.</param>
-        /// <param name="dbPath">Optional override for the SQLite database file path; defaults to %ProgramData%\VideoForensics\videoforensics.db (see AddVideoForensicsSqlite).</param>
+        /// <param name="dbPath">Optional override for the SQLite database file path; defaults to the database root from StorageLocationProvider (see AddVideoForensicsSqlite).</param>
         public static IServiceCollection AddVideoForensicsDataLayer(this IServiceCollection services, string? dbPath = null)
         {
             _ = services.AddVideoForensicsSqlite(dbPath);
