@@ -29,7 +29,8 @@ window.vfPanelResize = {
 
             var finalWidth = parseInt(panel.style.flexBasis, 10);
             if (dotNetRef && !isNaN(finalWidth)) {
-                dotNetRef.invokeMethodAsync('OnRightPanelResized', finalWidth);
+                // The circuit can be gone at drag end; the new width is only a notification.
+                dotNetRef.invokeMethodAsync('OnRightPanelResized', finalWidth).catch(function () { });
             }
         }
 

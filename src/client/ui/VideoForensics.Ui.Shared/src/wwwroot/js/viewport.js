@@ -12,7 +12,8 @@ window.vfViewport = {
         try {
             var mql = window.matchMedia('(max-width: 599px)');
             var listener = function (e) {
-                dotNetRef.invokeMethodAsync('OnViewportChanged', e.matches);
+                // The circuit can be gone when the media query fires; nothing is left to notify.
+                dotNetRef.invokeMethodAsync('OnViewportChanged', e.matches).catch(function () { });
             };
             if (mql.addEventListener) {
                 mql.addEventListener('change', listener);

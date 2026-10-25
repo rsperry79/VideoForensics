@@ -117,7 +117,7 @@ else if (_sessionChecked)
     private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
 
     private const int MaxRows = 2000;
-    private const string ModulePath = "./_content/VideoForensics.Ui.Shared/js/server-logs.js";
+    private const string ModulePath = "./_content/VideoForensics.Client.Ui.Shared/js/server-logs.js";
     private static readonly string[] Levels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
     private static readonly TimeSpan RenderThrottle = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(300);

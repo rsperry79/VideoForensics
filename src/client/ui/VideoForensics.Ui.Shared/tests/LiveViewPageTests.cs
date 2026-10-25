@@ -18,7 +18,7 @@ namespace VideoForensics.Client.Ui.Shared.Tests;
 
 public class LiveViewPageTests : BunitContext
 {
-    private const string ExpectedModulePath = "./_content/VideoForensics.Ui.Shared/js/liveview.js";
+    private const string ExpectedModulePath = "./_content/VideoForensics.Client.Ui.Shared/js/liveview.js";
 
     public LiveViewPageTests()
     {

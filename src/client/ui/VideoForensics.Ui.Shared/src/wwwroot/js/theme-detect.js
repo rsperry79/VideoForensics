@@ -12,7 +12,8 @@ window.vfTheme = {
         try {
             var mql = window.matchMedia('(prefers-color-scheme: dark)');
             var listener = function (e) {
-                dotNetRef.invokeMethodAsync('OnSystemThemeChanged', e.matches);
+                // The circuit can be gone when the media query fires; nothing is left to notify.
+                dotNetRef.invokeMethodAsync('OnSystemThemeChanged', e.matches).catch(function () { });
             };
             if (mql.addEventListener) {
                 mql.addEventListener('change', listener);

@@ -131,7 +131,7 @@ public abstract class EvidencePageTestBase : BunitContext
     protected EvidencePageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        BunitJSModuleInterop mediaViewerModule = JSInterop.SetupModule("./_content/VideoForensics.Ui.Shared/js/media-viewer.js");
+        BunitJSModuleInterop mediaViewerModule = JSInterop.SetupModule("./_content/VideoForensics.Client.Ui.Shared/js/media-viewer.js");
         _ = mediaViewerModule.SetupVoid("focusElement", _ => true);
         _ = mediaViewerModule.SetupVoid("setPlaybackRate", _ => true);
         _ = mediaViewerModule.SetupVoid("stepFrame", _ => true);

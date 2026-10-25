@@ -127,7 +127,7 @@ try {
     # locked when we try to overwrite it - Stop-Service can return before the process handle is
     # fully released.
     $deadline = (Get-Date).AddSeconds(15)
-    while ((Get-Process -Name "VideoForensics.WebApp" -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
+    while ((Get-Process -Name "VideoForensics.Client.WebApp" -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 500
     }
 
