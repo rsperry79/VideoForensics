@@ -16,9 +16,11 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// Circuit-scoped orchestration of the effective Light/Dark Syncfusion theme and the active culture,
     /// both stored per-operator (OperatorPreferences, keyed by PairedSessionState.OperatorId) rather
     /// than per-device or globally. Before sign-in (no OperatorId), theme defaults to System and
-    /// culture is left at whatever the host's ambient culture already is - neither is persisted,
+    /// culture is left at whatever the host's ambient culture already is - neither is persisted server-side,
     /// since there is no operator to key a row by; once signed in, the operator's stored row is
     /// loaded (or created with defaults on first sign-in).
+    /// The theme mode is also kept in browser local storage on this device, so the first paint
+    /// matches the last session; the operator's row overrides that copy whenever it is read.
     /// </summary>
     public class ThemePreferenceService
     {
@@ -77,6 +79,14 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 // Script not loaded on this host / pre-render pass - System mode falls back to Light.
             }
 
+            // The device-local copy is the first guess, so the render matches the last session before the
+            // operator's row loads. The operator's stored row is authoritative once it is read.
+            string? localMode = await ReadStoredModeAsync();
+            if (Enum.TryParse(localMode, out ThemeMode cached))
+            {
+                Mode = cached;
+            }
+
             await _session.EnsureLoadedAsync();
             if (_session.OperatorId is Guid operatorId)
             {
@@ -85,6 +95,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 {
                     Mode = Enum.TryParse<ThemeMode>(saved.ThemeMode, out ThemeMode parsed) ? parsed : ThemeMode.System;
                     CultureName = saved.CultureName;
+
+                    // Out of sync with the operator's stored choice (another device, or a changed default): correct the local copy.
+                    if (!string.Equals(localMode, Mode.ToString(), StringComparison.Ordinal))
+                    {
+                        await WriteStoredModeAsync(Mode);
+                    }
                 }
             }
 
@@ -100,6 +116,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
         public async Task SetModeAsync(ThemeMode mode)
         {
             Mode = mode;
+            await WriteStoredModeAsync(mode);
             await PersistAsync();
             OnChange?.Invoke();
             _ = ApplyStylesheetAsync();
@@ -151,6 +168,31 @@ namespace VideoForensics.Client.Ui.Shared.Services
             };
 
             await _repository.UpsertAsync(prefs, CancellationToken.None);
+        }
+
+        private async Task<string?> ReadStoredModeAsync()
+        {
+            try
+            {
+                return await _js.InvokeAsync<string?>("vfTheme.getStoredMode");
+            }
+            catch (JSException)
+            {
+                // Script not loaded on this host / pre-render pass - the device copy is simply unknown.
+                return null;
+            }
+        }
+
+        private async Task WriteStoredModeAsync(ThemeMode mode)
+        {
+            try
+            {
+                await _js.InvokeVoidAsync("vfTheme.setStoredMode", mode.ToString());
+            }
+            catch (JSException)
+            {
+                // Best-effort - the in-memory choice still applies for this circuit.
+            }
         }
 
         private async Task ApplyStylesheetAsync()

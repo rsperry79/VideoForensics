@@ -18,6 +18,8 @@ interface Window {
     vfGetVideoTime: (element: HTMLVideoElement | null) => number;
     vfTheme: {
         getPrefersDark(): boolean;
+        getStoredMode(): string | null;
+        setStoredMode(mode: string): void;
         watchPrefersDark(dotNetRef: DotNetObjectReference): void;
         setStylesheet(isDark: boolean): void;
     };
