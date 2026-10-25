@@ -83,6 +83,10 @@ namespace VideoForensics.Client.WebApp.Api
                 .AllowAnonymous()
                 .RequireRateLimiting("media");
 
+            _ = group.MapGet("/media/{id:guid}/preview", GetPreviewAsync)
+                .AllowAnonymous()
+                .RequireRateLimiting("media");
+
             _ = group.MapPost("/media/{id:guid}/stills", CreateMediaStillAsync)
                 .RequireAuthorization(VideoForensicsPolicies.Review)
                 .RequireRateLimiting("media");
@@ -218,6 +222,47 @@ namespace VideoForensics.Client.WebApp.Api
             };
 
             return Results.Stream(stream, contentType, item.FileName, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Serves a clip's preview MP4 (the transcoded, thumbnail-scale copy) with the same two authentication paths
+        /// and range-request behaviour as <see cref="GetContentAsync"/>.
+        /// Does not write an access audit entry: a preview is a thumbnail-scale view of a clip the operator has already
+        /// opened, so auditing each preview request would bury the full-clip views that matter.
+        /// Previews are written once and never change, so the response is cacheable for a day.
+        /// Returns 404 when the clip has no preview path or the preview file is missing.
+        /// </summary>
+        public static async Task<IResult> GetPreviewAsync(
+            Guid id,
+            string? ticket,
+            IMediaAccessTicketService ticketService,
+            IMediaItemRepository mediaItems,
+            IOperatorRepository operators,
+            IMediaStorageProvider storage,
+            ILogger<Program> logger,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (await ResolveAuthorizedOperatorAsync(id, ticket, ticketService, operators, context, ct) == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            MediaItem? item = await mediaItems.GetAsync(id, ct);
+            if (item == null || string.IsNullOrEmpty(item.PreviewPath))
+            {
+                return Results.NotFound();
+            }
+
+            if (!await storage.ExistsAsync(item.PreviewPath, ct))
+            {
+                logger.LogWarning("Media item {MediaItemId} has no preview file on disk at {PreviewPath}", id, item.PreviewPath);
+                return Results.NotFound();
+            }
+
+            context.Response.Headers.CacheControl = "private, max-age=86400";
+            Stream stream = await storage.OpenReadStreamAsync(item.PreviewPath, ct);
+            return Results.Stream(stream, "video/mp4", enableRangeProcessing: true);
         }
 
         /// <summary>
