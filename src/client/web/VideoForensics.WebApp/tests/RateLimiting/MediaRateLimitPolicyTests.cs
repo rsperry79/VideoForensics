@@ -41,7 +41,7 @@ namespace VideoForensics.Client.WebApp.Tests.RateLimiting
         }
 
         [Fact]
-        public void Create_NetworkTier_LimitsAfter120Requests()
+        public void Create_NetworkTier_LimitsAfterPermitsPerMinute()
         {
             Mock<INetworkTierResolver> resolver = CreateResolver(NetworkTier.Network);
             var httpContext = new DefaultHttpContext();
@@ -49,14 +49,14 @@ namespace VideoForensics.Client.WebApp.Tests.RateLimiting
             RateLimitPartition<string> partition = MediaRateLimitPolicy.Create(httpContext, resolver.Object);
             using RateLimiter limiter = partition.Factory(LoopbackIp);
 
-            for (int i = 0; i < 120; i++)
+            for (int i = 0; i < MediaRateLimitPolicy.PermitsPerMinute; i++)
             {
                 using RateLimitLease lease = limiter.AttemptAcquire(1);
-                Assert.True(lease.IsAcquired, $"Network-tier request {i + 1} was rejected before the 120 limit.");
+                Assert.True(lease.IsAcquired, $"Network-tier request {i + 1} was rejected before the per-minute limit.");
             }
 
             using RateLimitLease overLimit = limiter.AttemptAcquire(1);
-            Assert.False(overLimit.IsAcquired, "Network-tier request 121 must be rejected by the 120/minute limit.");
+            Assert.False(overLimit.IsAcquired, "The request after the per-minute limit must be rejected.");
         }
     }
 }

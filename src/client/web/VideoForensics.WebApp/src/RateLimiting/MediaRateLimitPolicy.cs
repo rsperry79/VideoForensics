@@ -12,6 +12,13 @@ namespace VideoForensics.Client.WebApp.RateLimiting
     public static class MediaRateLimitPolicy
     {
         /// <summary>
+        /// Network and Internet requests allowed per minute per client. Sized for a full camera grid: 30 requests per tile
+        /// per minute across <see cref="VideoForensics.Client.Common.Viewer.CameraSync.MaxTiles"/> tiles, so a grid scrub
+        /// does not hit 429 while a single client still cannot flood the server.
+        /// </summary>
+        public const int PermitsPerMinute = 30 * VideoForensics.Client.Common.Viewer.CameraSync.MaxTiles;
+
+        /// <summary>
         /// Returns an unlimited partition for Local-tier requests, otherwise a 120-requests-per-minute
         /// sliding window keyed by the resolved client IP.
         /// </summary>
@@ -35,7 +42,7 @@ namespace VideoForensics.Client.WebApp.RateLimiting
                 ? RateLimitPartition.GetNoLimiter(key)
                 : RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
                 {
-                    PermitLimit = 120,
+                    PermitLimit = PermitsPerMinute,
                     Window = TimeSpan.FromMinutes(1),
                     SegmentsPerWindow = 4,
                     QueueLimit = 0
