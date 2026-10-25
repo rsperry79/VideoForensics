@@ -123,6 +123,22 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>Internal for direct testability (VideoForensics.Client.Hosting.Tests) without driving the whole BackgroundService lifecycle/timer.</summary>
+        /// <summary>
+        /// Runs the signal-deviation check for one camera. A failure is logged and does not stop the poll: the reading
+        /// is already saved, and the next poll checks again.
+        /// </summary>
+        private async Task CheckSignalDeviationAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            try
+            {
+                _ = await sp.GetRequiredService<SignalDeviationAlerts>().CheckAsync(device, ct);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Signal deviation check failed for {DeviceName}", device.Name);
+            }
+        }
+
         internal async Task RunOneTickAsync(CancellationToken ct)
         {
             using IServiceScope scope = _scopeFactory.CreateScope();
@@ -233,6 +249,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         {
                             await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
                         }
+
+                        // Readings more than 2 std devs from the camera's mean raise an alert. Base poll only: the elevated
+                        // poll runs far more often and each check reads the camera's full history.
+                        await CheckSignalDeviationAsync(sp, device, ct);
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
                         try

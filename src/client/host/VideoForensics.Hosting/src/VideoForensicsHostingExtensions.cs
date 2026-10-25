@@ -526,6 +526,7 @@ namespace VideoForensics.Client.Hosting
             // de-duplicate re-registrations of the same singleton BackgroundService type.
             _ = services.AddScoped<IProviderHealthSource, RingHealthSource>();
             _ = services.AddSingleton<IBatteryStatusProvider, AlwaysOnAcPower>();
+            _ = services.AddScoped<SignalDeviationAlerts>();
             _ = services.AddHostedService<DeviceHealthSyncService>();
             _ = services.AddHostedService<MediaThumbnailBackfillService>();
             _ = services.AddHostedService<MediaPreviewBackfillService>();

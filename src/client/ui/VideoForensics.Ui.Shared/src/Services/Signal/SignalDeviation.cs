@@ -88,8 +88,8 @@ public static class SignalDeviation
     /// The key that identifies one camera's alert for one hour. Stored in the notice details, it stops the same hour
     /// raising the same alert on every page load.
     /// </summary>
-    public static string DedupeKey(Guid deviceId, DateTime hourStartUtc)
+    public static string DedupeKey(string providerName, string providerDeviceId, DateTime hourStartUtc)
     {
-        return $"sig-dev:{deviceId:N}:{hourStartUtc:yyyyMMddHH}";
+        return $"sig-dev:{providerName}:{providerDeviceId}:{hourStartUtc:yyyyMMddHH}";
     }
 }
