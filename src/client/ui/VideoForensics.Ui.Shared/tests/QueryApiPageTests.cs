@@ -117,7 +117,7 @@ public class QueryApiPage_Tests : BunitContext
 
         AngleSharp.Dom.IElement section = cut.Find("[data-testid='api-tester']");
         Assert.NotNull(section);
-        Assert.Empty(cut.FindAll("a").Where(a => a.GetAttribute("href") == "/query/api-tester"));
+        Assert.DoesNotContain(cut.FindAll("a"), a => a.GetAttribute("href") == "/query/api-tester");
     }
 
     [Fact]

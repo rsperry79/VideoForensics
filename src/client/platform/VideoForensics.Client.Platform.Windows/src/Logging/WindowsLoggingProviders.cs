@@ -9,6 +9,7 @@ namespace VideoForensics.Client.Platform.Windows.Logging
     public static class WindowsLoggingProviders
     {
         /// <summary>Adds the Event Log provider with the "VideoForensics" source name.</summary>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static void AddEventLog(ILoggingBuilder logging)
         {
             _ = logging.AddEventLog(settings => settings.SourceName = "VideoForensics");

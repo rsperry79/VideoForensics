@@ -15,10 +15,6 @@ using VideoForensics.Providers.Ring.Services;
 
 using Session = VideoForensics.Providers.Ring.Session;
 
-// Windows host: read install-time storage overrides from the registry, as the server does.
-VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
-VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
-
 namespace VideoForensics.Utils.SelfTest
 {
     internal static class Program
@@ -115,6 +111,10 @@ namespace VideoForensics.Utils.SelfTest
 
         private static async Task<int> Main(string[] args)
         {
+            // Windows host: read install-time storage overrides and data directory access from the platform, as the server does.
+            VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+            VideoForensics.Core.Helpers.Platform.DataDirectoryAccess.Current = new VideoForensics.Client.Platform.Windows.WindowsDataDirectoryAccess();
+
             (CliOptions? options, string? parseError) = CliOptions.Parse(args);
             if (parseError != null)
             {

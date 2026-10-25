@@ -10,7 +10,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
-using VideoForensics.Core.Helpers.Forensics.Exceptions;
 
 namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {

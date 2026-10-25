@@ -19,7 +19,7 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
                 yield break;
             }
 
-            IKeyStorageProvider? tpm = TryCreate(() => new TpmKeyStorageProvider());
+            IKeyStorageProvider? tpm = TryCreateTpm();
             if (tpm is not null)
             {
                 yield return tpm;
@@ -30,6 +30,13 @@ namespace VideoForensics.Client.Platform.Windows.KeyManagement
             {
                 yield return dpapi;
             }
+        }
+
+        /// <summary>TPM exists only on Windows, so its construction is confined to a method the caller has already guarded.</summary>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+        private static IKeyStorageProvider? TryCreateTpm()
+        {
+            return TryCreate(() => new TpmKeyStorageProvider());
         }
 
         private static IKeyStorageProvider? TryCreate(Func<IKeyStorageProvider> create)
