@@ -33,9 +33,7 @@ The installer offers two independently selectable components — you can install
 Desktop client only, or both:
 
 - **Server** (`VideoForensics.WebApp`) — installed as the `VideoForensics` Windows Service (LocalSystem,
-  auto-start). Has an optional **Install bundled FFmpeg** task (checked by default) for video
-  transcoding/metadata — uncheck it if you already have a system-wide ffmpeg you'd rather use (see
-  [Using a Custom ffmpeg Build](#using-a-custom-ffmpeg-build) below).
+  auto-start). It does not bundle ffmpeg or cloudflared; see [FFmpeg and cloudflared](#ffmpeg-and-cloudflared) below.
 - **Desktop Client** (`VideoForensics.Client.MauiApp`) — a plain, unpackaged desktop app (no MSIX, no separate
   service) that connects to a Server over the network. Has an optional **Create Desktop & Start Menu
   shortcuts** task (checked by default).
@@ -51,26 +49,22 @@ dotnet publish src/client/web/VideoForensics.WebApp -c Release -r win-x64 --self
 dotnet publish src/client/maui/VideoForensics.Client.MauiApp -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish\desktop
 ```
 
-## FFmpeg Binaries
+## FFmpeg and cloudflared
 
-VideoForensics bundles ffmpeg and ffprobe binaries with the Windows installer — no separate ffmpeg
-installation needed on the target machine, as long as the **Install bundled FFmpeg** task is checked.
+The Windows installer does not install ffmpeg or cloudflared. Install them on the server machine, or
+point the app at them:
 
-### What's Bundled
-
-Statically-linked LGPL ffmpeg binaries from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds):
-- `ffmpeg.exe` — video transcoding and metadata extraction
-- `ffprobe.exe` — video metadata probing
-
-Both are installed to `%ProgramFiles%\VideoForensics\` alongside `ffmpeg-LICENSE.txt` (the bundled
-binaries' LGPL license/copyright notice — do not remove this file).
+- **ffmpeg / ffprobe:** the server finds ffmpeg on `PATH` or in a configured bin directory. ffprobe
+  reads media through [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore).
+- **cloudflared:** needed only for the Cloudflare Tunnel. The server uses the copy next to the app if
+  present, otherwise `PATH`, otherwise it downloads the binary from the cloudflared GitHub releases.
 
 ### Using a Custom ffmpeg Build
 
 To use a different or newer ffmpeg version:
 
 - **Uniview provider:** Supports a custom path via the `UniviewFfmpegPath` configuration setting, configurable through the admin UI or directly in the database.
-- **Ring provider:** No user-facing configuration setting is available today. The Ring provider resolves ffmpeg from: (1) bundled binaries in the installation directory, or (2) system PATH. To use a custom ffmpeg build with Ring, you must rebuild the application with a code change.
+- **Ring provider:** No user-facing configuration setting is available today. The Ring provider resolves ffmpeg from: (1) the configured bin directory, or (2) system PATH. To use a custom ffmpeg build with Ring, you must rebuild the application with a code change.
 
 ## Hardware-Accelerated Video Decoding
 
@@ -109,7 +103,7 @@ Nerdbank.GitVersioning (`nbgv get-version -v Version`).
 Run `VideoForensicsSetup.exe`. This launches a standard installer with:
 - License page
 - Install location picker (defaults to `%ProgramFiles%\VideoForensics\`)
-- Component/task checkboxes (Server + bundled FFmpeg, Desktop client + shortcuts)
+- Component/task checkboxes (Server, Desktop client + shortcuts)
 - **Data Directory page** (Server only, fresh installs only — see below)
 - Progress and completion screens
 

@@ -61,6 +61,31 @@ namespace VideoForensics.Core.Providers.Core
             }
         }
 
+        /// <summary>
+        /// Builds the analysis from values already read by FFMpegCore. Same rules as <see cref="FromFfprobeJson"/>: the video
+        /// stream bitrate wins; otherwise the average is estimated from file size and duration. Null when there is no duration.
+        /// </summary>
+        public static MediaBitrateAnalysis? FromProbe(TimeSpan duration, long? videoStreamBitrate, long fileSizeBytes)
+        {
+            if (duration <= TimeSpan.Zero)
+            {
+                return null;
+            }
+
+            double seconds = duration.TotalSeconds;
+            if (videoStreamBitrate is > 0)
+            {
+                return new MediaBitrateAnalysis(videoStreamBitrate.Value, seconds, BitrateEstimated: false);
+            }
+
+            if (fileSizeBytes <= 0)
+            {
+                return null;
+            }
+
+            return new MediaBitrateAnalysis((long)Math.Round(fileSizeBytes * 8.0 / seconds), seconds, BitrateEstimated: true);
+        }
+
         /// <summary>ffprobe writes numbers as strings, so accept either form.</summary>
         private static double? ReadNumber(JsonElement element, params string[] path)
         {

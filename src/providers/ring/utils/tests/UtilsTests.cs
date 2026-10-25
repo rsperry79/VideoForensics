@@ -207,6 +207,12 @@ namespace VideoForensics.Providers.Ring.Utils.Tests
             Assert.Equal("List devices", result.DisplayName);
             Assert.Equal(EndpointScope.None, result.Scope);
         }
+        [Fact]
+        public void EndpointRegistry_Invitations_IsRemovedFromTheApiTester()
+        {
+            Assert.Null(EndpointRegistry.Find("invitations"));
+        }
+
 
         [Fact]
         public void EndpointRegistry_SignallingTicket_IsReadOnlyLocationScoped()

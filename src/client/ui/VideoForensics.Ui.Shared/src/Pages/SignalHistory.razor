@@ -1,0 +1,114 @@
+@page "/signal-history"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Data.Common.Contracts
+@using VideoForensics.Data.Common.Entities
+@inject IDeviceRepository DeviceRepository
+@inject IDeviceHealthRepository DeviceHealthRepository
+@inject IStringLocalizer<SignalHistory> L
+
+<h4 class="mb-2">@L["PageTitle"]</h4>
+<p class="text-muted small">@L["PageIntro"]</p>
+
+@if (_devices.Count == 0)
+{
+    <p class="text-muted">@L["NoDevices"]</p>
+}
+else
+{
+    <div class="mb-3">
+        <label class="form-label" for="signal-device">@L["DeviceLabel"]</label>
+        <select id="signal-device" class="form-select" style="max-width: 360px;" @onchange="OnDeviceChangedAsync">
+            @foreach (VideoForensics.Data.Common.Entities.Device device in _devices)
+            {
+                <option value="@device.Id" selected="@(device.Id == _selectedId)">@DeviceLabel.For(device.Name, device.ProviderDeviceId)</option>
+            }
+        </select>
+    </div>
+
+    @if (_stats.Count == 0)
+    {
+        <p class="text-muted">@L["NoReadings"]</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            <div class="col-md-4">
+                <table class="table table-sm">
+                    <tbody>
+                        <tr><th>@L["StatCount"]</th><td>@_stats.Count</td></tr>
+                        <tr><th>@L["StatLatest"]</th><td>@_stats.Latest dBm</td></tr>
+                        <tr><th>@L["StatMin"]</th><td>@_stats.Min dBm</td></tr>
+                        <tr><th>@L["StatMax"]</th><td>@_stats.Max dBm</td></tr>
+                        <tr><th>@L["StatAverage"]</th><td>@_stats.Average.ToString("0.0") dBm</td></tr>
+                        <tr><th>@L["StatPercentWeak"]</th><td>@_stats.PercentWeak.ToString("0") %</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-8">
+                <p class="small text-muted mb-1">@L["TimelineLabel"]</p>
+                <svg viewBox="0 0 600 200" width="100%" role="img" aria-label="@L["TimelineLabel"]" style="border:1px solid var(--bs-border-color);">
+                    <polyline points="@_points" fill="none" stroke="currentColor" stroke-width="2" />
+                </svg>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private const double WindowHours = 24;
+    private const int StrongestDbm = -30;
+    private const int WeakestDbm = -100;
+
+    private List<VideoForensics.Data.Common.Entities.Device> _devices = new();
+    private Guid _selectedId;
+    private SignalStats _stats = SignalStats.Compute([]);
+    private string _points = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _devices = (await DeviceRepository.ListAsync(CancellationToken.None)).OrderBy(d => d.Name).ToList();
+        if (_devices.Count > 0)
+        {
+            _selectedId = _devices[0].Id;
+            await LoadAsync();
+        }
+    }
+
+    private async Task OnDeviceChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out Guid id))
+        {
+            _selectedId = id;
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        DateTime to = DateTime.UtcNow;
+        DateTime from = to.AddHours(-WindowHours);
+        IReadOnlyList<DeviceHealth> rows = await DeviceHealthRepository.GetHistoryAsync(_selectedId, from, to, CancellationToken.None);
+        List<SignalSample> samples = rows.Select(r => new SignalSample(r.CapturedAtUtc, r.WifiSignalRssi)).ToList();
+        _stats = SignalStats.Compute(samples);
+        _points = BuildPoints(samples, from, to);
+    }
+
+    /// <summary>Maps readings onto the 600x200 view: time left to right across the window, stronger signal higher up.</summary>
+    private static string BuildPoints(IEnumerable<SignalSample> samples, DateTime from, DateTime to)
+    {
+        double span = (to - from).TotalSeconds;
+        return string.Join(' ', samples
+            .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
+            .OrderBy(s => s.CapturedAtUtc)
+            .Select(s =>
+            {
+                double x = (s.CapturedAtUtc - from).TotalSeconds / span * 600;
+                double clamped = Math.Clamp(s.RssiDbm!.Value, WeakestDbm, StrongestDbm);
+                double y = (StrongestDbm - clamped) / (StrongestDbm - WeakestDbm) * 200;
+                return $"{x:0.#},{y:0.#}";
+            }));
+    }
+}

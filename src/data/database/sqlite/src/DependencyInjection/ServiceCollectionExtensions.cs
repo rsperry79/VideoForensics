@@ -86,6 +86,10 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
                 }
             });
 
+            // Operational logs live in logs.db beside the main database, so error rows and telemetry do not bloat the audit file.
+            string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
+            _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>(options => options.UseSqlite($"Data Source={logsPath};Pooling=true;Cache=Shared;Default Timeout=5"));
+
             _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 
             return services;

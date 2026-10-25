@@ -138,6 +138,17 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddKeyedSingleton<IProviderDeviceStatus, RingDeviceOnlineStatus>("Ring");
             services.TryAddSingleton(TimeProvider.System);
             _ = services.AddHostedService<SnapshotCaptureService>();
+
+            // Daily trim of operational tables (error rows, call log, telemetry). Audit tables are not pruned.
+            _ = services.AddHostedService<OperationalLogPruneService>();
+
+            // Loops beat into ThreadHeartbeats; the watchdog logs any loop that stops ticking for five minutes.
+            services.TryAddSingleton<ThreadHeartbeats>();
+            _ = services.AddHostedService(sp => new ThreadWatchdogService(
+                sp.GetRequiredService<ThreadHeartbeats>(),
+                sp.GetRequiredService<ILogger<ThreadWatchdogService>>(),
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
             return services;
         }
 
@@ -793,6 +804,11 @@ namespace VideoForensics.Client.Hosting
         {
             IDbContextFactory<VideoForensicsDbContext> dbFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsDbContext>>();
             await DatabaseInitializer.InitializeAsync(dbFactory, logger, ct, services.GetServices<IReferenceDataSource>());
+
+            // Operational logs (logs.db) are created on first run. Schema changes to them need migrations once they exist.
+            IDbContextFactory<VideoForensicsLogsDbContext> logsFactory = services.GetRequiredService<IDbContextFactory<VideoForensicsLogsDbContext>>();
+            await using VideoForensicsLogsDbContext logsDb = await logsFactory.CreateDbContextAsync(ct);
+            _ = await logsDb.Database.EnsureCreatedAsync(ct);
 
             // Everything below resolves Scoped services (IAppSettingRepository, IDownloadEventRepository,
             // IMediaItemRepository, IEventRepository, IForensicsConfigurationService) - since the

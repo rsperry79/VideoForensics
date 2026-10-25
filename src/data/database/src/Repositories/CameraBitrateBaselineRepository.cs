@@ -11,12 +11,14 @@ namespace VideoForensics.Data.Database.Repositories
     public class CameraBitrateBaselineRepository : ICameraBitrateBaselineRepository
     {
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
+        private readonly IDbContextFactory<VideoForensicsLogsDbContext> _logsFactory;
         private readonly ILogger<CameraBitrateBaselineRepository> _logger;
 
         /// <summary>Initializes a new instance of the CameraBitrateBaselineRepository.</summary>
-        public CameraBitrateBaselineRepository(IDbContextFactory<VideoForensicsDbContext> factory, ILogger<CameraBitrateBaselineRepository> logger)
+        public CameraBitrateBaselineRepository(IDbContextFactory<VideoForensicsDbContext> factory, IDbContextFactory<VideoForensicsLogsDbContext> logsFactory, ILogger<CameraBitrateBaselineRepository> logger)
         {
             _factory = factory;
+            _logsFactory = logsFactory;
             _logger = logger;
         }
 
@@ -71,7 +73,9 @@ namespace VideoForensics.Data.Database.Repositories
                     .Select(s => s.Id)
                     .ToListAsync(ct);
 
-                List<LiveViewTelemetrySample> samples = await db.LiveViewTelemetrySamples
+                // Sessions live in the main database; telemetry samples live in logs.db, so the two are read separately.
+                await using VideoForensicsLogsDbContext logs = await _logsFactory.CreateDbContextAsync(ct);
+                List<LiveViewTelemetrySample> samples = await logs.LiveViewTelemetrySamples
                     .Where(t => deviceSessions.Contains(t.SessionId)
                         && t.CapturedAtUtc.Hour == hourOfDay
                         && ((t.CapturedAtUtc.DayOfWeek == DayOfWeek.Saturday || t.CapturedAtUtc.DayOfWeek == DayOfWeek.Sunday) == isWeekend))

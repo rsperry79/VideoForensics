@@ -48,13 +48,17 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IServiceScopeFactory scopeFactory,
             IOptionsMonitor<ScheduledTasksOptions> options,
             ILogger<ScheduledSyncService> logger,
-            TimeProvider time)
+            TimeProvider time,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _heartbeats = heartbeats;
         }
+
+        private readonly ThreadHeartbeats? _heartbeats;
 
         /// <summary>Tick period for a configured value: seconds, floored at 5.</summary>
         internal static TimeSpan ResolveTickInterval(int tickSeconds)
@@ -72,6 +76,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 // Wait for the first tick before the first pass so a cold start does not race database initialization.
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    _heartbeats?.Beat(nameof(ScheduledSyncService), _time.GetUtcNow());
                     try
                     {
                         await RunOneTickAsync(stoppingToken);

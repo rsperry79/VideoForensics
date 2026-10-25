@@ -70,6 +70,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             new("media", "Media", "/media",
             [
                 new("Media", "/media"),
+                new("Signal history", "/signal-history"),
                 new("Chat Assistant", "/chat")
             ]),
 
@@ -92,7 +93,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             new("sources", "Sources", "/accounts",
             [
                 new("Provider Accounts", "/accounts"),
-                new("Query API", "/query")
+                new("Query API", "/query"),
             ]),
 
             new("admin", "Admin", "/settings",
@@ -201,7 +202,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
         public static IReadOnlyList<UserMenuItem> Items(NavContext ctx)
         {
-            var items = new List<UserMenuItem>();
+            var items = new List<UserMenuItem>
+            {
+                new("Light theme", Action: "set-theme:Light"),
+                new("Dark theme", Action: "set-theme:Dark"),
+                new("System theme", Action: "set-theme:System"),
+            };
 
             if (ctx.IsSignedIn)
             {
@@ -231,4 +237,4 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             return items;
         }
     }
-}
+}

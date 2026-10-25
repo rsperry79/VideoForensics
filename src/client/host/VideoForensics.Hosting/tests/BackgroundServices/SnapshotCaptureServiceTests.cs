@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -9,6 +10,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -148,6 +150,41 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.Empty(_rows);
         }
+
+        [Fact]
+        public async Task RunOneTickAsync_RingThrottled_PausesAccountUntilTheBlockLiftsWithoutErrorLogs()
+        {
+            // A hard ban stops every request until BlockedUntilUtc. The account must stay paused across ticks and the
+            // ban must be logged as a warning, not an error with a stack trace on every device every tick.
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ThrottledException("Ring has rate-limited this account.", isHardBan: true)
+                {
+                    BlockedUntilUtc = T0.AddHours(2).UtcDateTime,
+                });
+            ServiceProvider provider = BuildProvider();
+            var logger = new Mock<ILogger<SnapshotCaptureService>>();
+            try
+            {
+                var service = new SnapshotCaptureService(
+                    provider.GetRequiredService<IServiceScopeFactory>(),
+                    Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
+                    logger.Object,
+                    _time);
+
+                await service.RunOneTickAsync(CancellationToken.None);
+                _time.Now = T0.AddMinutes(5);
+                await service.RunOneTickAsync(CancellationToken.None);
+            }
+            finally
+            {
+                await provider.DisposeAsync();
+            }
+
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.DoesNotContain(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
+        }
+
 
         [Fact]
         public async Task RunOneTickAsync_OfflineDevice_SkipsDevice()

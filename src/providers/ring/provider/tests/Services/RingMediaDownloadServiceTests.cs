@@ -332,7 +332,9 @@ namespace VideoForensics.Providers.Ring.Tests
                         ? new StringContent("{\"access_token\":\"tok\",\"refresh_token\":\"ref\",\"expires_in\":3600,\"token_type\":\"Bearer\"}", System.Text.Encoding.UTF8, "application/json")
                         : new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
 
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+                // Ring answers the on-demand refresh with 204 No Content; anything else is an error.
+                HttpStatusCode status = url.Contains("snapshots/update_all", StringComparison.Ordinal) ? HttpStatusCode.NoContent : HttpStatusCode.OK;
+                return Task.FromResult(new HttpResponseMessage(status) { Content = content });
             }
         }
 
@@ -622,6 +624,25 @@ namespace VideoForensics.Providers.Ring.Tests
 
             // Assert
             sessionProvider.Verify(sp => sp.GetSession(accountId), Times.Once, "GetSession should be called with the cached accountId");
+        }
+
+        [Fact]
+        public async Task DownloadSnapshotsAsync_WhenFreshSnapshotCannotBeCaptured_FailsWithoutSavingOldImage()
+        {
+            // Arrange: a failed refresh must not fall back to Ring's cached image, which would look current.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var service = new RefreshFailingMediaDownloadService(new Mock<ILogger>().Object, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains("fresh snapshot", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.False(Directory.Exists(outputPath) && Directory.EnumerateFiles(outputPath).Any());
         }
 
         [Fact]
@@ -1207,5 +1228,15 @@ namespace VideoForensics.Providers.Ring.Tests
                 }
             }
         }
+    }
+
+    /// <summary>Simulates Ring refusing an on-demand snapshot refresh.</summary>
+    internal sealed class RefreshFailingMediaDownloadService : RingMediaDownloadService
+    {
+        public RefreshFailingMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
+            : base(logger, sessionProvider, dataClient) { }
+
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) =>
+            Task.FromException(new InvalidOperationException("refresh unsupported"));
     }
 }

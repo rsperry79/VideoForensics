@@ -164,6 +164,18 @@
   <data name="Admin" xml:space="preserve">
     <value>Admin</value>
   </data>
+  <data name="Light theme" xml:space="preserve">
+    <value>Light theme</value>
+  </data>
+  <data name="Dark theme" xml:space="preserve">
+    <value>Dark theme</value>
+  </data>
+  <data name="System theme" xml:space="preserve">
+    <value>System theme</value>
+  </data>
+  <data name="Signal history" xml:space="preserve">
+    <value>Signal history</value>
+  </data>
   <data name="Chat Assistant" xml:space="preserve">
     <value>Chat Assistant</value>
   </data>

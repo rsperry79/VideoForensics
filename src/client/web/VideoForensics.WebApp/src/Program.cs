@@ -446,6 +446,9 @@ builder.Services.AddSingleton<ICloudflaredTunnelService, CloudflaredTunnelServic
 // Trusted certificate for the Internet hostname, issued through Let's Encrypt DNS-01 with the stored
 // Cloudflare token. Acme:UseStaging (default true) keeps issuance on the staging CA until it is switched off.
 builder.Services.AddSingleton(certificateHolder);
+// Plain-http LAN requests are redirected to the tunnel or to https; see LocalTransportMiddleware.
+int? httpsPort = listenEndpoints.FirstOrDefault(endpoint => endpoint.Scheme == "https")?.Port;
+builder.Services.AddSingleton(new LocalTransportOptions(httpsPort, () => certificateHolder.Current is not null));
 builder.Services.AddSingleton<IAcmeCertificateIssuer, CertesAcmeCertificateIssuer>();
 builder.Services.AddScoped<ILetsEncryptCertificateStore, LetsEncryptCertificateStore>();
 builder.Services.AddScoped<LetsEncryptCertificateManager>();
@@ -552,6 +555,8 @@ VideoForensics.Providers.Ring.ApiRawLogger.OnRawResponse += call =>
         call.StatusCode,
         call.Body?.Length ?? 0);
 
+app.UseMiddleware<LocalTransportMiddleware>();
+
 // The saved Internet address can change after startup. Add the browser origin to Fido2's allow-list and
 // keep the RP ID on the saved address for the current request.
 app.Use(async (context, next) =>
@@ -625,6 +630,7 @@ app.MapLockoutPolicyEndpoints();
 app.MapBannedIpsEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();
+app.MapDeviceCaptureModeEndpoints();
 app.MapExportDownloadEndpoints();
 app.MapBackupEndpoints();
 app.MapDeviceConfigEndpoints();

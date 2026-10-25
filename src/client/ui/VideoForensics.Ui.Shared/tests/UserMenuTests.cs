@@ -146,4 +146,18 @@ public class UserMenu_Tests
 
         Assert.True(toggleIndex > passkeysIndex, "UI mode toggle should appear after My Passkeys");
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Items_AnyUser_OffersLightDarkAndSystemThemes(bool signedIn)
+    {
+        var ctx = new NavContext(IsSignedIn: signedIn, Role: signedIn ? OperatorRole.Admin : null, AppLockSupported: false);
+
+        IReadOnlyList<UserMenu.UserMenuItem> items = UserMenu.Items(ctx);
+
+        Assert.Contains(items, i => i.Action == "set-theme:Light");
+        Assert.Contains(items, i => i.Action == "set-theme:Dark");
+        Assert.Contains(items, i => i.Action == "set-theme:System");
+    }
 }

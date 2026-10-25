@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Signal history</value>
+  </data>
+  <data name="PageIntro" xml:space="preserve">
+    <value>Wi-Fi signal (RSSI) for each camera over the last 24 hours. Ring does not report SNR. Closer to zero is stronger; readings weaker than -75 dBm are weak.</value>
+  </data>
+  <data name="DeviceLabel" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="NoDevices" xml:space="preserve">
+    <value>No cameras are known yet.</value>
+  </data>
+  <data name="NoReadings" xml:space="preserve">
+    <value>No signal readings in the last 24 hours.</value>
+  </data>
+  <data name="StatCount" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="StatLatest" xml:space="preserve">
+    <value>Latest</value>
+  </data>
+  <data name="StatMin" xml:space="preserve">
+    <value>Weakest</value>
+  </data>
+  <data name="StatMax" xml:space="preserve">
+    <value>Strongest</value>
+  </data>
+  <data name="StatAverage" xml:space="preserve">
+    <value>Average</value>
+  </data>
+  <data name="StatPercentWeak" xml:space="preserve">
+    <value>Weak readings</value>
+  </data>
+  <data name="TimelineLabel" xml:space="preserve">
+    <value>Signal over time</value>
+  </data>
+</root>

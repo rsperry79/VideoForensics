@@ -13,6 +13,7 @@ using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
+using VideoForensics.Providers.Ring.Exceptions;
 using VideoForensics.Providers.Ring.Services;
 
 using Device = VideoForensics.Data.Common.Entities.Device;
@@ -61,18 +62,38 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         // to hold across ticks. Keyed by internal GUIDs; never logged.
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _accountPausedUntil = new();
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _deviceRetryAfter = new();
+        private readonly ThreadHeartbeats? _heartbeats;
 
         /// <summary>Creates the capture service.</summary>
         public SnapshotCaptureService(
             IServiceScopeFactory scopeFactory,
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotCaptureService> logger,
-            TimeProvider time)
+            TimeProvider time,
+            ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _heartbeats = heartbeats;
+        }
+
+        /// <summary>
+        /// Pauses the account until Ring's limit lifts. A hard ban gives an exact end time; otherwise Retry-After is used,
+        /// and the account error backoff is the fallback. Logged as a warning because it is an expected external state.
+        /// </summary>
+        private void PauseForRingThrottle(ProviderAccount account, string accountName, ThrottledException throttled)
+        {
+            DateTimeOffset now = _time.GetUtcNow();
+            DateTimeOffset until = throttled.BlockedUntilUtc is { } blockedUntil
+                ? new DateTimeOffset(DateTime.SpecifyKind(blockedUntil, DateTimeKind.Utc))
+                : throttled.RetryAfter is { } retryAfter
+                    ? now + retryAfter
+                    : now + AccountErrorBackoff;
+
+            _accountPausedUntil[account.Id] = until;
+            _logger.LogWarning("Ring is rate-limiting {AccountName}; snapshot capture is paused until {ResumeAt:t} local time", accountName, until.ToLocalTime());
         }
 
         /// <inheritdoc />
@@ -84,6 +105,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    _heartbeats?.Beat(nameof(SnapshotCaptureService), _time.GetUtcNow());
                     try
                     {
                         await RunOneTickAsync(stoppingToken);
@@ -268,6 +290,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (ThrottledException throttled)
+            {
+                // Ring is rate-limiting the account. Pause it until the limit lifts instead of retrying every device each tick.
+                PauseForRingThrottle(account, accountName, throttled);
+                Hold(device.Id, interval);
+                counts.Failed++;
+                return;
             }
             catch (Exception ex)
             {

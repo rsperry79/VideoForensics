@@ -59,3 +59,4 @@
 2026-10-24 | webview2 | MAUI shows 'suitable version of WebView2 Runtime not detected' | EdgeUpdate pv 155 vs installed 156; native EdgeUpdate key missing; loader returns 0x80070002 | pv and native key set to 156; still failing, switched to Fixed Version runtime (commit 1533edbd on fix/maui-local-password)
 2026-10-24 | webview2 | uninstall of WebView2 runtime returned exit 93 | runtime marked sticky (Edge installed); uninstall blocked by policy | do not retry uninstall; use fixed-version runtime instead
 2026-10-24 | build | MAUI build failed in Ring core with CS0009 metadata error | parallel build race on stale ref output | rebuild with -m:1 succeeded; project builds alone
+2026-10-23 | section 1 TDD | DownloadVideosAsync_SuccessfulDownload_ReleasesFileHandle failed after snapshot fail-fast change | stub handler returned 200 for snapshots/update_all; Session.UpdateSnapshot expects 204 and the old fallback had hidden it | stub now returns 204 for that URL

@@ -1,3 +1,5 @@
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Services;
 
 using AngleSharp.Dom;
 
@@ -11,7 +13,6 @@ using Moq;
 
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Components;
-using VideoForensics.Client.Ui.Shared.Services;
 
 using Xunit;
 
@@ -48,6 +49,7 @@ public abstract class UserMenuButtonTestBase : BunitContext
         var session = new PairedSessionState(JSInterop.JSRuntime);
         await session.SetAsync("test-token", Guid.NewGuid(), role.ToString());
         _ = Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => new ThemePreferenceService(JSInterop.JSRuntime, Mock.Of<IOperatorPreferencesRepository>(), session, Mock.Of<ICultureSwitcher>()));
         return session;
     }
 
@@ -55,6 +57,7 @@ public abstract class UserMenuButtonTestBase : BunitContext
     {
         var session = new PairedSessionState(JSInterop.JSRuntime);
         _ = Services.AddScoped(_ => session);
+        _ = Services.AddScoped(_ => new ThemePreferenceService(JSInterop.JSRuntime, Mock.Of<IOperatorPreferencesRepository>(), session, Mock.Of<ICultureSwitcher>()));
         return session;
     }
 

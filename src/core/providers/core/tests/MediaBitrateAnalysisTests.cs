@@ -56,5 +56,31 @@ namespace VideoForensics.Core.Providers.Core.Tests
         {
             Assert.Null(MediaBitrateAnalysis.FromFfprobeJson("not json", fileSizeBytes: 1_000_000));
         }
+
+        [Fact]
+        public void FromProbe_StreamBitrateReported_UsesIt()
+        {
+            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), 2_000_000, fileSizeBytes: 1_000_000);
+
+            Assert.NotNull(analysis);
+            Assert.Equal(2_000_000, analysis!.VideoBitrateBps);
+            Assert.False(analysis.BitrateEstimated);
+        }
+
+        [Fact]
+        public void FromProbe_NoStreamBitrate_EstimatesFromFileSizeAndDuration()
+        {
+            MediaBitrateAnalysis? analysis = MediaBitrateAnalysis.FromProbe(TimeSpan.FromSeconds(10), null, fileSizeBytes: 1_000_000);
+
+            Assert.NotNull(analysis);
+            Assert.Equal(800_000, analysis!.VideoBitrateBps);
+            Assert.True(analysis.BitrateEstimated);
+        }
+
+        [Fact]
+        public void FromProbe_ZeroDuration_ReturnsNull()
+        {
+            Assert.Null(MediaBitrateAnalysis.FromProbe(TimeSpan.Zero, 2_000_000, fileSizeBytes: 1_000_000));
+        }
     }
 }

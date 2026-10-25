@@ -1,4 +1,5 @@
 @page "/settings/network"
+@using VideoForensics.Core.Api.Contracts
 @using VideoForensics.Data.Common.Entities
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
@@ -131,6 +132,14 @@ else
                     {
                         <div style="width: fit-content;">
                             <SfButton Content="@(_confirmDisconnect ? L["ConfirmDisconnectButton"] : L["DisconnectButton"])" OnClick="DisconnectAsync" CssClass="e-flat" />
+                        </div>
+                    }
+                    @if (_offerLocalPassword)
+                    {
+                        <div class="alert alert-info mt-2" role="alert" data-testid="offer-local-password">
+                            <p class="mb-2">@L["OfferLocalPasswordText"]</p>
+                            <SfButton Content="@L["EnableLocalPasswordButton"]" OnClick="EnableLocalPasswordAsync" CssClass="e-primary e-small" />
+                            <SfButton Content="@L["NotNowButton"]" OnClick="() => _offerLocalPassword = false" CssClass="e-flat e-small ms-2" />
                         </div>
                     }
                     @if (_tunnelRecentLogLines.Count > 0)
@@ -269,6 +278,7 @@ else
     private string[] _passkeyOrigins = Array.Empty<string>();
     private bool _cloudflareAuthenticated;
     private string? _tunnelPublicUrl;
+    private bool _offerLocalPassword;
     private string? _tunnelErrorMessage;
     private List<string> _tunnelRecentLogLines = new();
 
@@ -720,6 +730,58 @@ else
     private async Task StartTunnelAsync()
     {
         await RunTunnelStepUpGatedActionAsync("api/remote-access/start", null);
+        if (_tunnelActionError is null)
+        {
+            await OfferLocalPasswordIfOffAsync();
+        }
+    }
+
+    /// <summary>
+    /// Once the tunnel is up, asks whether local sign-in should also accept a password. Passkeys cannot run on the plain-http
+    /// LAN address, so this keeps the LAN usable. Only asks when password sign-in is currently off. Fails quiet on error.
+    /// </summary>
+    private async Task OfferLocalPasswordIfOffAsync()
+    {
+        try
+        {
+            using HttpResponseMessage response = await CreateClient().GetAsync("api/v1/auth-methods/settings");
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            AuthMethodSettingsDto? settings = await response.Content.ReadFromJsonAsync<AuthMethodSettingsDto>();
+            _offerLocalPassword = settings is { PasswordEnabled: false };
+        }
+        catch (Exception)
+        {
+            _offerLocalPassword = false;
+        }
+    }
+
+    private async Task EnableLocalPasswordAsync()
+    {
+        _offerLocalPassword = false;
+        _isTunnelActing = true;
+        try
+        {
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            HttpResponseMessage response = await client.PutAsJsonAsync("api/v1/auth-methods/settings", new UpdateAuthMethodSettingsRequest(PasswordEnabled: true));
+            if (!response.IsSuccessStatusCode)
+            {
+                _tunnelActionError = await SafeReadErrorAsync(response) ?? L["RemoteAccessActionFailed", response.StatusCode.ToString()];
+            }
+        }
+        catch (Exception ex)
+        {
+            _tunnelActionError = L["RemoteAccessActionFailed", ex.Message];
+        }
+        finally
+        {
+            _isTunnelActing = false;
+        }
     }
 
     private async Task RunTunnelStepUpGatedActionAsync(string url, object? body)

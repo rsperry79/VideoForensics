@@ -479,6 +479,30 @@ namespace VideoForensics.Client.Ui.Shared.Services
             return result.GetProperty("stepUpToken").GetString()!;
         }
 
+        /// <summary>
+        /// Whether passkeys can run on the address this page was loaded from. A plain-http LAN address cannot, and the
+        /// server says so. Fails open (true) on error, so a failed check never hides passkeys that would have worked.
+        /// </summary>
+        public virtual async Task<bool> IsPasskeyAvailableOnThisAddressAsync()
+        {
+            try
+            {
+                using HttpClient client = CreateClient(null);
+                HttpResponseMessage response = await client.GetAsync("api/v1/auth/transport");
+                if (!response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return !result.TryGetProperty("passkeyAvailable", out JsonElement available) || available.GetBoolean();
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
         /// <summary>Fetches the currently-enabled authentication methods. Fails open (all methods assumed enabled) on error to prevent lockout during connection issues.</summary>
         public virtual async Task<AuthMethodsInfo> GetAuthMethodsAsync()
         {

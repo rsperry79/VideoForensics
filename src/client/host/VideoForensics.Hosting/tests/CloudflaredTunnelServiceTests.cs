@@ -69,7 +69,7 @@ namespace VideoForensics.Client.Hosting.Tests
 
             TunnelState state = service.GetState();
             Assert.Equal(TunnelStatus.Failed, state.Status);
-            Assert.Equal("cloudflared exited with code 1", state.ErrorMessage);
+            Assert.Equal("Could not start the Cloudflare tunnel: cloudflared exited with code 1", state.ErrorMessage);
         }
 
         [Fact]

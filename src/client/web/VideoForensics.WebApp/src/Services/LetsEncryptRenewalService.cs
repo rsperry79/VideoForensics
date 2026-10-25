@@ -27,7 +27,7 @@ namespace VideoForensics.Client.WebApp.Services
                 {
                     using IServiceScope scope = _scopes.CreateScope();
                     LetsEncryptCertificateManager manager = scope.ServiceProvider.GetRequiredService<LetsEncryptCertificateManager>();
-                    CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken);
+                    CertificateCheckResult result = await manager.EnsureCertificateAsync(force: false, stoppingToken).ConfigureAwait(true);
                     if (!result.Success)
                     {
                         _logger.LogWarning("Certificate check skipped: {Message}", result.Message);
@@ -43,7 +43,7 @@ namespace VideoForensics.Client.WebApp.Services
                     _logger.LogError(ex, "Certificate renewal failed; retrying in {Hours} hours", CheckInterval.TotalHours);
                 }
 
-                await Task.Delay(CheckInterval, stoppingToken);
+                await Task.Delay(CheckInterval, stoppingToken).ConfigureAwait(false);
             }
         }
     }

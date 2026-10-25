@@ -124,11 +124,10 @@ Name: "mcp"; Description: "MCP Bridge (for AI assistants such as Claude Desktop)
 #endif
 
 [Tasks]
-Name: "ffmpeg"; Description: "Install bundled FFmpeg (video transcoding and metadata)"; Components: server; Flags: checkedonce
 #if DesktopExeExists
 Name: "shortcuts"; Description: "Create Desktop && Start Menu shortcuts"; Components: desktop; Flags: checkedonce
 #endif
-; Deliberately NO "checkedonce" (unlike ffmpeg/shortcuts above, which mean "checked by default the
+; Deliberately NO "checkedonce" (unlike shortcuts above, which mean "checked by default the
 ; first time only") - this must stay OFF by default on every single install/upgrade, never
 ; auto-checked, per explicit product decision: this data can include sensitive evidence, so sharing
 ; it over the network must always be an explicit opt-in click, never a default a user clicks past.
@@ -137,13 +136,10 @@ Name: "shortcuts"; Description: "Create Desktop && Start Menu shortcuts"; Compon
 Name: "networkshare"; Description: "Share the Reports and Media folders on the local network (adds you to a new VideoForensicsSuperUser group - see Tools Readme for adding others)"; Components: server; Flags: unchecked
 
 [Files]
-; Server: everything from the self-contained publish output except the optional ffmpeg binaries,
-; which are copied separately below only when the "ffmpeg" task is selected.
-Source: "{#ServerPublishDir}\*"; DestDir: "{app}"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "ffmpeg.exe,ffprobe.exe,ffmpeg-LICENSE.txt"
+; Server: everything from the self-contained publish output. FFmpeg and cloudflared are not bundled; the app uses
+; ffmpeg through FFMpegCore and finds cloudflared on PATH or in a folder the operator sets.
+Source: "{#ServerPublishDir}\*"; DestDir: "{app}"; Components: server; Flags: ignoreversion recursesubdirs createallsubdirs
 
-Source: "{#ServerPublishDir}\ffmpeg.exe"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#ServerPublishDir}\ffprobe.exe"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#ServerPublishDir}\ffmpeg-LICENSE.txt"; DestDir: "{app}"; Components: server; Tasks: ffmpeg; Flags: ignoreversion skipifsourcedoesntexist
 
 ; Desktop: everything from the MauiApp self-contained publish output. Guarded by #if DesktopExeExists
 ; above - see that #define's comment.

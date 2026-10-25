@@ -1053,6 +1053,12 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         /// <summary>
+        /// Asks Ring to capture a fresh snapshot. Virtual so tests can simulate a refresh failure,
+        /// because <see cref="Session.UpdateSnapshot"/> is not overridable and cannot be mocked.
+        /// </summary>
+        protected virtual Task RequestFreshSnapshotAsync(Session session, int doorbotId) => session.UpdateSnapshot(doorbotId);
+
+        /// <summary>
         /// Downloads the single latest available snapshot for a device. Ring does not expose historical,
         /// per-event snapshots (DoorbotHistoryEvent.SnapshotUrl is always empty in practice) — the only
         /// snapshot API available is "the device's current/most-recent snapshot," optionally refreshed
@@ -1090,23 +1096,28 @@ namespace VideoForensics.Providers.Ring.Services
                 _ = Directory.CreateDirectory(outputPath);
                 _currentStatus = _currentStatus with { IsDownloading = true, FilesTotal = 1, FilesCompleted = 0 };
 
-                // Best-effort: ask Ring to capture a fresh snapshot before fetching it. Not every
-                // device/plan supports on-demand refresh, so failures here are non-fatal — fall back
-                // to whatever snapshot Ring already has on hand.
+                // Ask Ring to capture a fresh snapshot before fetching it. If that fails we stop here:
+                // Ring's cached image would look current, and saving it gives a false sense of security.
                 try
                 {
-                    await session.UpdateSnapshot(doorbotId);
+                    await RequestFreshSnapshotAsync(session, doorbotId);
                     await Task.Delay(2000, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; using latest available instead", deviceId);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device ...{IdSuffix}; not saving the cached image", deviceId.Length <= 4 ? deviceId : deviceId[^4..]);
+                    _currentStatus = _currentStatus with { IsDownloading = false };
+                    return new DownloadResult(
+                        Success: false,
+                        ErrorMessage: $"Could not capture a fresh snapshot for device {deviceId}: {ex.Message}"
+                    );
                 }
 
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
                 // state/details lookups below reuse it). Falls back to deviceId if unavailable.
                 string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
-                _logger.LogInformation("Snapshot starting for {DeviceName}", deviceNameForSnapshot);
+                // The name can repeat across cameras, so the log also carries the last four characters of the device ID.
+                _logger.LogInformation("Snapshot starting for {DeviceName} (ID ...{IdSuffix})", deviceNameForSnapshot, deviceId.Length <= 4 ? deviceId : deviceId[^4..]);
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
