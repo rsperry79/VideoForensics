@@ -42,6 +42,7 @@ description: VideoForensics code-work procedure: worktrees forked from wip, lite
 2. `dotnet list VideoForensics.sln package --outdated`. Bump each flagged package to `Latest` in every `.csproj` that uses it, same version everywhere.
 3. `dotnet clean` then `dotnet build`. Fix every warning, error, and notice.
 4. After the build finishes, `dotnet test` the full suite. Fix failures.
+5. `npm ci` then `npm run check` (compile TypeScript, ESLint, Vitest, and compiled output in sync with sources). Fix every error. CI runs the same in the Check JavaScript job.
 - CI runs the same on PRs; the local gate is an early check, not a replacement.
 
 ## Cleanup rules

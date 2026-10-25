@@ -6,7 +6,8 @@
     "build:ts": "node scripts/build-ts.mjs",
     "pretest:js": "npm run build:ts",
     "test:js": "vitest run",
-    "lint": "eslint src/client/ui/VideoForensics.Ui.Shared/src/ts src/client/web/VideoForensics.WebApp/src/ts tests scripts vitest.config.ts eslint.config.mjs"
+    "lint": "eslint src/client/ui/VideoForensics.Ui.Shared/src/ts src/client/web/VideoForensics.WebApp/src/ts tests scripts vitest.config.ts eslint.config.mjs",
+    "check": "node scripts/check-js.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
