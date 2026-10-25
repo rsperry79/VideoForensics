@@ -231,7 +231,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
                         }
 
                         // Check for RSSI degradation and trigger elevated polling if detected (non-critical check).
@@ -401,7 +401,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         persisted++;
                         if (wentOffline)
                         {
-                            await NotifyDeviceOfflineAsync(dispatcher, device, ct);
+                            await NotifyDeviceOfflineAsync(sp, dispatcher, device, ct);
                         }
                     }
 
@@ -489,8 +489,24 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             return previous is { IsOnline: true };
         }
 
+        /// <summary>
+        /// Relative path of the sync page for the first provider account linked to the device's location, or null when none is linked.
+        /// The page is where the device's polling mode is set. A relative path works in the app, where the user is signed in.
+        /// </summary>
+        private static async Task<string?> SyncPagePathAsync(IServiceProvider sp, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        {
+            ILocationRepository? locations = sp.GetService<ILocationRepository>();
+            if (locations is null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<ProviderAccount> accounts = await locations.ListProviderAccountsForLocationAsync(device.LocationId, ct);
+            return accounts.Count > 0 ? $"/accounts/{accounts[0].Id}/sync" : null;
+        }
+
         /// <summary>Raises the DeviceOffline alert. A dispatch failure is logged and never undoes the health write that already happened.</summary>
-        private async Task NotifyDeviceOfflineAsync(INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
+        private async Task NotifyDeviceOfflineAsync(IServiceProvider sp, INotificationDispatcher? dispatcher, VideoForensics.Data.Common.Entities.Device device, CancellationToken ct)
         {
             if (dispatcher == null)
             {
@@ -507,7 +523,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     SourceIp: null,
                     Details: $"{device.Name} went offline",
                     Audience: NotificationAudience.AdminsOnly,
-                    Severity: NoticeSeverity.Alert), ct);
+                    Severity: NoticeSeverity.Alert,
+                    ActionPath: await SyncPagePathAsync(sp, device, ct)), ct);
                 _logger.LogInformation("Health sync: device {DeviceName} went offline; DeviceOffline alert dispatched", device.Name);
             }
             catch (Exception ex)

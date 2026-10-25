@@ -149,6 +149,10 @@ builder.WebHost.ConfigureKestrel(options =>
     }
 });
 
+// The endpoints above are the only addresses this server binds. Clearing the urls setting stops Kestrel from logging that it
+// is overriding a launch-profile or ASPNETCORE_URLS address.
+builder.WebHost.UseUrls(Array.Empty<string>());
+
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
 builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -364,6 +368,9 @@ builder.Services.Replace(ServiceDescriptor.Singleton<IMediaThumbnailNotifier, Li
 builder.Services.Replace(ServiceDescriptor.Singleton<IEvidenceChangeNotifier, LiveEvidenceNotifier>());
 builder.Services.AddScoped<IThumbnailReadySource, LocalThumbnailReadySource>();
 builder.Services.AddScoped<IEvidenceChangedSource, LocalEvidenceChangedSource>();
+// The dispatcher runs in this process, so each raised notice is published to open Notices pages directly.
+builder.Services.AddSingleton<LocalNoticeFeed>();
+builder.Services.AddSingleton<INoticeFeed>(sp => sp.GetRequiredService<LocalNoticeFeed>());
 // Account-linked announcements: the add-account wizard publishes, the accounts list subscribes. Scoped so one
 // circuit's link never reaches another circuit; both interfaces share one bus instance.
 builder.Services.AddScoped<AccountLinkedBus>();

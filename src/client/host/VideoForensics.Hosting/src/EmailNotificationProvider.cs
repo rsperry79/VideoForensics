@@ -20,12 +20,19 @@ namespace VideoForensics.Client.Hosting
         private readonly IForensicsConfiguration _config;
         private readonly ISmtpPasswordStore _passwordStore;
         private readonly ILogger<EmailNotificationProvider> _logger;
+        private readonly ICloudflaredTunnelService? _tunnels;
 
-        public EmailNotificationProvider(IForensicsConfiguration config, ISmtpPasswordStore passwordStore, ILogger<EmailNotificationProvider> logger)
+        /// <summary>Creates the provider. <paramref name="tunnels"/> supplies the public address for links in the body; without it, no link is added.</summary>
+        public EmailNotificationProvider(
+            IForensicsConfiguration config,
+            ISmtpPasswordStore passwordStore,
+            ILogger<EmailNotificationProvider> logger,
+            ICloudflaredTunnelService? tunnels = null)
         {
             _config = config;
             _passwordStore = passwordStore;
             _logger = logger;
+            _tunnels = tunnels;
         }
 
         public string Name => "Email";
@@ -44,8 +51,18 @@ namespace VideoForensics.Client.Hosting
             MimeMessage message = BuildMessage(
                 _config.NotificationRecipientEmail,
                 $"[VideoForensics] {notificationEvent.EventType}",
-                BuildBody(notificationEvent));
+                BuildBody(notificationEvent, TunnelBaseUrl()));
             await SendMessageAsync(message, ct);
+        }
+
+        /// <summary>
+        /// The tunnel's public address with no trailing slash, or null when the tunnel is not running. Email cannot use a relative
+        /// link, so links in the body are built from this address.
+        /// </summary>
+        private string? TunnelBaseUrl()
+        {
+            TunnelState? state = _tunnels?.GetState();
+            return state is { Status: TunnelStatus.Running, PublicUrl: not null } ? state.PublicUrl.TrimEnd('/') : null;
         }
 
         /// <summary>Used by the "Send Test Email" button on the Notifications settings screen - a real send through the configured SMTP settings, not a dry run, since that's the only way to actually confirm the settings work.</summary>
@@ -90,7 +107,11 @@ namespace VideoForensics.Client.Hosting
             }
         }
 
-        private static string BuildBody(NotificationEvent evt)
+        /// <summary>
+        /// Builds the plain-text body. The link is added only when the event has an <see cref="NotificationEvent.ActionPath"/> and
+        /// there is a tunnel address to make it absolute.
+        /// </summary>
+        internal static string BuildBody(NotificationEvent evt, string? tunnelBaseUrl)
         {
             var lines = new List<string>
             {
@@ -116,6 +137,11 @@ namespace VideoForensics.Client.Hosting
             if (!string.IsNullOrEmpty(evt.Details))
             {
                 lines.Add($"Details: {evt.Details}");
+            }
+
+            if (evt.ActionPath is not null && tunnelBaseUrl is not null)
+            {
+                lines.Add($"Open: {tunnelBaseUrl}{evt.ActionPath}");
             }
 
             lines.Add("");

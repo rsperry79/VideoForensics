@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Hosting.BackgroundServices;
@@ -20,7 +21,7 @@ namespace VideoForensics.Client.Hosting.Tests
         private const string DeviceName = "Front Door";
 
         private static (DeviceHealthSyncService Service, Mock<IDeviceHealthRepository> HealthRepo, Mock<IVideoForensicsDataClient> DataClient, Mock<INotificationDispatcher> Dispatcher)
-            CreateService(bool connectedNow)
+            CreateService(bool connectedNow, Mock<ILocationRepository>? locations = null)
         {
             var device = new Device
             {
@@ -56,6 +57,11 @@ namespace VideoForensics.Client.Hosting.Tests
             _ = services.AddSingleton(Mock.Of<ISecurityAuditLogger>());
             _ = services.AddSingleton(healthRepo.Object);
             _ = services.AddSingleton(dispatcher.Object);
+            if (locations is not null)
+            {
+                _ = services.AddSingleton(locations.Object);
+            }
+
             ServiceProvider provider = services.BuildServiceProvider();
 
             var service = new DeviceHealthSyncService(
@@ -88,6 +94,25 @@ namespace VideoForensics.Client.Hosting.Tests
                     && e.Severity == NoticeSeverity.Alert
                     && e.Audience == NotificationAudience.AdminsOnly
                     && e.Details != null && e.Details.Contains(DeviceName)),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_OnlineToOffline_AlertLinksToTheAccountSyncPage()
+        {
+            // The in-app link is relative, so it names the account's sync page, where the device's polling mode is set.
+            Guid accountId = Guid.NewGuid();
+            var locations = new Mock<ILocationRepository>();
+            _ = locations.Setup(l => l.ListProviderAccountsForLocationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new ProviderAccount { Id = accountId, ProviderName = "Ring" }]);
+            (DeviceHealthSyncService service, Mock<IDeviceHealthRepository> healthRepo, _, Mock<INotificationDispatcher> dispatcher) = CreateService(connectedNow: false, locations);
+            _ = healthRepo.Setup(r => r.GetLatestAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(PriorReading(wasOnline: true));
+
+            await service.RunOneTickAsync(CancellationToken.None);
+
+            dispatcher.Verify(d => d.DispatchAsync(
+                It.Is<NotificationEvent>(e => e.ActionPath == $"/accounts/{accountId}/sync"),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 

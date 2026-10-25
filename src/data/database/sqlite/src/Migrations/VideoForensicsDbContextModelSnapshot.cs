@@ -2668,6 +2668,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ActionPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Audience")
                         .HasColumnType("INTEGER");
 

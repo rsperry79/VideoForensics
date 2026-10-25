@@ -50,6 +50,12 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         /// <summary>How often the loop checks which devices are due.</summary>
         internal static readonly TimeSpan TickPeriod = TimeSpan.FromSeconds(5);
 
+        /// <summary>
+        /// How often an offline camera is probed. Offline cameras are repolled, not captured every interval, so a camera that
+        /// stays offline costs one or two Ring calls per repoll rather than per capture.
+        /// </summary>
+        internal static readonly TimeSpan OfflineRepollInterval = TimeSpan.FromMinutes(10);
+
         /// <summary>Hold-off for an account whose credentials could not be restored or whose pass threw, so it is not retried every tick.</summary>
         private static readonly TimeSpan AccountErrorBackoff = TimeSpan.FromMinutes(1);
 
@@ -198,9 +204,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 foreach (Device device in await devices.GetByLocationIdAsync(location.Id, ct))
                 {
-                    // Offline or camera-less devices would only log a failed attempt each interval, so they are not due.
-                    if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled
-                        || deviceStatus.IsOffline(device.Type, device.IsOnline) || !HasCamera(device.Type))
+                    // Disabled or camera-less devices are never due. An offline camera is repolled once per OfflineRepollInterval, not
+                    // captured every interval. The window check also covers startup: a camera with no probe in the last window is due at once.
+                    if (!seen.Add(device.ProviderDeviceId) || !device.SnapshotCaptureEnabled || !HasCamera(device.Type))
                     {
                         continue;
                     }
@@ -210,8 +216,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         continue;
                     }
 
-                    // Any attempt inside the window (current or failed) means the device has already been captured this interval.
-                    IReadOnlyList<SnapshotCapture> recent = await captures.GetAttemptsForDeviceAsync(device.Id, now - interval, now, ct);
+                    TimeSpan window = deviceStatus.IsOffline(device.Type, device.IsOnline) ? OfflineRepollInterval : interval;
+
+                    // Any attempt inside the window (current or failed) means the device has already been tried this window.
+                    IReadOnlyList<SnapshotCapture> recent = await captures.GetAttemptsForDeviceAsync(device.Id, now - window, now, ct);
                     if (recent.Count == 0)
                     {
                         due.Add(device);
@@ -372,6 +380,26 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             {
                 case 200:
                     counts.Captured++;
+                    if (device.IsOnline == false)
+                    {
+                        // A frame from a camera marked offline means it is back. Mark it online so it is captured every interval again.
+                        device.IsOnline = true;
+                        await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+                    }
+                    break;
+                case 404:
+                    // Ring has no frame for the camera even after the refresh and re-reads, so it is not reporting. Mark it
+                    // offline so the next ticks skip it instead of logging an error each time. Device health sync sets
+                    // IsOnline again once Ring reports the camera connected.
+                    bool wasOnline = device.IsOnline != false;
+                    _logger.LogInformation("Snapshot capture for {DeviceName} on {AccountName}: Ring has no frame, so the device is marked offline", device.Name, accountName);
+                    device.IsOnline = false;
+                    await sp.GetRequiredService<IDeviceRepository>().UpdateAsync(device, ct);
+                    if (wasOnline)
+                    {
+                        await RaiseOfflineAlertAsync(sp, device, account.Id, ct);
+                    }
+                    counts.Failed++;
                     break;
                 case 429:
                     // The rate limit itself is logged and alerted by the provider; the attempt is a gap.
@@ -453,6 +481,37 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         internal static bool HasCamera(string? type)
         {
             return type is "doorbot" or "authorized_doorbot" or "stickup_cam";
+        }
+
+        /// <summary>
+        /// Raises the DeviceOffline alert when a camera is found offline by a 404. The link opens the account's sync page, where the
+        /// device's polling mode is set. A dispatch failure is logged and never fails the capture.
+        /// </summary>
+        private async Task RaiseOfflineAlertAsync(IServiceProvider sp, Device device, Guid accountId, CancellationToken ct)
+        {
+            INotificationDispatcher? dispatcher = sp.GetService<INotificationDispatcher>();
+            if (dispatcher is null)
+            {
+                return;
+            }
+
+            try
+            {
+                await dispatcher.DispatchAsync(new NotificationEvent(
+                    EventType: "DeviceOffline",
+                    TimestampUtc: _time.GetUtcNow().UtcDateTime,
+                    OperatorId: null,
+                    PairedDeviceId: device.Id,
+                    SourceIp: null,
+                    Details: $"{device.Name} went offline: Ring has no snapshot for it",
+                    Audience: NotificationAudience.AdminsOnly,
+                    Severity: NoticeSeverity.Alert,
+                    ActionPath: $"/accounts/{accountId}/sync"), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Could not dispatch the offline alert for {DeviceName} (non-critical)", device.Name);
+            }
         }
 
         /// <summary>Holds a device back for one interval after a failure that left no attempt row, so it is not retried every tick.</summary>

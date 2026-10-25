@@ -89,4 +89,7 @@
   <data name="AllAccounts" xml:space="preserve">
     <value>All accounts</value>
   </data>
+  <data name="OpenNoticeLink" xml:space="preserve">
+    <value>Open</value>
+  </data>
 </root>

@@ -37,6 +37,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly Mock<IProviderApiBudgetGuard> _budget = new();
         private readonly Mock<IProviderAuthService> _auth = new();
         private readonly Mock<ISessionProvider> _sessions = new();
+        private readonly Mock<INotificationDispatcher> _dispatcher = new();
         private readonly List<SnapshotCapture> _rows = [];
 
         // The provider's offline rule, resolved keyed by provider name. Tests can swap it before building the provider.
@@ -130,6 +131,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddKeyedSingleton<IProviderAuthService>("Ring", _auth.Object);
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
+            _ = services.AddSingleton(_dispatcher.Object);
             return services.BuildServiceProvider();
         }
 
@@ -187,22 +189,59 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
 
         [Fact]
-        public async Task RunOneTickAsync_OfflineDevice_SkipsDevice()
+        public async Task RunOneTickAsync_OfflineDevice_ProbesOnStartupAndMarksOnlineWhenFrameArrives()
         {
-            _ = AddDevice("12345", isOnline: false);
+            // At startup an offline camera is probed once, so a camera that came back is captured without waiting for health sync.
+            Device device = AddDevice("12345", isOnline: false);
             _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
-            Assert.Empty(_rows);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(device.IsOnline);
+            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == true), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task RunOneTickAsync_ProviderRuleSaysOffline_SkipsDeviceEvenWhenConnectionReadsOnline()
+        public async Task RunOneTickAsync_NotFound_RaisesOneOfflineAlertLinkedToTheAccountSyncPage()
         {
-            // The capture service must ask the provider rather than trust the stored IsOnline column.
+            // The alert fires on the transition to offline only. Repolls that still get a 404 do not alert again.
+            _ = AddDevice("12345", isOnline: true);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddMinutes(11);
+            await RunTickAsync();
+
+            _dispatcher.Verify(d => d.DispatchAsync(
+                It.Is<NotificationEvent>(e => e.EventType == "DeviceOffline" && e.ActionPath == $"/accounts/{_accountId}/sync"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_OfflineDevice_RepollsOnlyAfterRepollInterval()
+        {
+            // An offline camera is probed at most once per repoll interval, not once per capture interval.
+            _ = AddDevice("12345", isOnline: false);
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+
+            await RunTickAsync();
+            _time.Now = T0.AddMinutes(5);
+            await RunTickAsync();
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+
+            _time.Now = T0.AddMinutes(11);
+            await RunTickAsync();
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ProviderRuleSaysOffline_ProbesOnceOnStartupEvenWhenConnectionReadsOnline()
+        {
+            // The capture service asks the provider rather than trust the stored IsOnline column, so the offline camera is probed once.
             var status = new Mock<IProviderDeviceStatus>();
             _ = status.Setup(s => s.IsOffline(It.IsAny<string>(), It.IsAny<bool?>())).Returns(true);
             _deviceStatus = status.Object;
@@ -212,8 +251,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await RunTickAsync();
 
-            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
-            status.Verify(s => s.IsOffline("doorbot", true), Times.Once);
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+            status.Verify(s => s.IsOffline("doorbot", true), Times.AtLeastOnce);
         }
         [Fact]
         public async Task RunOneTickAsync_SuccessfulCapture_RegistersSnapshotMediaRow()
@@ -356,6 +395,21 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.False(row.IsCurrent);
             Assert.Null(row.MediaFilePath);
             Assert.False(Directory.Exists(Path.Combine(_root, _accountId.ToString("N"))));
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_NotFound_MarksDeviceOfflineAndSkipsItOnNextTick()
+        {
+            // Ring has no frame for a camera that is not reporting, so a 404 marks it offline and the next tick skips it.
+            Device device = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(404, null, null));
+
+            await RunTickAsync();
+            _devices.Verify(r => r.UpdateAsync(It.Is<Device>(d => d.Id == device.Id && d.IsOnline == false), It.IsAny<CancellationToken>()), Times.Once);
+
+            await RunTickAsync();
+            _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
