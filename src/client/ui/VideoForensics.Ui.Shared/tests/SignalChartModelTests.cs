@@ -104,6 +104,13 @@ public class SignalChartModelTests
     }
 
     [Fact]
+    public void ExpectedIntervalFor_UsesTheAccountsSnapshotIntervalAndFallsBackToTheDefault()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(120), SignalChartModel.ExpectedIntervalFor(120));
+        Assert.Equal(TimeSpan.FromSeconds(60), SignalChartModel.ExpectedIntervalFor(null));
+    }
+
+    [Fact]
     public void FormatTick_UsesTimeOnlyForShortWindowsAndDateForLongOnes()
     {
         var noon = new DateTime(2026, 10, 24, 12, 30, 0, DateTimeKind.Utc);
