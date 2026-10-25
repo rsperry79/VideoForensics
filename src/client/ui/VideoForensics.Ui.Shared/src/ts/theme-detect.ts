@@ -4,7 +4,7 @@ window.vfTheme = {
     getPrefersDark: function (): boolean {
         try {
             return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        } catch (e) {
+        } catch {
             return false;
         }
     },
@@ -21,7 +21,7 @@ window.vfTheme = {
                 // Older WebView2/Safari fallback.
                 mql.addListener(listener);
             }
-        } catch (e) {
+        } catch {
             // Best-effort - System mode simply won't live-update on hosts where matchMedia isn't
             // available; the initial getPrefersDark() snapshot still applies.
         }
@@ -40,7 +40,7 @@ window.vfTheme = {
                 link.href = href;
             }
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        } catch (e) {
+        } catch {
             // Best-effort - page keeps whatever theme was last successfully applied.
         }
     }

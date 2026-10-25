@@ -6,7 +6,7 @@ window.vfTheme = {
         try {
             return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
-        catch (e) {
+        catch {
             return false;
         }
     },
@@ -25,7 +25,7 @@ window.vfTheme = {
                 mql.addListener(listener);
             }
         }
-        catch (e) {
+        catch {
             // Best-effort - System mode simply won't live-update on hosts where matchMedia isn't
             // available; the initial getPrefersDark() snapshot still applies.
         }
@@ -45,7 +45,7 @@ window.vfTheme = {
             }
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         }
-        catch (e) {
+        catch {
             // Best-effort - page keeps whatever theme was last successfully applied.
         }
     }

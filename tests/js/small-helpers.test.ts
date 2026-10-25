@@ -17,7 +17,7 @@ function fakeVideo(overrides: Partial<Record<string, unknown>> = {}) {
         pause: vi.fn(),
         play: vi.fn(() => Promise.resolve()),
         ...overrides,
-    } as any;
+    } as unknown as HTMLVideoElement;
 }
 
 describe("media-viewer", () => {
@@ -26,7 +26,7 @@ describe("media-viewer", () => {
         setPlaybackRate(video, 1.5);
         expect(video.playbackRate).toBe(1.5);
 
-        const notVideo = { tagName: "DIV", playbackRate: 1 } as any;
+        const notVideo = { tagName: "DIV", playbackRate: 1 } as unknown as HTMLVideoElement;
         setPlaybackRate(notVideo, 2);
         expect(notVideo.playbackRate).toBe(1);
     });
@@ -79,7 +79,7 @@ describe("review-player (vfSetVideoTime)", () => {
     });
 
     it("sets currentTime immediately when metadata is already loaded", () => {
-        const video = fakeVideo({ readyState: 1 }) as any;
+        const video = fakeVideo({ readyState: 1 });
         window.vfSetVideoTime(video, 42);
         expect(video.currentTime).toBe(42);
     });
@@ -90,7 +90,7 @@ describe("review-player (vfSetVideoTime)", () => {
             readyState: 0,
             currentTime: 0,
             addEventListener: vi.fn((_: string, handler: () => void) => { onLoaded = handler; }),
-        } as any;
+        } as unknown as HTMLVideoElement;
 
         window.vfSetVideoTime(video, 7);
         expect(video.currentTime).toBe(0);
@@ -176,16 +176,15 @@ describe("server-logs", () => {
     });
 
     it("downloadText clicks a hidden anchor with the file name, then revokes the object URL", () => {
-        let clicked: HTMLAnchorElement | undefined;
-        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
-            clicked = this;
-        });
+        const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
 
         downloadText("server.log", "line one");
 
-        expect(clicked!.download).toBe("server.log");
-        expect(clicked!.href).toBe("blob:fake");
-        expect(clicked!.style.display).toBe("none");
+        // mock.contexts records the element each click() was called on, without aliasing `this`.
+        const clicked = click.mock.contexts[0] as HTMLAnchorElement;
+        expect(clicked.download).toBe("server.log");
+        expect(clicked.href).toBe("blob:fake");
+        expect(clicked.style.display).toBe("none");
         expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fake");
     });
 });

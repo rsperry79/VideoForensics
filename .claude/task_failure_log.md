@@ -33,3 +33,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-25T13:40 | build | npm run build:ts with && chain | npm script ran under PowerShell 5 parser, && rejected | replaced with scripts/build-ts.mjs (Node spawnSync)
 2026-10-25T13:47 | test | npm run test:js chained build && vitest | && rejected under PowerShell npm shell | split into pretest:js npm hook
 2026-10-25T13:47 | test | load-script new URL(import.meta.url) threw "URL must be of scheme file" | jsdom replaces global URL | use fileURLToPath + dirname
+2026-10-25T14:10 | lint | batch node -e edit aborted on unmatched pattern in small-helpers.test.ts | multi-line pattern whitespace did not match | edited with exact-match Edit calls

@@ -11,7 +11,7 @@ type FakeSubscription = {
 };
 
 function installServiceWorker(subscription: FakeSubscription | null) {
-    const subscribe = vi.fn(async () => subscription);
+    const subscribe = vi.fn<(options: PushSubscriptionOptionsInit) => Promise<FakeSubscription | null>>(async () => subscription);
     const getSubscription = vi.fn(async () => subscription);
     const registration = {
         pushManager: { subscribe, getSubscription },
@@ -55,7 +55,7 @@ describe("vfWebPush", () => {
 
         await window.vfWebPush.subscribe("-_8");
 
-        const { applicationServerKey, userVisibleOnly } = subscribe.mock.calls[0][0] as any;
+        const { applicationServerKey, userVisibleOnly } = subscribe.mock.calls[0][0] as { applicationServerKey: Uint8Array; userVisibleOnly: boolean };
         expect(userVisibleOnly).toBe(true);
         expect(Array.from(applicationServerKey as Uint8Array)).toEqual([251, 255]);
     });

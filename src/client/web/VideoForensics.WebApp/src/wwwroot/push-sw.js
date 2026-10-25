@@ -8,7 +8,7 @@ sw.addEventListener('push', (event) => {
     try {
         data = event.data.json();
     }
-    catch (e) {
+    catch {
         // If JSON parsing fails, treat the push data as plain text
         data = {
             title: 'Video Forensics Notification',
