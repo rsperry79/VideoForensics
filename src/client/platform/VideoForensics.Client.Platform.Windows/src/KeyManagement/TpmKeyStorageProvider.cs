@@ -1,3 +1,6 @@
+using VideoForensics.Core.Helpers.Forensics.Exceptions;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +12,7 @@ using System.Threading.Tasks;
 
 using VideoForensics.Core.Helpers.Forensics.Exceptions;
 
-namespace VideoForensics.Core.Helpers.Forensics.KeyManagement
+namespace VideoForensics.Client.Platform.Windows.KeyManagement
 {
     /// <summary>
     /// Signing keys held by the TPM 2.0 through the Windows Platform Crypto Provider. The private key is created

@@ -56,6 +56,7 @@ using VideoForensics.Client.WebApp.Components;
 
 // Windows host: read install-time storage overrides from the registry before any StorageLocationProvider is created.
 VideoForensics.Core.Helpers.Platform.StorageOverrides.Current = new VideoForensics.Client.Platform.Windows.RegistryStorageOverrideSource();
+VideoForensics.Core.Helpers.Forensics.KeyManagement.KeyStorageProviders.PlatformProviders = VideoForensics.Client.Platform.Windows.KeyManagement.WindowsKeyStorageProviders.Create;
 
 // Which interfaces Kestrel binds to must be decided NOW, before the host is built - a listen
 // socket can't be rebound live, so the network-tier setting can't wait for the normal DI/config
@@ -240,7 +241,7 @@ IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtectio
 // decrypt it. Otherwise DPAPI (machine scope) protects it.
 if (OperatingSystem.IsWindows())
 {
-    X509Certificate2? tpmCertificate = TpmDataProtectionCertificate.TryLoadOrCreate();
+    X509Certificate2? tpmCertificate = VideoForensics.Client.Platform.Windows.KeyManagement.TpmDataProtectionCertificate.TryLoadOrCreate();
     _ = tpmCertificate is not null
         ? dataProtectionBuilder.ProtectKeysWithCertificate(tpmCertificate)
         : dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);

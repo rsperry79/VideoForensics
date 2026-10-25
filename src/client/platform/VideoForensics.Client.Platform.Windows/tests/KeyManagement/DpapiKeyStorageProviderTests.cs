@@ -1,10 +1,13 @@
+using Xunit;
+using VideoForensics.Client.Platform.Windows.KeyManagement;
+using VideoForensics.Core.Helpers.Forensics.KeyManagement;
+
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
-using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 
-namespace VideoForensics.Core.Helpers.Forensics.Tests.KeyManagement
+namespace VideoForensics.Client.Platform.Windows.Tests.KeyManagement
 {
     public class DpapiKeyStorageProviderTests : IDisposable
     {
