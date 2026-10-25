@@ -150,7 +150,8 @@ namespace VideoForensics.Providers.Ring.Implementations
                 }
             }
 
-            // Generate a new random salt and persist it
+            // Generate a new random salt and persist it. CreateNew makes the write exclusive: when two instances
+            // start together, the loser reads the winner's salt, so both derive the same key.
             byte[] randomSalt = RandomNumberGenerator.GetBytes(SaltSize);
 
             try
@@ -161,7 +162,15 @@ namespace VideoForensics.Providers.Ring.Implementations
                     _ = Directory.CreateDirectory(directory);
                 }
 
-                File.WriteAllBytes(saltPath, randomSalt);
+                using (FileStream stream = new(saltPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    stream.Write(randomSalt, 0, randomSalt.Length);
+                }
+            }
+            catch (IOException) when (File.Exists(saltPath))
+            {
+                // Another instance created the salt first: use the stored one.
+                return File.ReadAllBytes(saltPath);
             }
             catch
             {

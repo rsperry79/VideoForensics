@@ -63,6 +63,39 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             Assert.Equal(Start.AddMinutes(5), seeked);
         }
 
+        /// <summary>Verifies that a clip with a thumbnail draws its segment with the thumbnail as the background image.</summary>
+        [Fact]
+        public void TimelineStrip_ClipWithThumbnail_SegmentShowsBackgroundImage()
+        {
+            var clips = new List<ClipWindow> { new("a", Start, 60, "/media/a/thumb") };
+
+            IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
+                .Add(x => x.Clips, clips)
+                .Add(x => x.WindowStartUtc, Start)
+                .Add(x => x.WindowEndUtc, Start.AddMinutes(10)));
+
+            string? style = cut.Find("[data-testid='timeline-segment']").GetAttribute("style");
+            Assert.NotNull(style);
+            Assert.Contains("background-image", style);
+            Assert.Contains("/media/a/thumb", style);
+        }
+
+        /// <summary>Verifies that a clip without a thumbnail draws its segment with no background image.</summary>
+        [Fact]
+        public void TimelineStrip_ClipWithoutThumbnail_SegmentHasNoBackgroundImage()
+        {
+            var clips = new List<ClipWindow> { new("a", Start, 60) };
+
+            IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
+                .Add(x => x.Clips, clips)
+                .Add(x => x.WindowStartUtc, Start)
+                .Add(x => x.WindowEndUtc, Start.AddMinutes(10)));
+
+            string? style = cut.Find("[data-testid='timeline-segment']").GetAttribute("style");
+            Assert.NotNull(style);
+            Assert.DoesNotContain("background-image", style);
+        }
+
         /// <summary>Verifies that the cursor is drawn only when a playback time is set.</summary>
         [Fact]
         public void TimelineStrip_NoCursor_DrawsNoCursor()
@@ -133,6 +166,76 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
 
             Assert.Empty(cut.FindAll("[data-testid='camera-tile']"));
             Assert.NotEmpty(cut.FindAll("[data-testid='camera-grid-limit']"));
+        }
+
+        /// <summary>
+        /// Queues playback reads for <c>vfGetVideoTime</c> in call order. Each setup matches one call and returns its value,
+        /// so the master (tile 0) is read first and then each following tile.
+        /// </summary>
+        private void SetupPlaybackReads(params double[] seconds)
+        {
+            int reads = 0;
+            foreach (double value in seconds)
+            {
+                double captured = value;
+                int ordinal = reads++;
+                _ = JSInterop.Setup<double>("vfGetVideoTime", _ => JSInterop.Invocations.Count(i => i.Identifier == "vfGetVideoTime") == ordinal + 1).SetResult(captured);
+            }
+        }
+
+        private static List<CameraTile> TwoTiles() =>
+            new()
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content"),
+                new("Back", TwoClips(), id => $"/media/{id}/content"),
+            };
+
+        /// <summary>Verifies that a tile drifting past the tolerance is seeked to the master clock's absolute time.</summary>
+        [Fact]
+        public async Task CameraGrid_TileDrifted_ResyncsToMaster()
+        {
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, TwoTiles())
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            SetupPlaybackReads(10.0, 12.0);
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(1, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+        }
+
+        /// <summary>Verifies that a tile within the tolerance is left alone.</summary>
+        [Fact]
+        public async Task CameraGrid_TilesWithinTolerance_DoNotResync()
+        {
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, TwoTiles())
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+            SetupPlaybackReads(10.0, 10.2);
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
+        }
+
+        /// <summary>Verifies that a single-tile grid has nothing to sync and completes without seeking.</summary>
+        [Fact]
+        public async Task CameraGrid_SingleTile_SyncDoesNothing()
+        {
+            var tiles = new List<CameraTile> { new("Front", TwoClips(), id => $"/media/{id}/content") };
+            IRenderedComponent<CameraGrid> cut = Render<CameraGrid>(p => p
+                .Add(x => x.Tiles, tiles)
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            int before = JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime");
+
+            await cut.InvokeAsync(() => cut.Instance.SyncTilesAsync());
+
+            Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
         }
     }
 }

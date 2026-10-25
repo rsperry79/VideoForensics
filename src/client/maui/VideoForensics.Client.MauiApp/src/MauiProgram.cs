@@ -233,6 +233,8 @@ namespace VideoForensics.Client.MauiApp
             // Local filesystem folder browser for picking the import "media root" folder (Import/Export
             // page) - shared implementation, works identically on MAUI and Web since both processes run
             // on the same local machine as the user in this app's deployment model.
+            // Filesystem roots for that browser: drives on Windows, "/" elsewhere.
+            builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IDirectoryBrowserService, VideoForensics.Client.Ui.Shared.Services.DirectoryBrowserService>();
 
             // Local app-lock (plan §5.9) - overrides the no-op IAppLockPreferencesStore default that
