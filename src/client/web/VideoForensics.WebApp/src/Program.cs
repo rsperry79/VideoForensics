@@ -531,6 +531,7 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 // both hosts (both run on the same local machine as the user in this app's deployment model).
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
+builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope

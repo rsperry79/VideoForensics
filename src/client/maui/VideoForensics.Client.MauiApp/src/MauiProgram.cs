@@ -222,6 +222,9 @@ namespace VideoForensics.Client.MauiApp
             // has to trigger a browser download instead. See WebFileDialogService for that side.
             builder.Services.AddSingleton<VideoForensics.Client.Ui.Shared.Services.IFileDialogService, VideoForensics.Client.MauiApp.Services.MauiFileDialogService>();
 
+            // Where the backup export is staged before the save dialog: the current user's documents folder.
+            builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+
             // Local filesystem folder browser for picking the import "media root" folder (Import/Export
             // page) - shared implementation, works identically on MAUI and Web since both processes run
             // on the same local machine as the user in this app's deployment model.
