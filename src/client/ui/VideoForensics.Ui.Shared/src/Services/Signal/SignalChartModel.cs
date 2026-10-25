@@ -77,11 +77,22 @@ public static class SignalChartModel
     /// </summary>
     public static IReadOnlyList<SignalPeriod> Periods(IEnumerable<SignalSample> samples, DateTime from, DateTime to, TimeSpan expectedInterval)
     {
-        ArgumentNullException.ThrowIfNull(samples);
         if (expectedInterval <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(expectedInterval), "The expected check interval must be positive.");
         }
+
+        return Periods(samples, from, to, _ => expectedInterval);
+    }
+
+    /// <summary>
+    /// Same as above, but the expected spacing can change over time, as it does when a jamming window narrows the
+    /// snapshot interval. <paramref name="expectedIntervalAt"/> is asked for the spacing in effect at each check.
+    /// </summary>
+    public static IReadOnlyList<SignalPeriod> Periods(IEnumerable<SignalSample> samples, DateTime from, DateTime to, Func<DateTime, TimeSpan> expectedIntervalAt)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        ArgumentNullException.ThrowIfNull(expectedIntervalAt);
 
         List<SignalSample> ordered = samples
             .Where(s => s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
@@ -93,7 +104,7 @@ public static class SignalChartModel
         {
             SignalSample sample = ordered[i];
             DateTime next = i + 1 < ordered.Count ? ordered[i + 1].CapturedAtUtc : to;
-            DateTime coverageEnd = next < sample.CapturedAtUtc + expectedInterval ? next : sample.CapturedAtUtc + expectedInterval;
+            DateTime coverageEnd = Earlier(next, sample.CapturedAtUtc + IntervalAt(expectedIntervalAt, sample.CapturedAtUtc));
 
             if (sample.RssiDbm is null)
             {
@@ -104,11 +115,9 @@ public static class SignalChartModel
                 periods.Add(new SignalPeriod(SignalPeriodKind.Weak, sample.CapturedAtUtc, coverageEnd));
             }
 
-            // Whole expected intervals in the gap, minus the check that should have covered the first one.
-            long missed = (next - sample.CapturedAtUtc).Ticks / expectedInterval.Ticks - 1;
-            if (missed >= MissedChecksToFlag)
+            if (FirstMissedCheck(sample.CapturedAtUtc, next, expectedIntervalAt) is { } firstMissed)
             {
-                periods.Add(new SignalPeriod(SignalPeriodKind.MissedChecks, sample.CapturedAtUtc + expectedInterval, next));
+                periods.Add(new SignalPeriod(SignalPeriodKind.MissedChecks, firstMissed, next));
             }
         }
 
@@ -130,6 +139,43 @@ public static class SignalChartModel
     {
         return TimeSpan.FromSeconds(snapshotIntervalSeconds ?? SyncSchedule.DefaultSnapshotIntervalSeconds);
     }
+
+    /// <summary>
+    /// Walks the expected checks strictly between a reading and the next one, spacing each by the interval in effect
+    /// at that check. Returns the first missed check once <see cref="MissedChecksToFlag"/> have been missed, or null.
+    /// Stops early at the threshold, so a long outage does not iterate over every missed check.
+    /// </summary>
+    private static DateTime? FirstMissedCheck(DateTime readingUtc, DateTime nextUtc, Func<DateTime, TimeSpan> expectedIntervalAt)
+    {
+        DateTime cursor = readingUtc;
+        DateTime? first = null;
+        int missed = 0;
+
+        while (true)
+        {
+            cursor += IntervalAt(expectedIntervalAt, cursor);
+            if (cursor >= nextUtc)
+            {
+                return null;
+            }
+
+            missed++;
+            first ??= cursor;
+            if (missed >= MissedChecksToFlag)
+            {
+                return first;
+            }
+        }
+    }
+
+    /// <summary>The spacing at a point in time. Guards against a non-positive value, which would stop the walk.</summary>
+    private static TimeSpan IntervalAt(Func<DateTime, TimeSpan> expectedIntervalAt, DateTime utc)
+    {
+        TimeSpan interval = expectedIntervalAt(utc);
+        return interval > TimeSpan.Zero ? interval : TimeSpan.FromSeconds(1);
+    }
+
+    private static DateTime Earlier(DateTime a, DateTime b) => a < b ? a : b;
 
     private static IEnumerable<SignalPeriod> MergeAdjacent(IEnumerable<SignalPeriod> ordered)
     {

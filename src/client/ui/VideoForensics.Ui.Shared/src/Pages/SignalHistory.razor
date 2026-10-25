@@ -166,7 +166,6 @@
         public required SignalStats AllTime { get; init; }
         public required string Points { get; init; }
         public required int InRangeCount { get; init; }
-        public required TimeSpan Interval { get; init; }
         public required IReadOnlyList<SignalPeriod> Periods { get; init; }
         public double? SelectionStart { get; set; }
         public double? SelectionEnd { get; set; }
@@ -226,12 +225,12 @@
 
         List<Device> inScopeList = inScope.ToList();
         DeviceOwnershipSnapshot ownership = await OwnershipService.LoadAsync(inScopeList, CancellationToken.None);
-        var intervalByAccount = new Dictionary<Guid, TimeSpan>();
+        var schedulesByAccount = new Dictionary<Guid, VideoForensics.Data.Common.Entities.SyncSchedule?>();
 
         var sections = new List<DeviceSignal>();
         foreach (Device device in inScopeList)
         {
-            TimeSpan interval = await ExpectedIntervalAsync(device.Id, ownership.Ownership, intervalByAccount);
+            Func<DateTime, TimeSpan> expected = await ExpectedIntervalAsync(device.Id, ownership.Ownership, schedulesByAccount);
             IReadOnlyList<DeviceHealth> rows = await DeviceHealthRepository.GetHistoryAsync(device.Id, CancellationToken.None);
             List<SignalSample> samples = rows.Select(r => new SignalSample(r.CapturedAtUtc, r.WifiSignalRssi)).ToList();
             sections.Add(new DeviceSignal
@@ -240,8 +239,7 @@
                 AllTime = SignalStats.Compute(samples),
                 Points = SignalChartModel.Polyline(samples, _from, _to),
                 InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
-                Interval = interval,
-                Periods = SignalChartModel.Periods(samples, _from, _to, interval),
+                Periods = SignalChartModel.Periods(samples, _from, _to, expected),
             });
         }
 
@@ -249,25 +247,34 @@
     }
 
     /// <summary>
-    /// The camera's expected reading spacing, from its account's snapshot interval. Accounts are looked up once per load.
-    /// A camera with no owning account falls back to the default interval.
+    /// The camera's expected reading spacing at a point in time: the spacing its account actually captures at, which
+    /// narrows inside jamming windows. Accounts are looked up once per load. A camera with no account or schedule
+    /// uses the default interval at every time.
     /// </summary>
-    private async Task<TimeSpan> ExpectedIntervalAsync(Guid deviceId, IReadOnlyList<DeviceOwnership> ownership, Dictionary<Guid, TimeSpan> intervalByAccount)
+    private async Task<Func<DateTime, TimeSpan>> ExpectedIntervalAsync(
+        Guid deviceId,
+        IReadOnlyList<DeviceOwnership> ownership,
+        Dictionary<Guid, VideoForensics.Data.Common.Entities.SyncSchedule?> schedulesByAccount)
     {
         DeviceOwnership? owner = ownership.FirstOrDefault(o => o.DeviceId == deviceId);
         if (owner is null)
         {
-            return SignalChartModel.ExpectedIntervalFor(null);
+            return _ => SignalChartModel.ExpectedIntervalFor(null);
         }
 
-        if (!intervalByAccount.TryGetValue(owner.ProviderAccountId, out TimeSpan interval))
+        if (!schedulesByAccount.TryGetValue(owner.ProviderAccountId, out VideoForensics.Data.Common.Entities.SyncSchedule? schedule))
         {
-            var schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(owner.ProviderAccountId, CancellationToken.None);
-            interval = SignalChartModel.ExpectedIntervalFor(schedule?.SnapshotIntervalSeconds);
-            intervalByAccount[owner.ProviderAccountId] = interval;
+            schedule = await SyncScheduleRepository.GetByProviderAccountIdAsync(owner.ProviderAccountId, CancellationToken.None);
+            schedulesByAccount[owner.ProviderAccountId] = schedule;
         }
 
-        return interval;
+        if (schedule is null)
+        {
+            return _ => SignalChartModel.ExpectedIntervalFor(null);
+        }
+
+        // Same rule the capture service runs at, so the chart and the captures agree.
+        return utc => TimeSpan.FromSeconds(VideoForensics.Data.Common.Entities.SnapshotIntervals.CaptureSpacing(schedule, utc));
     }
 
     private static string DeviceName(Device device)
