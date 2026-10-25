@@ -95,6 +95,18 @@
   <data name="PeriodMissed" xml:space="preserve">
     <value>Missed checks</value>
   </data>
+  <data name="AllCamerasLabel" xml:space="preserve">
+    <value>All cameras</value>
+  </data>
+  <data name="NoCamerasLabel" xml:space="preserve">
+    <value>No cameras</value>
+  </data>
+  <data name="CameraCountLabel" xml:space="preserve">
+    <value>{0} cameras</value>
+  </data>
+  <data name="CameraFallbackLabel" xml:space="preserve">
+    <value>Camera</value>
+  </data>
   <data name="StatCount" xml:space="preserve">
     <value>Readings</value>
   </data>

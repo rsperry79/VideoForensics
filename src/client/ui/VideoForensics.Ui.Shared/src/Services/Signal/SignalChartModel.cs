@@ -27,15 +27,6 @@ public static class SignalChartModel
     /// <summary>Height of the plot area in SVG units.</summary>
     public const double PlotHeight = 192;
 
-    /// <summary>Strongest signal on the axis. Ring reports RSSI, so values closer to zero are stronger.</summary>
-    public const int StrongestDbm = -30;
-
-    /// <summary>Weakest signal on the axis; anything below this is clamped to the bottom edge.</summary>
-    public const int WeakestDbm = -100;
-
-    /// <summary>The dBm values labelled on the y-axis, strongest first.</summary>
-    public static readonly int[] DbmTicks = [-30, -50, -70, -90];
-
     /// <summary>Maps a time onto the x-axis: the window start is the left edge, the window end the right edge.</summary>
     public static double MapX(DateTime utc, DateTime from, DateTime to)
     {
@@ -48,25 +39,18 @@ public static class SignalChartModel
         return PlotLeft + (utc - from).TotalSeconds / span * PlotWidth;
     }
 
-    /// <summary>Maps a dBm value onto the y-axis. Stronger signal sits higher; values beyond the axis are clamped.</summary>
-    public static double MapDbm(double dbm)
-    {
-        double clamped = Math.Clamp(dbm, WeakestDbm, StrongestDbm);
-        return PlotTop + (StrongestDbm - clamped) / (StrongestDbm - WeakestDbm) * PlotHeight;
-    }
-
     /// <summary>
     /// The polyline points for the readings inside the window, in time order. Readings with no signal,
     /// or outside the window, are left out so they never draw a line to a made-up position.
     /// </summary>
-    public static string Polyline(IEnumerable<SignalSample> samples, DateTime from, DateTime to)
+    public static string Polyline(IEnumerable<SignalSample> samples, DateTime from, DateTime to, SignalScale scale)
     {
         ArgumentNullException.ThrowIfNull(samples);
 
         return string.Join(' ', samples
             .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
             .OrderBy(s => s.CapturedAtUtc)
-            .Select(s => $"{MapX(s.CapturedAtUtc, from, to):0.#},{MapDbm(s.RssiDbm!.Value):0.#}"));
+            .Select(s => $"{MapX(s.CapturedAtUtc, from, to):0.#},{scale.MapY(s.RssiDbm!.Value):0.#}"));
     }
 
     /// <summary>
@@ -253,6 +237,31 @@ public static class SignalChartModel
     {
         double scale = canvasWidthPixels / ViewWidth;
         return FractionFromPixel(offsetPixels - PlotLeft * scale, PlotWidth * scale);
+    }
+
+    /// <summary>The time under a 0..1 fraction of the plot width, the inverse of <see cref="MapX"/>.</summary>
+    public static DateTime TimeAt(double fraction, DateTime from, DateTime to)
+    {
+        return from.AddSeconds(Math.Clamp(fraction, 0, 1) * (to - from).TotalSeconds);
+    }
+
+    /// <summary>
+    /// The reading closest in time to <paramref name="utc"/>, or null when there are none. Readings with no signal count
+    /// too, so hovering a no-signal check reports that rather than a neighbouring value.
+    /// </summary>
+    public static SignalSample? NearestReading(IEnumerable<SignalSample> readings, DateTime utc)
+    {
+        ArgumentNullException.ThrowIfNull(readings);
+
+        return readings
+            .OrderBy(s => Math.Abs((s.CapturedAtUtc - utc).Ticks))
+            .FirstOrDefault();
+    }
+
+    /// <summary>The tooltip's time, for example "Oct 24, 12:30 UTC". Always UTC, matching the axis labels.</summary>
+    public static string FormatTooltipTime(DateTime utc)
+    {
+        return $"{utc.ToString("MMM d, HH:mm", CultureInfo.InvariantCulture)} UTC";
     }
 
     /// <summary>Time label for an axis tick. Short windows show the clock time; longer ones show the date.</summary>

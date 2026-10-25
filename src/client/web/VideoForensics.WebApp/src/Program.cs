@@ -524,6 +524,7 @@ builder.Services.AddScoped<LeftPanelContentService>();
 builder.Services.AddScoped<InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ScopeState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<IQueryApiFilterState, QueryApiFilterState>();
 builder.Services.AddScoped<CaseState>();
