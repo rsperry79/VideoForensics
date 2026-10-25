@@ -5,11 +5,16 @@
   "scripts": {
     "build:ts": "node scripts/build-ts.mjs",
     "pretest:js": "npm run build:ts",
-    "test:js": "vitest run"
+    "test:js": "vitest run",
+    "lint": "eslint src/client/ui/VideoForensics.Ui.Shared/src/ts src/client/web/VideoForensics.WebApp/src/ts tests scripts vitest.config.ts eslint.config.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^3.2.7"
   }
 }

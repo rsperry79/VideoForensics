@@ -17,7 +17,7 @@ sw.addEventListener('push', (event) => {
     let data: { title?: string; body?: string };
     try {
         data = event.data!.json();
-    } catch (e) {
+    } catch {
         // If JSON parsing fails, treat the push data as plain text
         data = {
             title: 'Video Forensics Notification',

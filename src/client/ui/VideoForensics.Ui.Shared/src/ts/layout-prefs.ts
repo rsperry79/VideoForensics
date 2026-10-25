@@ -4,14 +4,14 @@ window.vfLayoutPrefs = {
     get: function (key: string): string | null {
         try {
             return window.localStorage.getItem(key);
-        } catch (e) {
+        } catch {
             return null;
         }
     },
     set: function (key: string, value: string): void {
         try {
             window.localStorage.setItem(key, value);
-        } catch (e) {
+        } catch {
             // Best-effort - private browsing / storage disabled just means the default is used.
         }
     }

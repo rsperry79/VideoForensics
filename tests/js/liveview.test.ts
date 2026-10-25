@@ -62,13 +62,13 @@ describe("liveview", () => {
     afterEach(() => {
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
-        delete (window as any)._liveViewPeerConnection;
+        Reflect.deleteProperty(window, "_liveViewPeerConnection");
     });
 
     it("requests the offer, applies it, and sends the answer back to the server", async () => {
         const { hub } = fakeHub("offer-sdp");
 
-        const pc = await startLiveView(hub as any, "session-1", "cam");
+        const pc = await startLiveView(hub as never, "session-1", "cam");
 
         expect(pc).toBe(lastPc as unknown);
         expect(hub.invoke).toHaveBeenCalledWith("RequestOffer", "session-1");
@@ -78,7 +78,7 @@ describe("liveview", () => {
 
     it("feeds server ICE candidates into the peer connection", async () => {
         const { hub, handlers } = fakeHub();
-        await startLiveView(hub as any, "session-1", "cam");
+        await startLiveView(hub as never, "session-1", "cam");
 
         handlers["ReceiveIceCandidate"]("candidate:1", 0);
 
@@ -91,7 +91,7 @@ describe("liveview", () => {
         const { hub } = fakeHub();
         document.body.innerHTML = "";
 
-        await expect(startLiveView(hub as any, "session-1", "cam")).rejects.toThrow("Video element with ID 'cam' not found");
+        await expect(startLiveView(hub as never, "session-1", "cam")).rejects.toThrow("Video element with ID 'cam' not found");
         expect(hub.invoke).not.toHaveBeenCalled();
     });
 
@@ -99,13 +99,13 @@ describe("liveview", () => {
         vi.spyOn(console, "error").mockImplementation(() => undefined);
         const { hub } = fakeHub(new Error("hub unavailable"));
 
-        await expect(startLiveView(hub as any, "session-1", "cam")).rejects.toThrow("hub unavailable");
+        await expect(startLiveView(hub as never, "session-1", "cam")).rejects.toThrow("hub unavailable");
         expect(lastPc.close).toHaveBeenCalledOnce();
     });
 
     it("addIceCandidate forwards to the connection created by startLiveView", async () => {
         const { hub } = fakeHub();
-        await startLiveView(hub as any, "session-1", "cam");
+        await startLiveView(hub as never, "session-1", "cam");
 
         await addIceCandidate("candidate:2", 1);
 
@@ -118,7 +118,7 @@ describe("liveview", () => {
 
     it("stopLiveView closes an open connection and leaves a closed one alone", async () => {
         const { hub } = fakeHub();
-        const pc = await startLiveView(hub as any, "session-1", "cam");
+        const pc = await startLiveView(hub as never, "session-1", "cam");
 
         stopLiveView(pc);
         expect(lastPc.close).toHaveBeenCalledOnce();

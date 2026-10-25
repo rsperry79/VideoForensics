@@ -6,7 +6,7 @@ window.vfLayoutPrefs = {
         try {
             return window.localStorage.getItem(key);
         }
-        catch (e) {
+        catch {
             return null;
         }
     },
@@ -14,7 +14,7 @@ window.vfLayoutPrefs = {
         try {
             window.localStorage.setItem(key, value);
         }
-        catch (e) {
+        catch {
             // Best-effort - private browsing / storage disabled just means the default is used.
         }
     }

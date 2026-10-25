@@ -4,7 +4,7 @@ window.vfViewport = {
     getIsMobile: function (): boolean {
         try {
             return window.matchMedia && window.matchMedia('(max-width: 599px)').matches;
-        } catch (e) {
+        } catch {
             return false;
         }
     },
@@ -21,7 +21,7 @@ window.vfViewport = {
                 // Older WebView2/Safari fallback.
                 mql.addListener(listener);
             }
-        } catch (e) {
+        } catch {
             // Best-effort - viewport won't live-update on hosts where matchMedia isn't available;
             // the initial getIsMobile() snapshot still applies.
         }

@@ -33,7 +33,7 @@ describe("vfPanelResize", () => {
 
     it("grows the panel when the handle is dragged left, and reports the final width", () => {
         const invokeMethodAsync = vi.fn(async () => undefined);
-        window.vfPanelResize.attach("handle", "panel", null, { invokeMethodAsync } as any);
+        window.vfPanelResize.attach("handle", "panel", null, { invokeMethodAsync } as never);
 
         drag(300, 250);
 

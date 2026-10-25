@@ -115,5 +115,5 @@ export function stopLiveView(pc: RTCPeerConnection | null | undefined): void {
 // does not depend on the SignalR package's type declarations, which the browser build never loads.
 interface SignalRHubConnection {
     invoke<T = void>(methodName: string, ...args: unknown[]): Promise<T>;
-    on(methodName: string, handler: (...args: any[]) => void): void;
+    on(methodName: string, handler: (...args: never[]) => void): void;
 }

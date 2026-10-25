@@ -6,7 +6,7 @@ window.vfViewport = {
         try {
             return window.matchMedia && window.matchMedia('(max-width: 599px)').matches;
         }
-        catch (e) {
+        catch {
             return false;
         }
     },
@@ -25,7 +25,7 @@ window.vfViewport = {
                 mql.addListener(listener);
             }
         }
-        catch (e) {
+        catch {
             // Best-effort - viewport won't live-update on hosts where matchMedia isn't available;
             // the initial getIsMobile() snapshot still applies.
         }
