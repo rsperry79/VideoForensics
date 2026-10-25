@@ -1,6 +1,7 @@
 @page "/accounts/{Id:guid}/devices"
 @inherits AccountTabPageBase
 @using VideoForensics.Client.Ui.Shared.Services.Devices
+@using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
 @inject ILocationRepository LocationRepository
 @inject IDeviceRepository DeviceRepository
 @inject IDeviceHealthRepository DeviceHealthRepository
@@ -66,7 +67,13 @@ else
                     @foreach (var row in _devices)
                     {
                         <tr class="device-row">
-                            <td>@row.Device.Name</td>
+                            <td>
+                                @row.Device.Name
+                                @if (RingSettingsRoute.IsRingDevice(row.Device))
+                                {
+                                    <div class="small"><a href="@RingSettingsRoute.Href(row.Device.Id)">@L["DeviceSettings"]</a></div>
+                                }
+                            </td>
                             <td>@DeviceTypeNames.Display(row.Device.Type)</td>
                             <td>
                                 @if (row.Status == DeviceUptimeStatus.Online)
@@ -165,7 +172,8 @@ else
                         health?.LastHeartbeatUtc,
                         health?.CapturedAtUtc,
                         now,
-                        ForensicsConfig.DeviceOfflineThresholdSeconds);
+                        ForensicsConfig.DeviceOfflineThresholdSeconds,
+                        requiresConnectionFlag: RingSettingsRoute.IsRingDevice(device));
                     var recent = await MediaItemRepository.GetRecentByDeviceAsync(device.Id, RecentMediaLimit, CancellationToken.None);
                     pending.Add((device, status, lastSeen, LatestDeviceMedia.Select(recent)));
                 }

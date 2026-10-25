@@ -40,6 +40,19 @@ public class DeviceUptimeTests
     }
 
     [Fact]
+    public void NoConnectionFlag_WhenProviderRequiresIt_IsOfflineEvenWhenRecent()
+    {
+        // Ring reports connection only through health.connected. A recent capture without that flag is not proof of connection.
+        Assert.Equal(DeviceUptimeStatus.Offline, DeviceUptime.Evaluate(null, Now.AddSeconds(-10), Now.AddSeconds(-10), Now, 300, requiresConnectionFlag: true));
+    }
+
+    [Fact]
+    public void NoConnectionFlag_WhenProviderDoesNotRequireIt_StillUsesRecency()
+    {
+        Assert.Equal(DeviceUptimeStatus.Online, DeviceUptime.Evaluate(null, null, Now.AddSeconds(-10), Now, 300));
+    }
+
+    [Fact]
     public void HeartbeatIsNewerThanCapture_HeartbeatCountsAsLastSeen()
     {
         // The capture is old, but a heartbeat a minute ago means the device is online.

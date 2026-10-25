@@ -98,6 +98,9 @@
   <data name="ColLatestLoop" xml:space="preserve">
     <value>Latest time lapse</value>
   </data>
+  <data name="DeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
+  </data>
   <data name="NoSnapshotYet" xml:space="preserve">
     <value>No snapshot yet</value>
   </data>

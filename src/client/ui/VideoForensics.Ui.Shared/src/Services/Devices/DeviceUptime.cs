@@ -25,19 +25,24 @@ public static class DeviceUptime
     /// <param name="capturedAtUtc">When the reading was taken, if there is a reading.</param>
     /// <param name="nowUtc">The current time.</param>
     /// <param name="offlineAfterSeconds">How long without a reading before the device counts as offline.</param>
+    /// <param name="requiresConnectionFlag">
+    /// True when the provider reports connection only through its own flag (Ring's health.connected). A recent reading
+    /// with no flag then counts as offline, because recency alone does not show the device is connected.
+    /// </param>
     public static DeviceUptimeStatus Evaluate(
         bool? isOnline,
         DateTime? lastHeartbeatUtc,
         DateTime? capturedAtUtc,
         DateTime nowUtc,
-        int offlineAfterSeconds)
+        int offlineAfterSeconds,
+        bool requiresConnectionFlag = false)
     {
         if (capturedAtUtc is null && lastHeartbeatUtc is null)
         {
             return DeviceUptimeStatus.Unknown;
         }
 
-        if (isOnline == false)
+        if (isOnline == false || (requiresConnectionFlag && isOnline is null))
         {
             return DeviceUptimeStatus.Offline;
         }
