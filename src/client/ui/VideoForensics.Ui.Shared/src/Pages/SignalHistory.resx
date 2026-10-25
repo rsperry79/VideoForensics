@@ -143,6 +143,30 @@
   <data name="BucketColReadings" xml:space="preserve">
     <value>Readings</value>
   </data>
+  <data name="BucketColStdDev" xml:space="preserve">
+    <value>Std dev</value>
+  </data>
+  <data name="CalendarTitle" xml:space="preserve">
+    <value>Week by hour (UTC, mean RSSI in dBm)</value>
+  </data>
+  <data name="CalendarDayStdDev" xml:space="preserve">
+    <value>Day std dev</value>
+  </data>
+  <data name="CalendarHourStdDev" xml:space="preserve">
+    <value>Hour std dev</value>
+  </data>
+  <data name="AlertTitle" xml:space="preserve">
+    <value>Signal alert: readings more than 2 std devs from the camera's mean</value>
+  </data>
+  <data name="AlertLine" xml:space="preserve">
+    <value>{0}: RSSI {1} dBm at {2} UTC</value>
+  </data>
+  <data name="LegendOneSigma" xml:space="preserve">
+    <value>Over 1 std dev (amber)</value>
+  </data>
+  <data name="LegendTwoSigma" xml:space="preserve">
+    <value>Over 2 std devs (alert)</value>
+  </data>
   <data name="BucketColDelta" xml:space="preserve">
     <value>Delta</value>
   </data>

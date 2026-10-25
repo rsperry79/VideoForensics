@@ -58,6 +58,24 @@
     <p class="text-muted">@L["NoDevicesInScope"]</p>
 }
 
+@{
+    List<(DeviceSignal Section, SignalDeviationWindow Window)> alerts = _sections
+        .SelectMany(s => s.Deviations.Where(w => w.Level == SignalDeviationLevel.TwoSigma).Select(w => (Section: s, Window: w)))
+        .ToList();
+}
+@if (alerts.Count > 0)
+{
+    <div class="alert alert-danger" role="alert" data-testid="signal-alert">
+        <strong>@L["AlertTitle"]</strong>
+        <ul class="mb-0">
+            @foreach ((DeviceSignal section, SignalDeviationWindow window) in alerts)
+            {
+                <li>@L["AlertLine", DeviceName(section.Device), window.WorstRssiDbm, window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture)]</li>
+            }
+        </ul>
+    </div>
+}
+
 @foreach (DeviceSignal section in _sections)
 {
     <div class="card mb-3" data-testid="signal-device">
@@ -126,6 +144,21 @@
                                     @SvgText(SignalChartModel.MapX(tick, _from, _to), SignalChartModel.PlotTop + SignalChartModel.PlotHeight + 16, "middle", "currentColor", SignalChartModel.FormatTick(tick, _to - _from))
                                 }
 
+                                @* Hours with a reading more than 1 std dev from the mean (amber), or more than 2 (red, with an alert). *@
+                                @foreach (SignalDeviationWindow window in section.Deviations)
+                                {
+                                    double bandLeft = SignalChartModel.MapX(window.HourStartUtc, _from, _to);
+                                    double bandRight = SignalChartModel.MapX(window.HourStartUtc.AddHours(1), _from, _to);
+                                    if (window.Level == SignalDeviationLevel.TwoSigma)
+                                    {
+                                        <rect class="signal-deviation" data-level="TwoSigma" x="@bandLeft" y="@SignalChartModel.PlotTop" width="@(bandRight - bandLeft)" height="@SignalChartModel.PlotHeight" style="fill: var(--bs-danger); opacity: 0.35; stroke: var(--bs-danger); stroke-width: 2;" />
+                                    }
+                                    else
+                                    {
+                                        <rect class="signal-deviation" data-level="OneSigma" x="@bandLeft" y="@SignalChartModel.PlotTop" width="@(bandRight - bandLeft)" height="@SignalChartModel.PlotHeight" style="fill: var(--bs-warning); opacity: 0.22;" />
+                                    }
+                                }
+
                                 @* Low-signal and missed-check periods sit under the gray no-signal periods, so both stay visible where they overlap. *@
                                 @foreach (SignalPeriod period in section.Periods.Where(p => p.Kind != SignalPeriodKind.NoSignal))
                                 {
@@ -175,7 +208,51 @@
                         <p class="small mb-0 mt-1" data-testid="signal-legend">
                             <span style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-secondary); opacity: 0.45;"></span> @L["LegendNoSignal"]
                             <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-danger); opacity: 0.18;"></span> @L["LegendLowOrMissed"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-warning); opacity: 0.22;"></span> @L["LegendOneSigma"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-danger); opacity: 0.35; border: 2px solid var(--bs-danger);"></span> @L["LegendTwoSigma"]
                         </p>
+                    </div>
+                </div>
+
+                <div class="mt-3" data-testid="signal-calendar">
+                    <span class="small fw-semibold">@L["CalendarTitle"]</span>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center" style="font-size: 0.75rem;">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    @for (int hour = 0; hour < 24; hour++)
+                                    {
+                                        <th>@hour</th>
+                                    }
+                                    <th class="text-nowrap">@L["CalendarDayStdDev"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int day = 0; day < 7; day++)
+                                {
+                                    <tr>
+                                        <th class="text-nowrap">@DayName(day)</th>
+                                        @for (int hour = 0; hour < 24; hour++)
+                                        {
+                                            SignalStats cell = section.Calendar.Cell(day, hour);
+                                            <td title="@cell.Count readings">@(cell.Count == 0 ? "-" : cell.Average.ToString("0", CultureInfo.InvariantCulture))</td>
+                                        }
+                                        <td class="fw-semibold">@StdDevText(section.Calendar.DayOfWeek(day))</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th class="text-nowrap">@L["CalendarHourStdDev"]</th>
+                                    @for (int hour = 0; hour < 24; hour++)
+                                    {
+                                        <td class="fw-semibold">@StdDevText(section.Calendar.HourOfDay(hour))</td>
+                                    }
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
 
@@ -199,6 +276,7 @@
                                     <th>@L["StatMin"]</th>
                                     <th>@L["StatMax"]</th>
                                     <th>@L["StatAverage"]</th>
+                                    <th>@L["BucketColStdDev"]</th>
                                     <th>@L["BucketColDelta"]</th>
                                     <th>@L["BucketColNoSignal"]</th>
                                 </tr>
@@ -212,6 +290,7 @@
                                         <td>@Dbm(bucket.Stats.Min)</td>
                                         <td>@Dbm(bucket.Stats.Max)</td>
                                         <td>@(bucket.Stats.Count == 0 ? "-" : bucket.Stats.Average.ToString("0.0", CultureInfo.InvariantCulture))</td>
+                                        <td>@StdDevText(bucket.Stats)</td>
                                         <td>@Dbm(bucket.Stats.Delta)</td>
                                         <td>@bucket.NoSignalCount</td>
                                     </tr>
@@ -249,6 +328,8 @@
         public required Device Device { get; init; }
         public required SignalStats AllTime { get; init; }
         public required SignalStats PeriodStats { get; init; }
+        public required SignalCalendar Calendar { get; init; }
+        public required IReadOnlyList<SignalDeviationWindow> Deviations { get; init; }
         public required SignalScale Scale { get; init; }
         public required string Points { get; init; }
         public required int InRangeCount { get; init; }
@@ -267,7 +348,7 @@
     private sealed record HoverTip(double Left, string Text);
 
     private List<DeviceSignal> _sections = new();
-    private SignalBucket _bucket = SignalBucket.Day;
+    private SignalBucket _bucket = SignalBucket.Hour;
     private List<Device> _allDevices = new();
     private DateTime _from;
     private DateTime _to;
@@ -338,6 +419,8 @@
                 Device = device,
                 AllTime = allTime,
                 PeriodStats = SignalStats.Compute(samples.Where(s => s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to)),
+                Calendar = SignalCalendar.Compute(samples, _from, _to),
+                Deviations = SignalDeviation.Windows(samples, _from, _to, allTime),
                 Scale = scale,
                 Points = SignalChartModel.Polyline(samples, _from, _to, scale),
                 InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
@@ -394,6 +477,18 @@
             SignalBucket.Week => $"{L["BucketWeekOf"].Value} {startUtc.ToString("MMM d", CultureInfo.InvariantCulture)}",
             _ => startUtc.ToString("ddd MMM d", CultureInfo.InvariantCulture),
         };
+    }
+
+    /// <summary>The std dev for a table cell, or "-" when there are fewer than two readings to measure spread from.</summary>
+    private static string StdDevText(SignalStats stats)
+    {
+        return stats.StdDev is double sd ? sd.ToString("0.0", CultureInfo.InvariantCulture) : "-";
+    }
+
+    /// <summary>The short weekday name for a calendar row (0 = Monday).</summary>
+    private static string DayName(int day)
+    {
+        return DateTimeFormatInfo.CurrentInfo.GetAbbreviatedDayName((DayOfWeek)((day + 1) % 7));
     }
 
     /// <summary>A dBm figure for a table cell, or "-" when the group has no signal values.</summary>

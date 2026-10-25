@@ -4,7 +4,8 @@ namespace VideoForensics.Client.Ui.Shared.Services.Signal;
 public sealed record SignalSample(DateTime CapturedAtUtc, int? RssiDbm);
 
 /// <summary>Summary of a camera's signal history. Ring reports RSSI (dBm, closer to zero is stronger), not SNR.</summary>
-public sealed record SignalStats(int Count, int? Min, int? Max, double Average, int? Latest, double PercentWeak)
+/// <param name="StdDev">Sample standard deviation (n - 1) in dBm. Null with fewer than two readings.</param>
+public sealed record SignalStats(int Count, int? Min, int? Max, double Average, int? Latest, double PercentWeak, double? StdDev = null)
 {
     /// <summary>
     /// The spread of the readings in dBm: the strongest minus the weakest. Null when there are no readings.
@@ -28,12 +29,29 @@ public sealed record SignalStats(int Count, int? Min, int? Max, double Average, 
 
         var values = withSignal.Select(s => s.RssiDbm!.Value).ToList();
         int weak = values.Count(v => v < WeakThresholdDbm);
+        double average = values.Average();
         return new SignalStats(
             Count: values.Count,
             Min: values.Min(),
             Max: values.Max(),
-            Average: values.Average(),
+            Average: average,
             Latest: values[^1],
-            PercentWeak: 100.0 * weak / values.Count);
+            PercentWeak: 100.0 * weak / values.Count,
+            StdDev: SampleStdDev(values, average));
+    }
+
+    /// <summary>
+    /// Sample standard deviation (divides by n - 1), so a short history is not understated. Needs at least two values;
+    /// one reading has no spread to measure.
+    /// </summary>
+    private static double? SampleStdDev(List<int> values, double average)
+    {
+        if (values.Count < 2)
+        {
+            return null;
+        }
+
+        double sumOfSquares = values.Sum(v => (v - average) * (v - average));
+        return Math.Sqrt(sumOfSquares / (values.Count - 1));
     }
 }
