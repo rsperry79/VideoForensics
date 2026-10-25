@@ -68,6 +68,90 @@ public static class SignalChartModel
             .Select(s => $"{MapX(s.CapturedAtUtc, from, to):0.#},{MapDbm(s.RssiDbm!.Value):0.#}"));
     }
 
+    /// <summary>
+    /// The stretches to overlay on the chart: no-signal checks (gray), low-signal checks and gaps of two or more
+    /// missed checks (light red). Each reading covers the time until the next check, capped at one expected
+    /// interval, so a gap is only flagged as missed checks once it is long enough to hold two of them.
+    /// Adjacent stretches of the same kind are merged. Gaps before the first reading in the window are not flagged.
+    /// </summary>
+    public static IReadOnlyList<SignalPeriod> Periods(IEnumerable<SignalSample> samples, DateTime from, DateTime to, TimeSpan expectedInterval)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        if (expectedInterval <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(expectedInterval), "The expected check interval must be positive.");
+        }
+
+        List<SignalSample> ordered = samples
+            .Where(s => s.CapturedAtUtc >= from && s.CapturedAtUtc <= to)
+            .OrderBy(s => s.CapturedAtUtc)
+            .ToList();
+
+        var periods = new List<SignalPeriod>();
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            SignalSample sample = ordered[i];
+            DateTime next = i + 1 < ordered.Count ? ordered[i + 1].CapturedAtUtc : to;
+            DateTime coverageEnd = next < sample.CapturedAtUtc + expectedInterval ? next : sample.CapturedAtUtc + expectedInterval;
+
+            if (sample.RssiDbm is null)
+            {
+                periods.Add(new SignalPeriod(SignalPeriodKind.NoSignal, sample.CapturedAtUtc, coverageEnd));
+            }
+            else if (sample.RssiDbm.Value < SignalStats.WeakThresholdDbm)
+            {
+                periods.Add(new SignalPeriod(SignalPeriodKind.Weak, sample.CapturedAtUtc, coverageEnd));
+            }
+
+            // Whole expected intervals in the gap, minus the check that should have covered the first one.
+            long missed = (next - sample.CapturedAtUtc).Ticks / expectedInterval.Ticks - 1;
+            if (missed >= MissedChecksToFlag)
+            {
+                periods.Add(new SignalPeriod(SignalPeriodKind.MissedChecks, sample.CapturedAtUtc + expectedInterval, next));
+            }
+        }
+
+        return periods
+            .GroupBy(p => p.Kind)
+            .SelectMany(group => MergeAdjacent(group.OrderBy(p => p.StartUtc)))
+            .OrderBy(p => p.StartUtc)
+            .ToList();
+    }
+
+    /// <summary>Two or more missed checks in a row are flagged. One missed check is normal jitter on the poll.</summary>
+    public const int MissedChecksToFlag = 2;
+
+    /// <summary>
+    /// How often Ring health is checked. Matches the base poll in DeviceHealthSyncService; cameras on battery
+    /// are polled less often, so their gaps can be flagged even though they are expected.
+    /// </summary>
+    public static readonly TimeSpan ExpectedCheckInterval = TimeSpan.FromMinutes(15);
+
+    private static IEnumerable<SignalPeriod> MergeAdjacent(IEnumerable<SignalPeriod> ordered)
+    {
+        SignalPeriod? current = null;
+        foreach (SignalPeriod period in ordered)
+        {
+            if (current is not null && period.StartUtc <= current.EndUtc)
+            {
+                current = current with { EndUtc = period.EndUtc > current.EndUtc ? period.EndUtc : current.EndUtc };
+                continue;
+            }
+
+            if (current is not null)
+            {
+                yield return current;
+            }
+
+            current = period;
+        }
+
+        if (current is not null)
+        {
+            yield return current;
+        }
+    }
+
     /// <summary>Evenly spaced times across the window, including both edges. Used for the x-axis labels.</summary>
     public static IReadOnlyList<DateTime> TimeTicks(DateTime from, DateTime to, int count)
     {

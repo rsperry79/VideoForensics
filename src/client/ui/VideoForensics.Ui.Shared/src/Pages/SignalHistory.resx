@@ -80,6 +80,21 @@
   <data name="CloseMenu" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="LegendNoSignal" xml:space="preserve">
+    <value>No signal (gray)</value>
+  </data>
+  <data name="LegendLowOrMissed" xml:space="preserve">
+    <value>Low signal or two or more missed checks (light red)</value>
+  </data>
+  <data name="PeriodNoSignal" xml:space="preserve">
+    <value>No signal</value>
+  </data>
+  <data name="PeriodWeak" xml:space="preserve">
+    <value>Low signal</value>
+  </data>
+  <data name="PeriodMissed" xml:space="preserve">
+    <value>Missed checks</value>
+  </data>
   <data name="StatCount" xml:space="preserve">
     <value>Readings</value>
   </data>

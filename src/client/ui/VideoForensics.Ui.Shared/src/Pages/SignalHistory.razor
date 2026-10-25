@@ -94,6 +94,16 @@
                                 @SvgText(SignalChartModel.MapX(tick, _from, _to), SignalChartModel.PlotTop + SignalChartModel.PlotHeight + 16, "middle", "currentColor", SignalChartModel.FormatTick(tick, _to - _from))
                             }
 
+                            @* Low-signal and missed-check periods sit under the gray no-signal periods, so both stay visible where they overlap. *@
+                            @foreach (SignalPeriod period in section.Periods.Where(p => p.Kind != SignalPeriodKind.NoSignal))
+                            {
+                                @PeriodRect(period, "var(--bs-danger)", 0.18)
+                            }
+                            @foreach (SignalPeriod period in section.Periods.Where(p => p.Kind == SignalPeriodKind.NoSignal))
+                            {
+                                @PeriodRect(period, "var(--bs-secondary)", 0.45)
+                            }
+
                             <polyline points="@section.Points" fill="none" stroke="currentColor" stroke-width="2" />
 
                             @* All-time reference bars: average, strongest and weakest, drawn across the whole plot. *@
@@ -118,6 +128,10 @@
                             }
                         </svg>
                         <p class="small text-muted mb-0 mt-1">@L["SelectionHint"]</p>
+                        <p class="small mb-0 mt-1" data-testid="signal-legend">
+                            <span style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-secondary); opacity: 0.45;"></span> @L["LegendNoSignal"]
+                            <span class="ms-3" style="display: inline-block; width: 12px; height: 12px; vertical-align: middle; background: var(--bs-danger); opacity: 0.18;"></span> @L["LegendLowOrMissed"]
+                        </p>
                     </div>
                 </div>
             }
@@ -150,6 +164,7 @@
         public required SignalStats AllTime { get; init; }
         public required string Points { get; init; }
         public required int InRangeCount { get; init; }
+        public required IReadOnlyList<SignalPeriod> Periods { get; init; }
         public double? SelectionStart { get; set; }
         public double? SelectionEnd { get; set; }
         public bool Dragging { get; set; }
@@ -217,6 +232,7 @@
                 AllTime = SignalStats.Compute(samples),
                 Points = SignalChartModel.Polyline(samples, _from, _to),
                 InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
+                Periods = SignalChartModel.Periods(samples, _from, _to, SignalChartModel.ExpectedCheckInterval),
             });
         }
 
@@ -251,6 +267,24 @@
     }
 
     private static string Format(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>One overlay rectangle over the plot, with a hover title naming what it marks and when it starts.</summary>
+    private MarkupString PeriodRect(SignalPeriod period, string colour, double opacity)
+    {
+        double start = SignalChartModel.MapX(period.StartUtc, _from, _to);
+        double end = SignalChartModel.MapX(period.EndUtc, _from, _to);
+        string label = L[PeriodLabelKey(period.Kind)];
+        string when = SignalChartModel.FormatTick(period.StartUtc, _to - _from);
+        return new MarkupString(
+            $"<rect class=\"signal-period\" data-kind=\"{period.Kind}\" x=\"{Format(start)}\" y=\"{Format(SignalChartModel.PlotTop)}\" width=\"{Format(end - start)}\" height=\"{Format(SignalChartModel.PlotHeight)}\" style=\"fill: {colour}; opacity: {Format(opacity)};\"><title>{WebUtility.HtmlEncode($"{label}, {when} UTC")}</title></rect>");
+    }
+
+    private static string PeriodLabelKey(SignalPeriodKind kind) => kind switch
+    {
+        SignalPeriodKind.NoSignal => "PeriodNoSignal",
+        SignalPeriodKind.Weak => "PeriodWeak",
+        _ => "PeriodMissed",
+    };
 
     private async Task<PlotPointer> MeasureAsync(Guid deviceId, double clientX)
     {
