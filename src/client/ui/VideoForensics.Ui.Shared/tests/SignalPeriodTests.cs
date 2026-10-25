@@ -126,6 +126,41 @@ public class SignalPeriodTests
     }
 
     [Fact]
+    public void Periods_UsesTheNarrowerJammingSpacingInsideTheWindow()
+    {
+        // Spacing is 5 minutes before T0+30 and 15 minutes after. Readings at T0+5 and T0+25 leave three 5-minute checks missed.
+        static TimeSpan Spacing(DateTime utc, DateTime windowEnd) => utc < windowEnd ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(15);
+        var samples = new[]
+        {
+            new SignalSample(T0, -50),
+            new SignalSample(T0.AddMinutes(5), -50),
+            new SignalSample(T0.AddMinutes(25), -50),
+        };
+
+        IReadOnlyList<SignalPeriod> periods = SignalChartModel.Periods(samples, T0, T0.AddMinutes(25), t => Spacing(t, T0.AddMinutes(30)));
+
+        SignalPeriod period = Assert.Single(periods);
+        Assert.Equal(SignalPeriodKind.MissedChecks, period.Kind);
+        Assert.Equal(T0.AddMinutes(10), period.StartUtc);
+        Assert.Equal(T0.AddMinutes(25), period.EndUtc);
+    }
+
+    [Fact]
+    public void Periods_DoesNotFlagTheSameGapAtTheNormalSpacing()
+    {
+        // With no jamming window, a 20-minute gap after a reading at T0+5 is only one missed 15-minute check.
+        var samples = new[]
+        {
+            new SignalSample(T0.AddMinutes(5), -50),
+            new SignalSample(T0.AddMinutes(25), -50),
+        };
+
+        IReadOnlyList<SignalPeriod> periods = SignalChartModel.Periods(samples, T0.AddMinutes(5), T0.AddMinutes(25), Interval);
+
+        Assert.Empty(periods);
+    }
+
+    [Fact]
     public void Periods_ReturnsNothingWithoutReadings()
     {
         IReadOnlyList<SignalPeriod> periods = SignalChartModel.Periods([], T0, T0.AddHours(1), Interval);

@@ -191,7 +191,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             // a Ring rate-limit incident is a floor on top of it, so the adaptive back-off is never undone by the form.
             int seconds = schedule is null
                 ? DefaultIntervalSeconds
-                : Math.Max(ScheduleCalculator.EffectiveSnapshotIntervalSeconds(schedule, _time.GetUtcNow().UtcDateTime), schedule.SnapshotIntervalSeconds ?? 0);
+                : SnapshotIntervals.CaptureSpacing(schedule, _time.GetUtcNow().UtcDateTime);
             var interval = TimeSpan.FromSeconds(seconds);
 
             IDeviceRepository devices = sp.GetRequiredService<IDeviceRepository>();
