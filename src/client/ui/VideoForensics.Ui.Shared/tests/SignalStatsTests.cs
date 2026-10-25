@@ -29,6 +29,28 @@ public class SignalStatsTests
     }
 
     [Fact]
+    public void Delta_IsTheDisplayedMaxMinusMin()
+    {
+        var samples = new[]
+        {
+            new SignalSample(T0, -50),
+            new SignalSample(T0.AddMinutes(15), -70),
+            new SignalSample(T0.AddMinutes(30), -60),
+        };
+
+        SignalStats stats = SignalStats.Compute(samples);
+
+        // Strongest -50 minus weakest -70.
+        Assert.Equal(20, stats.Delta);
+    }
+
+    [Fact]
+    public void Delta_IsNullWithoutReadings()
+    {
+        Assert.Null(SignalStats.Compute([]).Delta);
+    }
+
+    [Fact]
     public void Compute_IgnoresReadingsWithoutASignal()
     {
         var samples = new[]

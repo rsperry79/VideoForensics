@@ -119,6 +119,12 @@
   <data name="StatMax" xml:space="preserve">
     <value>Strongest</value>
   </data>
+  <data name="StatDelta" xml:space="preserve">
+    <value>All-time delta (strongest - weakest)</value>
+  </data>
+  <data name="StatPeriodDelta" xml:space="preserve">
+    <value>Delta in selected period</value>
+  </data>
   <data name="StatAverage" xml:space="preserve">
     <value>Average</value>
   </data>

@@ -6,6 +6,12 @@ public sealed record SignalSample(DateTime CapturedAtUtc, int? RssiDbm);
 /// <summary>Summary of a camera's signal history. Ring reports RSSI (dBm, closer to zero is stronger), not SNR.</summary>
 public sealed record SignalStats(int Count, int? Min, int? Max, double Average, int? Latest, double PercentWeak)
 {
+    /// <summary>
+    /// The spread of the readings in dBm: the strongest minus the weakest. Null when there are no readings.
+    /// Matches the all-time min and max the chart bars show.
+    /// </summary>
+    public int? Delta => Max - Min;
+
     /// <summary>Readings weaker than this count as weak.</summary>
     public const int WeakThresholdDbm = -75;
 
