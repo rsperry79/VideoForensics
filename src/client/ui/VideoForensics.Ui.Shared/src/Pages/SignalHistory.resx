@@ -36,16 +36,49 @@
     <value>Signal history</value>
   </data>
   <data name="PageIntro" xml:space="preserve">
-    <value>Wi-Fi signal (RSSI) for each camera over the last 24 hours. Ring does not report SNR. Closer to zero is stronger; readings weaker than -75 dBm are weak.</value>
+    <value>Wi-Fi signal (RSSI) for each camera. Ring does not report SNR. Closer to zero is stronger; readings weaker than -75 dBm are weak. Choose cameras and dates in the right-hand panel.</value>
   </data>
-  <data name="DeviceLabel" xml:space="preserve">
-    <value>Camera</value>
+  <data name="ScopeHint" xml:space="preserve">
+    <value>Showing {0} camera(s), {1} to {2}.</value>
   </data>
-  <data name="NoDevices" xml:space="preserve">
-    <value>No cameras are known yet.</value>
+  <data name="NoDevicesInScope" xml:space="preserve">
+    <value>No cameras match the current filters. Adjust the devices in the right-hand panel.</value>
+  </data>
+  <data name="DeviceSettings" xml:space="preserve">
+    <value>Device settings</value>
   </data>
   <data name="NoReadings" xml:space="preserve">
-    <value>No signal readings in the last 24 hours.</value>
+    <value>No signal readings have been recorded for this camera yet.</value>
+  </data>
+  <data name="NoReadingsInRange" xml:space="preserve">
+    <value>No readings in the selected period.</value>
+  </data>
+  <data name="AxisDbm" xml:space="preserve">
+    <value>dBm</value>
+  </data>
+  <data name="AllTimeAverage" xml:space="preserve">
+    <value>All-time average</value>
+  </data>
+  <data name="AllTimeStrongest" xml:space="preserve">
+    <value>All-time strongest</value>
+  </data>
+  <data name="AllTimeWeakest" xml:space="preserve">
+    <value>All-time weakest</value>
+  </data>
+  <data name="SelectionHint" xml:space="preserve">
+    <value>Drag across the graph to select a period, then right-click it to drill down or create a case.</value>
+  </data>
+  <data name="NoSelection" xml:space="preserve">
+    <value>Drag across the graph to select a period first.</value>
+  </data>
+  <data name="DrillDown" xml:space="preserve">
+    <value>Drill down to this period</value>
+  </data>
+  <data name="CreateCase" xml:space="preserve">
+    <value>Create case from this period</value>
+  </data>
+  <data name="CloseMenu" xml:space="preserve">
+    <value>Close</value>
   </data>
   <data name="StatCount" xml:space="preserve">
     <value>Readings</value>

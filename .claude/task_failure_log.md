@@ -34,3 +34,4 @@ Resolved entries were removed. Rules they produced are listed below.
 2026-10-25T13:47 | test | npm run test:js chained build && vitest | && rejected under PowerShell npm shell | split into pretest:js npm hook
 2026-10-25T13:47 | test | load-script new URL(import.meta.url) threw "URL must be of scheme file" | jsdom replaces global URL | use fileURLToPath + dirname
 2026-10-25T14:10 | lint | batch node -e edit aborted on unmatched pattern in small-helpers.test.ts | multi-line pattern whitespace did not match | edited with exact-match Edit calls
+2026-10-25 14:09 | build | SignalHistory.razor first compile | RZ1023 on <text> with attributes; CS0104 Device ambiguous (Core.Providers vs Data.Common.Entities) | Reserved Razor <text> tag used for SVG text; unaliased Device type | Built SVG labels via MarkupString helper; @using Device alias (covered by new tests passing)
