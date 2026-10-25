@@ -56,3 +56,6 @@
 2026-10-24 | debug-launch-script | Resolve-Path on WebApp csproj | wrong csproj name (VideoForensics.WebApp.csproj; real is VideoForensics.Client.WebApp.csproj) | use the Glob result; prod deploy script has the same bad name
 2026-10-24 | debug-launch-script | exe name hardcoded | AssemblyName is VideoForensics.Client.WebApp, service runs VideoForensics.WebApp.exe | read AssemblyName from csproj; service/exe name mismatch needs user decision
 2026-10-24 | debug-launch-script | service path regex | unquoted paths with spaces not matched | match up to .exe lazily
+2026-10-24 | webview2 | MAUI shows 'suitable version of WebView2 Runtime not detected' | EdgeUpdate pv 155 vs installed 156; native EdgeUpdate key missing; loader returns 0x80070002 | pv and native key set to 156; still failing, switched to Fixed Version runtime (commit 1533edbd on fix/maui-local-password)
+2026-10-24 | webview2 | uninstall of WebView2 runtime returned exit 93 | runtime marked sticky (Edge installed); uninstall blocked by policy | do not retry uninstall; use fixed-version runtime instead
+2026-10-24 | build | MAUI build failed in Ring core with CS0009 metadata error | parallel build race on stale ref output | rebuild with -m:1 succeeded; project builds alone
