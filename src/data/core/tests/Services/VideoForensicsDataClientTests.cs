@@ -32,6 +32,7 @@ namespace VideoForensics.Data.Core.Tests
         private readonly Mock<ILogger<VideoForensicsDataClient>> _mockLogger;
         private readonly Mock<IMediaAnalysisService> _mockMediaAnalysis;
         private readonly Mock<IEvidenceChangeNotifier> _mockEvidenceChangeNotifier = new();
+        private readonly Mock<IDeviceHealthChangeNotifier> _mockDeviceHealthChangeNotifier = new();
         private readonly VideoForensicsDataClient _dataClient;
 
         private readonly Mock<ILocationRepository> _mockLocationRepository;
@@ -77,7 +78,8 @@ namespace VideoForensics.Data.Core.Tests
                 _mockActionLogRepository.Object,
                 _mockLogger.Object,
                 _mockMediaAnalysis.Object,
-                _mockEvidenceChangeNotifier.Object);
+                _mockEvidenceChangeNotifier.Object,
+                _mockDeviceHealthChangeNotifier.Object);
         }
 
         [Fact]
@@ -1577,6 +1579,17 @@ namespace VideoForensics.Data.Core.Tests
             _ = await _dataClient.UpsertEventAsync(evt, CancellationToken.None);
 
             _mockEvidenceChangeNotifier.Verify(n => n.EvidenceChangedAsync(deviceId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RecordDeviceHealthAsync_NotifiesDeviceHealthChange()
+        {
+            var health = new DeviceHealth { Id = Guid.NewGuid(), DeviceId = Guid.NewGuid() };
+            _ = _mockDeviceHealthRepository.Setup(r => r.AddAsync(health, It.IsAny<CancellationToken>())).ReturnsAsync(health);
+
+            _ = await _dataClient.RecordDeviceHealthAsync(health, CancellationToken.None);
+
+            _mockDeviceHealthChangeNotifier.Verify(n => n.DeviceHealthRecordedAsync(health.DeviceId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

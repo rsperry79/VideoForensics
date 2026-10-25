@@ -793,6 +793,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ISelfTestStatusSource, Remote.RemoteSelfTestStatusSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IThumbnailReadySource, Remote.RemoteThumbnailReadySource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IEvidenceChangedSource, Remote.RemoteEvidenceChangedSource>();
+            _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.IDeviceHealthChangedSource, Remote.RemoteDeviceHealthChangedSource>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.INoticeFeed, Remote.RemoteNoticeFeed>();
             _ = services.AddSingleton<VideoForensics.Client.Ui.Shared.Contracts.ILiveViewSessionSource, RealtimeLiveViewSessionSource>();
 

@@ -10,6 +10,7 @@ using Moq;
 
 using System.Net;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Text.Json;
 
 using VideoForensics.Client.Common.Contracts;
@@ -96,9 +97,13 @@ public abstract class AccountDetailsPageTestBase : BunitContext
 
     protected Mock<IMediaContentUrlProvider> MediaUrlProviderMock { get; } = new();
 
+    /// <summary>Device health changes the test pushes; the account pages see them through IDeviceHealthChangedSource.</summary>
+    protected Subject<DeviceHealthChangedDto> DeviceHealthChanges { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IDeviceHealthChangedSource>(new DeviceHealthChangedSourceDouble(DeviceHealthChanges));
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();
