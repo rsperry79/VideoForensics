@@ -178,6 +178,48 @@
                         </p>
                     </div>
                 </div>
+
+                <div class="mt-3" data-testid="signal-over-time">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                        <span class="small fw-semibold">@L["BucketTitle"]</span>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="@L["BucketTitle"]" data-testid="signal-bucket-picker">
+                            @foreach (SignalBucket size in Enum.GetValues<SignalBucket>())
+                            {
+                                SignalBucket chosen = size;
+                                <button type="button" class="btn @(chosen == _bucket ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetBucket(chosen)">@L[$"Bucket{chosen}"]</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" data-testid="signal-buckets">
+                            <thead>
+                                <tr>
+                                    <th>@L["BucketColStart"]</th>
+                                    <th>@L["BucketColReadings"]</th>
+                                    <th>@L["StatMin"]</th>
+                                    <th>@L["StatMax"]</th>
+                                    <th>@L["StatAverage"]</th>
+                                    <th>@L["BucketColDelta"]</th>
+                                    <th>@L["BucketColNoSignal"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (SignalBucketStats bucket in SignalBuckets.Compute(section.Readings, _from, _to, _bucket))
+                                {
+                                    <tr>
+                                        <td>@FormatBucketStart(bucket.StartUtc)</td>
+                                        <td>@bucket.Stats.Count</td>
+                                        <td>@Dbm(bucket.Stats.Min)</td>
+                                        <td>@Dbm(bucket.Stats.Max)</td>
+                                        <td>@(bucket.Stats.Count == 0 ? "-" : bucket.Stats.Average.ToString("0.0", CultureInfo.InvariantCulture))</td>
+                                        <td>@Dbm(bucket.Stats.Delta)</td>
+                                        <td>@bucket.NoSignalCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             }
         </div>
     </div>
@@ -225,6 +267,7 @@
     private sealed record HoverTip(double Left, string Text);
 
     private List<DeviceSignal> _sections = new();
+    private SignalBucket _bucket = SignalBucket.Day;
     private List<Device> _allDevices = new();
     private DateTime _from;
     private DateTime _to;
@@ -335,6 +378,28 @@
 
         // Same rule the capture service runs at, so the chart and the captures agree.
         return utc => TimeSpan.FromSeconds(VideoForensics.Data.Common.Entities.SnapshotIntervals.CaptureSpacing(schedule, utc));
+    }
+
+    private void SetBucket(SignalBucket size)
+    {
+        _bucket = size;
+    }
+
+    /// <summary>The start of a group, in the form the bucket size suits: hours show the clock, weeks show their Monday.</summary>
+    private string FormatBucketStart(DateTime startUtc)
+    {
+        return _bucket switch
+        {
+            SignalBucket.Hour => startUtc.ToString("MMM d HH:00", CultureInfo.InvariantCulture),
+            SignalBucket.Week => $"{L["BucketWeekOf"].Value} {startUtc.ToString("MMM d", CultureInfo.InvariantCulture)}",
+            _ => startUtc.ToString("ddd MMM d", CultureInfo.InvariantCulture),
+        };
+    }
+
+    /// <summary>A dBm figure for a table cell, or "-" when the group has no signal values.</summary>
+    private static string Dbm(int? value)
+    {
+        return value is int v ? v.ToString(CultureInfo.InvariantCulture) : "-";
     }
 
     private string DeviceName(Device device)

@@ -122,6 +122,33 @@
   <data name="StatDelta" xml:space="preserve">
     <value>All-time delta (strongest - weakest)</value>
   </data>
+  <data name="BucketTitle" xml:space="preserve">
+    <value>Over time (UTC)</value>
+  </data>
+  <data name="BucketHour" xml:space="preserve">
+    <value>Hour</value>
+  </data>
+  <data name="BucketDay" xml:space="preserve">
+    <value>Day</value>
+  </data>
+  <data name="BucketWeek" xml:space="preserve">
+    <value>Week</value>
+  </data>
+  <data name="BucketWeekOf" xml:space="preserve">
+    <value>Week of</value>
+  </data>
+  <data name="BucketColStart" xml:space="preserve">
+    <value>Period</value>
+  </data>
+  <data name="BucketColReadings" xml:space="preserve">
+    <value>Readings</value>
+  </data>
+  <data name="BucketColDelta" xml:space="preserve">
+    <value>Delta</value>
+  </data>
+  <data name="BucketColNoSignal" xml:space="preserve">
+    <value>No signal</value>
+  </data>
   <data name="StatPeriodDelta" xml:space="preserve">
     <value>Delta in selected period</value>
   </data>
