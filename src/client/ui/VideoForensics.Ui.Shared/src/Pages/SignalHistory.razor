@@ -83,6 +83,8 @@
                                 <tr><th>@L["StatLatest"]</th><td>@section.AllTime.Latest dBm</td></tr>
                                 <tr><th>@L["StatMin"]</th><td>@section.AllTime.Min dBm</td></tr>
                                 <tr><th>@L["StatMax"]</th><td>@section.AllTime.Max dBm</td></tr>
+                                <tr><th>@L["StatDelta"]</th><td data-testid="signal-delta">@section.AllTime.Delta dBm</td></tr>
+                                <tr><th>@L["StatPeriodDelta"]</th><td data-testid="signal-period-delta">@(section.PeriodStats.Delta is int periodDelta ? $"{periodDelta} dBm" : "-")</td></tr>
                                 <tr><th>@L["StatAverage"]</th><td>@section.AllTime.Average.ToString("0.0") dBm</td></tr>
                                 <tr><th>@L["StatPercentWeak"]</th><td>@section.AllTime.PercentWeak.ToString("0") %</td></tr>
                             </tbody>
@@ -204,6 +206,7 @@
     {
         public required Device Device { get; init; }
         public required SignalStats AllTime { get; init; }
+        public required SignalStats PeriodStats { get; init; }
         public required SignalScale Scale { get; init; }
         public required string Points { get; init; }
         public required int InRangeCount { get; init; }
@@ -291,6 +294,7 @@
             {
                 Device = device,
                 AllTime = allTime,
+                PeriodStats = SignalStats.Compute(samples.Where(s => s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to)),
                 Scale = scale,
                 Points = SignalChartModel.Polyline(samples, _from, _to, scale),
                 InRangeCount = samples.Count(s => s.RssiDbm is not null && s.CapturedAtUtc >= _from && s.CapturedAtUtc <= _to),
