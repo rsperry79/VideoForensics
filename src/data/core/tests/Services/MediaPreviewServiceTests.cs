@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
@@ -93,6 +94,26 @@ public class MediaPreviewServiceTests : IDisposable
         Assert.False(File.Exists(preview));
         Assert.False(File.Exists(preview + ".tmp"));
         Assert.Null(row.PreviewPath);
+    }
+
+    [Fact]
+    public async Task EnsurePreview_FfmpegFailsWithStderr_LogsTheReasonFfmpegGave()
+    {
+        // ffmpeg's error text names the file it could not open, and it is the only clue in the log.
+        string media = WriteMedia("clip.mp4");
+        _runner.Behavior = (_, _) => Task.FromResult(new ProcessResult(-13, string.Empty, "banner line\nFailed to open output: Permission denied"));
+        MediaItem row = MediaFor(media);
+        var logger = new Mock<ILogger<MediaPreviewService>>();
+        var service = new MediaPreviewService(_items.Object, new FfmpegToolLocation(), logger.Object, _runner);
+
+        _ = await service.EnsurePreviewAsync(row, CancellationToken.None);
+
+        logger.Verify(l => l.Log(
+            LogLevel.Error,
+            It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((state, _) => state.ToString()!.Contains("Permission denied", StringComparison.Ordinal)),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 
     [Fact]

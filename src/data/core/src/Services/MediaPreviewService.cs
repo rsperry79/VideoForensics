@@ -102,9 +102,10 @@ namespace VideoForensics.Data.Core.Services
 
                 if (result.ExitCode != 0)
                 {
+                    // ffmpeg writes the reason to stderr (for example, which file it could not open). Keep its last lines.
                     _logger.LogError(
-                        "Preview generation failed for {FileName}: ffmpeg exited with code {ExitCode}",
-                        media.FileName, result.ExitCode);
+                        "Preview generation failed for {FileName}: ffmpeg exited with code {ExitCode}: {FfmpegError}",
+                        media.FileName, result.ExitCode, LastStderrLines(result.StandardError));
                     return false;
                 }
 
@@ -183,6 +184,13 @@ namespace VideoForensics.Data.Core.Services
             }
 
             return startInfo;
+        }
+
+        /// <summary>The last three non-empty stderr lines, joined. The banner ffmpeg prints first is long and not useful.</summary>
+        private static string LastStderrLines(string stderr)
+        {
+            string[] lines = stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return string.Join(" | ", lines.TakeLast(3));
         }
 
         private static bool IsNonEmptyFile(string path)

@@ -76,7 +76,17 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 
             // Operational logs live in logs.db beside the main database, so error rows and telemetry do not bloat the audit file.
             string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
-            _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>(options => options.UseSqlite($"Data Source={logsPath};Pooling=true;Cache=Shared;Default Timeout=5"));
+            _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>((sp, options) =>
+            {
+                options.UseSqlite($"Data Source={logsPath};Pooling=true;Cache=Shared;Default Timeout=5");
+
+                // Same Debug remap as the main database. ProviderApiCallRecords writes go through this context.
+                ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
+                if (loggerFactory is not null)
+                {
+                    options.UseLoggerFactory(new EfCommandLogLevelLoggerFactory(loggerFactory));
+                }
+            });
 
             _ = services.AddScoped<IDatabaseMaintenanceService, SqliteDatabaseMaintenanceService>();
 

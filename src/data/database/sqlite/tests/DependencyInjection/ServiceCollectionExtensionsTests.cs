@@ -1,6 +1,9 @@
+using System.Collections.Concurrent;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Database.DbContext;
 using VideoForensics.Data.Database.Sqlite.DependencyInjection;
@@ -156,6 +159,84 @@ namespace VideoForensics.Data.Database.Sqlite.Tests
                 if (Directory.Exists(tempDir))
                 {
                     Directory.Delete(tempDir, recursive: true);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task AddVideoForensicsSqlite_LogsContext_EfCommandMessagesAreLoggedAtDebug()
+        {
+            // Arrange: the logs database holds ProviderApiCallRecords, and its SQL command messages must be Debug like the main database's.
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string dbPath = Path.Combine(tempDir, "test.db");
+            var captured = new CapturingLoggerProvider();
+            var services = new ServiceCollection();
+            _ = services.AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.AddProvider(captured);
+            });
+            _ = services.AddVideoForensicsSqlite(dbPath);
+
+            try
+            {
+                // Act
+                await using ServiceProvider provider = services.BuildServiceProvider();
+                IDbContextFactory<VideoForensicsLogsDbContext> factory = provider.GetRequiredService<IDbContextFactory<VideoForensicsLogsDbContext>>();
+                await using VideoForensicsLogsDbContext db = await factory.CreateDbContextAsync();
+                _ = await db.Database.EnsureCreatedAsync();
+                _ = await db.ProviderApiCallRecords.CountAsync();
+
+                // Assert
+                List<LogLevel> commandLevels = captured.Entries
+                    .Where(entry => entry.Category == "Microsoft.EntityFrameworkCore.Database.Command")
+                    .Select(entry => entry.Level)
+                    .ToList();
+                Assert.NotEmpty(commandLevels);
+                Assert.All(commandLevels, level => Assert.Equal(LogLevel.Debug, level));
+            }
+            finally
+            {
+                // Cleanup: the connection pool keeps logs.db open after the context is disposed, so release it first.
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+            }
+        }
+
+        /// <summary>Keeps every log entry with its category and level, so a test can check what was written.</summary>
+        private sealed class CapturingLoggerProvider : ILoggerProvider
+        {
+            private readonly ConcurrentQueue<(string Category, LogLevel Level)> _entries = new();
+
+            public IReadOnlyCollection<(string Category, LogLevel Level)> Entries => _entries.ToArray();
+
+            public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, _entries);
+
+            public void Dispose()
+            {
+            }
+
+            private sealed class CapturingLogger : ILogger
+            {
+                private readonly string _category;
+                private readonly ConcurrentQueue<(string Category, LogLevel Level)> _entries;
+
+                public CapturingLogger(string category, ConcurrentQueue<(string Category, LogLevel Level)> entries)
+                {
+                    _category = category;
+                    _entries = entries;
+                }
+
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+                public bool IsEnabled(LogLevel logLevel) => true;
+
+                public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                {
+                    _entries.Enqueue((_category, logLevel));
                 }
             }
         }

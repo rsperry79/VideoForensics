@@ -167,7 +167,7 @@ namespace VideoForensics.Providers.Ring.Services
             try
             {
                 await pacer.WaitTurnAsync(cancellationToken);
-                await session.UpdateSnapshot(doorbotId);
+                await RequestFreshSnapshotAsync(session, doorbotId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -178,8 +178,7 @@ namespace VideoForensics.Providers.Ring.Services
 
             try
             {
-                await pacer.WaitTurnAsync(cancellationToken);
-                HttpUtility.DownloadResult snapshot = await session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+                HttpUtility.DownloadResult snapshot = await ReadLatestSnapshotWithRetryAsync(session, doorbotId, pacer, cancellationToken);
                 if (snapshot.Status == HttpStatusCode.TooManyRequests)
                 {
                     // Same path as a thrown 429: record the throttle, then report 429 with the pause.
@@ -195,6 +194,45 @@ namespace VideoForensics.Providers.Ring.Services
                 return await ClassifySnapshotFailureAsync(providerAccountId, ex, cancellationToken);
             }
         }
+
+        /// <summary>Largest number of latest-snapshot reads one capture makes before it reports the last status.</summary>
+        internal const int MaxSnapshotReads = 4;
+
+        /// <summary>
+        /// Reads the latest frame. Ring answers 404 until the refreshed frame is built, so a 404 is read again after a growing
+        /// wait (2s, 4s, 6s). Any other status is returned at once. Every read takes a turn on the account's pacer.
+        /// </summary>
+        /// <remarks>The wait is taken before each re-read, so the first read follows the settle delay that the capture already applied.</remarks>
+        private async Task<HttpUtility.DownloadResult> ReadLatestSnapshotWithRetryAsync(Session session, int doorbotId, MediaRequestPacer pacer, CancellationToken cancellationToken)
+        {
+            int read = 0;
+            HttpUtility.DownloadResult snapshot;
+            do
+            {
+                if (read > 0)
+                {
+                    await DelaySnapshotRetryAsync(TimeSpan.FromSeconds(2 * read), cancellationToken);
+                }
+
+                await pacer.WaitTurnAsync(cancellationToken);
+                snapshot = await ReadLatestSnapshotAsync(session, doorbotId, cancellationToken);
+                read++;
+            }
+            while (snapshot.Status == HttpStatusCode.NotFound && read < MaxSnapshotReads);
+
+            return snapshot;
+        }
+
+        /// <summary>
+        /// Reads the latest frame once. Virtual so tests can script the status sequence, because <see cref="Session"/> cannot be mocked for this call.
+        /// </summary>
+        protected virtual Task<HttpUtility.DownloadResult> ReadLatestSnapshotAsync(Session session, int doorbotId, CancellationToken cancellationToken) =>
+            session.GetLatestSnapshotWithStatus(doorbotId, cancellationToken);
+
+        /// <summary>
+        /// Waits before a latest-snapshot re-read. Virtual so tests run without real waits.
+        /// </summary>
+        protected virtual Task DelaySnapshotRetryAsync(TimeSpan delay, CancellationToken cancellationToken) => Task.Delay(delay, cancellationToken);
 
         /// <summary>
         /// Maps the real HTTP status and body of a latest-snapshot read to an attempt. Only a 200 with a JPEG body carries an image;
