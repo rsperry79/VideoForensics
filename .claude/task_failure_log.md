@@ -28,3 +28,4 @@ Resolved entries were removed. Rules they produced are listed below.
 - Stop a background shell's dotnet run with TaskStop, and don't assume PATH in background shells.
 - Build with `-m:1` after a merge or a clean; parallel builds race on stale ref output and locked DLLs.
 - Stale generated files with NUL bytes (obj folders) are deleted by explicit path; the next build regenerates them.
+2026-10-24 19:51 | full suite on feat/finish-parts-1-2 | AesEncryption_SameSource_DecryptsEncryptedValue failed in the full run only (passed alone 3 of 3) | AesEncryptionTests deletes the shared salt file while the new tests run; salt creation also raced on first run | exclusive salt create (FileMode.CreateNew) and one xUnit collection for both AES classes; full suite 7054 passed | fixed
