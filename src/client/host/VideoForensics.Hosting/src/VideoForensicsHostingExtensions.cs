@@ -551,7 +551,6 @@ namespace VideoForensics.Client.Hosting
                 client.BaseAddress = new Uri("https://api.github.com/");
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("VideoForensics-UpdateCheck/1.0");
             });
-            _ = services.AddSingleton<IUpdateInstaller, UpdateInstaller>();
             _ = services.AddSingleton<Client.Common.Contracts.IUpdateCheckService, VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService>();
             _ = services.AddHostedService(sp => (VideoForensics.Client.Hosting.BackgroundServices.UpdateCheckService)sp.GetRequiredService<Client.Common.Contracts.IUpdateCheckService>());
 
