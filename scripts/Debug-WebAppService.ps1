@@ -3,10 +3,14 @@
 Redeploys a Debug build of the VideoForensics WebApp and attaches Visual Studio to it.
 
 .DESCRIPTION
+By default the script runs dotnet build on the WebApp project and copies its build output (bin\Debug\net10.0), the
+same output Visual Studio produces. With -Publish it instead publishes a self-contained build to a temporary folder,
+matching deploy\Deploy-WebAppToProd.ps1. The output is copied into the service folder, the service is started, and the
+debugger of a running Visual Studio instance is attached to the service process.
+
 If the "VideoForensics" Windows service is installed, its install folder is read from the service's
-executable path. The script publishes a Debug build to a temporary folder, stops the service if it is
-running, copies the build into the service folder, starts the service, and attaches the debugger of a
-running Visual Studio instance to the service process.
+executable path. The service is stopped if it is running, the build is copied into the service folder, and the
+service is started.
 
 If the service is not installed, the build is copied to -DebugDirectory (appsettings included, since no
 installed configuration exists) and started as a plain process, and the debugger attaches to that process.
@@ -18,7 +22,7 @@ that the build does not produce are kept (no /MIR).
 
 Installing the service is done with deploy\install-service.ps1. Redeploying an installed service needs an
 elevated PowerShell, and the attach needs an elevated Visual Studio because the service runs as LocalSystem.
-Use -WhatIf to publish and list the copy without stopping, copying, starting, or attaching.
+Use -WhatIf to build and list the copy without stopping, copying, starting, or attaching.
 
 .PARAMETER ServiceName
 The Windows service that runs the WebApp.
@@ -27,7 +31,10 @@ The Windows service that runs the WebApp.
 Folder the build runs from when the service is not installed.
 
 .PARAMETER Configuration
-Build configuration to publish. Debug keeps the PDBs the debugger needs.
+Build configuration to build or publish. Debug keeps the PDBs the debugger needs.
+
+.PARAMETER Publish
+Publish a self-contained build to a temporary folder instead of copying the Visual Studio build output.
 
 .PARAMETER IncludeAppSettings
 Also copy appsettings.json and appsettings.Development.json from the build when a service is installed.
@@ -36,19 +43,23 @@ Also copy appsettings.json and appsettings.Development.json from the build when 
 Redeploy and start, but do not attach the debugger.
 
 .PARAMETER WhatIf
-Dry run: publish to a temp folder and list what would be copied.
+Dry run: build (or publish) and list what would be copied, without stopping, copying, starting, or attaching.
 
 .EXAMPLE
 .\Debug-WebAppService.ps1 -WhatIf
 
 .EXAMPLE
 .\Debug-WebAppService.ps1
+
+.EXAMPLE
+.\Debug-WebAppService.ps1 -Publish
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$ServiceName = 'VideoForensics',
     [string]$DebugDirectory = (Join-Path $PSScriptRoot '..\artifacts\webapp-debug'),
     [string]$Configuration = 'Debug',
+    [switch]$Publish,
     [switch]$IncludeAppSettings,
     [switch]$SkipAttach
 )
@@ -57,11 +68,12 @@ $ErrorActionPreference = 'Stop'
 
 $project = Join-Path $PSScriptRoot '..\src\client\web\VideoForensics.WebApp\src\VideoForensics.Client.WebApp.csproj'
 $project = (Resolve-Path $project).Path
+# The build output folder is the project's bin\<Configuration>\net10.0, the folder Visual Studio builds into.
+$buildOutput = Join-Path (Split-Path -Parent $project) "bin\$Configuration\net10.0"
 # The published executable is named after the project's AssemblyName, not the file name.
 $assemblyName = ([xml](Get-Content -Raw $project)).Project.PropertyGroup.AssemblyName |
     Where-Object { $_ } | Select-Object -First 1
 $exeName = "$assemblyName.exe"
-$stage = Join-Path $env:TEMP ('vf-debug-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 
 # Win32_Service.PathName is the raw command line, for example:
 #   "C:\Program Files\VideoForensics\VideoForensics.WebApp.exe" --service
@@ -113,14 +125,25 @@ else {
 }
 $runExe = Join-Path $installDirectory $exeName
 
-Write-Host "Publishing $project ($Configuration) to $stage"
-# Self-contained, matching deploy\Deploy-WebAppToProd.ps1, so the copy has the same runtime layout.
-dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
-if (-not (Test-Path (Join-Path $stage $exeName))) { throw "Publish did not produce $exeName." }
+$stage = $null
+if ($Publish) {
+    $stage = Join-Path $env:TEMP ('vf-debug-publish-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $sourceDirectory = $stage
+    Write-Host "Publishing $project ($Configuration) to $stage"
+    # Self-contained, matching deploy\Deploy-WebAppToProd.ps1, so the copy has the same runtime layout.
+    dotnet publish $project -c $Configuration -r win-x64 --self-contained true -o $stage
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
+}
+else {
+    $sourceDirectory = $buildOutput
+    Write-Host "Building $project ($Configuration) into $buildOutput"
+    dotnet build $project -c $Configuration
+    if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE." }
+}
+if (-not (Test-Path (Join-Path $sourceDirectory $exeName))) { throw "The build output has no $exeName in $sourceDirectory." }
 
 # robocopy exit codes 0-7 mean success; 8 and above mean a copy failed.
-$robocopyArgs = @($stage, $installDirectory, '/E', '/NP', '/NDL')
+$robocopyArgs = @($sourceDirectory, $installDirectory, '/E', '/NP', '/NDL')
 if ($useService -and -not $IncludeAppSettings) {
     $robocopyArgs += @('/XF', 'appsettings.json', 'appsettings.Development.json')
 }
@@ -133,7 +156,7 @@ if ($WhatIfPreference) {
     else { Write-Host "Dry run: no service; the build would run from $installDirectory" }
     Write-Host "Dry run: files that would be copied to $installDirectory"
     & robocopy @robocopyArgs /L
-    Write-Host "Dry run only. Nothing was stopped, copied, started, or attached. Staged build: $stage"
+    Write-Host "Dry run only. Nothing was stopped, copied, started, or attached. Source: $sourceDirectory"
     # robocopy /L returns 1-3 for a normal listing; that is not a failure here.
     exit 0
 }
@@ -203,5 +226,7 @@ try {
     }
 }
 finally {
-    Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
+    if ($stage) {
+        Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
+    }
 }

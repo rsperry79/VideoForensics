@@ -402,7 +402,10 @@ namespace VideoForensics.Data.Database.DbContext
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(VideoForensicsDbContext).Assembly);
+            // The logs-only configurations are skipped here. Applying them and then ignoring their types below makes EF log a model warning.
+            _ = modelBuilder.ApplyConfigurationsFromAssembly(
+                typeof(VideoForensicsDbContext).Assembly,
+                type => type != typeof(ProviderApiCallRecordConfiguration) && type != typeof(ProviderApiErrorLogConfiguration));
             RingEventHistoryModel.Configure(modelBuilder);
 
             // Operational rows moved to logs.db (VideoForensicsLogsDbContext). Ignoring them here makes the next migration drop
