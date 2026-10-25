@@ -3,9 +3,13 @@
   "private": true,
   "description": "Compiles the TypeScript interop scripts under src/**/src/ts into the wwwroot folders that Blazor serves.",
   "scripts": {
-    "build:ts": "node scripts/build-ts.mjs"
+    "build:ts": "node scripts/build-ts.mjs",
+    "pretest:js": "npm run build:ts",
+    "test:js": "vitest run"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   }
 }
