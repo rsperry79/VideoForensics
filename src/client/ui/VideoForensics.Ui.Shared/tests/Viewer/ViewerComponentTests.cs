@@ -237,5 +237,78 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
 
             Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier == "vfSetVideoTime") - before);
         }
+
+        /// <summary>Verifies that the single-camera view plays the selected camera large and shows one preview for the other.</summary>
+        [Fact]
+        public void SingleCameraView_TwoCameras_RendersMainPlayerAndOnePreviewTile()
+        {
+            var cameras = new List<CameraTile>
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Back", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+            };
+
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, cameras)
+                .Add(x => x.SelectedIndex, 0)
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            Assert.Single(cut.FindAll("[data-testid='review-player']"));
+            Assert.Single(cut.FindAll("[data-testid='single-camera-preview']"));
+        }
+
+        /// <summary>Verifies that clicking a preview tile reports that camera's index in the full list.</summary>
+        [Fact]
+        public void SingleCameraView_ClickPreview_RaisesOnSelectWithItsIndex()
+        {
+            var cameras = new List<CameraTile>
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Back", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Side", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+            };
+
+            int? selected = null;
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, cameras)
+                .Add(x => x.SelectedIndex, 0)
+                .Add(x => x.Cursor, Start.AddSeconds(10))
+                .Add(x => x.OnSelect, EventCallback.Factory.Create<int>(this, i => selected = i)));
+
+            cut.Find("[data-testid='single-camera-preview'][data-camera-index='2']").Click();
+
+            Assert.Equal(2, selected);
+        }
+
+        /// <summary>Verifies that a preview camera with no preview URL shows a placeholder and no video element.</summary>
+        [Fact]
+        public void SingleCameraView_PreviewUrlMissing_RendersPlaceholderNotVideo()
+        {
+            var cameras = new List<CameraTile>
+            {
+                new("Front", TwoClips(), id => $"/media/{id}/content", id => $"/media/{id}/preview"),
+                new("Back", TwoClips(), id => $"/media/{id}/content", _ => null),
+            };
+
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, cameras)
+                .Add(x => x.SelectedIndex, 0)
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            IElement tile = cut.Find("[data-testid='single-camera-preview'][data-camera-index='1']");
+            Assert.Empty(tile.QuerySelectorAll("video"));
+            Assert.NotEmpty(tile.QuerySelectorAll("[data-testid='single-camera-placeholder']"));
+        }
+
+        /// <summary>Verifies that an empty camera list renders no main player.</summary>
+        [Fact]
+        public void SingleCameraView_EmptyCameras_RendersNoMainPlayer()
+        {
+            IRenderedComponent<SingleCameraView> cut = Render<SingleCameraView>(p => p
+                .Add(x => x.Cameras, new List<CameraTile>())
+                .Add(x => x.Cursor, Start.AddSeconds(10)));
+
+            Assert.Empty(cut.FindAll("[data-testid='review-player']"));
+        }
     }
 }
