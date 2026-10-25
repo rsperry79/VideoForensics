@@ -2523,6 +2523,9 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.Property<double?>("NoiseFloorDb")
                         .HasColumnType("REAL");
 
+                    b.Property<string>("PreviewPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PurgeReason")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");

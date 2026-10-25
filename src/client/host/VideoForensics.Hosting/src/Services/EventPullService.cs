@@ -7,6 +7,7 @@ using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
+using VideoForensics.Data.Core.Contracts;
 
 using Device = VideoForensics.Core.Providers.Common.Contracts.Device;
 using DeviceEntity = VideoForensics.Data.Common.Entities.Device;
@@ -52,6 +53,11 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly IMediaDownloadService? _mediaDownloadService;
         private readonly string _mediaRoot;
         private readonly IDeviceConfigRepository? _deviceConfigRepository;
+        private readonly IMediaPreviewService? _previewService;
+        private readonly IMediaItemRepository? _mediaItems;
+
+        // Process-wide, not per pull: parallel account pulls share these two encode slots, so ffmpeg never runs more than two at once.
+        private static readonly SemaphoreSlim PreviewEncodeGate = new(2);
 
         /// <summary>
         /// Creates a new instance of the EventPullService. Each pull first discovers the account's locations and devices from
@@ -67,9 +73,13 @@ namespace VideoForensics.Client.Hosting.Services
             ILogger<EventPullService>? logger = null,
             IMediaDownloadService? mediaDownloadService = null,
             string? mediaRoot = null,
-            IDeviceConfigRepository? deviceConfigRepository = null)
+            IDeviceConfigRepository? deviceConfigRepository = null,
+            IMediaPreviewService? previewService = null,
+            IMediaItemRepository? mediaItems = null)
         {
             _deviceConfigRepository = deviceConfigRepository;
+            _previewService = previewService;
+            _mediaItems = mediaItems;
             _eventAndConfigService = eventAndConfigService;
             _deviceRepository = deviceRepository;
             _locationRepository = locationRepository;
@@ -165,6 +175,19 @@ namespace VideoForensics.Client.Hosting.Services
                             if (!media.Success)
                             {
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");
+                            }
+
+                            if (_previewService != null && _mediaItems != null)
+                            {
+                                // Previews are a convenience. Their failure is logged here and never counts the device as failed.
+                                try
+                                {
+                                    await GeneratePreviewsAsync(device.Id, deviceName, startTime, endTime, cancellationToken);
+                                }
+                                catch (Exception ex) when (ex is not OperationCanceledException)
+                                {
+                                    _logger.LogError(ex, "Preview generation failed; media was synced");
+                                }
                             }
                         }
 
@@ -408,6 +431,65 @@ namespace VideoForensics.Client.Hosting.Services
                 default:
                     element.WriteTo(writer);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Generates preview sidecars for the device's clips in the pulled window. At most two encodes run at once, so a large
+        /// pull does not saturate the host with ffmpeg. Per-clip failures are logged and skipped; only cancellation escapes.
+        /// </summary>
+        private async Task GeneratePreviewsAsync(Guid deviceId, string deviceName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken)
+        {
+            try
+            {
+                IReadOnlyList<MediaItem> clips = await _mediaItems!.GetByDeviceAndDateRangeAsync(deviceId, startTime, endTime, cancellationToken);
+                // The repository returns purged rows too. A clip with a preview already on disk needs no encode.
+                List<MediaItem> pending = clips
+                    .Where(c => !c.IsPurged && !(c.PreviewPath != null && File.Exists(c.PreviewPath)))
+                    .ToList();
+
+                int generated = 0, failed = 0;
+
+                async Task ProcessAsync(MediaItem clip)
+                {
+                    await PreviewEncodeGate.WaitAsync(cancellationToken);
+                    try
+                    {
+                        bool ok = await _previewService!.EnsurePreviewAsync(clip, cancellationToken);
+                        if (ok)
+                        {
+                            _ = Interlocked.Increment(ref generated);
+                        }
+                        else
+                        {
+                            _ = Interlocked.Increment(ref failed);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _ = Interlocked.Increment(ref failed);
+                        _logger.LogError(ex, "Preview failed for clip {FileName}: {Message}", clip.FileName, ex.Message);
+                    }
+                    finally
+                    {
+                        _ = PreviewEncodeGate.Release();
+                    }
+                }
+
+                await Task.WhenAll(pending.Select(ProcessAsync));
+                _logger.LogInformation("Previews for device {DeviceName}: {Generated} generated, {Failed} failed", deviceName, generated, failed);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Preview generation failed for device {DeviceName}", deviceName);
             }
         }
 

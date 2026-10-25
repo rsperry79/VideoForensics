@@ -456,6 +456,15 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList());
         }
 
+        public Task<IReadOnlyList<MediaItem>> ListVideosWithoutPreviewAsync(int limit, CancellationToken ct)
+        {
+            return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking()
+                .Where(m => !m.IsPurged && m.PreviewPath == null && (m.MediaFormat.Contains("video") || m.MediaFormat.Contains("mp4")))
+                .OrderBy(m => m.RecordedAtUtc)
+                .Take(limit)
+                .ToList());
+        }
+
         public Task<IReadOnlyList<MediaItem>> GetByDownloadEventIdAsync(Guid downloadEventId, CancellationToken ct)
         {
             return Task.FromResult((IReadOnlyList<MediaItem>)_db.MediaItems.AsNoTracking().Where(m => m.DownloadEventId == downloadEventId).ToList());

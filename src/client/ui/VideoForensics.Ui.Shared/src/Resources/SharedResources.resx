@@ -770,4 +770,7 @@
   <data name="CameraGridLimit" xml:space="preserve">
     <value>Too many cameras to show at once (maximum {0}).</value>
   </data>
+  <data name="SingleCameraOthers" xml:space="preserve">
+    <value>Other cameras</value>
+  </data>
 </root>

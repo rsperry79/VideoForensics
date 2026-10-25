@@ -46,7 +46,9 @@ namespace VideoForensics.Data.Core.DependencyInjection
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IMediaThumbnailNotifier, VideoForensics.Data.Core.Services.NullMediaThumbnailNotifier>();
             services.TryAddSingleton<VideoForensics.Data.Core.Contracts.IEvidenceChangeNotifier, VideoForensics.Data.Core.Services.NullEvidenceChangeNotifier>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailService, VideoForensics.Data.Core.Services.MediaThumbnailService>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewService, VideoForensics.Data.Core.Services.MediaPreviewService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaThumbnailBackfill, VideoForensics.Data.Core.Services.MediaThumbnailBackfill>();
+            services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaPreviewBackfill, VideoForensics.Data.Core.Services.MediaPreviewBackfill>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IMediaAnalysisService, VideoForensics.Data.Core.Services.MediaAnalysisService>();
             services.TryAddScoped<VideoForensics.Data.Core.Contracts.IJammingAnalysisBackfill, VideoForensics.Data.Core.Services.JammingAnalysisBackfill>();
             _ = services.AddScoped<IVideoForensicsDataClient, VideoForensicsDataClient>();
