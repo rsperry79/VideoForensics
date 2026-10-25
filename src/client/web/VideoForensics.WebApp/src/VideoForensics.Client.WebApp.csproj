@@ -43,6 +43,18 @@
     <InternalsVisibleTo Include="VideoForensics.Client.WebApp.Tests" />
   </ItemGroup>
 
+  <!-- Ui.Shared's src\ts\tsconfig.json is a TypeScript build input, not a runtime file. It reaches the publish
+       list through the project reference and collides with this project's own copy at the same relative path
+       (NETSDK1152). Dropping it from the list does not delete the file. -->
+  <Target Name="ExcludeUiSharedTypeScriptConfigFromPublish" BeforeTargets="_HandleFileConflictsForPublish">
+    <PropertyGroup>
+      <UiSharedTsConfig>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\ui\VideoForensics.Ui.Shared\src\ts\tsconfig.json'))</UiSharedTsConfig>
+    </PropertyGroup>
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="$(UiSharedTsConfig)" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="../../../../core/api/src/VideoForensics.Core.Api.Contracts.csproj" />
     <ProjectReference Include="..\..\..\ui\VideoForensics.Ui.Shared\src\VideoForensics.Client.Ui.Shared.csproj" />
