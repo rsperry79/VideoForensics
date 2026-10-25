@@ -63,6 +63,39 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Viewer
             Assert.Equal(Start.AddMinutes(5), seeked);
         }
 
+        /// <summary>Verifies that a clip with a thumbnail draws its segment with the thumbnail as the background image.</summary>
+        [Fact]
+        public void TimelineStrip_ClipWithThumbnail_SegmentShowsBackgroundImage()
+        {
+            var clips = new List<ClipWindow> { new("a", Start, 60, "/media/a/thumb") };
+
+            IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
+                .Add(x => x.Clips, clips)
+                .Add(x => x.WindowStartUtc, Start)
+                .Add(x => x.WindowEndUtc, Start.AddMinutes(10)));
+
+            string? style = cut.Find("[data-testid='timeline-segment']").GetAttribute("style");
+            Assert.NotNull(style);
+            Assert.Contains("background-image", style);
+            Assert.Contains("/media/a/thumb", style);
+        }
+
+        /// <summary>Verifies that a clip without a thumbnail draws its segment with no background image.</summary>
+        [Fact]
+        public void TimelineStrip_ClipWithoutThumbnail_SegmentHasNoBackgroundImage()
+        {
+            var clips = new List<ClipWindow> { new("a", Start, 60) };
+
+            IRenderedComponent<TimelineStrip> cut = Render<TimelineStrip>(p => p
+                .Add(x => x.Clips, clips)
+                .Add(x => x.WindowStartUtc, Start)
+                .Add(x => x.WindowEndUtc, Start.AddMinutes(10)));
+
+            string? style = cut.Find("[data-testid='timeline-segment']").GetAttribute("style");
+            Assert.NotNull(style);
+            Assert.DoesNotContain("background-image", style);
+        }
+
         /// <summary>Verifies that the cursor is drawn only when a playback time is set.</summary>
         [Fact]
         public void TimelineStrip_NoCursor_DrawsNoCursor()
