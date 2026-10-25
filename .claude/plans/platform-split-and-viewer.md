@@ -1,6 +1,42 @@
 # Plan: platform split and media viewer
 
-Status: draft. Nothing implemented. Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
+Status: Parts 1 and 2 implemented and merged to `wip` (bdffabe4 and later); Part 3 not started. Full gate on wip passed (7,041 tests). Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
+
+## Status (2026-10-25)
+
+Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item below.
+
+### Part 1: done
+- `Platform.Windows` holds the Windows implementations: storage overrides, TPM and DPAPI key storage, Event Log, directory ACL, firewall, update installer, OneDrive paths, WebView2 locator, hotswap and dev launcher.
+- Common seams: `ILicenseKeySource`, `IBackupStagingLocator`, `IFirewallRuleManager`, `IUpdateInstaller`.
+- Core seams: `IStorageOverrideSource`, `IMachineGuidSource`, `IDataDirectoryAccess`, `IKeyStorageProvider` platform registration, and a delegate for the Event Log.
+- Heads register the Windows implementations: WebApp, MAUI, dbrepair, dbsetup, selftest.
+
+### Part 1: not done or deviated
+- `Platform.Web` was not created. Decision: create it only when server-only code needs a home. None does yet. The media range code is in WebApp, which is a head, so it is allowed there.
+- Remaining platform calls in shared layers, found by review:
+  - `Ui.Shared/Pages/ImportExport.razor` (`File.*`, lines near 143, 191, 195).
+  - `Ui.Shared/Dialogs/FolderBrowserDialog.razor:53` and `Services/DirectoryBrowserService.cs:18,28`.
+  - `Hosting/BackgroundServices/UpdateCheckService.cs:347` (`LocalApplicationData`, Linux download path).
+  - `Client.Core/Tools/ConfigToolsOrchestrator.cs:205` (`UserProfile`).
+  - `Client.MCP/ServerDiscovery/FileApiKeyStore.cs:24` (`LocalApplicationData`). Decision: stays in MCP.
+  - `Core.Helpers` `StorageLocationProvider` and `PlatformDirectoryService` (`OperatingSystem.Is*`). Core is the generic default; Windows branches are the registered overrides.
+- Not verified: Uniview `Process.Start` calls; whether Ring ffmpeg calls go through `IFfmpegToolLocation`; cloudflared and installer-asset seams; `.snk` and csproj naming for new projects.
+
+### Part 2: done
+- Backend: `GetPageByDevicesAndDateRangeAsync` (SQL paging, purged excluded, take 1-500); `/api/v1/media-items/page` with validation; media rate limit 30 per tile per minute across 9 tiles.
+- Common: `ReviewTimeline` (time to pixel, pixel to time, `ClipAt`), `CameraSync` (`DriftSeconds`, `NeedsResync`, `MaxTiles` = 9).
+- Ui.Shared: `ReviewPlayer`, `TimelineStrip`, `CameraGrid` with bUnit tests; strings localized.
+- Decided: playback across clips is a playlist (no server stitch); thumbnail strip uses existing `ThumbnailPath`; max tiles 9; audit records one entry per clip open (range requests not starting at byte 0 are skipped).
+
+### Part 2: not done
+- Grid drift resync: `CameraSync.NeedsResync` is not called from any Ui.Shared code. There is no playback-clock check, so tiles can drift during playback.
+- The `/media/{id}/content` 206 and `Content-Range` test is missing.
+- `RemoteMediaItemRepository.GetPageByDevicesAndDateRangeAsync` has no test.
+- WebView2 range playback on the Windows head is unverified.
+- Thumbnails are not shown on the timeline strip.
+
+### Part 3: not started
 
 ## Goals
 1. Split client code into a common layer and per-platform sublibs.
