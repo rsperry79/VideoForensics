@@ -36,6 +36,34 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToListAsync(ct);
         }
 
+        /// <inheritdoc />
+        public async Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+        {
+            // Bounds are checked here as well as at the endpoint: an unbounded take would turn the page back into a full scan.
+            ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
+
+            // Materialize the ids once so EF translates a plain IN list rather than re-enumerating the caller's collection.
+            Guid[] ids = deviceIds.ToArray();
+
+            await using VideoForensicsDbContext db = await factory.CreateDbContextAsync(ct);
+            IQueryable<MediaItem> matches = db.MediaItems
+                .AsNoTracking()
+                .Where(m => ids.Contains(m.DeviceId) && !m.IsPurged && m.RecordedAtUtc >= fromUtc && m.RecordedAtUtc <= toUtc);
+
+            int total = await matches.CountAsync(ct);
+            List<MediaItem> items = await matches
+                .OrderBy(m => m.RecordedAtUtc)
+                .ThenBy(m => m.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(ct);
+
+            return new MediaItemPage(items, total);
+        }
+
         /// <summary>Gets media items by device ID within a date range.</summary>
         public async Task<IReadOnlyList<MediaItem>> GetByDeviceAndDateRangeAsync(
             Guid deviceId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)

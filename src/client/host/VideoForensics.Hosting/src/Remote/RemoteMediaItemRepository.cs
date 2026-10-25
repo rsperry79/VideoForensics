@@ -53,6 +53,26 @@ namespace VideoForensics.Client.Hosting.Remote
         }
 
         /// <inheritdoc />
+        /// <summary>Paged clip listing for the media viewer, served by the server's <c>/media-items/page</c> endpoint.</summary>
+        public async Task<MediaItemPage> GetPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, int skip, int take, CancellationToken ct)
+        {
+            var parameters = deviceIds.Select(id => $"deviceIds={id:D}").ToList();
+            parameters.Add($"from={Uri.EscapeDataString(fromUtc.ToString("o"))}");
+            parameters.Add($"to={Uri.EscapeDataString(toUtc.ToString("o"))}");
+            parameters.Add($"skip={skip}");
+            parameters.Add($"take={take}");
+
+            HttpResponseMessage response = await _httpClient.GetAsync("/api/v1/media-items/page?" + string.Join('&', parameters), ct);
+            _ = response.EnsureSuccessStatusCode();
+            MediaItemPageResponse? body = await response.Content.ReadFromJsonAsync<MediaItemPageResponse>(JsonOptions, ct);
+            return new MediaItemPage((body?.Items ?? []).Select(x => x.ToDomain()).ToList(), body?.TotalCount ?? 0);
+        }
+
+        /// <summary>Wire shape of <c>/media-items/page</c>.</summary>
+        private sealed record MediaItemPageResponse(List<MediaItemDto>? Items, int TotalCount);
+
+        /// <inheritdoc />
         /// <summary>Analysis runs server-side only; a client host has no recent-clip query.</summary>
         public Task<IReadOnlyList<MediaItem>> GetRecentByDeviceAsync(Guid deviceId, int limit, CancellationToken ct)
         {
