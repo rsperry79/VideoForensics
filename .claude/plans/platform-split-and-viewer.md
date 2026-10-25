@@ -29,12 +29,19 @@ Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item 
 - Ui.Shared: `ReviewPlayer`, `TimelineStrip`, `CameraGrid` with bUnit tests; strings localized.
 - Decided: playback across clips is a playlist (no server stitch); thumbnail strip uses existing `ThumbnailPath`; max tiles 9; audit records one entry per clip open (range requests not starting at byte 0 are skipped).
 
-### Part 2: not done
-- Grid drift resync: `CameraSync.NeedsResync` is not called from any Ui.Shared code. There is no playback-clock check, so tiles can drift during playback.
-- The `/media/{id}/content` 206 and `Content-Range` test is missing.
-- `RemoteMediaItemRepository.GetPageByDevicesAndDateRangeAsync` has no test.
-- WebView2 range playback on the Windows head is unverified.
-- Thumbnails are not shown on the timeline strip.
+### Part 2: resolved in `feat/finish-parts-1-2` (not yet merged to wip)
+- Grid drift resync: `CameraGrid` checks each tile against tile 0 once a second (`CameraSync.NeedsResync`), and seeks a drifting tile. Commit `866a4dac`.
+- 206 and 416 range tests on `/media/{id}/content`: `MediaContentRangeTests`. Commit `03875b3e`.
+- `RemoteMediaItemRepository` page query test: commit `74c7f729`.
+- Thumbnails on the timeline strip: `ClipWindow.ThumbnailUrl`, drawn as the segment background. Commit `255e8df4`.
+- Still open: WebView2 range playback on the Windows head is unverified. This needs a manual check on the MAUI app.
+
+### Part 1: decisions recorded
+- `Platform.Web` is not created. Decision: it gets created when server-only code needs a home. The media range code is in WebApp, which is a head, and the storage defaults are generic. Revisit if server-only platform code appears.
+- `DirectoryBrowserService` drive enumeration moved behind `IFileSystemRootProvider` (Common). Windows drives in `Platform.Windows`, POSIX root in Core. Commit `06b96c88`.
+- Accepted as portable .NET, not platform code: `ImportExport` `File.*`, `ConfigToolsOrchestrator` user profile and Pictures folder, `Ring` and `Uniview` `Process.Start` (ffmpeg paths come from `IFfmpegToolLocation`, which I did not re-verify in every call site).
+- `UpdateCheckService` Linux download path (`LocalApplicationData`) is Linux-only. Accepted for now.
+- `FileApiKeyStore` (MCP) stays in MCP, as decided.
 
 ### Part 3: not started
 

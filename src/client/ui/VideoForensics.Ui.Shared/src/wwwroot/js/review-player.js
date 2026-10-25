@@ -14,3 +14,8 @@ window.vfSetVideoTime = function (element, seconds) {
         element.addEventListener('loadedmetadata', apply, { once: true });
     }
 };
+
+// Reads the current playback offset in seconds. Used by the camera grid to detect drift while tiles play.
+window.vfGetVideoTime = function (element) {
+    return element ? element.currentTime : 0;
+};

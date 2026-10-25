@@ -8,6 +8,7 @@ namespace VideoForensics.Providers.Ring.Auth.Tests
     /// <summary>
     /// Tests that <see cref="AesEncryption"/> derives its key from the injected machine GUID source.
     /// </summary>
+    [Collection("ring-credential-salt")]
     public class AesEncryptionMachineGuidSourceTests
     {
         private sealed class FixedMachineGuidSource : IMachineGuidSource

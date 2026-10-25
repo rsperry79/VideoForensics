@@ -346,11 +346,15 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddVideoForensicsDataLayer();
 builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvider"] ?? "Ring");
 
-// Windows update installer (downloads the release .exe and launches it with /passive). AddVideoForensicsServerCore
-// registers the Debian default first, so this registration comes after it and wins.
+// Platform update installer. Windows downloads the release .exe and launches it with /passive; Linux downloads the
+// .deb to a pending-update location for a manual dpkg install. AddVideoForensicsServerCore registers no default.
 if (OperatingSystem.IsWindows())
 {
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+}
+else
+{
+    _ = builder.Services.AddSingleton<IUpdateInstaller, VideoForensics.Client.Platform.Web.LinuxUpdateInstaller>();
 }
 // Thumbnail-ready announcements reach open evidence views: the live hub for remote clients, the bus for this process's
 // own circuits. Replaces the no-op default that AddVideoForensicsServerCore registers.
@@ -538,6 +542,7 @@ builder.Services.AddSingleton<IBlazorRenderModeProvider, InteractiveServerBlazor
 builder.Services.AddSingleton<ExportDownloadTokenStore>();
 builder.Services.AddScoped<IFileDialogService, WebFileDialogService>();
 builder.Services.AddSingleton<IBackupStagingLocator, VideoForensics.Client.Core.Services.UserDocumentsBackupStagingLocator>();
+builder.Services.AddSingleton<IFileSystemRootProvider>(OperatingSystem.IsWindows() ? new WindowsFileSystemRootProvider() : new VideoForensics.Client.Core.Services.PosixFileSystemRootProvider());
 builder.Services.AddSingleton<IDirectoryBrowserService, DirectoryBrowserService>();
 
 // System version information provider (Phase C Week 1) - immutable per build, cached at singleton scope

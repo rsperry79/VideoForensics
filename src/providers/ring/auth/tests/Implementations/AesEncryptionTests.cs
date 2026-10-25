@@ -5,6 +5,7 @@ using VideoForensics.Providers.Ring.Implementations;
 
 namespace VideoForensics.Providers.Ring.Auth.Tests
 {
+    [Collection("ring-credential-salt")]
     public class AesEncryptionTests
     {
         private readonly string _tempSaltDir = Path.Combine(Path.GetTempPath(), $"aes-test-{Guid.NewGuid()}");
