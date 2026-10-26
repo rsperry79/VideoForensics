@@ -137,6 +137,18 @@
   <data name="Theme" xml:space="preserve">
     <value>Theme</value>
   </data>
+  <data name="TimeFormat" xml:space="preserve">
+    <value>Time format</value>
+  </data>
+  <data name="TimeFormatLocale" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="TimeFormat12Hour" xml:space="preserve">
+    <value>12-hour</value>
+  </data>
+  <data name="TimeFormat24Hour" xml:space="preserve">
+    <value>24-hour</value>
+  </data>
   <data name="Language" xml:space="preserve">
     <value>Language</value>
   </data>

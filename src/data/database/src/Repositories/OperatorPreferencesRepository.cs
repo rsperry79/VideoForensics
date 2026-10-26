@@ -37,6 +37,7 @@ namespace VideoForensics.Data.Database.Repositories
                 existing.ThemeMode = preferences.ThemeMode;
                 existing.CultureName = preferences.CultureName;
                 existing.UiMode = preferences.UiMode;
+                existing.TimeFormat = preferences.TimeFormat;
                 existing.UpdatedAtUtc = DateTime.UtcNow;
                 // NOTE: UiModeLocked is NEVER changed by UpsertAsync; it is always left as-is
                 _ = db.OperatorPreferences.Update(existing);

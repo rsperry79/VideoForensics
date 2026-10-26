@@ -2904,6 +2904,13 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TimeFormat")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Locale");
+
                     b.Property<string>("UiMode")
                         .IsRequired()
                         .HasMaxLength(16)

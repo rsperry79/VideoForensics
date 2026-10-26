@@ -24,6 +24,9 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>When true an administrator has locked UiMode; the operator cannot change it themselves.</summary>
         public bool UiModeLocked { get; set; } = false;
 
+        /// <summary>"Locale" (default, the culture's own clock), "TwelveHour", or "TwentyFourHour". Applies to every displayed time.</summary>
+        public string TimeFormat { get; set; } = "Locale";
+
         public DateTime UpdatedAtUtc { get; set; }
     }
 }

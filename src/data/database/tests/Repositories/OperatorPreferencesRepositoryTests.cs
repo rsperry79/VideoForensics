@@ -158,6 +158,52 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_TimeFormat_IsStoredAndUpdated()
+        {
+            var operatorId = Guid.NewGuid();
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                TimeFormat = "TwelveHour",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                TimeFormat = "TwentyFourHour",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("TwentyFourHour", retrieved.TimeFormat);
+        }
+
+        [Fact]
+        public async Task OperatorPreferencesRepository_Upsert_NewRowWithoutTimeFormat_DefaultsToLocale()
+        {
+            var operatorId = Guid.NewGuid();
+            await _repository.UpsertAsync(new OperatorPreferences
+            {
+                Id = Guid.NewGuid(),
+                OperatorId = operatorId,
+                ThemeMode = "System",
+                UpdatedAtUtc = DateTime.UtcNow
+            }, CancellationToken.None);
+
+            OperatorPreferences? retrieved = await _repository.GetAsync(operatorId, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal("Locale", retrieved.TimeFormat);
+        }
+
+        [Fact]
         public async Task OperatorPreferencesRepository_Upsert_NullCultureName_IsPreserved()
         {
             var operatorId = Guid.NewGuid();

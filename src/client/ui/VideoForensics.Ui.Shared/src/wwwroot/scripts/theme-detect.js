@@ -27,6 +27,22 @@ window.vfTheme = {
             // Best-effort - private browsing / storage disabled just means the next load starts from System.
         }
     },
+    getStoredTimeFormat: function () {
+        try {
+            return window.localStorage.getItem('vf-time-format');
+        }
+        catch {
+            return null;
+        }
+    },
+    setStoredTimeFormat: function (clock) {
+        try {
+            window.localStorage.setItem('vf-time-format', clock);
+        }
+        catch {
+            // Best-effort - the operator's stored choice is applied once the page loads.
+        }
+    },
     watchPrefersDark: function (dotNetRef) {
         try {
             const mql = window.matchMedia('(prefers-color-scheme: dark)');

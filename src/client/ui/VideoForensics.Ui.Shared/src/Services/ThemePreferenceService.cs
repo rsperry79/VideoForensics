@@ -1,6 +1,7 @@
 using Microsoft.JSInterop;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services
@@ -21,6 +22,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
     /// loaded (or created with defaults on first sign-in).
     /// The theme mode is also kept in browser local storage on this device, so the first paint
     /// matches the last session; the operator's row overrides that copy whenever it is read.
+    /// The 12-hour or 24-hour clock is kept the same way, so every displayed time follows it.
     /// </summary>
     public class ThemePreferenceService
     {
@@ -46,6 +48,9 @@ namespace VideoForensics.Client.Ui.Shared.Services
 
         public ThemeMode Mode { get; private set; } = ThemeMode.System;
         public string? CultureName { get; private set; }
+
+        /// <summary>The clock every displayed time uses. <see cref="TimeFormatPreference.Locale"/> keeps the culture's own clock.</summary>
+        public TimeFormatPreference TimeFormat { get; private set; } = TimeFormatPreference.Locale;
 
         public bool EffectiveIsDark
         {
@@ -87,6 +92,12 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 Mode = cached;
             }
 
+            string? localTimeFormat = await ReadStoredTimeFormatAsync();
+            if (Enum.TryParse(localTimeFormat, out TimeFormatPreference cachedClock))
+            {
+                TimeFormat = cachedClock;
+            }
+
             await _session.EnsureLoadedAsync();
             if (_session.OperatorId is Guid operatorId)
             {
@@ -95,11 +106,17 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 {
                     Mode = Enum.TryParse<ThemeMode>(saved.ThemeMode, out ThemeMode parsed) ? parsed : ThemeMode.System;
                     CultureName = saved.CultureName;
+                    TimeFormat = Enum.TryParse<TimeFormatPreference>(saved.TimeFormat, out TimeFormatPreference clock) ? clock : TimeFormatPreference.Locale;
 
                     // Out of sync with the operator's stored choice (another device, or a changed default): correct the local copy.
                     if (!string.Equals(localMode, Mode.ToString(), StringComparison.Ordinal))
                     {
                         await WriteStoredModeAsync(Mode);
+                    }
+
+                    if (!string.Equals(localTimeFormat, TimeFormat.ToString(), StringComparison.Ordinal))
+                    {
+                        await WriteStoredTimeFormatAsync(TimeFormat);
                     }
                 }
             }
@@ -120,6 +137,14 @@ namespace VideoForensics.Client.Ui.Shared.Services
             await PersistAsync();
             OnChange?.Invoke();
             _ = ApplyStylesheetAsync();
+        }
+
+        public async Task SetTimeFormatAsync(TimeFormatPreference clock)
+        {
+            TimeFormat = clock;
+            await WriteStoredTimeFormatAsync(clock);
+            await PersistAsync();
+            OnChange?.Invoke();
         }
 
         public async Task SetCultureAsync(string cultureName)
@@ -163,6 +188,7 @@ namespace VideoForensics.Client.Ui.Shared.Services
                 OperatorId = operatorId,
                 ThemeMode = Mode.ToString(),
                 CultureName = CultureName,
+                TimeFormat = TimeFormat.ToString(),
                 UiMode = existing?.UiMode ?? "Standard",
                 UpdatedAtUtc = DateTime.UtcNow
             };
@@ -188,6 +214,31 @@ namespace VideoForensics.Client.Ui.Shared.Services
             try
             {
                 await _js.InvokeVoidAsync("vfTheme.setStoredMode", mode.ToString());
+            }
+            catch (JSException)
+            {
+                // Best-effort - the in-memory choice still applies for this circuit.
+            }
+        }
+
+        private async Task<string?> ReadStoredTimeFormatAsync()
+        {
+            try
+            {
+                return await _js.InvokeAsync<string?>("vfTheme.getStoredTimeFormat");
+            }
+            catch (JSException)
+            {
+                // Script not loaded on this host / pre-render pass - the device copy is simply unknown.
+                return null;
+            }
+        }
+
+        private async Task WriteStoredTimeFormatAsync(TimeFormatPreference clock)
+        {
+            try
+            {
+                await _js.InvokeVoidAsync("vfTheme.setStoredTimeFormat", clock.ToString());
             }
             catch (JSException)
             {
