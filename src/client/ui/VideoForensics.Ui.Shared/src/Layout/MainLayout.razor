@@ -19,6 +19,7 @@
 @inject IStringLocalizer<SharedResources> L
 @inject IServerConnectivityState ConnectivityState
 @inject IJSRuntime JS
+@using VideoForensics.Client.Ui.Shared.Services.Notices
 @inject INoticeRepository NoticeRepository
 @inject INoticeDismissalRepository NoticeDismissalRepository
 @inject InspectorState InspectorState
@@ -98,6 +99,23 @@
                                 <div style="font-size: 11px; color: #999;">
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
+                                @{
+                                    string? caseLink = NoticeActions.CreateCaseLink(notice.EventType, notice.ActionPath, notice.Details);
+                                    string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
+                                }
+                                @if (caseLink is not null || settingsLink is not null)
+                                {
+                                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                        @if (caseLink is not null)
+                                        {
+                                            <a href="@caseLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-primary" data-testid="notice-create-case">@L["NoticeCreateCase"]</a>
+                                        }
+                                        @if (settingsLink is not null)
+                                        {
+                                            <a href="@settingsLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-secondary" data-testid="notice-device-settings">@L["NoticeDeviceSettings"]</a>
+                                        }
+                                    </div>
+                                }
                             </div>
                             <SfButton Content="@L["Dismiss"]" OnClick="@(() => DismissNoticeAsync(notice.Id))" CssClass="e-outline e-small" IconCss="e-icons e-close" />
                         </div>

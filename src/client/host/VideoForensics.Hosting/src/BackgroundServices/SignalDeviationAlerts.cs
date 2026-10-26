@@ -61,6 +61,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 }
 
                 string hour = window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture);
+
+                // The action path carries the camera and day in the scope query the signal page and case form read, so
+                // the notice can open that scope or create a case for it.
+                string scope = $"devices={device.Id:D}&from={window.HourStartUtc:yyyy-MM-dd}&to={window.HourStartUtc.AddDays(1):yyyy-MM-dd}";
                 await _dispatcher.DispatchAsync(new NotificationEvent(
                     EventType: "SignalDeviation",
                     TimestampUtc: now,
@@ -70,7 +74,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     Details: $"{device.Name}: RSSI {window.WorstRssiDbm} dBm at {hour} UTC is more than 2 std devs from this camera's mean. [{marker}]",
                     Audience: NotificationAudience.All,
                     Severity: NoticeSeverity.Alert,
-                    ActionPath: "/signal-history"), ct);
+                    ActionPath: $"/signal-history?{scope}"), ct);
 
                 _logger.LogInformation("Raised signal deviation alert for {DeviceName} at {HourUtc} UTC", device.Name, window.HourStartUtc);
                 raised++;

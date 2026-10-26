@@ -25,6 +25,8 @@ namespace VideoForensics.Client.Hosting.Tests
             public IObservable<ConnectionState> Connection => State;
             public IObservable<ThumbnailReadyDto> ThumbnailReady => Thumbnails;
             public IObservable<EvidenceChangedDto> EvidenceChanged => Evidence;
+            public Subject<DeviceHealthChangedDto> Health { get; } = new();
+            public IObservable<DeviceHealthChangedDto> DeviceHealthChanged => Health;
             public Task StartAsync(CancellationToken cancellationToken)
             {
                 return Task.CompletedTask;
