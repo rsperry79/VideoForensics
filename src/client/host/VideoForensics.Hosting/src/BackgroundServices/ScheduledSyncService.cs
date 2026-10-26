@@ -326,10 +326,10 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     DateTime requestedScheduledFrom = schedule.EventLastRunUtc is { } lastRun ? lastRun - PullOverlap : account.LastSuccessfulAuthUtc ?? DateTime.MinValue;
                     if (AccountSyncRunner.WasLimited(requestedScheduledFrom, _time.GetUtcNow().UtcDateTime))
                     {
-                        _logger.LogInformation("Scheduled sync start limited to one month back for {ProviderName} account", providerName);
+                        _logger.LogInformation("Scheduled sync start limited to one week back for {ProviderName} account", providerName);
                     }
 
-                    DateTime? from = AccountSyncRunner.OneMonthFloor(schedule.EventLastRunUtc is { } last
+                    DateTime? from = AccountSyncRunner.OneWeekFloor(schedule.EventLastRunUtc is { } last
                         ? last - PullOverlap
                         : account.LastSuccessfulAuthUtc, _time.GetUtcNow().UtcDateTime); // first run: same as the manual sync-now endpoint
 
@@ -346,9 +346,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         mediaService,
                         deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
 
-                    // No completed sync yet: backfill forward a month at a time from a year ago, as the initial sync does.
-                    // No completed sync yet: backfill one month per tick, from the saved cursor (a year ago to start). A clean
-                    // month advances the cursor; the sync completes only once the cursor reaches now.
+                    // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
+                    // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
+                    // week advances the cursor; the sync completes only once the cursor reaches now.
                     string? backfillError = null;
                     if (account.LastSyncCompletedUtc is null && _options.CurrentValue.InitialSyncEnabled)
                     {

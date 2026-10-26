@@ -106,11 +106,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_RequestHasNoToDate_PassesNullToPull()
         {
-            // All history backfills a month at a time from a year ago, so the first window is a year back and the next is a month on.
+            // All history backfills a week at a time from a year ago, so the first window is a year back and the next is a week on.
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.Events, null, null, true), CancellationToken.None);
 
+            int weeks = AccountSyncRunner.WeeklyWindows(DateTime.UtcNow).Count;
             _pull.Verify(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddYears(-1) - f.Value).TotalMinutes) < 5), It.Is<DateTime?>(t => t.HasValue), It.IsAny<CancellationToken>()), Times.Once);
-            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Exactly(12));
+            _pull.Verify(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Exactly(weeks));
         }
 
         [Fact]
@@ -177,7 +178,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         [Fact]
         public async Task RunAsync_AllTypeAllHistory_RecordsFullWithBothCounts()
         {
-            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.Is<DateTime?>(f => f.HasValue && Math.Abs((DateTime.UtcNow.AddMonths(-1) - f.Value).TotalMinutes) < 5), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            // Every weekly window returns 9 events, and the run sums them.
+            _ = _pull.Setup(p => p.PullAccountEventsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new EventPullResult(DevicesSynced: 2, EventsSynced: 9));
             _ = _snapshots.Setup(s => s.SyncAccountSnapshotsAsync(_id, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new SnapshotSyncResult(DevicesAttempted: 2, DevicesSucceeded: 2, SnapshotsSaved: 2));
@@ -186,7 +188,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             ProviderSyncRun run = Assert.Single(_recorded);
             Assert.Equal("Full", run.SyncType);
-            Assert.Equal(9, run.EventsSynced);
+            Assert.Equal(9 * AccountSyncRunner.WeeklyWindows(DateTime.UtcNow).Count, run.EventsSynced);
             Assert.Equal(2, run.SnapshotsSynced);
         }
 
