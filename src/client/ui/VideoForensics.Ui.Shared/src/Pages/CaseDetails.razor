@@ -262,7 +262,7 @@ else
                 var @event = await EventRepository.GetAsync(item.EventId.Value, CancellationToken.None);
                 if (@event is not null)
                 {
-                    return $"{@event.EventType} · {@event.OccurredAtUtc:u}";
+                    return $"{@event.EventType} · {Zone.Format(@event.OccurredAtUtc, "yyyy-MM-dd HH:mm")}";
                 }
             }
             else if (item.Kind == CaseItemKind.Media && item.MediaItemId.HasValue)
@@ -312,7 +312,7 @@ else
         {
             new(L["ColumnReason"], row.Reason),
             new(L["ColumnAddedBy"], row.AddedBy),
-            new(L["ColumnAddedAt"], row.AddedAtUtc.ToString("u")),
+            new(L["ColumnAddedAt"], Zone.Format(row.AddedAtUtc, "yyyy-MM-dd HH:mm")),
             new(L["ColumnIntegrity"], row.Integrity.ToString())
         };
 

@@ -9,6 +9,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.QueryApi
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
 @using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Dump
 @using VideoForensics.Core.Providers.Common.Contracts
@@ -71,6 +72,12 @@
 </div>
 
 @code {
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
+
     private List<(string Label, string? Url)> BreadcrumbItems =>
     [
         (SharedL["Sources"], "/accounts"),
@@ -192,7 +199,8 @@
             FilterState.DeviceId ?? string.Empty,
             ScopeState.Current.FromUtc,
             ScopeState.Current.ToUtc,
-            _eventsRetrievedAt);
+            _eventsRetrievedAt,
+            Zone);
     }
 
     private RenderFragment DeviceEventGridColumns => __builder =>

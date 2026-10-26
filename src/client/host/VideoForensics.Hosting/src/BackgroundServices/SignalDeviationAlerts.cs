@@ -60,7 +60,18 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     continue;
                 }
 
-                string hour = window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture);
+                // The operator reads the alert on this machine, so the hour is shown in local time. The marker and scope
+                // keep UTC: they are identifiers, not display text.
+                string hour = DateTime.SpecifyKind(window.HourStartUtc, DateTimeKind.Utc).ToLocalTime()
+                    .ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture);
+
+                // The average covers every reading in the hour, not only the flagged ones, so it shows the hour as a whole.
+                // The worst reading is kept as well: a short spike is diluted in an hour average, and it is the spike that
+                // raised the alert.
+                DateTime hourEndUtc = window.HourStartUtc.AddHours(1);
+                double hourAverage = samples
+                    .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= window.HourStartUtc && s.CapturedAtUtc < hourEndUtc)
+                    .Average(s => s.RssiDbm!.Value);
 
                 // The action path carries the camera and day in the scope query the signal page and case form read, so
                 // the notice can open that scope or create a case for it.
@@ -71,7 +82,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     OperatorId: null,
                     PairedDeviceId: null,
                     SourceIp: null,
-                    Details: $"{device.Name}: RSSI {window.WorstRssiDbm} dBm at {hour} UTC is more than 2 std devs from this camera's mean. [{marker}]",
+                    Details: $"{device.Name}: hour average RSSI {hourAverage.ToString("0.0", CultureInfo.InvariantCulture)} dBm at {hour} " +
+                        $"(worst reading {window.WorstRssiDbm} dBm), camera mean {baseline.Average.ToString("0.0", CultureInfo.InvariantCulture)} dBm. " +
+                        $"More than 2 std devs from the mean. [{marker}]",
                     Audience: NotificationAudience.All,
                     Severity: NoticeSeverity.Alert,
                     ActionPath: $"/signal-history?{scope}"), ct);

@@ -615,7 +615,9 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
         Assert.Equal(2, rows.Count);
         CaseDetails.CaseItemRow eventRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Event);
         Assert.Equal(PinIntegrity.NotApplicable, eventRow.Integrity);
-        Assert.Equal($"{@event.EventType} · {@event.OccurredAtUtc:u}", eventRow.Label);
+        // No user zone cascades here, so the page uses the machine zone.
+        string expectedClock = TimeZoneInfo.ConvertTimeFromUtc(@event.OccurredAtUtc, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal($"{@event.EventType} · {expectedClock}", eventRow.Label);
 
         CaseDetails.CaseItemRow mediaRow = Assert.Single(rows, r => r.Kind == CaseItemKind.Media);
         Assert.Equal(PinIntegrity.Match, mediaRow.Integrity);
