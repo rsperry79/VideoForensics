@@ -362,7 +362,8 @@ namespace VideoForensics.Data.Core.Services
                         SourceIp: null,
                         Details: "Chain of custody integrity check failed: the audit trail hash chain does not verify.",
                         Audience: NotificationAudience.AdminsOnly,
-                        Severity: NoticeSeverity.Alert),
+                        Severity: NoticeSeverity.Alert,
+                        ActionPath: "/analyze/chain-of-custody"),
                     ct);
             }
             catch (Exception ex)
