@@ -61,9 +61,13 @@
         .SelectMany(s => s.Deviations.Where(w => w.Level == SignalDeviationLevel.TwoSigma).Select(w => (Section: s, Window: w)))
         .ToList();
 }
-@if (alerts.Count > 0)
+@{
+    string alertSignature = AlertSignature(alerts);
+}
+@if (alerts.Count > 0 && alertSignature != _dismissedAlertSignature)
 {
-    <div class="alert alert-danger" role="alert" data-testid="signal-alert">
+    <div class="alert alert-danger alert-dismissible" role="alert" data-testid="signal-alert">
+        <button type="button" class="btn-close" aria-label="@L["CloseMenu"]" data-testid="signal-alert-close" @onclick="() => DismissAlerts(alertSignature)"></button>
         <strong>@L["AlertTitle"]</strong>
         <ul class="mb-0">
             @foreach ((DeviceSignal section, SignalDeviationWindow window) in alerts)
@@ -352,6 +356,7 @@
 
     private List<DeviceSignal> _sections = new();
     private SignalBucket _bucket = SignalBucket.Week;
+    private string? _dismissedAlertSignature;
     private List<Device> _allDevices = new();
     private DateTime _from;
     private DateTime _to;
@@ -443,6 +448,17 @@
 
     /// <summary>Whether the camera is a Ring device, which has a strongly typed settings page.</summary>
     private static bool IsRing(DeviceSignal section) => string.Equals(section.ProviderName, "Ring", StringComparison.Ordinal);
+
+    /// <summary>Identifies the current set of 2 std dev alerts, so a dismissed banner stays hidden until the set changes.</summary>
+    private static string AlertSignature(IEnumerable<(DeviceSignal Section, SignalDeviationWindow Window)> alerts)
+    {
+        return string.Join("|", alerts.Select(a => $"{a.Section.DeviceId:N}@{a.Window.HourStartUtc:O}"));
+    }
+
+    private void DismissAlerts(string signature)
+    {
+        _dismissedAlertSignature = signature;
+    }
 
     private void SetBucket(SignalBucket size)
     {
