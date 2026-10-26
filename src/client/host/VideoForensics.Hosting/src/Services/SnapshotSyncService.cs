@@ -89,6 +89,12 @@ namespace VideoForensics.Client.Hosting.Services
                         continue;
                     }
 
+                    // The device's snapshot switch is the user's choice to stop snapshots, so it is honoured here as well as in capture.
+                    if (!device.SnapshotCaptureEnabled)
+                    {
+                        continue;
+                    }
+
                     if (deviceStatus?.IsOffline(device.Type, device.IsOnline) == true)
                     {
                         offline++;
