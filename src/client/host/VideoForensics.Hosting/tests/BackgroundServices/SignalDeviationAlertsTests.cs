@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using VideoForensics.Client.Hosting.BackgroundServices;
@@ -45,6 +46,29 @@ public class SignalDeviationAlertsTests
 
         Assert.Equal(0, raised);
         dispatcher.Verify(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Check_NoticeStatesTheHourAverageAndCameraMean_InLocalTime()
+    {
+        var notices = new Mock<INoticeRepository>();
+        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var dispatcher = new Mock<INotificationDispatcher>();
+        NotificationEvent? sent = null;
+        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
+            .Returns(Task.CompletedTask);
+
+        _ = await CheckAsync(notices.Object, dispatcher.Object);
+
+        // The alerted hour holds one reading at -95, so its average is -95.0. The camera mean is about -60.
+        DateTime alertedHourUtc = DateTime.UtcNow.AddHours(-1);
+        alertedHourUtc = new DateTime(alertedHourUtc.Year, alertedHourUtc.Month, alertedHourUtc.Day, alertedHourUtc.Hour, 0, 0, DateTimeKind.Utc);
+        string localHour = alertedHourUtc.ToLocalTime().ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture);
+        Assert.NotNull(sent);
+        Assert.Contains($"hour average RSSI -95.0 dBm at {localHour}", sent!.Details, StringComparison.Ordinal);
+        Assert.Contains("camera mean -6", sent.Details, StringComparison.Ordinal);
+        Assert.DoesNotContain("UTC", sent.Details, StringComparison.Ordinal);
     }
 
     /// <summary>

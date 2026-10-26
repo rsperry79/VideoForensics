@@ -12,6 +12,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.DeviceSettings
 @using VideoForensics.Client.Ui.Shared.Services.Scope
 @using VideoForensics.Client.Ui.Shared.Services.Signal
+@using VideoForensics.Client.Ui.Shared.Services.Time
 @using VideoForensics.Data.Common.Contracts
 @using Device = VideoForensics.Data.Common.Entities.Device
 @inject IDeviceRepository DeviceRepository
@@ -49,7 +50,7 @@
 }
 
 <p class="text-muted small">@L["PageIntro"]</p>
-<p class="small mb-3" data-testid="signal-scope-summary">@L["ScopeHint", _sections.Count, _from.ToShortDateString(), _to.ToShortDateString()]</p>
+<p class="small mb-3" data-testid="signal-scope-summary">@L["ScopeHint", _sections.Count, Zone.Format(_from, "d"), Zone.Format(_to, "d")]</p>
 
 @if (_sections.Count == 0)
 {
@@ -72,7 +73,7 @@
         <ul class="mb-0">
             @foreach ((DeviceSignal section, SignalDeviationWindow window) in alerts)
             {
-                <li>@L["AlertLine", section.Name, window.WorstRssiDbm, window.HourStartUtc.ToString("ddd MMM d HH:00", CultureInfo.InvariantCulture)]</li>
+                <li>@L["AlertLine", section.Name, window.WorstRssiDbm, Zone.Format(window.HourStartUtc, "ddd MMM d HH:00")]</li>
             }
         </ul>
     </div>
@@ -143,7 +144,7 @@
                                 <line x1="@SignalChartModel.PlotLeft" x2="@(SignalChartModel.PlotLeft + SignalChartModel.PlotWidth)" y1="@(SignalChartModel.PlotTop + SignalChartModel.PlotHeight)" y2="@(SignalChartModel.PlotTop + SignalChartModel.PlotHeight)" style="stroke: var(--bs-border-color);" />
                                 @foreach (DateTime tick in SignalChartModel.TimeTicks(_from, _to, 5))
                                 {
-                                    @SvgText(SignalChartModel.MapX(tick, _from, _to), SignalChartModel.PlotTop + SignalChartModel.PlotHeight + 16, "middle", "currentColor", SignalChartModel.FormatTick(tick, _to - _from))
+                                    @SvgText(SignalChartModel.MapX(tick, _from, _to), SignalChartModel.PlotTop + SignalChartModel.PlotHeight + 16, "middle", "currentColor", SignalChartModel.FormatTick(tick, _to - _from, Zone))
                                 }
 
                                 @* Hours with a reading more than 1 std dev from the mean (amber), or more than 2 (red, with an alert). *@
@@ -470,9 +471,9 @@
     {
         return _bucket switch
         {
-            SignalBucket.Hour => startUtc.ToString("MMM d HH:00", CultureInfo.InvariantCulture),
-            SignalBucket.Week => $"{L["BucketWeekOf"].Value} {startUtc.ToString("MMM d", CultureInfo.InvariantCulture)}",
-            _ => startUtc.ToString("ddd MMM d", CultureInfo.InvariantCulture),
+            SignalBucket.Hour => Zone.Format(startUtc, "MMM d HH:00"),
+            SignalBucket.Week => $"{L["BucketWeekOf"].Value} {Zone.Format(startUtc, "MMM d")}",
+            _ => Zone.Format(startUtc, "ddd MMM d"),
         };
     }
 
@@ -498,6 +499,12 @@
     {
         return string.IsNullOrWhiteSpace(device.Name) ? DeviceLabel.For(device.Name, device.ProviderDeviceId) : device.Name;
     }
+
+    /// <summary>The signed-in user's zone. Until the browser's zone is known, UTC is used so a time is never shown in the wrong zone.</summary>
+    [CascadingParameter]
+    private UserTimeZone? UserTz { get; set; }
+
+    private UserTimeZone Zone => UserTz ?? UserTimeZone.Unavailable;
 
     private static string PlotId(Guid deviceId) => $"signal-plot-{deviceId:N}";
 
@@ -529,9 +536,9 @@
         double start = SignalChartModel.MapX(period.StartUtc, _from, _to);
         double end = SignalChartModel.MapX(period.EndUtc, _from, _to);
         string label = L[PeriodLabelKey(period.Kind)].Value;
-        string when = SignalChartModel.FormatTick(period.StartUtc, _to - _from);
+        string when = SignalChartModel.FormatTooltipTime(period.StartUtc, Zone);
         return new MarkupString(
-            $"<rect class=\"signal-period\" data-kind=\"{period.Kind}\" x=\"{Format(start)}\" y=\"{Format(SignalChartModel.PlotTop)}\" width=\"{Format(end - start)}\" height=\"{Format(SignalChartModel.PlotHeight)}\" style=\"fill: {colour}; opacity: {Format(opacity)};\"><title>{WebUtility.HtmlEncode($"{label}, {when} UTC")}</title></rect>");
+            $"<rect class=\"signal-period\" data-kind=\"{period.Kind}\" x=\"{Format(start)}\" y=\"{Format(SignalChartModel.PlotTop)}\" width=\"{Format(end - start)}\" height=\"{Format(SignalChartModel.PlotHeight)}\" style=\"fill: {colour}; opacity: {Format(opacity)};\"><title>{WebUtility.HtmlEncode($"{label}, {when}")}</title></rect>");
     }
 
     private static string PeriodLabelKey(SignalPeriodKind kind) => kind switch
@@ -613,7 +620,7 @@
         }
 
         string reading = nearest.RssiDbm is int rssi ? $"{rssi} dBm" : L["PeriodNoSignal"].Value;
-        string text = $"{reading} · {SignalChartModel.FormatTooltipTime(nearest.CapturedAtUtc)}";
+        string text = $"{reading} · {SignalChartModel.FormatTooltipTime(nearest.CapturedAtUtc, Zone)}";
         SignalPeriod? period = section.Periods.FirstOrDefault(p => time >= p.StartUtc && time <= p.EndUtc);
         if (period is not null)
         {
@@ -694,7 +701,7 @@
             : scope.DeviceIds.Count == 0 ? L["AllCamerasLabel"].Value
             : scope.DeviceIds.Count == 1 ? DeviceNameById(scope.DeviceIds[0])
             : L["CameraCountLabel", scope.DeviceIds.Count].Value;
-        return $"{cameras}, {SignalChartModel.FormatTooltipTime(scope.FromUtc)} – {SignalChartModel.FormatTooltipTime(scope.ToUtc)}";
+        return $"{cameras}, {SignalChartModel.FormatTooltipTime(scope.FromUtc, Zone)} – {SignalChartModel.FormatTooltipTime(scope.ToUtc, Zone)}";
     }
 
     private string DeviceNameById(Guid deviceId)

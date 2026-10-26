@@ -1,7 +1,16 @@
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 namespace VideoForensics.Client.Ui.Shared.Services.QueryApi;
+
+/// <summary>Formats the times the QueryApi inspectors show in the user's zone. Null uses UTC, the zone before the browser's is known.</summary>
+internal static class InspectorClock
+{
+    internal const string Format = "yyyy-MM-dd HH:mm:ss";
+
+    internal static string Show(DateTime value, UserTimeZone? zone) => (zone ?? UserTimeZone.Unavailable).Format(value, Format);
+}
 
 /// <summary>
 /// A dropdown entry for the QueryApi filter panel: <see cref="Value"/> is the id used for queries, <see cref="Label"/> is shown to the user.
@@ -56,14 +65,14 @@ public static class QueryApiDrillDownHelpers
 /// </summary>
 public static class LocationInspectorMapper
 {
-    public static InspectorModel ToInspector(Location location, DateTime retrievedAt)
+    public static InspectorModel ToInspector(Location location, DateTime retrievedAt, UserTimeZone? zone = null)
     {
         string title = $"Location · {location.Name}";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
             new("Source", "IDeviceDiscoveryService.GetLocationsAsync"),
-            new("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("RetrievedAtUtc", InspectorClock.Show(retrievedAt, zone))
         };
 
         return new InspectorModel(
@@ -80,7 +89,7 @@ public static class LocationInspectorMapper
 /// </summary>
 public static class DeviceInspectorMapper
 {
-    public static InspectorModel ToInspector(Device device, string locationId, DateTime retrievedAt)
+    public static InspectorModel ToInspector(Device device, string locationId, DateTime retrievedAt, UserTimeZone? zone = null)
     {
         string title = $"Device · {device.Name} ({device.Type})";
 
@@ -88,7 +97,7 @@ public static class DeviceInspectorMapper
         {
             new("LocationId", locationId),
             new("Source", "IDeviceDiscoveryService.GetDevicesAsync"),
-            new("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("RetrievedAtUtc", InspectorClock.Show(retrievedAt, zone))
         };
 
         return new InspectorModel(
@@ -110,17 +119,18 @@ public static class DeviceEventInspectorMapper
         string deviceId,
         DateTime fromUtc,
         DateTime toUtc,
-        DateTime retrievedAt)
+        DateTime retrievedAt,
+        UserTimeZone? zone = null)
     {
-        string title = $"Event · {@event.EventType} · {@event.Timestamp:u}";
+        string title = $"Event · {@event.EventType} · {InspectorClock.Show(@event.Timestamp, zone)}";
 
         var provenance = new List<KeyValuePair<string, string>>
         {
             new("DeviceId", deviceId),
-            new("DateRangeFromUtc", fromUtc.ToString("u")),
-            new("DateRangeToUtc", toUtc.ToString("u")),
+            new("DateRangeFromUtc", InspectorClock.Show(fromUtc, zone)),
+            new("DateRangeToUtc", InspectorClock.Show(toUtc, zone)),
             new("Source", "IEventAndConfigService.GetEventsAsync"),
-            new("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("RetrievedAtUtc", InspectorClock.Show(retrievedAt, zone))
         };
 
         return new InspectorModel(
@@ -137,7 +147,7 @@ public static class DeviceEventInspectorMapper
 /// </summary>
 public static class DeviceConfigInspectorMapper
 {
-    public static InspectorModel ToInspector(DeviceConfig config, string deviceId, DateTime retrievedAt)
+    public static InspectorModel ToInspector(DeviceConfig config, string deviceId, DateTime retrievedAt, UserTimeZone? zone = null)
     {
         string title = $"Device Config · {deviceId}";
 
@@ -145,7 +155,7 @@ public static class DeviceConfigInspectorMapper
         {
             new("DeviceId", deviceId),
             new("Source", "IEventAndConfigService.GetDeviceConfigAsync"),
-            new("RetrievedAtUtc", retrievedAt.ToString("u"))
+            new("RetrievedAtUtc", InspectorClock.Show(retrievedAt, zone))
         };
 
         return new InspectorModel(

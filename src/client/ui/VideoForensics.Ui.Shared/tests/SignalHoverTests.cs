@@ -1,4 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
@@ -41,10 +42,11 @@ public class SignalHoverTests
     }
 
     [Fact]
-    public void FormatTooltipTime_WritesTheDateAndUtcClockTime()
+    public void FormatTooltipTime_WritesTheDateAndClockTimeInTheUserZone()
     {
         var at = new DateTime(2026, 10, 24, 12, 30, 0, DateTimeKind.Utc);
+        var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
 
-        Assert.Equal("Oct 24, 12:30 UTC", SignalChartModel.FormatTooltipTime(at));
+        Assert.Equal("Oct 24, 07:30", SignalChartModel.FormatTooltipTime(at, minusFive));
     }
 }

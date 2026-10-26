@@ -1,4 +1,4 @@
-using System.Globalization;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 using VideoForensics.Data.Common.Entities;
 
 namespace VideoForensics.Client.Ui.Shared.Services.Signal;
@@ -258,17 +258,22 @@ public static class SignalChartModel
             .FirstOrDefault();
     }
 
-    /// <summary>The tooltip's time, for example "Oct 24, 12:30 UTC". Always UTC, matching the axis labels.</summary>
-    public static string FormatTooltipTime(DateTime utc)
+    /// <summary>The tooltip's time in the user's zone, for example "Oct 24, 07:30". The zone is shown by the page, not here.</summary>
+    public static string FormatTooltipTime(DateTime utc, UserTimeZone zone)
     {
-        return $"{utc.ToString("MMM d, HH:mm", CultureInfo.InvariantCulture)} UTC";
+        ArgumentNullException.ThrowIfNull(zone);
+        return zone.Format(utc, "MMM d, HH:mm");
     }
 
-    /// <summary>Time label for an axis tick. Short windows show the clock time; longer ones show the date.</summary>
-    public static string FormatTick(DateTime utc, TimeSpan windowSpan)
+    /// <summary>
+    /// Time label for an axis tick in the user's zone. Short windows show the clock time; longer ones show the date.
+    /// The zone matters here because a day boundary falls at a different UTC hour for each user.
+    /// </summary>
+    public static string FormatTick(DateTime utc, TimeSpan windowSpan, UserTimeZone zone)
     {
+        ArgumentNullException.ThrowIfNull(zone);
         return windowSpan.TotalHours <= 48
-            ? utc.ToString("HH:mm", CultureInfo.InvariantCulture)
-            : utc.ToString("MMM d", CultureInfo.InvariantCulture);
+            ? zone.Format(utc, "HH:mm")
+            : zone.Format(utc, "MMM d");
     }
 }

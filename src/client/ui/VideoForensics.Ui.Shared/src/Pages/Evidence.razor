@@ -783,7 +783,7 @@ else
 
     private InspectorModel ToEvidenceInspector(EvidenceItem item)
     {
-        return EvidenceInspectorMapper.ToInspector(item, _activeHoldsByMediaItemId, _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>());
+        return EvidenceInspectorMapper.ToInspector(item, _activeHoldsByMediaItemId, _vm?.LoadResult.IntegrityRecords ?? new List<IntegrityRecord>(), Zone);
     }
 
     // Built once at init: Syncfusion requires typed ContextMenuItemModel entries (anonymous objects

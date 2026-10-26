@@ -421,7 +421,9 @@ public class Evidence_Viewer_Tests : EvidencePageTestBase
         AngleSharp.Dom.IElement img = component.Find(".viewer-media img");
         Assert.Equal(TicketedUrl(ImageMediaId), img.GetAttribute("src"));
 
-        string expectedTitle = $"{EventEntity.EventType} · {EventOccurredAtUtc:u}";
+        // No user zone cascades here, so the page uses the machine zone.
+        string expectedClock = TimeZoneInfo.ConvertTimeFromUtc(EventOccurredAtUtc, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        string expectedTitle = $"{EventEntity.EventType} · {expectedClock}";
         Assert.Equal(expectedTitle, InspectorState.Current?.Title);
 
         NavigationManager nav = Services.GetRequiredService<NavigationManager>();

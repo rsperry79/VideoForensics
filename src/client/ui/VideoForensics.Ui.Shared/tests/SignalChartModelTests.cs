@@ -1,4 +1,5 @@
 using VideoForensics.Client.Ui.Shared.Services.Signal;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
@@ -96,8 +97,9 @@ public class SignalChartModelTests
     public void FormatTick_UsesTimeOnlyForShortWindowsAndDateForLongOnes()
     {
         var noon = new DateTime(2026, 10, 24, 12, 30, 0, DateTimeKind.Utc);
+        var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
 
-        Assert.Equal("12:30", SignalChartModel.FormatTick(noon, TimeSpan.FromHours(6)));
-        Assert.Equal("Oct 24", SignalChartModel.FormatTick(noon, TimeSpan.FromDays(30)));
+        Assert.Equal("07:30", SignalChartModel.FormatTick(noon, TimeSpan.FromHours(6), minusFive));
+        Assert.Equal("Oct 24", SignalChartModel.FormatTick(noon, TimeSpan.FromDays(30), minusFive));
     }
 }

@@ -75,7 +75,7 @@
                 {
                     bool expanded = entry.Exception is not null && _expanded.Contains(entry.Sequence);
                     <tr @key="entry.Sequence" data-testid="log-row" data-seq="@entry.Sequence" data-level="@entry.Level">
-                        <td class="text-nowrap" data-testid="log-time" title="@FormatUtc(entry)">@FormatLocal(entry)</td>
+                        <td class="text-nowrap" data-testid="log-time" title="@FormatZoned(entry)">@FormatLocal(entry)</td>
                         <td><span class="badge lvl @LevelCss(entry.Level)" data-testid="log-level-badge">@entry.Level</span></td>
                         <td class="text-nowrap" data-testid="log-category" title="@entry.Category">@ShortCategory(entry.Category)</td>
                         <td class="log-message">
@@ -526,8 +526,13 @@ else if (_sessionChecked)
         return e.Exception is null ? line : line + "\n" + e.Exception;
     }
 
+    /// <summary>The copied log line keeps UTC: exported text has no zone label of its own, so the instant must stay unambiguous.</summary>
     private static string FormatUtc(LogEntry e)
         => e.TimestampUtc.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " UTC";
+
+    /// <summary>The hover title for a log time, in the user's zone.</summary>
+    private string FormatZoned(LogEntry e)
+        => Zone.Format(e.TimestampUtc.UtcDateTime, "yyyy-MM-dd HH:mm:ss.fff");
 
     private string FormatLocal(LogEntry e)
         => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);

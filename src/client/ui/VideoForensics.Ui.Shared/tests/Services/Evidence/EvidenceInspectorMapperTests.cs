@@ -3,6 +3,7 @@ using System.Reflection;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Ui.Shared.Services.Evidence;
 using VideoForensics.Client.Ui.Shared.Services.Inspector;
+using VideoForensics.Client.Ui.Shared.Services.Time;
 
 using Xunit;
 
@@ -35,6 +36,30 @@ public class EvidenceInspectorMapper_ToInspector_EventItem_Tests
         Assert.Contains("Motion Detected", result.Title);
         Assert.Contains("2024-01-15", result.Title);
         Assert.Contains("10:30:00", result.Title);
+    }
+
+    [Fact]
+    public void ToInspector_EventItem_ShowsTitleTimeInTheUserZone()
+    {
+        // Arrange
+        var eventItem = new EvidenceItem
+        {
+            Key = "event:123",
+            Kind = EvidenceKind.Event,
+            OccurredAtUtc = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "Front Door",
+            Event = new Event { Id = Guid.NewGuid(), EventType = "Motion Detected", ProviderEventId = "event:1", MetadataJson = "{}" },
+            Media = null
+        };
+        var minusFive = new UserTimeZone(TimeZoneInfo.CreateCustomTimeZone("test-minus5", TimeSpan.FromHours(-5), "test-minus5", "test-minus5"));
+
+        // Act
+        InspectorModel result = EvidenceInspectorMapper.ToInspector(eventItem, new Dictionary<Guid, LegalHold>(), new List<IntegrityRecord>(), minusFive);
+
+        // Assert
+        Assert.Contains("2024-01-15 05:30:00", result.Title);
+        Assert.DoesNotContain("10:30:00", result.Title);
     }
 
     [Fact]

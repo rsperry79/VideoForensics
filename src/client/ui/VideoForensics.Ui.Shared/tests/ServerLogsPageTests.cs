@@ -734,7 +734,7 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
     }
 
     [Fact]
-    public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndUtcTooltip()
+    public async Task ServerLogsPage_Row_ShowsLevelBadgeShortCategoryAndZonedTooltip()
     {
         Logs.OnGetPage = (_, _, _) => PageOf(1, Entry(1, "Error", "boom", category: "VideoForensics.Client.Hosting.Remote.Thing"));
         IRenderedComponent<ServerLogs> page = await RenderSignedInAsync();
@@ -746,7 +746,12 @@ public class ServerLogsPageRenderingTests : ServerLogsPageTestBase
         IElement category = page.Find("[data-testid='log-category']");
         Assert.Equal("Thing", category.TextContent.Trim());
         Assert.Equal("VideoForensics.Client.Hosting.Remote.Thing", category.GetAttribute("title"));
-        Assert.Contains("2026-09-25 10:00:00.001 UTC", page.Find("[data-testid='log-time']").GetAttribute("title"));
+        // No user zone cascades here, so the page falls back to the machine zone; the tooltip must show that zone's clock, not UTC.
+        string expected = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 9, 25, 10, 0, 0, 1, DateTimeKind.Utc), TimeZoneInfo.Local)
+            .ToString("yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
+        string title = page.Find("[data-testid='log-time']").GetAttribute("title")!;
+        Assert.Contains(expected, title);
+        Assert.DoesNotContain("UTC", title);
     }
 
     [Fact]
