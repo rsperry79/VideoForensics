@@ -35,6 +35,7 @@ using VideoForensics.Client.WebApp.Services.CircuitGuards;
 using VideoForensics.Core.Helpers.Forensics.KeyManagement;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Logging.DependencyInjection;
+using VideoForensics.Core.Logging.Services;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -75,7 +76,8 @@ string logsDir = storageProvider.GetDefaultRoot(StorageCategory.Logs);
 Directory.CreateDirectory(logsDir);
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    // Every level is recorded. The Server Logs filters only change what is shown, so Trace is kept for later review.
+    .MinimumLevel.Verbose()
     // EF SQL command messages are logged at Debug (see EfCommandLogLevelLoggerFactory); Serilog must let Debug through for them.
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
     // Ring API call trace (see the subscription after app.Build): Debug, so it is off unless the category is enabled.
@@ -155,12 +157,14 @@ builder.WebHost.UseUrls([]);
 
 // Serilog is already configured above with file sinks. Optionally enable additional sinks
 // (Windows Event Log for service visibility, Linux syslog) via AddVideoForensicsLogging.
-builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Logging.SetMinimumLevel(LogLevel.Trace);
+// The Server Logs history reads the daily audit files in logsDir; they hold every level recorded above.
+builder.Services.AddSingleton(new LogFileDirectory(logsDir));
 // Note: AddVideoForensicsLogging detects pre-configured Serilog and integrates it;
 // the logFilePath parameter is kept for backward compat with other hosts that don't pre-configure Serilog.
 // Single buffer instance: the logging provider writes to it and the /api/v1/logs endpoints read it.
 builder.Services.AddInMemoryLogBuffer();
-builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Information, enableEventLog: true, enableSyslog: true,
+builder.Logging.AddVideoForensicsLogging(string.Empty, LogLevel.Trace, enableEventLog: true, enableSyslog: true,
     eventLogProvider: OperatingSystem.IsWindows() ? (Action<ILoggingBuilder>?)VideoForensics.Client.Platform.Windows.Logging.WindowsLoggingProviders.AddEventLog : null);
 
 // Add services to the container.
