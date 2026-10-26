@@ -646,6 +646,27 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task DownloadSnapshotsAsync_WhenRingReturns503_LogsHttpStatus()
+        {
+            // Arrange: Ring refuses the snapshot read with 503. The log must name the status so the cause is visible without querying the database.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = mockSession.Setup(s => s.GetLatestSnapshotWithStatus(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpUtility.DownloadResult(HttpStatusCode.ServiceUnavailable, [], null));
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var logger = new RecordingLogger();
+            var service = new SnapshotReadStubMediaDownloadService(logger, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Message.Contains("HTTP 503", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public async Task ConcurrentDownloads_WithDifferentAccountIds_DoesNotRace()
         {
             // Arrange
@@ -1306,6 +1327,17 @@ namespace VideoForensics.Providers.Ring.Tests
             Assert.Equal(503, attempt.HttpStatus);
             Assert.Equal(1, service.Reads);
         }
+    }
+
+    /// <summary>Lets the fresh-snapshot request succeed, so a failure comes from the snapshot read that follows it.</summary>
+    internal sealed class SnapshotReadStubMediaDownloadService : RingMediaDownloadService
+    {
+        public SnapshotReadStubMediaDownloadService(ILogger logger, ISessionProvider sessionProvider, IVideoForensicsDataClient dataClient)
+            : base(logger, sessionProvider, dataClient)
+        {
+        }
+
+        protected override Task RequestFreshSnapshotAsync(Session session, int doorbotId) => Task.CompletedTask;
     }
 
     /// <summary>Simulates Ring refusing an on-demand snapshot refresh.</summary>
