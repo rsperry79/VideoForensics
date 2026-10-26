@@ -11,24 +11,16 @@ namespace VideoForensics.Client.Hosting.Signal
     /// Computes the signal figures on the server from each camera's health history. The expected reading spacing is the
     /// account's real capture spacing, so the missed-check overlay matches what the poll actually ran at.
     /// </summary>
-    public sealed class SignalAnalysisService : ISignalAnalysisService
+    public sealed class SignalAnalysisService(
+        IDeviceRepository devices,
+        IDeviceHealthRepository health,
+        ISyncScheduleRepository schedules,
+        DeviceOwnershipService ownership) : ISignalAnalysisService
     {
-        private readonly IDeviceRepository _devices;
-        private readonly IDeviceHealthRepository _health;
-        private readonly ISyncScheduleRepository _schedules;
-        private readonly DeviceOwnershipService _ownership;
-
-        public SignalAnalysisService(
-            IDeviceRepository devices,
-            IDeviceHealthRepository health,
-            ISyncScheduleRepository schedules,
-            DeviceOwnershipService ownership)
-        {
-            _devices = devices;
-            _health = health;
-            _schedules = schedules;
-            _ownership = ownership;
-        }
+        private readonly IDeviceRepository _devices = devices;
+        private readonly IDeviceHealthRepository _health = health;
+        private readonly ISyncScheduleRepository _schedules = schedules;
+        private readonly DeviceOwnershipService _ownership = ownership;
 
         /// <inheritdoc />
         public async Task<SignalAnalysis> AnalyzeAsync(IReadOnlyList<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
@@ -41,10 +33,9 @@ namespace VideoForensics.Client.Hosting.Signal
 
             // Ids the caller asked for that do not exist are simply not in the result.
             var wanted = new HashSet<Guid>(deviceIds);
-            List<Device> devices = (await _devices.ListAsync(ct))
+            List<Device> devices = [.. (await _devices.ListAsync(ct))
                 .Where(d => wanted.Contains(d.Id))
-                .OrderBy(d => d.Name)
-                .ToList();
+                .OrderBy(d => d.Name)];
 
             DeviceOwnershipSnapshot ownership = await _ownership.LoadAsync(devices, ct);
             var schedulesByAccount = new Dictionary<Guid, SyncSchedule?>();
@@ -57,12 +48,11 @@ namespace VideoForensics.Client.Hosting.Signal
                 // The whole history gives the baseline and the coverage of the first readings in the window.
                 IReadOnlyList<DeviceHealth> rows = await _health.GetHistoryAsync(device.Id, ct);
                 var samples = rows.Select(r => new SignalSample(r.CapturedAtUtc, r.WifiSignalRssi)).ToList();
-                SignalStats allTime = SignalStats.Compute(samples);
+                var allTime = SignalStats.Compute(samples);
 
-                List<SignalSample> inWindow = samples
+                List<SignalSample> inWindow = [.. samples
                     .Where(s => s.CapturedAtUtc >= fromUtc && s.CapturedAtUtc <= toUtc)
-                    .OrderBy(s => s.CapturedAtUtc)
-                    .ToList();
+                    .OrderBy(s => s.CapturedAtUtc)];
 
                 analyses.Add(new SignalDeviceAnalysis(
                     device.Id,

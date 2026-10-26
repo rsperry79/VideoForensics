@@ -457,7 +457,7 @@ namespace VideoForensics.Client.WebApp.Api
             MediaItemPage page = await mediaItems.GetPageByDevicesAndDateRangeAsync(
                 deviceIds, from.Value, to.Value, effectiveSkip, effectiveTake, ct);
 
-            return Results.Ok(new MediaItemPageDto(page.Items.Select(x => x.ToDto()).ToList(), page.TotalCount));
+            return Results.Ok(new MediaItemPageDto([.. page.Items.Select(x => x.ToDto())], page.TotalCount));
         }
 
         /// <summary>
