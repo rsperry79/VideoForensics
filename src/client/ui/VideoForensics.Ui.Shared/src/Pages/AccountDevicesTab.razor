@@ -192,14 +192,23 @@ else
                 foreach (var device in await DeviceRepository.GetByLocationIdAsync(location.Id, CancellationToken.None))
                 {
                     var health = await DeviceHealthRepository.GetLatestAsync(device.Id, CancellationToken.None);
-                    DateTime? lastSeen = health is null ? null : DeviceUptime.LastSeenUtc(health.LastHeartbeatUtc, health.CapturedAtUtc);
-                    var status = DeviceUptime.Evaluate(
-                        health?.IsOnline,
-                        health?.LastHeartbeatUtc,
-                        health?.CapturedAtUtc,
-                        now,
-                        ForensicsConfig.DeviceOfflineThresholdSeconds,
-                        requiresConnectionFlag: RingSettingsRoute.IsRingDevice(device));
+
+                    // A camera the snapshot service marked offline (Ring returned no frame) is offline, even while its
+                    // health reading still says connected. Its last-seen time is the provider's heartbeat only: the health
+                    // poll's own capture time would show a camera that never answered as seen.
+                    bool markedOffline = device.IsOnline == false;
+                    DateTime? lastSeen = health is null
+                        ? null
+                        : markedOffline ? health.LastHeartbeatUtc : DeviceUptime.LastSeenUtc(health.LastHeartbeatUtc, health.CapturedAtUtc);
+                    var status = markedOffline
+                        ? DeviceUptimeStatus.Offline
+                        : DeviceUptime.Evaluate(
+                            health?.IsOnline,
+                            health?.LastHeartbeatUtc,
+                            health?.CapturedAtUtc,
+                            now,
+                            ForensicsConfig.DeviceOfflineThresholdSeconds,
+                            requiresConnectionFlag: RingSettingsRoute.IsRingDevice(device));
                     var recent = await MediaItemRepository.GetRecentByDeviceAsync(device.Id, RecentMediaLimit, CancellationToken.None);
                     pending.Add((device, status, lastSeen, LatestDeviceMedia.Select(recent)));
                 }

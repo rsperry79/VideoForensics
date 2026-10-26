@@ -29,7 +29,8 @@ public class SignalDeviationAlertsTests
             It.Is<NotificationEvent>(e => e.EventType == "SignalDeviation"
                 && e.Severity == NoticeSeverity.Alert
                 && e.Details!.Contains("Front door")
-                && e.Details.Contains("sig-dev:")),
+                && e.Details.Contains("sig-dev:")
+                && e.ActionPath!.StartsWith($"/signal-history?devices={_device.Id:D}&from=", StringComparison.Ordinal)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

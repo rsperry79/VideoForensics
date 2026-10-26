@@ -7,6 +7,7 @@
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Client.Ui.Shared.Services.Notices
 @using Microsoft.Extensions.DependencyInjection
 @inject DeviceOwnershipService OwnershipService
 @inject INoticeRepository NoticeRepository
@@ -77,6 +78,14 @@ else
                             @if (notice.ActionPath is not null)
                             {
                                 <a href="@notice.ActionPath">@L["OpenNoticeLink"]</a>
+                            }
+                            @if (NoticeActions.CreateCaseLink(notice.EventType, notice.ActionPath, notice.Details) is { } caseLink)
+                            {
+                                <a href="@caseLink" class="ms-2" data-testid="notice-create-case">@L["NoticeCreateCase"]</a>
+                            }
+                            @if (NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath) is { } settingsLink)
+                            {
+                                <a href="@settingsLink" class="ms-2" data-testid="notice-device-settings">@L["NoticeDeviceSettings"]</a>
                             }
                         }
                     </Template>
