@@ -844,6 +844,18 @@ namespace VideoForensics.Client.Hosting
                 ?? throw new InvalidOperationException("Configuration must be a ForensicsConfiguration instance");
             await ConfigurationLoader.LoadAndApplyAsync(configService, appConfig, logger, ct);
 
+            // Moves media saved under the legacy DownloadLocation into the <provider>\<location>\<device> layout. Runs after
+            // the saved config is applied so the legacy path is known. A failure is logged and does not stop startup: the
+            // media stays readable at the path the database already records.
+            try
+            {
+                _ = await sp.GetRequiredService<VideoForensics.Data.Core.Services.MediaStorageMigrator>().MigrateAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Media migration failed; media remains at its recorded paths");
+            }
+
             // Seed a default SuperAdmin account if the Operators table is empty - but only when
             // explicitly opted into via VIDEOFORENSICS_ENABLE_DEFAULT_ADMIN=true (headless/scripted
             // deployments that can't drive a browser). By default this is left off: the interactive
