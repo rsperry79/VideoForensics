@@ -98,6 +98,29 @@ namespace VideoForensics.Client.Hosting.Tests.Remote
         }
 
         [Fact]
+        public async Task GetHistoryAsync_SendsUtcRangeAndFiltersToHistoryRoute()
+        {
+            (RemoteLogViewerService? service, List<HttpRequestMessage>? seen) = Create((_, _) => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new LogPageDto(Array.Empty<LogEntryDto>(), 0, false))
+            });
+            var from = new DateTimeOffset(2026, 10, 26, 10, 0, 0, TimeSpan.Zero);
+            var to = new DateTimeOffset(2026, 10, 26, 12, 0, 0, TimeSpan.Zero);
+
+            _ = await service.GetHistoryAsync(new LogHistoryQuery(from, to, "Error", "boom", 50), CancellationToken.None);
+
+            HttpRequestMessage req = Assert.Single(seen);
+            Assert.Equal("/api/v1/logs/history", req.RequestUri!.AbsolutePath);
+            NameValueCollection parsed = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+            Assert.Equal(from.ToString("o", System.Globalization.CultureInfo.InvariantCulture), parsed["from"]);
+            Assert.Equal(to.ToString("o", System.Globalization.CultureInfo.InvariantCulture), parsed["to"]);
+            Assert.Equal("Error", parsed["minLevel"]);
+            Assert.Equal("boom", parsed["search"]);
+            Assert.Equal("50", parsed["limit"]);
+            Assert.Equal(5, parsed.Count);
+        }
+
+        [Fact]
         public async Task GetPageAsync_SendsNoStepUpHeader()
         {
             // Reads are not step-up gated, so the client never attaches a step-up token.

@@ -56,6 +56,33 @@ namespace VideoForensics.Client.Hosting.Local
             return Task.FromResult(new LogPage(entries, _buffer.LatestSequence, truncated));
         }
 
+        /// <summary>
+        /// Filters the in-process buffer by time range. MAUI has no log files, so a range older than the buffer's
+        /// oldest entry returns what the buffer still holds rather than reading disk.
+        /// </summary>
+        /// <exception cref="ArgumentException">The MinLevel is invalid or the range ends before it starts.</exception>
+        public Task<LogPage> GetHistoryAsync(LogHistoryQuery query, CancellationToken ct)
+        {
+            ArgumentNullException.ThrowIfNull(query);
+            ValidateMinLevel(query.MinLevel);
+            if (query.ToUtc < query.FromUtc)
+            {
+                throw new ArgumentException("The range must not end before it starts.", nameof(query));
+            }
+
+            ct.ThrowIfCancellationRequested();
+
+            int clampedLimit = ClampLimit(query.Limit);
+            List<LogRecord> inRange = _buffer
+                .GetSnapshot(NullIfEmpty(query.MinLevel), NullIfEmpty(query.Search), null, int.MaxValue)
+                .Where(r => r.TimestampUtc >= query.FromUtc && r.TimestampUtc <= query.ToUtc)
+                .ToList();
+
+            bool truncated = inRange.Count > clampedLimit;
+            var entries = inRange.Take(clampedLimit).Select(ToEntry).ToList();
+            return Task.FromResult(new LogPage(entries, 0, truncated));
+        }
+
         /// <inheritdoc />
         /// <exception cref="ArgumentException">The MinLevel is invalid.</exception>
         public async IAsyncEnumerable<LogEntry> StreamAsync(

@@ -3,6 +3,7 @@
 @using VideoForensics.Client.Ui.Shared.Services.Time
 @using System.Collections.Concurrent
 @using System.Globalization
+@using System.Net.Http
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Services
@@ -58,6 +59,29 @@
             <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="logs-clear" @onclick="ClearRows">@L["ClearButton"]</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="logs-download" disabled="@(_rows.Count == 0)" @onclick="DownloadAsync">@L["DownloadButton"]</button>
         </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-end gap-2 mb-2" data-testid="logs-mode">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn @(_rangeMode ? "btn-outline-secondary" : "btn-secondary")" data-testid="logs-mode-live" @onclick="SwitchToLive">@L["ModeLive"]</button>
+            <button type="button" class="btn @(_rangeMode ? "btn-secondary" : "btn-outline-secondary")" data-testid="logs-mode-range" @onclick="SwitchToRange">@L["ModeRange"]</button>
+        </div>
+        @if (_rangeMode)
+        {
+            <div>
+                <label class="form-label small mb-0" for="logs-range-from">@L["RangeFromLabel"]</label>
+                <input id="logs-range-from" type="datetime-local" class="form-control form-control-sm" data-testid="logs-range-from" value="@_fromText" @onchange="OnFromChanged" />
+            </div>
+            <div>
+                <label class="form-label small mb-0" for="logs-range-to">@L["RangeToLabel"]</label>
+                <input id="logs-range-to" type="datetime-local" class="form-control form-control-sm" data-testid="logs-range-to" value="@_toText" @onchange="OnToChanged" />
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" data-testid="logs-range-show" @onclick="ShowRangeAsync">@L["RangeShowButton"]</button>
+            @if (_rangeMessage is not null)
+            {
+                <span class="small text-danger" data-testid="logs-range-message">@_rangeMessage</span>
+            }
+        }
     </div>
 
     <div class="log-viewport" @ref="_viewport" data-testid="logs-viewport">
@@ -160,11 +184,20 @@ else if (_sessionChecked)
     private string _searchText = string.Empty;
     private string? _activeSearch;
 
-    private string StatusKey => _paused && _status == ConnectionStatus.Live ? "paused" : _status.ToString().ToLowerInvariant();
+    // Range mode reads the daily files on demand; the live stream is stopped while it is on.
+    private bool _rangeMode;
+    private string _fromText = string.Empty;
+    private string _toText = string.Empty;
+    private string? _rangeMessage;
+
+    private static readonly string[] RangeFormats = ["yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss"];
+
+    private string StatusKey => _rangeMode ? "history" : _paused && _status == ConnectionStatus.Live ? "paused" : _status.ToString().ToLowerInvariant();
 
     private string StatusText => StatusKey switch
     {
         "live" => L["StatusLive"],
+        "history" => L["StatusHistory"],
         "paused" => L["StatusPaused"],
         "reconnecting" => L["StatusReconnecting"],
         "disconnected" => L["StatusDisconnected"],
@@ -174,6 +207,7 @@ else if (_sessionChecked)
     private string StatusCss => StatusKey switch
     {
         "live" => "bg-success",
+        "history" => "bg-secondary",
         "paused" => "bg-info text-dark",
         "reconnecting" => "bg-warning text-dark",
         "disconnected" => "bg-danger",
@@ -417,12 +451,68 @@ else if (_sessionChecked)
         _expanded.Clear();
     }
 
+    private void SwitchToRange()
+    {
+        CancelRun();
+        _rangeMode = true;
+        _rangeMessage = null;
+        ResetRows();
+
+        // Default to the last hour in the user's zone; the pickers take the same local format.
+        DateTime nowLocal = TimeZoneInfo.ConvertTime(_time.GetUtcNow(), Zone.Zone).DateTime;
+        _toText = nowLocal.ToString(RangeFormats[0], CultureInfo.InvariantCulture);
+        _fromText = nowLocal.AddHours(-1).ToString(RangeFormats[0], CultureInfo.InvariantCulture);
+    }
+
+    private void SwitchToLive()
+    {
+        _rangeMode = false;
+        _rangeMessage = null;
+        ResetRows();
+        StartRun();
+    }
+
+    private void OnFromChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _fromText = e.Value?.ToString() ?? string.Empty;
+
+    private void OnToChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) => _toText = e.Value?.ToString() ?? string.Empty;
+
+    /// <summary>Reads the typed range (in the user's zone), converts it to UTC, and replaces the rows with that history.</summary>
+    private async Task ShowRangeAsync()
+    {
+        if (!DateTime.TryParseExact(_fromText, RangeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fromLocal)
+            || !DateTime.TryParseExact(_toText, RangeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime toLocal)
+            || toLocal < fromLocal)
+        {
+            _rangeMessage = L["RangeInvalid"];
+            return;
+        }
+
+        var fromUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(fromLocal, Zone.Zone), TimeSpan.Zero);
+        var toUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(toLocal, Zone.Zone), TimeSpan.Zero);
+        try
+        {
+            LogPage page = await LogViewer.GetHistoryAsync(new LogHistoryQuery(fromUtc, toUtc, _minLevel, _activeSearch, MaxRows), CancellationToken.None);
+            ResetRows();
+            _rows.AddRange(page.Entries.OrderBy(e => e.TimestampUtc));
+            _rangeMessage = page.Truncated ? L["RangeTruncated", MaxRows] : null;
+        }
+        catch (HttpRequestException)
+        {
+            _rangeMessage = L["RangeFailed"];
+        }
+    }
+
     private void OnLevelChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         string? value = e.Value?.ToString();
         _minLevel = value is not null && Levels.Contains(value) ? value : "Information";
         ResetRows();
-        StartRun();
+
+        // In range mode the level applies when the range is shown again, so the live stream stays off.
+        if (!_rangeMode)
+        {
+            StartRun();
+        }
     }
 
     private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
@@ -463,7 +553,11 @@ else if (_sessionChecked)
 
                 _activeSearch = effective;
                 ResetRows();
-                StartRun();
+                if (!_rangeMode)
+                {
+                    StartRun();
+                }
+
                 StateHasChanged();
             });
         }

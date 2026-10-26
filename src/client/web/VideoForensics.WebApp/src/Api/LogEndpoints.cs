@@ -42,6 +42,68 @@ namespace VideoForensics.Client.WebApp.Api
             // Read-only: no passkey step-up. Step-up is reserved for destructive or system changes.
             _ = group.MapGet("/", GetLogsAsync).WithName("GetLogs");
             _ = group.MapGet("/stream", StreamLogsAsync).WithName("StreamLogs");
+            _ = group.MapGet("/history", GetHistoryAsync).WithName("GetLogHistory");
+        }
+
+        /// <summary>
+        /// Returns past entries in a date range, oldest first, read from the daily log files. The buffer behind
+        /// <c>/</c> only holds the newest entries, so ranges that are not live must come from here.
+        /// <c>LatestSequence</c> is 0: history entries are not on the live sequence.
+        /// </summary>
+        public static async Task<IResult> GetHistoryAsync(
+            DateTimeOffset from,
+            DateTimeOffset to,
+            string? minLevel,
+            string? search,
+            int? limit,
+            LogFileDirectory logDirectory,
+            ISecurityAuditLogger auditLog,
+            INetworkTierResolver tierResolver,
+            HttpContext context,
+            CancellationToken ct)
+        {
+            if (!IsValidMinLevel(minLevel))
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid log level",
+                    Detail = $"MinLevel must be one of: {string.Join(", ", ValidLogLevels)}"
+                });
+            }
+
+            if (to < from)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Invalid date range",
+                    Detail = "To must not be earlier than From."
+                });
+            }
+
+            int clampedLimit = ClampLimit(limit ?? 0);
+            (IReadOnlyList<LogRecord> records, bool truncated) = await LogFileHistoryReader.ReadAsync(
+                logDirectory.Path,
+                from.ToUniversalTime(),
+                to.ToUniversalTime(),
+                NullIfEmpty(minLevel),
+                NullIfEmpty(search),
+                clampedLimit,
+                ct);
+
+            // Audit details omit the search text for the same reason as the live endpoint.
+            await auditLog.LogAsync(
+                SecurityAuditEventTypes.LogViewed,
+                ExtractOperatorId(context),
+                null,
+                tierResolver.ResolveClientIp(context),
+                $"history from {from.ToUniversalTime():o} to {to.ToUniversalTime():o}, minLevel: {minLevel ?? "none"}, limit: {clampedLimit}",
+                isUrgent: false,
+                ct);
+
+            var entries = records.Select(r => r.ToDto()).ToList();
+            return Results.Ok(new LogPageDto(entries, 0, truncated));
         }
 
         /// <summary>

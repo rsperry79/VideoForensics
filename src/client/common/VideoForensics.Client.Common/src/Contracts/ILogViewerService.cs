@@ -27,6 +27,17 @@ namespace VideoForensics.Client.Common.Contracts
         bool Truncated);
 
     /// <summary>
+    /// Filter for past entries read from the daily log files. Both bounds are UTC and inclusive.
+    /// <see cref="Limit"/> of 0 or less means the server default.
+    /// </summary>
+    public record LogHistoryQuery(
+        DateTimeOffset FromUtc,
+        DateTimeOffset ToUtc,
+        string? MinLevel,
+        string? Search,
+        int Limit = 0);
+
+    /// <summary>
     /// Reads the server's in-memory log (SuperAdmin on the Local network tier only). Read-only, so no passkey
     /// step-up is required; only destructive or system changes are challenged.
     /// </summary>
@@ -49,5 +60,14 @@ namespace VideoForensics.Client.Common.Contracts
         /// <param name="ct">Cancellation token.</param>
         /// <exception cref="HttpRequestException">Same status semantics as <see cref="GetPageAsync"/>.</exception>
         IAsyncEnumerable<LogEntry> StreamAsync(LogQuery query, CancellationToken ct);
+
+        /// <summary>
+        /// Reads past entries in a date range, oldest first, from the server's daily log files. Use this for any window
+        /// that is not live; the in-memory buffer only holds the newest entries.
+        /// </summary>
+        /// <param name="query">Range, filters and limit.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <exception cref="HttpRequestException">Same status semantics as <see cref="GetPageAsync"/>.</exception>
+        Task<LogPage> GetHistoryAsync(LogHistoryQuery query, CancellationToken ct);
     }
 }
