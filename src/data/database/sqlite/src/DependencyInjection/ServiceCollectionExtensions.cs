@@ -55,7 +55,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
 
             // Register DbContext factory with SQLite provider
             // Using a factory (not AddDbContext) for thread-safety compatibility with MAUI and concurrent access patterns.
-            string connectionString = $"Data Source={dbPath};Pooling=true;Cache=Shared;Default Timeout=5";
+            string connectionString = SqliteConnectionStrings.ForFile(dbPath);
 
             // Split queries by default: many repository queries Include multiple collections, and the default SingleQuery
             // produces cartesian-product result sets and EF's MultipleCollectionIncludeWarning. Split queries avoid both.
@@ -78,7 +78,7 @@ namespace VideoForensics.Data.Database.Sqlite.DependencyInjection
             string logsPath = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "logs.db");
             _ = services.AddDbContextFactory<VideoForensicsLogsDbContext>((sp, options) =>
             {
-                options.UseSqlite($"Data Source={logsPath};Pooling=true;Cache=Shared;Default Timeout=5");
+                options.UseSqlite(SqliteConnectionStrings.ForFile(logsPath));
 
                 // Same Debug remap as the main database. ProviderApiCallRecords writes go through this context.
                 ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
