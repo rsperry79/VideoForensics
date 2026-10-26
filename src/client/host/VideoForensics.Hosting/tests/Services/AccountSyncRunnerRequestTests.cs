@@ -65,9 +65,10 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             await Sut().RunAsync(_id, new AccountSyncRequest(AccountSyncType.All, null, null, true), CancellationToken.None);
             DateTime after = DateTime.UtcNow;
 
+            // The first weekly window starts a year back; only that window starts at this point.
             _pull.Verify(p => p.PullAccountEventsAsync(
                 _id,
-                It.Is<DateTime?>(from => from.HasValue && from.Value >= before.AddMonths(-1) && from.Value <= after.AddMonths(-1)),
+                It.Is<DateTime?>(from => from.HasValue && from.Value >= before.AddYears(-1) && from.Value <= after.AddYears(-1)),
                 It.IsAny<DateTime?>(),
                 It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal("Full", Assert.Single(_recorded).SyncType);

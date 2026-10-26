@@ -10,9 +10,9 @@ using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccoun
 namespace VideoForensics.Client.Hosting.Tests.Services
 {
     /// <summary>
-    /// A failed backfill month must not be hidden by a later clean month: the sync stays failed and the account is not marked complete.
+    /// A failed backfill week must not be hidden by a later clean week: the sync stays failed and the account is not marked complete.
     /// </summary>
-    public class AccountSyncRunnerMonthlyFailureTests
+    public class AccountSyncRunnerWeeklyFailureTests
     {
         private readonly Mock<IProviderAuthService> _mockAuth = new();
         private readonly Mock<IEventPullService> _mockPull = new();
@@ -34,7 +34,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
-        public async Task RunInitialAsync_MonthFailsThenLaterMonthSucceeds_RecordsFailureAndDoesNotMarkComplete()
+        public async Task RunInitialAsync_WeekFailsThenLaterWeekSucceeds_RecordsFailureAndDoesNotMarkComplete()
         {
             var account = new ProviderAccountEntity { Id = _accountId, UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow, IsActive = true };
             _ = _mockAccounts.Setup(r => r.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(account);
@@ -49,14 +49,14 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 .ReturnsAsync(() =>
                 {
                     calls++;
-                    // The third month fails and records its error; the fourth succeeds and clears it, as the real pull does.
+                    // The third week fails and records its error; the fourth succeeds and clears it, as the real pull does.
                     account.LastErrorMessage = calls == 3 ? "feed failed" : null;
                     return new EventPullResult(DevicesSynced: 1, LocationsSynced: 1, EventsSynced: 0, ConfigAreasSynced: 0, FeedsFailed: calls == 3 ? 1 : 0);
                 });
 
             await CreateSut().RunInitialAsync(_accountId, CancellationToken.None);
 
-            Assert.Equal(12, calls);
+            Assert.Equal(AccountSyncRunner.WeeklyWindows(DateTime.UtcNow).Count, calls);
             ProviderSyncRun run = Assert.Single(runs);
             Assert.False(run.Success);
             Assert.Equal("feed failed", run.ErrorMessage);

@@ -997,7 +997,8 @@ namespace VideoForensics.Providers.Ring
         /// <param name="doorbotId">ID of the doorbot to retrieve the latest available snapshot from</param>
         /// <param name="cancellationToken">Token to cancel the request with</param>
         /// <returns>The status, body bytes and Retry-After wait of the snapshot response</returns>
-        public async Task<HttpUtility.DownloadResult> GetLatestSnapshotWithStatus(int doorbotId, CancellationToken cancellationToken = default)
+        // Virtual so tests can stand in for Ring's snapshot response without a network call.
+        public virtual async Task<HttpUtility.DownloadResult> GetLatestSnapshotWithStatus(int doorbotId, CancellationToken cancellationToken = default)
         {
             await EnsureSessionValid(cancellationToken);
 

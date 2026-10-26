@@ -306,20 +306,20 @@ namespace VideoForensics.Client.Hosting.Services
             DateTime? requestedFrom = historyStart ?? request?.FromUtc ?? account.LastSuccessfulAuthUtc;
             if (AccountSyncRunner.WasLimited(requestedFrom, DateTime.UtcNow))
             {
-                _activity.Append($"{initial.ProviderName}: history limited to one month per pull");
-                _logger.LogInformation("Sync start limited to one month back for {ProviderName} account", initial.ProviderName);
+                _activity.Append($"{initial.ProviderName}: history limited to one week per pull");
+                _logger.LogInformation("Sync start limited to one week back for {ProviderName} account", initial.ProviderName);
             }
 
-            DateTime? from = AccountSyncRunner.OneMonthFloor(requestedFrom, DateTime.UtcNow);
+            DateTime? from = AccountSyncRunner.OneWeekFloor(requestedFrom, DateTime.UtcNow);
             DateTime? to = request?.ToUtc;
 
             // The pull records its own failures on the account; it does not throw for them.
-            // The first sync backfills a year in one-month windows, oldest first, so a long history is pulled in bounded calls.
-            string? monthlyError = null;
+            // The first sync backfills a year in one-week windows, oldest first, so a long history is pulled in bounded calls.
+            string? weeklyError = null;
             EventPullResult counts;
             if (fullHistory)
             {
-                (counts, monthlyError) = await PullMonthlyAsync(eventPullService, accountId, cancellationToken);
+                (counts, weeklyError) = await PullWeeklyAsync(eventPullService, accountId, cancellationToken);
             }
             else
             {
@@ -329,7 +329,7 @@ namespace VideoForensics.Client.Hosting.Services
             LogPullCounts(initial.ProviderName, counts);
 
             // A successful pull clears LastErrorMessage, so anything left here is a failure the pull recorded.
-            string? eventError = monthlyError ?? ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
+            string? eventError = weeklyError ?? ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
 
             if (request?.Type != AccountSyncType.All)
             {
@@ -344,39 +344,39 @@ namespace VideoForensics.Client.Hosting.Services
                 : $"{eventError}; {allSnapshots.ErrorMessage}";
             return new SyncOutcome(error, counts, allSnapshots.DevicesSucceeded);
         }
-        /// <summary>The end of the backfill window that starts at <paramref name="windowStart"/>: one month later, or now if that is sooner.</summary>
+        /// <summary>The end of the backfill window that starts at <paramref name="windowStart"/>: one week later, or now if that is sooner.</summary>
         internal static DateTime NextBackfillEnd(DateTime windowStart, DateTime nowUtc)
         {
-            DateTime end = windowStart.AddMonths(1);
+            DateTime end = windowStart.AddDays(7);
             return end > nowUtc ? nowUtc : end;
         }
 
-        /// <summary>True when a requested start is older than one month, so the pull will be cut short. Callers report it.</summary>
+        /// <summary>True when a requested start is older than one week, so the pull will be cut short. Callers report it.</summary>
         internal static bool WasLimited(DateTime? requested, DateTime nowUtc)
         {
-            return requested is { } start && start < nowUtc.AddMonths(-1);
+            return requested is { } start && start < nowUtc.AddDays(-7);
         }
 
         /// <summary>
-        /// No single pull reaches further back than one month: a start older than that, or no start at all, becomes one month before now.
-        /// The monthly backfill windows are already one month each, so they do not go through this.
+        /// No single pull reaches further back than one week: a start older than that, or no start at all, becomes one week before now.
+        /// The weekly backfill windows are already one week each, so they do not go through this.
         /// </summary>
-        internal static DateTime OneMonthFloor(DateTime? from, DateTime nowUtc)
+        internal static DateTime OneWeekFloor(DateTime? from, DateTime nowUtc)
         {
-            DateTime floor = nowUtc.AddMonths(-1);
+            DateTime floor = nowUtc.AddDays(-7);
             return from is { } start && start > floor ? start : floor;
         }
 
         /// <summary>
-        /// The windows of an initial backfill: one month each, from a year ago up to now, oldest first. The last window ends at now.
+        /// The windows of an initial backfill: one week each, from a year ago up to now, oldest first. The last window ends at now.
         /// </summary>
-        internal static IReadOnlyList<(DateTime From, DateTime To)> MonthlyWindows(DateTime nowUtc)
+        internal static IReadOnlyList<(DateTime From, DateTime To)> WeeklyWindows(DateTime nowUtc)
         {
             var windows = new List<(DateTime From, DateTime To)>();
             DateTime start = nowUtc.AddYears(-1);
             while (start < nowUtc)
             {
-                DateTime end = start.AddMonths(1);
+                DateTime end = start.AddDays(7);
                 if (end > nowUtc)
                 {
                     end = nowUtc;
@@ -390,24 +390,24 @@ namespace VideoForensics.Client.Hosting.Services
         }
 
         /// <summary>
-        /// Pulls the backfill one month at a time. Discovery repeats every month, so devices and locations take the largest
-        /// count rather than a sum; events and failed feeds are summed across the months.
+        /// Pulls the backfill one week at a time. Discovery repeats every week, so devices and locations take the largest
+        /// count rather than a sum; events and failed feeds are summed across the weeks.
         /// </summary>
-        private async Task<(EventPullResult Counts, string? Error)> PullMonthlyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
+        private async Task<(EventPullResult Counts, string? Error)> PullWeeklyAsync(IEventPullService eventPullService, Guid accountId, CancellationToken cancellationToken)
         {
             int devices = 0, locations = 0, events = 0, config = 0, failed = 0;
             string? firstError = null;
-            foreach ((DateTime from, DateTime to) in MonthlyWindows(DateTime.UtcNow))
+            foreach ((DateTime from, DateTime to) in WeeklyWindows(DateTime.UtcNow))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                EventPullResult month = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
-                devices = Math.Max(devices, month.DevicesSynced);
-                locations = Math.Max(locations, month.LocationsSynced);
-                config = Math.Max(config, month.ConfigAreasSynced);
-                events += month.EventsSynced;
-                failed += month.FeedsFailed;
+                EventPullResult week = await eventPullService.PullAccountEventsAsync(accountId, from, to, cancellationToken);
+                devices = Math.Max(devices, week.DevicesSynced);
+                locations = Math.Max(locations, week.LocationsSynced);
+                config = Math.Max(config, week.ConfigAreasSynced);
+                events += week.EventsSynced;
+                failed += week.FeedsFailed;
 
-                // A failed month records its error on the account; a later clean month clears it. Keep the first one so it is not lost.
+                // A failed week records its error on the account; a later clean week clears it. Keep the first one so it is not lost.
                 firstError ??= ProviderSyncRunRecorder.OutcomeAfterPull(await _accounts.GetAsync(accountId, cancellationToken));
             }
 
