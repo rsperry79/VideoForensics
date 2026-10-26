@@ -266,9 +266,10 @@ namespace VideoForensics.Data.Core.Services
                         await context.DetectionEntities.AddDetectionTypeOccurrencesAsync(occurrences, ct);
                     }
 
+                    // Downloads run in the background as the service account, which is not a person.
                     _ = await context.ActionLog.AppendAsync(
                         Environment.UserName,
-                        ActorType.Human,
+                        ActorTypes.ForAccount(Environment.UserName),
                         "MediaDownloaded",
                         nameof(DownloadEvent),
                         evt.Id,

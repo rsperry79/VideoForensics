@@ -362,6 +362,9 @@
   <data name="Notices" xml:space="preserve">
     <value>Notices</value>
   </data>
+  <data name="NoticeReview" xml:space="preserve">
+    <value>Review chain of custody</value>
+  </data>
   <data name="NoticeCreateCase" xml:space="preserve">
     <value>Create case</value>
   </data>

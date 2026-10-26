@@ -91,7 +91,7 @@
                                     <span class="@GetSeverityBadgeClass(notice.Severity)" style="padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">
                                         @GetSeverityLabel(notice.Severity)
                                     </span>
-                                    <strong style="font-size: 13px;">@notice.EventType</strong>
+                                    <strong style="font-size: 13px;">@NoticeActions.Title(notice.EventType)</strong>
                                 </div>
                                 <div style="font-size: 12px; color: #666; margin-bottom: 4px;" title="@notice.Details">
                                     @(notice.Details?.Length > 80 ? notice.Details.Substring(0, 80) + "..." : notice.Details ?? "")
@@ -102,10 +102,15 @@
                                 @{
                                     string? caseLink = NoticeActions.CreateCaseLink(notice.EventType, notice.ActionPath, notice.Details);
                                     string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
+                                    string? reviewLink = NoticeActions.ReviewLink(notice.EventType, notice.ActionPath);
                                 }
-                                @if (caseLink is not null || settingsLink is not null)
+                                @if (caseLink is not null || settingsLink is not null || reviewLink is not null)
                                 {
                                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                        @if (reviewLink is not null)
+                                        {
+                                            <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@L["NoticeReview"]</a>
+                                        }
                                         @if (caseLink is not null)
                                         {
                                             <a href="@caseLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-primary" data-testid="notice-create-case">@L["NoticeCreateCase"]</a>
