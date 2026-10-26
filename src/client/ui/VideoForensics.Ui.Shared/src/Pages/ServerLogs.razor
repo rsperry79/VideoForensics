@@ -64,6 +64,7 @@
         <table class="table table-sm table-hover log-table mb-0">
             <thead>
                 <tr>
+                    <th class="col-date">@L["ColDate"]</th>
                     <th class="col-time">@L["ColTime"]</th>
                     <th class="col-level">@L["ColLevel"]</th>
                     <th class="col-category">@L["ColCategory"]</th>
@@ -75,6 +76,7 @@
                 {
                     bool expanded = entry.Exception is not null && _expanded.Contains(entry.Sequence);
                     <tr @key="entry.Sequence" data-testid="log-row" data-seq="@entry.Sequence" data-level="@entry.Level">
+                        <td class="text-nowrap" data-testid="log-date" title="@FormatZoned(entry)">@FormatLocalDate(entry)</td>
                         <td class="text-nowrap" data-testid="log-time" title="@FormatZoned(entry)">@FormatLocal(entry)</td>
                         <td><span class="badge lvl @LevelCss(entry.Level)" data-testid="log-level-badge">@entry.Level</span></td>
                         <td class="text-nowrap" data-testid="log-category" title="@entry.Category">@ShortCategory(entry.Category)</td>
@@ -536,6 +538,9 @@ else if (_sessionChecked)
 
     private string FormatLocal(LogEntry e)
         => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
+    private string FormatLocalDate(LogEntry e)
+        => TimeZoneInfo.ConvertTime(e.TimestampUtc, Zone.Zone).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static string ShortCategory(string category)
     {

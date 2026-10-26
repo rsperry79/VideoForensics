@@ -83,6 +83,9 @@
   <data name="DownloadButton" xml:space="preserve">
     <value>Download visible (.txt)</value>
   </data>
+  <data name="ColDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
   <data name="ColTime" xml:space="preserve">
     <value>Time</value>
   </data>
