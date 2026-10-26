@@ -4,24 +4,24 @@ using Xunit;
 
 namespace VideoForensics.Client.Ui.Shared.Tests;
 
-/// <summary>Two cameras can share a name, so every device label carries a piece of its ID.</summary>
+/// <summary>Two cameras can share a name, so every device label carries its full ID.</summary>
 public class DeviceLabelTests
 {
     [Fact]
-    public void LongId_ShowsNameAndLastFourCharacters()
+    public void LongId_ShowsNameAndFullId()
     {
-        Assert.Equal("Porch (ID ...4001)", DeviceLabel.For("Porch", "86401464001"));
+        Assert.Equal("Porch (ID 86401464001)", DeviceLabel.For("Porch", "86401464001"));
     }
 
     [Fact]
-    public void ShortId_ShowsWholeId()
+    public void ShortId_ShowsNameAndWholeId()
     {
-        Assert.Equal("Porch (ID ...12)", DeviceLabel.For("Porch", "12"));
+        Assert.Equal("Porch (ID 12)", DeviceLabel.For("Porch", "12"));
     }
 
     [Fact]
-    public void BlankName_FallsBackToIdOnly()
+    public void BlankName_FallsBackToFullIdOnly()
     {
-        Assert.Equal("Device ...4001", DeviceLabel.For("  ", "86401464001"));
+        Assert.Equal("Device 86401464001", DeviceLabel.For("  ", "86401464001"));
     }
 }

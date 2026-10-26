@@ -1143,7 +1143,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device ...{IdSuffix}; not saving the cached image", deviceId.Length <= 4 ? deviceId : deviceId[^4..]);
+                    _logger.LogWarning(ex, "Could not trigger a fresh snapshot for device {DeviceId}; not saving the cached image", deviceId);
                     _currentStatus = _currentStatus with { IsDownloading = false };
                     return new DownloadResult(
                         Success: false,
@@ -1154,8 +1154,8 @@ namespace VideoForensics.Providers.Ring.Services
                 // Snapshots carry no event data, so take the name from the device list (cached, so the
                 // state/details lookups below reuse it). Falls back to deviceId if unavailable.
                 string deviceNameForSnapshot = await ResolveDeviceNameAsync(session, deviceId, cancellationToken) ?? deviceId;
-                // The name can repeat across cameras, so the log also carries the last four characters of the device ID.
-                _logger.LogInformation("Snapshot starting for {DeviceName} (ID ...{IdSuffix})", deviceNameForSnapshot, deviceId.Length <= 4 ? deviceId : deviceId[^4..]);
+                // The name can repeat across cameras, so the log also carries the full device ID.
+                _logger.LogInformation("Snapshot starting for {DeviceName} (ID {DeviceId})", deviceNameForSnapshot, deviceId);
                 string fileName = Path.Combine(outputPath, MediaFileNamer.FormatMediaFileName(deviceNameForSnapshot, DateTime.UtcNow, "snapshot", "jpg"));
 
                 await RetryWithBackoffAsync(async () =>
