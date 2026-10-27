@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -33,6 +34,8 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILocationRepository _locations;
         private readonly IDeviceRepository _devices;
         private readonly IMediaItemRepository _mediaItems;
+        private readonly IProviderAccountRepository _accounts;
+        private readonly IStorageLocationProvider _storage;
         private readonly IEvidenceChangeNotifier _evidenceChanges;
         private readonly ITimelineVideoBuilder _builder;
         private readonly IOptions<SnapshotTimelineOptions> _options;
@@ -46,6 +49,8 @@ namespace VideoForensics.Client.Hosting.Services
             ILocationRepository locations,
             IDeviceRepository devices,
             IMediaItemRepository mediaItems,
+            IProviderAccountRepository accounts,
+            IStorageLocationProvider storage,
             ITimelineVideoBuilder builder,
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotRollupService> logger,
@@ -58,6 +63,8 @@ namespace VideoForensics.Client.Hosting.Services
             _locations = locations;
             _devices = devices;
             _mediaItems = mediaItems;
+            _accounts = accounts;
+            _storage = storage;
             _evidenceChanges = evidenceChanges ?? new NullEvidenceChangeNotifier();
             _builder = builder;
             _options = options;
@@ -67,22 +74,34 @@ namespace VideoForensics.Client.Hosting.Services
         /// <inheritdoc />
         public async Task<SnapshotRollupResult> RollUpAccountAsync(Guid accountId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
-            var devices = new List<DeviceEntity>();
+            // Human-readable name only: raw account GUIDs must not reach the logs.
+            ProviderAccount? account = await _accounts.GetAsync(accountId, cancellationToken);
+            if (account is null)
+            {
+                return new SnapshotRollupResult(ErrorMessage: "Account not found");
+            }
+
+            // Same folder layout as the event pull and snapshot captures, so each loop sits with its device's other media.
+            string mediaRoot = _storage.GetDefaultRoot(StorageCategory.Media);
+            var devices = new List<(DeviceEntity Device, string DeviceFolder)>();
             foreach (VideoForensics.Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
             {
-                devices.AddRange(await _devices.GetByLocationIdAsync(location.Id, cancellationToken));
+                foreach (DeviceEntity device in await _devices.GetByLocationIdAsync(location.Id, cancellationToken))
+                {
+                    devices.Add((device, MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, location.Name, device.Name)));
+                }
             }
 
             int rolledUp = 0;
             int failed = 0;
             string? firstError = null;
 
-            foreach (DeviceEntity device in devices)
+            foreach ((DeviceEntity device, string deviceFolder) in devices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    if (await RollUpDeviceAsync(device, fromUtc, toUtc, cancellationToken))
+                    if (await RollUpDeviceAsync(device, deviceFolder, fromUtc, toUtc, cancellationToken))
                     {
                         rolledUp++;
                     }
@@ -104,7 +123,7 @@ namespace VideoForensics.Client.Hosting.Services
         }
 
         /// <summary>Builds and registers one device's loop. Returns false when the window has no usable snapshots.</summary>
-        private async Task<bool> RollUpDeviceAsync(DeviceEntity device, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
+        private async Task<bool> RollUpDeviceAsync(DeviceEntity device, string deviceFolder, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken)
         {
             IReadOnlyList<TimelineStill> stills = await LoadStillsAsync(device.Id, fromUtc, toUtc, cancellationToken);
             if (stills.Count == 0)
@@ -114,7 +133,7 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // The loop file is named by its window end, so a retried window gets a fresh path.
-            string outputPath = Path.Combine(_options.Value.SnapshotRoot, "rollups", device.Id.ToString("D"), $"{toUtc:yyyyMMddHHmmss}.mp4");
+            string outputPath = Path.Combine(deviceFolder, $"{toUtc:yyyyMMddHHmmss}.mp4");
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
             TimelineVideoResult result = await _builder.BuildAsync(new TimelineVideoRequest(stills, outputPath, MaxHeight: CameraLoopHeight), cancellationToken);

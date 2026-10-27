@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
 using VideoForensics.Data.Common.Contracts;
@@ -27,8 +28,12 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<IDeviceRepository> _devices = new();
         private readonly Mock<IMediaItemRepository> _media = new();
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
+        private readonly Mock<IProviderAccountRepository> _accounts = new();
+        private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
+
+        private string MediaRoot => Path.Combine(_root, "media");
 
         public SnapshotRollupServiceTests()
         {
@@ -36,6 +41,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _device = new Device { Id = Guid.NewGuid(), LocationId = _location.Id, ProviderDeviceId = "porch", Name = "Porch", Type = "camera" };
             _ = _locations.Setup(l => l.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync([_location]);
             _ = _devices.Setup(d => d.GetByLocationIdAsync(_location.Id, It.IsAny<CancellationToken>())).ReturnsAsync([_device]);
+            _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProviderAccount { Id = _accountId, ProviderName = "Ring", IsActive = true });
+            _ = _storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(() => MediaRoot);
         }
 
         public void Dispose()
@@ -52,6 +60,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _locations.Object,
             _devices.Object,
             _media.Object,
+            _accounts.Object,
+            _storage.Object,
             _builder.Object,
             Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotRollupService>.Instance);
@@ -129,6 +139,35 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         }
 
         [Fact]
+        public async Task RollUp_WritesLoopBesideEventsInProviderLocationDeviceFolder()
+        {
+            // Same folder the event pull and snapshot captures use, so the loop sits with the device's other media.
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            TimelineVideoRequest? sent = null;
+            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
+                .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
+            string expected = Path.Combine(MediaRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+
+            _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(expected, sent!.OutputPath);
+            _media.Verify(m => m.AddAsync(It.Is<MediaItem>(i => i.FilePath == expected), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RollUp_AccountNotFound_ReportsErrorAndBuildsNothing()
+        {
+            _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync((ProviderAccount?)null);
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+
+            SnapshotRollupResult result = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal("Account not found", result.ErrorMessage);
+            _builder.Verify(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RollUp_SkipsSnapshotRowsWhoseFileIsMissing()
         {
             // The database already excludes non-snapshot media; the only check left in the service is the file on disk.
@@ -193,7 +232,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
                 .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 3));
 
             SnapshotRollupService service = new(
-                _locations.Object, _devices.Object, _media.Object, _builder.Object,
+                _locations.Object, _devices.Object, _media.Object, _accounts.Object, _storage.Object, _builder.Object,
                 Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                 NullLogger<SnapshotRollupService>.Instance,
                 captures: captures.Object,
