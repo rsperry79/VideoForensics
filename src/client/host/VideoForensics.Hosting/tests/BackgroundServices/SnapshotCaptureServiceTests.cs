@@ -51,6 +51,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync((SyncSchedule?)null);
             _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" }]);
+            _ = _locations.Setup(r => r.GetAsync(_locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" });
             _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -371,8 +373,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await RunTickAsync();
 
-            string accountFolder = _accountId.ToString("N");
-            string expectedRelative = Path.Combine(accountFolder, "12345", ExpectedFileName(T0));
+            string expectedRelative = Path.Combine("ring", "home", "front_door_12345", ExpectedFileName(T0));
             Assert.True(File.Exists(Path.Combine(_root, expectedRelative)));
             SnapshotCapture row = Assert.Single(_rows);
             Assert.Equal(200, row.HttpStatus);
@@ -394,7 +395,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Equal(404, row.HttpStatus);
             Assert.False(row.IsCurrent);
             Assert.Null(row.MediaFilePath);
-            Assert.False(Directory.Exists(Path.Combine(_root, _accountId.ToString("N"))));
+            Assert.False(Directory.Exists(Path.Combine(_root, "ring")));
         }
 
         [Fact]
