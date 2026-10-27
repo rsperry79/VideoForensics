@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -29,7 +30,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     ///
     /// Each attempt runs through <see cref="IProviderSnapshotCapture"/>, which takes the account's pacer turns and handles rate limits
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
-    /// Rows hold only the attempt record. A 200 also writes the JPEG under SnapshotRoot\&lt;account&gt;\&lt;doorbotId&gt;\yyyyMMddTHHmmssfffZ.jpg.
+    /// Rows hold only the attempt record. A 200 also writes the JPEG under SnapshotRoot\&lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\yyyyMMddTHHmmssfffZ.jpg.
     ///
     /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
     /// ("Ring account") and the device name, never account or device GUIDs.
@@ -347,7 +348,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
                 try
                 {
-                    mediaFilePath = WriteImage(account.Id, device.ProviderDeviceId, attemptedAt, image);
+                    Location? location = await sp.GetRequiredService<ILocationRepository>().GetAsync(device.LocationId, ct);
+                    mediaFilePath = WriteImage(account.ProviderName, location?.Name ?? string.Empty, device.Name, device.ProviderDeviceId, attemptedAt, image);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -413,8 +415,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// Writes the JPEG under SnapshotRoot\&lt;account folder&gt;\&lt;doorbotId&gt;\ and returns the path relative to SnapshotRoot. The account folder
-        /// is the account GUID without dashes, the same folder the event media pull uses.
+        /// Writes the JPEG under SnapshotRoot\&lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\ and returns the path relative to SnapshotRoot. The folder
+        /// is the same provider/location/device layout the media pull uses, so snapshots and videos sort the same way.
         /// <summary>
         /// Registers a successful capture as a snapshot Media row, so it appears on the Devices tab and joins the roll-up loop
         /// alongside the snapshots the scheduled pull records. Best-effort: a failed write is logged and never fails the capture.
@@ -457,21 +459,21 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// </summary>
-        private string WriteImage(Guid accountId, string providerDeviceId, DateTimeOffset capturedAtUtc, byte[] image)
+        private string WriteImage(string providerName, string locationName, string deviceName, string providerDeviceId, DateTimeOffset capturedAtUtc, byte[] image)
         {
             if (!int.TryParse(providerDeviceId, NumberStyles.None, CultureInfo.InvariantCulture, out _))
             {
                 throw new ArgumentException("Ring device ids are numeric.", nameof(providerDeviceId));
             }
 
-            string accountFolder = accountId.ToString("N");
+            string snapshotRoot = _options.Value.SnapshotRoot;
+            string folder = MediaFolderLayout.GetDeviceFolder(snapshotRoot, providerName, locationName, deviceName);
             string fileName = capturedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
-            string relativePath = Path.Combine(accountFolder, providerDeviceId, fileName);
-            string fullPath = Path.Combine(_options.Value.SnapshotRoot, relativePath);
+            string fullPath = Path.Combine(folder, fileName);
 
-            _ = Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            _ = Directory.CreateDirectory(folder);
             File.WriteAllBytes(fullPath, image);
-            return relativePath;
+            return Path.GetRelativePath(snapshotRoot, fullPath);
         }
 
         /// <summary>

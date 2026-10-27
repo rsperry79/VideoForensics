@@ -91,7 +91,24 @@ namespace VideoForensics.Data.Core.Services
                 }
 
                 _ = Directory.CreateDirectory(deviceFolder);
+
+                // The thumbnail is stored beside the clip under a name derived from it, so it moves with the clip under the same name.
+                // It is looked up by the old FilePath, so it is found before the clip is moved.
+                string thumbnailSource = MediaThumbnailService.ThumbnailPathFor(item.FilePath);
                 File.Move(item.FilePath, destination);
+                MoveSidecarIfPresent(thumbnailSource, deviceFolder);
+
+                // PreviewPath is absolute, so it is rewritten to the new folder when it sat under the legacy root.
+                if (item.PreviewPath is not null && IsUnder(item.PreviewPath, legacyRoot) && File.Exists(item.PreviewPath))
+                {
+                    string previewDestination = Path.Combine(deviceFolder, Path.GetFileName(item.PreviewPath));
+                    if (!File.Exists(previewDestination))
+                    {
+                        File.Move(item.PreviewPath, previewDestination);
+                        item.PreviewPath = previewDestination;
+                    }
+                }
+
                 item.FilePath = destination;
                 await _mediaItems.UpdateAsync(item, cancellationToken);
                 moved++;
@@ -150,6 +167,16 @@ namespace VideoForensics.Data.Core.Services
 
             Directory.Delete(root, recursive: false);
             return true;
+        }
+
+        /// <summary>Moves a sidecar file into <paramref name="folder"/> under its own name, unless it is missing or the destination exists.</summary>
+        private static void MoveSidecarIfPresent(string sidecar, string folder)
+        {
+            string destination = Path.Combine(folder, Path.GetFileName(sidecar));
+            if (File.Exists(sidecar) && !File.Exists(destination))
+            {
+                File.Move(sidecar, destination);
+            }
         }
 
         private static bool IsUnder(string path, string root)

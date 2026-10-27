@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Common.Contracts;
-using VideoForensics.Client.Core.Utilities;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -133,7 +132,7 @@ namespace VideoForensics.Client.Hosting.Services
             foreach ((DeviceEntity? device, string? providerLocationId, string? locationName) in targets)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                string outputPath = PathUtilities.BuildSavePath(mediaRoot, locationName, device.Name);
+                string outputPath = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, locationName, device.Name);
                 try
                 {
                     DownloadResult result = await download.DownloadSnapshotsAsync(

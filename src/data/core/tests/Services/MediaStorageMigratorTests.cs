@@ -211,6 +211,29 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task MovesThumbnailAndPreviewWithTheClip()
+        {
+            string legacyFile = Path.Combine(_legacy, "acct", "clip.mp4");
+            string thumbnail = MediaThumbnailService.ThumbnailPathFor(legacyFile);
+            string preview = MediaPreviewService.PreviewPathFor(legacyFile);
+            WriteFile(legacyFile, "video");
+            WriteFile(thumbnail, "thumb");
+            WriteFile(preview, "preview");
+            MediaItem row = AddRow(legacyFile);
+            row.PreviewPath = preview;
+            SetLegacyLocation(_legacy);
+
+            _ = await CreateMigrator().MigrateAsync(CancellationToken.None);
+
+            string folder = Path.Combine(_target, "ring", "arlington", "front_door");
+            Assert.True(File.Exists(Path.Combine(folder, Path.GetFileName(thumbnail))));
+            Assert.True(File.Exists(Path.Combine(folder, Path.GetFileName(preview))));
+            Assert.False(File.Exists(thumbnail));
+            Assert.False(File.Exists(preview));
+            Assert.Equal(Path.Combine(folder, Path.GetFileName(preview)), row.PreviewPath);
+        }
+
+        [Fact]
         public async Task NoOpWhenNoLegacyLocationSaved()
         {
             SetLegacyLocation(null);
