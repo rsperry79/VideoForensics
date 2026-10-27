@@ -1313,7 +1313,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 // The status is logged so a Ring refusal shows its cause here; the body stays in the provider API error log.
                 string httpStatus = RingProviderApiErrorClassifier.GetHttpStatusCode(ex)?.ToString() ?? "none";
-                _logger.LogError(ex, "Error downloading snapshot for device {DeviceId} (HTTP {HttpStatus})", deviceId, httpStatus);
+                // The exception is not passed to the logger: the message and type are enough, and a stack trace only adds noise.
+                _logger.LogError("Error downloading snapshot for device {DeviceId} (HTTP {HttpStatus}): {ExceptionType}: {ErrorMessage}",
+                    deviceId, httpStatus, ex.GetType().Name, ex.Message);
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
                 if (resolvedDeviceGuid.HasValue)

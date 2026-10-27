@@ -667,6 +667,32 @@ namespace VideoForensics.Providers.Ring.Tests
         }
 
         [Fact]
+        public async Task DownloadSnapshotsAsync_WhenRingReturns404_LogsErrorWithoutStackTrace()
+        {
+            // Arrange: a device with no snapshot answers 404. The failure stays an Error, but the entry carries the message
+            // alone, so the log does not fill with a stack trace for an expected condition.
+            var sessionProvider = new Mock<ISessionProvider>();
+            var mockSession = new Mock<Session>("testuser", "testpass", null, null, null);
+            _ = mockSession.Setup(s => s.GetLatestSnapshotWithStatus(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpUtility.DownloadResult(HttpStatusCode.NotFound, [], null));
+            _ = sessionProvider.Setup(sp => sp.GetSession(It.IsAny<Guid>())).Returns(mockSession.Object);
+            var logged = new List<(LogLevel Level, Exception? Exception)>();
+            var logger = new Mock<ILogger>();
+            _ = logger.Setup(l => l.Log(It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+                .Callback(new InvocationAction(invocation => logged.Add(((LogLevel)invocation.Arguments[0], (Exception?)invocation.Arguments[3]))));
+            var service = new SnapshotReadStubMediaDownloadService(logger.Object, sessionProvider.Object, CreateMockDataClient());
+            string outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+            // Act
+            DownloadResult result = await service.DownloadSnapshotsAsync("123", outputPath, DateTime.Now.AddDays(-1), DateTime.Now);
+
+            // Assert
+            Assert.False(result.Success);
+            (LogLevel Level, Exception? Exception) error = Assert.Single(logged, e => e.Level == LogLevel.Error);
+            Assert.Null(error.Exception);
+        }
+
+        [Fact]
         public async Task ConcurrentDownloads_WithDifferentAccountIds_DoesNotRace()
         {
             // Arrange

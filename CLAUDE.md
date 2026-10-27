@@ -7,6 +7,7 @@ Detail: `.claude/rules/` (path-scoped), `.claude/skills/` (procedures), `.claude
 - Public APIs are interfaces in `Contracts/`. No vendor SDK outside service layers.
 - Non-test changes ship with tests (TDD). Async I/O; async methods take `CancellationToken`.
 - Log user paths (Info success, Error failure) with context; account names, never GUIDs. Expose errors via `GetLastError()`.
+- Never log a stack trace. Capture failures gracefully: log the error message and exception type with context, at Error, without passing the exception object to the logger.
 - Validate input at API boundaries. No secrets or plaintext passwords in code.
 - Public interfaces get XML docs; complex logic gets "why" comments.
 - Breaking change: update this file and the commit message.
