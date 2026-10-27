@@ -52,10 +52,10 @@ public class AccountTabsTests : AccountDetailsPageTestBase
     [Theory]
     [InlineData("/accounts/{Id:guid}/sync")]
     [InlineData("/accounts/{Id:guid}/cases")]
-    public void AccountTabRoutes_AreSuperAdminLocalLikeDetails(string route)
+    public void AccountTabRoutes_AreAdminLikeDetails(string route)
     {
         Assert.True(VideoForensics.Client.Ui.Shared.Layout.PageAccessRules.TryGetPolicy(route, out AccessPolicy policy));
-        Assert.Equal(VideoForensics.Client.Ui.Shared.Layout.AccessPolicy.SuperAdminLocal, policy);
+        Assert.Equal(VideoForensics.Client.Ui.Shared.Layout.AccessPolicy.Admin, policy);
     }
 
     [Fact]

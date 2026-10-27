@@ -182,7 +182,41 @@ public class GuardedProviderAccountRepository_Tests
         var inner = new Mock<IProviderAccountRepository>();
         var gate = new Mock<ICircuitOperatorGate>();
         _ = gate.Setup(g => g.Allows(It.IsAny<AccessPolicy>())).Returns(allowed);
-        return (new GuardedProviderAccountRepository(inner.Object, gate.Object), inner);
+        return (new GuardedProviderAccountRepository(inner.Object, gate.Object, EditPolicyRequiring(AccessPolicy.Admin)), inner);
+    }
+
+    private static IProviderAccountEditPolicy EditPolicyRequiring(AccessPolicy required)
+    {
+        var editPolicy = new Mock<IProviderAccountEditPolicy>();
+        _ = editPolicy.Setup(p => p.GetRequiredPolicyAsync(It.IsAny<CancellationToken>())).ReturnsAsync(required);
+        return editPolicy.Object;
+    }
+
+    [Fact]
+    public async Task GuardedProviderAccountRepository_UpdateAsync_SuperAdminOnlyEdit_AdminDeniedAndInnerNotCalled()
+    {
+        var inner = new Mock<IProviderAccountRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdmin)).Returns(false);
+        var guarded = new GuardedProviderAccountRepository(inner.Object, gate.Object, EditPolicyRequiring(AccessPolicy.SuperAdmin));
+
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.UpdateAsync(new ProviderAccount { ProviderName = "ring" }, CancellationToken.None));
+        inner.Verify(i => i.UpdateAsync(It.IsAny<ProviderAccount>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GuardedProviderAccountRepository_DeleteAsync_AdminOpenEdit_StillRequiresSuperAdminLocal()
+    {
+        // Delete is SuperAdmin-only regardless of the edit setting: an edit setting open to Admin must not open delete.
+        var inner = new Mock<IProviderAccountRepository>();
+        var gate = new Mock<ICircuitOperatorGate>();
+        _ = gate.Setup(g => g.Allows(AccessPolicy.Admin)).Returns(true);
+        _ = gate.Setup(g => g.Allows(AccessPolicy.SuperAdminLocal)).Returns(false);
+        var guarded = new GuardedProviderAccountRepository(inner.Object, gate.Object, EditPolicyRequiring(AccessPolicy.Admin));
+
+        _ = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => guarded.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
+        inner.Verify(i => i.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -298,6 +332,7 @@ public class CircuitGuardRegistration_Tests
         var services = new ServiceCollection();
         _ = services.AddScoped<IProviderAccountRepository, ProviderAccountRepositoryStub>();
         // The other guarded services must be registered too, or the helper fails fast (see the test below).
+        _ = services.AddScoped(_ => ProviderAccountEditPolicyStub.Admin());
         _ = services.AddScoped(_ => new Mock<IDeviceConfigRepository>().Object);
         _ = services.AddScoped(_ => new Mock<IEvidenceExportService>().Object);
         _ = services.AddScoped(_ => new Mock<IRingSelfTestService>().Object);

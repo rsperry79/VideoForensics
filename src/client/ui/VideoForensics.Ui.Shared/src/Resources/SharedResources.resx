@@ -173,6 +173,9 @@
   <data name="Sources" xml:space="preserve">
     <value>Sources</value>
   </data>
+  <data name="Permissions" xml:space="preserve">
+    <value>Permissions</value>
+  </data>
   <data name="Admin" xml:space="preserve">
     <value>Admin</value>
   </data>

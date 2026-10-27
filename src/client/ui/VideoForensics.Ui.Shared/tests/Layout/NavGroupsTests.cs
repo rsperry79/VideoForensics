@@ -112,13 +112,26 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Sources_ProviderAccounts_HiddenFromAdminOffLocalTier()
+    public void Sources_ProviderAccounts_VisibleToAdminAndUp_HiddenFromReview()
     {
         NavGroup group = NavGroups.All.First(g => g.Key == "admin");
         NavItem accountsItem = group.Items.First(i => i.Path == "/accounts");
 
-        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
-        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void Permissions_UnderAdminSecurity_RequiresLocalOrPasskeySuperAdmin()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem permissionsItem = group.Items.First(i => i.Path == "/settings/permissions");
+
+        Assert.Equal("Security", permissionsItem.Section);
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsPasskeySession: true)));
     }
 
     [Fact]
