@@ -220,7 +220,16 @@ namespace VideoForensics.Client.Hosting.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to pull events for device");
+                        // A throttle is handled and expected: name the device and the reason, never the stack.
+                        if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException throttled)
+                        {
+                            _logger.LogWarning("Skipped device {DeviceName}: {Reason}", deviceName, throttled.Message);
+                        }
+                        else
+                        {
+                            _logger.LogError(ex, "Failed to pull events for device {DeviceName}", deviceName);
+                        }
+
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
@@ -242,7 +251,16 @@ namespace VideoForensics.Client.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                _logger.LogInformation("Successfully pulled events for account");
+                // Only report success when every device pulled; a partial pull must not read as a clean one in the log.
+                if (feedsFailed > 0)
+                {
+                    _logger.LogWarning("Pulled events for account with {FailedCount} of {DeviceCount} device(s) failed", feedsFailed, inventory.Devices.Count);
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully pulled events for account");
+                }
+
                 return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
             }
             catch (Exception ex)

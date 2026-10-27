@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Providers.Ring.Exceptions;
 
 using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccount;
 
@@ -138,6 +139,55 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
 
             Assert.DoesNotContain(_logs.Lines, line => line.Contains(_accountId.ToString(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_DeviceThrottled_LogsWarningWithDeviceNameAndNoError()
+        {
+            EventPullService sut = BuildSut(Device(_locationId, "dev-1", "Front Door"), Device(_locationId, "dev-2", "Back Yard"));
+            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ThrottledException("Ring has rate-limited this account"));
+
+            _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            // A throttle is an expected state, so it reads as a warning with its reason and never as an error with a stack.
+            Assert.Contains("Warning: Skipped device Front Door: Ring has rate-limited this account", _logs.Lines);
+            Assert.DoesNotContain(_logs.Lines, line => line.StartsWith("Error:", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_DeviceFailsWithOtherError_LogsErrorNamingTheDevice()
+        {
+            EventPullService sut = BuildSut(Device(_locationId, "dev-1", "Front Door"), Device(_locationId, "dev-2", "Back Yard"));
+            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("boom"));
+
+            _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Contains("Error: Failed to pull events for device Front Door", _logs.Lines);
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_SomeDevicesFail_DoesNotReportAccountSuccess()
+        {
+            EventPullService sut = BuildSut(Device(_locationId, "dev-1", "Front Door"), Device(_locationId, "dev-2", "Back Yard"));
+            _ = _events.Setup(s => s.GetEventsAsync(_accountId, "dev-1", It.IsAny<DateTime>(), It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ThrottledException("Ring has rate-limited this account"));
+
+            _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.DoesNotContain("Information: Successfully pulled events for account", _logs.Lines);
+            Assert.Contains("Warning: Pulled events for account with 1 of 2 device(s) failed", _logs.Lines);
+        }
+
+        [Fact]
+        public async Task PullAccountEventsAsync_AllDevicesSucceed_ReportsAccountSuccess()
+        {
+            EventPullService sut = BuildSut(Device(_locationId, "dev-1", "Front Door"), Device(_locationId, "dev-2", "Back Yard"));
+
+            _ = await sut.PullAccountEventsAsync(_accountId, null, null, CancellationToken.None);
+
+            Assert.Contains("Information: Successfully pulled events for account", _logs.Lines);
         }
     }
 }
