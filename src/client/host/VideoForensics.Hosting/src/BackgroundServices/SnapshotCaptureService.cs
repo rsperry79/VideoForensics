@@ -30,7 +30,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
     ///
     /// Each attempt runs through <see cref="IProviderSnapshotCapture"/>, which takes the account's pacer turns and handles rate limits
     /// (pause, alert, spacing penalty). A 429 is recorded as a gap and the account is held back for the pause the provider reported.
-    /// Rows hold only the attempt record. A 200 also writes the JPEG under SnapshotRoot\&lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\yyyyMMddTHHmmssfffZ.jpg.
+    /// Rows hold only the attempt record. A 200 also writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\yyyyMMddTHHmmssfffZ.jpg.
     ///
     /// Server-tier only (VideoForensics.Client.WebApp, registered through AddVideoForensicsSnapshotCapture). Logs use the provider name
     /// ("Ring account") and the device name, never account or device GUIDs.
@@ -64,6 +64,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         private readonly IOptions<SnapshotTimelineOptions> _options;
         private readonly ILogger<SnapshotCaptureService> _logger;
         private readonly TimeProvider _time;
+        private readonly IStorageLocationProvider _storage;
 
         // Process-lifetime guards. The Ring pacers live on a per-tick scoped instance, so a provider pause must be remembered here
         // to hold across ticks. Keyed by internal GUIDs; never logged.
@@ -77,12 +78,14 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             IOptions<SnapshotTimelineOptions> options,
             ILogger<SnapshotCaptureService> logger,
             TimeProvider time,
+            IStorageLocationProvider storage,
             ThreadHeartbeats? heartbeats = null)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _logger = logger;
             _time = time;
+            _storage = storage;
             _heartbeats = heartbeats;
         }
 
@@ -374,8 +377,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
 
             if (mediaFilePath is not null)
             {
-                // WriteImage returns a path relative to the snapshot root; Media rows hold the full path.
-                await RecordCaptureMediaAsync(sp, device, Path.Combine(_options.Value.SnapshotRoot, mediaFilePath), attemptedAt, accountName, ct);
+                // WriteImage returns the full path under the media root; the capture row and the Media row both hold it.
+                await RecordCaptureMediaAsync(sp, device, mediaFilePath, attemptedAt, accountName, ct);
             }
 
             switch (status)
@@ -415,8 +418,7 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
         }
 
         /// <summary>
-        /// Writes the JPEG under SnapshotRoot\&lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\ and returns the path relative to SnapshotRoot. The folder
-        /// is the same provider/location/device layout the media pull uses, so snapshots and videos sort the same way.
+        /// Writes the JPEG under the media root's &lt;provider&gt;\&lt;location&gt;\&lt;device&gt;\ folder, next to the event videos, and returns the full path.
         /// <summary>
         /// Registers a successful capture as a snapshot Media row, so it appears on the Devices tab and joins the roll-up loop
         /// alongside the snapshots the scheduled pull records. Best-effort: a failed write is logged and never fails the capture.
@@ -466,14 +468,13 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 throw new ArgumentException("Ring device ids are numeric.", nameof(providerDeviceId));
             }
 
-            string snapshotRoot = _options.Value.SnapshotRoot;
-            string folder = MediaFolderLayout.GetDeviceFolder(snapshotRoot, providerName, locationName, deviceName);
+            string folder = MediaFolderLayout.GetDeviceFolder(_storage.GetDefaultRoot(StorageCategory.Media), providerName, locationName, deviceName);
             string fileName = capturedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
             string fullPath = Path.Combine(folder, fileName);
 
             _ = Directory.CreateDirectory(folder);
             File.WriteAllBytes(fullPath, image);
-            return Path.GetRelativePath(snapshotRoot, fullPath);
+            return fullPath;
         }
 
         /// <summary>

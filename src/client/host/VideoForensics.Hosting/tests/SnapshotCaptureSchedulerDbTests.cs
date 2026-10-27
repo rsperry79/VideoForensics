@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using Moq;
+
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Core.Services;
@@ -73,8 +76,15 @@ namespace VideoForensics.Client.Hosting.Tests
             SnapshotCapture row = Assert.Single(rows);
             Assert.Equal(200, row.HttpStatus);
             Assert.NotNull(row.MediaFilePath);
-            // MediaFilePath is relative to SnapshotRoot; the JPEG must exist under it.
-            Assert.True(File.Exists(Path.Combine(_root, row.MediaFilePath!)));
+            // MediaFilePath is the full path under the media root; the JPEG must exist there.
+            Assert.True(File.Exists(row.MediaFilePath!));
+        }
+
+        private IStorageLocationProvider MediaStorage()
+        {
+            var storage = new Mock<IStorageLocationProvider>();
+            _ = storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(Path.Combine(_root, "media"));
+            return storage.Object;
         }
 
         private SnapshotCaptureService BuildScheduler(IServiceProvider provider)
@@ -83,7 +93,8 @@ namespace VideoForensics.Client.Hosting.Tests
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
             NullLogger<SnapshotCaptureService>.Instance,
-            TimeProvider.System);
+            TimeProvider.System,
+            MediaStorage());
         }
 
         /// <summary>Builds the real data layer on a temp database, seeds one Ring account with one camera, and fakes only the provider.</summary>
