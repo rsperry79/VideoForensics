@@ -21,7 +21,7 @@ namespace VideoForensics.Client.WebApp.Services.CircuitGuards
             _ = services.AddScoped<CircuitHandler, CircuitScopeHandler>();
             _ = services.AddScoped<ICircuitOperatorGate, CircuitOperatorGate>();
 
-            _ = services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
+            _ = services.DecorateScoped<IProviderAccountRepository>((inner, sp) => new GuardedProviderAccountRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>(), sp.GetRequiredService<IProviderAccountEditPolicy>()));
             _ = services.DecorateScoped<IDeviceConfigRepository>((inner, sp) => new GuardedDeviceConfigRepository(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IEvidenceExportService>((inner, sp) => new GuardedEvidenceExportService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));
             _ = services.DecorateScoped<IRingSelfTestService>((inner, sp) => new GuardedRingSelfTestService(inner, sp.GetRequiredService<ICircuitOperatorGate>()));

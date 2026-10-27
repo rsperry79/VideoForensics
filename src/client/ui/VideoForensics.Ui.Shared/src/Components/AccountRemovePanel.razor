@@ -1,9 +1,11 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Resources
+@using VideoForensics.Client.Ui.Shared.Layout
 @using VideoForensics.Client.Ui.Shared.Services
 @inject IProviderAccountRepository AccountRepository
 @inject IAccountExportService ExportService
 @inject StepUpService StepUp
+@inject PairedSessionState SessionState
 @inject IStringLocalizer<SharedResources> L
 
 <div class="p-3 border border-danger rounded mb-3" data-testid="account-remove-panel" role="group" aria-label="@L["AccountRemove_Title"]">
@@ -17,7 +19,10 @@
         <p>@L["AccountRemove_Prompt"]</p>
         <div class="d-flex gap-2 align-items-center">
             <SfButton CssClass="e-primary" Content="@L["AccountRemove_Retain"]" OnClick="RetainAsync" Disabled="@_isBusy" />
-            <SfButton CssClass="e-danger" Content="@L["AccountRemove_DeletePermanently"]" OnClick="GoToDeleteStep" Disabled="@_isBusy" />
+            @if (CanDeletePermanently)
+            {
+                <SfButton CssClass="e-danger" Content="@L["AccountRemove_DeletePermanently"]" OnClick="GoToDeleteStep" Disabled="@_isBusy" />
+            }
             <SfButton CssClass="e-outline" Content="@L["AccountRemove_Cancel"]" OnClick="CancelAsync" Disabled="@_isBusy" />
         </div>
         <small class="text-muted">@L["AccountRemove_RetainHint"]</small>
@@ -63,9 +68,15 @@
 
     [Parameter] public EventCallback OnCancelled { get; set; }
 
+    /// <summary>
+    /// Permanent delete is SuperAdmin on the Local tier, whatever the provider edit setting says. The server enforces this
+    /// too; hiding the step here stops an Admin from reaching a button that would only fail.
+    /// </summary>
+    private bool CanDeletePermanently => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
+
     protected override void OnInitialized()
     {
-        _deleteStep = StartAtDeleteStep;
+        _deleteStep = StartAtDeleteStep && CanDeletePermanently;
     }
 
     private void GoToDeleteStep()

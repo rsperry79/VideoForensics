@@ -226,6 +226,9 @@ builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalTierHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, RequireLocalOrPasskeyHandler>();
 
+// Read per request, so a change on the Permissions page applies without a restart.
+builder.Services.AddScoped<IProviderAccountEditPolicy, ProviderAccountEditPolicy>();
+
 // Session tokens, step-up tokens, and the SMTP password (SessionTokenService, StepUpAuthService,
 // SmtpPasswordStore) are all IDataProtector-protected. AddDataProtection() alone relies on ASP.NET
 // Core's default key-storage heuristic (usually %LOCALAPPDATA%\ASP.NET\DataProtection-Keys on
@@ -651,6 +654,7 @@ app.MapSoftwarePathsEndpoints();
 app.MapReleaseChannelEndpoints();
 app.MapLogEndpoints();
 app.MapLockoutPolicyEndpoints();
+app.MapProviderPermissionEndpoints();
 app.MapBannedIpsEndpoints();
 app.MapTwoFactorPolicyEndpoints();
 app.MapAuthMethodEndpoints();

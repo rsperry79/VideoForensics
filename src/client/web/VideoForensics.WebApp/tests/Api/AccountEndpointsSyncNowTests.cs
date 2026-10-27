@@ -81,6 +81,7 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             _ = builder.Services.AddSingleton(Mock.Of<IProviderSyncRunRepository>());
             _ = builder.Services.AddSingleton(Mock.Of<Common.Contracts.IAccountExportService>());
             _ = builder.Services.AddSingleton(_syncState.Object);
+            _ = builder.Services.AddScoped(_ => ProviderAccountEditPolicyStub.Admin());
 
             // The account routes require SuperAdmin on the Local tier; the test scheme always signs in such an operator.
             var tier = new Mock<INetworkTierResolver>();

@@ -102,6 +102,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
 
                 new("Security Events", "/settings/security-events", Section: "Security"),
                 new("Operators", "/settings/operators", Section: "Security"),
+                new("Permissions", "/settings/permissions", Section: "Security"),
                 new("Pending Approvals", "/admin/pending-credentials", Section: "Security"),
                 new("Login Methods", "/settings/auth-methods", Section: "Security"),
                 new("Lockout Policy", "/settings/lockout-policy", Section: "Security"),
