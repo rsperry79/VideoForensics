@@ -90,14 +90,12 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 new("Export Evidence", "/review/export")
             ]),
 
-            new("sources", "Sources", "/accounts",
-            [
-                new("Provider Accounts", "/accounts"),
-                new("Query API", "/query"),
-            ]),
-
+            // Sources lives under Admin: Provider Accounts is gated by PageAccessRules (SuperAdminLocal), Query API by Admin.
             new("admin", "Admin", "/settings",
             [
+                new("Provider Accounts", "/accounts", Section: "Sources"),
+                new("Query API", "/query", Section: "Sources"),
+
                 new("General", "/settings", Section: "General"),
                 new("App Lock", "/settings/app-lock", ctx => ctx.AppLockSupported, Section: "General"),
                 new("Notifications", "/settings/notifications", Section: "General"),
