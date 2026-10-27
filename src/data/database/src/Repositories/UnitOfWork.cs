@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Diagnostics;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
@@ -27,18 +28,21 @@ namespace VideoForensics.Data.Database.Repositories
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<UnitOfWork> _logger;
         private readonly TimeSpan _slowTransactionThreshold;
+        private readonly InFlightTransactions _inFlight;
 
         /// <summary>Initializes a new instance of the UnitOfWork.</summary>
         public UnitOfWork(
             IDbContextFactory<VideoForensicsDbContext> factory,
             IServiceProvider serviceProvider,
             ILogger<UnitOfWork> logger,
-            TimeSpan? slowTransactionThreshold = null)
+            TimeSpan? slowTransactionThreshold = null,
+            InFlightTransactions? inFlight = null)
         {
             _factory = factory;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _slowTransactionThreshold = slowTransactionThreshold ?? DefaultSlowTransactionThreshold;
+            _inFlight = inFlight ?? new InFlightTransactions();
         }
 
         /// <summary>
@@ -50,6 +54,8 @@ namespace VideoForensics.Data.Database.Repositories
             // Read the caller before the first await: its frames are only on the stack until then.
             string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
             var clock = Stopwatch.StartNew();
+            // Open from here until the method returns, so a stalled watchdog can name it.
+            using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
 
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Utils.Testing;
+using VideoForensics.Data.Common.Diagnostics;
 using VideoForensics.Data.Database.Repositories;
 
 using Xunit;
@@ -34,10 +35,28 @@ namespace VideoForensics.Data.Database.Tests
             _fixture.Dispose();
         }
 
-        private UnitOfWork Build(TimeSpan? slowThreshold)
+        private UnitOfWork Build(TimeSpan? slowThreshold, InFlightTransactions? inFlight = null)
         {
             var serviceProvider = new TestServiceProvider(_fixture, _loggerFactory);
-            return new UnitOfWork(_fixture.Factory, serviceProvider, _loggerFactory.CreateLogger<UnitOfWork>(), slowThreshold);
+            return new UnitOfWork(_fixture.Factory, serviceProvider, _loggerFactory.CreateLogger<UnitOfWork>(), slowThreshold, inFlight);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_OpenWork_IsTrackedUntilItReturns()
+        {
+            // The watchdog can only name a stalled transaction if it is listed while open, and removed once it ends.
+            var tracker = new InFlightTransactions();
+            UnitOfWork unitOfWork = Build(TimeSpan.FromMinutes(1), tracker);
+            IReadOnlyList<InFlightTransactions.InFlightTransaction> during = [];
+
+            _ = await unitOfWork.ExecuteAsync<object?>(_ =>
+            {
+                during = tracker.Snapshot();
+                return Task.FromResult<object?>(null);
+            }, CancellationToken.None);
+
+            Assert.Contains(during, t => t.Caller.Contains("ExecuteAsync_OpenWork_IsTrackedUntilItReturns", StringComparison.Ordinal));
+            Assert.Empty(tracker.Snapshot());
         }
 
         private IEnumerable<(LogLevel Level, string Message)> UnitOfWorkEntries()

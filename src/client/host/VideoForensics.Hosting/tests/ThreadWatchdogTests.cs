@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Client.Hosting.BackgroundServices;
+using VideoForensics.Data.Common.Diagnostics;
 
 using Xunit;
 
@@ -79,6 +80,48 @@ namespace VideoForensics.Client.Hosting.Tests
             watchdog.Check();
 
             Assert.Equal(0, CountErrors(logger));
+        }
+
+        [Fact]
+        public void InFlightSummary_OpenTransaction_NamesCallerAndHowLongItHasRun()
+        {
+            // A stalled loop is only useful to diagnose if the alert says which write it was waiting on, and for how long.
+            var open = new List<InFlightTransactions.InFlightTransaction>
+            {
+                new("VideoForensicsDataClient.UpsertEventAsync", Start.AddSeconds(-90)),
+            };
+
+            string summary = ThreadWatchdogService.DescribeInFlight(open, Start);
+
+            Assert.Equal("in flight: VideoForensicsDataClient.UpsertEventAsync for 90 s", summary);
+        }
+
+        [Fact]
+        public void InFlightSummary_NoOpenTransaction_SaysSo()
+        {
+            string summary = ThreadWatchdogService.DescribeInFlight([], Start);
+
+            Assert.Equal("no unit of work in flight", summary);
+        }
+
+        [Fact]
+        public void Watchdog_StaleService_IncludesOpenTransactionsInItsAlert()
+        {
+            var clock = new FakeTime(Start);
+            var heartbeats = new ThreadHeartbeats();
+            heartbeats.Beat("ScheduledSyncService", Start);
+            var transactions = new InFlightTransactions();
+            using IDisposable open = transactions.Begin("VideoForensicsDataClient.UpsertEventAsync", Start);
+            var logger = new Mock<ILogger<ThreadWatchdogService>>();
+            var watchdog = new ThreadWatchdogService(heartbeats, logger.Object, clock, StaleAfter, transactions);
+
+            clock.Advance(TimeSpan.FromMinutes(6));
+            watchdog.Check();
+
+            Assert.Equal(1, CountErrors(logger));
+            var alert = logger.Invocations.Single(i => i.Method.Name == nameof(ILogger.Log) && Equals(i.Arguments[0], LogLevel.Error));
+            // The state argument is the formatted message, so the caller shows up in the text an operator reads.
+            Assert.Contains("UpsertEventAsync", alert.Arguments[2].ToString(), StringComparison.Ordinal);
         }
 
         private static int CountErrors(Mock<ILogger<ThreadWatchdogService>> logger)

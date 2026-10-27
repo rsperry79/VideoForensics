@@ -144,11 +144,13 @@ namespace VideoForensics.Client.Hosting
 
             // Loops beat into ThreadHeartbeats; the watchdog logs any loop that stops ticking for five minutes.
             services.TryAddSingleton<ThreadHeartbeats>();
+            // Transactions come from the data layer when the host registers it; without it there is nothing to report.
             _ = services.AddHostedService(sp => new ThreadWatchdogService(
                 sp.GetRequiredService<ThreadHeartbeats>(),
                 sp.GetRequiredService<ILogger<ThreadWatchdogService>>(),
                 sp.GetRequiredService<TimeProvider>(),
-                TimeSpan.FromMinutes(5)));
+                TimeSpan.FromMinutes(5),
+                sp.GetService<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>()));
             return services;
         }
 
