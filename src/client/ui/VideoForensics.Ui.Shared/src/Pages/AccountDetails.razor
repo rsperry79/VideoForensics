@@ -60,14 +60,17 @@ else
 
                 <div class="mb-3 d-flex gap-2 align-items-center" style="color: #212529;">
                     <SfButton CssClass="e-warning" Content="@(_validationBusy ? L["Validating"] : L["ValidateCredential"])" OnClick="ValidateCredentialAsync" Disabled="@_validationBusy" />
-                    <SfButton CssClass="e-outline" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                    @if (CanEditAccount)
+                    {
+                        <SfButton CssClass="e-outline" Content="@L["Reauthenticate"]" OnClick="ShowReauthentication" Disabled="@_validationBusy" />
+                    }
                     @if (!string.IsNullOrEmpty(_credentialStatus))
                     {
                         <span role="status">@_credentialStatus</span>
                     }
                 </div>
 
-                @if (_showReauthentication)
+                @if (_showReauthentication && CanEditAccount)
                 {
                     <div class="mb-3 p-3 border rounded" style="color: #212529;">
                         <h6>@L["ReauthenticateHeading"]</h6>
@@ -86,7 +89,7 @@ else
             {
                 <AccountRemovePanel AccountId="@Id" OnCompleted="OnRemoveCompletedAsync" OnCancelled="CancelRemove" />
             }
-            else
+            else if (CanEditAccount)
             {
                 <SfButton CssClass="e-danger" Content="@L["RemoveAccount"]" OnClick="PromptRemove" Disabled="@_isBusy" />
             }

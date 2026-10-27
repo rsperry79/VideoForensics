@@ -17,35 +17,40 @@ using Xunit;
 namespace VideoForensics.Client.WebApp.Tests.Api
 {
     /// <summary>
-    /// Authorization metadata for the accounts routes: every accounts route, including sync-now and config sync,
-    /// requires SuperAdmin with the Local tier.
+    /// Authorization metadata for the accounts routes. Reads and provider-account edits are Admin and up (the edit
+    /// setting can narrow edits to SuperAdmin at request time, see ProviderAccountEditFilter). Users, delete, and the
+    /// export and purge routes stay SuperAdmin with the Local tier.
     /// </summary>
     public class AccountEndpointsSyncNowAuthorizationTests
     {
         private const string SyncNowPattern = "/api/v1/accounts/provider-accounts/{id}/sync-now";
         private const string UsersPattern = "/api/v1/accounts/users";
+        private const string ProviderAccountPattern = "/api/v1/accounts/provider-accounts/{id}";
         private const string CreateProviderAccountPattern = "/api/v1/accounts/provider-accounts";
         private const string InitialSyncPattern = "/api/v1/accounts/provider-accounts/{id}/initial-sync";
         private const string ConfigSyncIntervalPattern = "/api/v1/accounts/provider-accounts/{id}/config-sync-interval";
 
         [Fact]
-        public void MapAccountEndpoints_SyncNowRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_SyncNowRoute_RequiresAdminNotSuperAdminLocal()
         {
             IEndpointRouteBuilder app = BuildAndMap();
 
             RouteEndpoint endpoint = FindSingleEndpoint(app, SyncNowPattern);
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
 
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
-            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
         }
 
         [Fact]
-        public void MapAccountEndpoints_UsersRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_UserWriteRoutes_RequireSuperAdminLocalPolicy()
         {
+            // User reads are Admin (the account pages list users); only writes are SuperAdmin on the Local tier.
             IEndpointRouteBuilder app = BuildAndMap();
 
-            RouteEndpoint[] endpoints = FindEndpoints(app, UsersPattern);
+            RouteEndpoint[] endpoints = FindEndpoints(app, UsersPattern)
+                .Where(e => e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Any(m => m != HttpMethods.Get) == true)
+                .ToArray();
             Assert.NotEmpty(endpoints);
             foreach (RouteEndpoint endpoint in endpoints)
             {
@@ -56,51 +61,63 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         }
 
         [Fact]
-        public void MapAccountEndpoints_CreateProviderAccountRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_CreateProviderAccountRoute_RequiresAdminNotSuperAdminLocal()
         {
             IEndpointRouteBuilder app = BuildAndMap();
 
             RouteEndpoint endpoint = FindSingleEndpoint(app, CreateProviderAccountPattern, HttpMethods.Post);
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
 
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
-            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
         }
 
         [Fact]
-        public void MapAccountEndpoints_InitialSyncRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_InitialSyncRoute_RequiresAdminNotSuperAdminLocal()
         {
             IEndpointRouteBuilder app = BuildAndMap();
 
             RouteEndpoint endpoint = FindSingleEndpoint(app, InitialSyncPattern, HttpMethods.Post);
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
 
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
-            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocalOrPasskey);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
         }
 
         [Fact]
-        public void MapAccountEndpoints_GetConfigSyncIntervalRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_GetConfigSyncIntervalRoute_RequiresAdmin()
         {
             IEndpointRouteBuilder app = BuildAndMap();
 
             RouteEndpoint endpoint = FindSingleEndpoint(app, ConfigSyncIntervalPattern, HttpMethods.Get);
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
 
-            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
-            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
         }
 
         [Fact]
-        public void MapAccountEndpoints_PutConfigSyncIntervalRoute_RequiresSuperAdminLocalPolicy()
+        public void MapAccountEndpoints_PutConfigSyncIntervalRoute_RequiresAdminNotSuperAdminLocal()
         {
             IEndpointRouteBuilder app = BuildAndMap();
 
             RouteEndpoint endpoint = FindSingleEndpoint(app, ConfigSyncIntervalPattern, HttpMethods.Put);
             IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
 
+            Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
+            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
+        }
+
+        [Fact]
+        public void MapAccountEndpoints_DeleteProviderAccountRoute_RequiresSuperAdminLocal()
+        {
+            // Deleting a provider account is SuperAdmin only, whatever the edit setting says.
+            IEndpointRouteBuilder app = BuildAndMap();
+
+            RouteEndpoint endpoint = FindSingleEndpoint(app, ProviderAccountPattern, HttpMethods.Delete);
+            IAuthorizeData[] authorize = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().ToArray();
+
             Assert.Contains(authorize, a => a.Policy == VideoForensicsPolicies.SuperAdminLocal);
-            Assert.DoesNotContain(authorize, a => a.Policy == VideoForensicsPolicies.Admin);
         }
 
         private static IEndpointRouteBuilder BuildAndMap()

@@ -3,10 +3,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
 using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Data.Common.Diagnostics;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.DbContext;
 
@@ -15,42 +18,143 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Unit of work implementation for executing multi-entity operations atomically within a single transaction.</summary>
     public class UnitOfWork : IUnitOfWork
     {
+        /// <summary>
+        /// Transactions at or past this length log a Warning. Shorter ones log at Debug. The default is well above a normal
+        /// write, so a Warning means a transaction held the database for long enough to block other writers.
+        /// </summary>
+        private static readonly TimeSpan DefaultSlowTransactionThreshold = TimeSpan.FromSeconds(1);
+
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<UnitOfWork> _logger;
+        private readonly TimeSpan _slowTransactionThreshold;
+        private readonly InFlightTransactions _inFlight;
 
         /// <summary>Initializes a new instance of the UnitOfWork.</summary>
         public UnitOfWork(
             IDbContextFactory<VideoForensicsDbContext> factory,
             IServiceProvider serviceProvider,
-            ILogger<UnitOfWork> logger)
+            ILogger<UnitOfWork> logger,
+            TimeSpan? slowTransactionThreshold = null,
+            InFlightTransactions? inFlight = null)
         {
             _factory = factory;
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _slowTransactionThreshold = slowTransactionThreshold ?? DefaultSlowTransactionThreshold;
+            _inFlight = inFlight ?? new InFlightTransactions();
         }
 
-        /// <summary>Executes a work function within a shared transaction context, committing on success or rolling back on exception.</summary>
+        /// <summary>
+        /// Executes a work function within a shared transaction context, committing on success or rolling back on exception.
+        /// Each call logs its timing, so a slow write can be traced to the operation that ran it.
+        /// </summary>
         public async Task<T> ExecuteAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, CancellationToken ct)
         {
+            // Read the caller before the first await: its frames are only on the stack until then.
+            string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
+            var clock = Stopwatch.StartNew();
+            // Open from here until the method returns, so a stalled watchdog can name it.
+            using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
+
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
+            TimeSpan begun = clock.Elapsed;
+            TimeSpan worked = begun;
 
             try
             {
                 var context = new UnitOfWorkContext(db, _serviceProvider);
                 T? result = await work(context);
                 _ = await db.SaveChangesAsync(ct);
+                worked = clock.Elapsed;
                 await transaction.CommitAsync(ct);
-                _logger.LogDebug("Unit of work committed successfully");
+                LogTransaction(caller, "committed", begun, worked, clock.Elapsed);
                 return result;
             }
             catch (Exception ex)
             {
+                // A failure before the work finished ends the work phase there; a failed commit counts as work.
+                worked = clock.Elapsed;
                 await transaction.RollbackAsync(ct);
+                LogTransaction(caller, "rolled back", begun, worked, clock.Elapsed);
                 _logger.LogError(ex, "Unit of work rolled back due to exception");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Logs one transaction's timing. The begin phase covers opening the connection and starting the transaction.
+        /// The work phase covers the caller's lambda and SaveChanges, and the finish phase covers commit or rollback.
+        /// </summary>
+        private void LogTransaction(string caller, string outcome, TimeSpan begun, TimeSpan worked, TimeSpan finished)
+        {
+            long beginMs = (long)begun.TotalMilliseconds;
+            long workMs = (long)(worked - begun).TotalMilliseconds;
+            long finishMs = (long)(finished - worked).TotalMilliseconds;
+            long totalMs = (long)finished.TotalMilliseconds;
+
+            if (finished >= _slowTransactionThreshold)
+            {
+                _logger.LogWarning(
+                    "Slow unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
+                    caller, outcome, totalMs, beginMs, workMs, finishMs);
+                return;
+            }
+
+            _logger.LogDebug(
+                "Unit of work {Caller} {Outcome} in {TotalMs} ms (begin {BeginMs} ms, work {WorkMs} ms, finish {FinishMs} ms)",
+                caller, outcome, totalMs, beginMs, workMs, finishMs);
+        }
+
+        /// <summary>
+        /// Names the first caller outside this class, as "Type.Method". Async methods and lambdas compile to nested
+        /// types with generated names, so the readable name is taken from those.
+        /// </summary>
+        private static string DescribeCaller(StackTrace trace)
+        {
+            foreach (StackFrame frame in trace.GetFrames() ?? [])
+            {
+                MethodBase? method = frame.GetMethod();
+                if (method?.DeclaringType is not { } declared || declared.Namespace is null
+                    || !declared.Namespace.StartsWith("VideoForensics.", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Type owner = OwningType(declared);
+                if (owner == typeof(UnitOfWork))
+                {
+                    continue;
+                }
+
+                return $"{owner.Name}.{MethodName(method, declared)}";
+            }
+
+            return "unknown caller";
+        }
+
+        private static Type OwningType(Type type)
+        {
+            Type owner = type;
+            while (owner.Name.StartsWith('<') && owner.DeclaringType is { } outer)
+            {
+                owner = outer;
+            }
+
+            return owner;
+        }
+
+        private static string MethodName(MethodBase method, Type declared)
+        {
+            // An async state machine's type is "<Name>d__N" and its method is MoveNext; a lambda's method is "<Name>b__N".
+            string name = method.Name == "MoveNext" && declared.Name.StartsWith('<') ? declared.Name : method.Name;
+            if (name.StartsWith('<') && name.IndexOf('>') > 1)
+            {
+                return name[1..name.IndexOf('>')];
+            }
+
+            return name;
         }
     }
 

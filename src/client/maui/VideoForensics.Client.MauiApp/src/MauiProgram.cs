@@ -184,6 +184,7 @@ namespace VideoForensics.Client.MauiApp
             // the plain default factory. TryAddScoped so a host that needs a different behavior could
             // still override it.
             builder.Services.TryAddScoped<VideoForensics.Client.Ui.Shared.Services.ISelfApiHttpClientFactory, VideoForensics.Client.Ui.Shared.Services.DefaultSelfApiHttpClientFactory>();
+            builder.Services.TryAddScoped<VideoForensics.Client.Ui.Shared.Services.IProviderAccountEditAccess, VideoForensics.Client.Ui.Shared.Services.ProviderAccountEditAccess>();
 
             // Docked-layout chrome state (plan: docked MAUI/Blazor layout) - collapse state
             // (device-local), right-panel page-context slot, and per-operator theme/culture, all

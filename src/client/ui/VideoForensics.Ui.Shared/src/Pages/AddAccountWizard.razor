@@ -10,6 +10,7 @@
 @inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
+@inject IProviderAccountEditAccess EditAccess
 @inject IAccountLinkedNotifier AccountLinkedNotifier
 @inject IStringLocalizer<AddAccountWizard> L
 
@@ -44,7 +45,14 @@ else
                 }
             </div>
             <div class="mt-4">
-                <SfButton CssClass="e-primary" Content="@L["Next"]" OnClick="() => _currentStep = 2" Disabled="@string.IsNullOrEmpty(_selectedProvider)" />
+                @if (_canEdit)
+                {
+                    <SfButton CssClass="e-primary" Content="@L["Next"]" OnClick="() => _currentStep = 2" Disabled="@string.IsNullOrEmpty(_selectedProvider)" />
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0" role="status">@L["EditAccessRequired"]</div>
+                }
             </div>
         </div>
     }
@@ -128,9 +136,12 @@ else
     private string _univiewUsername = "";
     private string _univiewPassword = "";
 
+    private bool _canEdit;
+
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["AddAccount"], null) };
+        _canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
         try
         {
             _availableProviders = await MultiProviderAuthService.GetAvailableProvidersAsync();

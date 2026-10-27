@@ -31,9 +31,10 @@ namespace VideoForensics.Client.Ui.Shared.Layout
             new Dictionary<string, AccessPolicy>(StringComparer.OrdinalIgnoreCase)
             {
                 ["/chat"] = AccessPolicy.ReadOnly,
-                // Mirrors /api/v1/accounts (AccountEndpoints) and the device-config API, both SuperAdminLocal. On the WebApp
-                // these pages call repositories in-process, so this row is the only gate there.
-                ["/accounts"] = AccessPolicy.SuperAdminLocal,
+                // Reads and edits follow /api/v1/accounts (AccountEndpoints): Admin, with edits narrowable to SuperAdmin by the
+                // Permissions setting. Permanent delete is SuperAdminLocal (AccountRemovePanel and the Accounts grid hide it from
+                // others). On the WebApp these pages call repositories in-process, so the guarded repository is the second gate.
+                ["/accounts"] = AccessPolicy.Admin,
                 // Analyze tabs are query-keyed, so each tab has its own row. The first three read the server database
                 // under the paired session (Analyze.razor); jamming can change incidents and recompute stats, so Admin.
                 ["/analyze?analysis=reports"] = AccessPolicy.ReadOnly,
@@ -45,12 +46,14 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // check for destructive and physical endpoints (RingSelfTest).
                 ["/query"] = AccessPolicy.Admin,
                 // Account wizard: initial sync and account creation are SuperAdminLocal (AccountEndpoints).
-                ["/accounts/add"] = AccessPolicy.SuperAdminLocal,
-                // Account detail and schedule pages call /api/v1/accounts (SuperAdminLocal) and sync endpoints.
-                ["/accounts/{Id:guid}"] = AccessPolicy.SuperAdminLocal,
+                // Account wizard creates the link and starts the first sync: both are provider-account edits.
+                ["/accounts/add"] = AccessPolicy.Admin,
+                // Account detail and schedule pages call /api/v1/accounts (Admin reads, edit-level writes).
+                ["/accounts/{Id:guid}"] = AccessPolicy.Admin,
                 // Account tabs: Sync and Cases read the same /api/v1/accounts data as the Details tab.
-                ["/accounts/{Id:guid}/sync"] = AccessPolicy.SuperAdminLocal,
-                ["/accounts/{Id:guid}/cases"] = AccessPolicy.SuperAdminLocal,
+                ["/accounts/{Id:guid}/sync"] = AccessPolicy.Admin,
+                ["/accounts/{Id:guid}/cases"] = AccessPolicy.Admin,
+                // Device config is SuperAdminLocal on the server, so this tab stays SuperAdmin on the Local tier.
                 ["/accounts/{Id:guid}/devices"] = AccessPolicy.SuperAdminLocal,
                 // POST /api/v1/media/export is SuperAdminLocal with step-up (EvidenceEndpoints); the page exists to run it.
                 ["/review/export"] = AccessPolicy.SuperAdminLocal,
@@ -68,6 +71,8 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 ["/settings/notifications"] = AccessPolicy.Admin,
                 ["/settings/security-log"] = AccessPolicy.Admin,
                 ["/settings/devices"] = AccessPolicy.SuperAdminLocal,
+                // Writes go through /api/v1/permissions/provider-accounts (SuperAdminLocalOrPasskey, like the lockout policy).
+                ["/settings/permissions"] = AccessPolicy.SuperAdminLocalOrPasskey,
                 ["/settings/network"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/software-paths"] = AccessPolicy.SuperAdminLocal,
                 ["/settings/storage"] = AccessPolicy.SuperAdminLocal,

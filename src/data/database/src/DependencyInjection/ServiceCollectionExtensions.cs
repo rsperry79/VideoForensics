@@ -79,7 +79,8 @@ namespace VideoForensics.Data.Database.DependencyInjection
             // Register security audit service (Phase 0.5)
             services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
-            // Register unit of work
+            // Register unit of work. One tracker is shared by every scope, so the watchdog sees transactions from all of them.
+            services.TryAddSingleton<VideoForensics.Data.Common.Diagnostics.InFlightTransactions>();
             services.TryAddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;

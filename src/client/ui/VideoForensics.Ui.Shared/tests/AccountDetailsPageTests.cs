@@ -100,10 +100,14 @@ public abstract class AccountDetailsPageTestBase : BunitContext
     /// <summary>Device health changes the test pushes; the account pages see them through IDeviceHealthChangedSource.</summary>
     protected Subject<DeviceHealthChangedDto> DeviceHealthChanges { get; } = new();
 
+    /// <summary>Edit-access double; gating tests set <see cref="ProviderAccountEditAccessDouble.CanEdit"/> before rendering.</summary>
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountDetailsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddSingleton<IDeviceHealthChangedSource>(new DeviceHealthChangedSourceDouble(DeviceHealthChanges));
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();

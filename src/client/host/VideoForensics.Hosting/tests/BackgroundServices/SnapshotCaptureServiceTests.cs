@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using System.Globalization;
 
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -24,6 +25,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02, 0x03];
 
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-snapshot-capture-" + Guid.NewGuid().ToString("N"));
+        private string MediaRoot => Path.Combine(_root, "media");
+        private readonly Mock<IStorageLocationProvider> _storage = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly MutableTimeProvider _time = new(T0);
@@ -51,6 +54,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                 .ReturnsAsync((SyncSchedule?)null);
             _ = _locations.Setup(r => r.ListByProviderAccountIdAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync([new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" }]);
+            _ = _locations.Setup(r => r.GetAsync(_locationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" });
+            _ = _storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(() => MediaRoot);
             _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -108,7 +114,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                     NullLogger<SnapshotCaptureService>.Instance,
-                    _time);
+                    _time,
+                    _storage.Object);
                 await service.RunOneTickAsync(CancellationToken.None);
             }
             finally
@@ -172,7 +179,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
                     provider.GetRequiredService<IServiceScopeFactory>(),
                     Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
                     logger.Object,
-                    _time);
+                    _time,
+                    _storage.Object);
 
                 await service.RunOneTickAsync(CancellationToken.None);
                 _time.Now = T0.AddMinutes(5);
@@ -371,13 +379,13 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
 
             await RunTickAsync();
 
-            string accountFolder = _accountId.ToString("N");
-            string expectedRelative = Path.Combine(accountFolder, "12345", ExpectedFileName(T0));
-            Assert.True(File.Exists(Path.Combine(_root, expectedRelative)));
+            // Snapshots sit with the event videos under the media root, in the same provider/location/device folder.
+            string expectedPath = Path.Combine(MediaRoot, "ring", "home", "front_door_12345", ExpectedFileName(T0));
+            Assert.True(File.Exists(expectedPath));
             SnapshotCapture row = Assert.Single(_rows);
             Assert.Equal(200, row.HttpStatus);
             Assert.True(row.IsCurrent);
-            Assert.Equal(expectedRelative, row.MediaFilePath);
+            Assert.Equal(expectedPath, row.MediaFilePath);
             Assert.Equal(T0, row.CapturedAtUtc);
         }
 
@@ -394,7 +402,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             Assert.Equal(404, row.HttpStatus);
             Assert.False(row.IsCurrent);
             Assert.Null(row.MediaFilePath);
-            Assert.False(Directory.Exists(Path.Combine(_root, _accountId.ToString("N"))));
+            Assert.False(Directory.Exists(Path.Combine(MediaRoot, "ring")));
         }
 
         [Fact]

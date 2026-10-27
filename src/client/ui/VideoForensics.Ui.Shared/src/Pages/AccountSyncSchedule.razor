@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject HttpClient HttpClient
 @inject PairedSessionState SessionState
+@inject IProviderAccountEditAccess EditAccess
 @using VideoForensics.Client.Ui.Shared.Services
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<AccountSyncSchedule> L
@@ -32,7 +33,7 @@ else
                 <label for="config-sync-interval-hours" class="form-label fw-bold">@L["ConfigSyncIntervalLabel"]</label>
                 <div>
                     <input id="config-sync-interval-hours" type="number" class="form-control" style="width: 8rem;"
-                           min="1" max="720" value="@_configSyncHours" @onchange="OnConfigSyncIntervalChangedAsync" />
+                           min="1" max="720" value="@_configSyncHours" disabled="@(!_canEditAccount)" @onchange="OnConfigSyncIntervalChangedAsync" />
                 </div>
                 @if (_configSyncIntervalError)
                 {
@@ -208,6 +209,7 @@ else
     private List<JammingScheduleWindow>? _jammingWindows;
     private bool _isLoading = true;
     private bool _isBusy;
+    private bool _canEditAccount;
     private string? _statusMessage;
     private bool _statusIsError;
 
@@ -219,6 +221,7 @@ else
     {
         _timeOptions = BuildTimeOptions();
         _dayOfWeekOptions = BuildDayOfWeekOptions();
+        _canEditAccount = await EditAccess.CanEditAsync(CancellationToken.None);
         await LoadScheduleAsync();
         await LoadConfigSyncIntervalAsync();
     }

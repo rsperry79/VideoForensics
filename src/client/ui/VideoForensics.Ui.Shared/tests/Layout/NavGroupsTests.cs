@@ -11,16 +11,16 @@ namespace VideoForensics.Client.Ui.Shared.Tests.Layout;
 public class NavGroups_Tests
 {
     [Fact]
-    public void All_HasExactlyFourGroups()
+    public void All_HasExactlyThreeGroups()
     {
-        Assert.Equal(4, NavGroups.All.Count);
+        Assert.Equal(3, NavGroups.All.Count);
     }
 
     [Fact]
     public void All_HasGroupsInExpectedOrder()
     {
         var groupKeys = NavGroups.All.Select(g => g.Key).ToList();
-        Assert.Equal(new[] { "media", "cases", "sources", "admin" }, groupKeys);
+        Assert.Equal(new[] { "media", "cases", "admin" }, groupKeys);
     }
 
     [Fact]
@@ -91,18 +91,47 @@ public class NavGroups_Tests
     }
 
     [Fact]
-    public void Sources_GroupHasCorrectProperties()
+    public void Sources_ItemsLiveUnderAdminInSourcesSection()
     {
-        NavGroup group = NavGroups.All.First(g => g.Key == "sources");
-        Assert.Equal("Sources", group.Text);
-        Assert.Equal("/accounts", group.Path);
+        Assert.DoesNotContain(NavGroups.All, g => g.Key == "sources");
 
-        var itemPaths = group.Items.Select(i => i.Path).ToList();
-        Assert.Contains("/accounts", itemPaths);
-        Assert.DoesNotContain("/devices/config", itemPaths);
-        Assert.Contains("/query", itemPaths);
-        Assert.DoesNotContain("/query/api-tester", itemPaths);
-        Assert.DoesNotContain("/tools/ring-selftest", itemPaths);
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        var sourceItems = group.Items.Where(i => i.Section == "Sources").ToList();
+        Assert.Equal(new[] { "/accounts", "/query" }, sourceItems.Select(i => i.Path).ToList());
+        Assert.DoesNotContain(group.Items, i => i.Path == "/query/api-tester" || i.Path == "/tools/ring-selftest" || i.Path == "/devices/config");
+    }
+
+    [Fact]
+    public void Sources_QueryApi_RequiresAdminRole()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem queryItem = group.Items.First(i => i.Path == "/query");
+
+        Assert.False(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.True(queryItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void Sources_ProviderAccounts_VisibleToAdminAndUp_HiddenFromReview()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem accountsItem = group.Items.First(i => i.Path == "/accounts");
+
+        Assert.False(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Review, AppLockSupported: false)));
+        Assert.True(accountsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+    }
+
+    [Fact]
+    public void Permissions_UnderAdminSecurity_RequiresLocalOrPasskeySuperAdmin()
+    {
+        NavGroup group = NavGroups.All.First(g => g.Key == "admin");
+        NavItem permissionsItem = group.Items.First(i => i.Path == "/settings/permissions");
+
+        Assert.Equal("Security", permissionsItem.Section);
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.Admin, AppLockSupported: false)));
+        Assert.False(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsLocalTier: true)));
+        Assert.True(permissionsItem.IsVisible(new NavContext(IsSignedIn: true, Role: OperatorRole.SuperAdmin, AppLockSupported: false, IsPasskeySession: true)));
     }
 
     [Fact]

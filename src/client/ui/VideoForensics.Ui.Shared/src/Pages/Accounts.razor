@@ -4,10 +4,14 @@
 @using VideoForensics.Core.Providers.Common.Contracts
 @using VideoForensics.Client.Ui.Shared.Contracts
 @using VideoForensics.Client.Ui.Shared.Layout.RightPanel
+@using VideoForensics.Client.Ui.Shared.Layout
+@using VideoForensics.Client.Ui.Shared.Services
+@inject PairedSessionState SessionState
 @inject IProviderAccountRepository ProviderAccountRepository
 @inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
+@inject IProviderAccountEditAccess EditAccess
 @inject IStringLocalizer<Accounts> L
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -139,7 +143,10 @@ else
                         <Template>
                             @{
                                 var row = (AccountRow)context;
-                                <SfButton Content="@L["DeletePermanently"]" OnClick="@((UIMouseEventArgs) => StartRemove(row.Account.Id, true))" CssClass="e-danger" />
+                                @if (CanDeletePermanently)
+                                {
+                                    <SfButton Content="@L["DeletePermanently"]" OnClick="@((UIMouseEventArgs) => StartRemove(row.Account.Id, true))" CssClass="e-danger" />
+                                }
                             }
                         </Template>
                     </GridColumn>
@@ -149,9 +156,12 @@ else
     </div>
 }
 
-<div class="mt-4">
-    <SfButton CssClass="e-primary" Content="@L["AddAccount"]" OnClick="GoToAddAccount" />
-</div>
+@if (_canEdit)
+{
+    <div class="mt-4">
+        <SfButton CssClass="e-primary" Content="@L["AddAccount"]" OnClick="GoToAddAccount" />
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -160,6 +170,9 @@ else
     private UserTimeZone Zone => UserTz ?? new UserTimeZone(TimeZoneInfo.Local);
 
     private sealed record AccountRow(VideoForensics.Data.Common.Entities.ProviderAccount Account, string DisplayName);
+
+    /// <summary>Permanent delete is SuperAdmin on the Local tier. The grid hides the button for everyone else.</summary>
+    private bool CanDeletePermanently => PageAccessRules.Allows(AccessPolicy.SuperAdminLocal, NavContext.FromSession(SessionState, appLockSupported: false));
 
     private sealed record RemoveTarget(Guid AccountId, bool StartAtDeleteStep);
 
@@ -201,6 +214,7 @@ else
     private bool _isLoading = true;
     private IDisposable? _accountLinkedSubscription;
     private volatile bool _disposed;
+    private bool _canEdit;
 
     protected override async Task OnInitializedAsync()
     {
@@ -214,6 +228,7 @@ else
 
             _ = OnAccountLinkedAsync();
         });
+        _canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
         await LoadAccountsAsync();
     }
 

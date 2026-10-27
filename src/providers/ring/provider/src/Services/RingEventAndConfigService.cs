@@ -62,7 +62,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching events for device {DeviceId}", SanitizeForLog(deviceId));
+                if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException throttled)
+                {
+                    // A throttle is handled and expected: log the reason, not the stack.
+                    _logger.LogWarning("Events for device {DeviceId} skipped: {Reason}", SanitizeForLog(deviceId), throttled.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching events for device {DeviceId}", SanitizeForLog(deviceId));
+                }
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }
@@ -160,7 +168,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching events for device {DeviceId} for {ProviderName} account", SanitizeForLog(deviceId), ProviderName);
+                if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException throttled)
+                {
+                    // A throttle is handled and expected: log the reason, not the stack.
+                    _logger.LogWarning("Events for device {DeviceId} for {ProviderName} account skipped: {Reason}", SanitizeForLog(deviceId), ProviderName, throttled.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error fetching events for device {DeviceId} for {ProviderName} account", SanitizeForLog(deviceId), ProviderName);
+                }
                 return new List<DeviceEvent>().AsReadOnly();
             }
         }

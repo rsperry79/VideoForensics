@@ -155,7 +155,7 @@ namespace VideoForensics.Client.Hosting.Tests.Services
 
             _download.Verify(d => d.DownloadSnapshotsAsync(
                 "1",
-                It.Is<string>(p => p.StartsWith(MediaRoot, StringComparison.OrdinalIgnoreCase) && p.Contains("Home") && p.Contains("Cam 1")),
+                Path.Combine(MediaRoot, "ring", "home", "cam_1"),
                 from,
                 to,
                 "loc-1",

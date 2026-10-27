@@ -1081,7 +1081,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                if (ex is ThrottledException throttled)
+                {
+                    // A throttle is handled and expected: log the reason, not the stack.
+                    _logger.LogWarning("Video download for device {DeviceName} skipped: {Reason}", deviceName, throttled.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                }
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
@@ -1313,7 +1321,9 @@ namespace VideoForensics.Providers.Ring.Services
             {
                 // The status is logged so a Ring refusal shows its cause here; the body stays in the provider API error log.
                 string httpStatus = RingProviderApiErrorClassifier.GetHttpStatusCode(ex)?.ToString() ?? "none";
-                _logger.LogError(ex, "Error downloading snapshot for device {DeviceId} (HTTP {HttpStatus})", deviceId, httpStatus);
+                // The exception is not passed to the logger: the message and type are enough, and a stack trace only adds noise.
+                _logger.LogError("Error downloading snapshot for device {DeviceId} (HTTP {HttpStatus}): {ExceptionType}: {ErrorMessage}",
+                    deviceId, httpStatus, ex.GetType().Name, ex.Message);
                 _currentStatus = _currentStatus with { IsDownloading = false };
 
                 if (resolvedDeviceGuid.HasValue)

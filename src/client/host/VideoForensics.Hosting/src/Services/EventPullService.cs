@@ -125,15 +125,12 @@ namespace VideoForensics.Client.Hosting.Services
                     : DateTime.UtcNow;
                 var deviceErrors = new List<string>();
 
-                string accountFolder = string.Empty;
                 if (_mediaDownloadService == null)
                 {
                     _logger.LogWarning("No media download service is registered; media was not pulled");
                 }
                 else
                 {
-                    accountFolder = Path.Combine(_mediaRoot, accountId.ToString("N"));
-                    _ = Directory.CreateDirectory(accountFolder);
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
@@ -169,9 +166,16 @@ namespace VideoForensics.Client.Hosting.Services
 
                         if (_mediaDownloadService != null)
                         {
+                            // Media lands in <root>\<provider>\<location>\<device>, the layout the Storage Settings
+                            // and the startup migration both assume. Location names come from the DB, not the provider.
+                            string locationName = (await _locationRepository.GetByProviderLocationIdAsync(accountId, providerLocationId, cancellationToken))?.Name
+                                ?? providerLocationId;
+                            string deviceFolder = MediaFolderLayout.GetDeviceFolder(_mediaRoot, account.ProviderName, locationName, deviceName);
+                            _ = Directory.CreateDirectory(deviceFolder);
+
                             // A failed media pull throws so the per-device catch records it and counts the feed as failed.
                             DownloadResult media = await _mediaDownloadService.DownloadVideosAsync(
-                                device.ProviderDeviceId, accountFolder, startTime, endTime, providerLocationId, cancellationToken);
+                                device.ProviderDeviceId, deviceFolder, startTime, endTime, providerLocationId, cancellationToken);
                             if (!media.Success)
                             {
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");
@@ -216,7 +220,16 @@ namespace VideoForensics.Client.Hosting.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to pull events for device");
+                        // A throttle is handled and expected: name the device and the reason, never the stack.
+                        if (ex is VideoForensics.Providers.Ring.Exceptions.ThrottledException throttled)
+                        {
+                            _logger.LogWarning("Skipped device {DeviceName}: {Reason}", deviceName, throttled.Message);
+                        }
+                        else
+                        {
+                            _logger.LogError(ex, "Failed to pull events for device {DeviceName}", deviceName);
+                        }
+
                         device.LastPullAttemptAtUtc = DateTime.UtcNow;
                         await _deviceRepository.UpdateAsync(device, cancellationToken);
                         deviceErrors.Add($"Device {deviceName}: {ex.Message}");
@@ -238,7 +251,16 @@ namespace VideoForensics.Client.Hosting.Services
 
                 await _providerAccountRepository.UpdateAsync(account, cancellationToken);
 
-                _logger.LogInformation("Successfully pulled events for account");
+                // Only report success when every device pulled; a partial pull must not read as a clean one in the log.
+                if (feedsFailed > 0)
+                {
+                    _logger.LogWarning("Pulled events for account with {FailedCount} of {DeviceCount} device(s) failed", feedsFailed, inventory.Devices.Count);
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully pulled events for account");
+                }
+
                 return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
             }
             catch (Exception ex)
