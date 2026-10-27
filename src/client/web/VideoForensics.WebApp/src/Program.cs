@@ -516,6 +516,7 @@ builder.Services.AddSelfHttpService<IAdminOperatorService>(http => new RemoteAdm
 // same reasoning as AddSelfHttpService above. Registered ahead of Ui.Shared's
 // DefaultSelfApiHttpClientFactory TryAddScoped registration so this one wins.
 builder.Services.AddScoped<ISelfApiHttpClientFactory, WebAppSelfApiHttpClientFactory>();
+builder.Services.AddScoped<IProviderAccountEditAccess, ProviderAccountEditAccess>();
 
 // Client-side Web Push API driver for push notification subscription management.
 builder.Services.AddScoped<WebPushClient>();

@@ -43,9 +43,12 @@ public abstract class AccountsPageTestBase : BunitContext
     protected static readonly Guid RingAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     protected static readonly Guid WyzeAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
 
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountsPageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();

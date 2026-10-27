@@ -29,9 +29,12 @@ public abstract class AccountSyncSchedulePageTestBase : BunitContext
 
     protected StubHttpMessageHandler Handler { get; } = new();
 
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountSyncSchedulePageTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
         _ = Services.AddSingleton<Syncfusion.Blazor.GlobalOptions>();

@@ -11,6 +11,7 @@
 @inject IAccountLinkedSource AccountLinkedSource
 @inject IUserRepository UserRepository
 @inject IAccountExportService ExportService
+@inject IProviderAccountEditAccess EditAccess
 @inject IStringLocalizer<Accounts> L
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -155,9 +156,12 @@ else
     </div>
 }
 
-<div class="mt-4">
-    <SfButton CssClass="e-primary" Content="@L["AddAccount"]" OnClick="GoToAddAccount" />
-</div>
+@if (_canEdit)
+{
+    <div class="mt-4">
+        <SfButton CssClass="e-primary" Content="@L["AddAccount"]" OnClick="GoToAddAccount" />
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -210,6 +214,7 @@ else
     private bool _isLoading = true;
     private IDisposable? _accountLinkedSubscription;
     private volatile bool _disposed;
+    private bool _canEdit;
 
     protected override async Task OnInitializedAsync()
     {
@@ -223,6 +228,7 @@ else
 
             _ = OnAccountLinkedAsync();
         });
+        _canEdit = await EditAccess.CanEditAsync(CancellationToken.None);
         await LoadAccountsAsync();
     }
 

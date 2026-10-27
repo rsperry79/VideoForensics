@@ -37,9 +37,12 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
 
     protected static readonly Guid RingAccountId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
 
+    protected ProviderAccountEditAccessDouble EditAccess { get; } = new();
+
     protected AccountDetailsRemoveTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddSingleton<IProviderAccountEditAccess>(EditAccess);
         _ = Services.AddLocalization();
         ScopeOwnershipTestDoubles.RegisterEmpty(Services);
         _ = Services.AddSingleton<Syncfusion.Blazor.ISyncfusionStringLocalizer, Syncfusion.Blazor.SyncfusionStringLocalizer>();
