@@ -1081,7 +1081,15 @@ namespace VideoForensics.Providers.Ring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                if (ex is ThrottledException throttled)
+                {
+                    // A throttle is handled and expected: log the reason, not the stack.
+                    _logger.LogWarning("Video download for device {DeviceName} skipped: {Reason}", deviceName, throttled.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error downloading videos for device {DeviceName}", deviceName);
+                }
                 _currentStatus = _currentStatus with { IsDownloading = false };
                 return new DownloadResult(
                     Success: false,
