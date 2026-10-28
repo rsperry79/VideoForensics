@@ -26,6 +26,11 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         // Set when the saved left-nav collapse could not be applied yet (splitter JS not ready, e.g. after a
         // circuit reconnect). Cleared on success or by a user toggle; retried on each later render.
         private bool _leftNavRestorePending;
+        // Actual collapse state of the left-nav pane. Tracked separately from LayoutPrefs, because pages such as
+        // /media collapse the pane without changing the saved preference.
+        private bool _leftNavPaneCollapsed;
+        // Set on every location change; the pane is brought in line with the current page on the next render.
+        private bool _leftNavSyncPending = true;
 
         private int _undismissedCount = 0;
         private bool _noticesDropdownOpen = false;
@@ -53,6 +58,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         protected override void OnInitialized()
         {
             SetCurrentLocation(Nav.Uri);
+            _leftNavSyncPending = true;
             _passkeySetupOnly = SessionState.PasskeySetupOnly;
             Nav.LocationChanged += OnLocationChanged;
             ThemeService.OnChange += StateHasChanged;
@@ -102,6 +108,11 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 await TryRestoreLeftNavCollapseAsync(_outerSplitter);
             }
 
+            if (_leftNavSyncPending && _outerSplitter is not null)
+            {
+                await SyncLeftNavForPathAsync(_outerSplitter);
+            }
+
             await AttachRightPanelHandleIfNeededAsync();
         }
 
@@ -113,7 +124,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             try
             {
-                await splitter.CollapseAsync(LeftPaneIndex);
+                await SetLeftNavPaneCollapsedAsync(splitter, true);
                 _leftNavRestorePending = false;
             }
             catch (Exception ex) when (IsSplitterNotReady(ex))
@@ -121,6 +132,51 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 // Deliberately no exception detail in the log: keep tokens and URLs out of the log output.
                 Logger.LogDebug("Left-nav collapse restore deferred: splitter not ready. Will retry on next render.");
             }
+        }
+
+        /// <summary>
+        /// Pages in <see cref="AutoCollapsePaths"/> hide the left nav. Every other page shows the saved preference.
+        /// The auto-collapse is transient: it changes the pane, never <see cref="LayoutPreferencesState"/>.
+        /// </summary>
+        private static readonly string[] AutoCollapsePaths = ["/media"];
+
+        private static bool IsAutoCollapsePath(string path) => AutoCollapsePaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Brings the left-nav pane in line with the current page. On an auto-collapse page the pane is collapsed;
+        /// elsewhere it follows the saved preference. A JS failure means the splitter is not ready; the sync stays
+        /// pending and runs again on the next render.
+        /// </summary>
+        private async Task SyncLeftNavForPathAsync(SfSplitter splitter)
+        {
+            bool wantCollapsed = IsAutoCollapsePath(_currentPath) || LayoutPrefs.LeftNavCollapsed;
+            try
+            {
+                if (wantCollapsed != _leftNavPaneCollapsed)
+                {
+                    await SetLeftNavPaneCollapsedAsync(splitter, wantCollapsed);
+                }
+
+                _leftNavSyncPending = false;
+            }
+            catch (Exception ex) when (IsSplitterNotReady(ex))
+            {
+                Logger.LogDebug("Left-nav page sync deferred: splitter not ready. Will retry on next render.");
+            }
+        }
+
+        private async Task SetLeftNavPaneCollapsedAsync(SfSplitter splitter, bool collapsed)
+        {
+            if (collapsed)
+            {
+                await splitter.CollapseAsync(LeftPaneIndex);
+            }
+            else
+            {
+                await splitter.ExpandAsync(LeftPaneIndex);
+            }
+
+            _leftNavPaneCollapsed = collapsed;
         }
 
         /// <summary>
@@ -163,6 +219,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             SetCurrentLocation(e.Location);
+            _leftNavSyncPending = true;
             _passkeySetupOnly = SessionState.PasskeySetupOnly;
             InspectorState.Clear();
             _ = InvokeAsync(StateHasChanged);
@@ -199,6 +256,19 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         {
             // An explicit user toggle supersedes any restore still waiting on the splitter.
             _leftNavRestorePending = false;
+
+            // On an auto-collapse page the toggle only flips the pane for this visit. The saved preference
+            // stays put, and leaving the page brings the pane back in line with it.
+            if (IsAutoCollapsePath(_currentPath))
+            {
+                if (_outerSplitter is not null)
+                {
+                    await SetLeftNavPaneCollapsedAsync(_outerSplitter, !_leftNavPaneCollapsed);
+                }
+
+                return;
+            }
+
             bool collapsed = !LayoutPrefs.LeftNavCollapsed;
             await LayoutPrefs.SetLeftNavCollapsedAsync(collapsed);
 
@@ -207,14 +277,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
                 return;
             }
 
-            if (collapsed)
-            {
-                await _outerSplitter.CollapseAsync(LeftPaneIndex);
-            }
-            else
-            {
-                await _outerSplitter.ExpandAsync(LeftPaneIndex);
-            }
+            await SetLeftNavPaneCollapsedAsync(_outerSplitter, collapsed);
         }
 
         private async Task ToggleRightPanelAsync()
