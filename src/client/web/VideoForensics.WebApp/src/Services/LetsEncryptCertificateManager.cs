@@ -33,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Services
 
         /// <summary>
         /// Loads the stored certificate, then issues a new one if <paramref name="force"/> is set or renewal is due.
-        /// Acme:UseStaging defaults to true, so production issuance is an explicit configuration change.
+        /// Staging is the default until production is chosen on the settings page (or Acme:UseStaging is set to false).
         /// </summary>
         public async Task<CertificateCheckResult> EnsureCertificateAsync(bool force, CancellationToken ct)
         {
@@ -77,7 +77,9 @@ namespace VideoForensics.Client.WebApp.Services
                 return new CertificateCheckResult(false, false, $"No zone visible to the Cloudflare token covers {internetUrl.Host}.");
             }
 
-            bool useStaging = _configuration.GetValue("Acme:UseStaging", true);
+            // The staging choice saved from the settings page wins; the Acme:UseStaging config value is only the
+            // fallback before anything is saved. Both default to staging so production issuance is always deliberate.
+            bool useStaging = await _store.GetUseStagingAsync(ct).ConfigureAwait(true) ?? _configuration.GetValue("Acme:UseStaging", true);
             AcmeAccountState? account = await _store.GetAccountAsync(ct).ConfigureAwait(true);
             var publisher = new CloudflareDnsChallengePublisher(_cloudflare, apiToken, zone.Id);
 

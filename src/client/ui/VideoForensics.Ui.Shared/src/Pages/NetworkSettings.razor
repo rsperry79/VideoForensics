@@ -113,10 +113,6 @@ else
                     @if (_tunnelPublicUrl is not null)
                     {
                         <span>@L["PublicUrlLabel"] <a href="@_tunnelPublicUrl" target="_blank" rel="noopener">@_tunnelPublicUrl</a></span>
-                        <div class="alert alert-info mt-2">
-                            @L["PasskeyAddressNotice"]
-                            <SfButton Content="@L["UsePasskeyAddressButton"]" OnClick="ConfigurePasskeyOriginAsync" Disabled="@_isTunnelActing" CssClass="e-primary e-small ms-2" />
-                        </div>
                     }
                     @if (_tunnelErrorMessage is not null)
                     {
@@ -151,7 +147,29 @@ else
             </div>
         </div>
 
-        @if (_wizardVisible)
+        <div class="card mb-4"><div class="card-body p-4">
+            <strong class="d-block mb-2">@L["LetsEncryptHeading"]</strong>
+            <div class="mb-2" style="max-width: 420px;">
+                <label class="form-label mb-1" for="le-contact-email">@L["ContactEmailLabel"]</label>
+                <input id="le-contact-email" type="email" class="form-control" @bind="_leContactEmail" />
+            </div>
+            <div class="form-check mb-1">
+                <input id="le-use-staging" type="checkbox" class="form-check-input" @bind="_leUseStaging" />
+                <label class="form-check-label" for="le-use-staging">@L["UseStagingLabel"]</label>
+            </div>
+            <small class="text-muted d-block mb-3">@L["UseStagingHelp"]</small>
+            <div class="d-flex gap-2 flex-wrap">
+                <SfButton Content="@L["SaveCertSettingsButton"]" OnClick="SaveCertificateSettingsAsync" Disabled="@_isLeBusy" CssClass="e-flat" />
+                <SfButton Content="@L["RequestCertificateButton"]" OnClick="RequestCertificateAsync" Disabled="@_isLeBusy" CssClass="e-primary" />
+            </div>
+            @if (_leMessage is not null)
+            {
+                <div class="alert @(_leSucceeded ? "alert-success" : "alert-danger") mt-3 mb-0">@_leMessage</div>
+            }
+        </div></div>
+
+        @* The Cloudflare setup is only needed until a tunnel is configured; once it is, the status card above is enough. *@
+        @if (!_tunnelConfigured && _wizardVisible)
         {
             <div class="card border-primary mb-4">
                 <div class="card-body p-4">
@@ -223,7 +241,7 @@ else
                 </div>
             </div>
         }
-        else
+        else if (!_tunnelConfigured)
         {
             <SfButton Content="@L["WizardShowButton"]" OnClick="() => _wizardVisible = true" CssClass="e-primary mb-4" />
         }
@@ -295,6 +313,13 @@ else
     private string? _selectedDomain;
     private List<string> _zones = new();
     private bool _confirmDisconnect;
+
+    // Let's Encrypt settings. The contact email and staging choice are saved separately from issuing a certificate.
+    private string? _leContactEmail;
+    private bool _leUseStaging = true;
+    private bool _isLeBusy;
+    private string? _leMessage;
+    private bool _leSucceeded;
 
     private string GetTunnelBadgeClass() => _tunnelStatus switch
     {
@@ -660,6 +685,14 @@ else
             _tunnelErrorMessage = NullableString(body, "errorMessage");
             _tunnelRecentLogLines = body.GetProperty("recentLogLines").EnumerateArray().Select(e => e.GetString() ?? "").ToList();
 
+            await LoadCertificateSettingsAsync(client);
+
+            // Passkeys only work on the tunnel address, so keep the passkey address pointed at it without asking.
+            if (_tunnelPublicUrl is not null && !IsPasskeyOriginCurrent(_tunnelPublicUrl))
+            {
+                await ConfigurePasskeyOriginAsync();
+            }
+
             // Resume the wizard where the saved configuration leaves off.
             if (_tunnelConfigured)
             {
@@ -703,6 +736,104 @@ else
     {
         System.Text.Json.JsonElement value = body.GetProperty(property);
         return value.ValueKind == System.Text.Json.JsonValueKind.Null ? null : value.GetString();
+    }
+
+    private async Task LoadCertificateSettingsAsync(HttpClient client)
+    {
+        try
+        {
+            var response = await client.GetAsync("api/remote-access/certificate-settings");
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _leContactEmail = NullableString(body, "contactEmail");
+            _leUseStaging = body.GetProperty("useStaging").GetBoolean();
+        }
+        catch (Exception)
+        {
+            // The form keeps its defaults; the save and request actions report their own errors.
+        }
+    }
+
+    private async Task SaveCertificateSettingsAsync()
+    {
+        _isLeBusy = true;
+        _leMessage = null;
+        try
+        {
+            var response = await CreateClient().PutAsJsonAsync("api/remote-access/certificate-settings", new { contactEmail = _leContactEmail ?? string.Empty, useStaging = _leUseStaging });
+            if (!response.IsSuccessStatusCode)
+            {
+                SetLeMessage(await SafeReadErrorAsync(response) ?? L["CertificateSettingsFailed", response.StatusCode.ToString()], false);
+                return;
+            }
+
+            SetLeMessage(L["CertificateSettingsSaved"], true);
+        }
+        catch (Exception ex)
+        {
+            SetLeMessage(L["CertificateSettingsFailed", ex.Message], false);
+        }
+        finally
+        {
+            _isLeBusy = false;
+        }
+    }
+
+    // Issuing a certificate changes what the server presents, so it needs a fresh passkey assertion like the other actions.
+    private async Task RequestCertificateAsync()
+    {
+        if (SessionState.SessionToken is null)
+        {
+            SetLeMessage(L["RemoteAccessSignInRequired"], false);
+            return;
+        }
+
+        _isLeBusy = true;
+        _leMessage = null;
+        try
+        {
+            var stepUpToken = await StepUp.GetStepUpTokenAsync();
+            var client = CreateClient();
+            client.DefaultRequestHeaders.Add("X-StepUp-Token", stepUpToken);
+            var response = await client.PostAsJsonAsync("api/remote-access/certificate", new { contactEmail = _leContactEmail ?? string.Empty });
+            if (!response.IsSuccessStatusCode)
+            {
+                SetLeMessage(await SafeReadErrorAsync(response) ?? L["CertificateRequestFailed", response.StatusCode.ToString()], false);
+                return;
+            }
+
+            SetLeMessage(L["CertificateRequestSucceeded"], true);
+        }
+        catch (Exception ex)
+        {
+            SetLeMessage(L["CertificateRequestFailed", ex.Message], false);
+        }
+        finally
+        {
+            _isLeBusy = false;
+        }
+    }
+
+    private void SetLeMessage(string message, bool succeeded)
+    {
+        _leMessage = message;
+        _leSucceeded = succeeded;
+    }
+
+    // Compares by origin so a trailing slash or path in the tunnel URL does not trigger a needless save.
+    private bool IsPasskeyOriginCurrent(string tunnelUrl)
+    {
+        if (!Uri.TryCreate(tunnelUrl, UriKind.Absolute, out Uri? tunnel))
+        {
+            return false;
+        }
+
+        string origin = tunnel.GetLeftPart(UriPartial.Authority);
+        return _passkeyOrigins.Any(o => string.Equals(o.TrimEnd('/'), origin, StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task ConfigurePasskeyOriginAsync()

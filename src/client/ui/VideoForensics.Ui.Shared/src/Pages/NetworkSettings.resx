@@ -323,4 +323,34 @@
   <data name="NotNowButton" xml:space="preserve">
     <value>Not now</value>
   </data>
+  <data name="LetsEncryptHeading" xml:space="preserve">
+    <value>Let's Encrypt certificate</value>
+  </data>
+  <data name="ContactEmailLabel" xml:space="preserve">
+    <value>Contact email</value>
+  </data>
+  <data name="UseStagingLabel" xml:space="preserve">
+    <value>Use Let's Encrypt staging</value>
+  </data>
+  <data name="UseStagingHelp" xml:space="preserve">
+    <value>Staging certificates are not trusted by browsers. Turn this off only once staging has issued successfully, because production issuance is rate-limited.</value>
+  </data>
+  <data name="SaveCertSettingsButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="RequestCertificateButton" xml:space="preserve">
+    <value>Request certificate</value>
+  </data>
+  <data name="CertificateSettingsSaved" xml:space="preserve">
+    <value>Let's Encrypt settings saved.</value>
+  </data>
+  <data name="CertificateSettingsFailed" xml:space="preserve">
+    <value>Could not save Let's Encrypt settings: {0}</value>
+  </data>
+  <data name="CertificateRequestSucceeded" xml:space="preserve">
+    <value>Certificate issued.</value>
+  </data>
+  <data name="CertificateRequestFailed" xml:space="preserve">
+    <value>Certificate request failed: {0}</value>
+  </data>
 </root>

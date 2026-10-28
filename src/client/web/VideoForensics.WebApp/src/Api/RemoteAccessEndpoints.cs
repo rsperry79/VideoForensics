@@ -240,6 +240,37 @@ namespace VideoForensics.Client.WebApp.Api
                     : Results.BadRequest(new { error = result.Message });
             }).AddEndpointFilter<StepUpEndpointFilter>();
 
+            // The Let's Encrypt contact email and staging choice, saved without issuing anything. Issuing a
+            // certificate stays on the step-up gated /certificate route.
+            _ = group.MapGet("/certificate-settings", async (
+                ILetsEncryptCertificateStore store,
+                IConfiguration appConfiguration,
+                CancellationToken ct) =>
+            {
+                string? email = await store.GetContactEmailAsync(ct);
+                bool? savedUseStaging = await store.GetUseStagingAsync(ct);
+                return Results.Ok(new
+                {
+                    contactEmail = email,
+                    useStaging = savedUseStaging ?? appConfiguration.GetValue("Acme:UseStaging", true)
+                });
+            });
+
+            _ = group.MapPut("/certificate-settings", async (
+                SaveCertificateSettingsRequest request,
+                ILetsEncryptCertificateStore store,
+                CancellationToken ct) =>
+            {
+                if (string.IsNullOrWhiteSpace(request.ContactEmail) || !request.ContactEmail.Contains('@', StringComparison.Ordinal))
+                {
+                    return Results.BadRequest(new { error = "Enter a valid contact email for Let's Encrypt." });
+                }
+
+                await store.SetContactEmailAsync(request.ContactEmail, ct);
+                await store.SetUseStagingAsync(request.UseStaging, ct);
+                return Results.Ok(new { contactEmail = request.ContactEmail.Trim(), useStaging = request.UseStaging });
+            });
+
             // Stops the tunnel and deletes both stored Cloudflare tokens. The configured address is kept so
             // that re-connecting only needs the tokens again.
             _ = group.MapPost("/disconnect", async (
@@ -361,4 +392,6 @@ namespace VideoForensics.Client.WebApp.Api
     public sealed record ConfigureCloudflareTunnelRequest(string TunnelToken, string HostnamePrefix, string Domain);
     public sealed record ProvisionCloudflareTunnelRequest(string HostnamePrefix, string Domain);
     public sealed record RequestCertificateRequest(string ContactEmail);
+
+    public sealed record SaveCertificateSettingsRequest(string ContactEmail, bool UseStaging);
 }
