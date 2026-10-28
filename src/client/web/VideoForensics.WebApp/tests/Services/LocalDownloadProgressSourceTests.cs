@@ -1,5 +1,3 @@
-using System.Reflection;
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
@@ -151,24 +149,6 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             source.Dispose();
 
             Assert.True(completed);
-        }
-
-        [Fact]
-        public void DownloadProgressSources_Constructors_DoNotTakeDownloadService()
-        {
-            // The live progress path reads only the sync activity log. A constructor that still took
-            // IVideoDownloadService would reintroduce the second, never-updating data source.
-            Type[] types = [typeof(LocalDownloadProgressSource), typeof(LiveHub), typeof(DownloadProgressBroadcastService)];
-
-            foreach (Type type in types)
-            {
-                foreach (ConstructorInfo constructor in type.GetConstructors())
-                {
-                    Assert.DoesNotContain(
-                        constructor.GetParameters(),
-                        parameter => parameter.ParameterType == typeof(IVideoDownloadService));
-                }
-            }
         }
     }
 }

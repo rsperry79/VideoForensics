@@ -275,7 +275,7 @@ builder.Services.Configure<BrowserLiveViewOptions>(
     builder.Configuration.GetSection(BrowserLiveViewOptions.SectionName));
 builder.Services.AddSingleton<BrowserLiveViewBridge>();
 builder.Services.AddHostedService<DownloadProgressBroadcastService>();
-// Per-circuit, like the scoped IVideoDownloadService it samples. Replaces the Razor panel's polling timer.
+// Per-circuit, so each circuit samples the sync activity log itself. Replaces the Razor panel's polling timer.
 builder.Services.AddScoped<IDownloadProgressSource, LocalDownloadProgressSource>();
 // Per-circuit like the scoped IRingSelfTestService it samples. Replaces the Razor page's status polling timer.
 builder.Services.AddScoped<ISelfTestStatusSource, LocalSelfTestStatusSource>();
@@ -671,7 +671,6 @@ app.MapDeviceControlEndpoints();
 app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();
-app.MapDownloadEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();

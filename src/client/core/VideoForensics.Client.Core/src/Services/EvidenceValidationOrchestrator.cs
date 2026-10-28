@@ -10,7 +10,6 @@ namespace VideoForensics.Client.Core.Services
     /// <summary>
     /// CLI-layer adapter combining IEventAndConfigService (provider) and IVideoForensicsDataClient (data)
     /// to orchestrate integrity verification and provider reconciliation.
-    /// Mirrors the architectural role of VideoDownloadServiceAdapter.
     /// </summary>
     public class EvidenceValidationOrchestrator : IEvidenceValidationService
     {

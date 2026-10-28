@@ -421,7 +421,7 @@ namespace VideoForensics.Client.Hosting
             // DB is ready - every service already holding a reference observes the loaded values too.
             _ = services.AddSingleton<IForensicsConfiguration>(new ForensicsConfiguration());
 
-            // Scoped, not Singleton, for these four: caught by a DI-graph smoke test during M1 -
+            // Scoped, not Singleton, for these three: caught by a DI-graph smoke test during M1 -
             // every one of them transitively depends on a Scoped repository (IAppSettingRepository,
             // IMediaItemRepository, IEventRepository, IDeviceRepository, IActionLogRepository,
             // IVideoForensicsDataClient are all registered TryAddScoped/AddScoped by the data layer).
@@ -430,18 +430,6 @@ namespace VideoForensics.Client.Hosting
             // would silently break (or, once ValidateOnBuild is on, fail outright) the moment a real
             // per-circuit-scoped host (Blazor Server, per the MAUI/Web plan) exists. Matching
             // JammingToolsOrchestrator's already-Scoped registration below for the same reason.
-            _ = services.AddScoped<IVideoDownloadService>(serviceProvider =>
-            {
-                ILogger<VideoDownloadServiceAdapter> logger = serviceProvider.GetRequiredService<ILogger<VideoDownloadServiceAdapter>>();
-                IVideoProvider videoProvider = serviceProvider.GetRequiredService<IVideoProvider>();
-                IProviderAuthService authService = serviceProvider.GetRequiredService<IProviderAuthService>();
-                IMediaDownloadService downloadService = serviceProvider.GetRequiredService<IMediaDownloadService>();
-                IDeviceDiscoveryService deviceService = serviceProvider.GetRequiredService<IDeviceDiscoveryService>();
-                IVideoForensicsDataClient dataClient = serviceProvider.GetRequiredService<IVideoForensicsDataClient>();
-                IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
-                return new VideoDownloadServiceAdapter(logger, videoProvider, authService, downloadService, deviceService, dataClient, forensicsConfig);
-            });
-
             _ = services.AddScoped<IEvidenceValidationService>(serviceProvider =>
             {
                 ILogger<EvidenceValidationOrchestrator> logger = serviceProvider.GetRequiredService<ILogger<EvidenceValidationOrchestrator>>();
@@ -758,7 +746,6 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IDeviceDiscoveryService, RemoteDeviceDiscoveryService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventAndConfigService, RemoteEventAndConfigService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IForensicsConfigurationService, RemoteForensicsConfigurationService>(c => c.BaseAddress = serverAddress);
-            _ = services.AddHttpClient<IVideoDownloadService, RemoteVideoDownloadService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IReleaseChannelService, RemoteReleaseChannelService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IRingSelfTestService, RemoteRingSelfTestService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IStorageSettingsService, RemoteStorageSettingsService>(c => c.BaseAddress = serverAddress);

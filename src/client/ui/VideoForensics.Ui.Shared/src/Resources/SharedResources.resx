@@ -32,15 +32,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
-  <data name="Collect" xml:space="preserve">
-    <value>Collect</value>
-  </data>
-  <data name="Collect Videos" xml:space="preserve">
-    <value>Collect Videos</value>
-  </data>
-  <data name="Collect Snapshots" xml:space="preserve">
-    <value>Collect Snapshots</value>
-  </data>
   <data name="Analyze" xml:space="preserve">
     <value>Analyze</value>
   </data>
