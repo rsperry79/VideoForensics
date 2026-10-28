@@ -1,6 +1,6 @@
 # Plan: media page rework (Frigate-style)
 
-Status: Step 1 done and pushed to `wip` (ed1030a8). Steps 2 and 3 not started. Builds on `platform-split-and-viewer.md` Parts 2 and 3.
+Status (2026-10-28): Step 1 (hide the nav on `/media`, `/` redirects there) done, `ed1030a8`. The active-account side task done, `e0da8bd3`. Step 2 (Frigate-style layout) and Step 3 not started. Builds on `platform-split-and-viewer.md` Parts 2 and 3.
 
 ## Goals
 1. On `/media`, move the Media section out of the left nav and auto-close the left nav while on this page.
@@ -47,27 +47,9 @@ Status: Step 1 done and pushed to `wip` (ed1030a8). Steps 2 and 3 not started. B
 - Filters: provider, account, and camera filters.
 - Vertical timeline: in the right panel.
 
-## Side task (separate from Step 2)
-- Remove the active account from all pages. It is no longer used as a filter.
-- Scope (searched 2026-10-28):
-  - UI selector: `Layout/RightPanel/AccountSwitcher.razor`, rendered by `RightPanelHost.razor:8`. Only consumer of `AccountSelectionState`.
-  - Service: `Services/AccountSelection.cs` (`AccountSelection.Resolve` and `AccountSelectionState`, localStorage key `vf.account.selected`). DI: `MauiProgram.cs:193`, `WebApp/src/Program.cs:532`.
-  - Tests that register `AccountSelectionState` and must drop it: `AccountsPageTests.cs:95`, `AccountDetailsRemoveTests.cs:68`, `AccountDetailsPageTests.cs:158`, `SimpleModeLayoutTests.cs:55`, `OperatorGatedPagesTests.cs:69`. Delete `tests/Services/AccountSelectionTests.cs`.
-  - Resource keys `Active Account` and `SwitchedActiveAccount` in `SharedResources.resx` (only the switcher uses them).
-  - Backend `IForensicsConfiguration.ActiveProviderAccountId` (decision: include backend, pending confirmation). It is more than a filter:
-    - Persisted as `AppSetting.ActiveProviderAccountId` (`data/common/.../AppSetting.cs:10`), with a DB column in every migration snapshot. Removing it needs an EF migration.
-    - Download attribution: `VideoDownloadServiceAdapter.cs:197,441,462,696` and `EventPullService.cs:134` and `SnapshotSyncService.cs:61` pass the account to `SetActiveProviderAccountId`. The `IMediaDownloadService` comment says downloads fall back to a synthetic placeholder account without it. Removing it changes which account downloaded devices attach to.
-    - Written by `AuthForm.razor:98`, `AddAccountWizard.razor:171`, `AccountDetails.razor:184`, and selftest `Program.cs:456`. Ring's `RingMediaDownloadService` and `RingDeviceIdentityResolver` cache it.
-    - Decision (user, 2026-10-28): downloads run on a scheduler. Attribution comes from the scheduled job's account, not from a stored "active" account.
-    - What already exists: `ScheduledSyncService` (`Hosting/BackgroundServices/ScheduledSyncService.cs`) runs per account. It builds `EventPullService` per account and calls `SetActiveProviderAccountId(accountId)` from the job's own account (`EventPullService.cs:134`, `SnapshotSyncService.cs:61`). The scheduled path does not need the stored active account.
-    - What still reads the stored account: the interactive download path, `VideoDownloadServiceAdapter.cs:197,441,462,696`. Plan: route manual downloads through the same scheduler (one-off job per account), then remove the stored field and its EF migration.
-    - Open: confirm that manual downloads should become scheduled jobs, rather than staying direct calls that take an account argument.
-    - Mapped 2026-10-28 (no edits yet):
-      - `VideoDownloadServiceAdapter` (Client.Core) is the manual path. `DownloadVideosAsync` (`:415`) reads the stored account at `:441` and stores it in `_currentBatchAccountId`, which also drives the watermark update at `:647-651`. `DownloadSnapshotsAsync` (`:670`) reads it at `:696`. Progress is polled through `GetProgress`, `DrainActivityLog`, `GetRemainingCount`, and `GetCurrentDevice` (`:832-933`), which the UI reads.
-      - `ScheduledSyncService` runs per-account recurring jobs from `SyncSchedule` rows (`RunRollupAsync`, `RunSnapshotSyncAsync`, `RunEventSyncAsync`). It has no one-off job queue, so one-off manual downloads need new persistence (a job row or queue) and a runner.
-      - `RemoteVideoDownloadService` (Hosting) POSTs manual downloads to the server, so the client/server split (`client-split.md`) applies: the job model and its API DTOs live on the server, and the client keeps the progress poll.
-      - Scope is larger than one batch: new job entity and migration, a runner in `ScheduledSyncService`, API routes and DTOs, and the progress UI moved from direct calls to job status polling. Recommend a separate design doc before code.
-  - Open: clear the stored `vf.account.selected` key on upgrade, or leave it as dead localStorage.
+## Side task: remove the active account (done)
+- Removed the right-panel account switcher, `AccountSelectionState`, `IForensicsConfiguration.ActiveProviderAccountId`, the config DTO field, and the `AppSettings` column (migration `RemoveActiveProviderAccountId`). `e0da8bd3`. Breaking for the config API DTO.
+- Downloads now run through account sync, which passes the account explicitly. Details, commits, and remaining work (including live sync progress) are in `one-off-account-download-jobs.md`.
 
 ## Open
 - None for Step 2 layout. Data sources for provider events and anomalies still need locating before the Events and Detail tabs are built.
@@ -88,7 +70,7 @@ Status: Step 1 done and pushed to `wip` (ed1030a8). Steps 2 and 3 not started. B
 
 ## Open questions
 1. Resolved: hide the whole left nav on `/media` (user choice).
-2. Does the Evidence list stay at `/media` or move to a new page?
+2. Resolved: the review UI replaces the Evidence list (user decision, see Decisions).
 3. Preview strip (Part 3) before or after the layout rework? (Plan assumes layout first, with a placeholder strip: hidden, or a localized empty state.)
 4. Route: `/media` or a new page? Confirm which paths `NoticeActions.ReviewLink` and bookmarks use before moving anything.
 5. Step 1 ships independently of Steps 2 and 3.
