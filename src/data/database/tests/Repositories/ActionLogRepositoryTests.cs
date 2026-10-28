@@ -256,6 +256,22 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task ActionLogRepository_AppendAsync_ConcurrentAppends_KeepChainValid()
+        {
+            // Each append reads the tail and inserts in its own context. Without serialising them, two can chain to the same tail.
+            Task<ActionLogEntry>[] appends = Enumerable.Range(0, 10)
+                .Select(i => _repository.AppendAsync($"Actor{i}", ActorType.Human, $"Act{i}", "Ent", Guid.NewGuid(), null, CancellationToken.None))
+                .ToArray();
+
+            ActionLogEntry[] entries = await Task.WhenAll(appends);
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.Equal(10, entries.Select(e => e.Id).Distinct().Count());
+            Assert.True(result.IsValid);
+            Assert.Equal(10, result.EntriesChecked);
+        }
+
+        [Fact]
         public async Task ActionLogRepository_HashChain_WithMultipleActors()
         {
             ActionLogEntry entry1 = await _repository.AppendAsync("Human1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
