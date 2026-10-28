@@ -34,12 +34,14 @@ namespace VideoForensics.Client.Hosting.Services
     /// <param name="EventsSynced">Events returned by the provider across all device feeds.</param>
     /// <param name="ConfigAreasSynced">Devices whose configuration was returned by the provider.</param>
     /// <param name="FeedsFailed">Per-device event feeds that failed.</param>
+    /// <param name="MediaFilesDownloaded">Video files written by the per-device media downloads in this pull.</param>
     public readonly record struct EventPullResult(
         int DevicesSynced = 0,
         int LocationsSynced = 0,
         int EventsSynced = 0,
         int ConfigAreasSynced = 0,
-        int FeedsFailed = 0);
+        int FeedsFailed = 0,
+        int MediaFilesDownloaded = 0);
 
     /// <summary>Pulls events and configuration from provider accounts automatically.</summary>
     public class EventPullService : IEventPullService
@@ -93,7 +95,7 @@ namespace VideoForensics.Client.Hosting.Services
         public async Task<EventPullResult> PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, DateTime? toTimestampUtc, CancellationToken cancellationToken)
         {
             // Counts live outside the try so a failure partway through still reports what was reached.
-            int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0;
+            int locationsSynced = 0, devicesSynced = 0, eventsSynced = 0, configAreasSynced = 0, feedsFailed = 0, mediaFilesDownloaded = 0;
             try
             {
                 ProviderAccount? account = await _providerAccountRepository.GetAsync(accountId, cancellationToken);
@@ -181,6 +183,8 @@ namespace VideoForensics.Client.Hosting.Services
                                 throw new InvalidOperationException(media.ErrorMessage ?? "Media download failed");
                             }
 
+                            mediaFilesDownloaded += media.FilesDownloaded;
+
                             if (_previewService != null && _mediaItems != null)
                             {
                                 // Previews are a convenience. Their failure is logged here and never counts the device as failed.
@@ -261,7 +265,7 @@ namespace VideoForensics.Client.Hosting.Services
                     _logger.LogInformation("Successfully pulled events for account");
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, mediaFilesDownloaded);
             }
             catch (Exception ex)
             {
@@ -283,7 +287,7 @@ namespace VideoForensics.Client.Hosting.Services
                     await _providerAccountRepository.UpdateAsync(account, cancellationToken);
                 }
 
-                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed);
+                return new EventPullResult(devicesSynced, locationsSynced, eventsSynced, configAreasSynced, feedsFailed, mediaFilesDownloaded);
             }
         }
 
