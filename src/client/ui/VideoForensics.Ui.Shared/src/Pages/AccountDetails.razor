@@ -1,8 +1,6 @@
 @page "/accounts/{Id:guid}"
 @inherits AccountTabPageBase
 @using VideoForensics.Client.Ui.Shared.Services
-@inject IForensicsConfiguration ForensicsConfig
-@inject IForensicsConfigurationService ForensicsConfigService
 @inject IMultiProviderAuthService MultiProviderAuthService
 
 <Breadcrumb Items="@_breadcrumbItems" />
@@ -181,20 +179,6 @@ else
         StatusMessage = null;
         try
         {
-            if (ForensicsConfig.ActiveProviderAccountId == Id)
-            {
-                ForensicsConfig.ActiveProviderAccountId = null;
-                try
-                {
-                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-                }
-                catch (NotSupportedException)
-                {
-                    StatusMessage = L["SettingServerOnly"];
-                    return;
-                }
-            }
-
             NavigationManager.NavigateTo("/accounts");
         }
         catch (Exception ex)

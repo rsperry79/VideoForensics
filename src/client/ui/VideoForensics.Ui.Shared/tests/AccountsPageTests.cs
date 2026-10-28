@@ -28,7 +28,7 @@ using ProviderAccountEntity = VideoForensics.Data.Common.Entities.ProviderAccoun
 namespace VideoForensics.Client.Ui.Shared.Tests;
 /// <summary>
 /// Shared setup for the /accounts page tests: repository and auth mocks, the real
-/// <see cref="AccountSelectionState"/> / <see cref="PairedSessionState"/> over the bUnit JS runtime,
+/// <see cref="PairedSessionState"/> over the bUnit JS runtime,
 /// and two linked accounts on different providers (Ring, Wyze). The grid is the real SfGrid; the
 /// provider filter lives in the right-panel slot, so tests render the captured
 /// <see cref="RightPanelContentService.Content"/> fragment to reach it.
@@ -92,7 +92,6 @@ public abstract class AccountsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<IMultiProviderAuthService>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         // Signed-in passkey session so StepUpService can fetch a step-up token for remove/retire/export.
         _ = Services.AddScoped(sp =>
         {

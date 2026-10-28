@@ -46,8 +46,8 @@ namespace VideoForensics.Core.Providers.Common.Contracts
         /// <summary>
         /// The persisted ProviderAccount this login resolved to, when the implementation persists
         /// accounts. Null on failure, or if account persistence isn't wired up for this provider.
-        /// A caller that tracks "the active account" (e.g. to attach downloaded devices to it)
-        /// should set it from this value after a successful login.
+        /// A caller that attaches downloaded devices to an account
+        /// should use this value after a successful login.
         /// </summary>
         Guid? ProviderAccountId = null
     );

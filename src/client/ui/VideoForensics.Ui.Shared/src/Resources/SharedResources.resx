@@ -122,9 +122,6 @@
   <data name="No" xml:space="preserve">
     <value>No</value>
   </data>
-  <data name="Active Account" xml:space="preserve">
-    <value>Active Account</value>
-  </data>
   <data name="Theme" xml:space="preserve">
     <value>Theme</value>
   </data>
@@ -427,9 +424,6 @@
   </data>
   <data name="NoAccountsLinked" xml:space="preserve">
     <value>No accounts linked yet.</value>
-  </data>
-  <data name="SwitchedActiveAccount" xml:space="preserve">
-    <value>Switched active account.</value>
   </data>
   <data name="SwitchedSessionNotResumed" xml:space="preserve">
     <value>Switched, but the saved session could not be resumed - sign in again.</value>

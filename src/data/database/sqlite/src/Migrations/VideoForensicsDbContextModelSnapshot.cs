@@ -255,9 +255,6 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ActiveProviderAccountId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(256)

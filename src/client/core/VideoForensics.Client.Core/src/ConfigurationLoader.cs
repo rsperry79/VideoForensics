@@ -41,7 +41,6 @@ namespace VideoForensics.Client.Core
                 runtimeConfig.LogLevel = loadedConfig.LogLevel;
                 runtimeConfig.MaxConcurrentDownloads = loadedConfig.MaxConcurrentDownloads;
                 runtimeConfig.DownloadStartDate = loadedConfig.DownloadStartDate;
-                runtimeConfig.ActiveProviderAccountId = loadedConfig.ActiveProviderAccountId;
                 runtimeConfig.EnableHealthSync = loadedConfig.EnableHealthSync;
                 runtimeConfig.EnableElevatedPolling = loadedConfig.EnableElevatedPolling;
                 runtimeConfig.EnableMdnsAdvertisement = loadedConfig.EnableMdnsAdvertisement;

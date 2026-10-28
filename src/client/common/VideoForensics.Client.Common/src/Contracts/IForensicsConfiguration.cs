@@ -26,7 +26,6 @@ namespace VideoForensics.Client.Common.Contracts
         int MaxConcurrentDownloads { get; set; }
         /// <summary>Start date for downloads, as a "yyyy-MM-dd" string parsed to a DateTime at use. Empty means unset.</summary>
         string DownloadStartDate { get; set; }
-        Guid? ActiveProviderAccountId { get; set; }
         /// <summary>Toggles the periodic RSSI/device-health background sync (DeviceHealthSyncService). Default on.</summary>
         bool EnableHealthSync { get; set; }
         /// <summary>Elevated health polling (every ElevatedPollingIntervalSeconds while a device is in an elevated window). Off by default; the regular health check is unaffected.</summary>
@@ -169,7 +168,6 @@ namespace VideoForensics.Client.Common.Contracts
         public string LogLevel { get; set; } = "Information";
         public int MaxConcurrentDownloads { get; set; } = 10;
         public string DownloadStartDate { get; set; } = "";
-        public Guid? ActiveProviderAccountId { get; set; }
         public bool EnableHealthSync { get; set; } = true;
         public bool EnableElevatedPolling { get; set; } = false;
         public bool EnableMdnsAdvertisement { get; set; } = true;

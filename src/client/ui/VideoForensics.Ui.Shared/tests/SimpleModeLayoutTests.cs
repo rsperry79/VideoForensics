@@ -51,8 +51,6 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped<LeftPanelContentService>();
         _ = Services.AddScoped(sp => new LayoutPreferencesState(sp.GetRequiredService<IJSRuntime>()));
-        // AccountSwitcher in the right panel resolves the account selection on every layout render.
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
 
         // Register PairedSessionState for SimpleLayout and other components
         var session = new PairedSessionState(JSInterop.JSRuntime);
@@ -126,19 +124,15 @@ public abstract class SimpleModeLayoutTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<IJammingRepository>().Object);
         _ = Services.AddScoped(_ => new SimpleHomeBuilder(TimeProvider.System, new Mock<IMediaContentUrlProvider>().Object, TestLocalizer.Create()));
 
-        // Register services needed by RightPanel components (AccountSwitcher, ThemeLanguagePicker)
+        // Register services needed by RightPanel components (ThemeLanguagePicker)
         _ = Services.AddScoped(_ => new Mock<IProviderAccountRepository>().Object);
         _ = Services.AddScoped(_ => new Mock<IUserRepository>().Object);
 
-        // Note: AccountSwitcher requires IProviderAuthService which violates client/server architecture.
-        // This is registered here for testing purposes only.
-        // TODO: Refactor AccountSwitcher to use remote service calls instead of direct provider access.
         var authServiceMock = new Mock<IProviderAuthService>();
         _ = Services.AddScoped(_ => authServiceMock.Object);
 
         // Register IForensicsConfiguration mock
         var forensicsConfigMock = new Mock<IForensicsConfiguration>();
-        _ = forensicsConfigMock.SetupGet(f => f.ActiveProviderAccountId).Returns((Guid?)null);
         _ = Services.AddScoped(_ => forensicsConfigMock.Object);
 
         // Register IForensicsConfigurationService mock

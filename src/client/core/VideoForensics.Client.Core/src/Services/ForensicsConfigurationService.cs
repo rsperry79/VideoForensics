@@ -109,7 +109,6 @@ namespace VideoForensics.Client.Core.Services
                 config.LogLevel = await GetStringSetting("LogLevel", config.LogLevel, cancellationToken);
                 config.MaxConcurrentDownloads = await GetIntSetting("MaxConcurrentDownloads", config.MaxConcurrentDownloads, cancellationToken);
                 config.DownloadStartDate = await GetStringSetting("DownloadStartDate", config.DownloadStartDate, cancellationToken);
-                config.ActiveProviderAccountId = await GetGuidSetting("ActiveProviderAccountId", config.ActiveProviderAccountId, cancellationToken);
                 config.EnableHealthSync = await GetBoolSetting("EnableHealthSync", config.EnableHealthSync, cancellationToken);
                 config.EnableElevatedPolling = await GetBoolSetting("EnableElevatedPolling", config.EnableElevatedPolling, cancellationToken);
                 config.EnableMdnsAdvertisement = await GetBoolSetting("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement, cancellationToken);
@@ -176,7 +175,6 @@ namespace VideoForensics.Client.Core.Services
                 await _settingRepository!.SetAsync("LogLevel", config.LogLevel, cancellationToken);
                 await _settingRepository!.SetAsync("MaxConcurrentDownloads", config.MaxConcurrentDownloads.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("DownloadStartDate", config.DownloadStartDate, cancellationToken);
-                await _settingRepository!.SetAsync("ActiveProviderAccountId", config.ActiveProviderAccountId?.ToString() ?? string.Empty, cancellationToken);
                 await _settingRepository!.SetAsync("EnableHealthSync", config.EnableHealthSync.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableElevatedPolling", config.EnableElevatedPolling.ToString(), cancellationToken);
                 await _settingRepository!.SetAsync("EnableMdnsAdvertisement", config.EnableMdnsAdvertisement.ToString(), cancellationToken);
@@ -241,12 +239,6 @@ namespace VideoForensics.Client.Core.Services
         {
             string? value = await _settingRepository!.GetAsync(key, ct);
             return string.IsNullOrEmpty(value) ? defaultValue : (T)Enum.Parse(typeof(T), value);
-        }
-
-        private async Task<Guid?> GetGuidSetting(string key, Guid? defaultValue, CancellationToken ct)
-        {
-            string? value = await _settingRepository!.GetAsync(key, ct);
-            return string.IsNullOrEmpty(value) ? defaultValue : Guid.Parse(value);
         }
     }
 }

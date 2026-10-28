@@ -65,7 +65,6 @@ public abstract class AccountDetailsRemoveTestBase : BunitContext
         _ = Services.AddScoped(_ => new Mock<IMultiProviderAuthService>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfiguration>().Object);
         _ = Services.AddScoped(_ => new Mock<IForensicsConfigurationService>().Object);
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         // Signed-in passkey session so StepUpService can fetch a step-up token for remove/retire/export.
         _ = Services.AddScoped(sp =>
         {

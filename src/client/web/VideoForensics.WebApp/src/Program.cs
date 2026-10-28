@@ -529,7 +529,6 @@ builder.Services.AddScoped<WebPushClient>();
 // right-panel page-context slot, and per-operator theme/culture, all circuit-scoped like
 // PairedSessionState above.
 builder.Services.AddScoped<LayoutPreferencesState>();
-builder.Services.AddScoped<AccountSelectionState>();
 builder.Services.AddScoped<RightPanelContentService>();
 builder.Services.AddScoped<LeftPanelContentService>();
 builder.Services.AddScoped<InspectorState>();

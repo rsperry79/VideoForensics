@@ -6,8 +6,6 @@
 @using Microsoft.AspNetCore.Components
 @inject IProviderAuthService AuthService
 @inject IMultiProviderAuthService MultiProviderAuthService
-@inject IForensicsConfiguration ForensicsConfig
-@inject IForensicsConfigurationService ForensicsConfigService
 @inject NavigationManager NavigationManager
 @inject PairedSessionState SessionState
 @inject IProviderAccountEditAccess EditAccess
@@ -168,12 +166,6 @@ else
 
             if (result.Success)
             {
-                if (result.ProviderAccountId.HasValue && ForensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
-                {
-                    ForensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
-                    await ForensicsConfigService.SaveConfigurationAsync(ForensicsConfig);
-                }
-
                 if (result.ProviderAccountId.HasValue)
                 {
                     AccountLinkedNotifier.Publish(result.ProviderAccountId.Value);

@@ -155,7 +155,6 @@ public abstract class AccountDetailsPageTestBase : BunitContext
         _ = Services.AddScoped(_ => MediaItemRepositoryMock.Object);
         _ = Services.AddScoped(_ => MediaUrlProviderMock.Object);
         _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
-        _ = Services.AddScoped(sp => new AccountSelectionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
         _ = Services.AddScoped(sp => new WebAuthnClient(sp.GetRequiredService<IJSRuntime>(), new Mock<ISelfApiHttpClientFactory>().Object));
         _ = Services.AddScoped<StepUpService>();

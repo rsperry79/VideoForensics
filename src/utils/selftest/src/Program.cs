@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Client.Hosting;
 using VideoForensics.Providers.Ring;
 using VideoForensics.Providers.Ring.Entities;
@@ -170,12 +171,11 @@ namespace VideoForensics.Utils.SelfTest
             IProviderAuthService authService = authScope.ServiceProvider.GetRequiredService<IProviderAuthService>();
             ISessionProvider sessionProvider = serviceProvider.GetRequiredService<ISessionProvider>();
 
-            // "The currently active account" mirrors the UI's own account switcher: the single
-            // IForensicsConfiguration.ActiveProviderAccountId setting persisted in AppSettings, loaded
-            // by InitializeVideoForensicsDataAsync above. Falls back to RingAuthService's own
-            // most-recently-authenticated-Ring-account heuristic when nothing has been selected yet.
-            IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
-            Guid? activeAccountId = forensicsConfig.ActiveProviderAccountId;
+            // The selftest takes no account argument and runs against Ring, so it restores the first active Ring account.
+            // Falls back to RingAuthService's most-recently-authenticated-Ring-account heuristic when none is active.
+            IProviderAccountRepository accountRepository = serviceProvider.GetRequiredService<IProviderAccountRepository>();
+            Guid? activeAccountId = (await accountRepository.ListActiveAsync(CancellationToken.None))
+                .FirstOrDefault(a => string.Equals(a.ProviderName, "Ring", StringComparison.OrdinalIgnoreCase))?.Id;
 
             Session session;
             try
@@ -386,8 +386,6 @@ namespace VideoForensics.Utils.SelfTest
         /// Interactive one-time login: prompts for credentials, authenticates via RingAuthService
         /// (handling a 2FA challenge if one comes back), and saves the result to the database - the
         /// same IProviderAuthService/ICredentialRepository path the WebApp and legacy console app use.
-        /// Also makes the authenticated account "the active account" (IForensicsConfiguration.ActiveProviderAccountId),
-        /// matching what the UI's AuthForm.razor does after a sign-in.
         /// </summary>
         private static async Task<int> RunInteractiveAuthAsync(CliOptions options)
         {
@@ -448,16 +446,6 @@ namespace VideoForensics.Utils.SelfTest
                 {
                     Console.Error.WriteLine($"Error: {result.ErrorMessage}");
                     return 2;
-                }
-
-                // Make this the active account, exactly like AuthForm.razor does after a UI sign-in -
-                // so a normal (non-auth) SelfTester run picks it up via IForensicsConfiguration.ActiveProviderAccountId.
-                IForensicsConfiguration forensicsConfig = serviceProvider.GetRequiredService<IForensicsConfiguration>();
-                if (result.ProviderAccountId.HasValue && forensicsConfig.ActiveProviderAccountId != result.ProviderAccountId)
-                {
-                    forensicsConfig.ActiveProviderAccountId = result.ProviderAccountId;
-                    IForensicsConfigurationService configService = scope.ServiceProvider.GetRequiredService<IForensicsConfigurationService>();
-                    await configService.SaveConfigurationAsync(forensicsConfig);
                 }
 
                 Console.WriteLine();

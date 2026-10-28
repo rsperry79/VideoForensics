@@ -139,25 +139,6 @@ namespace VideoForensics.Client.Core.Tests.Services
         }
 
         [Fact]
-        public async Task LoadConfigurationAsync_WithStoredGuidSettings_LoadsCorrectly()
-        {
-            var accountId = Guid.NewGuid();
-
-            _ = _settingRepositoryMock
-                .Setup(r => r.GetAsync("ActiveProviderAccountId", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(accountId.ToString());
-
-            _ = _settingRepositoryMock
-                .Setup(r => r.GetAsync(It.IsNotIn("ActiveProviderAccountId"), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string?)null);
-
-            IForensicsConfiguration config = await _service.LoadConfigurationAsync("test-path");
-
-            Assert.NotNull(config);
-            Assert.Equal(accountId, config.ActiveProviderAccountId);
-        }
-
-        [Fact]
         public async Task LoadConfigurationAsync_LoadDatabaseFailure_UsesDefaults()
         {
             _ = _settingRepositoryMock
@@ -318,21 +299,6 @@ namespace VideoForensics.Client.Core.Tests.Services
 
             _settingRepositoryMock.Verify(
                 r => r.SetAsync("InternetServerUrl", string.Empty, It.IsAny<CancellationToken>()),
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task SaveConfigurationAsync_WithNullGuid_SavesEmptyString()
-        {
-            var config = new ForensicsConfiguration
-            {
-                ActiveProviderAccountId = null
-            };
-
-            await _service.SaveConfigurationAsync(config);
-
-            _settingRepositoryMock.Verify(
-                r => r.SetAsync("ActiveProviderAccountId", string.Empty, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
