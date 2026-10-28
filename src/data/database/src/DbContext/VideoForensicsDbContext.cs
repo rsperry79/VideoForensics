@@ -386,6 +386,9 @@ namespace VideoForensics.Data.Database.DbContext
         /// <summary>Gets or sets one row per account sync attempt (manual or initial).</summary>
         public DbSet<ProviderSyncRun> ProviderSyncRuns { get; set; }
 
+        /// <summary>Gets or sets one row per download run, bound to the provider account it downloads for.</summary>
+        public DbSet<DownloadJob> DownloadJobs { get; set; }
+
         /// <summary>Gets or sets the provider device models (seeded from reference sources, for example the Ring catalog).</summary>
         public DbSet<DeviceModel> DeviceModels { get; set; }
 

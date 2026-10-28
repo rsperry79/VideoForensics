@@ -1568,6 +1568,68 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                     b.ToTable("DownloadEvents");
                 });
 
+            modelBuilder.Entity("VideoForensics.Data.Common.Entities.DownloadJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EndDateUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FilesDownloaded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FilesFailed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FilesSkipped")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("FinishedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Force")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProviderAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartDateUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderAccountId", "CreatedUtc");
+
+                    b.HasIndex("State", "CreatedUtc");
+
+                    b.ToTable("DownloadJobs", (string)null);
+                });
+
             modelBuilder.Entity("VideoForensics.Data.Common.Entities.Event", b =>
                 {
                     b.Property<Guid>("Id")
