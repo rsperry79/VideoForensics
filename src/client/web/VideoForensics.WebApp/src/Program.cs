@@ -102,6 +102,39 @@ Log.Logger = new LoggerConfiguration()
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// In-place updates are off by default (Updates:Enabled). Apply a staged package before the host starts. Only as a real
+// Windows service: a debug run from Visual Studio must never rewrite its own build output.
+bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuration.GetValue<bool>("Updates:Enabled");
+string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
+bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
+if (inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService())
+{
+    // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
+    VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
+
+    var startupApplier = new VideoForensics.Client.Hosting.Updates.StartupUpdateApplier(
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        new VideoForensics.Client.Hosting.Updates.UpdateApplier(Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.UpdateApplier>.Instance),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoForensics.Client.Hosting.Updates.StartupUpdateApplier>.Instance);
+    string runningVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0";
+    VideoForensics.Client.Hosting.Updates.StartupUpdateResult updateResult =
+        await startupApplier.TryApplyStagedAsync(updatesRoot, AppContext.BaseDirectory, runningVersion, allowDevUpdatePackages, CancellationToken.None);
+
+    if (updateResult.Outcome == VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.Applied)
+    {
+        Log.Information("Applied staged update {Version}; exiting so the service manager restarts the new version", updateResult.Version);
+        await Log.CloseAndFlushAsync();
+
+        // This process still has the old files mapped, so it must not keep running. A non-zero exit triggers the
+        // service's SCM recovery action (restart), which must be configured by the installer before this is switched on.
+        Environment.Exit(1);
+    }
+    else if (updateResult.Outcome != VideoForensics.Client.Hosting.Updates.StartupUpdateOutcome.None)
+    {
+        Log.Error("Staged update {Outcome}: {Message}", updateResult.Outcome, updateResult.Message);
+    }
+}
+
 // Must run before AddSyncfusionBlazor() below. Resolves the key from env vars and Client.Core user secrets
 // itself, so it does not depend on builder.Configuration having been built.
 VideoForensicsHostingExtensions.RegisterSyncfusionLicenseIfPresent();
@@ -359,7 +392,27 @@ builder.Services.AddVideoForensicsServerCore(builder.Configuration["ActiveProvid
 
 // Platform update installer. Windows downloads the release .exe and launches it with /passive; Linux downloads the
 // .deb to a pending-update location for a manual dpkg install. AddVideoForensicsServerCore registers no default.
-if (OperatingSystem.IsWindows())
+if (inPlaceUpdatesEnabled)
+{
+    // Stage the release zip; StartupUpdateApplier applies it on the next service start. No installer is launched.
+    _ = builder.Services.AddHttpClient();
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier());
+    _ = builder.Services.AddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateStager>(sp =>
+        new VideoForensics.Client.Hosting.Updates.UpdateStager(
+            updatesRoot,
+            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdatePackageVerifier>(),
+            allowDevUpdatePackages,
+            () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.UpdateStager>>()));
+    _ = builder.Services.AddSingleton<IUpdateInstaller>(sp =>
+        new VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateStager>(),
+            updatesRoot,
+            sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateInstaller>>()));
+}
+else if (OperatingSystem.IsWindows())
 {
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
 }

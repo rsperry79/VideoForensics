@@ -27,6 +27,7 @@ namespace VideoForensics.Client.Hosting.Updates
     {
         private const string JournalFileName = "backup.json";
         private const string FilesFolderName = "files";
+        private const string OldFileMarker = ".old-";
 
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
@@ -100,13 +101,13 @@ namespace VideoForensics.Client.Hosting.Updates
                     // Write beside the target then move, so a reader never sees a half-written file.
                     string temp = destination + ".update-tmp";
                     File.Copy(pair.Value, temp, overwrite: true);
-                    File.Move(temp, destination, overwrite: true);
+                    ReplaceFile(temp, destination);
                 }
 
                 foreach (string relative in toRemove)
                 {
                     ct.ThrowIfCancellationRequested();
-                    File.Delete(Path.Combine(installDir, relative));
+                    SetAside(Path.Combine(installDir, relative), deleteFirst: true);
                 }
 
                 RemoveEmptyDirectories(installDir, keepList);
@@ -169,6 +170,65 @@ namespace VideoForensics.Client.Hosting.Updates
             }
         }
 
+        /// <summary>Deletes the <c>.old-*</c> files that locked binaries were renamed to during an earlier apply. Best effort.</summary>
+        public static void DeleteLeftoverFiles(string installDir)
+        {
+            if (!Directory.Exists(installDir))
+            {
+                return;
+            }
+
+            foreach (string file in Directory.EnumerateFiles(installDir, "*" + OldFileMarker + "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Still in use by a running process; the next start tries again.
+                }
+            }
+        }
+
+        // The running exe and the dlls it has loaded cannot be overwritten or deleted on Windows, but they can be renamed.
+        // Renaming the old file out of the way lets the new one take its name; the old one is deleted on a later start.
+        private static void ReplaceFile(string temp, string destination)
+        {
+            try
+            {
+                File.Move(temp, destination, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                SetAside(destination, deleteFirst: false);
+                File.Move(temp, destination);
+            }
+        }
+
+        private static void SetAside(string path, bool deleteFirst)
+        {
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            if (deleteFirst)
+            {
+                try
+                {
+                    File.Delete(path);
+                    return;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Locked: fall through to the rename.
+                }
+            }
+
+            File.Move(path, path + OldFileMarker + Guid.NewGuid().ToString("N"));
+        }
+
         /// <summary>Lists installed files as normalized relative paths, skipping keep-list entries and reparse points.</summary>
         private static List<string> ListInstalledFiles(string installDir, IReadOnlyCollection<string> keepList)
         {
@@ -181,7 +241,7 @@ namespace VideoForensics.Client.Hosting.Updates
             foreach (string file in Directory.EnumerateFiles(installDir, "*", SearchOption.AllDirectories))
             {
                 string relative = Normalize(Path.GetRelativePath(installDir, file));
-                if (IsKept(relative, keepList) || UpdatePathGuard.IsReparsePoint(file) || !UpdatePathGuard.TryResolve(installDir, relative, out _))
+                if (IsKept(relative, keepList) || relative.Contains(OldFileMarker, StringComparison.Ordinal) || UpdatePathGuard.IsReparsePoint(file) || !UpdatePathGuard.TryResolve(installDir, relative, out _))
                 {
                     continue;
                 }
