@@ -54,9 +54,34 @@ namespace VideoForensics.Data.Database.Repositories
             // Read the caller before the first await: its frames are only on the stack until then.
             string caller = DescribeCaller(new StackTrace(skipFrames: 1, fNeedFileInfo: false));
             var clock = Stopwatch.StartNew();
-            // Open from here until the method returns, so a stalled watchdog can name it.
+            // Open from here until the method returns, so a stalled watchdog can name it. Waiting for the chain gate counts as in flight.
             using IDisposable tracked = _inFlight.Begin(caller, DateTimeOffset.UtcNow);
 
+            // Hold the chain gate for the whole transaction. A chain append must not read a tail that this transaction is
+            // about to extend, and no other writer may read that tail before this one commits.
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            if (entered)
+            {
+                await ActionLogAppendGate.WaitAsync(ct);
+                ActionLogAppendGate.IsHeldByCurrentFlow = true;
+            }
+
+            try
+            {
+                return await RunTransactionAsync(work, caller, clock, ct);
+            }
+            finally
+            {
+                if (entered)
+                {
+                    ActionLogAppendGate.IsHeldByCurrentFlow = false;
+                    ActionLogAppendGate.Release();
+                }
+            }
+        }
+
+        private async Task<T> RunTransactionAsync<T>(Func<IUnitOfWorkContext, Task<T>> work, string caller, Stopwatch clock, CancellationToken ct)
+        {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             using IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
             TimeSpan begun = clock.Elapsed;
