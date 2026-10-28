@@ -143,8 +143,10 @@ namespace VideoForensics.Data.Database.Repositories
                     return false;
                 }
 
-                // Recompute the entry's hash to verify it's correct
-                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? ""}";
+                // Recompute the entry's hash to verify it's correct. SQLite reads timestamps back as Kind=Unspecified,
+                // which formats without the "Z" the appender hashed, so the kind is restored to UTC before formatting.
+                string timestampUtc = DateTime.SpecifyKind(entry.TimestampUtc, DateTimeKind.Utc).ToString("O");
+                string canonicalString = $"{entry.PreviousEntryHash ?? ""}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{timestampUtc}|{entry.DetailsJson ?? ""}";
                 string computedHash = ComputeSha256Hash(canonicalString);
 
                 if (entry.EntryHash != computedHash)

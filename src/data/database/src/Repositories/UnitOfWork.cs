@@ -731,15 +731,27 @@ namespace VideoForensics.Data.Database.Repositories
         /// against the shared unit-of-work DbContext/transaction instead of opening its own - the
         /// caller (UnitOfWork.ExecuteAsync) already owns the surrounding transaction and commit/rollback.
         /// </summary>
-        public Task<ActionLogEntry> AppendAsync(string actor, ActorType actorType, string action, string entityType, Guid? entityId, string? detailsJson, CancellationToken ct)
+        public async Task<ActionLogEntry> AppendAsync(string actor, ActorType actorType, string action, string entityType, Guid? entityId, string? detailsJson, CancellationToken ct)
         {
-            ActionLogEntry? lastEntry = _db.ActionLogEntries
+            // Write the entries this unit of work has already appended. The tail is read from the database, so an
+            // unsaved entry is invisible to it; without this flush two appends in one unit of work chain to the same
+            // predecessor and the chain forks (reconciliation auto-fix appends several entries in one unit of work).
+            _ = await _db.SaveChangesAsync(ct);
+
+            ActionLogEntry? lastEntry = await _db.ActionLogEntries
                 .OrderByDescending(ale => ale.TimestampUtc)
                 .ThenByDescending(ale => ale.Id)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync(ct);
 
             string? previousEntryHash = lastEntry?.EntryHash;
+
+            // Verification orders by timestamp, so each entry must be strictly later than its predecessor, or a tie would
+            // fall back to the random Id order and break the chain.
             DateTime timestampUtc = DateTime.UtcNow;
+            if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
+            {
+                timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
+            }
 
             string canonicalString = $"{previousEntryHash ?? string.Empty}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? string.Empty}";
             string entryHash = ComputeSha256Hash(canonicalString);
@@ -759,7 +771,7 @@ namespace VideoForensics.Data.Database.Repositories
             };
 
             _ = _db.ActionLogEntries.Add(entry);
-            return Task.FromResult(entry);
+            return entry;
         }
 
         public Task<IReadOnlyList<ActionLogEntry>> GetHistoryForEntityAsync(string entityType, Guid entityId, CancellationToken ct)
@@ -790,7 +802,9 @@ namespace VideoForensics.Data.Database.Repositories
                     return Task.FromResult(false);
                 }
 
-                string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{entry.TimestampUtc:O}|{entry.DetailsJson ?? string.Empty}";
+                // SQLite reads timestamps back as Kind=Unspecified; restore UTC so the hash matches what the appender computed.
+                string timestampUtc = DateTime.SpecifyKind(entry.TimestampUtc, DateTimeKind.Utc).ToString("O");
+                string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{timestampUtc}|{entry.DetailsJson ?? string.Empty}";
                 if (entry.EntryHash != ComputeSha256Hash(canonicalString))
                 {
                     return Task.FromResult(false);

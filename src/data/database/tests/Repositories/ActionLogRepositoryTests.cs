@@ -178,6 +178,19 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task ActionLogRepository_VerifyChainIntegrity_AfterAppendsThroughSqlite_ReturnsTrue()
+        {
+            // Entries are read back from SQLite before verification, so this covers the hash of a round-tripped timestamp.
+            _ = await _repository.AppendAsync("A1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
+            _ = await _repository.AppendAsync("A2", ActorType.Human, "Act2", "Ent", Guid.NewGuid(), "{\"k\":1}", CancellationToken.None);
+            _ = await _repository.AppendAsync("A3", ActorType.System, "Act3", "Ent", null, null, CancellationToken.None);
+
+            bool isValid = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.True(isValid);
+        }
+
+        [Fact]
         public async Task ActionLogRepository_HashChain_WithMultipleActors()
         {
             ActionLogEntry entry1 = await _repository.AppendAsync("Human1", ActorType.Human, "Act1", "Ent", Guid.NewGuid(), null, CancellationToken.None);
