@@ -14,9 +14,6 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for hash-chained ActionLogEntry entities.</summary>
     public class ActionLogRepository : IActionLogRepository
     {
-        // Process-wide: every ActionLogRepository in this process shares one tail-read-and-insert at a time.
-        private static readonly SemaphoreSlim _appendGate = new(1, 1);
-
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<ActionLogRepository> _logger;
 
@@ -53,16 +50,24 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
-            // SQLite defers the write lock to the first write, so two transactions can read the same tail. The gate
-            // covers read, insert and commit, so only one standalone append chains off a given tail at a time.
-            await _appendGate.WaitAsync(ct);
+            // The shared chain gate covers this read, insert and commit. An append made from inside a unit of work
+            // already holds it in this flow, so it must not wait on itself.
+            bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
+            if (entered)
+            {
+                await ActionLogAppendGate.WaitAsync(ct);
+            }
+
             try
             {
                 return await AppendCoreAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
             }
             finally
             {
-                _ = _appendGate.Release();
+                if (entered)
+                {
+                    ActionLogAppendGate.Release();
+                }
             }
         }
 

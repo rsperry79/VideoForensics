@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Data.Common.Contracts;
@@ -20,6 +21,7 @@ namespace VideoForensics.Data.Database.Tests
         private string _databasePath = null!;
         private IDbContextFactory<VideoForensicsDbContext> _factory = null!;
         private ActionLogRepository _repository = null!;
+        private UnitOfWork _unitOfWork = null!;
 
         public async ValueTask InitializeAsync()
         {
@@ -34,6 +36,7 @@ namespace VideoForensics.Data.Database.Tests
 
             ILoggerFactory loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => { });
             _repository = new ActionLogRepository(_factory, loggerFactory.CreateLogger<ActionLogRepository>());
+            _unitOfWork = new UnitOfWork(_factory, new ServiceCollection().AddLogging().BuildServiceProvider(), loggerFactory.CreateLogger<UnitOfWork>());
         }
 
         public ValueTask DisposeAsync()
@@ -65,6 +68,30 @@ namespace VideoForensics.Data.Database.Tests
             Assert.Equal(20, entries.Select(e => e.Id).Distinct().Count());
             Assert.True(result.IsValid, $"chain broke: {result.Break} at {result.FailedEntryId} after {result.EntriesChecked}");
             Assert.Equal(20, result.EntriesChecked);
+        }
+
+        [Fact]
+        public async Task ActionLogAppends_MixedUnitsAndStandaloneConcurrently_KeepChainValid()
+        {
+            // Units of work and standalone appends interleave; every append must chain to the tail the previous one wrote.
+            var writes = new List<Task>();
+            for (int i = 0; i < 5; i++)
+            {
+                int n = i;
+                writes.Add(_unitOfWork.ExecuteAsync(async context =>
+                {
+                    _ = await context.ActionLog.AppendAsync("Unit", ActorType.System, $"U{n}a", "Ent", null, null, CancellationToken.None);
+                    _ = await context.ActionLog.AppendAsync("Unit", ActorType.System, $"U{n}b", "Ent", null, null, CancellationToken.None);
+                    return true;
+                }, CancellationToken.None));
+                writes.Add(_repository.AppendAsync("Standalone", ActorType.Human, $"S{n}", "Ent", null, null, CancellationToken.None));
+            }
+
+            await Task.WhenAll(writes);
+            ChainIntegrityResult result = await _repository.VerifyChainIntegrityAsync(CancellationToken.None);
+
+            Assert.True(result.IsValid, $"chain broke: {result.Break} at {result.FailedEntryId} after {result.EntriesChecked}");
+            Assert.Equal(15, result.EntriesChecked);
         }
 
         /// <summary>Creates a fresh context, and so a fresh pooled connection, per call, as the application does.</summary>
