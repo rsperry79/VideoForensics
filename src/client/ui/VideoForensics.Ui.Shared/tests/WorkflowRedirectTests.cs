@@ -26,15 +26,16 @@ public class WorkflowRedirect_Tests : BunitContext
 public class Evidence_Route_Tests
 {
     [Fact]
-    public void Evidence_HasRootRoute()
+    public void Evidence_HasMediaRouteOnly()
     {
+        // "/" belongs to Root, which redirects to /media; Evidence must not claim it too.
         var templates = typeof(Evidence)
             .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
             .Cast<RouteAttribute>()
             .Select(a => a.Template)
             .ToList();
 
-        Assert.Contains("/", templates);
         Assert.Contains("/media", templates);
+        Assert.DoesNotContain("/", templates);
     }
 }
