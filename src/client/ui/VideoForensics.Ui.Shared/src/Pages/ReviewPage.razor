@@ -2,6 +2,7 @@
 @using Microsoft.Extensions.Localization
 @using VideoForensics.Client.Ui.Shared.Components.Review
 @using VideoForensics.Client.Ui.Shared.Extensions
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Review
 @using VideoForensics.Client.Ui.Shared.Services.Scope
@@ -26,6 +27,10 @@ else if (!_isAuthenticated)
 }
 else
 {
+    <PageRightPanelContent>
+        <ReviewTimelinePanel />
+    </PageRightPanelContent>
+
     <ReviewTopBar State="State" Devices="_deviceIds" DeviceNames="_deviceNames" />
 
     @if (State.ActiveTab == ReviewTab.Timeline)

@@ -1,7 +1,10 @@
 using Bunit;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 
 using Xunit;
@@ -117,6 +120,38 @@ public class ReviewPage_Tests : ReviewTestContext
         Assert.Single(cut.FindComponents<ReviewTimelineTab>());
         Assert.Single(cut.FindAll("[data-testid='review-tab-timeline'] [data-testid='review-timeline-tab']"));
         Assert.DoesNotContain(L["TabPlaceholder", L["TabTimeline"].Value].Value, cut.Find("[data-testid='review-tab-timeline']").TextContent);
+    }
+
+    [Fact]
+    public void ReviewPage_SignedIn_RegistersTheTimelinePanelWithTheRightPanel()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+        _ = Render<ReviewPage>();
+
+        // Act
+        RightPanelContentService slot = Services.GetRequiredService<RightPanelContentService>();
+        Assert.NotNull(slot.Content);
+        var panel = Render(slot.Content!);
+
+        // Assert
+        Assert.Single(panel.FindAll("[data-testid='review-timeline-panel']"));
+    }
+
+    [Fact]
+    public async Task ReviewPage_SignedOut_DoesNotRegisterTheTimelinePanel()
+    {
+        // Arrange
+        AddDevices(2);
+        await SignOutOperatorAsync();
+        NavigateToReview();
+
+        // Act
+        _ = Render<ReviewPage>();
+
+        // Assert
+        Assert.Null(Services.GetRequiredService<RightPanelContentService>().Content);
     }
 
     [Fact]

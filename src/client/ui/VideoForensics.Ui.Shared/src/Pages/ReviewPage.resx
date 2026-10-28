@@ -32,6 +32,15 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
   </resheader>
+  <data name="TimelinePanelTitle" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TimelinePanelEmpty" xml:space="preserve">
+    <value>No clips for the selected camera in this range.</value>
+  </data>
+  <data name="TimelineNewestAtTop" xml:space="preserve">
+    <value>Newest at the top. Click to move the cursor to that time.</value>
+  </data>
   <data name="PageTitle" xml:space="preserve">
     <value>Review</value>
   </data>

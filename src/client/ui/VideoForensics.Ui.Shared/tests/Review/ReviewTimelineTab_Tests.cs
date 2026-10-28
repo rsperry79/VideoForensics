@@ -290,6 +290,79 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
+    public void ReviewTimelineTab_LoadedWithCameras_PublishesOnlyThePrimaryCamerasClips()
+    {
+        // Arrange
+        AddDevices(2);
+        ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
+        MediaItem primary = Clip(Devices[0].Id, ClipStart);
+        MediaItem other = Clip(Devices[1].Id, ClipStart);
+        ClipLoader.Responder = (_, _) => Task.FromResult(new ReviewClipSet([primary, other], false));
+
+        // Act
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+        Assert.Equal(primary.Id.ToString("D"), TimelineModel.Clips[0].Id);
+        Assert.Equal(ReviewState.FromUtc, TimelineModel.FromUtc);
+        Assert.Equal(ReviewState.ToUtc, TimelineModel.ToUtc);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_CamerasBecomeEmpty_ClearsThePublishedClips()
+    {
+        // Arrange
+        AddDevices(1);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+
+        // Act
+        cut.InvokeAsync(() => ReviewState.SetCameras([]));
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Empty(TimelineModel.Clips));
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_LoadFailsAfterAGoodLoad_ClearsThePublishedClips()
+    {
+        // Arrange
+        AddDevices(2);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+        ClipLoader.Responder = (_, _) => Task.FromException<ReviewClipSet>(new InvalidOperationException("boom"));
+
+        // Act
+        cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-timeline-error']")));
+        Assert.Empty(TimelineModel.Clips);
+    }
+
+    [Fact]
+    public void ReviewTimelineTab_Disposed_ClearsThePublishedClips()
+    {
+        // Arrange
+        AddDevices(1);
+        ReviewState.SetCameras([Devices[0].Id]);
+        ServeOneClipPerCamera();
+        IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
+        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+
+        // Act
+        ((IDisposable)cut.Instance).Dispose();
+
+        // Assert
+        Assert.Empty(TimelineModel.Clips);
+    }
+
+    [Fact]
     public void ReviewTimelineTab_Disposed_CancelsTheLoadAndUnsubscribes()
     {
         // Arrange

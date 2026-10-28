@@ -41,6 +41,9 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The review page state under test.</summary>
     protected ReviewPageState ReviewState { get; }
 
+    /// <summary>The in-memory timeline the timeline tab publishes to and the right-panel timeline reads.</summary>
+    protected ReviewTimelineModel TimelineModel { get; } = new();
+
     /// <summary>The device repository double.</summary>
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
 
@@ -72,6 +75,8 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => ReviewState);
+        _ = Services.AddScoped(_ => TimelineModel);
+        _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddSingleton<IReviewClipLoader>(ClipLoader);
         _ = Services.AddSingleton<IMediaContentUrlProvider>(UrlProvider);
         _ = Services.AddScoped(sp => new ReviewUrlCache(sp.GetRequiredService<IMediaContentUrlProvider>(), sp.GetRequiredService<TimeProvider>()));
