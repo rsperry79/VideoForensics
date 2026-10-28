@@ -50,8 +50,15 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
-            // The shared chain gate covers this read, insert and commit. An append made from inside a unit of work
-            // already holds it in this flow, so it must not wait on itself.
+            // Inside an open unit of work, write on the unit's context so the append joins its transaction. The unit
+            // already holds the chain gate in this flow.
+            VideoForensicsDbContext? ambient = AmbientUnitOfWork.DbContext;
+            if (ambient != null)
+            {
+                return await new UnitOfWorkActionLogRepository(ambient, _logger).AppendAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
+            }
+
+            // The shared chain gate covers this read, insert and commit.
             bool entered = !ActionLogAppendGate.IsHeldByCurrentFlow;
             if (entered)
             {

@@ -87,6 +87,9 @@ namespace VideoForensics.Data.Database.Repositories
             TimeSpan begun = clock.Elapsed;
             TimeSpan worked = begun;
 
+            // Standalone appends made inside the work use this context, so they join this transaction.
+            VideoForensicsDbContext? outerDb = AmbientUnitOfWork.DbContext;
+            AmbientUnitOfWork.DbContext = db;
             try
             {
                 var context = new UnitOfWorkContext(db, _serviceProvider);
@@ -105,6 +108,10 @@ namespace VideoForensics.Data.Database.Repositories
                 LogTransaction(caller, "rolled back", begun, worked, clock.Elapsed);
                 _logger.LogError(ex, "Unit of work rolled back due to exception");
                 throw;
+            }
+            finally
+            {
+                AmbientUnitOfWork.DbContext = outerDb;
             }
         }
 
