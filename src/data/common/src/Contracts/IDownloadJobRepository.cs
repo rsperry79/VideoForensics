@@ -19,8 +19,14 @@ namespace VideoForensics.Data.Common.Contracts
         /// </summary>
         Task<DownloadJob?> ClaimNextQueuedAsync(CancellationToken ct);
 
-        /// <summary>Marks a job Completed with its final counters.</summary>
-        Task CompleteAsync(Guid id, int filesDownloaded, int filesSkipped, int filesFailed, CancellationToken ct);
+        /// <summary>
+        /// Marks a Running job Completed with its final counters. Returns false when the job is not Running any more
+        /// (for example it was cancelled mid-run), so a late completion cannot overwrite that state.
+        /// </summary>
+        Task<bool> CompleteAsync(Guid id, int filesDownloaded, int filesSkipped, int filesFailed, CancellationToken ct);
+
+        /// <summary>Marks a Running job Failed with an operator-facing message. Ignored unless the job is Running.</summary>
+        Task FailAsync(Guid id, string errorMessage, CancellationToken ct);
 
         /// <summary>
         /// Cancels a Queued or Running job. Returns false when the job is already terminal or does not exist.

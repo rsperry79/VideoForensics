@@ -616,6 +616,9 @@ namespace VideoForensics.Client.Hosting
             // Event pull service for background sync of provider account events (Phase 2).
             _ = services.AddScoped<IEventPullService, EventPullService>();
             _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
+            // Download jobs run through the same keyed provider services as scheduled snapshot sync.
+            _ = services.AddScoped<IDownloadJobExecutor, DownloadJobExecutor>();
+            _ = services.AddHostedService<DownloadJobRunner>();
             _ = services.AddScoped<ISnapshotRollupService, SnapshotRollupService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 

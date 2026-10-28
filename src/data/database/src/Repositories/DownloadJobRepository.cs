@@ -11,6 +11,7 @@ namespace VideoForensics.Data.Database.Repositories
     public class DownloadJobRepository : IDownloadJobRepository
     {
         private const int MaxTake = 500;
+        private const int MaxErrorLength = 1024;
 
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<DownloadJobRepository> _logger;
@@ -65,17 +66,32 @@ namespace VideoForensics.Data.Database.Repositories
         }
 
         /// <inheritdoc />
-        public async Task CompleteAsync(Guid id, int filesDownloaded, int filesSkipped, int filesFailed, CancellationToken ct)
+        public async Task<bool> CompleteAsync(Guid id, int filesDownloaded, int filesSkipped, int filesFailed, CancellationToken ct)
         {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
-            _ = await db.DownloadJobs
-                .Where(j => j.Id == id)
+            int rows = await db.DownloadJobs
+                .Where(j => j.Id == id && j.State == DownloadJobState.Running)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(j => j.State, DownloadJobState.Completed)
                     .SetProperty(j => j.FinishedUtc, DateTime.UtcNow)
                     .SetProperty(j => j.FilesDownloaded, filesDownloaded)
                     .SetProperty(j => j.FilesSkipped, filesSkipped)
                     .SetProperty(j => j.FilesFailed, filesFailed), ct);
+            return rows > 0;
+        }
+
+        /// <inheritdoc />
+        public async Task FailAsync(Guid id, string errorMessage, CancellationToken ct)
+        {
+            // Keep the stored message within the column limit configured in DownloadJobConfiguration.
+            string trimmed = errorMessage.Length > MaxErrorLength ? errorMessage[..MaxErrorLength] : errorMessage;
+            await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
+            _ = await db.DownloadJobs
+                .Where(j => j.Id == id && j.State == DownloadJobState.Running)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.State, DownloadJobState.Failed)
+                    .SetProperty(j => j.FinishedUtc, DateTime.UtcNow)
+                    .SetProperty(j => j.ErrorMessage, trimmed), ct);
         }
 
         /// <inheritdoc />

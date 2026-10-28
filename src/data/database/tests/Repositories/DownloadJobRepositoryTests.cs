@@ -146,6 +146,40 @@ namespace VideoForensics.Data.Database.Tests
             Assert.True(list[0].CreatedUtc > list[1].CreatedUtc);
         }
 
+        [Fact]
+        public async Task DownloadJobRepository_CompleteAfterCancel_KeepsCancelled()
+        {
+            // The operator cancels while the runner is still working; the runner's completion must not overwrite it.
+            DownloadJob job = BuildJob(Guid.NewGuid(), DownloadJobKind.Videos, DateTime.UtcNow);
+            await _repository.EnqueueAsync(job, CancellationToken.None);
+            _ = await _repository.ClaimNextQueuedAsync(CancellationToken.None);
+            _ = await _repository.CancelAsync(job.Id, CancellationToken.None);
+
+            bool completed = await _repository.CompleteAsync(job.Id, 3, 0, 0, CancellationToken.None);
+            DownloadJob? retrieved = await _repository.GetAsync(job.Id, CancellationToken.None);
+
+            Assert.False(completed);
+            Assert.NotNull(retrieved);
+            Assert.Equal(DownloadJobState.Cancelled, retrieved.State);
+            Assert.Equal(0, retrieved.FilesDownloaded);
+        }
+
+        [Fact]
+        public async Task DownloadJobRepository_Fail_RunningJob_SetsFailedWithMessage()
+        {
+            DownloadJob job = BuildJob(Guid.NewGuid(), DownloadJobKind.Snapshots, DateTime.UtcNow);
+            await _repository.EnqueueAsync(job, CancellationToken.None);
+            _ = await _repository.ClaimNextQueuedAsync(CancellationToken.None);
+
+            await _repository.FailAsync(job.Id, "Provider rejected the request.", CancellationToken.None);
+            DownloadJob? retrieved = await _repository.GetAsync(job.Id, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal(DownloadJobState.Failed, retrieved.State);
+            Assert.NotNull(retrieved.FinishedUtc);
+            Assert.Equal("Provider rejected the request.", retrieved.ErrorMessage);
+        }
+
         private static DownloadJob BuildJob(Guid accountId, DownloadJobKind kind, DateTime createdUtc)
         {
             return new DownloadJob
