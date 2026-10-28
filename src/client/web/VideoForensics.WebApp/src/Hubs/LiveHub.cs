@@ -58,19 +58,14 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
 
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state
-            // immediately instead of waiting for the next change. Uses the non-draining builder so
-            // this connection never consumes activity lines that other clients still need.
+            // immediately instead of waiting for the next change. The snapshot is idle and drains nothing,
+            // so this connection never consumes activity lines that other clients still need.
             // Snapshots are non-fatal: a failing data source must not stop the connection from opening.
             // Errors are logged and the connection continues; rethrow only when the connection is aborting,
             // since that cancellation is the real reason the send failed.
             try
             {
-                DownloadProgressDto snapshot;
-                using (IServiceScope scope = _scopeFactory.CreateScope())
-                {
-                    IVideoDownloadService downloadService = scope.ServiceProvider.GetRequiredService<IVideoDownloadService>();
-                    snapshot = downloadService.ToDownloadProgressSnapshot();
-                }
+                DownloadProgressDto snapshot = DownloadProgressDtoMapping.IdleSnapshot();
 
                 await Clients.Caller.SendAsync(LiveHubMethods.DownloadProgress, snapshot, Context.ConnectionAborted);
             }

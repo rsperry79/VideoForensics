@@ -3,48 +3,54 @@ using VideoForensics.Core.Api.Contracts;
 
 namespace VideoForensics.Client.Hosting
 {
-    /// <summary>Builds the download-progress wire payload from the server's local download service.</summary>
+    /// <summary>
+    /// Builds the download-progress wire payload from the sync activity log, the only live progress source.
+    /// <para>
+    /// The download service's own progress getters are not used: sync runs through a different
+    /// <c>IMediaDownloadService</c> instance, so those getters never update during a sync. Numeric and status
+    /// fields are therefore always neutral, and only the activity lines carry live data.
+    /// </para>
+    /// </summary>
     public static class DownloadProgressDtoMapping
     {
         /// <summary>
-        /// Captures a snapshot of the service's progress state as a <see cref="DownloadProgressDto"/>.
-        /// Note: drains the activity log, so each call consumes the lines it returns. Only the
+        /// Drains the sync activity log into a payload. Each call consumes the lines it returns, so only the
         /// broadcast sampler should call this; it is the single consumer whose lines fan out to all clients.
         /// </summary>
-        public static DownloadProgressDto ToDownloadProgressDto(this IVideoDownloadService service, ISyncActivityLog? syncActivity = null)
+        public static DownloadProgressDto ToDownloadProgressDto(this ISyncActivityLog activity)
         {
-            (int index, int total, string? name) = service.GetCurrentDevice();
-
-            // Sync lines follow the download lines, so one console shows both kinds in the order they were written.
             return new DownloadProgressDto(
-                service.GetProgress().ToDto(),
-                index,
-                total,
-                name,
-                service.DrainActivityLog().Concat(syncActivity?.Drain() ?? []).ToArray(),
-                service.GetPreScanCounts(),
-                service.GetLastError(),
-                service.GetRemainingReason());
+                IdleStatus(),
+                0,
+                0,
+                null,
+                activity.Drain(),
+                new Dictionary<string, int>(),
+                null,
+                null);
         }
 
         /// <summary>
-        /// Captures the current progress state for a single new connection without consuming anything.
-        /// Activity is always empty, and <see cref="IVideoDownloadService.DrainActivityLog"/> is never
-        /// called, so other clients keep their pending lines. Used for snapshot-on-connect.
+        /// A payload with no activity and neutral state, for snapshot-on-connect. It reads nothing, so it never
+        /// consumes lines that other clients still need.
         /// </summary>
-        public static DownloadProgressDto ToDownloadProgressSnapshot(this IVideoDownloadService service)
+        public static DownloadProgressDto IdleSnapshot()
         {
-            (int index, int total, string? name) = service.GetCurrentDevice();
-
             return new DownloadProgressDto(
-                service.GetProgress().ToDto(),
-                index,
-                total,
-                name,
+                IdleStatus(),
+                0,
+                0,
+                null,
                 Array.Empty<string>(),
-                service.GetPreScanCounts(),
-                service.GetLastError(),
-                service.GetRemainingReason());
+                new Dictionary<string, int>(),
+                null,
+                null);
+        }
+
+        // Explicit zeros: the DTO's own defaults are not neutral (ActiveConnections defaults to 1).
+        private static DownloadStatusDto IdleStatus()
+        {
+            return new DownloadStatusDto(false, 0, 0, 0L, null, 0, 0, 0L, 0, 0.0);
         }
     }
 }

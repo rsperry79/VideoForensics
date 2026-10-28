@@ -9,7 +9,6 @@ using System.Security.Claims;
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
-using VideoForensics.Core.Providers.Common.Contracts;
 
 using Xunit;
 
@@ -19,16 +18,9 @@ namespace VideoForensics.Client.WebApp.Tests
     {
         private const string DownloadProgressMethod = "DownloadProgress";
 
-        private static (LiveHub Hub, Mock<ISingleClientProxy> Caller, Mock<IVideoDownloadService> Download) BuildHub()
+        private static (LiveHub Hub, Mock<ISingleClientProxy> Caller) BuildHub()
         {
-            var download = new Mock<IVideoDownloadService>();
-            _ = download.Setup(s => s.GetProgress()).Returns(new DownloadStatus(true, 2, 5, 300L, "b.mp4", 4, 9, 900L, 1, 2.0));
-            _ = download.Setup(s => s.GetCurrentDevice()).Returns((2, 5, "Front door"));
-            _ = download.Setup(s => s.DrainActivityLog()).Returns(["pending line"]);
-
-            IServiceProvider services = new ServiceCollection()
-                .AddSingleton(download.Object)
-                .BuildServiceProvider();
+            IServiceProvider services = new ServiceCollection().BuildServiceProvider();
             IServiceScopeFactory scopeFactory = services.GetRequiredService<IServiceScopeFactory>();
 
             var caller = new Mock<ISingleClientProxy>();
@@ -46,13 +38,13 @@ namespace VideoForensics.Client.WebApp.Tests
                 Context = context.Object,
             };
 
-            return (hub, caller, download);
+            return (hub, caller);
         }
 
         [Fact]
         public async Task LiveHub_OnConnected_SendsOneDownloadProgressSnapshotToCaller()
         {
-            (LiveHub hub, Mock<ISingleClientProxy> caller, _) = BuildHub();
+            (LiveHub hub, Mock<ISingleClientProxy> caller) = BuildHub();
 
             await hub.OnConnectedAsync();
 
@@ -65,22 +57,9 @@ namespace VideoForensics.Client.WebApp.Tests
         }
 
         [Fact]
-        public async Task LiveHub_DownloadSnapshotThrows_StillCompletesConnect()
+        public async Task LiveHub_OnConnected_SnapshotIsIdleWithNoActivity()
         {
-            (LiveHub hub, Mock<ISingleClientProxy> caller, Mock<IVideoDownloadService> download) = BuildHub();
-            _ = download.Setup(s => s.GetProgress()).Throws(new InvalidOperationException("download state unavailable"));
-
-            await hub.OnConnectedAsync();
-
-            caller.Verify(
-                p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
-
-        [Fact]
-        public async Task LiveHub_OnConnected_SnapshotHasEmptyActivityAndDoesNotDrainLog()
-        {
-            (LiveHub hub, Mock<ISingleClientProxy> caller, Mock<IVideoDownloadService> download) = BuildHub();
+            (LiveHub hub, Mock<ISingleClientProxy> caller) = BuildHub();
             DownloadProgressDto? sent = null;
             _ = caller.Setup(p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .Callback<string, object?[], CancellationToken>((_, args, _) => sent = args[0] as DownloadProgressDto)
@@ -90,8 +69,23 @@ namespace VideoForensics.Client.WebApp.Tests
 
             Assert.NotNull(sent);
             Assert.Empty(sent!.Activity);
-            Assert.Equal(2, sent.CurrentDeviceIndex);
-            download.Verify(s => s.DrainActivityLog(), Times.Never);
+            Assert.False(sent.Progress.IsDownloading);
+            Assert.Equal(0, sent.CurrentDeviceIndex);
+            Assert.Equal(0, sent.CurrentDeviceTotal);
+        }
+
+        [Fact]
+        public async Task LiveHub_OnConnected_SendFails_StillCompletesConnect()
+        {
+            (LiveHub hub, Mock<ISingleClientProxy> caller) = BuildHub();
+            _ = caller.Setup(p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("send failed"));
+
+            await hub.OnConnectedAsync();
+
+            caller.Verify(
+                p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }

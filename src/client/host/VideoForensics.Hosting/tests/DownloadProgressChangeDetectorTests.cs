@@ -1,3 +1,4 @@
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
 
@@ -85,6 +86,25 @@ namespace VideoForensics.Client.Hosting.Tests
             IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
 
             Assert.True(detector.ShouldSend(null, Build()));
+        }
+
+        [Fact]
+        public void DownloadProgressChangeDetector_IdleSnapshotRepeated_NotSent()
+        {
+            IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
+
+            Assert.False(detector.ShouldSend(DownloadProgressDtoMapping.IdleSnapshot(), DownloadProgressDtoMapping.IdleSnapshot()));
+        }
+
+        [Fact]
+        public void DownloadProgressChangeDetector_IdleSnapshotWithOnlySyncLines_Sent()
+        {
+            IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
+            var log = new Mock<ISyncActivityLog>();
+            _ = log.Setup(l => l.Drain()).Returns(["sync started"]);
+            DownloadProgressDto withLines = log.Object.ToDownloadProgressDto();
+
+            Assert.True(detector.ShouldSend(DownloadProgressDtoMapping.IdleSnapshot(), withLines));
         }
     }
 }
