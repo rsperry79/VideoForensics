@@ -1,6 +1,6 @@
 # Downloads through sync (was: one-off account download jobs)
 
-Status (2026-10-28): done except the TODO list below. Parent plan: `media-page-rework.md` (side task: remove the active account, finished).
+Status (2026-10-28): done; the remaining items are optional or belong to other work (see TODO). Parent plan: `media-page-rework.md` (side task: remove the active account, finished).
 
 ## Decision
 Downloads run through each source's existing account sync, not a separate job queue.
@@ -18,18 +18,22 @@ Downloads run through each source's existing account sync, not a separate job qu
 - The manual path removed: Collect pages, `/api/v1/downloads` routes, `VideoDownloadServiceAdapter`, `RemoteVideoDownloadService`, `IVideoDownloadService`: `5528f11d`. A guard test fails if the old `/collect` routes return.
 - The active account removed: right-panel switcher, `AccountSelectionState`, `IForensicsConfiguration.ActiveProviderAccountId`, the config DTO field, and the `AppSettings` column (migration `RemoveActiveProviderAccountId`): `e0da8bd3`. Breaking for the config API DTO. `SetActiveProviderAccountId` on the media download services stays: it is per-run account context set by sync from an explicit id.
 
-## TODO
-1. **Progress (live per-file progress for sync downloads).** The Sync tab panel now shows activity lines only. The file-level fields (files completed, bytes, current file, speed, current device) are zero, because sync updates a different `IMediaDownloadService` instance than the one the panel used to read, so they never updated during a sync even before. Build a real source:
-   - Candidate: `IMediaPullProgressStore` (core/providers/common), already passed into `EventMediaPuller.PullAsync`. Its lifetime and who populates it are not verified. Alternative: a singleton progress store written by `EventPullService` or `AccountSyncRunner`.
-   - Feed it into `LocalDownloadProgressSource` (WebApp), `DownloadProgressBroadcastService` and `LiveHub` (hub), and `DownloadProgressDtoMapping`. Keep the DTO shapes and hub contracts; the panel and `RemoteDownloadProgressSource` should not need changes.
-   - Done when the Sync tab bars update during both Sync now and the scheduled sync. Tests first.
-2. **Scheduled catch-up batching.** `ScheduledSyncService` (~line 332) still limits an ongoing pull to one week back (`OneWeekFloor`). After downtime longer than a week, the gap is skipped. Batch from the last run in windows of at most 7 days, like the custom range.
-3. **Align range limits.** The Sync now API accepts "last N days" up to 3650 (`MaxSyncDays`, `AccountEndpoints.cs:475`), but the runner clamps a custom range to one year back (not confirmed by the user). A 5-year request silently returns one year (noted on the activity log only). Lower the API maximum to 366, or lift the clamp.
-4. **Verify provider video semantics.** Does `DownloadVideosAsync` (Ring) return every clip in the window, or only event clips? Check `providers/ring`.
-5. **Verify the media root override off Windows.** `StorageLocationProvider.GetDefaultRoot` honors the configured override on Windows (confirmed). The non-Windows branch was not checked.
-6. **End-to-end test.** A sync against a fake provider: batches called in order, files land under the media root, watermark (`LastDownloadTimeUtc`) not moved by sync.
-7. **Cleanup.** Unused `SettingServerOnly` key in `AccountDetails.resx`. Stale comments in the Ring provider files that name `VideoDownloadServiceAdapter`. Existing databases keep an unused `ActiveProviderAccountId` row in the settings key/value table (optional data cleanup). The browser keeps an unused `vf.account.selected` localStorage key.
-8. **Unrelated failing test (another session).** `CaseDetailsExportEntryTests.CaseDetails_ExportCaseButton_NavigatesToExportPageWithCaseId` fails because `CaseDetails` now needs `RightPanelContentService` (commit `004c9803`) and the test does not register it.
+## Done since the first version (commits on `wip`)
+- Live per-file progress on the Sync tab: a singleton `ISyncProgressStore`, polled from `GetStatus()` by `EventPullService` while each device downloads, read by `DownloadProgressDtoMapping`, `LocalDownloadProgressSource`, `DownloadProgressBroadcastService`, and `LiveHub`: `bfa8ca8f`. DTO shapes and hub contracts unchanged. Known limit: parallel pulls share one slot, so a finishing pull blanks the display until the other pull's next reading (about 500 ms at most).
+- Scheduled catch-up after downtime is split into windows of at most 7 days (start clamped to one year): `a5f19788`. If one window fails the schedule still advances to now, so that week is skipped; this matches the single-pull failure path.
+- Sync now range limit lowered to 366 days (days and custom): `a5f19788`.
+- Sync writes under the Media folder set on the Storage Settings page (`IForensicsConfiguration.DownloadLocation`), resolved at use time, for `EventPullService`, `SnapshotCaptureService`, and `SnapshotRollupService`. `MediaStorageMigrator` (it moved files out of `DownloadLocation` at every startup) is retired: `19490230`. Installs with a leftover legacy folder keep using it as their media root.
+- Verified: Ring has only event-attached recordings, so sync already downloads every clip Ring stores in a window; adjacent windows are idempotent by path.
+- End-to-end characterization tests of a full sync against fake providers (`AccountSyncEndToEndTests`): windows in order, folders under the media root, `LastDownloadTimeUtc` not moved, progress store idle after, one failing device does not stop the rest.
+- Cleanup: removed the unused `SettingServerOnly` resource key; reworded the Ring comments that named the deleted adapter.
+
+## TODO (remaining)
+1. **Unrelated failing tests (other sessions), left alone on request.** Eight `AccountDetails` Remove and Purge tests in Ui.Shared do not register `ISyncScheduleRepository` (added by `f2f4c5f0`); `CaseDetailsExportEntryTests.CaseDetails_ExportCaseButton_NavigatesToExportPageWithCaseId` does not register `RightPanelContentService` (added by `004c9803`).
+2. **Failed catch-up window keeps the gap skipped.** Decide whether the scheduled sync should hold `EventLastRunUtc` back when a window fails, so the next run retries it.
+3. **Progress slot per pull.** Key the progress store by pull or device if parallel pulls become common.
+4. **Verify off Windows.** The Media folder on a non-Windows host: `GetEffectiveRoot` with the configured value is used by the sync writers now, but no run on Linux was done.
+5. **Optional data cleanup.** Existing databases keep an unused `ActiveProviderAccountId` row in the settings key/value table; browsers keep an unused `vf.account.selected` localStorage key.
+6. **Snapshot sync custom ranges** are not batched (snapshots are a current fetch per device, so no change was made).
 
 ## Rules that applied
 - Client/server split (`client-split.md`), localization (`ui-shared.md`), tests first with scoped runs (`tests.md`), no stack traces in logs (`csharp.md`).

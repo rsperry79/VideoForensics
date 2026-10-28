@@ -34,7 +34,7 @@ namespace VideoForensics.Providers.Ring.Services
         private const int MaxDelayMs = 30000;
 
         // Files within a single device download concurrently (devices themselves stay sequential —
-        // see VideoDownloadServiceAdapter — to keep the deliberate inter-device rate-limit backoff).
+        // see the sync path's device loop — to keep the deliberate inter-device rate-limit backoff).
         // Configurable via SetMaxConcurrentDownloads (backed by IForensicsConfiguration.MaxConcurrentDownloads)
         // since Ring's per-account (not just per-connection) throttling means the right value varies
         // by account; 10 is a reasonable default.
@@ -1719,7 +1719,7 @@ namespace VideoForensics.Providers.Ring.Services
         }
 
         // Discovery's device Metadata["kind"] is the raw Ring kind; when Ring omits it, discovery's Type
-        // (the list the device came from) is the fallback, which is the same thing VideoDownloadServiceAdapter does.
+        // (the list the device came from) is the fallback, which is the same thing the sync path does.
         private static string KindOrListType(string? kind, string listType)
         {
             return string.IsNullOrWhiteSpace(kind) ? listType : kind;
@@ -1734,9 +1734,9 @@ namespace VideoForensics.Providers.Ring.Services
             }
 
             // Falls back to a synthetic "default" location only when the caller genuinely has no
-            // real Ring location id for this device — matches VideoDownloadServiceAdapter's own
-            // fallback so both layers agree on the placeholder's identity instead of creating two
-            // different "default" locations.
+            // real Ring location id for this device. The sync path uses the same fallback, so
+            // both agree on the placeholder's identity instead of creating two different
+            // "default" locations.
             string effectiveLocationId = string.IsNullOrEmpty(providerLocationId) ? "default" : providerLocationId;
 
             // Resolve Account/Location once per effectiveLocationId and cache them
@@ -1907,7 +1907,7 @@ namespace VideoForensics.Providers.Ring.Services
         // served by filtering the cached events in memory - no network call at all. A request that
         // needs data older than what's cached (a device with an earlier watermark) fetches the union
         // of the two ranges once and widens the cache, rather than narrowing back down - so as long
-        // as devices are processed widest-range-first (see VideoDownloadServiceAdapter), the whole
+        // as devices are processed widest-range-first (see the sync path's device loop), the whole
         // batch costs exactly one real history fetch.
         private async Task<List<Entities.DoorbotHistoryEvent>> GetHistoryEventsAsync(Session session, DateTime startDate, DateTime endDate)
         {

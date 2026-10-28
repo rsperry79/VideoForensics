@@ -377,7 +377,7 @@ namespace VideoForensics.Providers.Ring.Services
                 }
 
                 // Add Chimes. Chimes have no video/event history (there's nothing for
-                // VideoDownloadServiceAdapter to download from one), but they're still a real
+                // the sync path to download from one), but they're still a real
                 // device on the account and belong in the Devices table for forensic completeness -
                 // see DbCompletenessChecker, which flags a chime present on the account but absent
                 // from the DB. IsOnline uses Health.Connected (chimes have no Subscribed field).

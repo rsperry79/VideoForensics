@@ -170,9 +170,6 @@
   <data name="ErrorLoadingAccount" xml:space="preserve">
     <value>Error loading account: {0}</value>
   </data>
-  <data name="SettingServerOnly" xml:space="preserve">
-    <value>This setting can only be changed from the server directly.</value>
-  </data>
   <data name="ErrorRemovingAccount" xml:space="preserve">
     <value>Error removing account: {0}</value>
   </data>
