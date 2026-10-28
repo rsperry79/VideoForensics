@@ -163,7 +163,7 @@ public class NavGroupsSections_Tests
         IReadOnlyList<NavSection> sections = NavGroups.SectionsFor(Admin, Ctx(OperatorRole.SuperAdmin, local: true));
 
         Assert.Equal(
-            new[] { "Sources", "General", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
+            new[] { "General", "Sources", "Security", "Diagnostics & Updates", "Devices & Network", "Storage & Data", "Integrations" },
             sections.Select(s => s.Title).ToList());
     }
 
