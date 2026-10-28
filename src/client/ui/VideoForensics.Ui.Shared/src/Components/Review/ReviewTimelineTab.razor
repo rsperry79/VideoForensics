@@ -11,7 +11,6 @@
 @using VideoForensics.Data.Common.Entities
 @inject IReviewClipLoader ClipLoader
 @inject ReviewUrlCache UrlCache
-@inject ReviewTimelineModel TimelineModel
 @inject IServiceProvider ServiceProvider
 @inject IStringLocalizer<ReviewPage> L
 @inject ILogger<ReviewTimelineTab> Logger
@@ -148,7 +147,6 @@
             _loaded = null;
             _tiles = [];
             _loadedDeviceIds = new HashSet<Guid>();
-            TimelineModel.Clear();
             StateHasChanged();
             return;
         }
@@ -190,9 +188,6 @@
             _loaded = null;
             _tiles = [];
             _error = true;
-
-            // The panel must not keep drawing the clips of the load that just failed.
-            TimelineModel.Clear();
         }
 
         if (IsCurrent(cts))
@@ -233,9 +228,6 @@
 
         bool hasSelectedClips = key.Cameras.Any(id => ReviewClipBuilder.BuildClips(set.Items, id).Count > 0);
         _loaded = new LoadedClips(key, set.Truncated, hasSelectedClips);
-
-        // The right-panel timeline shows the first selected camera only, over the same range the tiles cover.
-        TimelineModel.Publish(ReviewClipBuilder.BuildClips(set.Items, key.Cameras[0]), key.FromUtc, key.ToUtc);
     }
 
     /// <summary>Sets the cursor to the start of the newest clip among the selected cameras, when nothing has set one yet.</summary>
@@ -342,7 +334,6 @@
 
         _disposed = true;
         State.OnChange -= OnReviewStateChanged;
-        TimelineModel.Clear();
         _evidenceSubscription?.Dispose();
         _loadCts?.Cancel();
         _loadCts?.Dispose();

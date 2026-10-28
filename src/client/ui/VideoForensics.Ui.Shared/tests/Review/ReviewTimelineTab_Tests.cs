@@ -290,76 +290,88 @@ public class ReviewTimelineTab_Tests : ReviewTestContext
     }
 
     [Fact]
-    public void ReviewTimelineTab_LoadedWithCameras_PublishesOnlyThePrimaryCamerasClips()
+    public void ReviewTimelineTab_LoadedWithCameras_DoesNotTouchTheTimelineModel()
     {
         // Arrange
         AddDevices(2);
         ReviewState.SetCameras([Devices[0].Id, Devices[1].Id]);
-        MediaItem primary = Clip(Devices[0].Id, ClipStart);
-        MediaItem other = Clip(Devices[1].Id, ClipStart);
-        ClipLoader.Responder = (_, _) => Task.FromResult(new ReviewClipSet([primary, other], false));
+        ServeOneClipPerCamera();
+        int changes = 0;
+        TimelineModel.OnChange += () => changes++;
 
         // Act
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
 
-        // Assert
-        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
-        Assert.Equal(primary.Id.ToString("D"), TimelineModel.Clips[0].Id);
-        Assert.Equal(ReviewState.FromUtc, TimelineModel.FromUtc);
-        Assert.Equal(ReviewState.ToUtc, TimelineModel.ToUtc);
+        // Assert: the page-level feeder owns the model, so the tab loads its tiles and leaves the model alone
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<CameraGrid>()));
+        Assert.Empty(TimelineModel.Clips);
+        Assert.Equal(0, changes);
     }
 
     [Fact]
-    public void ReviewTimelineTab_CamerasBecomeEmpty_ClearsThePublishedClips()
+    public void ReviewTimelineTab_CamerasBecomeEmpty_DoesNotClearTheTimelineModel()
     {
         // Arrange
         AddDevices(1);
         ReviewState.SetCameras([Devices[0].Id]);
         ServeOneClipPerCamera();
+        TimelineModel.Publish(ReviewClipBuilder.BuildClips([Clip(Devices[0].Id, ClipStart)], Devices[0].Id), ReviewState.FromUtc, ReviewState.ToUtc);
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
-        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SingleCameraView>()));
+        int changes = 0;
+        TimelineModel.OnChange += () => changes++;
 
         // Act
         cut.InvokeAsync(() => ReviewState.SetCameras([]));
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Empty(TimelineModel.Clips));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-timeline-no-cameras']")));
+        Assert.Single(TimelineModel.Clips);
+        Assert.Equal(0, changes);
     }
 
     [Fact]
-    public void ReviewTimelineTab_LoadFailsAfterAGoodLoad_ClearsThePublishedClips()
+    public void ReviewTimelineTab_LoadFailsAfterAGoodLoad_DoesNotClearTheTimelineModel()
     {
         // Arrange
         AddDevices(2);
         ReviewState.SetCameras([Devices[0].Id]);
         ServeOneClipPerCamera();
+        TimelineModel.Publish(ReviewClipBuilder.BuildClips([Clip(Devices[0].Id, ClipStart)], Devices[0].Id), ReviewState.FromUtc, ReviewState.ToUtc);
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
-        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SingleCameraView>()));
         ClipLoader.Responder = (_, _) => Task.FromException<ReviewClipSet>(new InvalidOperationException("boom"));
+        int changes = 0;
+        TimelineModel.OnChange += () => changes++;
 
         // Act
         cut.InvokeAsync(() => ReviewState.SetCameras([Devices[1].Id]));
 
         // Assert
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-timeline-error']")));
-        Assert.Empty(TimelineModel.Clips);
+        Assert.Single(TimelineModel.Clips);
+        Assert.Equal(0, changes);
     }
 
     [Fact]
-    public void ReviewTimelineTab_Disposed_ClearsThePublishedClips()
+    public void ReviewTimelineTab_Disposed_DoesNotClearTheTimelineModel()
     {
         // Arrange
         AddDevices(1);
         ReviewState.SetCameras([Devices[0].Id]);
         ServeOneClipPerCamera();
+        TimelineModel.Publish(ReviewClipBuilder.BuildClips([Clip(Devices[0].Id, ClipStart)], Devices[0].Id), ReviewState.FromUtc, ReviewState.ToUtc);
         IRenderedComponent<ReviewTimelineTab> cut = RenderTab();
-        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<SingleCameraView>()));
+        int changes = 0;
+        TimelineModel.OnChange += () => changes++;
 
         // Act
         ((IDisposable)cut.Instance).Dispose();
 
         // Assert
-        Assert.Empty(TimelineModel.Clips);
+        Assert.Single(TimelineModel.Clips);
+        Assert.Equal(0, changes);
     }
 
     [Fact]

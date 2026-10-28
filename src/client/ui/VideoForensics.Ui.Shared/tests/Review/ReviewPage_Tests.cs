@@ -3,9 +3,11 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 
 using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Data.Common.Entities;
 
 using Xunit;
 
@@ -170,5 +172,35 @@ public class ReviewPage_Tests : ReviewTestContext
         Assert.Null(error);
         Assert.Single(cut.FindAll("[data-testid='review-tab-timeline']"));
         Assert.Empty(cut.FindAll("[data-testid='review-tab-detail']"));
+    }
+
+    [Fact]
+    public void ReviewPage_SwitchingFromTimelineToEvents_KeepsTheTimelineModelPopulated()
+    {
+        // Arrange
+        AddDevices(1);
+        NavigateToReview();
+        ClipLoader.Responder = (call, _) => Task.FromResult(new ReviewClipSet(
+            call.DeviceIds.Select(id => new MediaItem
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = id,
+                FileName = "clip.mp4",
+                FilePath = "clip.mp4",
+                MediaFormat = "mp4",
+                RecordedAtUtc = FixedNowUtc.AddHours(-1),
+                DurationSeconds = 120,
+                Sha256Hash = "hash",
+            }).ToList(),
+            false));
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+        cut.WaitForAssertion(() => Assert.Single(TimelineModel.Clips));
+
+        // Act
+        cut.InvokeAsync(() => ReviewState.SetTab(ReviewTab.Events));
+
+        // Assert: the tab change unmounts the timeline tab, but the page-level feeder keeps the model filled
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid='review-tab-events']")));
+        Assert.Single(TimelineModel.Clips);
     }
 }

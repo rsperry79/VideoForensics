@@ -59,6 +59,9 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The timeline tab's logger, so a test can check what was logged.</summary>
     protected Mock<ILogger<ReviewTimelineTab>> TabLogger { get; } = new();
 
+    /// <summary>The page-level timeline feeder's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewTimelineFeeder>> FeederLogger { get; } = new();
+
     /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
     protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
 
@@ -82,6 +85,7 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(sp => new ReviewUrlCache(sp.GetRequiredService<IMediaContentUrlProvider>(), sp.GetRequiredService<TimeProvider>()));
         _ = Services.AddSingleton<IEvidenceChangedSource>(EvidenceSource);
         _ = Services.AddSingleton(TabLogger.Object);
+        _ = Services.AddSingleton(FeederLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         _ = DeviceRepositoryMock

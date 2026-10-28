@@ -1,0 +1,147 @@
+@implements IDisposable
+@using System.Reactive.Linq
+@using Microsoft.Extensions.Logging
+@using VideoForensics.Client.Ui.Shared.Contracts
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@inject ReviewPageState State
+@inject ReviewTimelineModel TimelineModel
+@inject IReviewClipLoader ClipLoader
+@inject IServiceProvider ServiceProvider
+@inject ILogger<ReviewTimelineFeeder> Logger
+
+@code {
+    private static readonly TimeSpan ReloadQuietPeriod = TimeSpan.FromMilliseconds(750);
+
+    private LoadKey? _requested;
+    private Guid? _primary;
+    private CancellationTokenSource? _loadCts;
+    private IDisposable? _evidenceSubscription;
+    private bool _disposed;
+
+    /// <summary>
+    /// Owns the right-panel timeline model for the whole page, so the panel keeps its clips on every tab. Renders nothing.
+    /// </summary>
+    protected override Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+
+        // Optional, like the timeline tab: a host with no realtime feed simply never reloads from evidence changes.
+        IEvidenceChangedSource? evidence = ServiceProvider.GetService(typeof(IEvidenceChangedSource)) as IEvidenceChangedSource;
+        _evidenceSubscription = evidence?.EvidenceChanged
+            .Where(change => _primary is Guid primary && change.DeviceId == primary)
+            .Throttle(ReloadQuietPeriod)
+            .Subscribe(change => { _ = InvokeAsync(() => ReloadAsync()); });
+
+        _ = ReloadAsync();
+        return Task.CompletedTask;
+    }
+
+    private void OnReviewStateChanged()
+    {
+        _ = InvokeAsync(OnReviewStateChangedAsync);
+    }
+
+    /// <summary>
+    /// Only a camera or range change reloads. A cursor or tab change leaves the published clips as they are.
+    /// </summary>
+    private Task OnReviewStateChangedAsync()
+    {
+        if (_disposed || (_requested is not null && _requested.Matches(State)))
+        {
+            return Task.CompletedTask;
+        }
+
+        return ReloadAsync();
+    }
+
+    /// <summary>
+    /// Loads the primary (first selected) camera's clips over the review range and publishes them. A newer load cancels this
+    /// one, and a result that is no longer current is dropped.
+    /// </summary>
+    private async Task ReloadAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _loadCts = cts;
+        CancellationToken ct = cts.Token;
+
+        var key = new LoadKey(State.CameraIds.ToList(), State.FromUtc, State.ToUtc);
+        _requested = key;
+
+        if (key.Cameras.Count == 0)
+        {
+            _primary = null;
+            TimelineModel.Clear();
+            return;
+        }
+
+        Guid primary = key.Cameras[0];
+
+        // Set before the call, so an evidence change that arrives while the load runs still counts.
+        _primary = primary;
+
+        try
+        {
+            ReviewClipSet set = await ClipLoader.LoadAsync([primary], key.FromUtc, key.ToUtc, ct);
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            TimelineModel.Publish(ReviewClipBuilder.BuildClips(set.Items, primary), key.FromUtc, key.ToUtc);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // A newer load or the disposal replaced this one; it owns the model now.
+        }
+        catch (Exception ex)
+        {
+            if (!IsCurrent(cts))
+            {
+                return;
+            }
+
+            Logger.LogError("Could not load review timeline clips: {ExceptionType}: {Message}", ex.GetType().FullName, ex.Message);
+
+            // The panel must not keep drawing the clips of a load that failed.
+            TimelineModel.Clear();
+        }
+    }
+
+    private bool IsCurrent(CancellationTokenSource cts)
+    {
+        return !_disposed && ReferenceEquals(_loadCts, cts) && !cts.IsCancellationRequested;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        State.OnChange -= OnReviewStateChanged;
+        _evidenceSubscription?.Dispose();
+        _evidenceSubscription = null;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+        TimelineModel.Clear();
+    }
+
+    /// <summary>The cameras and range one load asked for. The model is only as fresh as this key matches the state.</summary>
+    private sealed record LoadKey(IReadOnlyList<Guid> Cameras, DateTime FromUtc, DateTime ToUtc)
+    {
+        public bool Matches(ReviewPageState state)
+        {
+            return Cameras.SequenceEqual(state.CameraIds) && FromUtc == state.FromUtc && ToUtc == state.ToUtc;
+        }
+    }
+}
