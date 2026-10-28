@@ -3,10 +3,14 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Ui.Shared.Components.Review;
+using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services;
 using VideoForensics.Client.Ui.Shared.Services.Review;
@@ -40,6 +44,18 @@ public abstract class ReviewTestContext : BunitContext
     /// <summary>The device repository double.</summary>
     protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
 
+    /// <summary>The clip loader double the timeline tab reads through.</summary>
+    protected FakeReviewClipLoader ClipLoader { get; } = new();
+
+    /// <summary>The ticketed-URL double behind the review URL cache.</summary>
+    protected FakeMediaContentUrlProvider UrlProvider { get; } = new();
+
+    /// <summary>The evidence change feed the timeline tab reloads from.</summary>
+    protected FakeEvidenceChangedSource EvidenceSource { get; } = new();
+
+    /// <summary>The timeline tab's logger, so a test can check what was logged.</summary>
+    protected Mock<ILogger<ReviewTimelineTab>> TabLogger { get; } = new();
+
     /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
     protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
 
@@ -56,6 +72,11 @@ public abstract class ReviewTestContext : BunitContext
         _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
         _ = Services.AddScoped(_ => ScopeState);
         _ = Services.AddScoped(_ => ReviewState);
+        _ = Services.AddSingleton<IReviewClipLoader>(ClipLoader);
+        _ = Services.AddSingleton<IMediaContentUrlProvider>(UrlProvider);
+        _ = Services.AddScoped(sp => new ReviewUrlCache(sp.GetRequiredService<IMediaContentUrlProvider>(), sp.GetRequiredService<TimeProvider>()));
+        _ = Services.AddSingleton<IEvidenceChangedSource>(EvidenceSource);
+        _ = Services.AddSingleton(TabLogger.Object);
         _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
 
         _ = DeviceRepositoryMock

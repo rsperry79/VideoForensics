@@ -116,4 +116,19 @@
   <data name="NoCameras" xml:space="preserve">
     <value>No cameras are available.</value>
   </data>
+  <data name="LoadingClips" xml:space="preserve">
+    <value>Loading clips...</value>
+  </data>
+  <data name="NoCamerasSelected" xml:space="preserve">
+    <value>Select a camera to see its clips.</value>
+  </data>
+  <data name="NoClipsInRange" xml:space="preserve">
+    <value>No clips in this time range.</value>
+  </data>
+  <data name="ClipsTruncated" xml:space="preserve">
+    <value>Showing the first {0} clips. Narrow the time range to see the rest.</value>
+  </data>
+  <data name="ClipsLoadFailed" xml:space="preserve">
+    <value>Clips could not be loaded. Change the cameras or time range to try again.</value>
+  </data>
 </root>

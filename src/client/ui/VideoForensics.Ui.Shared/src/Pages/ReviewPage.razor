@@ -31,7 +31,7 @@ else
     @if (State.ActiveTab == ReviewTab.Timeline)
     {
         <section class="review-tab-panel" data-testid="review-tab-timeline">
-            <p>@L["TabPlaceholder", L["TabTimeline"].Value]</p>
+            <ReviewTimelineTab State="State" Devices="_deviceIds" DeviceNames="_deviceNames" />
         </section>
     }
     else if (State.ActiveTab == ReviewTab.Events)

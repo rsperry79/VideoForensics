@@ -1,5 +1,6 @@
 using Bunit;
 
+using VideoForensics.Client.Ui.Shared.Components.Review;
 using VideoForensics.Client.Ui.Shared.Pages;
 using VideoForensics.Client.Ui.Shared.Services.Review;
 
@@ -100,6 +101,22 @@ public class ReviewPage_Tests : ReviewTestContext
         Assert.Single(cut.FindAll("[data-testid='review-tab-events']"));
         Assert.Empty(cut.FindAll("[data-testid='review-tab-timeline']"));
         Assert.Contains("tab=Events", CurrentUri);
+    }
+
+    [Fact]
+    public void ReviewPage_TimelineTab_RendersTheTimelineComponentInItsPanel()
+    {
+        // Arrange
+        AddDevices(2);
+        NavigateToReview();
+
+        // Act
+        IRenderedComponent<ReviewPage> cut = Render<ReviewPage>();
+
+        // Assert
+        Assert.Single(cut.FindComponents<ReviewTimelineTab>());
+        Assert.Single(cut.FindAll("[data-testid='review-tab-timeline'] [data-testid='review-timeline-tab']"));
+        Assert.DoesNotContain(L["TabPlaceholder", L["TabTimeline"].Value].Value, cut.Find("[data-testid='review-tab-timeline']").TextContent);
     }
 
     [Fact]
