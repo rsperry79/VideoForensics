@@ -352,7 +352,8 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                 try
                 {
                     Location? location = await sp.GetRequiredService<ILocationRepository>().GetAsync(device.LocationId, ct);
-                    mediaFilePath = WriteImage(account.ProviderName, location?.Name ?? string.Empty, device.Name, device.ProviderDeviceId, attemptedAt, image);
+                    string mediaRoot = await ResolveMediaRootAsync(sp, ct);
+                    mediaFilePath = WriteImage(mediaRoot, account.ProviderName, location?.Name ?? string.Empty, device.Name, device.ProviderDeviceId, attemptedAt, image);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -460,15 +461,30 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
             }
         }
 
+        /// <summary>
+        /// Resolves the Media root for one write, so a change on the Storage Settings page applies without a restart.
+        /// Falls back to the default root when no configuration service is registered.
         /// </summary>
-        private string WriteImage(string providerName, string locationName, string deviceName, string providerDeviceId, DateTimeOffset capturedAtUtc, byte[] image)
+        private async Task<string> ResolveMediaRootAsync(IServiceProvider sp, CancellationToken ct)
+        {
+            IForensicsConfigurationService? configuration = sp.GetService<IForensicsConfigurationService>();
+            if (configuration is null)
+            {
+                return _storage.GetDefaultRoot(StorageCategory.Media);
+            }
+
+            IForensicsConfiguration config = await configuration.LoadConfigurationAsync(string.Empty, ct);
+            return _storage.GetEffectiveRoot(StorageCategory.Media, config.DownloadLocation);
+        }
+
+        private string WriteImage(string mediaRoot, string providerName, string locationName, string deviceName, string providerDeviceId, DateTimeOffset capturedAtUtc, byte[] image)
         {
             if (!int.TryParse(providerDeviceId, NumberStyles.None, CultureInfo.InvariantCulture, out _))
             {
                 throw new ArgumentException("Ring device ids are numeric.", nameof(providerDeviceId));
             }
 
-            string folder = MediaFolderLayout.GetDeviceFolder(_storage.GetDefaultRoot(StorageCategory.Media), providerName, locationName, deviceName);
+            string folder = MediaFolderLayout.GetDeviceFolder(mediaRoot, providerName, locationName, deviceName);
             string fileName = capturedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture) + ".jpg";
             string fullPath = Path.Combine(folder, fileName);
 

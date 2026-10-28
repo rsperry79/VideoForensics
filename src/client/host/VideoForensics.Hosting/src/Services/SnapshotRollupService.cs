@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 
 using System.Security.Cryptography;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Data.Core.Contracts;
 using VideoForensics.Core.Providers.Common.Contracts;
@@ -44,6 +45,7 @@ namespace VideoForensics.Client.Hosting.Services
         // Optional: when both are present, stills come from capture attempts so a failed capture ends a hold.
         private readonly ISnapshotCaptureRepository? _captures;
         private readonly ISnapshotStillMapper? _stillMapper;
+        private readonly IForensicsConfigurationService? _configurationService;
 
         public SnapshotRollupService(
             ILocationRepository locations,
@@ -56,10 +58,12 @@ namespace VideoForensics.Client.Hosting.Services
             ILogger<SnapshotRollupService> logger,
             IEvidenceChangeNotifier? evidenceChanges = null,
             ISnapshotCaptureRepository? captures = null,
-            ISnapshotStillMapper? stillMapper = null)
+            ISnapshotStillMapper? stillMapper = null,
+            IForensicsConfigurationService? configurationService = null)
         {
             _captures = captures;
             _stillMapper = stillMapper;
+            _configurationService = configurationService;
             _locations = locations;
             _devices = devices;
             _mediaItems = mediaItems;
@@ -82,7 +86,11 @@ namespace VideoForensics.Client.Hosting.Services
             }
 
             // Same folder layout as the event pull and snapshot captures, so each loop sits with its device's other media.
-            string mediaRoot = _storage.GetDefaultRoot(StorageCategory.Media);
+            // Read per roll-up so the loop follows the Storage Settings Media folder, the same root the frames were written to.
+            string? configuredMediaRoot = _configurationService is null
+                ? null
+                : (await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken)).DownloadLocation;
+            string mediaRoot = _storage.GetEffectiveRoot(StorageCategory.Media, configuredMediaRoot);
             var devices = new List<(DeviceEntity Device, string DeviceFolder)>();
             foreach (VideoForensics.Data.Common.Entities.Location location in await _locations.ListByProviderAccountIdAsync(accountId, cancellationToken))
             {

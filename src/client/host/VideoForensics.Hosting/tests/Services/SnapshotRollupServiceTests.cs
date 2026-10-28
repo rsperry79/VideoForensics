@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Core.Providers.Core;
@@ -30,6 +31,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
         private readonly Mock<ITimelineVideoBuilder> _builder = new();
         private readonly Mock<IProviderAccountRepository> _accounts = new();
         private readonly Mock<IStorageLocationProvider> _storage = new();
+        private readonly Mock<IForensicsConfigurationService> _configuration = new();
+        private readonly Mock<IForensicsConfiguration> _config = new();
         private readonly Location _location = new() { Id = Guid.NewGuid(), ProviderLocationId = "L", Name = "Home" };
         private readonly Device _device;
 
@@ -44,6 +47,9 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _ = _accounts.Setup(a => a.GetAsync(_accountId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProviderAccount { Id = _accountId, ProviderName = "Ring", IsActive = true });
             _ = _storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(() => MediaRoot);
+            _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>()))
+                .Returns<StorageCategory, string?>((_, configuredOverride) => string.IsNullOrWhiteSpace(configuredOverride) ? MediaRoot : configuredOverride);
+            _ = _configuration.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(_config.Object);
         }
 
         public void Dispose()
@@ -64,7 +70,8 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _storage.Object,
             _builder.Object,
             Options.Create(new SnapshotTimelineOptions { SnapshotRoot = _root }),
-            NullLogger<SnapshotRollupService>.Instance);
+            NullLogger<SnapshotRollupService>.Instance,
+            configurationService: _configuration.Object);
         }
 
         private string WriteJpeg(string name)
@@ -136,6 +143,24 @@ namespace VideoForensics.Client.Hosting.Tests.Services
             _media.Verify(m => m.AddAsync(
                 It.Is<MediaItem>(i => i.DeviceId == _device.Id && i.MediaFormat == "mp4" && i.RecordedAtUtc == To && i.MetadataJson == SnapshotRollupService.SnapshotRollupMarker),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RollUp_ConfiguredMediaRoot_WritesLoopUnderConfiguredRoot()
+        {
+            // The loop must sit with the snapshot frames, which the pull and capture write under the Storage Settings Media folder.
+            string configuredRoot = Path.Combine(_root, "configured");
+            _ = _config.Setup(c => c.DownloadLocation).Returns(configuredRoot);
+            SetWindowRows(Snapshot(WriteJpeg("a.jpg"), From.AddMinutes(1)));
+            TimelineVideoRequest? sent = null;
+            _ = _builder.Setup(b => b.BuildAsync(It.IsAny<TimelineVideoRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<TimelineVideoRequest, CancellationToken>((r, _) => { sent = r; File.WriteAllBytes(r.OutputPath, [0]); })
+                .ReturnsAsync(new TimelineVideoResult(true, "out.mp4", null, 1));
+            string expected = Path.Combine(configuredRoot, "ring", "home", "porch", $"{To:yyyyMMddHHmmss}.mp4");
+
+            _ = await Build().RollUpAccountAsync(_accountId, From, To, CancellationToken.None);
+
+            Assert.Equal(expected, sent!.OutputPath);
         }
 
         [Fact]

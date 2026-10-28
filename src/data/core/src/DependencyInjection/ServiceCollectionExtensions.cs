@@ -60,7 +60,6 @@ namespace VideoForensics.Data.Core.DependencyInjection
             // Phase 2 reporting and retention services
             _ = services.AddScoped<IReportGenerationService, ReportGenerationService>();
             _ = services.AddScoped<IStorageSettingsService, StorageSettingsService>();
-            _ = services.AddScoped<MediaStorageMigrator>();
 
             // Register RetentionService with configurable retention days
             _ = services.AddScoped<IRetentionService>(sp =>

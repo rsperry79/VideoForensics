@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text.Json;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
@@ -51,7 +52,10 @@ namespace VideoForensics.Client.Hosting.Services
         private readonly ILogger<EventPullService> _logger;
         private readonly IDeviceDiscoveryService _deviceDiscovery;
         private readonly IMediaDownloadService? _mediaDownloadService;
+        private readonly string? _mediaRootOverride;
         private readonly string _mediaRoot;
+        private readonly IStorageLocationProvider? _storage;
+        private readonly IForensicsConfigurationService? _configurationService;
         private readonly IDeviceConfigRepository? _deviceConfigRepository;
         private readonly IMediaPreviewService? _previewService;
         private readonly IMediaItemRepository? _mediaItems;
@@ -75,7 +79,9 @@ namespace VideoForensics.Client.Hosting.Services
             string? mediaRoot = null,
             IDeviceConfigRepository? deviceConfigRepository = null,
             IMediaPreviewService? previewService = null,
-            IMediaItemRepository? mediaItems = null)
+            IMediaItemRepository? mediaItems = null,
+            IStorageLocationProvider? storage = null,
+            IForensicsConfigurationService? configurationService = null)
         {
             _deviceConfigRepository = deviceConfigRepository;
             _previewService = previewService;
@@ -87,7 +93,25 @@ namespace VideoForensics.Client.Hosting.Services
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<EventPullService>.Instance;
             _deviceDiscovery = deviceDiscovery;
             _mediaDownloadService = mediaDownloadService;
+            _mediaRootOverride = mediaRoot;
+            _storage = storage;
+            _configurationService = configurationService;
             _mediaRoot = mediaRoot ?? new StorageLocationProvider().GetDefaultRoot(StorageCategory.Media);
+        }
+
+        /// <summary>
+        /// Resolves the Media root at pull time, so a change on the Storage Settings page applies to the next pull without a restart.
+        /// An explicit override wins. Without storage and configuration services the constructor default is used.
+        /// </summary>
+        private async Task<string> ResolveMediaRootAsync(CancellationToken cancellationToken)
+        {
+            if (_mediaRootOverride is not null || _storage is null || _configurationService is null)
+            {
+                return _mediaRoot;
+            }
+
+            IForensicsConfiguration config = await _configurationService.LoadConfigurationAsync(string.Empty, cancellationToken);
+            return _storage.GetEffectiveRoot(StorageCategory.Media, config.DownloadLocation);
         }
 
         public async Task<EventPullResult> PullAccountEventsAsync(Guid accountId, DateTime? fromTimestampUtc, DateTime? toTimestampUtc, CancellationToken cancellationToken)
@@ -134,6 +158,8 @@ namespace VideoForensics.Client.Hosting.Services
                     _mediaDownloadService.SetActiveProviderAccountId(accountId);
                 }
 
+                // Read once per pull so every device in this pull lands under the same root.
+                string mediaRoot = await ResolveMediaRootAsync(cancellationToken);
                 int deviceIndex = 0;
                 foreach (InventoryDevice inventoryDevice in inventory.Devices)
                 {
@@ -166,11 +192,11 @@ namespace VideoForensics.Client.Hosting.Services
 
                         if (_mediaDownloadService != null)
                         {
-                            // Media lands in <root>\<provider>\<location>\<device>, the layout the Storage Settings
-                            // and the startup migration both assume. Location names come from the DB, not the provider.
+                            // Media lands in <root>\<provider>\<location>\<device>, the layout the Storage Settings page
+                            // assumes. Location names come from the DB, not the provider.
                             string locationName = (await _locationRepository.GetByProviderLocationIdAsync(accountId, providerLocationId, cancellationToken))?.Name
                                 ?? providerLocationId;
-                            string deviceFolder = MediaFolderLayout.GetDeviceFolder(_mediaRoot, account.ProviderName, locationName, deviceName);
+                            string deviceFolder = MediaFolderLayout.GetDeviceFolder(mediaRoot, account.ProviderName, locationName, deviceName);
                             _ = Directory.CreateDirectory(deviceFolder);
 
                             // A failed media pull throws so the per-device catch records it and counts the feed as failed.

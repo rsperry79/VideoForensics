@@ -27,6 +27,8 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
         private readonly string _root = Path.Combine(Path.GetTempPath(), "vf-snapshot-capture-" + Guid.NewGuid().ToString("N"));
         private string MediaRoot => Path.Combine(_root, "media");
         private readonly Mock<IStorageLocationProvider> _storage = new();
+        private readonly Mock<IForensicsConfigurationService> _configuration = new();
+        private readonly Mock<IForensicsConfiguration> _config = new();
         private readonly Guid _accountId = Guid.NewGuid();
         private readonly Guid _locationId = Guid.NewGuid();
         private readonly MutableTimeProvider _time = new(T0);
@@ -57,6 +59,9 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = _locations.Setup(r => r.GetAsync(_locationId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Location { Id = _locationId, ProviderLocationId = "loc", Name = "Home" });
             _ = _storage.Setup(s => s.GetDefaultRoot(StorageCategory.Media)).Returns(() => MediaRoot);
+            _ = _storage.Setup(s => s.GetEffectiveRoot(StorageCategory.Media, It.IsAny<string?>()))
+                .Returns<StorageCategory, string?>((_, configuredOverride) => string.IsNullOrWhiteSpace(configuredOverride) ? MediaRoot : configuredOverride);
+            _ = _configuration.Setup(s => s.LoadConfigurationAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(_config.Object);
             _ = _auth.Setup(a => a.RestoreFromSavedCredentialsAsync(_accountId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             _ = _budget.Setup(b => b.TryConsumeAsync("Ring", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -139,6 +144,7 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             _ = services.AddKeyedSingleton<IProviderDeviceStatus>("Ring", _deviceStatus);
             _ = services.AddSingleton(_budget.Object);
             _ = services.AddSingleton(_dispatcher.Object);
+            _ = services.AddSingleton(_configuration.Object);
             return services.BuildServiceProvider();
         }
 
@@ -368,6 +374,25 @@ namespace VideoForensics.Client.Hosting.Tests.BackgroundServices
             await RunTickAsync();
 
             _capture.Verify(c => c.CaptureAsync(It.IsAny<Guid>(), "12345", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunOneTickAsync_ConfiguredMediaRoot_WritesImageUnderConfiguredRoot()
+        {
+            // The Media folder chosen on Storage Settings is where snapshots go; the default media root stays untouched.
+            string configuredRoot = Path.Combine(_root, "configured");
+            _ = _config.Setup(c => c.DownloadLocation).Returns(configuredRoot);
+            _ = AddDevice("12345");
+            _ = _capture.Setup(c => c.CaptureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SnapshotCaptureAttempt(200, Jpeg, null));
+
+            await RunTickAsync();
+
+            string expectedPath = Path.Combine(configuredRoot, "ring", "home", "front_door_12345", ExpectedFileName(T0));
+            Assert.True(File.Exists(expectedPath));
+            Assert.False(Directory.Exists(MediaRoot));
+            SnapshotCapture row = Assert.Single(_rows);
+            Assert.Equal(expectedPath, row.MediaFilePath);
         }
 
         [Fact]

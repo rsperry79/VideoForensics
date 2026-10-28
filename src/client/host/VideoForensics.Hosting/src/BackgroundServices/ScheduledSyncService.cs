@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Core.Helpers.Platform;
 using VideoForensics.Core.Providers.Common.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -367,7 +368,9 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                         deviceDiscovery,
                         sp.GetRequiredService<ILoggerFactory>().CreateLogger<EventPullService>(),
                         mediaService,
-                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>());
+                        deviceConfigRepository: sp.GetRequiredService<IDeviceConfigRepository>(),
+                        storage: sp.GetService<IStorageLocationProvider>(),
+                        configurationService: sp.GetService<IForensicsConfigurationService>());
 
                     // No completed sync yet: backfill forward a week at a time from a year ago, as the initial sync does.
                     // No completed sync yet: backfill one week per tick, from the saved cursor (a year ago to start). A clean
