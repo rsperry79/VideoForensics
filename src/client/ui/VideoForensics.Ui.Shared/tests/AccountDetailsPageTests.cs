@@ -349,6 +349,20 @@ public class AccountDetailsPage_SyncHistoryLink_Tests : AccountDetailsPageTestBa
     }
 }
 
+public class AccountDetailsPage_ValidateOnCasesTab_Tests : AccountDetailsPageTestBase
+{
+    [Fact]
+    public void CasesTab_EmbedsValidatePanel_ScopedToThisAccount()
+    {
+        SetEmptyLists();
+
+        IRenderedComponent<AccountCasesTab> cut = RenderCases();
+
+        // The panel's buttons only render for a signed-in operator; the account scope is what this tab must pass on.
+        cut.WaitForAssertion(() => Assert.Equal(AccountId, cut.FindComponent<VideoForensics.Client.Ui.Shared.Pages.ValidateEvidence>().Instance.AccountId));
+    }
+}
+
 public class AccountDetailsPage_AttachedCases_Tests : AccountDetailsPageTestBase
 {
     [Fact]

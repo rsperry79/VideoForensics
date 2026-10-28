@@ -84,6 +84,19 @@ Each phase ends with a lite gate (`dotnet build` and `dotnet test --filter` on t
 - Do not duplicate work: reuse the existing sync, schedule, and location code. Anything the job queue does that sync already does is redundant.
 - Open: whether sync must download every clip in range (the earlier decision) or only event clips (what sync does today). The job queue and its runner are candidates for removal once sync covers the work. Not decided.
 
+### Sonnet review (2026-10-28) of the direction change
+- Sync already does the work. `AccountSyncRunner` (Sync now, `POST /provider-accounts/{id}/sync-now`) and `ScheduledSyncService` call `EventPullService`, which runs `DownloadVideosAsync` per device for the whole window into `MediaFolderLayout.GetDeviceFolder(<media root>, ...)`. The media root is the existing Media storage setting (`StorageLocationProvider`, which honours the configured override on Windows; the non-Windows branch was not checked). So "every clip in range" is the status quo.
+- The schedule is the per-account `SyncSchedule` (`EventPollIntervalMinutes`), gated by `ScheduledTasks` options.
+- One gap: a custom range is capped at one week (`OneWeekFloor`, `AccountSyncRunner.cs:313`); only full history backfills in weekly windows. Long custom ranges need the same weekly loop.
+- Conflict: sync must never move `LastDownloadTimeUtc` (`AccountSyncRunner.cs:210`). The job executor's watermark write contradicts that.
+- Duplicates to remove: `DownloadJob` entity, state and kind, repository, configuration, two migrations (drop the table), `DownloadJobRunner`, `DownloadJobExecutor`, the `/api/v1/download-jobs` routes and DTOs, `OutputPath` and its path check, and their tests. Also the runner registration in WebApp `Program.cs` and the shared hosting extension.
+- Collect pages become a sync-now UI with a range picker, or are removed in favour of the account's existing Sync now.
+
+### Batching (user, 2026-10-28)
+- The one-week limit is per batch, not per request. A custom sync range can be larger; the sync splits it into batches of at most 7 days, oldest first, using the same weekly loop as the first-sync backfill.
+- My choices, to confirm: a custom range is clamped to one year back (same as the full-history backfill) to bound the number of batches; the default case (no explicit start) keeps the one-week floor.
+- Work split: step A (batching) is a Haiku subagent in the media-page-rework worktree, tests first. Step B (remove the job queue, with a `RemoveDownloadJobs` migration) follows after A is verified, since both use the same build output.
+
 ## Decisions (user, 2026-10-28)
 - Video jobs keep the operator's output folder. `DownloadJob` gets `OutputPath`.
 - Video jobs download every clip in the range, not only event clips. The executor runs the per-device media download (`IMediaDownloadService.DownloadVideosAsync`) for each device of the account, not the event pull. The event pull stays for event sync.

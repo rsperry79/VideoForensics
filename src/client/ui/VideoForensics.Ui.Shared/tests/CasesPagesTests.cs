@@ -243,12 +243,6 @@ public class CasesPage_Tests : CasesPagesTestBase
         RegisterGridStub<ForensicCase>();
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped<LeftPanelContentService>();
-        // The Validate panel sits at the foot of the Cases page and resolves these when it renders.
-        _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
-        var deviceRepository = new Mock<IDeviceRepository>();
-        _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        _ = Services.AddScoped(_ => deviceRepository.Object);
-        _ = Services.AddScoped(_ => Mock.Of<ILocationRepository>());
     }
 
     private IRenderedComponent<Cases> RenderPage()
