@@ -139,6 +139,8 @@ namespace VideoForensics.Client.WebApp.Tests.Api
         [InlineData("{\"rangeKind\":\"Forever\"}")]
         [InlineData("{\"rangeKind\":\"Days\",\"days\":0}")]
         [InlineData("{\"rangeKind\":\"Days\",\"days\":3651}")]
+        [InlineData("{\"rangeKind\":\"Days\",\"days\":367}")]
+        [InlineData("{\"rangeKind\":\"Custom\",\"startUtc\":\"2025-09-01T00:00:00Z\",\"endUtc\":\"2026-10-06T00:00:00Z\"}")]
         [InlineData("{\"rangeKind\":\"Days\"}")]
         [InlineData("{\"rangeKind\":\"Custom\"}")]
         [InlineData("{\"rangeKind\":\"Custom\",\"startUtc\":\"2026-10-16T10:00:00Z\",\"endUtc\":\"2026-10-16T10:00:00Z\"}")]
@@ -197,6 +199,35 @@ namespace VideoForensics.Client.WebApp.Tests.Api
             AccountSyncRequest request = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Equal(new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc), request.FromUtc!.Value.ToUniversalTime());
             Assert.Equal(new DateTime(2026, 10, 2, 0, 0, 0, DateTimeKind.Utc), request.ToUtc!.Value.ToUniversalTime());
+        }
+
+        [Fact]
+        public async Task SyncNow_DaysAtOneYearPlusLeapDay_IsAccepted()
+        {
+            HttpResponseMessage response = await _client.PostAsync(SyncNowUrl, Json("{\"syncType\":\"Events\",\"rangeKind\":\"Days\",\"days\":366}"));
+
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            _ = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        [Fact]
+        public async Task SyncNow_CustomRangeThirtyDays_IsAccepted()
+        {
+            HttpResponseMessage response = await _client.PostAsync(SyncNowUrl, Json(
+                "{\"syncType\":\"Events\",\"rangeKind\":\"Custom\",\"startUtc\":\"2026-09-01T00:00:00Z\",\"endUtc\":\"2026-10-01T00:00:00Z\"}"));
+
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            _ = await _ranWith.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        [Fact]
+        public async Task SyncNow_CustomOpenEndMoreThanLimitBeforeNow_Returns400AndDoesNotRun()
+        {
+            string start = DateTime.UtcNow.AddDays(-400).ToString("o");
+            HttpResponseMessage response = await _client.PostAsync(SyncNowUrl, Json($"{{\"rangeKind\":\"Custom\",\"startUtc\":\"{start}\"}}"));
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            _runner.Verify(r => r.RunAsync(It.IsAny<Guid>(), It.IsAny<AccountSyncRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

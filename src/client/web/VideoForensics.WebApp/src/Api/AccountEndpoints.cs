@@ -471,8 +471,11 @@ namespace VideoForensics.Client.WebApp.Api
         /// <summary>Longest config sync interval the PUT endpoint accepts, in hours (30 days).</summary>
         private const int MaxConfigSyncIntervalHours = 720;
 
-        /// <summary>Largest look-back, in days, a sync-now request may ask for.</summary>
-        private const int MaxSyncDays = 3650;
+        /// <summary>
+        /// Largest look-back, in days, a sync-now request may ask for, and the longest custom range. Why: the runner clamps any
+        /// range to one year back, so a larger request would silently sync only one year. 366 covers one year plus a leap day.
+        /// </summary>
+        private const int MaxSyncDays = 366;
 
         /// <summary>
         /// Returns the UTC instant for a bound date. System.Text.Json converts an offset timestamp such as "+02:00" to local
@@ -539,6 +542,13 @@ namespace VideoForensics.Client.WebApp.Api
                     if (to <= from)
                     {
                         error = "to must be after from";
+                        return false;
+                    }
+
+                    // An open end means now, so the same limit applies against the current time.
+                    if ((to ?? DateTime.UtcNow) - from.Value > TimeSpan.FromDays(MaxSyncDays))
+                    {
+                        error = $"range must not be longer than {MaxSyncDays} days";
                         return false;
                     }
 
