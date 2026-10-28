@@ -380,8 +380,8 @@
   <data name="NoticeReview" xml:space="preserve">
     <value>Review chain of custody</value>
   </data>
-  <data name="NoticeCreateCase" xml:space="preserve">
-    <value>Create case</value>
+  <data name="NoticeReviewSignal" xml:space="preserve">
+    <value>Review</value>
   </data>
   <data name="NoticeDeviceSettings" xml:space="preserve">
     <value>Device settings</value>

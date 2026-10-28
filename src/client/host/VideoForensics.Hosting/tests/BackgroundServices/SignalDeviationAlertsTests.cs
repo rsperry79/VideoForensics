@@ -36,6 +36,28 @@ public class SignalDeviationAlertsTests
     }
 
     [Fact]
+    public async Task Check_ActionPathDrillsToTheAlertedHourPlusOrMinusOneHour()
+    {
+        var notices = new Mock<INoticeRepository>();
+        notices.Setup(n => n.ExistsWithDetailsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var dispatcher = new Mock<INotificationDispatcher>();
+        NotificationEvent? sent = null;
+        dispatcher.Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<NotificationEvent, CancellationToken>((e, _) => sent = e)
+            .Returns(Task.CompletedTask);
+
+        _ = await CheckAsync(notices.Object, dispatcher.Object);
+
+        // The alerted hour is the one holding the -95 reading. The scope runs from an hour before it to an hour after it ends.
+        DateTime alertedHourUtc = DateTime.UtcNow.AddHours(-1);
+        alertedHourUtc = new DateTime(alertedHourUtc.Year, alertedHourUtc.Month, alertedHourUtc.Day, alertedHourUtc.Hour, 0, 0, DateTimeKind.Utc);
+        string from = alertedHourUtc.AddHours(-1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        string to = alertedHourUtc.AddHours(2).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        Assert.NotNull(sent);
+        Assert.Equal($"/signal-history?devices={_device.Id:D}&from={from}&to={to}", sent!.ActionPath);
+    }
+
+    [Fact]
     public async Task Check_DoesNotRaiseTheSameAlertTwice()
     {
         var notices = new Mock<INoticeRepository>();

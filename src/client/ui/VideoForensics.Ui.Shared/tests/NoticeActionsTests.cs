@@ -10,27 +10,16 @@ public class NoticeActionsTests
     private const string Path = "/signal-history?devices=11111111-2222-3333-4444-555555555555&from=2026-10-26&to=2026-10-27";
 
     [Fact]
-    public void CreateCaseLink_OpensTheNewCaseWithTheNoticesScopeAndDetails()
+    public void ReviewLink_ForSignalDeviation_IsTheSignalHistoryPathDrilledToTheIncident()
     {
-        string? link = NoticeActions.CreateCaseLink("SignalDeviation", Path, "Front Door: RSSI -56 dBm at Mon Oct 26 00:00 UTC is more than 2 std devs from this camera's mean. [sig-dev:Ring:1234:2026102600]");
-
-        Assert.NotNull(link);
-        Assert.StartsWith("/cases/new?devices=11111111-2222-3333-4444-555555555555&from=2026-10-26&to=2026-10-27&title=", link);
-        Assert.Contains("&description=" + Uri.EscapeDataString("Front Door: RSSI -56 dBm at Mon Oct 26 00:00 UTC is more than 2 std devs from this camera's mean."), link);
-        Assert.DoesNotContain("sig-dev", link);
+        Assert.Equal(Path, NoticeActions.ReviewLink("SignalDeviation", Path));
     }
 
     [Fact]
-    public void CreateCaseLink_IsNullForOtherNotices()
+    public void ReviewLink_ForSignalDeviationWithoutAPath_IsNull()
     {
-        Assert.Null(NoticeActions.CreateCaseLink("DeviceOffline", Path, "Flood went offline"));
-    }
-
-    [Fact]
-    public void CreateCaseLink_IsNullWithoutAScopeInTheActionPath()
-    {
-        Assert.Null(NoticeActions.CreateCaseLink("SignalDeviation", "/signal-history", "details"));
-        Assert.Null(NoticeActions.CreateCaseLink("SignalDeviation", null, "details"));
+        Assert.Null(NoticeActions.ReviewLink("SignalDeviation", null));
+        Assert.Null(NoticeActions.ReviewLink("SignalDeviation", "  "));
     }
 
     [Fact]

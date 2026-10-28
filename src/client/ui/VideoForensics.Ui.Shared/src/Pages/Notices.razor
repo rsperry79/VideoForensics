@@ -79,9 +79,9 @@ else
                             {
                                 <a href="@notice.ActionPath">@L["OpenNoticeLink"]</a>
                             }
-                            @if (NoticeActions.CreateCaseLink(notice.EventType, notice.ActionPath, notice.Details) is { } caseLink)
+                            @if (NoticeActions.ReviewLink(notice.EventType, notice.ActionPath) is { } reviewLink)
                             {
-                                <a href="@caseLink" class="ms-2" data-testid="notice-create-case">@L["NoticeCreateCase"]</a>
+                                <a href="@reviewLink" class="ms-2" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
                             }
                             @if (NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath) is { } settingsLink)
                             {

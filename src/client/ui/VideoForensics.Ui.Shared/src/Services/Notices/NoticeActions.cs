@@ -1,8 +1,8 @@
 namespace VideoForensics.Client.Ui.Shared.Services.Notices;
 
 /// <summary>
-/// The actions a notice offers in the notices dropdown and on the Notices page: creating a case from a signal deviation,
-/// and opening the device settings where its health polling can be turned off.
+/// The actions a notice offers in the notices dropdown and on the Notices page: reviewing a signal deviation or a broken
+/// audit chain, and opening the device settings where its health polling can be turned off.
 /// </summary>
 public static class NoticeActions
 {
@@ -11,34 +11,6 @@ public static class NoticeActions
 
     /// <summary>The event type raised when a camera stops answering. Its action path opens the account's sync page.</summary>
     public const string DeviceOfflineEventType = "DeviceOffline";
-
-    /// <summary>
-    /// The new-case link for a signal deviation notice. The case opens with the notice's camera and day already selected
-    /// (taken from the notice's action path) and the alert's details as its description. Null for other notices.
-    /// </summary>
-    public static string? CreateCaseLink(string eventType, string? actionPath, string? details)
-    {
-        if (eventType != SignalDeviationEventType || actionPath is null)
-        {
-            return null;
-        }
-
-        int query = actionPath.IndexOf('?', StringComparison.Ordinal);
-        if (query < 0)
-        {
-            return null;
-        }
-
-        // The server appends the marker that keeps the alert from repeating; it is not part of the case description.
-        string description = details ?? string.Empty;
-        int marker = description.LastIndexOf(" [", StringComparison.Ordinal);
-        if (marker >= 0)
-        {
-            description = description[..marker];
-        }
-
-        return $"/cases/new?{actionPath[(query + 1)..]}&title={Uri.EscapeDataString("Signal deviation")}&description={Uri.EscapeDataString(description)}";
-    }
 
     /// <summary>The event type of an audit-trail failure. Its action path opens the chain of custody page to review it.</summary>
     public const string ChainOfCustodyFailedEventType = "ChainOfCustodyIntegrityFailed";
@@ -69,12 +41,14 @@ public static class NoticeActions
     }
 
     /// <summary>
-    /// The link to review a broken audit chain: the chain of custody page the notice's action path names. Null for other
-    /// notices, or when there is no path to open.
+    /// The link to review a notice: a signal deviation opens the signal history on its camera around the alerted hour, and
+    /// a broken audit chain opens the chain of custody page. Both are the notice's action path. Null for other notices,
+    /// or when there is no path to open.
     /// </summary>
     public static string? ReviewLink(string eventType, string? actionPath)
     {
-        return eventType == ChainOfCustodyFailedEventType && !string.IsNullOrWhiteSpace(actionPath) ? actionPath : null;
+        bool reviewable = eventType is SignalDeviationEventType or ChainOfCustodyFailedEventType;
+        return reviewable && !string.IsNullOrWhiteSpace(actionPath) ? actionPath : null;
     }
 
     /// <summary>

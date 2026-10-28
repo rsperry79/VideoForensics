@@ -100,20 +100,15 @@
                                     @GetRelativeTime(notice.TimestampUtc)
                                 </div>
                                 @{
-                                    string? caseLink = NoticeActions.CreateCaseLink(notice.EventType, notice.ActionPath, notice.Details);
                                     string? settingsLink = NoticeActions.DeviceSettingsLink(notice.EventType, notice.ActionPath);
                                     string? reviewLink = NoticeActions.ReviewLink(notice.EventType, notice.ActionPath);
                                 }
-                                @if (caseLink is not null || settingsLink is not null || reviewLink is not null)
+                                @if (settingsLink is not null || reviewLink is not null)
                                 {
                                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
                                         @if (reviewLink is not null)
                                         {
-                                            <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@L["NoticeReview"]</a>
-                                        }
-                                        @if (caseLink is not null)
-                                        {
-                                            <a href="@caseLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-primary" data-testid="notice-create-case">@L["NoticeCreateCase"]</a>
+                                            <a href="@reviewLink" @onclick="ToggleNoticesAsync" class="btn btn-sm btn-outline-danger" data-testid="notice-review">@(notice.EventType == NoticeActions.SignalDeviationEventType ? L["NoticeReviewSignal"] : L["NoticeReview"])</a>
                                         }
                                         @if (settingsLink is not null)
                                         {

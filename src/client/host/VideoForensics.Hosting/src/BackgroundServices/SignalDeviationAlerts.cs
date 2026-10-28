@@ -73,9 +73,11 @@ namespace VideoForensics.Client.Hosting.BackgroundServices
                     .Where(s => s.RssiDbm is not null && s.CapturedAtUtc >= window.HourStartUtc && s.CapturedAtUtc < hourEndUtc)
                     .Average(s => s.RssiDbm!.Value);
 
-                // The action path carries the camera and day in the scope query the signal page and case form read, so
-                // the notice can open that scope or create a case for it.
-                string scope = $"devices={device.Id:D}&from={window.HourStartUtc:yyyy-MM-dd}&to={window.HourStartUtc.AddDays(1):yyyy-MM-dd}";
+                // The review link opens the signal history on this camera, drilled to the alerted hour and an hour either side
+                // of it, so the operator sees the spike in its context. The bounds are UTC instants the scope query reads.
+                string scope = $"devices={device.Id:D}" +
+                    $"&from={window.HourStartUtc.AddHours(-1):yyyy-MM-dd'T'HH:mm:ss'Z'}" +
+                    $"&to={window.HourStartUtc.AddHours(2):yyyy-MM-dd'T'HH:mm:ss'Z'}";
                 await _dispatcher.DispatchAsync(new NotificationEvent(
                     EventType: "SignalDeviation",
                     TimestampUtc: now,
