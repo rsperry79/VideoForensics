@@ -61,29 +61,6 @@ else
                     </label>
                 </div>
 
-                @if (_schedule != null)
-                {
-                    <div class="mb-3">
-                        <label>@L["LastEventPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.EventLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["NextEventPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.EventNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["LastSnapshotPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.SnapshotLastRunUtc" Format="g" Fallback="@L["Never"]" /></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label>@L["NextSnapshotPoll"]</label>
-                        <p><LocalTimeText Value="@_schedule.SnapshotNextRunUtc" Format="g" Fallback="@L["NotAvailable"]" /></p>
-                    </div>
-                }
-
                 <hr class="my-4" />
 
                 <div class="mb-3">
