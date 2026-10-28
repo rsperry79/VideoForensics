@@ -71,6 +71,28 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task UnitOfWork_StandaloneAppendInsideUnit_JoinsUnitAndRecordsOnce()
+        {
+            // The standalone append must write on the unit's connection (a second one would wait on the unit's write lock)
+            // and each append must produce exactly one row.
+            Task unit = _unitOfWork.ExecuteAsync(async context =>
+            {
+                _ = await _repository.AppendAsync("Inner", ActorType.System, "InnerAction", "Ent", null, null, CancellationToken.None);
+                _ = await context.ActionLog.AppendAsync("Outer", ActorType.System, "OuterAction", "Ent", null, null, CancellationToken.None);
+                return true;
+            }, CancellationToken.None);
+
+            Task finished = await Task.WhenAny(unit, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            Assert.Same(unit, finished);
+            await unit;
+            IReadOnlyList<ActionLogEntry> rows = await _repository.ListAsync(CancellationToken.None);
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(2, rows.Select(r => r.Action).Distinct().Count());
+            Assert.True((await _repository.VerifyChainIntegrityAsync(CancellationToken.None)).IsValid);
+        }
+
+        [Fact]
         public async Task ActionLogAppends_MixedUnitsAndStandaloneConcurrently_KeepChainValid()
         {
             // Units of work and standalone appends interleave; every append must chain to the tail the previous one wrote.

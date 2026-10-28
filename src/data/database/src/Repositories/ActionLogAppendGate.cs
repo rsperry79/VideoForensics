@@ -1,5 +1,23 @@
+using VideoForensics.Data.Database.DbContext;
+
 namespace VideoForensics.Data.Database.Repositories
 {
+    /// <summary>
+    /// The context of the unit of work running in this async flow, if any. A standalone append made from inside a unit
+    /// writes on this context, so it joins the unit's transaction. A second connection would wait on the unit's write lock.
+    /// </summary>
+    internal static class AmbientUnitOfWork
+    {
+        private static readonly AsyncLocal<VideoForensicsDbContext?> Current = new();
+
+        /// <summary>The open unit's context in this flow, or null when none is open.</summary>
+        public static VideoForensicsDbContext? DbContext
+        {
+            get => Current.Value;
+            set => Current.Value = value;
+        }
+    }
+
     /// <summary>
     /// One gate for every hash-chain write in the process. SQLite defers its write lock to the first write, so two
     /// transactions can both read the same chain tail and chain off it. Holding this gate from the tail read through
