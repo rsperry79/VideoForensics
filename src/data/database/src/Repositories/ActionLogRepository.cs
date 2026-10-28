@@ -14,6 +14,9 @@ namespace VideoForensics.Data.Database.Repositories
     /// <summary>Repository implementation for hash-chained ActionLogEntry entities.</summary>
     public class ActionLogRepository : IActionLogRepository
     {
+        // Process-wide: every ActionLogRepository in this process shares one tail-read-and-insert at a time.
+        private static readonly SemaphoreSlim _appendGate = new(1, 1);
+
         private readonly IDbContextFactory<VideoForensicsDbContext> _factory;
         private readonly ILogger<ActionLogRepository> _logger;
 
@@ -50,6 +53,28 @@ namespace VideoForensics.Data.Database.Repositories
             string? detailsJson,
             CancellationToken ct)
         {
+            // SQLite defers the write lock to the first write, so two transactions can read the same tail. The gate
+            // covers read, insert and commit, so only one standalone append chains off a given tail at a time.
+            await _appendGate.WaitAsync(ct);
+            try
+            {
+                return await AppendCoreAsync(actor, actorType, action, entityType, entityId, detailsJson, ct);
+            }
+            finally
+            {
+                _ = _appendGate.Release();
+            }
+        }
+
+        private async Task<ActionLogEntry> AppendCoreAsync(
+            string actor,
+            ActorType actorType,
+            string action,
+            string entityType,
+            Guid? entityId,
+            string? detailsJson,
+            CancellationToken ct)
+        {
             await using VideoForensicsDbContext db = await _factory.CreateDbContextAsync(ct);
             try
             {
@@ -62,7 +87,13 @@ namespace VideoForensics.Data.Database.Repositories
                     .FirstOrDefaultAsync(ct);
 
                 string? previousEntryHash = lastEntry?.EntryHash;
+
+                // Verification orders by timestamp, so this entry must be strictly later than its predecessor.
                 DateTime timestampUtc = DateTime.UtcNow;
+                if (lastEntry != null && timestampUtc <= lastEntry.TimestampUtc)
+                {
+                    timestampUtc = DateTime.SpecifyKind(lastEntry.TimestampUtc.AddTicks(1), DateTimeKind.Utc);
+                }
 
                 // Compute the new entry's hash
                 string canonicalString = $"{previousEntryHash ?? ""}|{actor}|{action}|{entityType}|{entityId}|{timestampUtc:O}|{detailsJson ?? ""}";
