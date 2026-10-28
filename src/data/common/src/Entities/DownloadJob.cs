@@ -24,6 +24,12 @@ namespace VideoForensics.Data.Common.Entities
         /// <summary>When true, files already on disk are re-downloaded.</summary>
         public bool Force { get; set; }
 
+        /// <summary>
+        /// Folder the operator chose for the downloaded files. Required for Videos and Snapshots jobs; the executor
+        /// writes one subfolder per device under it.
+        /// </summary>
+        public string? OutputPath { get; set; }
+
         /// <summary>Current lifecycle state.</summary>
         public DownloadJobState State { get; set; }
 

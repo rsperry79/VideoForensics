@@ -22,6 +22,9 @@ namespace VideoForensics.Data.Database.Configurations
                 .HasConversion<string>()
                 .HasMaxLength(16);
 
+            _ = builder.Property(j => j.OutputPath)
+                .HasMaxLength(512);
+
             _ = builder.Property(j => j.ErrorMessage)
                 .HasMaxLength(1024);
 

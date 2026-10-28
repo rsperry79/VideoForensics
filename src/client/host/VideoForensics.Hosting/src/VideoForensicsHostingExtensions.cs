@@ -617,8 +617,8 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddScoped<IEventPullService, EventPullService>();
             _ = services.AddScoped<ISnapshotSyncService, SnapshotSyncService>();
             // Download jobs run through the same keyed provider services as scheduled snapshot sync.
+            // The DownloadJobRunner hosted service is registered by the server only (see WebApp Program.cs).
             _ = services.AddScoped<IDownloadJobExecutor, DownloadJobExecutor>();
-            _ = services.AddHostedService<DownloadJobRunner>();
             _ = services.AddScoped<ISnapshotRollupService, SnapshotRollupService>();
             _ = services.AddScoped<IAccountSyncRunner, AccountSyncRunner>();
 

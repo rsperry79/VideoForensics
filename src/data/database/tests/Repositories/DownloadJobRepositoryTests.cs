@@ -44,6 +44,19 @@ namespace VideoForensics.Data.Database.Tests
         }
 
         [Fact]
+        public async Task DownloadJobRepository_EnqueueAndGet_RoundTripsOutputPath()
+        {
+            DownloadJob job = BuildJob(Guid.NewGuid(), DownloadJobKind.Videos, DateTime.UtcNow);
+            job.OutputPath = @"D:\Evidence\Export";
+
+            await _repository.EnqueueAsync(job, CancellationToken.None);
+            DownloadJob? retrieved = await _repository.GetAsync(job.Id, CancellationToken.None);
+
+            Assert.NotNull(retrieved);
+            Assert.Equal(@"D:\Evidence\Export", retrieved.OutputPath);
+        }
+
+        [Fact]
         public async Task DownloadJobRepository_ClaimNextQueued_ReturnsOldestAndMarksRunning()
         {
             var accountId = Guid.NewGuid();

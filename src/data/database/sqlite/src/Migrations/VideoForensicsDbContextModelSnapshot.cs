@@ -1604,6 +1604,10 @@ namespace VideoForensics.Data.Database.Sqlite.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("OutputPath")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("ProviderAccountId")
                         .HasColumnType("TEXT");
 
