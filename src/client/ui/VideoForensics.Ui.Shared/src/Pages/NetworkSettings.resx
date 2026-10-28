@@ -371,4 +371,16 @@
   <data name="ConfigurationNotSupported" xml:space="preserve">
     <value>This setting can only be changed from the server directly.</value>
   </data>
+  <data name="DownloadsSection" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloads" xml:space="preserve">
+    <value>Max concurrent downloads</value>
+  </data>
+  <data name="MaxConcurrentDownloadsHelp" xml:space="preserve">
+    <value>How many media files download at the same time from your providers. Higher finishes sooner but uses more bandwidth and computer resources. Lower is gentler on your connection.</value>
+  </data>
+  <data name="SaveButton" xml:space="preserve">
+    <value>Save</value>
+  </data>
 </root>

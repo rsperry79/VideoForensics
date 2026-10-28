@@ -102,30 +102,6 @@ else
         </div>
     </div>
 
-    <h6 class="mt-4 mb-2">@L["DownloadsSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-column gap-3">
-            <div class="d-flex flex-row gap-2 align-items-center">
-                <label>@L["MaxConcurrentDownloads"]</label>
-                <SfNumericTextBox TValue="int" @bind-Value="_maxConcurrentDownloads" Enabled="@CanAdmin" Style="max-width: 260px;" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveMaxConcurrentAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
-                @if (_maxConcurrentMessage is not null)
-                {
-                    <span style="@(_maxConcurrentSuccess ? "color: green;" : "color: red;")">@_maxConcurrentMessage</span>
-                }
-            </div>
-            <div class="d-flex flex-row gap-2 align-items-center">
-                <label>@L["DownloadLocation"]</label>
-                <SfTextBox Placeholder="@L["DownloadLocation"]" @bind-Value="_downloadLocation" Enabled="@CanLocalAdmin" Style="max-width: 400px;" />
-                <SfButton Content="@L["SaveButton"]" OnClick="SaveDownloadLocationAsync" Disabled="@(!CanLocalAdmin)" CssClass="e-primary" />
-                @if (_downloadLocationMessage is not null)
-                {
-                    <span style="@(_downloadLocationSuccess ? "color: green;" : "color: red;")">@_downloadLocationMessage</span>
-                }
-            </div>
-        </div>
-    </div>
-
     <h6 class="mt-4 mb-2">@L["ReportingFormatSection"]</h6>
     <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-3">
@@ -170,14 +146,6 @@ else
     private bool _healthSyncSuccess;
     private string? _healthSyncMessage;
 
-    private int _maxConcurrentDownloads;
-    private bool _maxConcurrentSuccess;
-    private string? _maxConcurrentMessage;
-
-    private string _downloadLocation = string.Empty;
-    private bool _downloadLocationSuccess;
-    private string? _downloadLocationMessage;
-
     private string _reportFormat = "json";
     private bool _reportFormatSuccess;
     private string? _reportFormatMessage;
@@ -198,8 +166,6 @@ else
             _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
-                _maxConcurrentDownloads = Config.MaxConcurrentDownloads;
-                _downloadLocation = Config.DownloadLocation ?? string.Empty;
                 _reportFormat = Config.ReportOutputFormat;
                 _redactionLevel = Config.RedactionLevel;
                 _loggingLevel = Config.LogLevel;
@@ -257,16 +223,6 @@ else
             _healthSyncSuccess = false;
             _healthSyncMessage = L["HealthSyncError", ex.Message].Value;
         }
-    }
-
-    private async Task SaveMaxConcurrentAsync()
-    {
-        (_maxConcurrentSuccess, _maxConcurrentMessage) = await ConfigTools.SetMaxConcurrentDownloadsAsync(Config, _maxConcurrentDownloads, CancellationToken.None);
-    }
-
-    private async Task SaveDownloadLocationAsync()
-    {
-        (_downloadLocationSuccess, _downloadLocationMessage) = await ConfigTools.SetDownloadLocationAsync(Config, _downloadLocation, CancellationToken.None);
     }
 
     private async Task SaveReportFormatAsync()

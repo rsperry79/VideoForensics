@@ -88,6 +88,23 @@ else
         </div></div>
     }
 
+    @if (SessionState.IsSignedIn)
+    {
+        <h5 class="mt-4 mb-2">@L["DownloadsSection"]</h5>
+        <div class="card mb-4"><div class="card-body p-4">
+            <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+                <label>@L["MaxConcurrentDownloads"]</label>
+                <SfNumericTextBox TValue="int" @bind-Value="_maxConcurrentDownloads" Enabled="@CanAdmin" Style="max-width: 200px;" />
+                <SfButton Content="@L["SaveButton"]" OnClick="SaveMaxConcurrentAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
+                @if (_maxConcurrentMessage is not null)
+                {
+                    <span style="@(_maxConcurrentSuccess ? "color: green;" : "color: red;")">@_maxConcurrentMessage</span>
+                }
+            </div>
+            <small class="text-muted d-block mt-2">@L["MaxConcurrentDownloadsHelp"]</small>
+        </div></div>
+    }
+
     <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
 
     @if (_currentTier != NetworkTier.Internet)
@@ -289,6 +306,10 @@ else
     private bool _mdnsSuccess;
     private string? _mdnsMessage;
 
+    private int _maxConcurrentDownloads;
+    private bool _maxConcurrentSuccess;
+    private string? _maxConcurrentMessage;
+
     private NetworkTier _currentTier;
     private NetworkTier _selectedTier;
     private NetworkTier? _pendingTier;
@@ -362,7 +383,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _maxConcurrentDownloads = Config.MaxConcurrentDownloads;
         await LoadAsync();
+    }
+
+    private async Task SaveMaxConcurrentAsync()
+    {
+        (_maxConcurrentSuccess, _maxConcurrentMessage) = await ConfigTools.SetMaxConcurrentDownloadsAsync(Config, _maxConcurrentDownloads, CancellationToken.None);
     }
 
     private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));

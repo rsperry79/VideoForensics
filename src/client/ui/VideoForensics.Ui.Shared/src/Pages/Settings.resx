@@ -71,15 +71,6 @@
   <data name="EnableHealthSync" xml:space="preserve">
     <value>Enable RSSI / device-health background sync</value>
   </data>
-  <data name="DownloadsSection" xml:space="preserve">
-    <value>Downloads</value>
-  </data>
-  <data name="MaxConcurrentDownloads" xml:space="preserve">
-    <value>Max Concurrent Downloads</value>
-  </data>
-  <data name="DownloadLocation" xml:space="preserve">
-    <value>Download Location</value>
-  </data>
   <data name="ReportingFormatSection" xml:space="preserve">
     <value>Reporting Format &amp; Redaction</value>
   </data>
