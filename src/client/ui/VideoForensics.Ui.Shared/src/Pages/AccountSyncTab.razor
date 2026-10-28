@@ -27,13 +27,6 @@ else
 
         <div class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title">@(AccountEmail is null ? Account.ProviderName : $"{Account.ProviderName} - {AccountEmail}")</h5>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">@L["LastSuccessfulAuthLabel"]</label>
-                    <p class="mb-0"><LocalTimeText Value="@Account.LastSuccessfulAuthUtc" Fallback="@L["Never"]" /></p>
-                </div>
-
                 <div class="mb-3">
                     <label class="form-label fw-bold">@L["LastDownloadLabel"]</label>
                     <p class="mb-0"><LocalTimeText Value="@Account.LastDownloadTimeUtc" Fallback="@L["Never"]" /></p>
