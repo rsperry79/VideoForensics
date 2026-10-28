@@ -61,6 +61,10 @@ Same stage and verify flow, but swap needs a root service or systemd unit; scope
 - The process that applies still has the old files mapped, so it exits (code 1) and relies on SCM recovery to restart.
   **Item 6 (recovery action) must land before `Updates:Enabled` is switched on anywhere.** Option: have the service
   set its own recovery with `sc failure` at startup, since it runs as SYSTEM.
+- Item 6 done: the service sets its own recovery at startup (`WindowsServiceRecoveryConfigurator`: restart actions plus
+  `failureflag 1`, which was FALSE on an existing install) and locks `updates\` to SYSTEM and Administrators
+  (`UpdatesFolderAcl`). The startup apply is skipped if recovery cannot be configured. The installer also sets `failureflag`.
+- Dev mode needs the developer's SID added to the updates folder ACL (`UpdatesFolderAcl.Ensure(path, extraWriters)`); item 5 wires this.
 - Everything is off by default behind `Updates:Enabled`; `Updates:AllowDevPackages` allows unsigned and same-version packages.
 - Release mode needs an `IPackageSignatureVerifier` implementation; until then only dev packages verify.
 - The staged installer matches the asset suffix `-update-win-x64.zip`; releases without it fall back to notify-only
