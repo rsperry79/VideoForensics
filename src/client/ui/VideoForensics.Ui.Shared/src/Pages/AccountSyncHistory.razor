@@ -1,0 +1,176 @@
+@page "/accounts/{Id:guid}/sync/history"
+@inherits AccountTabPageBase
+@using VideoForensics.Client.Ui.Shared.Services
+
+<Breadcrumb Items="@_breadcrumbItems" />
+
+@if (IsLoading)
+{
+    <SfProgressBar Type="Syncfusion.Blazor.ProgressBar.ProgressType.Circular" IsIndeterminate="true" />
+}
+else
+{
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p>@StatusMessage</p>
+    }
+
+    @if (Account == null)
+    {
+        <p>@L["AccountNotFound"]</p>
+    }
+    else
+    {
+        <AccountTabs AccountId="@Id" />
+
+        <div id="sync-history" class="mb-4">
+            <h5>@L["SyncHistoryTitle"]</h5>
+            @if (_syncRunsError)
+            {
+                <p class="text-danger">@L["LoadListError"]</p>
+            }
+            else if (_syncRuns is not null && _syncRuns.Count == 0)
+            {
+                <p>@L["SyncNoRuns"]</p>
+            }
+            else if (_syncRuns is not null)
+            {
+                <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>@L["ColSyncTime"]</th>
+                            <th>@L["ColSyncStatus"]</th>
+                            <th>@L["ColSyncType"]</th>
+                            <th>@L["ColSyncRecords"]</th>
+                            <th>@L["ColDetails"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var run in _syncRuns)
+                        {
+                            <tr class="sync-run-row">
+                                <td><LocalTimeText Value="@run.StartedUtc" Format="g" /></td>
+                                <td>@(run.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</td>
+                                <td>@SyncTypeLabel(run.SyncType)</td>
+                                <td>@(SyncRequestBuilder.FormatRecords(L["SyncRecordsSummary"].Value, run.DevicesSynced, run.LocationsSynced, run.EventsSynced, run.ConfigAreasSynced, run.FeedsFailed, run.SnapshotsSynced, L["SyncRecordsSnapshots"].Value) ?? L["SyncRecordsUnknown"].Value)</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => ToggleRunDetailsAsync(run.Id)">@L["ColDetails"]</button>
+                                </td>
+                            </tr>
+                            @if (_expandedRunId == run.Id)
+                            {
+                                <tr class="sync-run-detail">
+                                    <td colspan="5">
+                                        @if (_runDetailError)
+                                        {
+                                            <p class="text-danger mb-0">@L["SyncDetailsError"]</p>
+                                        }
+                                        else if (_runDetail is not null)
+                                        {
+                                            <strong>@L["SyncDetailsTitle"]</strong>
+                                            <p class="mb-1"><strong>@L["SyncDetailsStarted"]</strong> <LocalTimeText Value="@_runDetail.StartedUtc" Format="g" /></p>
+                                            <p class="mb-1"><strong>@L["SyncDetailsCompleted"]</strong> <LocalTimeText Value="@_runDetail.CompletedUtc" Format="g" Fallback="@L["SyncNotCompleted"]" /></p>
+                                            <p class="mb-1"><strong>@L["ColSyncStatus"]</strong> @(_runDetail.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])</p>
+                                            @if (!string.IsNullOrEmpty(_runDetail.ErrorMessage))
+                                            {
+                                                <p class="mb-0"><strong>@L["SyncDetailsMessage"]</strong> @_runDetail.ErrorMessage</p>
+                                            }
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<(string Label, string? Url)> _breadcrumbItems = new();
+    private List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>? _syncRuns;
+    private bool _syncRunsError;
+    private Guid? _expandedRunId;
+    private VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto? _runDetail;
+    private bool _runDetailError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountAsync();
+        _breadcrumbItems = new()
+        {
+            (L["BreadcrumbAccounts"], "/accounts"),
+            (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"),
+            (L["TabSync"], $"/accounts/{Id}/sync"),
+            (L["SyncHistoryTitle"], null),
+        };
+        // Render the account header first; the history loads after it and doesn't hold it up.
+        StateHasChanged();
+        if (Account is not null)
+        {
+            await LoadSyncRunsAsync();
+        }
+    }
+
+    private async Task LoadSyncRunsAsync()
+    {
+        _expandedRunId = null;
+        _runDetail = null;
+        _runDetailError = false;
+        try
+        {
+            _syncRuns = await GetApiAsync<List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>>(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-runs") ?? new();
+            _syncRunsError = false;
+        }
+        catch
+        {
+            _syncRuns = null;
+            _syncRunsError = true;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleRunDetailsAsync(Guid runId)
+    {
+        if (_expandedRunId == runId)
+        {
+            _expandedRunId = null;
+            _runDetail = null;
+            _runDetailError = false;
+            return;
+        }
+
+        _expandedRunId = runId;
+        _runDetail = null;
+        _runDetailError = false;
+        try
+        {
+            var detail = await GetApiAsync<VideoForensics.Core.Api.Contracts.ProviderSyncRunDetailDto>(
+                $"api/v1/accounts/provider-accounts/{Id}/sync-runs/{runId}");
+            if (_expandedRunId == runId)
+            {
+                _runDetail = detail;
+            }
+        }
+        catch
+        {
+            if (_expandedRunId == runId)
+            {
+                _runDetailError = true;
+            }
+        }
+    }
+
+    private string SyncTypeLabel(string? type) => type switch
+    {
+        "Full" => L["SyncTypeFull"],
+        "Incremental" => L["SyncTypeIncremental"],
+        "Snapshots" => L["SyncTypeSnapshots"],
+        "Config" => L["SyncTypeConfig"],
+        _ => L["SyncTypeUnknown"],
+    };
+}
