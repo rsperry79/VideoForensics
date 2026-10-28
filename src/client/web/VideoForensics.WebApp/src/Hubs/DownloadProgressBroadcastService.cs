@@ -26,17 +26,20 @@ namespace VideoForensics.Client.WebApp.Hubs
         private readonly ISyncActivityLog _syncActivity;
         private readonly IHubContext<LiveHub> _hubContext;
         private readonly IDownloadProgressChangeDetector _changeDetector;
+        private readonly ISyncProgressStore _progress;
         private readonly ILogger<DownloadProgressBroadcastService> _logger;
 
         public DownloadProgressBroadcastService(
             ISyncActivityLog syncActivity,
             IHubContext<LiveHub> hubContext,
             IDownloadProgressChangeDetector changeDetector,
+            ISyncProgressStore progress,
             ILogger<DownloadProgressBroadcastService> logger)
         {
             _syncActivity = syncActivity;
             _hubContext = hubContext;
             _changeDetector = changeDetector;
+            _progress = progress;
             _logger = logger;
         }
 
@@ -49,7 +52,7 @@ namespace VideoForensics.Client.WebApp.Hubs
                 try
                 {
                     // Drains the sync log here, the single consumer, so each line is broadcast exactly once.
-                    DownloadProgressDto payload = _syncActivity.ToDownloadProgressDto();
+                    DownloadProgressDto payload = _syncActivity.ToDownloadProgressDto(_progress);
 
                     if (!_changeDetector.ShouldSend(lastSent, payload))
                     {

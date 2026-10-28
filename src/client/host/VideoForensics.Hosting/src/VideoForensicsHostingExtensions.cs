@@ -352,6 +352,8 @@ namespace VideoForensics.Client.Hosting
 
             // Sync console lines: written by the sync runner and first-sync coordinator, drained by the progress broadcaster.
             _ = services.AddSingleton<VideoForensics.Client.Common.Contracts.ISyncActivityLog, VideoForensics.Client.Hosting.Services.SyncActivityLog>();
+            // Latest per-file sync progress: written by each pull (scoped download service), read by the progress broadcaster.
+            _ = services.AddSingleton<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore, VideoForensics.Client.Hosting.Services.SyncProgressStore>();
 
             // Provider services, with factories providing typed loggers. Scoped, not Singleton
             // (a change from the original console/MCP Program.cs, caught by a DI-graph smoke test
@@ -682,7 +684,8 @@ namespace VideoForensics.Client.Hosting
                     provider.GetKeyedService<IMediaDownloadService>(providerName),
                     deviceConfigRepository: provider.GetRequiredService<IDeviceConfigRepository>(),
                     storage: provider.GetService<IStorageLocationProvider>(),
-                    configurationService: provider.GetService<IForensicsConfigurationService>()));
+                    configurationService: provider.GetService<IForensicsConfigurationService>(),
+                    progress: provider.GetService<VideoForensics.Client.Hosting.Contracts.ISyncProgressStore>()));
             }
 
             return services;

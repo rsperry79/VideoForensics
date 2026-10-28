@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.Ui.Shared.Contracts;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Client.WebApp.Services;
@@ -38,9 +40,48 @@ namespace VideoForensics.Client.WebApp.Tests.Services
             }
         }
 
-        private static LocalDownloadProgressSource BuildSource(ISyncActivityLog log)
+        private static LocalDownloadProgressSource BuildSource(ISyncActivityLog log, ISyncProgressStore? store = null)
         {
-            return new LocalDownloadProgressSource(log, Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalDownloadProgressSource>.Instance, NeverTicks);
+            return new LocalDownloadProgressSource(log, store ?? new SyncProgressStore(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalDownloadProgressSource>.Instance, NeverTicks);
+        }
+
+        [Fact]
+        public void LocalDownloadProgressSource_SampleOnce_ChangedStoreValueEmitsWithoutActivity()
+        {
+            var store = new SyncProgressStore();
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog(), store);
+            var received = new List<DownloadProgressSnapshot>();
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            source.SampleOnce();
+
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 1, 4, "Garage"));
+            source.SampleOnce();
+
+            Assert.Equal(2, received.Count);
+            Assert.True(received[1].IsDownloading);
+            Assert.Equal(3, received[1].FilesCompleted);
+            Assert.Equal(5, received[1].FilesTotal);
+            Assert.Equal("a.mp4", received[1].CurrentFile);
+            Assert.Equal(1, received[1].CurrentDeviceIndex);
+            Assert.Equal(4, received[1].CurrentDeviceTotal);
+            Assert.Equal("Garage", received[1].CurrentDeviceName);
+            Assert.Empty(received[1].Activity);
+        }
+
+        [Fact]
+        public void LocalDownloadProgressSource_SampleOnce_UnchangedStoreValueDoesNotReEmit()
+        {
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 1, 4, "Garage"));
+            using LocalDownloadProgressSource source = BuildSource(new FakeActivityLog(), store);
+            var received = new List<DownloadProgressSnapshot>();
+            using IDisposable subscription = source.Progress.Subscribe(received.Add);
+            source.SampleOnce();
+
+            source.SampleOnce();
+            source.SampleOnce();
+
+            _ = Assert.Single(received);
         }
 
         [Fact]

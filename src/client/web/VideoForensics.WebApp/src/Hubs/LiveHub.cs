@@ -7,6 +7,7 @@ using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Client.Hosting;
+using VideoForensics.Client.Hosting.Contracts;
 
 namespace VideoForensics.Client.WebApp.Hubs
 {
@@ -31,12 +32,14 @@ namespace VideoForensics.Client.WebApp.Hubs
         private readonly ILiveConnectionTracker _connectionTracker;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<LiveHub> _logger;
+        private readonly ISyncProgressStore _progress;
 
-        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger)
+        public LiveHub(ILiveConnectionTracker connectionTracker, IServiceScopeFactory scopeFactory, ILogger<LiveHub> logger, ISyncProgressStore progress)
         {
             _connectionTracker = connectionTracker;
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _progress = progress;
         }
 
         public override async Task OnConnectedAsync()
@@ -58,14 +61,14 @@ namespace VideoForensics.Client.WebApp.Hubs
             }
 
             // Snapshot-on-connect: a new client (including every reconnect) gets the current state
-            // immediately instead of waiting for the next change. The snapshot is idle and drains nothing,
+            // immediately instead of waiting for the next change. The snapshot carries the stored progress and drains nothing,
             // so this connection never consumes activity lines that other clients still need.
             // Snapshots are non-fatal: a failing data source must not stop the connection from opening.
             // Errors are logged and the connection continues; rethrow only when the connection is aborting,
             // since that cancellation is the real reason the send failed.
             try
             {
-                DownloadProgressDto snapshot = DownloadProgressDtoMapping.IdleSnapshot();
+                DownloadProgressDto snapshot = DownloadProgressDtoMapping.IdleSnapshot(_progress);
 
                 await Clients.Caller.SendAsync(LiveHubMethods.DownloadProgress, snapshot, Context.ConnectionAborted);
             }

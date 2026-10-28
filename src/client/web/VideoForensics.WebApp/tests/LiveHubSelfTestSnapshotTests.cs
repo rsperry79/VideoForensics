@@ -45,7 +45,7 @@ namespace VideoForensics.Client.WebApp.Tests
             _ = context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
 
             var groups = new Mock<IGroupManager>();
-            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
+            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance, new VideoForensics.Client.Hosting.Services.SyncProgressStore())
             {
                 Clients = clients.Object,
                 Groups = groups.Object,

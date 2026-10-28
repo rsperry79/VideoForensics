@@ -7,6 +7,8 @@ using Moq;
 using System.Security.Claims;
 
 using VideoForensics.Client.Common.Contracts;
+using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 using VideoForensics.Client.WebApp.Hubs;
 using VideoForensics.Core.Api.Contracts;
 
@@ -18,7 +20,7 @@ namespace VideoForensics.Client.WebApp.Tests
     {
         private const string DownloadProgressMethod = "DownloadProgress";
 
-        private static (LiveHub Hub, Mock<ISingleClientProxy> Caller) BuildHub()
+        private static (LiveHub Hub, Mock<ISingleClientProxy> Caller) BuildHub(ISyncProgressStore? progress = null)
         {
             IServiceProvider services = new ServiceCollection().BuildServiceProvider();
             IServiceScopeFactory scopeFactory = services.GetRequiredService<IServiceScopeFactory>();
@@ -31,7 +33,7 @@ namespace VideoForensics.Client.WebApp.Tests
             _ = context.Setup(c => c.ConnectionId).Returns("conn-1");
             _ = context.Setup(c => c.User).Returns(new ClaimsPrincipal(new ClaimsIdentity()));
 
-            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance)
+            var hub = new LiveHub(new Mock<ILiveConnectionTracker>().Object, scopeFactory, NullLogger<LiveHub>.Instance, progress ?? new SyncProgressStore())
             {
                 Clients = clients.Object,
                 Groups = new Mock<IGroupManager>().Object,
@@ -72,6 +74,26 @@ namespace VideoForensics.Client.WebApp.Tests
             Assert.False(sent.Progress.IsDownloading);
             Assert.Equal(0, sent.CurrentDeviceIndex);
             Assert.Equal(0, sent.CurrentDeviceTotal);
+        }
+
+        [Fact]
+        public async Task LiveHub_OnConnected_SnapshotCarriesStoredSyncProgress()
+        {
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 3, 2048L, "a.mp4", 2, 1, 4, "Garage"));
+            (LiveHub hub, Mock<ISingleClientProxy> caller) = BuildHub(store);
+            DownloadProgressDto? sent = null;
+            _ = caller.Setup(p => p.SendCoreAsync(DownloadProgressMethod, It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .Callback<string, object?[], CancellationToken>((_, args, _) => sent = args[0] as DownloadProgressDto)
+                .Returns(Task.CompletedTask);
+
+            await hub.OnConnectedAsync();
+
+            Assert.NotNull(sent);
+            Assert.True(sent!.Progress.IsDownloading);
+            Assert.Equal(3, sent.Progress.FilesCompleted);
+            Assert.Equal("a.mp4", sent.Progress.CurrentFile);
+            Assert.Equal("Garage", sent.CurrentDeviceName);
         }
 
         [Fact]

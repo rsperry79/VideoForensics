@@ -1,6 +1,7 @@
 using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Core.Api.Contracts;
 using VideoForensics.Client.Hosting.Contracts;
+using VideoForensics.Client.Hosting.Services;
 
 namespace VideoForensics.Client.Hosting.Tests
 {
@@ -105,6 +106,42 @@ namespace VideoForensics.Client.Hosting.Tests
             DownloadProgressDto withLines = log.Object.ToDownloadProgressDto();
 
             Assert.True(detector.ShouldSend(DownloadProgressDtoMapping.IdleSnapshot(), withLines));
+        }
+
+        [Fact]
+        public void DownloadProgressChangeDetector_StatusChangedFromStore_Sent()
+        {
+            IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
+            var store = new SyncProgressStore();
+            DownloadProgressDto idle = DownloadProgressDtoMapping.IdleSnapshot(store);
+            store.Set(new SyncProgress(true, 5, 1, 100L, "a.mp4", 1, 1, 2, "Garage"));
+            DownloadProgressDto downloading = DownloadProgressDtoMapping.IdleSnapshot(store);
+
+            Assert.True(detector.HasChanged(idle, downloading));
+            Assert.True(detector.ShouldSend(idle, downloading));
+        }
+
+        [Fact]
+        public void DownloadProgressChangeDetector_DeviceChangedOnly_Sent()
+        {
+            IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 1, 100L, "a.mp4", 1, 1, 2, "Garage"));
+            DownloadProgressDto first = DownloadProgressDtoMapping.IdleSnapshot(store);
+            store.Set(new SyncProgress(true, 5, 1, 100L, "a.mp4", 1, 2, 2, "Porch"));
+            DownloadProgressDto second = DownloadProgressDtoMapping.IdleSnapshot(store);
+
+            Assert.True(detector.ShouldSend(first, second));
+        }
+
+        [Fact]
+        public void DownloadProgressChangeDetector_IdenticalStoreProgressRepeated_NotSent()
+        {
+            IDownloadProgressChangeDetector detector = new DownloadProgressChangeDetector();
+            var store = new SyncProgressStore();
+            store.Set(new SyncProgress(true, 5, 1, 100L, "a.mp4", 1, 1, 2, "Garage"));
+
+            Assert.False(detector.ShouldSend(DownloadProgressDtoMapping.IdleSnapshot(store), DownloadProgressDtoMapping.IdleSnapshot(store)));
         }
     }
 }
