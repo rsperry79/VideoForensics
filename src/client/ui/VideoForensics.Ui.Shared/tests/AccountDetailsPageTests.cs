@@ -333,17 +333,16 @@ public class AccountDetailsPage_SyncHistory_Tests : AccountDetailsPageTestBase
     }
 }
 
-public class AccountDetailsPage_SyncHistoryLink_Tests : AccountDetailsPageTestBase
+public class AccountDetailsPage_HistoryTab_Tests : AccountDetailsPageTestBase
 {
     [Fact]
-    public void SyncTab_LinksToHistoryPage_AndDoesNotRenderTheTable()
+    public void SyncTab_NoHistoryTable_AndTabsLinkToHistoryPage()
     {
         SetEmptyLists();
 
         IRenderedComponent<AccountSyncTab> cut = RenderSync();
 
-        cut.WaitForAssertion(() => Assert.Contains(Strings["ViewSyncHistory"], cut.Find("#sync-links").TextContent));
-        Assert.Equal($"/accounts/{AccountId}/sync/history", cut.Find("#sync-links a").GetAttribute("href"));
+        cut.WaitForAssertion(() => Assert.Equal($"/accounts/{AccountId}/history", cut.Find($"nav a[href='/accounts/{AccountId}/history']").GetAttribute("href")));
         Assert.Empty(cut.FindAll("#sync-history"));
     }
 }
@@ -627,22 +626,6 @@ public class AccountDetailsPage_SyncPanel_Tests : AccountDetailsPageTestBase
         Assert.Contains(string.Format(Strings["SyncRecordsSnapshots"], 3), row);
     }
 
-    [Fact]
-    public void AccountDetails_SyncRunsLoaded_ShowsLatestRunInSyncOutput()
-    {
-        var started = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
-        SetJson("/sync-runs", new[]
-        {
-            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started.AddDays(-1), started.AddDays(-1).AddMinutes(1), false),
-            new ProviderSyncRunSummaryDto(Guid.NewGuid(), started, started.AddMinutes(1), true),
-        });
-        SetJson("/cases", Array.Empty<AccountCaseDto>());
-
-        IRenderedComponent<AccountSyncTab> cut = RenderSync();
-
-        cut.WaitForAssertion(() => Assert.Contains(Strings["LatestSyncRunLabel"], cut.Find("#sync-output").TextContent));
-        Assert.Contains(Strings["SyncSucceeded"], cut.Find("#sync-output").TextContent);
-    }
 
     private static List<string> ButtonLabels<T>(IRenderedComponent<T> cut) where T : Microsoft.AspNetCore.Components.IComponent
     {

@@ -95,20 +95,8 @@ else
             </div>
         </div>
 
-        <div id="sync-output" class="mb-4">
-            <h5>@L["SyncOutputTitle"]</h5>
-            @if (LatestRun is { } latest)
-            {
-                <p class="mb-1">
-                    <strong>@L["LatestSyncRunLabel"]</strong>
-                    <LocalTimeText Value="@latest.StartedUtc" Format="g" /> - @(latest.Success ? L["SyncSucceeded"] : L["SyncRunFailed"])
-                </p>
-            }
+        <div id="sync-progress" class="mb-4">
             <DownloadProgressPanel IsActive="@_isSyncing" CollectionType="@SyncTypeChoiceLabel(_runningSyncType)" />
-        </div>
-
-        <div id="sync-links" class="mb-4">
-            <a class="btn btn-outline-primary" href="/accounts/@Id/sync/history">@L["ViewSyncHistory"]</a>
         </div>
 
         <ReAuthDialog @bind-Visible="_reAuthDialogVisible"
@@ -132,11 +120,6 @@ else
     private bool _reAuthDialogVisible;
     private bool _isSyncing;
     private SfToast _toastRef = null!;
-    private List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>? _syncRuns;
-
-    private VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto? LatestRun =>
-        _syncRuns?.OrderByDescending(r => r.StartedUtc).FirstOrDefault();
-
     private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         _syncRange = e.Value?.ToString() ?? "30";
@@ -170,28 +153,7 @@ else
     {
         await LoadAccountAsync();
         _breadcrumbItems = new() { (L["BreadcrumbAccounts"], "/accounts"), (L["BreadcrumbAccountDetails"], $"/accounts/{Id}"), (L["TabSync"], null) };
-        // Render the account card first; the history loads after it and doesn't hold it up.
-        StateHasChanged();
-        if (Account is not null)
-        {
-            await LoadSyncRunsAsync();
-        }
     }
-
-    private async Task LoadSyncRunsAsync()
-    {
-        try
-        {
-            _syncRuns = await GetApiAsync<List<VideoForensics.Core.Api.Contracts.ProviderSyncRunSummaryDto>>(
-                $"api/v1/accounts/provider-accounts/{Id}/sync-runs") ?? new();
-        }
-        catch
-        {
-            _syncRuns = null;
-        }
-        StateHasChanged();
-    }
-
 
     private async Task HandleReAuthenticatedAsync(AuthResult result)
     {
@@ -228,7 +190,6 @@ else
                 // Reload after a delay to show the updated timestamps
                 await Task.Delay(2000);
                 await LoadAccountAsync();
-                await LoadSyncRunsAsync();
             }
             else
             {
