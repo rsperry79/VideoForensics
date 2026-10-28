@@ -188,6 +188,9 @@
   <data name="SyncHistoryTitle" xml:space="preserve">
     <value>Sync history</value>
   </data>
+  <data name="ViewSyncHistory" xml:space="preserve">
+    <value>View sync history</value>
+  </data>
   <data name="ColSyncTime" xml:space="preserve">
     <value>Sync time</value>
   </data>

@@ -25,9 +25,9 @@ else
         </div>
     }
 
-    <div class="card p-4">
-        <div class="card-body">
-            <h5 class="card-title">@L["ConfigureSyncSettings"]</h5>
+    <div>
+        <div>
+            <h5 class="mb-3">@L["ConfigureSyncSettings"]</h5>
 
             <div id="config-sync-interval" class="mb-4">
                 <label for="config-sync-interval-hours" class="form-label fw-bold">@L["ConfigSyncIntervalLabel"]</label>
@@ -94,11 +94,9 @@ else
                     </label>
                 </div>
 
-                <div class="card border-secondary mb-4">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">@L["DeviceCaptureModesHeading"]</h6>
-                    </div>
-                    <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="mb-2">@L["DeviceCaptureModesHeading"]</h6>
+                    <div>
                         <p class="text-muted small">@L["DeviceCaptureModesHelp"]</p>
                         @if (_deviceModes.Count == 0)
                         {
@@ -125,11 +123,9 @@ else
 
                 @if (_useAdvancedJammingSchedule)
                 {
-                    <div class="card border-secondary mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">@L["JammingDetectionWindows"]</h6>
-                        </div>
-                        <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="mb-2">@L["JammingDetectionWindows"]</h6>
+                        <div>
                             @if (_jammingWindows == null || _jammingWindows.Count == 0)
                             {
                                 <p class="text-muted">@L["NoJammingWindows"]</p>
