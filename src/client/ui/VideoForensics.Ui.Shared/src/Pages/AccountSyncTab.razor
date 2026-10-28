@@ -46,6 +46,10 @@ else
             </div>
         </div>
 
+        <div id="schedule" class="mb-4">
+            <AccountSyncSchedule Id="@Id" />
+        </div>
+
         <div class="mb-4">
             <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
                 <div>
@@ -112,10 +116,6 @@ else
 
         <div id="sync-links" class="mb-4">
             <a class="btn btn-outline-primary" href="/accounts/@Id/sync/history">@L["ViewSyncHistory"]</a>
-        </div>
-
-        <div id="schedule" class="mb-4">
-            <AccountSyncSchedule Id="@Id" />
         </div>
 
         <ReAuthDialog @bind-Visible="_reAuthDialogVisible"

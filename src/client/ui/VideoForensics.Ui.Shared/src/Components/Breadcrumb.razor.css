@@ -4,3 +4,12 @@
     padding-right: 0.5rem;
     color: #999;
 }
+
+/* Keep the trail on one row: a crumb wrapping onto a second line strands its separator above the text. */
+.breadcrumb-trail {
+    flex-wrap: nowrap;
+}
+
+.breadcrumb-trail > li {
+    white-space: nowrap;
+}

@@ -30,8 +30,8 @@ else if (!_isAuthenticated)
 else
 {
     <div class="d-flex flex-row gap-2 mb-4">
-        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='(_ => SelectTabAsync("integrity"))' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-flat")' />
-        <SfButton Content="@L["ReconcileTab"]" OnClick='(_ => SelectTabAsync("reconcile"))' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-flat")' />
+        <SfButton Content="@L["VerifyIntegrityTab"]" OnClick='(_ => SelectTabAsync("integrity"))' CssClass='@(_activeTab == "integrity" ? "e-primary" : "e-outline")' />
+        <SfButton Content="@L["ReconcileTab"]" OnClick='(_ => SelectTabAsync("reconcile"))' CssClass='@(_activeTab == "reconcile" ? "e-primary" : "e-outline")' />
     </div>
 
     @if (_activeTab == "integrity")
