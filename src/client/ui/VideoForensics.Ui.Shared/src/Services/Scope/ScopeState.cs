@@ -150,7 +150,7 @@ public class ScopeState
     /// Reads a scope bound from a link. A plain date (yyyy-MM-dd) is the day as the forms write it. A UTC instant
     /// (yyyy-MM-ddTHH:mm:ssZ) is what a notice's review link carries, so the scope can open on an hour of the day.
     /// </summary>
-    private static bool TryParseScopeDate(string value, out DateTime date)
+    internal static bool TryParseScopeDate(string value, out DateTime date)
     {
         if (DateTime.TryParseExact(value, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out date))
         {

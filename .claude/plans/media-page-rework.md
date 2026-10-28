@@ -38,6 +38,23 @@ Replaces the Evidence list (user decision). Route: build it at `/media`; check `
 - **Detail tab, anomalies:** `ISignalAnalysisService.AnalyzeAsync(deviceIds, from, to)` (deviation windows by level), route `GET /api/v1/signal-analysis`, `RemoteSignalAnalysisService`; raw health from `IDeviceHealthRepository.GetHistoryAsync` via `GET /api/v1/devices/{id}/health`. Live: `IDeviceHealthChangedSource` and `INoticeFeed.NewNotices` (deviation notices).
 - Existing `IObservable` sources: `IEvidenceChangedSource`, `IDeviceHealthChangedSource`, `INoticeFeed`, `IThumbnailReadySource`, `IDownloadProgressSource`, `ILiveViewSessionSource`, `ISelfTestStatusSource`. The event, jamming, and signal-analysis repositories have none, so refresh them off `IEvidenceChangedSource` and `IDeviceHealthChangedSource`.
 
+### Build batches (Sonnet plan review, 2026-10-28)
+The new page lives at `/media/review` until the last batch, so `/media` keeps working. Paths are under `src/client/ui/VideoForensics.Ui.Shared`; tests in `tests/Review/`; tests written first.
+- **B1 state and range model (no UI):** `Services/Review/ReviewPageState.cs`, `ReviewUrl.cs`, `ReviewClipBuilder.cs`. One state object (cameras up to `CameraSync.MaxTiles`, range, `Cursor`, active tab, provider and account filters, selected event) with one `OnChange`. The `Cursor` is the single source of truth for player, strip, grid, and tabs. URL query: the existing scope query plus `t` (cursor) and `tab`.
+- **B2 shell and top bar:** `Pages/ReviewPage.razor` + `.resx` at `/media/review`, `Components/Review/ReviewTopBar.razor`, `ReviewCameraSelector.razor`; tab switch with placeholder bodies. The camera selector writes `ScopeState`, which `ReviewPageState` reads.
+- **B3 Timeline tab:** `ReviewTimelineTab.razor`, `ReviewClipLoader.cs` (pages `GetPageByDevicesAndDateRangeAsync`, skips time-lapses and stills), wiring `ReviewPlayer`, `SingleCameraView`, `CameraGrid`; reloads on `IEvidenceChangedSource` (throttled 750 ms). Riskiest batch.
+- **B4 vertical timeline in the right panel:** `TimelineStrip` through `PageRightPanelContent`, driven by the cursor; needs a vertical orientation parameter on `TimelineStrip` (today it takes `WidthPx`).
+- **B5 Events tab:** `ReviewEventsTab.razor`, `ReviewEventPager.cs` over `ListPageByDevicesAndDateRangeAsync` with `excludeEventTypes`; click a row to seek.
+- **B6 Detail tab and filters:** `ReviewDetailTab.razor`, `ReviewDetailLoader.cs` (`IEventDetailRepository`, `IJammingRepository`, `ISignalAnalysisService`), `ReviewFilterPanel.razor` (provider, account, camera; reuse the `ScopeRail` account filters). Jamming and anomalies have no observable; refresh them off `IEvidenceChangedSource` and `IDeviceHealthChangedSource`.
+- **B7 actions, grab-still, swap:** `ReviewActionsMenu.razor`; move the Review role gate (`MediaViewer.razor:141-149`) and keyboard map into the player area; take `@page "/media"`, retire `Evidence.razor` and port or delete its tests; update `EventsRedirect.razor` (sends `view=grid`, ignore it) and `CasesPagesTests.cs:838`. `NoticeActions.ReviewLink` targets are `/signal-history`, `/accounts/{id}/sync`, and `/analyze/chain-of-custody`, none `/media`, so the swap breaks no notice links.
+
+### Findings that shape the batches
+- Stills and time-lapses are media items, not events. Time-lapse: `MetadataJson` has `{"type":"snapshot-rollup"}` (`SnapshotRollupService.SnapshotRollupMarker`; `EvidenceItem.IsTimeLapse`). Timer stills: `{"type":"snapshot","source":"capture"}`. Ring writes a `DownloadEvent` with `EventType = "snapshot"`: that is the string for `excludeEventTypes`. Wyze strings were not found.
+- `IEvidenceChangedSource` fires on `RecordDownloadEventAsync`, `UpsertEventAsync`, snapshot capture, and roll-up; the payload is only the device id. Jamming and signal analysis never fire it.
+- The timeline event-band overlay has no data source yet (clips and events come from separate pages); it needs an event list passed down.
+- Evidence.razor features: keep legal hold, integrity validation, and a link to export in the Actions menu; drop report generation (only used by `EventRowLoader`), case-pin tone on rows, and the device-time grid and gallery.
+- There is no tagging concept for evidence (`AiAnalysisTag` is AI output). "Start new case" only takes the scope today; pre-filling the selected clip needs a new hand-off.
+
 ## Step 3: remaining items
 - Verify WebView2 range playback on the MAUI Windows head (manual; no test or note exists in code). Server-side range tests exist (`MediaContentRangeTests`).
 - The preview pipeline is done (see Current state), so there is no separate server work left for the preview strip.
