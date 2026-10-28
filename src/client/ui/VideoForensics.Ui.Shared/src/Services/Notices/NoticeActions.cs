@@ -52,6 +52,17 @@ public static class NoticeActions
     }
 
     /// <summary>
+    /// Whether a notice needs its own "open" link to its action path. The review and device settings links both open that
+    /// same path under their own labels, so a second link to it would repeat them. False when there is no path.
+    /// </summary>
+    public static bool ShowsOpenLink(string eventType, string? actionPath)
+    {
+        return !string.IsNullOrWhiteSpace(actionPath)
+            && ReviewLink(eventType, actionPath) is null
+            && DeviceSettingsLink(eventType, actionPath) is null;
+    }
+
+    /// <summary>
     /// The link to the page where the notice's camera health polling can be turned off. Offline notices carry it as
     /// their action path. Null for other notices, or when the server found no account page to link to.
     /// </summary>

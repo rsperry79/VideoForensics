@@ -35,4 +35,24 @@ public class NoticeActionsTests
         Assert.Null(NoticeActions.DeviceSettingsLink("DeviceOffline", null));
         Assert.Null(NoticeActions.DeviceSettingsLink("DeviceOffline", "  "));
     }
+
+    [Fact]
+    public void ShowsOpenLink_IsFalseWhenReviewOrDeviceSettingsAlreadyOpensThePath()
+    {
+        Assert.False(NoticeActions.ShowsOpenLink(NoticeActions.SignalDeviationEventType, Path));
+        Assert.False(NoticeActions.ShowsOpenLink(NoticeActions.ChainOfCustodyFailedEventType, Path));
+        Assert.False(NoticeActions.ShowsOpenLink(NoticeActions.DeviceOfflineEventType, Path));
+    }
+
+    [Fact]
+    public void ShowsOpenLink_IsTrueForANoticeWithAPathAndNoOtherLink()
+    {
+        Assert.True(NoticeActions.ShowsOpenLink("SomethingElse", Path));
+    }
+
+    [Fact]
+    public void ShowsOpenLink_IsFalseWithoutAPath()
+    {
+        Assert.False(NoticeActions.ShowsOpenLink("SomethingElse", null));
+    }
 }

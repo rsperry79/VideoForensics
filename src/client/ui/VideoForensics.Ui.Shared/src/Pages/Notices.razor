@@ -75,7 +75,7 @@ else
                             <span title="@notice.Details">
                                 @(notice.Details?.Length > 100 ? notice.Details.Substring(0, 100) + "..." : notice.Details ?? "")
                             </span>
-                            @if (notice.ActionPath is not null)
+                            @if (NoticeActions.ShowsOpenLink(notice.EventType, notice.ActionPath))
                             {
                                 <a href="@notice.ActionPath">@L["OpenNoticeLink"]</a>
                             }
