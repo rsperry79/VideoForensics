@@ -10,6 +10,7 @@ using Microsoft.JSInterop;
 
 using Moq;
 
+using VideoForensics.Client.Common.Contracts;
 using VideoForensics.Utils.Testing;
 using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
@@ -242,6 +243,12 @@ public class CasesPage_Tests : CasesPagesTestBase
         RegisterGridStub<ForensicCase>();
         _ = Services.AddScoped<RightPanelContentService>();
         _ = Services.AddScoped<LeftPanelContentService>();
+        // The Validate panel sits at the foot of the Cases page and resolves these when it renders.
+        _ = Services.AddScoped(_ => Mock.Of<IEvidenceValidationJobs>());
+        var deviceRepository = new Mock<IDeviceRepository>();
+        _ = deviceRepository.Setup(m => m.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _ = Services.AddScoped(_ => deviceRepository.Object);
+        _ = Services.AddScoped(_ => Mock.Of<ILocationRepository>());
     }
 
     private IRenderedComponent<Cases> RenderPage()
@@ -304,7 +311,7 @@ public class CasesPage_Tests : CasesPagesTestBase
     }
 
     [Fact]
-    public void StatusFilter_RendersInRightPanel_NotInPageBody()
+    public void StatusFilter_RendersInPageBody_NotInRightPanel()
     {
         _ = CaseRepositoryMock
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
@@ -312,27 +319,26 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         IRenderedComponent<Cases> component = RenderPage();
 
-        Assert.Empty(component.FindAll("[data-testid='case-status-filter']"));
+        _ = Assert.Single(component.FindAll("[data-testid='case-status-filter']"));
 
         IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
-        _ = Assert.Single(panel.FindAll("[data-testid='case-status-filter']"));
+        Assert.Empty(panel.FindAll("[data-testid='case-status-filter']"));
     }
 
     [Fact]
-    public void StatusFilter_InRightPanel_HasLocalizedLabel()
+    public void StatusFilter_InPageBody_HasLocalizedLabel()
     {
         _ = CaseRepositoryMock
             .Setup(r => r.ListAsync(CaseStatus.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        _ = RenderPage();
-        IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
+        IRenderedComponent<Cases> component = RenderPage();
 
-        Assert.Contains("Status", panel.Markup);
+        Assert.Contains("Status", component.Markup);
     }
 
     [Fact]
-    public void StatusFilterChangedToAll_InRightPanel_CallsListAsyncWithNull_AndReRendersList()
+    public void StatusFilterChangedToAll_InPageBody_CallsListAsyncWithNull_AndReRendersList()
     {
         ForensicCase openCase = CreateTestCase(caseNumber: "CASE-OPEN", status: CaseStatus.Open);
         ForensicCase closedCase = CreateTestCase(caseNumber: "CASE-CLOSED", status: CaseStatus.Closed);
@@ -346,8 +352,7 @@ public class CasesPage_Tests : CasesPagesTestBase
 
         IRenderedComponent<Cases> component = RenderPage();
 
-        IRenderedComponent<ContainerFragment> panel = Render(RightPanelFragment());
-        var filter = (IHtmlSelectElement)panel.Find("[data-testid='case-status-filter']");
+        var filter = (IHtmlSelectElement)component.Find("[data-testid='case-status-filter']");
         filter.Change(string.Empty);
 
         CaseRepositoryMock.Verify(r => r.ListAsync(null, It.IsAny<CancellationToken>()), Times.Once);

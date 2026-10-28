@@ -116,9 +116,6 @@
   <data name="TabCases" xml:space="preserve">
     <value>Cases</value>
   </data>
-  <data name="ValidateSectionTitle" xml:space="preserve">
-    <value>Validate</value>
-  </data>
   <data name="TabSync" xml:space="preserve">
     <value>Sync</value>
   </data>
