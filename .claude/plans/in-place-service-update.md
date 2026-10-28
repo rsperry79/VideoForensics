@@ -55,6 +55,18 @@ With this, item 3 reduces to calling `DrainAsync` before exit.
 ## Debian
 Same stage and verify flow, but swap needs a root service or systemd unit; scope separately after Windows.
 
+## Implementation notes (from building items 1, 2 and 4)
+- Apply runs at the start of the new process, not in a helper. The running exe and loaded dlls cannot be overwritten but
+  can be renamed, so `UpdateApplier` renames locked files to `*.old-<guid>` and `DeleteLeftoverFiles` clears them on the next start.
+- The process that applies still has the old files mapped, so it exits (code 1) and relies on SCM recovery to restart.
+  **Item 6 (recovery action) must land before `Updates:Enabled` is switched on anywhere.** Option: have the service
+  set its own recovery with `sc failure` at startup, since it runs as SYSTEM.
+- Everything is off by default behind `Updates:Enabled`; `Updates:AllowDevPackages` allows unsigned and same-version packages.
+- Release mode needs an `IPackageSignatureVerifier` implementation; until then only dev packages verify.
+- The staged installer matches the asset suffix `-update-win-x64.zip`; releases without it fall back to notify-only
+  (item 11 must publish it).
+- Still missing: the trigger that restarts a running service when a package is staged (drain, then exit), tied to item 3.
+
 ## Status
 Implementation waits until the Media page rework plan is committed to `wip`. Item 3 also waits for the scheduler revamp.
 
