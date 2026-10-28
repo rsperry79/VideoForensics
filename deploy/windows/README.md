@@ -317,7 +317,32 @@ the Inno Setup installer for end-user distribution, but keep the PowerShell scri
 - Testing service registration logic independently
 - Educational reference (showing the underlying Windows Service setup patterns)
 
-## Hot-Swapping the Service During Development
+## Updating the Service During Development (no admin)
+
+`stage-update.ps1` publishes the current source and stages it as an update package in
+`%ProgramData%\VideoForensics\updates\<version>`. The running service notices it, restarts, verifies the package, and
+swaps the files in itself. A debug launch of the MAUI app runs this automatically and waits until the service is on the
+new build, with no UAC prompt.
+
+One-time setup, as administrator (dev machines only: dev packages are unsigned and may reuse the running version):
+
+```powershell
+.\deploy\windows\enable-dev-updates.ps1          # use -Disable to turn it back off
+```
+
+That sets `Updates__Enabled`, `Updates__AllowDevPackages` and `Updates__DevWriterUser` as service environment variables and
+restarts the service. On start the service locks the updates folder to SYSTEM and Administrators plus your account, and
+sets its own restart-on-failure recovery.
+
+```powershell
+.\deploy\windows\stage-update.ps1 -Build                  # publish current source and stage it
+.\deploy\windows\stage-update.ps1 -PublishDir C:\Build\VideoForensics   # stage an existing publish output
+```
+
+Progress and failures are in the service log. A package that fails verification is renamed `<version>.rejected` and
+`updates\status.json` records the last attempt. The previous version is kept in `updates\previous` for rollback.
+
+## Hot-Swapping the Service During Development (admin, legacy)
 
 `deploy/windows/hotswap-service.ps1` updates an **already-installed** service's binaries without a
 full installer round-trip — no Inno Setup compile, no re-registering the service, no UAC prompt

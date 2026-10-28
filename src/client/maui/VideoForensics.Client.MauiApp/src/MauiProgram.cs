@@ -328,9 +328,9 @@ namespace VideoForensics.Client.MauiApp
 
 #if DEBUG
         /// <summary>
-        /// Hot-swaps the installed VideoForensics service through deploy\windows\hotswap-service.ps1 and waits
-        /// until the WebApp answers on localhost:5162, so the UI starts against a live server. DEBUG builds only.
-        /// Each launch raises a UAC prompt, because the script needs administrator rights to restart the service.
+        /// Stages the current source as an update through deploy\windows\stage-update.ps1 and waits until the installed
+        /// service has applied it and answers on localhost:5162, so the UI starts against a live server on the latest build.
+        /// DEBUG builds only. No administrator rights are needed; enable-dev-updates.ps1 must have been run once as admin.
         /// Failures are logged and never block app startup; the app then falls back to normal server resolution.
         /// </summary>
         private static async Task EnsureWebAppRunningForDebugAsync()
@@ -340,23 +340,25 @@ namespace VideoForensics.Client.MauiApp
                 string solutionRoot = FindSolutionRoot();
                 if (string.IsNullOrEmpty(solutionRoot))
                 {
-                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to run hot-swap");
+                    System.Diagnostics.Debug.WriteLine("DEBUG: Could not find solution root to stage an update");
                     return;
                 }
 
-                string scriptPath = Path.Combine(solutionRoot, "deploy", "windows", "hotswap-service.ps1");
+                string scriptPath = Path.Combine(solutionRoot, "deploy", "windows", "stage-update.ps1");
                 if (!File.Exists(scriptPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"DEBUG: hot-swap script not found at {scriptPath}");
+                    System.Diagnostics.Debug.WriteLine($"DEBUG: stage script not found at {scriptPath}");
                     return;
                 }
 
-                // Thirty seconds covers the script's own 30 s start wait plus the health poll; the script's
-                // health check (up to 20 s) already ran before this point, so this is a second, app-side confirmation.
+                // The script returns once the package is staged; the service then notices it, restarts and applies it.
+                // Sixty seconds covers the watcher's poll, the restart, and the first health answer.
+                string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
                 var launcher = new DevWebAppLauncher(
                     new WebAppHealthProbe(),
-                    new HotswapScriptRunner(),
-                    readyTimeout: TimeSpan.FromSeconds(30),
+                    new StageScriptRunner(),
+                    () => PendingUpdateProbe.HasPending(updatesRoot),
+                    readyTimeout: TimeSpan.FromSeconds(60),
                     pollInterval: TimeSpan.FromMilliseconds(500));
 
                 DevWebAppLaunchResult result = await launcher.EnsureReadyAsync(scriptPath, CancellationToken.None);

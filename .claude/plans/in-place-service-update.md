@@ -61,6 +61,15 @@ Same stage and verify flow, but swap needs a root service or systemd unit; scope
 - The process that applies still has the old files mapped, so it exits (code 1) and relies on SCM recovery to restart.
   **Item 6 (recovery action) must land before `Updates:Enabled` is switched on anywhere.** Option: have the service
   set its own recovery with `sc failure` at startup, since it runs as SYSTEM.
+- Item 6 done: the service sets its own recovery at startup (`WindowsServiceRecoveryConfigurator`: restart actions plus
+  `failureflag 1`, which was FALSE on an existing install) and locks `updates\` to SYSTEM and Administrators
+  (`UpdatesFolderAcl`). The startup apply is skipped if recovery cannot be configured. The installer also sets `failureflag`.
+- Dev mode needs the developer's SID added to the updates folder ACL (`UpdatesFolderAcl.Ensure(path, extraWriters)`); item 5 wires this.
+- Item 5 done: `stage-update.ps1` stages a dev package (no admin); `StagedUpdateWatcher` in the service notices it, calls
+  `IUpdateDrain` (no-op until the scheduler lands: item 3 replaces it) and exits abruptly with code 1. The exit must be
+  abrupt: a graceful stop reports "stopped" and the service manager skips the recovery action. `enable-dev-updates.ps1`
+  is the one-time admin step. `DevWebAppLauncher` no longer uses `runas`; it waits for the staged package to be consumed
+  and then for health. `hotswap-service.ps1` is kept as the admin fallback.
 - Everything is off by default behind `Updates:Enabled`; `Updates:AllowDevPackages` allows unsigned and same-version packages.
 - Release mode needs an `IPackageSignatureVerifier` implementation; until then only dev packages verify.
 - The staged installer matches the asset suffix `-update-win-x64.zip`; releases without it fall back to notify-only

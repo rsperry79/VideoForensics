@@ -90,7 +90,7 @@ namespace VideoForensics.Client.Hosting.Updates
         }
 
         // Folders starting with '.' (staging) and the backup folder are not packages; rejected ones were already tried.
-        private static string? FindNewestStaged(string updatesRoot)
+        internal static string? FindNewestStaged(string updatesRoot)
         {
             if (!Directory.Exists(updatesRoot))
             {
