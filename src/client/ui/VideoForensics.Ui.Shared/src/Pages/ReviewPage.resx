@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" use="optional" />
+              <xsd:attribute name="mimetype" type="xsd:string" use="optional" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Review</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Live" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="AllCameras" xml:space="preserve">
+    <value>All cameras</value>
+  </data>
+  <data name="CamerasSelected" xml:space="preserve">
+    <value>{0} cameras</value>
+  </data>
+  <data name="CamerasLabel" xml:space="preserve">
+    <value>Cameras</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="RangeLabel" xml:space="preserve">
+    <value>Time range</value>
+  </data>
+  <data name="RangeLastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="RangeLast24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="RangeLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="FilterAvailableLater" xml:space="preserve">
+    <value>Filters arrive in a later update</value>
+  </data>
+  <data name="ActionsAvailableLater" xml:space="preserve">
+    <value>Actions arrive in a later update</value>
+  </data>
+  <data name="TabsLabel" xml:space="preserve">
+    <value>Review views</value>
+  </data>
+  <data name="TabTimeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="TabEvents" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="TabDetail" xml:space="preserve">
+    <value>Detail</value>
+  </data>
+  <data name="TabPlaceholder" xml:space="preserve">
+    <value>The {0} view is built in a later step.</value>
+  </data>
+  <data name="TooManyCameras" xml:space="preserve">
+    <value>At most {0} cameras can be shown at once.</value>
+  </data>
+  <data name="SelectAtLeastOneCamera" xml:space="preserve">
+    <value>Select at least one camera.</value>
+  </data>
+  <data name="NotSignedIn" xml:space="preserve">
+    <value>You are not signed in.</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignInToReview" xml:space="preserve">
+    <value>to review media.</value>
+  </data>
+  <data name="LoadingDevices" xml:space="preserve">
+    <value>Loading cameras...</value>
+  </data>
+  <data name="NoCameras" xml:space="preserve">
+    <value>No cameras are available.</value>
+  </data>
+</root>

@@ -1,0 +1,111 @@
+using Bunit;
+
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
+
+using Moq;
+
+using VideoForensics.Client.Ui.Shared.Pages;
+using VideoForensics.Client.Ui.Shared.Services;
+using VideoForensics.Client.Ui.Shared.Services.Review;
+using VideoForensics.Client.Ui.Shared.Services.Scope;
+using VideoForensics.Data.Common.Contracts;
+using VideoForensics.Utils.Testing;
+
+using Device = VideoForensics.Data.Common.Entities.Device;
+
+namespace VideoForensics.Client.Ui.Shared.Tests;
+
+/// <summary>
+/// Shared harness for the review page and its components: the real <see cref="ReviewPage"/> resource strings,
+/// a real <see cref="ScopeState"/> and <see cref="ReviewPageState"/> on one fake clock, a paired operator session,
+/// and a device repository double that returns <see cref="Devices"/>.
+/// </summary>
+public abstract class ReviewTestContext : BunitContext
+{
+    /// <summary>The fixed "now" every review test runs at.</summary>
+    protected static readonly DateTime FixedNowUtc = new(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>The devices the repository double returns, in display order.</summary>
+    protected List<Device> Devices { get; } = [];
+
+    /// <summary>The global scope the camera selector writes to.</summary>
+    protected ScopeState ScopeState { get; }
+
+    /// <summary>The review page state under test.</summary>
+    protected ReviewPageState ReviewState { get; }
+
+    /// <summary>The device repository double.</summary>
+    protected Mock<IDeviceRepository> DeviceRepositoryMock { get; } = new();
+
+    /// <summary>The page's localizer, resolved the way the page resolves it.</summary>
+    protected IStringLocalizer<ReviewPage> L => Services.GetRequiredService<IStringLocalizer<ReviewPage>>();
+
+    protected ReviewTestContext()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var timeProvider = new FakeTimeProvider(FixedNowUtc);
+        ScopeState = new ScopeState(timeProvider);
+        ReviewState = new ReviewPageState(timeProvider);
+
+        _ = Services.AddLocalization();
+        _ = Services.AddSingleton<TimeProvider>(timeProvider);
+        _ = Services.AddScoped(_ => DeviceRepositoryMock.Object);
+        _ = Services.AddScoped(_ => ScopeState);
+        _ = Services.AddScoped(_ => ReviewState);
+        _ = Services.AddScoped(sp => new PairedSessionState(sp.GetRequiredService<IJSRuntime>()));
+
+        _ = DeviceRepositoryMock
+            .Setup(m => m.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Devices.ToList());
+
+        SignInOperatorAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>Adds <paramref name="count"/> devices named "Camera 1..n" to the repository double.</summary>
+    protected void AddDevices(int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            int number = Devices.Count + 1;
+            Devices.Add(new Device
+            {
+                Id = Guid.NewGuid(),
+                ProviderDeviceId = "provider-" + number,
+                Name = "Camera " + number,
+                Type = "camera",
+            });
+        }
+    }
+
+    /// <summary>The display name the page shows for a device, built the way the page builds it.</summary>
+    protected string NameOf(Device device)
+    {
+        return VideoForensics.Client.Ui.Shared.Services.DeviceLabel.For(device.Name, device.ProviderDeviceId);
+    }
+
+    /// <summary>Signs in a paired operator so the page's sign-in gate passes.</summary>
+    protected Task SignInOperatorAsync()
+    {
+        return Services.GetRequiredService<PairedSessionState>().SetAsync("test-token", Guid.NewGuid(), "Review");
+    }
+
+    /// <summary>Clears the operator session, so the page shows its sign-in prompt.</summary>
+    protected Task SignOutOperatorAsync()
+    {
+        return Services.GetRequiredService<PairedSessionState>().ClearAsync();
+    }
+
+    /// <summary>Navigates the fake browser to the review page with the given query (no leading '?').</summary>
+    protected void NavigateToReview(string query = "")
+    {
+        string uri = query.Length == 0 ? "http://localhost/media/review" : "http://localhost/media/review?" + query;
+        Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
+    }
+
+    /// <summary>The fake browser's current absolute URI.</summary>
+    protected string CurrentUri => Services.GetRequiredService<NavigationManager>().Uri;
+}

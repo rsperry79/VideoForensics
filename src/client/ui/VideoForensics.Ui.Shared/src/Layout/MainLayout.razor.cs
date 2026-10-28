@@ -138,7 +138,7 @@ namespace VideoForensics.Client.Ui.Shared.Layout
         /// Pages in <see cref="AutoCollapsePaths"/> hide the left nav. Every other page shows the saved preference.
         /// The auto-collapse is transient: it changes the pane, never <see cref="LayoutPreferencesState"/>.
         /// </summary>
-        private static readonly string[] AutoCollapsePaths = ["/media"];
+        private static readonly string[] AutoCollapsePaths = ["/media", "/media/review"];
 
         private static bool IsAutoCollapsePath(string path) => AutoCollapsePaths.Contains(path, StringComparer.OrdinalIgnoreCase);
 

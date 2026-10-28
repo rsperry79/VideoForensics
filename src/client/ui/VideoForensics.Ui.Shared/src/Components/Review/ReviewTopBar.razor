@@ -1,0 +1,139 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@implements IDisposable
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-top-bar d-flex flex-wrap align-items-center gap-2 mb-3" role="toolbar" aria-label="@L["PageTitle"]" data-testid="review-top-bar">
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-back" @onclick="OnBack">@L["Back"]</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-live" @onclick="OnLive">@L["Live"]</button>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <ReviewCameraSelector State="State" Devices="Devices" DeviceNames="DeviceNames" />
+
+        <select class="form-select form-select-sm" style="width: auto;" data-testid="review-range" aria-label="@L["RangeLabel"]" @onchange="OnRangeChanged">
+            <option value="hour" selected="@(CurrentPreset == RangePreset.LastHour)">@L["RangeLastHour"]</option>
+            <option value="day" selected="@(CurrentPreset == RangePreset.Last24Hours)">@L["RangeLast24Hours"]</option>
+            <option value="week" selected="@(CurrentPreset == RangePreset.Last7Days)">@L["RangeLast7Days"]</option>
+        </select>
+
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-filter" disabled title="@L["FilterAvailableLater"]">@L["Filter"]</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-actions" disabled title="@L["ActionsAvailableLater"]">@L["Actions"]</button>
+    </div>
+
+    <div class="btn-group btn-group-sm ms-auto" role="tablist" aria-label="@L["TabsLabel"]" data-testid="review-tabs">
+        @foreach (ReviewTab tab in Enum.GetValues<ReviewTab>())
+        {
+            bool active = State.ActiveTab == tab;
+            <button type="button"
+                    role="tab"
+                    class="btn @(active ? "btn-primary active" : "btn-outline-secondary")"
+                    aria-selected="@active"
+                    data-testid="@TabTestId(tab)"
+                    @onclick="() => State.SetTab(tab)">@L[TabKey(tab)]</button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The review state the bar reads and writes.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the user can see, in display order.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>The clock the range presets end at. Tests pass a fixed clock; the page uses the system clock.</summary>
+    [Parameter]
+    public Func<DateTime> UtcNow { get; set; } = static () => DateTime.UtcNow;
+
+    private enum RangePreset
+    {
+        LastHour,
+        Last24Hours,
+        Last7Days,
+    }
+
+    /// <summary>The preset the current window matches. A window that matches none reads as the 24-hour default.</summary>
+    private RangePreset CurrentPreset
+    {
+        get
+        {
+            TimeSpan span = State.ToUtc - State.FromUtc;
+            TimeSpan tolerance = TimeSpan.FromMinutes(1);
+            if (Math.Abs((span - TimeSpan.FromHours(1)).TotalSeconds) < tolerance.TotalSeconds)
+            {
+                return RangePreset.LastHour;
+            }
+
+            return Math.Abs((span - TimeSpan.FromDays(7)).TotalSeconds) < tolerance.TotalSeconds
+                ? RangePreset.Last7Days
+                : RangePreset.Last24Hours;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnBack()
+    {
+        NavigationManager.NavigateTo("/media");
+    }
+
+    private void OnLive()
+    {
+        NavigationManager.NavigateTo("/live-view");
+    }
+
+    private void OnRangeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        TimeSpan span = PresetSpan(args.Value?.ToString());
+        DateTime now = UtcNow();
+        State.SetRange(now - span, now);
+    }
+
+    private static TimeSpan PresetSpan(string? value)
+    {
+        return value switch
+        {
+            "hour" => TimeSpan.FromHours(1),
+            "week" => TimeSpan.FromDays(7),
+            _ => TimeSpan.FromHours(24),
+        };
+    }
+
+    private static string TabKey(ReviewTab tab)
+    {
+        return tab switch
+        {
+            ReviewTab.Events => "TabEvents",
+            ReviewTab.Detail => "TabDetail",
+            _ => "TabTimeline",
+        };
+    }
+
+    private static string TabTestId(ReviewTab tab)
+    {
+        return "review-tab-button-" + tab.ToString().ToLowerInvariant();
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

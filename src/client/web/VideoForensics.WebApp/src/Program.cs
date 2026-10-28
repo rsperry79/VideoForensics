@@ -587,6 +587,7 @@ builder.Services.AddScoped<LeftPanelContentService>();
 builder.Services.AddScoped<InspectorState>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ScopeState>();
+builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Review.ReviewPageState>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Services.Signal.SignalDrillTrail>();
 builder.Services.AddScoped<DeviceOwnershipService>();
 builder.Services.AddScoped<VideoForensics.Client.Ui.Shared.Contracts.ISignalAnalysisService, VideoForensics.Client.Hosting.Signal.SignalAnalysisService>();

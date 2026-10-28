@@ -1,0 +1,155 @@
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Common.Viewer
+@using VideoForensics.Client.Ui.Shared.Pages
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@implements IDisposable
+@inject ScopeState ScopeState
+@inject IStringLocalizer<ReviewPage> L
+
+<div class="review-camera-selector position-relative" data-testid="review-camera-selector">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-camera-button" aria-expanded="@_open" @onclick="OnToggle">@ButtonLabel</button>
+
+    @if (_open)
+    {
+        <div class="card shadow-sm p-2" role="dialog" aria-label="@L["CamerasLabel"]" data-testid="review-camera-popup" style="position: absolute; z-index: 1050; min-width: 16rem; top: 100%; left: 0;">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="review-camera-all" data-testid="review-camera-all" checked="@AllChecked" @onchange="OnAllChanged" />
+                <label class="form-check-label" for="review-camera-all">@L["AllCameras"]</label>
+            </div>
+
+            @if (Devices.Count == 0)
+            {
+                <p class="small mb-2">@L["NoCameras"]</p>
+            }
+
+            @foreach (Guid id in Devices)
+            {
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="@CameraInputId(id)" data-testid="@CameraTestId(id)" checked="@_pending.Contains(id)" @onchange="args => OnCameraChanged(id, args)" />
+                    <label class="form-check-label" for="@CameraInputId(id)">@DeviceNames.GetValueOrDefault(id, id.ToString("D"))</label>
+                </div>
+            }
+
+            @if (_pending.Count > CameraSync.MaxTiles)
+            {
+                <small class="d-block mt-2" data-testid="review-camera-hint">@L["TooManyCameras", CameraSync.MaxTiles]</small>
+            }
+            else if (_pending.Count == 0)
+            {
+                <small class="d-block mt-2" data-testid="review-camera-hint">@L["SelectAtLeastOneCamera"]</small>
+            }
+
+            <div class="d-flex justify-content-end gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="review-camera-reset" @onclick="OnReset">@L["Reset"]</button>
+                <button type="button" class="btn btn-sm btn-primary" data-testid="review-camera-apply" disabled="@ApplyDisabled" @onclick="OnApply">@L["Apply"]</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The review state the selector writes to.</summary>
+    [Parameter, EditorRequired]
+    public ReviewPageState State { get; set; } = default!;
+
+    /// <summary>Every camera the user can see, in display order.</summary>
+    [Parameter]
+    public IReadOnlyList<Guid> Devices { get; set; } = [];
+
+    /// <summary>Display name for each camera id.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<Guid, string> DeviceNames { get; set; } = new Dictionary<Guid, string>();
+
+    private bool _open;
+
+    /// <summary>The selection being edited in the popup. Applied only when the user presses Apply.</summary>
+    private HashSet<Guid> _pending = [];
+
+    private bool AllChecked => Devices.Count > 0 && Devices.All(_pending.Contains);
+
+    private bool ApplyDisabled => _pending.Count == 0 || _pending.Count > CameraSync.MaxTiles;
+
+    private string ButtonLabel
+    {
+        get
+        {
+            bool allSelected = Devices.Count > 0
+                && State.CameraIds.Count == Devices.Count
+                && Devices.All(State.CameraIds.Contains);
+            return allSelected ? L["AllCameras"].Value : L["CamerasSelected", State.CameraIds.Count].Value;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnToggle()
+    {
+        if (!_open)
+        {
+            _pending = State.CameraIds.ToHashSet();
+        }
+
+        _open = !_open;
+    }
+
+    private void OnCameraChanged(Guid id, Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        if (on)
+        {
+            _ = _pending.Add(id);
+        }
+        else
+        {
+            _ = _pending.Remove(id);
+        }
+    }
+
+    private void OnAllChanged(Microsoft.AspNetCore.Components.ChangeEventArgs args)
+    {
+        bool on = bool.TryParse(args.Value?.ToString(), out bool value) && value;
+        _pending = on ? Devices.Take(CameraSync.MaxTiles).ToHashSet() : [];
+    }
+
+    private void OnReset()
+    {
+        _pending = Devices.Take(CameraSync.MaxTiles).ToHashSet();
+    }
+
+    private void OnApply()
+    {
+        if (ApplyDisabled)
+        {
+            return;
+        }
+
+        List<Guid> chosen = Devices.Where(_pending.Contains).ToList();
+        ScopeState.Set(ScopeState.Current with { DeviceIds = chosen, MatchesNoDevices = false });
+        State.SetCameras(chosen);
+        _open = false;
+    }
+
+    private static string CameraTestId(Guid id)
+    {
+        return "review-camera-toggle-" + id.ToString("D");
+    }
+
+    private static string CameraInputId(Guid id)
+    {
+        return "review-camera-input-" + id.ToString("D");
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

@@ -1,0 +1,167 @@
+@page "/media/review"
+@using Microsoft.Extensions.Localization
+@using VideoForensics.Client.Ui.Shared.Components.Review
+@using VideoForensics.Client.Ui.Shared.Extensions
+@using VideoForensics.Client.Ui.Shared.Services
+@using VideoForensics.Client.Ui.Shared.Services.Review
+@using VideoForensics.Client.Ui.Shared.Services.Scope
+@using VideoForensics.Data.Common.Contracts
+@using Device = VideoForensics.Data.Common.Entities.Device
+@using VideoForensics.Client.Common.Viewer
+@implements IDisposable
+@inject IDeviceRepository DeviceRepository
+@inject ReviewPageState State
+@inject ScopeState ScopeState
+@inject NavigationManager NavigationManager
+@inject PairedSessionState SessionState
+@inject IStringLocalizer<ReviewPage> L
+
+@if (_isLoading)
+{
+    <p data-testid="review-loading">@L["LoadingDevices"]</p>
+}
+else if (!_isAuthenticated)
+{
+    <p data-testid="review-sign-in">@L["NotSignedIn"] <a href="@NavigationManager.SignInPathWithReturnUrl()">@L["SignIn"]</a> @L["SignInToReview"]</p>
+}
+else
+{
+    <ReviewTopBar State="State" Devices="_deviceIds" DeviceNames="_deviceNames" />
+
+    @if (State.ActiveTab == ReviewTab.Timeline)
+    {
+        <section class="review-tab-panel" data-testid="review-tab-timeline">
+            <p>@L["TabPlaceholder", L["TabTimeline"].Value]</p>
+        </section>
+    }
+    else if (State.ActiveTab == ReviewTab.Events)
+    {
+        <section class="review-tab-panel" data-testid="review-tab-events">
+            <p>@L["TabPlaceholder", L["TabEvents"].Value]</p>
+        </section>
+    }
+    else
+    {
+        <section class="review-tab-panel" data-testid="review-tab-detail">
+            <p>@L["TabPlaceholder", L["TabDetail"].Value]</p>
+        </section>
+    }
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated;
+
+    // The URL is read once, on the first load. Until then the write-back stays off, so a half-read state
+    // never overwrites the query the user arrived with.
+    private bool _urlParsed;
+    private IReadOnlyList<Guid> _deviceIds = [];
+    private IReadOnlyDictionary<Guid, string> _deviceNames = new Dictionary<Guid, string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnReviewStateChanged;
+        ScopeState.OnChange += OnScopeChanged;
+
+        await SessionState.EnsureLoadedAsync();
+        _isAuthenticated = SessionState.IsSignedIn;
+        if (_isAuthenticated)
+        {
+            IReadOnlyList<Device> devices = await DeviceRepository.ListAsync(CancellationToken.None);
+            _deviceIds = devices.Select(device => device.Id).ToList();
+            _deviceNames = devices.ToDictionary(
+                device => device.Id,
+                device => DeviceLabel.For(device.Name, device.ProviderDeviceId));
+
+            ReadUrlOnce();
+            _urlParsed = true;
+            WriteBackUrl();
+        }
+
+        _isLoading = false;
+    }
+
+    /// <summary>
+    /// Seeds the state from the query string. Cameras the user cannot see are dropped; with none left, the page
+    /// falls back to the global scope's cameras, then to the first nine devices.
+    /// </summary>
+    private void ReadUrlOnce()
+    {
+        ReviewUrlState url = ReviewUrl.Parse(CurrentQuery());
+        HashSet<Guid> known = _deviceIds.ToHashSet();
+
+        List<Guid> cameras = url.Devices.Where(known.Contains).ToList();
+        if (cameras.Count == 0)
+        {
+            cameras = ScopeState.Current.DeviceIds.Where(known.Contains).ToList();
+        }
+
+        if (cameras.Count == 0)
+        {
+            cameras = _deviceIds.Take(CameraSync.MaxTiles).ToList();
+        }
+
+        State.SetCameras(cameras);
+
+        if (url.FromUtc is DateTime from && url.ToUtc is DateTime to && from < to)
+        {
+            State.SetRange(from, to);
+        }
+
+        State.SetCursor(url.CursorUtc);
+        State.SetTab(url.Tab);
+        State.SetFilters(url.Provider, url.Account);
+    }
+
+    private void OnReviewStateChanged()
+    {
+        if (_urlParsed)
+        {
+            WriteBackUrl();
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScopeChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Replaces the query with the current state, only when the normalised state differs from the query
+    /// already in the address bar. Comparing normalised forms stops a navigation from re-triggering itself.
+    /// </summary>
+    private void WriteBackUrl()
+    {
+        var current = new ReviewUrlState(
+            State.CameraIds,
+            State.FromUtc,
+            State.ToUtc,
+            State.Cursor,
+            State.ActiveTab,
+            State.ProviderFilter,
+            State.AccountFilter);
+
+        string target = ReviewUrl.Build(current);
+        string existing = ReviewUrl.Build(ReviewUrl.Parse(CurrentQuery()));
+        if (target == existing)
+        {
+            return;
+        }
+
+        string path = "/media/review";
+        NavigationManager.NavigateTo(target.Length == 0 ? path : path + "?" + target, replace: true);
+    }
+
+    private string CurrentQuery()
+    {
+        return new Uri(NavigationManager.Uri).Query;
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnReviewStateChanged;
+        ScopeState.OnChange -= OnScopeChanged;
+    }
+}
