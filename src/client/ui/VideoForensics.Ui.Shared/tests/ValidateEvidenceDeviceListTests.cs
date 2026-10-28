@@ -28,7 +28,7 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
     }
 
     [Fact]
-    public async Task EmbeddedOnAccount_Verify_StartsJobOverOnlyThatAccountsDevices()
+    public async Task AccountScoped_Verify_StartsJobOverOnlyThatAccountsDevices()
     {
         var account = new ProviderAccount { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), ProviderName = "Ring", LinkedUtc = DateTime.UtcNow };
         var ownLocation = new Location { Id = Guid.NewGuid(), ProviderLocationId = "O", Name = "Own" };
@@ -49,6 +49,7 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         await SignInOperatorAsync();
 
         IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>(p => p.Add(c => c.AccountId, account.Id));
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Validate locally").Click();
         page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Run local validation").Click();
 
         // The account's devices are passed explicitly: a null target would mean every device in the system.
@@ -79,10 +80,10 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         await SignInOperatorAsync();
 
         IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>();
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Validate locally").Click();
         IRenderedComponent<ContainerFragment> panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
         panel.Find("[data-testid='provider-filter']").Change("Ring");
 
-        // The integrity tab is also labelled "Validate locally"; the action button is the one labelled exactly "Verify".
         AngleSharp.Dom.IElement verify = page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Run local validation");
         verify.Click();
 
@@ -114,6 +115,7 @@ public class ValidateEvidence_DeviceList_Tests : OperatorSessionGateTestBase
         await SignInOperatorAsync();
 
         IRenderedComponent<ValidateEvidencePage> page = Render<ValidateEvidencePage>();
+        page.FindAll("button.e-btn").Single(b => b.TextContent.Trim() == "Validate locally").Click();
         IRenderedComponent<ContainerFragment> panel = Render(Services.GetRequiredService<RightPanelContentService>().Content!);
         panel.Find("[data-testid='provider-filter']").Change("Ring");
 
