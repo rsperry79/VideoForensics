@@ -579,6 +579,7 @@ public class CaseDetailsPage_Tests : CasesPagesTestBase
     public CaseDetailsPage_Tests()
     {
         RegisterGridStub<CaseDetails.CaseItemRow>();
+        _ = Services.AddScoped<RightPanelContentService>();
     }
 
     private IRenderedComponent<CaseDetails> RenderPage(Guid caseId)

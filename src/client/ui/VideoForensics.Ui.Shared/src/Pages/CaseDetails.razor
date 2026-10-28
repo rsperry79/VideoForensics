@@ -7,6 +7,7 @@
 @using VideoForensics.Data.Core.Models
 @using VideoForensics.Client.Ui.Shared.Components.Inspector
 @using VideoForensics.Client.Ui.Shared.Components.Scope
+@using VideoForensics.Client.Ui.Shared.Layout.RightPanel
 @using VideoForensics.Client.Ui.Shared.Services
 @using VideoForensics.Client.Ui.Shared.Services.Cases
 @using VideoForensics.Client.Ui.Shared.Services.Inspector
@@ -22,8 +23,11 @@
 @inject InspectorState InspectorState
 @inject IStringLocalizer<CaseDetails> L
 
-<div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; height: 100%;">
-    <div style="overflow: auto;">
+<PageRightPanelContent>
+    <ScopeRail />
+</PageRightPanelContent>
+
+<div style="overflow: auto; height: 100%;">
         <h4 class="mb-4">
     @if (_case is not null)
     {
@@ -153,10 +157,6 @@ else
         </div>
     </div>
 }
-    </div>
-    <div style="overflow: auto;">
-        <ScopeRail />
-    </div>
 </div>
 
 @code {
