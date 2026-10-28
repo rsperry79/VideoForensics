@@ -347,7 +347,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+                .ReturnsAsync(ChainIntegrityResult.Valid(3));
 
             // Act
             ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
@@ -375,7 +375,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
+                .ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
             // Act
             ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
@@ -391,6 +391,33 @@ namespace VideoForensics.Data.Core.Tests
         }
 
         [Fact]
+        public async Task BuildChainOfCustodyReportAsync_WithBrokenChain_ReportsBreakKindAndFailedEntry()
+        {
+            // Arrange
+            var failedId = Guid.NewGuid();
+            var failedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+            _ = _mockActionLogRepository
+                .Setup(x => x.ListAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ActionLogEntry>());
+            _ = _mockActionLogRepository
+                .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ChainIntegrityResult(false, 4, ChainBreakKind.PreviousHashMismatch, failedId, failedAt));
+
+            // Act
+            ChainOfCustodyReport result = await _service.BuildChainOfCustodyReportAsync(
+                null,
+                DateTime.UtcNow.AddDays(-7),
+                DateTime.UtcNow,
+                CancellationToken.None);
+
+            // Assert
+            Assert.Equal(4, result.ChainEntriesChecked);
+            Assert.Equal(ChainBreakKind.PreviousHashMismatch, result.ChainBreak);
+            Assert.Equal(failedId, result.ChainFailedEntryId);
+            Assert.Equal(failedAt, result.ChainFailedAtUtc);
+        }
+
+        [Fact]
         public async Task BuildChainOfCustodyReportAsync_WithFailedChainVerification_DispatchesAlertNotice()
         {
             // Arrange
@@ -400,7 +427,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
+                .ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
             // Act
             _ = await _service.BuildChainOfCustodyReportAsync(
@@ -430,7 +457,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+                .ReturnsAsync(ChainIntegrityResult.Valid(3));
 
             // Act
             _ = await _service.BuildChainOfCustodyReportAsync(
@@ -455,7 +482,7 @@ namespace VideoForensics.Data.Core.Tests
 
             _ = _mockActionLogRepository
                 .Setup(x => x.VerifyChainIntegrityAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
+                .ReturnsAsync(new ChainIntegrityResult(false, 1, ChainBreakKind.EntryHashMismatch, Guid.NewGuid(), DateTime.UtcNow));
 
             _ = _mockNotificationDispatcher
                 .Setup(d => d.DispatchAsync(It.IsAny<NotificationEvent>(), It.IsAny<CancellationToken>()))

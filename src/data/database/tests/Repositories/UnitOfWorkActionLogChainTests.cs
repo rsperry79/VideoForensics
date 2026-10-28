@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 
 using VideoForensics.Utils.Testing;
+using VideoForensics.Data.Common.Contracts;
 using VideoForensics.Data.Common.Entities;
 using VideoForensics.Data.Database.Repositories;
 
@@ -45,9 +46,9 @@ namespace VideoForensics.Data.Database.Tests
                 return true;
             }, CancellationToken.None);
 
-            bool isValid = await _verifier.VerifyChainIntegrityAsync(CancellationToken.None);
+            ChainIntegrityResult result = await _verifier.VerifyChainIntegrityAsync(CancellationToken.None);
 
-            Assert.True(isValid);
+            Assert.True(result.IsValid);
         }
 
         [Fact]
@@ -65,9 +66,9 @@ namespace VideoForensics.Data.Database.Tests
                 return true;
             }, CancellationToken.None);
 
-            bool isValid = await _verifier.VerifyChainIntegrityAsync(CancellationToken.None);
+            ChainIntegrityResult result = await _verifier.VerifyChainIntegrityAsync(CancellationToken.None);
 
-            Assert.True(isValid);
+            Assert.True(result.IsValid);
         }
     }
 }

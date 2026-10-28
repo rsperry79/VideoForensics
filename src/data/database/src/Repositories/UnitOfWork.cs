@@ -787,7 +787,7 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult((IReadOnlyList<ActionLogEntry>)_db.ActionLogEntries.AsNoTracking().ToList());
         }
 
-        public Task<bool> VerifyChainIntegrityAsync(CancellationToken ct)
+        public Task<ChainIntegrityResult> VerifyChainIntegrityAsync(CancellationToken ct)
         {
             var entries = _db.ActionLogEntries.AsNoTracking()
                 .OrderBy(ale => ale.TimestampUtc)
@@ -795,11 +795,12 @@ namespace VideoForensics.Data.Database.Repositories
                 .ToList();
 
             string? expectedPreviousHash = null;
+            int checkedCount = 0;
             foreach (ActionLogEntry? entry in entries)
             {
                 if (entry.PreviousEntryHash != expectedPreviousHash)
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.PreviousHashMismatch, entry));
                 }
 
                 // SQLite reads timestamps back as Kind=Unspecified; restore UTC so the hash matches what the appender computed.
@@ -807,13 +808,14 @@ namespace VideoForensics.Data.Database.Repositories
                 string canonicalString = $"{entry.PreviousEntryHash ?? string.Empty}|{entry.Actor}|{entry.Action}|{entry.EntityType}|{entry.EntityId}|{timestampUtc}|{entry.DetailsJson ?? string.Empty}";
                 if (entry.EntryHash != ComputeSha256Hash(canonicalString))
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(ChainIntegrityResult.Broken(checkedCount, ChainBreakKind.EntryHashMismatch, entry));
                 }
 
                 expectedPreviousHash = entry.EntryHash;
+                checkedCount++;
             }
 
-            return Task.FromResult(true);
+            return Task.FromResult(ChainIntegrityResult.Valid(checkedCount));
         }
 
         private static string ComputeSha256Hash(string input)

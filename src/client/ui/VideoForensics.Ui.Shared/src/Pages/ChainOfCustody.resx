@@ -59,6 +59,21 @@
   <data name="ChainIntegrityFailed" xml:space="preserve">
     <value>Chain integrity FAILED: {0}</value>
   </data>
+  <data name="ChainBreakPrevious" xml:space="preserve">
+    <value>An entry does not link to the entry before it. Entries may have been inserted, removed or reordered, or two entries were written from the same position.</value>
+  </data>
+  <data name="ChainBreakEntryHash" xml:space="preserve">
+    <value>An entry's contents no longer match the hash recorded when it was written. The entry was altered after it was written.</value>
+  </data>
+  <data name="ChainEntriesChecked" xml:space="preserve">
+    <value>{0} entries verified before the break.</value>
+  </data>
+  <data name="ChainFailedEntry" xml:space="preserve">
+    <value>First failing entry: {0}</value>
+  </data>
+  <data name="ChainReverify" xml:space="preserve">
+    <value>Re-verify chain</value>
+  </data>
   <data name="AuditTrailTitle" xml:space="preserve">
     <value>Audit Trail</value>
   </data>
