@@ -676,6 +676,7 @@ app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();
 app.MapDownloadEndpoints();
+app.MapDownloadJobEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();
