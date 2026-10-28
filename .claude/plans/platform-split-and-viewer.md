@@ -1,6 +1,6 @@
 # Plan: platform split and media viewer
 
-Status: Parts 1 and 2 implemented and merged to `wip` (bdffabe4 and later); Part 3 not started. Full gate on wip passed (7,041 tests). Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
+Status (audited 2026-10-28): Parts 1, 2, and 3 are implemented and merged to `wip`. Remaining: verify WebView2 range playback on the MAUI Windows head (no test or note exists in code), and the Frigate-style review page that uses these components (see `media-page-rework.md`, Step 2). The viewer components are built and tested but no page uses them yet. Targets: Windows desktop (MAUI) and the web server (WebApp). iOS and Android are TODO.
 
 ## Status (2026-10-25)
 
@@ -13,7 +13,7 @@ Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item 
 - Heads register the Windows implementations: WebApp, MAUI, dbrepair, dbsetup, selftest.
 
 ### Part 1: not done or deviated
-- `Platform.Web` was not created. Decision: create it only when server-only code needs a home. None does yet. The media range code is in WebApp, which is a head, so it is allowed there.
+- `Platform.Web` was created in `e34882b5` (2026-10-24): `src/client/platform/VideoForensics.Client.Platform.Web` holds `LinuxUpdateInstaller` and has a test project; `WebApp.csproj` references it. The media range code stays in WebApp, which is a head, so it is allowed there.
 - Remaining platform calls in shared layers, found by review:
   - `Ui.Shared/Pages/ImportExport.razor` (`File.*`, lines near 143, 191, 195).
   - `Ui.Shared/Dialogs/FolderBrowserDialog.razor:53` and `Services/DirectoryBrowserService.cs:18,28`.
@@ -29,7 +29,7 @@ Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item 
 - Ui.Shared: `ReviewPlayer`, `TimelineStrip`, `CameraGrid` with bUnit tests; strings localized.
 - Decided: playback across clips is a playlist (no server stitch); thumbnail strip uses existing `ThumbnailPath`; max tiles 9; audit records one entry per clip open (range requests not starting at byte 0 are skipped).
 
-### Part 2: resolved in `feat/finish-parts-1-2` (not yet merged to wip)
+### Part 2: resolved (merged to `wip`; the `feat/finish-parts-1-2` branch no longer exists)
 - Grid drift resync: `CameraGrid` checks each tile against tile 0 once a second (`CameraSync.NeedsResync`), and seeks a drifting tile. Commit `866a4dac`.
 - 206 and 416 range tests on `/media/{id}/content`: `MediaContentRangeTests`. Commit `03875b3e`.
 - `RemoteMediaItemRepository` page query test: commit `74c7f729`.
@@ -37,13 +37,13 @@ Reviewed by a read-only Sonnet pass against wip. Findings are recorded per item 
 - Still open: WebView2 range playback on the Windows head is unverified. This needs a manual check on the MAUI app.
 
 ### Part 1: decisions recorded
-- `Platform.Web` is not created. Decision: it gets created when server-only code needs a home. The media range code is in WebApp, which is a head, and the storage defaults are generic. Revisit if server-only platform code appears.
+- `Platform.Web` now exists (see above); it holds server-only platform code (`LinuxUpdateInstaller`).
 - `DirectoryBrowserService` drive enumeration moved behind `IFileSystemRootProvider` (Common). Windows drives in `Platform.Windows`, POSIX root in Core. Commit `06b96c88`.
 - Accepted as portable .NET, not platform code: `ImportExport` `File.*`, `ConfigToolsOrchestrator` user profile and Pictures folder, `Ring` and `Uniview` `Process.Start` (ffmpeg paths come from `IFfmpegToolLocation`, which I did not re-verify in every call site).
 - `UpdateCheckService` Linux download path (`LocalApplicationData`) is Linux-only. Accepted for now.
 - `FileApiKeyStore` (MCP) stays in MCP, as decided.
 
-### Part 3: not started
+### Part 3: done (audited 2026-10-28)
 
 ## Goals
 1. Split client code into a common layer and per-platform sublibs.
@@ -60,7 +60,7 @@ Part 1 (platform split) comes first. The viewer is built on the common layer.
 - Platform-specific code found by grep (non-test): `SyncfusionLicenseRegistrar` (`%ProgramData%` path), `FfmpegPathResolver` use in `Tools/`, `FileServerLocationSettingsStore` in MCP, `Program.cs` in WebApp and MauiProgram.
 - Recordings: downloaded MP4 clips indexed in `MediaItem` (`FilePath`, `DeviceId`, `RecordedAtUtc`, `DurationSeconds`, `ThumbnailPath`).
 - Browser video already works: `GET /api/v1/media/{id}/content` streams with range processing (`WebApp/src/Api/MediaApiEndpoints.cs:70,212`). Per-item tickets come from `POST /media/tickets` (`:66`), via `IMediaAccessTicketService` and `IMediaContentUrlProvider`. `Ui.Shared/src/Components/Evidence/MediaViewer.razor:98` already has a `<video>`.
-- Clip listing already exists: `GET /api/v1/media-items?deviceId&from&to` (`MediaApiEndpoints.cs:39,323-350`). It returns unpaged lists, which breaks `.claude/rules/data.md`.
+- Clip listing: `GET /api/v1/media-items?deviceId&from&to` is unpaged (breaks `.claude/rules/data.md`); the paged `GET /api/v1/media-items/page` was added in Part 2 and is the one to use.
 
 ## Part 1: platform split
 
@@ -141,7 +141,9 @@ Part 1 (platform split) comes first. The viewer is built on the common layer.
 - Multi-camera max tile count.
 - Does the WebView on the Windows head play MP4 range requests the same as a browser? Verify.
 
-## Part 3: preview strips (single-camera view)
+## Part 3: preview strips (single-camera view): implemented
+
+Status: all of this is done. `MediaItem.PreviewPath` with migration `AddMediaItemPreviewPath`; `MediaPreviewService` (320 px, 1 fps, `.preview.mp4`, temp file moved into place after ffmpeg succeeds); generation after download in `EventPullService` (two at a time, failures logged and not failing the pull); `MediaPreviewBackfillService`; `GET /api/v1/media/{id}/preview` with range requests and tests; `SingleCameraView` with 6 tests. The text below is the original plan, kept for reference. The preview strip is not on any page yet.
 
 Goal: in single-camera view, show thumbnail previews of the other cameras for the same time window. Clicking one switches the main player to that camera at the same time offset.
 
