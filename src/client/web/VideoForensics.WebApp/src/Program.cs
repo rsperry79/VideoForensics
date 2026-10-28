@@ -392,10 +392,6 @@ builder.Services.AddSnapshotProbe(builder.Configuration);
 // Scheduled per-account event sync (server tier only). Registers nothing unless ScheduledTasks:EnabledProviders is non-empty.
 builder.Services.AddVideoForensicsScheduledSync(builder.Configuration);
 
-// Download job runner (server tier only). Always running as a background service, independent of any page or client:
-// it claims queued account download jobs whenever they exist, including jobs queued before a restart.
-builder.Services.AddHostedService<VideoForensics.Client.Hosting.BackgroundServices.DownloadJobRunner>();
-
 // Server-side Ring snapshot capture per enabled device (on by default; SnapshotCapture:Enabled=false turns it off).
 builder.Services.AddVideoForensicsSnapshotCapture(builder.Configuration);
 builder.Services.AddVideoForensicsAccountExport();
@@ -676,7 +672,6 @@ app.MapEventEndpoints();
 app.MapCaseEndpoints();
 app.MapJammingEndpoints();
 app.MapDownloadEndpoints();
-app.MapDownloadJobEndpoints();
 app.MapSelfTestEndpoints();
 app.MapAccountEndpoints();
 app.MapConfigEndpoints();

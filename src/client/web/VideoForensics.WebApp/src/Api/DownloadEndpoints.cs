@@ -196,10 +196,7 @@ namespace VideoForensics.Client.WebApp.Api
             .WithDescription("Returns information about which device is currently being processed: 1-based index, total device count, and device name/identifier. Helps explain why per-device counts reset during multi-device downloads.");
         }
 
-        /// <summary>
-        /// Resolves an operator-supplied folder under the default download location. Shared with the download job API.
-        /// </summary>
-        internal static bool TryResolveSafeOutputPath(string? requestedOutputPath, out string resolvedOutputPath)
+        private static bool TryResolveSafeOutputPath(string? requestedOutputPath, out string resolvedOutputPath)
         {
             resolvedOutputPath = string.Empty;
 
