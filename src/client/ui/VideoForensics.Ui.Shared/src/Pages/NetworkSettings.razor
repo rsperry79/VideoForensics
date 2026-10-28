@@ -8,7 +8,10 @@
 @inject PairedSessionState SessionState
 @inject WebAuthnClient WebAuthn
 @inject StepUpService StepUp
+@using VideoForensics.Client.Ui.Shared.Layout
 @inject IStringLocalizer<NetworkSettings> L
+@inject IForensicsConfiguration Config
+@inject VideoForensics.Client.Core.Contracts.IConfigToolsOrchestrator ConfigTools
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <h4 class="mb-0">@L["Title"]</h4>
@@ -72,6 +75,18 @@ else
             <span style="color: @(_success ? "#4caf50" : "#f44336")" class="mt-3">@_message</span>
         }
     </div></div>
+
+    @if (SessionState.IsSignedIn)
+    {
+        <h5 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h5>
+        <div class="card mb-4"><div class="card-body p-4">
+            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
+            @if (_mdnsMessage is not null)
+            {
+                <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")" class="mt-2 d-block">@_mdnsMessage</span>
+            }
+        </div></div>
+    }
 
     <h5 class="mt-4 mb-2">@L["RemoteAccessSectionTitle"]</h5>
 
@@ -271,6 +286,9 @@ else
     private string? _message;
     private bool _success;
 
+    private bool _mdnsSuccess;
+    private string? _mdnsMessage;
+
     private NetworkTier _currentTier;
     private NetworkTier _selectedTier;
     private NetworkTier? _pendingTier;
@@ -345,6 +363,40 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    private bool CanAdmin => PageAccessRules.Allows(AccessPolicy.Admin, NavContext.FromSession(SessionState, appLockSupported: false));
+
+    private async Task SaveMdnsAdvertisementAsync(bool enabled)
+    {
+        try
+        {
+            Config.EnableMdnsAdvertisement = enabled;
+            try
+            {
+                (bool applied, _) = await ConfigTools.SetMdnsAdvertisementAsync(Config, enabled, CancellationToken.None);
+                if (!applied)
+                {
+                    Config.EnableMdnsAdvertisement = !enabled;
+                    _mdnsSuccess = false;
+                    _mdnsMessage = L["AdminOnlySettingsNote"].Value;
+                    return;
+                }
+            }
+            catch (NotSupportedException)
+            {
+                _mdnsSuccess = false;
+                _mdnsMessage = L["ConfigurationNotSupported"].Value;
+                return;
+            }
+            _mdnsSuccess = true;
+            _mdnsMessage = L["MdnsStatus", enabled ? "enabled" : "disabled"].Value;
+        }
+        catch (Exception ex)
+        {
+            _mdnsSuccess = false;
+            _mdnsMessage = L["MdnsError", ex.Message].Value;
+        }
     }
 
     private async Task ValidateApiTokenAsync()

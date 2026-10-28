@@ -102,30 +102,6 @@ else
         </div>
     </div>
 
-    <h6 class="mt-4 mb-2">@L["NetworkDiscoverySection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-column gap-2">
-            <SfCheckBox TChecked="bool" Enabled="@CanAdmin" @bind-Checked="@Config.EnableMdnsAdvertisement" @bind-Checked:after="@(async () => await SaveMdnsAdvertisementAsync(Config.EnableMdnsAdvertisement))" Label="@L["EnableMdnsAdvertisement"].Value" />
-            @if (_mdnsMessage is not null)
-            {
-                <span style="@(_mdnsSuccess ? "color: green;" : "color: red;")">@_mdnsMessage</span>
-            }
-        </div>
-    </div>
-
-    <h6 class="mt-4 mb-2">@L["RetentionSection"]</h6>
-    <div class="card p-4 mb-4">
-        <div class="card-body d-flex flex-row gap-2 align-items-center">
-            <label>@L["RetentionDaysLabel"]</label>
-            <SfNumericTextBox TValue="int" @bind-Value="_retentionDays" Enabled="@CanAdmin" Style="max-width: 200px;" />
-            <SfButton Content="@L["SaveButton"]" OnClick="SaveRetentionAsync" Disabled="@(!CanAdmin)" CssClass="e-primary" />
-            @if (_retentionMessage is not null)
-            {
-                <span style="@(_retentionSuccess ? "color: green;" : "color: red;")">@_retentionMessage</span>
-            }
-        </div>
-    </div>
-
     <h6 class="mt-4 mb-2">@L["DownloadsSection"]</h6>
     <div class="card p-4 mb-4">
         <div class="card-body d-flex flex-column gap-3">
@@ -194,13 +170,6 @@ else
     private bool _healthSyncSuccess;
     private string? _healthSyncMessage;
 
-    private bool _mdnsSuccess;
-    private string? _mdnsMessage;
-
-    private int _retentionDays;
-    private bool _retentionSuccess;
-    private string? _retentionMessage;
-
     private int _maxConcurrentDownloads;
     private bool _maxConcurrentSuccess;
     private string? _maxConcurrentMessage;
@@ -229,7 +198,6 @@ else
             _isAuthenticated = SessionState.IsSignedIn;
             if (_isAuthenticated)
             {
-                _retentionDays = Config.RetentionDaysDefault;
                 _maxConcurrentDownloads = Config.MaxConcurrentDownloads;
                 _downloadLocation = Config.DownloadLocation ?? string.Empty;
                 _reportFormat = Config.ReportOutputFormat;
@@ -289,43 +257,6 @@ else
             _healthSyncSuccess = false;
             _healthSyncMessage = L["HealthSyncError", ex.Message].Value;
         }
-    }
-
-    private async Task SaveMdnsAdvertisementAsync(bool enabled)
-    {
-        try
-        {
-            Config.EnableMdnsAdvertisement = enabled;
-            try
-            {
-                (bool applied, _) = await ConfigTools.SetMdnsAdvertisementAsync(Config, enabled, CancellationToken.None);
-                if (!applied)
-                {
-                    Config.EnableMdnsAdvertisement = !enabled;
-                    _mdnsSuccess = false;
-                    _mdnsMessage = L["AdminOnlySettingsNote"].Value;
-                    return;
-                }
-            }
-            catch (NotSupportedException)
-            {
-                _mdnsSuccess = false;
-                _mdnsMessage = L["ConfigurationNotSupported"]?.Value ?? "This setting can only be changed from the server directly.";
-                return;
-            }
-            _mdnsSuccess = true;
-            _mdnsMessage = L["MdnsStatus", enabled ? "enabled" : "disabled"].Value;
-        }
-        catch (Exception ex)
-        {
-            _mdnsSuccess = false;
-            _mdnsMessage = L["MdnsError", ex.Message].Value;
-        }
-    }
-
-    private async Task SaveRetentionAsync()
-    {
-        (_retentionSuccess, _retentionMessage) = await ConfigTools.SetRetentionDaysAsync(Config, _retentionDays, CancellationToken.None);
     }
 
     private async Task SaveMaxConcurrentAsync()
