@@ -742,6 +742,7 @@ namespace VideoForensics.Client.Hosting
             _ = services.AddHttpClient<IDeviceTypedSettingsReader, RemoteDeviceTypedSettingsReader>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<VideoForensics.Core.Providers.Common.Contracts.IDeviceControlService, RemoteDeviceControlService>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IEventRepository, RemoteEventRepository>(c => c.BaseAddress = serverAddress);
+            _ = services.AddHttpClient<IEventDetailRepository, RemoteEventDetailRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ILegalHoldRepository, RemoteLegalHoldRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<ICaseRepository, RemoteCaseRepository>(c => c.BaseAddress = serverAddress);
             _ = services.AddHttpClient<IJammingRepository, RemoteJammingRepository>(c => c.BaseAddress = serverAddress);

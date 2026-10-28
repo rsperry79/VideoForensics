@@ -981,6 +981,33 @@ namespace VideoForensics.Data.Database.Repositories
             return Task.FromResult(summary);
         }
 
+        public Task<EventPage> ListPageByDevicesAndDateRangeAsync(
+            IReadOnlyCollection<Guid> deviceIds, DateTime fromUtc, DateTime toUtc, IReadOnlyCollection<string>? excludeEventTypes,
+            int skip, int take, CancellationToken ct)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(skip, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThan(take, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(take, 500);
+            ArgumentOutOfRangeException.ThrowIfLessThan(deviceIds.Count, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(deviceIds.Count, 64);
+
+            Guid[] ids = deviceIds.ToArray();
+            string[] excluded = excludeEventTypes?.ToArray() ?? [];
+            IQueryable<Event> matches = _db.Events
+                .AsNoTracking()
+                .Where(e => ids.Contains(e.DeviceId) && e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc && !excluded.Contains(e.EventType));
+
+            int total = matches.Count();
+            List<Event> items = matches
+                .OrderByDescending(e => e.OccurredAtUtc)
+                .ThenBy(e => e.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToList();
+
+            return Task.FromResult(new EventPage(items, total));
+        }
+
         public Task<PaginatedResult<Event>> ListPaginatedAsync(int pageNumber, int pageSize, CancellationToken ct)
         {
             int totalCount = _db.Events.AsNoTracking().Count();
