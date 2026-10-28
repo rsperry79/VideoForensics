@@ -107,13 +107,30 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 bool inPlaceUpdatesEnabled = OperatingSystem.IsWindows() && builder.Configuration.GetValue<bool>("Updates:Enabled");
 string updatesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "VideoForensics", "updates");
 bool allowDevUpdatePackages = builder.Configuration.GetValue<bool>("Updates:AllowDevPackages");
-if (inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService())
+bool updatesActiveAsService = inPlaceUpdatesEnabled && Microsoft.Extensions.Hosting.WindowsServices.WindowsServiceHelpers.IsWindowsService();
+if (updatesActiveAsService)
 {
     // Files renamed aside by the previous apply (the exe and dlls that were in use) can be deleted now.
     VideoForensics.Client.Hosting.Updates.UpdateApplier.DeleteLeftoverFiles(AppContext.BaseDirectory);
 
     // Only SYSTEM and Administrators may write the folder this service applies updates from as SYSTEM.
-    VideoForensics.Client.Platform.Windows.UpdatesFolderAcl.Ensure(updatesRoot);
+    // Dev mode adds the developer (Updates:DevWriterUser, set once by enable-dev-updates.ps1) so Visual Studio can stage without admin.
+    var updateWriters = new List<System.Security.Principal.SecurityIdentifier>();
+    string? devWriterUser = builder.Configuration["Updates:DevWriterUser"];
+    if (allowDevUpdatePackages && !string.IsNullOrWhiteSpace(devWriterUser))
+    {
+        try
+        {
+            updateWriters.Add((System.Security.Principal.SecurityIdentifier)new System.Security.Principal.NTAccount(devWriterUser)
+                .Translate(typeof(System.Security.Principal.SecurityIdentifier)));
+        }
+        catch (System.Security.Principal.IdentityNotMappedException)
+        {
+            Log.Error("Updates:DevWriterUser '{User}' is not a known account; only SYSTEM and Administrators can stage updates", devWriterUser);
+        }
+    }
+
+    VideoForensics.Client.Platform.Windows.UpdatesFolderAcl.Ensure(updatesRoot, updateWriters);
 
     // The apply below ends with an exit that the service manager must turn into a restart. If that cannot be guaranteed,
     // leave the staged package alone: a stopped service is worse than an old version.
@@ -429,6 +446,22 @@ if (inPlaceUpdatesEnabled)
 else if (OperatingSystem.IsWindows())
 {
     _ = builder.Services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+}
+
+if (updatesActiveAsService)
+{
+    // A package staged while the service runs (the dev stage script, or a downloaded release) triggers drain-and-restart.
+    // NoOpUpdateDrain is replaced by the scheduler's drain when that lands.
+    builder.Services.TryAddSingleton<VideoForensics.Client.Hosting.Updates.IUpdateDrain, VideoForensics.Client.Hosting.Updates.NoOpUpdateDrain>();
+    _ = builder.Services.AddHostedService(sp => new VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher(
+        updatesRoot,
+        new VideoForensics.Client.Hosting.Updates.UpdatePackageVerifier(),
+        sp.GetRequiredService<VideoForensics.Client.Hosting.Updates.IUpdateDrain>(),
+        allowDevUpdatePackages,
+        () => System.Diagnostics.FileVersionInfo.GetVersionInfo(Environment.ProcessPath!).ProductVersion ?? "0.0.0",
+        code => { Log.CloseAndFlush(); Environment.Exit(code); },
+        TimeSpan.FromSeconds(5),
+        sp.GetRequiredService<ILogger<VideoForensics.Client.Hosting.Updates.StagedUpdateWatcher>>()));
 }
 else
 {
