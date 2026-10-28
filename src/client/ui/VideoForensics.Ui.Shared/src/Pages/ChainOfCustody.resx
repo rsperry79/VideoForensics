@@ -53,9 +53,6 @@
   <data name="ToLabel" xml:space="preserve">
     <value>To:</value>
   </data>
-  <data name="RunReport" xml:space="preserve">
-    <value>Refresh report</value>
-  </data>
   <data name="ChainIntegrityVerified" xml:space="preserve">
     <value>Chain integrity verified</value>
   </data>
